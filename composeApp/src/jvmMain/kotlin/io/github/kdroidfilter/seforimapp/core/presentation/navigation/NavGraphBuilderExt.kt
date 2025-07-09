@@ -1,8 +1,5 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
@@ -16,7 +13,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsDestination
  * @param T The destination type that extends Destination
  * @param content The composable content to display
  */
-inline fun <reified T : TabsDestination> NavGraphBuilder.animatedComposable(
+inline fun <reified T : TabsDestination> NavGraphBuilder.nonAnimatedComposable(
     noinline content: @Composable (NavBackStackEntry) -> Unit
 ) {
     composable<T>(

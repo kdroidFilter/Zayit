@@ -55,7 +55,6 @@ fun main() {
             exitApplication()
             return@application
         }
-        val os = getOperatingSystem()
         val isMacOs = getOperatingSystem() == OperatingSystem.MACOS
         KoinApplication(application = {
             modules(desktopModule)
@@ -79,8 +78,6 @@ fun main() {
                 ) {
                     window.minimumSize = Dimension(350, 600)
                     TitleBar(modifier = Modifier.newFullscreenControls()) {
-
-
                         BoxWithConstraints {
                             val windowWidth = maxWidth
                             Row(modifier = Modifier

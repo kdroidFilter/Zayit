@@ -1,3 +1,20 @@
 <resources>
     <string name="app_name">ספורים</string>
+
+    <!-- Title Bar Action Buttons View-->
+    <string name="light_theme">ערכת נושא בהירה</string>
+    <string name="dark_theme">ערכת נושא כהה</string>
+    <string name="system_theme">ערכת נושא מערכת</string>
+    <string name="switch_to_dark_theme">עבור לערכת נושא כהה</string>
+    <string name="switch_to_system_theme">עבור לערכת נושא מערכת</string>
+    <string name="switch_to_light_theme">עבור לערכת נושא בהירה</string>
+    <string name="find">חיפוש</string>
+    <string name="find_tooltip">חפש בכל המאגר</string>
+    <string name="info">מידע</string>
+    <string name="info_tooltip">הצג מידע</string>
+    <string name="settings">הגדרות</string>
+
+    <!-- Tabs View -->
+    <string name="settings_tooltip">פתח הגדרות</string>
+    <string name="add_tab">הוסף לשונית</string>
 </resources>

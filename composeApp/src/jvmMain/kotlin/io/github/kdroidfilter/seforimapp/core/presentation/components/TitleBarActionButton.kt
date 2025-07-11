@@ -1,27 +1,30 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import jdk.jfr.Description
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.icon.IconKey
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TitleBarActionButton(
-    tooltipText: String,
+    key: IconKey,
     onClick: () -> Unit,
-    iconKey: IconKey,
-    iconDescription: String
-) {
+    contentDescription: String,
+    tooltipText: String,
+    ) {
     IconActionButton(
-        key = iconKey,
+        key = key,
         onClick = onClick,
-        contentDescription = iconDescription,
+        contentDescription = contentDescription,
         tooltip = {
             Text(tooltipText)
-        }
+        },
+        modifier = Modifier.width(40.dp).fillMaxHeight()
     )
 }

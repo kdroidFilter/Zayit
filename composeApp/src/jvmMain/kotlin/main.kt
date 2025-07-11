@@ -1,23 +1,17 @@
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.application
 import com.kdroid.composetray.utils.SingleInstanceManager
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.darkmodedetector.isSystemInDarkMode
 import io.github.kdroidfilter.platformtools.getOperatingSystem
+import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionsButtonsView
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsNavHost
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsView
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
@@ -36,8 +30,6 @@ import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.intui.window.styling.dark
 import org.jetbrains.jewel.intui.window.styling.lightWithLightHeader
 import org.jetbrains.jewel.ui.ComponentStyling
-import org.jetbrains.jewel.ui.component.IconActionButton
-import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.window.DecoratedWindow
 import org.jetbrains.jewel.window.TitleBar
 import org.jetbrains.jewel.window.newFullscreenControls
@@ -117,6 +109,8 @@ fun main() {
                     TitleBar(modifier = Modifier.newFullscreenControls()) {
                         BoxWithConstraints {
                             val windowWidth = maxWidth
+                            val iconsNumber = 4
+                            val iconWidth = 40
                             Row {
                                 Row(
                                     modifier = Modifier
@@ -124,7 +118,7 @@ fun main() {
                                             start = if (isMacOs) 40.dp else 0.dp
                                         )
                                         .align(Alignment.Start)
-                                        .width(windowWidth - if (isMacOs) 80.dp else 40.dp)
+                                        .width(windowWidth - if (isMacOs) iconWidth*(iconsNumber+1).dp else (iconWidth * iconsNumber).dp)
                                 ) {
                                     TabsView()
                                 }
@@ -132,31 +126,7 @@ fun main() {
                                     modifier = Modifier.align(Alignment.End).fillMaxHeight(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    val iconDescription = when(theme) {
-                                        IntUiThemes.Light -> "Light Theme"
-                                        IntUiThemes.Dark -> "Dark Theme"
-                                        IntUiThemes.System -> "System Theme"
-                                    }
-
-                                    IconActionButton(
-                                        key = when (theme) {
-                                            IntUiThemes.Light -> AllIconsKeys.MeetNewUi.LightTheme
-                                            IntUiThemes.Dark -> AllIconsKeys.MeetNewUi.DarkTheme
-                                            IntUiThemes.System -> AllIconsKeys.MeetNewUi.SystemTheme
-                                        },
-                                        contentDescription = iconDescription,
-                                        onClick = {
-                                            themeViewModel.setTheme(
-                                                when(theme) {
-                                                    IntUiThemes.Light -> IntUiThemes.Dark
-                                                    IntUiThemes.Dark -> IntUiThemes.System
-                                                    IntUiThemes.System -> IntUiThemes.Light
-                                                }
-                                            )
-                                                  },
-                                        tooltip = { org.jetbrains.jewel.ui.component.Text(iconDescription) },
-                                        modifier = Modifier.width(40.dp).fillMaxHeight()
-                                    )
+                                    TitleBarActionsButtonsView()
                                 }
                             }
                         }

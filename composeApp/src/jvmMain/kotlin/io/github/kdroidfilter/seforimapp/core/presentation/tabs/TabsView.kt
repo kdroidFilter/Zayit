@@ -1,15 +1,16 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.IconButton
+import seforimapp.composeapp.generated.resources.Res
+import seforimapp.composeapp.generated.resources.add_tab
 import org.jetbrains.jewel.ui.component.SimpleTabContent
 import org.jetbrains.jewel.ui.component.TabData
 import org.jetbrains.jewel.ui.component.TabStrip
@@ -19,7 +20,6 @@ import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import org.koin.compose.viewmodel.koinViewModel
-import kotlin.math.max
 
 
 @Composable
@@ -64,11 +64,11 @@ private fun TabStripWithAddButton(tabs: List<TabData>, style: TabStyle, onAddCli
     Row(verticalAlignment = Alignment.CenterVertically) {
         TabStrip(tabs = tabs, style = style, modifier = Modifier.weight(1f))
 
-        IconButton(
+        TitleBarActionButton(
             onClick = onAddClick,
-            modifier = Modifier.size(JewelTheme.defaultTabStyle.metrics.tabHeight)
-        ) {
-            Icon(key = AllIconsKeys.General.Add, contentDescription = "Add a tab")
-        }
+            key = AllIconsKeys.General.Add,
+            contentDescription = stringResource(Res.string.add_tab),
+            tooltipText = stringResource(Res.string.add_tab)
+        )
     }
 }

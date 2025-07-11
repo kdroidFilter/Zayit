@@ -1,5 +1,11 @@
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -14,6 +20,8 @@ import io.github.kdroidfilter.platformtools.darkmodedetector.isSystemInDarkMode
 import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsNavHost
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsView
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.framework.di.desktopModule
@@ -28,6 +36,8 @@ import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.intui.window.styling.dark
 import org.jetbrains.jewel.intui.window.styling.lightWithLightHeader
 import org.jetbrains.jewel.ui.ComponentStyling
+import org.jetbrains.jewel.ui.component.IconActionButton
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.window.DecoratedWindow
 import org.jetbrains.jewel.window.TitleBar
 import org.jetbrains.jewel.window.newFullscreenControls
@@ -39,12 +49,12 @@ import java.awt.Dimension
 import java.awt.Window
 import java.util.*
 
+@OptIn(ExperimentalFoundationApi::class)
 fun main() {
     Locale.setDefault(Locale.Builder().setLanguage("he").setRegion("IL").build())
     application {
         val windowState = remember { getCenteredWindowState(1280, 720) }
         var isWindowVisible by remember { mutableStateOf(true) }
-        val isDarkTheme = isSystemInDarkMode()
 
         val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
             isWindowVisible = true
@@ -55,14 +65,41 @@ fun main() {
             exitApplication()
             return@application
         }
+
         val isMacOs = getOperatingSystem() == OperatingSystem.MACOS
         KoinApplication(application = {
             modules(desktopModule)
         }) {
+            val themeViewModel = ThemeViewModel
+            val theme = themeViewModel.theme.collectAsState().value
+            val isSystemInDarkMode = isSystemInDarkMode()
+
+            val themeDefinition = when (theme) {
+                IntUiThemes.Light -> JewelTheme.lightThemeDefinition()
+                IntUiThemes.Dark -> JewelTheme.darkThemeDefinition()
+                IntUiThemes.System ->
+                    if (isSystemInDarkMode) {
+                        JewelTheme.darkThemeDefinition()
+                    } else {
+                        JewelTheme.lightThemeDefinition()
+                    }
+            }
+
             IntUiTheme(
-                theme = if (isDarkTheme) JewelTheme.darkThemeDefinition() else JewelTheme.lightThemeDefinition(),
+                theme = themeDefinition,
                 styling = ComponentStyling.default()
-                    .decoratedWindow(titleBarStyle = if (isSystemInDarkMode()) TitleBarStyle.dark() else TitleBarStyle.lightWithLightHeader()),
+                    .decoratedWindow(
+                        titleBarStyle = when (theme) {
+                            IntUiThemes.Light -> TitleBarStyle.lightWithLightHeader()
+                            IntUiThemes.Dark -> TitleBarStyle.dark()
+                            IntUiThemes.System ->
+                                if (isSystemInDarkMode) {
+                                    TitleBarStyle.dark()
+                                } else {
+                                    TitleBarStyle.lightWithLightHeader()
+                                }
+                        },
+                    )
             ) {
                 DecoratedWindow(
                     onCloseRequest = { exitApplication() },
@@ -80,18 +117,47 @@ fun main() {
                     TitleBar(modifier = Modifier.newFullscreenControls()) {
                         BoxWithConstraints {
                             val windowWidth = maxWidth
-                            Row(modifier = Modifier
-                                .padding(
-                                    start = if (isMacOs) 40.dp else 0.dp )
-                                .align(Alignment.Start)
-                                .width(windowWidth - if (isMacOs) 80.dp else 40.dp)) {
-                                TabsView()
-                            }
-                            Row(
-                                modifier = Modifier.align(Alignment.End).fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
+                            Row {
+                                Row(
+                                    modifier = Modifier
+                                        .padding(
+                                            start = if (isMacOs) 40.dp else 0.dp
+                                        )
+                                        .align(Alignment.Start)
+                                        .width(windowWidth - if (isMacOs) 80.dp else 40.dp)
+                                ) {
+                                    TabsView()
+                                }
+                                Row(
+                                    modifier = Modifier.align(Alignment.End).fillMaxHeight(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    val iconDescription = when(theme) {
+                                        IntUiThemes.Light -> "Light Theme"
+                                        IntUiThemes.Dark -> "Dark Theme"
+                                        IntUiThemes.System -> "System Theme"
+                                    }
 
+                                    IconActionButton(
+                                        key = when (theme) {
+                                            IntUiThemes.Light -> AllIconsKeys.MeetNewUi.LightTheme
+                                            IntUiThemes.Dark -> AllIconsKeys.MeetNewUi.DarkTheme
+                                            IntUiThemes.System -> AllIconsKeys.MeetNewUi.SystemTheme
+                                        },
+                                        contentDescription = iconDescription,
+                                        onClick = {
+                                            themeViewModel.setTheme(
+                                                when(theme) {
+                                                    IntUiThemes.Light -> IntUiThemes.Dark
+                                                    IntUiThemes.Dark -> IntUiThemes.System
+                                                    IntUiThemes.System -> IntUiThemes.Light
+                                                }
+                                            )
+                                                  },
+                                        tooltip = { org.jetbrains.jewel.ui.component.Text(iconDescription) },
+                                        modifier = Modifier.width(40.dp).fillMaxHeight()
+                                    )
+                                }
                             }
                         }
                     }

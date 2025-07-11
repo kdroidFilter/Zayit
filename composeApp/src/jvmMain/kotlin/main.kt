@@ -40,7 +40,7 @@ import java.awt.Window
 import java.util.*
 
 fun main() {
-    Locale.setDefault(Locale("he", "il"))
+    Locale.setDefault(Locale.Builder().setLanguage("he").setRegion("IL").build())
     application {
         val windowState = remember { getCenteredWindowState(1280, 720) }
         var isWindowVisible by remember { mutableStateOf(true) }
@@ -111,4 +111,3 @@ fun main() {
         }
     }
 }
-

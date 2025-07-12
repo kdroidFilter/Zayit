@@ -12,8 +12,18 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.Horizontal
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.Bookmark
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.ColumnsGap
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.FileWarning
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.Filter
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.ListColumnsReverse
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.ListTree
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.Manage_search
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.NotebookPen
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.Print
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.TableOfContents
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.ZoomIn
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.ZoomOut
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForHorizontalResize
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.HorizontalSplitPane
@@ -119,33 +129,64 @@ fun BookContentView(state: BookContentState, onEvents: (BookContentEvents) -> Un
             toolTipText = "Liste des livres", onClick = {
                 isBookSelected = !isBookSelected
                 println("isBookSelected = $isBookSelected")
-            }, isSelected = isBookSelected, icon = ListTree, iconDescription = "", label = "ספרים"
+            }, isSelected = isBookSelected, icon = ZoomIn, iconDescription = "", label = "ספרים"
         )
         SelectableIconButtonWithToolip(
             toolTipText = "Liste des livres", onClick = {
                 isChapterSelected = !isChapterSelected
                 println("isChapterSelected: $isChapterSelected")
-            }, isSelected = isChapterSelected, icon = TableOfContents, iconDescription = "", label = "תוכן עניינים"
+            }, isSelected = isChapterSelected, icon = ZoomOut, iconDescription = "", label = "תוכן עניינים"
+        )
+        SelectableIconButtonWithToolip(
+            toolTipText = "Liste des livres", onClick = {
+                isChapterSelected = !isChapterSelected
+                println("isChapterSelected: $isChapterSelected")
+            }, isSelected = isChapterSelected, icon = Bookmark, iconDescription = "", label = "תוכן עניינים"
+        )
+        SelectableIconButtonWithToolip(
+            toolTipText = "Liste des livres", onClick = {
+                isChapterSelected = !isChapterSelected
+                println("isChapterSelected: $isChapterSelected")
+            }, isSelected = isChapterSelected, icon = Manage_search, iconDescription = "", label = "תוכן עניינים"
+        )
+        SelectableIconButtonWithToolip(
+            toolTipText = "Liste des livres", onClick = {
+                isChapterSelected = !isChapterSelected
+                println("isChapterSelected: $isChapterSelected")
+            }, isSelected = isChapterSelected, icon = Print, iconDescription = "", label = "תוכן עניינים"
+        )
+        SelectableIconButtonWithToolip(
+            toolTipText = "Liste des livres", onClick = {
+                isChapterSelected = !isChapterSelected
+                println("isChapterSelected: $isChapterSelected")
+            }, isSelected = isChapterSelected, icon = FileWarning, iconDescription = "", label = "תוכן עניינים"
         )
     }, bottomContent = {
         SelectableIconButtonWithToolip(
             toolTipText = "Liste des livres", onClick = {
                 isChapterSelected = !isChapterSelected
                 println("isChapterSelected: $isChapterSelected")
-            }, isSelected = isChapterSelected, icon = TableOfContents, iconDescription = "", label = "תוכן עניינים"
+            }, isSelected = isChapterSelected, icon = ListColumnsReverse, iconDescription = "", label = "תוכן עניינים"
         )
         SelectableIconButtonWithToolip(
             toolTipText = "Liste des livres", onClick = {
                 isChapterSelected = !isChapterSelected
                 println("isChapterSelected: $isChapterSelected")
-            }, isSelected = isChapterSelected, icon = TableOfContents, iconDescription = "", label = "תוכן עניינים"
+            }, isSelected = isChapterSelected, icon = ColumnsGap, iconDescription = "", label = "תוכן עניינים"
         )
         SelectableIconButtonWithToolip(
             toolTipText = "Liste des livres", onClick = {
                 isChapterSelected = !isChapterSelected
                 println("isChapterSelected: $isChapterSelected")
-            }, isSelected = isChapterSelected, icon = TableOfContents, iconDescription = "", label = "תוכן עניינים"
+            }, isSelected = isChapterSelected, icon = Filter, iconDescription = "", label = "תוכן עניינים"
         )
+        SelectableIconButtonWithToolip(
+            toolTipText = "Liste des livres", onClick = {
+                isChapterSelected = !isChapterSelected
+                println("isChapterSelected: $isChapterSelected")
+            }, isSelected = isChapterSelected, icon = NotebookPen, iconDescription = "", label = "תוכן עניינים"
+        )
+
     })
 
 }

@@ -2,34 +2,28 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.TextField
-import androidx.compose.runtime.*
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.Bookmark
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.ColumnsGap
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.FileWarning
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.Filter
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.ListColumnsReverse
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.ListTree
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.Manage_search
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.NotebookPen
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.Print
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.TableOfContents
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.ZoomIn
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.ZoomOut
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.*
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForHorizontalResize
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.HorizontalSplitPane
 import org.jetbrains.compose.splitpane.SplitPaneState
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.TextField
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -51,21 +45,21 @@ fun BookContentView(state: BookContentState, onEvents: (BookContentEvents) -> Un
     // Save scroll position when it changes
     LaunchedEffect(paragraphScrollState) {
         snapshotFlow { paragraphScrollState.value }.collect { position ->
-                onEvents(BookContentEvents.OnUpdateParagraphScrollPosition(position))
-            }
+            onEvents(BookContentEvents.OnUpdateParagraphScrollPosition(position))
+        }
     }
 
     LaunchedEffect(chapterScrollState) {
         snapshotFlow { chapterScrollState.value }.collect { position ->
-                onEvents(BookContentEvents.OnUpdateChapterScrollPosition(position))
-            }
+            onEvents(BookContentEvents.OnUpdateChapterScrollPosition(position))
+        }
     }
 
     // Save split pane position when it changes
     LaunchedEffect(state.splitPaneState.positionPercentage) {
         snapshotFlow { state.splitPaneState.positionPercentage }.collect {
-                onEvents(BookContentEvents.SaveAllStates)
-            }
+            onEvents(BookContentEvents.SaveAllStates)
+        }
     }
 
     // Save all states when the screen is disposed
@@ -74,46 +68,11 @@ fun BookContentView(state: BookContentState, onEvents: (BookContentEvents) -> Un
             onEvents(BookContentEvents.SaveAllStates)
         }
     }
-    var isBookSelected by remember { mutableStateOf(false) }
-    var isChapterSelected by remember { mutableStateOf(false) }
+
     Row(modifier = Modifier.fillMaxSize()) {
-
-        VerticalLateralBar(position = VerticalLateralBarPosition.Start, topContent = {
-            SelectableIconButtonWithToolip(
-                toolTipText = "Liste des livres", onClick = {
-                    isBookSelected = !isBookSelected
-                    println("isBookSelected = $isBookSelected")
-                }, isSelected = isBookSelected, icon = ListTree, iconDescription = "", label = "ספרים"
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText = "Liste des livres", onClick = {
-                    isChapterSelected = !isChapterSelected
-                    println("isChapterSelected: $isChapterSelected")
-                }, isSelected = isChapterSelected, icon = TableOfContents, iconDescription = "", label = "תוכן עניינים"
-            )
-        }, bottomContent = {
-            SelectableIconButtonWithToolip(
-                toolTipText = "Liste des livres", onClick = {
-                    isChapterSelected = !isChapterSelected
-                    println("isChapterSelected: $isChapterSelected")
-                }, isSelected = isChapterSelected, icon = TableOfContents, iconDescription = "", label = "תוכן עניינים"
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText = "Liste des livres", onClick = {
-                    isChapterSelected = !isChapterSelected
-                    println("isChapterSelected: $isChapterSelected")
-                }, isSelected = isChapterSelected, icon = TableOfContents, iconDescription = "", label = "תוכן עניינים"
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText = "Liste des livres", onClick = {
-                    isChapterSelected = !isChapterSelected
-                    println("isChapterSelected: $isChapterSelected")
-                }, isSelected = isChapterSelected, icon = TableOfContents, iconDescription = "", label = "תוכן עניינים"
-            )
-        })
-
+        StartVerticalBar()
         EnhancedSplitLayouts(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.weight(1f),
             splitPaneState = state.splitPaneState,
             searchText = state.searchText,
             onSearchTextChange = { onEvents(BookContentEvents.OnSearchTextChange(it)) },
@@ -122,75 +81,173 @@ fun BookContentView(state: BookContentState, onEvents: (BookContentEvents) -> Un
             paragraphScrollState = paragraphScrollState,
             chapterScrollState = chapterScrollState
         )
+        EndVerticalBar()
     }
+}
 
-    VerticalLateralBar(position = VerticalLateralBarPosition.End, topContent = {
-        SelectableIconButtonWithToolip(
-            toolTipText = "Liste des livres", onClick = {
-                isBookSelected = !isBookSelected
-                println("isBookSelected = $isBookSelected")
-            }, isSelected = isBookSelected, icon = ZoomIn, iconDescription = "", label = "ספרים"
-        )
-        SelectableIconButtonWithToolip(
-            toolTipText = "Liste des livres", onClick = {
-                isChapterSelected = !isChapterSelected
-                println("isChapterSelected: $isChapterSelected")
-            }, isSelected = isChapterSelected, icon = ZoomOut, iconDescription = "", label = "תוכן עניינים"
-        )
-        SelectableIconButtonWithToolip(
-            toolTipText = "Liste des livres", onClick = {
-                isChapterSelected = !isChapterSelected
-                println("isChapterSelected: $isChapterSelected")
-            }, isSelected = isChapterSelected, icon = Bookmark, iconDescription = "", label = "תוכן עניינים"
-        )
-        SelectableIconButtonWithToolip(
-            toolTipText = "Liste des livres", onClick = {
-                isChapterSelected = !isChapterSelected
-                println("isChapterSelected: $isChapterSelected")
-            }, isSelected = isChapterSelected, icon = Manage_search, iconDescription = "", label = "תוכן עניינים"
-        )
-        SelectableIconButtonWithToolip(
-            toolTipText = "Liste des livres", onClick = {
-                isChapterSelected = !isChapterSelected
-                println("isChapterSelected: $isChapterSelected")
-            }, isSelected = isChapterSelected, icon = Print, iconDescription = "", label = "תוכן עניינים"
-        )
-        SelectableIconButtonWithToolip(
-            toolTipText = "Liste des livres", onClick = {
-                isChapterSelected = !isChapterSelected
-                println("isChapterSelected: $isChapterSelected")
-            }, isSelected = isChapterSelected, icon = FileWarning, iconDescription = "", label = "תוכן עניינים"
-        )
-    }, bottomContent = {
-        SelectableIconButtonWithToolip(
-            toolTipText = "Liste des livres", onClick = {
-                isChapterSelected = !isChapterSelected
-                println("isChapterSelected: $isChapterSelected")
-            }, isSelected = isChapterSelected, icon = ListColumnsReverse, iconDescription = "", label = "תוכן עניינים"
-        )
-        SelectableIconButtonWithToolip(
-            toolTipText = "Liste des livres", onClick = {
-                isChapterSelected = !isChapterSelected
-                println("isChapterSelected: $isChapterSelected")
-            }, isSelected = isChapterSelected, icon = ColumnsGap, iconDescription = "", label = "תוכן עניינים"
-        )
-        SelectableIconButtonWithToolip(
-            toolTipText = "Liste des livres", onClick = {
-                isChapterSelected = !isChapterSelected
-                println("isChapterSelected: $isChapterSelected")
-            }, isSelected = isChapterSelected, icon = Filter, iconDescription = "", label = "תוכן עניינים"
-        )
-        SelectableIconButtonWithToolip(
-            toolTipText = "Liste des livres", onClick = {
-                isChapterSelected = !isChapterSelected
-                println("isChapterSelected: $isChapterSelected")
-            }, isSelected = isChapterSelected, icon = NotebookPen, iconDescription = "", label = "תוכן עניינים"
-        )
 
-    })
+@Composable
+fun StartVerticalBar() {
+    VerticalLateralBar(
+        position = VerticalLateralBarPosition.Start,
+        topContentLabel = "ניווט",
+        topContent = {
+            SelectableIconButtonWithToolip(
+                toolTipText = "רשימת הספרים",
+                onClick = {
+
+                },
+                isSelected = false,
+                icon = Library,
+                iconDescription = "",
+                label = "ספרים"
+            )
+            SelectableIconButtonWithToolip(
+                toolTipText = "תוכן הספר",
+                onClick = {
+
+                },
+                isSelected = false,
+                icon = TableOfContents,
+                iconDescription = "",
+                label = "תוכן עניינים של הספר"
+            )
+        },
+        bottomContentLabel = "אישי",
+        bottomContent = {
+            SelectableIconButtonWithToolip(
+                toolTipText = "הסימניות שלי",
+                onClick = {
+
+                },
+                isSelected = false,
+                icon = JournalBookmark,
+                iconDescription = "",
+                label = "סימניות"
+            )
+            SelectableIconButtonWithToolip(
+                toolTipText = "הפירושים שלי",
+                onClick = {
+
+                },
+                isSelected = false,
+                icon = JournalText,
+                iconDescription = "",
+                label = "פירושים שלי"
+            )
+        })
 
 }
 
+@Composable
+fun EndVerticalBar() {
+    VerticalLateralBar(
+        position = VerticalLateralBarPosition.End,
+        topContentLabel = "כלים",
+        topContent = {
+            SelectableIconButtonWithToolip(
+                toolTipText = "הגדל גודל הטקסט",
+                onClick = {
+
+                },
+                isSelected = false,
+                icon = ZoomIn,
+                iconDescription = "",
+                label = "הגדל"
+            )
+            SelectableIconButtonWithToolip(
+                toolTipText = "הקטן גודל הטקסט",
+                onClick = {
+
+                },
+                isSelected = false,
+                icon = ZoomOut,
+                iconDescription = "",
+                label = "הקטן"
+            )
+            SelectableIconButtonWithToolip(
+                toolTipText = "",
+                onClick = {
+
+                },
+                isSelected = false,
+                icon = Bookmark,
+                iconDescription = "",
+                label = "הוסף סימנייה"
+            )
+            SelectableIconButtonWithToolip(
+                toolTipText = "הפש בתוך העמוד",
+                onClick = {
+
+                },
+                isSelected = false,
+                icon = Manage_search,
+                iconDescription = "",
+                label = "הפש בעמוד"
+            )
+            SelectableIconButtonWithToolip(
+                toolTipText = "",
+                onClick = {
+
+                },
+                isSelected = false,
+                icon = Print,
+                iconDescription = "",
+                label = "הדפס"
+            )
+            SelectableIconButtonWithToolip(
+                toolTipText = "",
+                onClick = {
+
+                },
+                isSelected = false,
+                icon = FileWarning,
+                iconDescription = "",
+                label = "דיווח"
+            )
+        }, bottomContentLabel = "פירושים", // "Commentaires" en hébreu
+        bottomContent = {
+            SelectableIconButtonWithToolip(
+                toolTipText = "הצעג את הפירושים הקיימים על שורה זאת",
+                onClick = {
+
+                },
+                isSelected = false,
+                icon = ListColumnsReverse,
+                iconDescription = "",
+                label = "הציג פירושים"
+            )
+            SelectableIconButtonWithToolip(
+                toolTipText = "",
+                onClick = {
+
+                },
+                isSelected = false,
+                icon = ColumnsGap,
+                iconDescription = "",
+                label = ""
+            )
+            SelectableIconButtonWithToolip(
+                toolTipText = "סנן את הפרשנים",
+                onClick = {
+
+                },
+                isSelected = false,
+                icon = Filter,
+                iconDescription = "",
+                label = "סנן"
+            )
+            SelectableIconButtonWithToolip(
+                toolTipText = "כתוב הערה על שורה זאת",
+                onClick = {
+
+                },
+                isSelected = false, icon = NotebookPen,
+                iconDescription = "",
+                label = "כתוב הערה"
+            )
+        })
+}
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -208,27 +265,40 @@ fun EnhancedSplitLayouts(
         HorizontalSplitPane(
             splitPaneState = splitPaneState
         ) {
-
             first(200.dp) {
-
-
                 // Navigation panel
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(16.dp)
+                    modifier = Modifier
+                        .padding(16.dp)
                 ) {
                     // Search field
+                    val searchFieldState = rememberTextFieldState(searchText)
+
+                    // Synchronisez l'état avec le viewmodel
+                    LaunchedEffect(searchText) {
+                        if (searchFieldState.text.toString() != searchText) {
+                            searchFieldState.edit {
+                                replace(0, length, searchText)
+                            }
+                        }
+                    }
+
+                    LaunchedEffect(searchFieldState.text) {
+                        onSearchTextChange(searchFieldState.text.toString())
+                    }
+
                     TextField(
-                        value = searchText,
-                        onValueChange = onSearchTextChange,
-                        label = { Text("Rechercher") },
-                        modifier = Modifier.fillMaxWidth()
+                        state = searchFieldState,
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Rechercher") }
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Chapter list
                     Column(
-                        modifier = Modifier.fillMaxWidth().verticalScroll(chapterScrollState)
+                        modifier = Modifier
+                            .verticalScroll(chapterScrollState)
                     ) {
                         repeat(20) { index ->
                             ChapterItem(
@@ -239,11 +309,13 @@ fun EnhancedSplitLayouts(
                     }
                 }
             }
-            second(50.dp) {
+            second(200.dp) {
 
                 // Main content
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(paragraphScrollState)
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .verticalScroll(paragraphScrollState)
                 ) {
 
                     Text("Chapitre $selectedChapter")
@@ -260,18 +332,22 @@ fun EnhancedSplitLayouts(
             }
             splitter {
                 visiblePart {
-                    Box(
-                        Modifier.width(1.dp).fillMaxHeight().background(JewelTheme.globalColors.borders.disabled)
+                    Divider(
+                        Orientation.Vertical,
+                        Modifier.fillMaxHeight().width(1.dp),
+                        color = JewelTheme.globalColors.borders.disabled
                     )
                 }
                 handle {
                     Box(
-                        Modifier.width(5.dp).fillMaxHeight().markAsHandle().cursorForHorizontalResize(),
+                        Modifier
+                            .width(5.dp)
+                            .fillMaxHeight()
+                            .markAsHandle()
+                            .cursorForHorizontalResize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            Modifier.width(1.dp).fillMaxHeight().background(JewelTheme.globalColors.borders.disabled)
-                        )
+
                     }
                 }
             }
@@ -283,11 +359,12 @@ fun EnhancedSplitLayouts(
 private fun ChapterItem(
     chapter: Int, isSelected: Boolean, onClick: () -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onClick() }.background(
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onClick() }.background(
             if (isSelected) Color.Blue.copy(alpha = 0.2f)
             else Color.Transparent
-        ).padding(8.dp)) {
+        ).padding(8.dp)
+    ) {
         Text("Chapitre ${chapter + 1}")
     }
 }
-

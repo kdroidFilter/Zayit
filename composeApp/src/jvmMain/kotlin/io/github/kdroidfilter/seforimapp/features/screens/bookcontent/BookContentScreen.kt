@@ -2,15 +2,19 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.debounce
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,6 +24,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLa
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.*
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForHorizontalResize
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForVerticalResize
+import kotlinx.coroutines.FlowPreview
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.HorizontalSplitPane
@@ -41,7 +46,7 @@ fun BookContentScreen() {
 
 }
 
-@OptIn(ExperimentalSplitPaneApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalSplitPaneApi::class, ExperimentalFoundationApi::class, FlowPreview::class)
 @Composable
 fun BookContentView(state: BookContentState, onEvents: (BookContentEvents) -> Unit) {
     // Local scroll state
@@ -62,11 +67,31 @@ fun BookContentView(state: BookContentState, onEvents: (BookContentEvents) -> Un
         }
     }
 
-    // Save split pane position when it changes
-    LaunchedEffect(state.splitPaneState.positionPercentage) {
-        snapshotFlow { state.splitPaneState.positionPercentage }.collect {
-            onEvents(BookContentEvents.SaveAllStates)
-        }
+    // Save split pane position when it changes, with debounce to improve performance
+    LaunchedEffect(state.splitPaneState) {
+        snapshotFlow { state.splitPaneState.positionPercentage }
+            .debounce(300) // 300ms debounce to reduce frequency of state saving
+            .collect {
+                onEvents(BookContentEvents.SaveAllStates)
+            }
+    }
+
+    // Save TOC split pane position when it changes, with debounce to improve performance
+    LaunchedEffect(state.tocSplitPaneState) {
+        snapshotFlow { state.tocSplitPaneState.positionPercentage }
+            .debounce(300) // 300ms debounce to reduce frequency of state saving
+            .collect {
+                onEvents(BookContentEvents.SaveAllStates)
+            }
+    }
+
+    // Save content split pane position when it changes, with debounce to improve performance
+    LaunchedEffect(state.contentSplitPaneState) {
+        snapshotFlow { state.contentSplitPaneState.positionPercentage }
+            .debounce(300) // 300ms debounce to reduce frequency of state saving
+            .collect {
+                onEvents(BookContentEvents.SaveAllStates)
+            }
     }
 
     // Save all states when the screen is disposed
@@ -353,39 +378,37 @@ fun EnhancedSplitLayouts(
                                     // Show TOC for selected book
                                     // Check if we have root entries stored with the special key (-1L)
                                     val rootEntries = state.tocChildren[-1L] ?: emptyList()
-                                    val displayTocEntries = if (rootEntries.isNotEmpty()) {
-                                        // If we have root entries, use them instead of state.tocEntries
-                                        // This ensures we're displaying the correct entries
-                                        rootEntries
-                                    } else {
+                                    val displayTocEntries = rootEntries.ifEmpty {
                                         // Otherwise, use the original tocEntries
                                         state.tocEntries
                                     }
 
-                                    TocView(
-                                        tocEntries = displayTocEntries,
-                                        expandedEntries = state.expandedTocEntries,
-                                        tocChildren = state.tocChildren,
-                                        onEntryClick = { tocEntry ->
-                                            // Handle TOC entry click
-                                            tocEntry.lineId?.let { lineId ->
-                                                // Check if the line is already loaded
-                                                val existingLine = state.bookLines.find { it.id == lineId }
-                                                if (existingLine != null) {
-                                                    // If the line is already loaded, just select it
-                                                    onEvents(BookContentEvents.OnLineSelected(existingLine))
-                                                } else {
-                                                    // If the line is not loaded, we need to load it first
-                                                    // This will be handled by the ViewModel through a new event
-                                                    onEvents(BookContentEvents.OnLoadAndSelectLine(lineId))
+                                    Box(modifier = Modifier.fillMaxHeight()) {
+                                        TocView(
+                                            tocEntries = displayTocEntries,
+                                            expandedEntries = state.expandedTocEntries,
+                                            tocChildren = state.tocChildren,
+                                            onEntryClick = { tocEntry ->
+                                                // Handle TOC entry click
+                                                tocEntry.lineId?.let { lineId ->
+                                                    // Check if the line is already loaded
+                                                    val existingLine = state.bookLines.find { it.id == lineId }
+                                                    if (existingLine != null) {
+                                                        // If the line is already loaded, just select it
+                                                        onEvents(BookContentEvents.OnLineSelected(existingLine))
+                                                    } else {
+                                                        // If the line is not loaded, we need to load it first
+                                                        // This will be handled by the ViewModel through a new event
+                                                        onEvents(BookContentEvents.OnLoadAndSelectLine(lineId))
+                                                    }
                                                 }
-                                            }
-                                        },
-                                        onEntryExpand = { tocEntry ->
-                                            onEvents(BookContentEvents.OnTocEntryExpanded(tocEntry))
-                                        },
-                                        modifier = Modifier.fillMaxHeight()
-                                    )
+                                            },
+                                            onEntryExpand = { tocEntry ->
+                                                onEvents(BookContentEvents.OnTocEntryExpanded(tocEntry))
+                                            },
+                                            modifier = Modifier.fillMaxHeight()
+                                        )
+                                    }
                                 } else {
                                     // Show placeholder when no book is selected
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -546,30 +569,44 @@ fun EnhancedSplitLayouts(
                                 state.tocEntries
                             }
 
-                            TocView(
-                                tocEntries = displayTocEntries,
-                                expandedEntries = state.expandedTocEntries,
-                                tocChildren = state.tocChildren,
-                                onEntryClick = { tocEntry ->
-                                    // Handle TOC entry click
-                                    tocEntry.lineId?.let { lineId ->
-                                        // Check if the line is already loaded
-                                        val existingLine = state.bookLines.find { it.id == lineId }
-                                        if (existingLine != null) {
-                                            // If the line is already loaded, just select it
-                                            onEvents(BookContentEvents.OnLineSelected(existingLine))
-                                        } else {
-                                            // If the line is not loaded, we need to load it first
-                                            // This will be handled by the ViewModel through a new event
-                                            onEvents(BookContentEvents.OnLoadAndSelectLine(lineId))
+                            Box(modifier = Modifier.fillMaxHeight()) {
+                                TocView(
+                                    tocEntries = displayTocEntries,
+                                    expandedEntries = state.expandedTocEntries,
+                                    tocChildren = state.tocChildren,
+                                    onEntryClick = { tocEntry ->
+                                        // Handle TOC entry click
+                                        tocEntry.lineId?.let { lineId ->
+                                            // Check if the line is already loaded
+                                            val existingLine = state.bookLines.find { it.id == lineId }
+                                            if (existingLine != null) {
+                                                // If the line is already loaded, just select it
+                                                onEvents(BookContentEvents.OnLineSelected(existingLine))
+                                            } else {
+                                                // If the line is not loaded, we need to load it first
+                                                // This will be handled by the ViewModel through a new event
+                                                onEvents(BookContentEvents.OnLoadAndSelectLine(lineId))
+                                            }
                                         }
+                                    },
+                                    onEntryExpand = { tocEntry ->
+                                        onEvents(BookContentEvents.OnTocEntryExpanded(tocEntry))
+                                    },
+                                    modifier = Modifier.fillMaxHeight()
+                                )
+
+                                // Show loading indicator when loading TOC entries
+                                if (state.isLoading) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color(0x80FFFFFF)), // Semi-transparent white background
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
                                     }
-                                },
-                                onEntryExpand = { tocEntry ->
-                                    onEvents(BookContentEvents.OnTocEntryExpanded(tocEntry))
-                                },
-                                modifier = Modifier.fillMaxHeight()
-                            )
+                                }
+                            }
                         } else {
                             // Show placeholder when no book is selected
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

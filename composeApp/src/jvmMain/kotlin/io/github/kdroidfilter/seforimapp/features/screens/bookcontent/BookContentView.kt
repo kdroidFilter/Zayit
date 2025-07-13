@@ -63,7 +63,10 @@ fun BookContentView(
             state = listState,
             modifier = Modifier.fillMaxWidth().fillMaxHeight()
         ) {
-            items(lines) { line ->
+            items(
+                items = lines,
+                key = { it.id } // Use the line ID as a stable key for better performance
+            ) { line ->
                 LineItem(
                     line = line,
                     isSelected = selectedLine?.id == line.id,
@@ -98,7 +101,20 @@ fun LineItem(
 }
 
 /**
+ * A data class representing a TOC entry that is visible in the UI.
+ * This is used to flatten the hierarchical TOC structure into a single list.
+ */
+data class VisibleTocEntry(
+    val entry: TocEntry,
+    val level: Int,
+    val isExpanded: Boolean,
+    val hasChildren: Boolean
+)
+
+/**
  * A component that displays the table of contents of a book.
+ * This implementation uses a flat list approach instead of recursion,
+ * which is more efficient for large TOC structures.
  */
 @Composable
 fun TocView(
@@ -109,17 +125,20 @@ fun TocView(
     onEntryExpand: (TocEntry) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Create a flat list of visible TOC entries
+    val visibleEntries = remember(tocEntries, expandedEntries, tocChildren) {
+        buildVisibleTocEntries(tocEntries, expandedEntries, tocChildren)
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxWidth().fillMaxHeight()
     ) {
-        items(tocEntries) { entry ->
+        items(
+            items = visibleEntries,
+            key = { it.entry.id } // Use the entry ID as a stable key for better performance
+        ) { visibleEntry ->
             TocEntryItem(
-                entry = entry,
-                level = 0,
-                isExpanded = expandedEntries.contains(entry.id),
-                childEntries = tocChildren[entry.id] ?: emptyList(),
-                expandedEntries = expandedEntries,
-                tocChildren = tocChildren,
+                visibleEntry = visibleEntry,
                 onEntryClick = onEntryClick,
                 onEntryExpand = onEntryExpand
             )
@@ -128,64 +147,81 @@ fun TocView(
 }
 
 /**
- * A recursive component that displays a TOC entry and its children.
+ * Builds a flat list of visible TOC entries from the hierarchical structure.
+ */
+private fun buildVisibleTocEntries(
+    entries: List<TocEntry>,
+    expandedEntries: Set<Long>,
+    tocChildren: Map<Long, List<TocEntry>>
+): List<VisibleTocEntry> {
+    val result = mutableListOf<VisibleTocEntry>()
+
+    // Helper function to recursively add entries to the flat list
+    fun addEntries(currentEntries: List<TocEntry>, level: Int) {
+        currentEntries.forEach { entry ->
+            // Check if we've already attempted to load children for this entry
+            val hasCheckedForChildren = tocChildren.containsKey(entry.id)
+            // If we've checked and the list is empty, then it truly has no children
+            val hasNoChildren = hasCheckedForChildren && (tocChildren[entry.id]?.isEmpty() ?: true)
+
+            // Add the current entry to the result list
+            result.add(
+                VisibleTocEntry(
+                    entry = entry,
+                    level = level,
+                    isExpanded = expandedEntries.contains(entry.id),
+                    hasChildren = !hasNoChildren
+                )
+            )
+
+            // If the entry is expanded and has children, add its children too
+            if (expandedEntries.contains(entry.id)) {
+                val children = tocChildren[entry.id] ?: emptyList()
+                if (children.isNotEmpty()) {
+                    addEntries(children, level + 1)
+                }
+            }
+        }
+    }
+
+    // Start with the root entries
+    addEntries(entries, 0)
+
+    return result
+}
+
+/**
+ * A component that displays a single TOC entry.
+ * This is a non-recursive implementation that only renders the current entry.
  */
 @Composable
 fun TocEntryItem(
-    entry: TocEntry,
-    level: Int,
-    isExpanded: Boolean,
-    childEntries: List<TocEntry>,
-    expandedEntries: Set<Long>,
-    tocChildren: Map<Long, List<TocEntry>>,
+    visibleEntry: VisibleTocEntry,
     onEntryClick: (TocEntry) -> Unit,
     onEntryExpand: (TocEntry) -> Unit
 ) {
-    // Check if we've already attempted to load children for this entry
-    val hasCheckedForChildren = tocChildren.containsKey(entry.id)
-    // If we've checked and the list is empty, then it truly has no children
-    val hasNoChildren = hasCheckedForChildren && childEntries.isEmpty()
-
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onEntryClick(entry) }
-                .padding(start = (level * 16).dp, top = 4.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Show expand/collapse icon unless we've confirmed the entry has no children
-            if (!hasNoChildren) {
-                Text(
-                    text = if (isExpanded) "-" else "+",
-                    modifier = Modifier
-                        .width(24.dp)
-                        .clickable { onEntryExpand(entry) }
-                )
-            } else {
-                Spacer(modifier = Modifier.width(24.dp))
-            }
-
-            // Entry text
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onEntryClick(visibleEntry.entry) }
+            .padding(start = (visibleEntry.level * 16).dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Show expand/collapse icon unless we've confirmed the entry has no children
+        if (visibleEntry.hasChildren) {
             Text(
-                text = entry.text
+                text = if (visibleEntry.isExpanded) "-" else "+",
+                modifier = Modifier
+                    .width(24.dp)
+                    .clickable { onEntryExpand(visibleEntry.entry) }
             )
+        } else {
+            Spacer(modifier = Modifier.width(24.dp))
         }
 
-        // Show children if expanded
-        if (isExpanded && childEntries.isNotEmpty()) {
-            childEntries.forEach { childEntry ->
-                TocEntryItem(
-                    entry = childEntry,
-                    level = level + 1,
-                    isExpanded = expandedEntries.contains(childEntry.id),
-                    childEntries = tocChildren[childEntry.id] ?: emptyList(),
-                    expandedEntries = expandedEntries,
-                    tocChildren = tocChildren,
-                    onEntryClick = onEntryClick,
-                    onEntryExpand = onEntryExpand
-                )
-            }
-        }
+        // Entry text
+        Text(
+            text = visibleEntry.entry.text
+        )
     }
 }

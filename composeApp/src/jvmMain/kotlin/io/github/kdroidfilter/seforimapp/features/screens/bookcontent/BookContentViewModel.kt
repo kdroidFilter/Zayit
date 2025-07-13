@@ -28,7 +28,8 @@ class BookContentViewModel(
     // SplitPane states
     @OptIn(ExperimentalSplitPaneApi::class)
     private val _splitPaneState = MutableStateFlow(
-        getState<SplitPaneState>("splitPaneState") ?: SplitPaneState(
+        // Only try to get the position percentage, not the entire SplitPaneState
+        SplitPaneState(
             initialPositionPercentage = getState<Float>("splitPanePosition") ?: 0.3f,
             moveEnabled = true,
         )
@@ -39,7 +40,8 @@ class BookContentViewModel(
 
     @OptIn(ExperimentalSplitPaneApi::class)
     private val _tocSplitPaneState = MutableStateFlow(
-        getState<SplitPaneState>("tocSplitPaneState") ?: SplitPaneState(
+        // Only try to get the position percentage, not the entire SplitPaneState
+        SplitPaneState(
             initialPositionPercentage = getState<Float>("tocSplitPanePosition") ?: 0.3f,
             moveEnabled = true,
         )
@@ -51,7 +53,8 @@ class BookContentViewModel(
     // Content split pane state for book content and commentaries
     @OptIn(ExperimentalSplitPaneApi::class)
     private val _contentSplitPaneState = MutableStateFlow(
-        getState<SplitPaneState>("contentSplitPaneState") ?: SplitPaneState(
+        // Only try to get the position percentage, not the entire SplitPaneState
+        SplitPaneState(
             initialPositionPercentage = getState<Float>("contentSplitPanePosition") ?: 0.7f,
             moveEnabled = true,
         )
@@ -198,43 +201,21 @@ class BookContentViewModel(
                 val lines = repository.getLines(book.id, 0, 30)
                 _bookLines.value = lines
 
-                // Load TOC entries
-                val toc = repository.getBookToc(book.id)
-                _tocEntries.value = toc
+                // Only load root TOC entries initially for better performance
+                val rootToc = repository.getBookRootToc(book.id)
+                _tocEntries.value = rootToc
+
+                // Store root entries with the special key (-1L)
+                _tocChildren.value = mapOf(-1L to rootToc)
 
                 // Auto-expand first TOC entry if exists
-                if (toc.isNotEmpty()) {
-                    val firstEntry = toc.first()
+                if (rootToc.isNotEmpty()) {
+                    val firstEntry = rootToc.first()
                     _expandedTocEntries.value = setOf(firstEntry.id)
 
-                    // Load all TOC entries at once to prevent duplicates
-                    // Get all TOC entries for the book (we already have them in 'toc')
-
-                    // Create a map of parent ID to children
-                    val entriesByParentId = toc.groupBy { it.parentId }
-
-                    // Convert to immutable map and update _tocChildren
-                    val newTocChildrenMap = mutableMapOf<Long, List<TocEntry>>()
-                    entriesByParentId.forEach { (parentId, children) ->
-                        if (parentId != null) {
-                            newTocChildrenMap[parentId] = children
-                        }
-                    }
-
-                    // Also include root entries (with null parentId) in the map
-                    // This ensures all entries are properly included
-                    val rootEntries = entriesByParentId[null] ?: emptyList()
-                    if (rootEntries.isNotEmpty()) {
-                        // Use a special key for root entries (e.g., -1L)
-                        // This ensures they're not missed in the map
-                        newTocChildrenMap[-1L] = rootEntries
-                    }
-
-                    _tocChildren.value = newTocChildrenMap
-
-                    // Make sure the first entry's children are in the map
-                    if (!_tocChildren.value.containsKey(firstEntry.id)) {
-                        val children = repository.getTocChildren(firstEntry.id)
+                    // Load children of the first entry
+                    val children = repository.getTocChildren(firstEntry.id)
+                    if (children.isNotEmpty()) {
                         _tocChildren.value = _tocChildren.value + (firstEntry.id to children)
                     }
                 }
@@ -255,38 +236,21 @@ class BookContentViewModel(
 
             // Load TOC children if not already loaded
             if (!_tocChildren.value.containsKey(tocEntry.id)) {
+                _isLoading.value = true
                 viewModelScope.launch {
-                    // Load children for this entry
-                    val children = repository.getTocChildren(tocEntry.id)
+                    try {
+                        // Load only the direct children for this entry
+                        val children = repository.getTocChildren(tocEntry.id)
 
-                    // If we have children, add them to the map
-                    if (children.isNotEmpty()) {
-                        _tocChildren.value = _tocChildren.value + (tocEntry.id to children)
-
-                        // Load all TOC entries for the book to ensure we have a complete map
-                        val allTocEntries = repository.getBookToc(tocEntry.bookId)
-
-                        // Create a map of parent ID to children
-                        val entriesByParentId = allTocEntries.groupBy { it.parentId }
-
-                        // Update _tocChildren with any missing entries
-                        entriesByParentId.forEach { (parentId, entries) ->
-                            if (parentId != null && !_tocChildren.value.containsKey(parentId)) {
-                                _tocChildren.value = _tocChildren.value + (parentId to entries)
-                            }
+                        // Update the children map
+                        if (children.isNotEmpty()) {
+                            _tocChildren.value = _tocChildren.value + (tocEntry.id to children)
+                        } else {
+                            // If there are no children, add an empty list to mark that we've checked
+                            _tocChildren.value = _tocChildren.value + (tocEntry.id to emptyList())
                         }
-
-                        // Also include root entries (with null parentId) in the map
-                        // This ensures all entries are properly included
-                        val rootEntries = entriesByParentId[null] ?: emptyList()
-                        if (rootEntries.isNotEmpty() && !_tocChildren.value.containsKey(-1L)) {
-                            // Use a special key for root entries (e.g., -1L)
-                            // This ensures they're not missed in the map
-                            _tocChildren.value = _tocChildren.value + (-1L to rootEntries)
-                        }
-                    } else {
-                        // If there are no children, add an empty list to mark that we've checked
-                        _tocChildren.value = _tocChildren.value + (tocEntry.id to emptyList())
+                    } finally {
+                        _isLoading.value = false
                     }
                 }
             }
@@ -414,12 +378,13 @@ class BookContentViewModel(
 
     @OptIn(ExperimentalSplitPaneApi::class)
     fun saveAllStates() {
-        saveState("splitPaneState", splitPaneState.value)
+        // Only save position percentages, not the entire SplitPaneState objects
+        // This is more efficient and reduces lag during resize operations
         saveState("splitPanePosition", splitPaneState.value.positionPercentage)
-        saveState("tocSplitPaneState", tocSplitPaneState.value)
         saveState("tocSplitPanePosition", tocSplitPaneState.value.positionPercentage)
-        saveState("contentSplitPaneState", contentSplitPaneState.value)
         saveState("contentSplitPanePosition", contentSplitPaneState.value.positionPercentage)
+
+        // Save other state values
         saveState("searchText", searchText.value)
         saveState("scrollPosition", paragraphScrollPosition.value)
         saveState("selectedChapter", selectedChapter.value)

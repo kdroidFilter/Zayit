@@ -1,7 +1,9 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent
 
-import androidx.compose.foundation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -9,8 +11,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
@@ -26,42 +29,7 @@ import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import org.koin.compose.viewmodel.koinViewModel
-import seforimapp.composeapp.generated.resources.Res
-import seforimapp.composeapp.generated.resources.add_bookmark
-import seforimapp.composeapp.generated.resources.add_bookmark_tooltip
-import seforimapp.composeapp.generated.resources.book_content
-import seforimapp.composeapp.generated.resources.book_list
-import seforimapp.composeapp.generated.resources.bookmarks
-import seforimapp.composeapp.generated.resources.books
-import seforimapp.composeapp.generated.resources.chapter
-import seforimapp.composeapp.generated.resources.columns_gap
-import seforimapp.composeapp.generated.resources.columns_gap_tooltip
-import seforimapp.composeapp.generated.resources.commentaries
-import seforimapp.composeapp.generated.resources.filter
-import seforimapp.composeapp.generated.resources.filter_commentators_tooltip
-import seforimapp.composeapp.generated.resources.my_bookmarks
-import seforimapp.composeapp.generated.resources.my_commentaries
-import seforimapp.composeapp.generated.resources.my_commentaries_label
-import seforimapp.composeapp.generated.resources.navigation
-import seforimapp.composeapp.generated.resources.paragraph
-import seforimapp.composeapp.generated.resources.personal
-import seforimapp.composeapp.generated.resources.print
-import seforimapp.composeapp.generated.resources.print_tooltip
-import seforimapp.composeapp.generated.resources.report
-import seforimapp.composeapp.generated.resources.report_tooltip
-import seforimapp.composeapp.generated.resources.search_in_page
-import seforimapp.composeapp.generated.resources.search_in_page_tooltip
-import seforimapp.composeapp.generated.resources.search_placeholder
-import seforimapp.composeapp.generated.resources.show_commentaries
-import seforimapp.composeapp.generated.resources.show_commentaries_tooltip
-import seforimapp.composeapp.generated.resources.table_of_contents
-import seforimapp.composeapp.generated.resources.tools
-import seforimapp.composeapp.generated.resources.write_note
-import seforimapp.composeapp.generated.resources.write_note_tooltip
-import seforimapp.composeapp.generated.resources.zoom_in
-import seforimapp.composeapp.generated.resources.zoom_in_tooltip
-import seforimapp.composeapp.generated.resources.zoom_out
-import seforimapp.composeapp.generated.resources.zoom_out_tooltip
+import seforimapp.composeapp.generated.resources.*
 
 @Composable
 fun BookContentScreen() {
@@ -116,7 +84,9 @@ fun BookContentView(state: BookContentState, onEvents: (BookContentEvents) -> Un
             selectedChapter = state.selectedChapter,
             onChapterSelected = { onEvents(BookContentEvents.OnChapterSelected(it)) },
             paragraphScrollState = paragraphScrollState,
-            chapterScrollState = chapterScrollState
+            chapterScrollState = chapterScrollState,
+            state = state,
+            onEvents = onEvents
         )
         EndVerticalBar()
     }
@@ -296,14 +266,18 @@ fun EnhancedSplitLayouts(
     selectedChapter: Int,
     onChapterSelected: (Int) -> Unit,
     paragraphScrollState: ScrollState,
-    chapterScrollState: ScrollState
+    chapterScrollState: ScrollState,
+    // Database-related parameters
+    state: BookContentState,
+    onEvents: (BookContentEvents) -> Unit
 ) {
     Column(modifier = modifier) {
+        // First split pane: Category tree | (TOC + Book content)
         HorizontalSplitPane(
             splitPaneState = splitPaneState
         ) {
             first(200.dp) {
-                // Navigation panel
+                // Navigation panel (Category tree)
                 Column(
                     modifier = Modifier
                         .padding(16.dp)
@@ -332,38 +306,133 @@ fun EnhancedSplitLayouts(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Chapter list
-                    Column(
+                    // Show category tree
+                    CategoryBookTree(
+                        rootCategories = state.rootCategories,
+                        expandedCategories = state.expandedCategories,
+                        categoryChildren = state.categoryChildren,
+                        booksInCategory = state.booksInCategory,
+                        selectedCategory = state.selectedCategory,
+                        selectedBook = state.selectedBook,
+                        onCategoryClick = { category -> 
+                            onEvents(BookContentEvents.OnCategorySelected(category))
+                        },
+                        onBookClick = { book ->
+                            onEvents(BookContentEvents.OnBookSelected(book))
+                        },
                         modifier = Modifier
-                            .verticalScroll(chapterScrollState)
-                    ) {
-                        repeat(20) { index ->
-                            ChapterItem(
-                                chapter = index,
-                                isSelected = selectedChapter == index,
-                                onClick = { onChapterSelected(index) })
-                        }
-                    }
+                    )
                 }
             }
             second(200.dp) {
-
-                // Main content
-                Column(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .verticalScroll(paragraphScrollState)
+                // Second split pane: TOC | Book content
+                HorizontalSplitPane(
+                    splitPaneState = state.tocSplitPaneState
                 ) {
+                    first(200.dp) {
+                        // TOC panel
+                        Column(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxHeight()
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.table_of_contents),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
 
-                    Text("${stringResource(Res.string.chapter)} ${selectedChapter + 1}")
-                    Spacer(modifier = Modifier.height(16.dp))
+                            if (state.selectedBook != null) {
+                                // Show TOC for selected book
+                                // Check if we have root entries stored with the special key (-1L)
+                                val rootEntries = state.tocChildren[-1L] ?: emptyList()
+                                val displayTocEntries = if (rootEntries.isNotEmpty()) {
+                                    // If we have root entries, use them instead of state.tocEntries
+                                    // This ensures we're displaying the correct entries
+                                    rootEntries
+                                } else {
+                                    // Otherwise, use the original tocEntries
+                                    state.tocEntries
+                                }
 
-                    // Simulated content
-                    repeat(100) { index ->
-                        Text(
-                            stringResource(Res.string.paragraph, index + 1, selectedChapter + 1),
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
+                                TocView(
+                                    tocEntries = displayTocEntries,
+                                    expandedEntries = state.expandedTocEntries,
+                                    tocChildren = state.tocChildren,
+                                    onEntryClick = { tocEntry ->
+                                        // Handle TOC entry click
+                                        tocEntry.lineId?.let { lineId ->
+                                            // Check if the line is already loaded
+                                            val existingLine = state.bookLines.find { it.id == lineId }
+                                            if (existingLine != null) {
+                                                // If the line is already loaded, just select it
+                                                onEvents(BookContentEvents.OnLineSelected(existingLine))
+                                            } else {
+                                                // If the line is not loaded, we need to load it first
+                                                // This will be handled by the ViewModel through a new event
+                                                onEvents(BookContentEvents.OnLoadAndSelectLine(lineId))
+                                            }
+                                        }
+                                    },
+                                    onEntryExpand = { tocEntry ->
+                                        onEvents(BookContentEvents.OnTocEntryExpanded(tocEntry))
+                                    },
+                                    modifier = Modifier.fillMaxHeight()
+                                )
+                            } else {
+                                // Show placeholder when no book is selected
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(stringResource(Res.string.select_book_for_toc))
+                                }
+                            }
+                        }
+                    }
+                    second(200.dp) {
+                        // Book content panel
+                        if (state.selectedBook != null) {
+                            // Show book content
+                            BookContentView(
+                                book = state.selectedBook,
+                                lines = state.bookLines,
+                                selectedLine = state.selectedLine,
+                                onLineSelected = { line ->
+                                    onEvents(BookContentEvents.OnLineSelected(line))
+                                },
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        } else {
+                            // Show placeholder content when no book is selected
+                            Box(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(stringResource(Res.string.select_book))
+                            }
+                        }
+                    }
+                    splitter {
+                        visiblePart {
+                            Divider(
+                                Orientation.Vertical,
+                                Modifier.fillMaxHeight().width(1.dp),
+                                color = JewelTheme.globalColors.borders.disabled
+                            )
+                        }
+                        handle {
+                            Box(
+                                Modifier
+                                    .width(5.dp)
+                                    .fillMaxHeight()
+                                    .markAsHandle()
+                                    .cursorForHorizontalResize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+
+                            }
+                        }
                     }
                 }
             }
@@ -389,19 +458,5 @@ fun EnhancedSplitLayouts(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun ChapterItem(
-    chapter: Int, isSelected: Boolean, onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onClick() }.background(
-            if (isSelected) Color.Blue.copy(alpha = 0.2f)
-            else Color.Transparent
-        ).padding(8.dp)
-    ) {
-        Text("${stringResource(Res.string.chapter)} ${chapter + 1}")
     }
 }

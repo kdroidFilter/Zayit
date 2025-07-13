@@ -18,4 +18,7 @@ sealed class BookContentEvents {
     data class OnTocEntryExpanded(val tocEntry: TocEntry): BookContentEvents()
     data class OnLineSelected(val line: Line): BookContentEvents()
     data class OnLoadAndSelectLine(val lineId: Long): BookContentEvents()
+
+    // Commentary-related events
+    data object OnToggleCommentaries : BookContentEvents()
 }

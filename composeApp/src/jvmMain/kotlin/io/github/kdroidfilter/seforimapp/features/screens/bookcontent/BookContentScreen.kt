@@ -19,10 +19,12 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLa
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.*
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForHorizontalResize
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForVerticalResize
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.HorizontalSplitPane
 import org.jetbrains.compose.splitpane.SplitPaneState
+import org.jetbrains.compose.splitpane.VerticalSplitPane
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
@@ -88,7 +90,7 @@ fun BookContentView(state: BookContentState, onEvents: (BookContentEvents) -> Un
             state = state,
             onEvents = onEvents
         )
-        EndVerticalBar()
+        EndVerticalBar(state, onEvents)
     }
 }
 
@@ -147,7 +149,10 @@ fun StartVerticalBar() {
 }
 
 @Composable
-fun EndVerticalBar() {
+fun EndVerticalBar(
+    state: BookContentState,
+    onEvents: (BookContentEvents) -> Unit
+) {
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
         topContentLabel = stringResource(Res.string.tools),
@@ -217,9 +222,9 @@ fun EndVerticalBar() {
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.show_commentaries_tooltip),
                 onClick = {
-
+                    onEvents(BookContentEvents.OnToggleCommentaries)
                 },
-                isSelected = false,
+                isSelected = state.showCommentaries,
                 icon = ListColumnsReverse,
                 iconDescription = stringResource(Res.string.show_commentaries),
                 label = stringResource(Res.string.show_commentaries)
@@ -389,18 +394,67 @@ fun EnhancedSplitLayouts(
                         }
                     }
                     second(200.dp) {
-                        // Book content panel
+                        // Book content panel with commentaries
                         if (state.selectedBook != null) {
-                            // Show book content
-                            BookContentView(
-                                book = state.selectedBook,
-                                lines = state.bookLines,
-                                selectedLine = state.selectedLine,
-                                onLineSelected = { line ->
-                                    onEvents(BookContentEvents.OnLineSelected(line))
-                                },
-                                modifier = Modifier.padding(16.dp)
-                            )
+                            if (state.showCommentaries) {
+                                // Show book content with commentaries in a vertical split pane
+                                VerticalSplitPane(
+                                    splitPaneState = state.contentSplitPaneState
+                                ) {
+                                    first(200.dp) {
+                                        // Book content
+                                        BookContentView(
+                                            book = state.selectedBook,
+                                            lines = state.bookLines,
+                                            selectedLine = state.selectedLine,
+                                            onLineSelected = { line ->
+                                                onEvents(BookContentEvents.OnLineSelected(line))
+                                            },
+                                            modifier = Modifier.padding(16.dp)
+                                        )
+                                    }
+                                    second(200.dp) {
+                                        // Commentaries panel
+                                        LineCommentsView(
+                                            selectedLine = state.selectedLine,
+                                            commentaries = state.commentaries,
+                                            onCommentClick = { /* Handle comment click if needed */ }
+                                        )
+                                    }
+                                    splitter {
+                                        visiblePart {
+                                            Divider(
+                                                Orientation.Horizontal,
+                                                Modifier.fillMaxWidth().height(1.dp),
+                                                color = JewelTheme.globalColors.borders.disabled
+                                            )
+                                        }
+                                        handle {
+                                            Box(
+                                                Modifier
+                                                    .height(5.dp)
+                                                    .fillMaxWidth()
+                                                    .markAsHandle()
+                                                    .cursorForVerticalResize(),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Show only book content
+                                BookContentView(
+                                    book = state.selectedBook,
+                                    lines = state.bookLines,
+                                    selectedLine = state.selectedLine,
+                                    onLineSelected = { line ->
+                                        onEvents(BookContentEvents.OnLineSelected(line))
+                                    },
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
                         } else {
                             // Show placeholder content when no book is selected
                             Box(

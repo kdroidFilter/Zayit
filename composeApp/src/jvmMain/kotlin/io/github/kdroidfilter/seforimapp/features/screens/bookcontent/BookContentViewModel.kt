@@ -6,6 +6,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabAwareViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
@@ -46,6 +47,24 @@ class BookContentViewModel(
 
     @OptIn(ExperimentalSplitPaneApi::class)
     val tocSplitPaneState = _tocSplitPaneState.asStateFlow()
+
+    // Content split pane state for book content and commentaries
+    @OptIn(ExperimentalSplitPaneApi::class)
+    private val _contentSplitPaneState = MutableStateFlow(
+        getState<SplitPaneState>("contentSplitPaneState") ?: SplitPaneState(
+            initialPositionPercentage = getState<Float>("contentSplitPanePosition") ?: 0.7f,
+            moveEnabled = true,
+        )
+    )
+
+    @OptIn(ExperimentalSplitPaneApi::class)
+    val contentSplitPaneState = _contentSplitPaneState.asStateFlow()
+
+    // Flag to show/hide commentaries
+    private val _showCommentaries = MutableStateFlow(
+        getState<Boolean>("showCommentaries") ?: false
+    )
+    val showCommentaries = _showCommentaries.asStateFlow()
 
     // Search text state
     private val _searchText = MutableStateFlow(
@@ -106,6 +125,10 @@ class BookContentViewModel(
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
+
+    // Commentaries for the selected line
+    private val _commentaries = MutableStateFlow<List<CommentaryWithText>>(emptyList())
+    val commentaries = _commentaries.asStateFlow()
 
     init {
         // Load root categories on initialization
@@ -275,6 +298,24 @@ class BookContentViewModel(
 
     fun selectLine(line: Line) {
         _selectedLine.value = line
+
+        // Fetch commentaries for the selected line
+        fetchCommentariesForLine(line)
+    }
+
+    /**
+     * Fetches commentaries for a selected line.
+     */
+    private fun fetchCommentariesForLine(line: Line) {
+        viewModelScope.launch {
+            try {
+                _commentaries.value = repository.getCommentariesForLines(listOf(line.id))
+            } catch (e: Exception) {
+                // Handle any errors
+                println("Error fetching commentaries: ${e.message}")
+                _commentaries.value = emptyList()
+            }
+        }
     }
 
     /**
@@ -332,6 +373,14 @@ class BookContentViewModel(
         saveState("selectedChapter", chapter)
     }
 
+    /**
+     * Toggles the display of commentaries.
+     */
+    fun toggleCommentaries() {
+        _showCommentaries.value = !_showCommentaries.value
+        saveState("showCommentaries", _showCommentaries.value)
+    }
+
     fun onEvent(events: BookContentEvents) {
         when (events) {
             is BookContentEvents.OnUpdateParagraphScrollPosition -> updateParagraphScrollPosition(events.position)
@@ -344,6 +393,7 @@ class BookContentViewModel(
             is BookContentEvents.OnTocEntryExpanded -> expandTocEntry(events.tocEntry)
             is BookContentEvents.OnLineSelected -> selectLine(events.line)
             is BookContentEvents.OnLoadAndSelectLine -> loadAndSelectLine(events.lineId)
+            BookContentEvents.OnToggleCommentaries -> toggleCommentaries()
         }
     }
 
@@ -353,9 +403,12 @@ class BookContentViewModel(
         saveState("splitPanePosition", splitPaneState.value.positionPercentage)
         saveState("tocSplitPaneState", tocSplitPaneState.value)
         saveState("tocSplitPanePosition", tocSplitPaneState.value.positionPercentage)
+        saveState("contentSplitPaneState", contentSplitPaneState.value)
+        saveState("contentSplitPanePosition", contentSplitPaneState.value.positionPercentage)
         saveState("searchText", searchText.value)
         saveState("scrollPosition", paragraphScrollPosition.value)
         saveState("selectedChapter", selectedChapter.value)
+        saveState("showCommentaries", showCommentaries.value)
     }
 
     /**

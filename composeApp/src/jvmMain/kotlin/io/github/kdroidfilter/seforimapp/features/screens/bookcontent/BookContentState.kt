@@ -6,16 +6,19 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
 
 data class BookContentState @OptIn(ExperimentalSplitPaneApi::class) constructor(
     val splitPaneState: SplitPaneState,
     val tocSplitPaneState: SplitPaneState,
+    val contentSplitPaneState: SplitPaneState, // New split pane for content and commentaries
     val searchText: String,
     val paragraphScrollPosition: Int,
     val chapterScrollPosition: Int,
     val selectedChapter: Int,
+    val showCommentaries: Boolean = false, // Flag to show/hide commentaries
 
     // Database-related state
     val rootCategories: List<Category> = emptyList(),
@@ -29,6 +32,7 @@ data class BookContentState @OptIn(ExperimentalSplitPaneApi::class) constructor(
     val tocEntries: List<TocEntry> = emptyList(),
     val expandedTocEntries: Set<Long> = emptySet(),
     val tocChildren: Map<Long, List<TocEntry>> = emptyMap(),
+    val commentaries: List<CommentaryWithText> = emptyList(), // Commentaries for the selected line
     val isLoading: Boolean = false
 )
 
@@ -38,10 +42,12 @@ fun rememberBookContentState(viewModel: BookContentViewModel): BookContentState 
     return BookContentState(
         splitPaneState = viewModel.splitPaneState.collectAsState().value,
         tocSplitPaneState = viewModel.tocSplitPaneState.collectAsState().value,
+        contentSplitPaneState = viewModel.contentSplitPaneState.collectAsState().value,
         searchText = viewModel.searchText.collectAsState().value,
         paragraphScrollPosition = viewModel.paragraphScrollPosition.collectAsState().value,
         chapterScrollPosition = viewModel.chapterScrollPosition.collectAsState().value,
         selectedChapter = viewModel.selectedChapter.collectAsState().value,
+        showCommentaries = viewModel.showCommentaries.collectAsState().value,
 
         // Database-related state
         rootCategories = viewModel.rootCategories.collectAsState().value,
@@ -55,6 +61,7 @@ fun rememberBookContentState(viewModel: BookContentViewModel): BookContentState 
         tocEntries = viewModel.tocEntries.collectAsState().value,
         expandedTocEntries = viewModel.expandedTocEntries.collectAsState().value,
         tocChildren = viewModel.tocChildren.collectAsState().value,
+        commentaries = viewModel.commentaries.collectAsState().value,
         isLoading = viewModel.isLoading.collectAsState().value
     )
 }

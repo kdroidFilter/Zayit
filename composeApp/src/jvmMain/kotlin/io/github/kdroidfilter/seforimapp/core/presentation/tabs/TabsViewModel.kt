@@ -103,7 +103,7 @@ class TabsViewModel(
         val newDestination = when (destination) {
             is TabsDestination.Home -> TabsDestination.Home(UUID.randomUUID().toString())
             is TabsDestination.Search -> TabsDestination.Search(destination.searchQuery, UUID.randomUUID().toString())
-            is TabsDestination.BookContent -> TabsDestination.BookContent(destination.bookId, UUID.randomUUID().toString())
+            is TabsDestination.BookContent -> TabsDestination.BookContent(destination.bookId, UUID.randomUUID().toString(), destination.lineId)
         }
 
         val newTab = TabItem(

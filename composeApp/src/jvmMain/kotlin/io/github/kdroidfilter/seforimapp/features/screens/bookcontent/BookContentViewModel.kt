@@ -93,6 +93,29 @@ class BookContentViewModel(
 
     init {
         loadRootCategories()
+
+        // Check if we have a bookId in the savedStateHandle
+        savedStateHandle.get<Long>("bookId")?.let { bookId ->
+            // Load the book
+            viewModelScope.launch {
+                _isLoading.value = true
+                try {
+                    // Get the book from the repository
+                    repository.getBook(bookId)?.let { book ->
+                        // Load the book
+                        loadBook(book)
+
+                        // Check if we have a lineId in the savedStateHandle
+                        savedStateHandle.get<Long>("lineId")?.let { lineId ->
+                            // Load and select the line
+                            loadAndSelectLine(lineId)
+                        }
+                    }
+                } finally {
+                    _isLoading.value = false
+                }
+            }
+        }
     }
 
     fun onEvent(event: BookContentEvent) {

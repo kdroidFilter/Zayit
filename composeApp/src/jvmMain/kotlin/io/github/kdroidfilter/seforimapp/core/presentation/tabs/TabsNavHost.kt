@@ -105,8 +105,13 @@ fun TabsNavHost() {
             val destination = backStackEntry.toRoute<TabsDestination.BookContent>()
             // Pass the tabId to the savedStateHandle
             backStackEntry.savedStateHandle["tabId"] = destination.tabId
+            // Pass the bookId to the savedStateHandle
+            backStackEntry.savedStateHandle["bookId"] = destination.bookId
+            // Pass the lineId to the savedStateHandle if it exists
+            destination.lineId?.let { lineId ->
+                backStackEntry.savedStateHandle["lineId"] = lineId
+            }
             BookContentScreen()
         }
     }
 }
-

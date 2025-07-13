@@ -66,6 +66,12 @@ class BookContentViewModel(
     )
     val showCommentaries = _showCommentaries.asStateFlow()
 
+    // Flag to show/hide book tree
+    private val _showBookTree = MutableStateFlow(
+        getState<Boolean>("showBookTree") ?: true
+    )
+    val showBookTree = _showBookTree.asStateFlow()
+
     // Search text state
     private val _searchText = MutableStateFlow(
         getState<String>("searchText") ?: ""
@@ -381,6 +387,14 @@ class BookContentViewModel(
         saveState("showCommentaries", _showCommentaries.value)
     }
 
+    /**
+     * Toggles the display of the book tree.
+     */
+    fun toggleBookTree() {
+        _showBookTree.value = !_showBookTree.value
+        saveState("showBookTree", _showBookTree.value)
+    }
+
     fun onEvent(events: BookContentEvents) {
         when (events) {
             is BookContentEvents.OnUpdateParagraphScrollPosition -> updateParagraphScrollPosition(events.position)
@@ -394,6 +408,7 @@ class BookContentViewModel(
             is BookContentEvents.OnLineSelected -> selectLine(events.line)
             is BookContentEvents.OnLoadAndSelectLine -> loadAndSelectLine(events.lineId)
             BookContentEvents.OnToggleCommentaries -> toggleCommentaries()
+            BookContentEvents.OnToggleBookTree -> toggleBookTree()
         }
     }
 
@@ -409,6 +424,7 @@ class BookContentViewModel(
         saveState("scrollPosition", paragraphScrollPosition.value)
         saveState("selectedChapter", selectedChapter.value)
         saveState("showCommentaries", showCommentaries.value)
+        saveState("showBookTree", showBookTree.value)
     }
 
     /**

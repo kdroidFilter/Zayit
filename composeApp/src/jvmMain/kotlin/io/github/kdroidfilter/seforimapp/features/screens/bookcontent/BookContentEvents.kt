@@ -21,4 +21,7 @@ sealed class BookContentEvents {
 
     // Commentary-related events
     data object OnToggleCommentaries : BookContentEvents()
+
+    // Book tree-related events
+    data object OnToggleBookTree : BookContentEvents()
 }

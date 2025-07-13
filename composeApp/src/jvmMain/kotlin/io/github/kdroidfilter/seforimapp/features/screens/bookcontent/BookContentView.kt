@@ -61,7 +61,7 @@ fun BookContentView(
         // Book content
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp)
+            modifier = Modifier.fillMaxWidth().fillMaxHeight()
         ) {
             items(lines) { line ->
                 LineItem(
@@ -110,7 +110,7 @@ fun TocView(
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxWidth().heightIn(max = 500.dp)
+        modifier = modifier.fillMaxWidth().fillMaxHeight()
     ) {
         items(tocEntries) { entry ->
             TocEntryItem(

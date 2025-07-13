@@ -29,7 +29,7 @@ fun CategoryBookTree(
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxWidth().heightIn(max = 500.dp)
+        modifier = modifier.fillMaxWidth().fillMaxHeight()
     ) {
         items(rootCategories) { category ->
             CategoryTreeItem(

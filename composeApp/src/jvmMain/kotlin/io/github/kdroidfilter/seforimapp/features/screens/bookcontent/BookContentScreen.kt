@@ -16,6 +16,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLa
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.*
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForHorizontalResize
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.HorizontalSplitPane
 import org.jetbrains.compose.splitpane.SplitPaneState
@@ -25,6 +26,42 @@ import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import org.koin.compose.viewmodel.koinViewModel
+import seforimapp.composeapp.generated.resources.Res
+import seforimapp.composeapp.generated.resources.add_bookmark
+import seforimapp.composeapp.generated.resources.add_bookmark_tooltip
+import seforimapp.composeapp.generated.resources.book_content
+import seforimapp.composeapp.generated.resources.book_list
+import seforimapp.composeapp.generated.resources.bookmarks
+import seforimapp.composeapp.generated.resources.books
+import seforimapp.composeapp.generated.resources.chapter
+import seforimapp.composeapp.generated.resources.columns_gap
+import seforimapp.composeapp.generated.resources.columns_gap_tooltip
+import seforimapp.composeapp.generated.resources.commentaries
+import seforimapp.composeapp.generated.resources.filter
+import seforimapp.composeapp.generated.resources.filter_commentators_tooltip
+import seforimapp.composeapp.generated.resources.my_bookmarks
+import seforimapp.composeapp.generated.resources.my_commentaries
+import seforimapp.composeapp.generated.resources.my_commentaries_label
+import seforimapp.composeapp.generated.resources.navigation
+import seforimapp.composeapp.generated.resources.paragraph
+import seforimapp.composeapp.generated.resources.personal
+import seforimapp.composeapp.generated.resources.print
+import seforimapp.composeapp.generated.resources.print_tooltip
+import seforimapp.composeapp.generated.resources.report
+import seforimapp.composeapp.generated.resources.report_tooltip
+import seforimapp.composeapp.generated.resources.search_in_page
+import seforimapp.composeapp.generated.resources.search_in_page_tooltip
+import seforimapp.composeapp.generated.resources.search_placeholder
+import seforimapp.composeapp.generated.resources.show_commentaries
+import seforimapp.composeapp.generated.resources.show_commentaries_tooltip
+import seforimapp.composeapp.generated.resources.table_of_contents
+import seforimapp.composeapp.generated.resources.tools
+import seforimapp.composeapp.generated.resources.write_note
+import seforimapp.composeapp.generated.resources.write_note_tooltip
+import seforimapp.composeapp.generated.resources.zoom_in
+import seforimapp.composeapp.generated.resources.zoom_in_tooltip
+import seforimapp.composeapp.generated.resources.zoom_out
+import seforimapp.composeapp.generated.resources.zoom_out_tooltip
 
 @Composable
 fun BookContentScreen() {
@@ -90,50 +127,50 @@ fun BookContentView(state: BookContentState, onEvents: (BookContentEvents) -> Un
 fun StartVerticalBar() {
     VerticalLateralBar(
         position = VerticalLateralBarPosition.Start,
-        topContentLabel = "ניווט",
+        topContentLabel = stringResource(Res.string.navigation),
         topContent = {
             SelectableIconButtonWithToolip(
-                toolTipText = "רשימת הספרים",
+                toolTipText = stringResource(Res.string.book_list),
                 onClick = {
 
                 },
                 isSelected = false,
                 icon = Library,
-                iconDescription = "",
-                label = "ספרים"
+                iconDescription = stringResource(Res.string.books),
+                label = stringResource(Res.string.books)
             )
             SelectableIconButtonWithToolip(
-                toolTipText = "תוכן הספר",
+                toolTipText = stringResource(Res.string.book_content),
                 onClick = {
 
                 },
                 isSelected = false,
                 icon = TableOfContents,
-                iconDescription = "",
-                label = "תוכן עניינים של הספר"
+                iconDescription = stringResource(Res.string.table_of_contents),
+                label = stringResource(Res.string.table_of_contents)
             )
         },
-        bottomContentLabel = "אישי",
+        bottomContentLabel = stringResource(Res.string.personal),
         bottomContent = {
             SelectableIconButtonWithToolip(
-                toolTipText = "הסימניות שלי",
+                toolTipText = stringResource(Res.string.my_bookmarks),
                 onClick = {
 
                 },
                 isSelected = false,
                 icon = JournalBookmark,
-                iconDescription = "",
-                label = "סימניות"
+                iconDescription = stringResource(Res.string.bookmarks),
+                label = stringResource(Res.string.bookmarks)
             )
             SelectableIconButtonWithToolip(
-                toolTipText = "הפירושים שלי",
+                toolTipText = stringResource(Res.string.my_commentaries),
                 onClick = {
 
                 },
                 isSelected = false,
                 icon = JournalText,
-                iconDescription = "",
-                label = "פירושים שלי"
+                iconDescription = stringResource(Res.string.my_commentaries_label),
+                label = stringResource(Res.string.my_commentaries_label)
             )
         })
 
@@ -143,108 +180,108 @@ fun StartVerticalBar() {
 fun EndVerticalBar() {
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
-        topContentLabel = "כלים",
+        topContentLabel = stringResource(Res.string.tools),
         topContent = {
             SelectableIconButtonWithToolip(
-                toolTipText = "הגדל גודל הטקסט",
+                toolTipText = stringResource(Res.string.zoom_in_tooltip),
                 onClick = {
 
                 },
                 isSelected = false,
                 icon = ZoomIn,
-                iconDescription = "",
-                label = "הגדל"
+                iconDescription = stringResource(Res.string.zoom_in),
+                label = stringResource(Res.string.zoom_in)
             )
             SelectableIconButtonWithToolip(
-                toolTipText = "הקטן גודל הטקסט",
+                toolTipText = stringResource(Res.string.zoom_out_tooltip),
                 onClick = {
 
                 },
                 isSelected = false,
                 icon = ZoomOut,
-                iconDescription = "",
-                label = "הקטן"
+                iconDescription = stringResource(Res.string.zoom_out),
+                label = stringResource(Res.string.zoom_out)
             )
             SelectableIconButtonWithToolip(
-                toolTipText = "",
+                toolTipText = stringResource(Res.string.add_bookmark_tooltip),
                 onClick = {
 
                 },
                 isSelected = false,
                 icon = Bookmark,
-                iconDescription = "",
-                label = "הוסף סימנייה"
+                iconDescription = stringResource(Res.string.add_bookmark),
+                label = stringResource(Res.string.add_bookmark)
             )
             SelectableIconButtonWithToolip(
-                toolTipText = "הפש בתוך העמוד",
+                toolTipText = stringResource(Res.string.search_in_page_tooltip),
                 onClick = {
 
                 },
                 isSelected = false,
                 icon = Manage_search,
-                iconDescription = "",
-                label = "הפש בעמוד"
+                iconDescription = stringResource(Res.string.search_in_page),
+                label = stringResource(Res.string.search_in_page)
             )
             SelectableIconButtonWithToolip(
-                toolTipText = "",
+                toolTipText = stringResource(Res.string.print_tooltip),
                 onClick = {
 
                 },
                 isSelected = false,
                 icon = Print,
-                iconDescription = "",
-                label = "הדפס"
+                iconDescription = stringResource(Res.string.print),
+                label = stringResource(Res.string.print)
             )
             SelectableIconButtonWithToolip(
-                toolTipText = "",
+                toolTipText = stringResource(Res.string.report_tooltip),
                 onClick = {
 
                 },
                 isSelected = false,
                 icon = FileWarning,
-                iconDescription = "",
-                label = "דיווח"
+                iconDescription = stringResource(Res.string.report),
+                label = stringResource(Res.string.report)
             )
-        }, bottomContentLabel = "פירושים", // "Commentaires" en hébreu
+        }, bottomContentLabel = stringResource(Res.string.commentaries),
         bottomContent = {
             SelectableIconButtonWithToolip(
-                toolTipText = "הצעג את הפירושים הקיימים על שורה זאת",
+                toolTipText = stringResource(Res.string.show_commentaries_tooltip),
                 onClick = {
 
                 },
                 isSelected = false,
                 icon = ListColumnsReverse,
-                iconDescription = "",
-                label = "הציג פירושים"
+                iconDescription = stringResource(Res.string.show_commentaries),
+                label = stringResource(Res.string.show_commentaries)
             )
             SelectableIconButtonWithToolip(
-                toolTipText = "",
+                toolTipText = stringResource(Res.string.columns_gap_tooltip),
                 onClick = {
 
                 },
                 isSelected = false,
                 icon = ColumnsGap,
-                iconDescription = "",
-                label = ""
+                iconDescription = stringResource(Res.string.columns_gap),
+                label = stringResource(Res.string.columns_gap)
             )
             SelectableIconButtonWithToolip(
-                toolTipText = "סנן את הפרשנים",
+                toolTipText = stringResource(Res.string.filter_commentators_tooltip),
                 onClick = {
 
                 },
                 isSelected = false,
                 icon = Filter,
-                iconDescription = "",
-                label = "סנן"
+                iconDescription = stringResource(Res.string.filter),
+                label = stringResource(Res.string.filter)
             )
             SelectableIconButtonWithToolip(
-                toolTipText = "כתוב הערה על שורה זאת",
+                toolTipText = stringResource(Res.string.write_note_tooltip),
                 onClick = {
 
                 },
                 isSelected = false, icon = NotebookPen,
-                iconDescription = "",
-                label = "כתוב הערה"
+                iconDescription = stringResource(Res.string.write_note),
+                label = stringResource(Res.string.write_note)
             )
         })
 }
@@ -274,7 +311,7 @@ fun EnhancedSplitLayouts(
                     // Search field
                     val searchFieldState = rememberTextFieldState(searchText)
 
-                    // Synchronisez l'état avec le viewmodel
+                    // Synchronize state with the viewmodel
                     LaunchedEffect(searchText) {
                         if (searchFieldState.text.toString() != searchText) {
                             searchFieldState.edit {
@@ -290,7 +327,7 @@ fun EnhancedSplitLayouts(
                     TextField(
                         state = searchFieldState,
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Rechercher") }
+                        placeholder = { Text(stringResource(Res.string.search_placeholder)) }
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -318,13 +355,13 @@ fun EnhancedSplitLayouts(
                         .verticalScroll(paragraphScrollState)
                 ) {
 
-                    Text("Chapitre $selectedChapter")
+                    Text("${stringResource(Res.string.chapter)} ${selectedChapter + 1}")
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Simulated content
                     repeat(100) { index ->
                         Text(
-                            "Paragraphe $index du chapitre $selectedChapter",
+                            stringResource(Res.string.paragraph, index + 1, selectedChapter + 1),
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
@@ -365,6 +402,6 @@ private fun ChapterItem(
             else Color.Transparent
         ).padding(8.dp)
     ) {
-        Text("Chapitre ${chapter + 1}")
+        Text("${stringResource(Res.string.chapter)} ${chapter + 1}")
     }
 }

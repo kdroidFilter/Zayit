@@ -139,9 +139,9 @@ fun StartVerticalBar(state: BookContentState, onEvents: (BookContentEvents) -> U
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.book_content),
                 onClick = {
-
+                    onEvents(BookContentEvents.OnToggleToc)
                 },
-                isSelected = false,
+                isSelected = state.showToc,
                 icon = TableOfContents,
                 iconDescription = stringResource(Res.string.table_of_contents),
                 label = stringResource(Res.string.table_of_contents)
@@ -356,160 +356,236 @@ fun EnhancedSplitLayouts(
                     }
                 }
                 second(200.dp) {
-                    // Second split pane: TOC | Book content
-                    HorizontalSplitPane(
-                        splitPaneState = state.tocSplitPaneState
-                    ) {
-                        first(200.dp) {
-                            // TOC panel
-                            Column(
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .fillMaxHeight()
-                            ) {
-                                Text(
-                                    text = stringResource(Res.string.table_of_contents),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                )
+                    // Content area (TOC + Book content or just Book content)
+                    if (state.showToc) {
+                        // When TOC is visible, use HorizontalSplitPane
+                        HorizontalSplitPane(
+                            splitPaneState = state.tocSplitPaneState
+                        ) {
+                            first(200.dp) {
+                                // TOC panel
+                                Column(
+                                    modifier = Modifier
+                                        .padding(16.dp)
+                                        .fillMaxHeight()
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.table_of_contents),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                    )
 
-                                if (state.selectedBook != null) {
-                                    // Show TOC for selected book
-                                    // Check if we have root entries stored with the special key (-1L)
-                                    val rootEntries = state.tocChildren[-1L] ?: emptyList()
-                                    val displayTocEntries = rootEntries.ifEmpty {
-                                        // Otherwise, use the original tocEntries
-                                        state.tocEntries
+                                    if (state.selectedBook != null) {
+                                        // Show TOC for selected book
+                                        // Check if we have root entries stored with the special key (-1L)
+                                        val rootEntries = state.tocChildren[-1L] ?: emptyList()
+                                        val displayTocEntries = rootEntries.ifEmpty {
+                                            // Otherwise, use the original tocEntries
+                                            state.tocEntries
+                                        }
+
+                                        Box(modifier = Modifier.fillMaxHeight()) {
+                                            TocView(
+                                                tocEntries = displayTocEntries,
+                                                expandedEntries = state.expandedTocEntries,
+                                                tocChildren = state.tocChildren,
+                                                onEntryClick = { tocEntry ->
+                                                    // Handle TOC entry click
+                                                    tocEntry.lineId?.let { lineId ->
+                                                        // Check if the line is already loaded
+                                                        val existingLine = state.bookLines.find { it.id == lineId }
+                                                        if (existingLine != null) {
+                                                            // If the line is already loaded, just select it
+                                                            onEvents(BookContentEvents.OnLineSelected(existingLine))
+                                                        } else {
+                                                            // If the line is not loaded, we need to load it first
+                                                            // This will be handled by the ViewModel through a new event
+                                                            onEvents(BookContentEvents.OnLoadAndSelectLine(lineId))
+                                                        }
+                                                    }
+                                                },
+                                                onEntryExpand = { tocEntry ->
+                                                    onEvents(BookContentEvents.OnTocEntryExpanded(tocEntry))
+                                                },
+                                                modifier = Modifier.fillMaxHeight()
+                                            )
+                                        }
+                                    } else {
+                                        // Show placeholder when no book is selected
+                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text(stringResource(Res.string.select_book_for_toc))
+                                        }
                                     }
+                                }
+                            }
+                            second(200.dp) {
+                                // Book content panel with commentaries
+                                if (state.selectedBook != null) {
+                                    if (state.showCommentaries) {
+                                        // Show book content with commentaries in a vertical split pane
+                                        VerticalSplitPane(
+                                            splitPaneState = state.contentSplitPaneState
+                                        ) {
+                                            first(200.dp) {
+                                                // Book content
+                                                BookContentView(
+                                                    book = state.selectedBook,
+                                                    lines = state.bookLines,
+                                                    selectedLine = state.selectedLine,
+                                                    onLineSelected = { line ->
+                                                        onEvents(BookContentEvents.OnLineSelected(line))
+                                                    },
+                                                    modifier = Modifier.padding(16.dp)
+                                                )
+                                            }
+                                            second(200.dp) {
+                                                // Commentaries panel
+                                                LineCommentsView(
+                                                    selectedLine = state.selectedLine,
+                                                    commentaries = state.commentaries,
+                                                    onCommentClick = { /* Handle comment click if needed */ }
+                                                )
+                                            }
+                                            splitter {
+                                                visiblePart {
+                                                    Divider(
+                                                        Orientation.Horizontal,
+                                                        Modifier.fillMaxWidth().height(1.dp),
+                                                        color = JewelTheme.globalColors.borders.disabled
+                                                    )
+                                                }
+                                                handle {
+                                                    Box(
+                                                        Modifier
+                                                            .height(5.dp)
+                                                            .fillMaxWidth()
+                                                            .markAsHandle()
+                                                            .cursorForVerticalResize(),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
 
-                                    Box(modifier = Modifier.fillMaxHeight()) {
-                                        TocView(
-                                            tocEntries = displayTocEntries,
-                                            expandedEntries = state.expandedTocEntries,
-                                            tocChildren = state.tocChildren,
-                                            onEntryClick = { tocEntry ->
-                                                // Handle TOC entry click
-                                                tocEntry.lineId?.let { lineId ->
-                                                    // Check if the line is already loaded
-                                                    val existingLine = state.bookLines.find { it.id == lineId }
-                                                    if (existingLine != null) {
-                                                        // If the line is already loaded, just select it
-                                                        onEvents(BookContentEvents.OnLineSelected(existingLine))
-                                                    } else {
-                                                        // If the line is not loaded, we need to load it first
-                                                        // This will be handled by the ViewModel through a new event
-                                                        onEvents(BookContentEvents.OnLoadAndSelectLine(lineId))
                                                     }
                                                 }
+                                            }
+                                        }
+                                    } else {
+                                        // Show only book content
+                                        BookContentView(
+                                            book = state.selectedBook,
+                                            lines = state.bookLines,
+                                            selectedLine = state.selectedLine,
+                                            onLineSelected = { line ->
+                                                onEvents(BookContentEvents.OnLineSelected(line))
                                             },
-                                            onEntryExpand = { tocEntry ->
-                                                onEvents(BookContentEvents.OnTocEntryExpanded(tocEntry))
-                                            },
-                                            modifier = Modifier.fillMaxHeight()
+                                            modifier = Modifier.padding(16.dp)
                                         )
                                     }
                                 } else {
-                                    // Show placeholder when no book is selected
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text(stringResource(Res.string.select_book_for_toc))
+                                    // Show placeholder content when no book is selected
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(16.dp)
+                                            .fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(stringResource(Res.string.select_book))
                                     }
                                 }
                             }
-                        }
-                        second(200.dp) {
-                            // Book content panel with commentaries
-                            if (state.selectedBook != null) {
-                                if (state.showCommentaries) {
-                                    // Show book content with commentaries in a vertical split pane
-                                    VerticalSplitPane(
-                                        splitPaneState = state.contentSplitPaneState
-                                    ) {
-                                        first(200.dp) {
-                                            // Book content
-                                            BookContentView(
-                                                book = state.selectedBook,
-                                                lines = state.bookLines,
-                                                selectedLine = state.selectedLine,
-                                                onLineSelected = { line ->
-                                                    onEvents(BookContentEvents.OnLineSelected(line))
-                                                },
-                                                modifier = Modifier.padding(16.dp)
-                                            )
-                                        }
-                                        second(200.dp) {
-                                            // Commentaries panel
-                                            LineCommentsView(
-                                                selectedLine = state.selectedLine,
-                                                commentaries = state.commentaries,
-                                                onCommentClick = { /* Handle comment click if needed */ }
-                                            )
-                                        }
-                                        splitter {
-                                            visiblePart {
-                                                Divider(
-                                                    Orientation.Horizontal,
-                                                    Modifier.fillMaxWidth().height(1.dp),
-                                                    color = JewelTheme.globalColors.borders.disabled
-                                                )
-                                            }
-                                            handle {
-                                                Box(
-                                                    Modifier
-                                                        .height(5.dp)
-                                                        .fillMaxWidth()
-                                                        .markAsHandle()
-                                                        .cursorForVerticalResize(),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-
-                                                }
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    // Show only book content
-                                    BookContentView(
-                                        book = state.selectedBook,
-                                        lines = state.bookLines,
-                                        selectedLine = state.selectedLine,
-                                        onLineSelected = { line ->
-                                            onEvents(BookContentEvents.OnLineSelected(line))
-                                        },
-                                        modifier = Modifier.padding(16.dp)
+                            splitter {
+                                visiblePart {
+                                    Divider(
+                                        Orientation.Vertical,
+                                        Modifier.fillMaxHeight().width(1.dp),
+                                        color = JewelTheme.globalColors.borders.disabled
                                     )
                                 }
-                            } else {
-                                // Show placeholder content when no book is selected
-                                Box(
-                                    modifier = Modifier
-                                        .padding(16.dp)
-                                        .fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(stringResource(Res.string.select_book))
+                                handle {
+                                    Box(
+                                        Modifier
+                                            .width(5.dp)
+                                            .fillMaxHeight()
+                                            .markAsHandle()
+                                            .cursorForHorizontalResize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+
+                                    }
                                 }
                             }
                         }
-                        splitter {
-                            visiblePart {
-                                Divider(
-                                    Orientation.Vertical,
-                                    Modifier.fillMaxHeight().width(1.dp),
-                                    color = JewelTheme.globalColors.borders.disabled
+                    } else {
+                        // When TOC is hidden, show only the book content
+                        if (state.selectedBook != null) {
+                            if (state.showCommentaries) {
+                                // Show book content with commentaries in a vertical split pane
+                                VerticalSplitPane(
+                                    splitPaneState = state.contentSplitPaneState
+                                ) {
+                                    first(200.dp) {
+                                        // Book content
+                                        BookContentView(
+                                            book = state.selectedBook,
+                                            lines = state.bookLines,
+                                            selectedLine = state.selectedLine,
+                                            onLineSelected = { line ->
+                                                onEvents(BookContentEvents.OnLineSelected(line))
+                                            },
+                                            modifier = Modifier.padding(16.dp)
+                                        )
+                                    }
+                                    second(200.dp) {
+                                        // Commentaries panel
+                                        LineCommentsView(
+                                            selectedLine = state.selectedLine,
+                                            commentaries = state.commentaries,
+                                            onCommentClick = { /* Handle comment click if needed */ }
+                                        )
+                                    }
+                                    splitter {
+                                        visiblePart {
+                                            Divider(
+                                                Orientation.Horizontal,
+                                                Modifier.fillMaxWidth().height(1.dp),
+                                                color = JewelTheme.globalColors.borders.disabled
+                                            )
+                                        }
+                                        handle {
+                                            Box(
+                                                Modifier
+                                                    .height(5.dp)
+                                                    .fillMaxWidth()
+                                                    .markAsHandle()
+                                                    .cursorForVerticalResize(),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Show only book content
+                                BookContentView(
+                                    book = state.selectedBook,
+                                    lines = state.bookLines,
+                                    selectedLine = state.selectedLine,
+                                    onLineSelected = { line ->
+                                        onEvents(BookContentEvents.OnLineSelected(line))
+                                    },
+                                    modifier = Modifier.padding(16.dp)
                                 )
                             }
-                            handle {
-                                Box(
-                                    Modifier
-                                        .width(5.dp)
-                                        .fillMaxHeight()
-                                        .markAsHandle()
-                                        .cursorForHorizontalResize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-
-                                }
+                        } else {
+                            // Show placeholder content when no book is selected
+                            Box(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(stringResource(Res.string.select_book))
                             }
                         }
                     }
@@ -538,176 +614,247 @@ fun EnhancedSplitLayouts(
             }
         } else {
             // When book tree is hidden, show only the content without SplitPane
-            // Second split pane: TOC | Book content
-            HorizontalSplitPane(
-                splitPaneState = state.tocSplitPaneState
-            ) {
-                first(200.dp) {
-                    // TOC panel
-                    Column(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxHeight()
-                    ) {
-                        Text(
-                            text = stringResource(Res.string.table_of_contents),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-
-                        if (state.selectedBook != null) {
-                            // Show TOC for selected book
-                            // Check if we have root entries stored with the special key (-1L)
-                            val rootEntries = state.tocChildren[-1L] ?: emptyList()
-                            val displayTocEntries = if (rootEntries.isNotEmpty()) {
-                                // If we have root entries, use them instead of state.tocEntries
-                                // This ensures we're displaying the correct entries
-                                rootEntries
-                            } else {
-                                // Otherwise, use the original tocEntries
-                                state.tocEntries
-                            }
-
-                            Box(modifier = Modifier.fillMaxHeight()) {
-                                TocView(
-                                    tocEntries = displayTocEntries,
-                                    expandedEntries = state.expandedTocEntries,
-                                    tocChildren = state.tocChildren,
-                                    onEntryClick = { tocEntry ->
-                                        // Handle TOC entry click
-                                        tocEntry.lineId?.let { lineId ->
-                                            // Check if the line is already loaded
-                                            val existingLine = state.bookLines.find { it.id == lineId }
-                                            if (existingLine != null) {
-                                                // If the line is already loaded, just select it
-                                                onEvents(BookContentEvents.OnLineSelected(existingLine))
-                                            } else {
-                                                // If the line is not loaded, we need to load it first
-                                                // This will be handled by the ViewModel through a new event
-                                                onEvents(BookContentEvents.OnLoadAndSelectLine(lineId))
-                                            }
-                                        }
-                                    },
-                                    onEntryExpand = { tocEntry ->
-                                        onEvents(BookContentEvents.OnTocEntryExpanded(tocEntry))
-                                    },
-                                    modifier = Modifier.fillMaxHeight()
-                                )
-
-                                // Show loading indicator when loading TOC entries
-                                if (state.isLoading) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color(0x80FFFFFF)), // Semi-transparent white background
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator()
-                                    }
-                                }
-                            }
-                        } else {
-                            // Show placeholder when no book is selected
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(stringResource(Res.string.select_book_for_toc))
-                            }
-                        }
-                    }
-                }
-                second(200.dp) {
-                    // Book content panel with commentaries
-                    if (state.selectedBook != null) {
-                        if (state.showCommentaries) {
-                            // Show book content with commentaries in a vertical split pane
-                            VerticalSplitPane(
-                                splitPaneState = state.contentSplitPaneState
-                            ) {
-                                first(200.dp) {
-                                    // Book content
-                                    BookContentView(
-                                        book = state.selectedBook,
-                                        lines = state.bookLines,
-                                        selectedLine = state.selectedLine,
-                                        onLineSelected = { line ->
-                                            onEvents(BookContentEvents.OnLineSelected(line))
-                                        },
-                                        modifier = Modifier.padding(16.dp)
-                                    )
-                                }
-                                second(200.dp) {
-                                    // Commentaries panel
-                                    LineCommentsView(
-                                        selectedLine = state.selectedLine,
-                                        commentaries = state.commentaries,
-                                        onCommentClick = { /* Handle comment click if needed */ }
-                                    )
-                                }
-                                splitter {
-                                    visiblePart {
-                                        Divider(
-                                            Orientation.Horizontal,
-                                            Modifier.fillMaxWidth().height(1.dp),
-                                            color = JewelTheme.globalColors.borders.disabled
-                                        )
-                                    }
-                                    handle {
-                                        Box(
-                                            Modifier
-                                                .height(5.dp)
-                                                .fillMaxWidth()
-                                                .markAsHandle()
-                                                .cursorForVerticalResize(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-
-                                        }
-                                    }
-                                }
-                            }
-                        } else {
-                            // Show only book content
-                            BookContentView(
-                                book = state.selectedBook,
-                                lines = state.bookLines,
-                                selectedLine = state.selectedLine,
-                                onLineSelected = { line ->
-                                    onEvents(BookContentEvents.OnLineSelected(line))
-                                },
-                                modifier = Modifier.padding(16.dp)
-                            )
-                        }
-                    } else {
-                        // Show placeholder content when no book is selected
-                        Box(
+            if (state.showToc) {
+                // When TOC is visible, use HorizontalSplitPane
+                HorizontalSplitPane(
+                    splitPaneState = state.tocSplitPaneState
+                ) {
+                    first(200.dp) {
+                        // TOC panel
+                        Column(
                             modifier = Modifier
                                 .padding(16.dp)
-                                .fillMaxSize(),
-                            contentAlignment = Alignment.Center
+                                .fillMaxHeight()
                         ) {
-                            Text(stringResource(Res.string.select_book))
+                            Text(
+                                text = stringResource(Res.string.table_of_contents),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+
+                            if (state.selectedBook != null) {
+                                // Show TOC for selected book
+                                // Check if we have root entries stored with the special key (-1L)
+                                val rootEntries = state.tocChildren[-1L] ?: emptyList()
+                                val displayTocEntries = rootEntries.ifEmpty {
+                                    // Otherwise, use the original tocEntries
+                                    state.tocEntries
+                                }
+
+                                Box(modifier = Modifier.fillMaxHeight()) {
+                                    TocView(
+                                        tocEntries = displayTocEntries,
+                                        expandedEntries = state.expandedTocEntries,
+                                        tocChildren = state.tocChildren,
+                                        onEntryClick = { tocEntry ->
+                                            // Handle TOC entry click
+                                            tocEntry.lineId?.let { lineId ->
+                                                // Check if the line is already loaded
+                                                val existingLine = state.bookLines.find { it.id == lineId }
+                                                if (existingLine != null) {
+                                                    // If the line is already loaded, just select it
+                                                    onEvents(BookContentEvents.OnLineSelected(existingLine))
+                                                } else {
+                                                    // If the line is not loaded, we need to load it first
+                                                    // This will be handled by the ViewModel through a new event
+                                                    onEvents(BookContentEvents.OnLoadAndSelectLine(lineId))
+                                                }
+                                            }
+                                        },
+                                        onEntryExpand = { tocEntry ->
+                                            onEvents(BookContentEvents.OnTocEntryExpanded(tocEntry))
+                                        },
+                                        modifier = Modifier.fillMaxHeight()
+                                    )
+
+                                    // Show loading indicator when loading TOC entries
+                                    if (state.isLoading) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(Color(0x80FFFFFF)), // Semi-transparent white background
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator()
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Show placeholder when no book is selected
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(stringResource(Res.string.select_book_for_toc))
+                                }
+                            }
+                        }
+                    }
+                    second(200.dp) {
+                        // Book content panel with commentaries
+                        if (state.selectedBook != null) {
+                            if (state.showCommentaries) {
+                                // Show book content with commentaries in a vertical split pane
+                                VerticalSplitPane(
+                                    splitPaneState = state.contentSplitPaneState
+                                ) {
+                                    first(200.dp) {
+                                        // Book content
+                                        BookContentView(
+                                            book = state.selectedBook,
+                                            lines = state.bookLines,
+                                            selectedLine = state.selectedLine,
+                                            onLineSelected = { line ->
+                                                onEvents(BookContentEvents.OnLineSelected(line))
+                                            },
+                                            modifier = Modifier.padding(16.dp)
+                                        )
+                                    }
+                                    second(200.dp) {
+                                        // Commentaries panel
+                                        LineCommentsView(
+                                            selectedLine = state.selectedLine,
+                                            commentaries = state.commentaries,
+                                            onCommentClick = { /* Handle comment click if needed */ }
+                                        )
+                                    }
+                                    splitter {
+                                        visiblePart {
+                                            Divider(
+                                                Orientation.Horizontal,
+                                                Modifier.fillMaxWidth().height(1.dp),
+                                                color = JewelTheme.globalColors.borders.disabled
+                                            )
+                                        }
+                                        handle {
+                                            Box(
+                                                Modifier
+                                                    .height(5.dp)
+                                                    .fillMaxWidth()
+                                                    .markAsHandle()
+                                                    .cursorForVerticalResize(),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Show only book content
+                                BookContentView(
+                                    book = state.selectedBook,
+                                    lines = state.bookLines,
+                                    selectedLine = state.selectedLine,
+                                    onLineSelected = { line ->
+                                        onEvents(BookContentEvents.OnLineSelected(line))
+                                    },
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                        } else {
+                            // Show placeholder content when no book is selected
+                            Box(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(stringResource(Res.string.select_book))
+                            }
+                        }
+                    }
+                    splitter {
+                        visiblePart {
+                            Divider(
+                                Orientation.Vertical,
+                                Modifier.fillMaxHeight().width(1.dp),
+                                color = JewelTheme.globalColors.borders.disabled
+                            )
+                        }
+                        handle {
+                            Box(
+                                Modifier
+                                    .width(5.dp)
+                                    .fillMaxHeight()
+                                    .markAsHandle()
+                                    .cursorForHorizontalResize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+
+                            }
                         }
                     }
                 }
-                splitter {
-                    visiblePart {
-                        Divider(
-                            Orientation.Vertical,
-                            Modifier.fillMaxHeight().width(1.dp),
-                            color = JewelTheme.globalColors.borders.disabled
+            } else {
+                // When TOC is hidden, show only the book content
+                if (state.selectedBook != null) {
+                    if (state.showCommentaries) {
+                        // Show book content with commentaries in a vertical split pane
+                        VerticalSplitPane(
+                            splitPaneState = state.contentSplitPaneState
+                        ) {
+                            first(200.dp) {
+                                // Book content
+                                BookContentView(
+                                    book = state.selectedBook,
+                                    lines = state.bookLines,
+                                    selectedLine = state.selectedLine,
+                                    onLineSelected = { line ->
+                                        onEvents(BookContentEvents.OnLineSelected(line))
+                                    },
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                            second(200.dp) {
+                                // Commentaries panel
+                                LineCommentsView(
+                                    selectedLine = state.selectedLine,
+                                    commentaries = state.commentaries,
+                                    onCommentClick = { /* Handle comment click if needed */ }
+                                )
+                            }
+                            splitter {
+                                visiblePart {
+                                    Divider(
+                                        Orientation.Horizontal,
+                                        Modifier.fillMaxWidth().height(1.dp),
+                                        color = JewelTheme.globalColors.borders.disabled
+                                    )
+                                }
+                                handle {
+                                    Box(
+                                        Modifier
+                                            .height(5.dp)
+                                            .fillMaxWidth()
+                                            .markAsHandle()
+                                            .cursorForVerticalResize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Show only book content
+                        BookContentView(
+                            book = state.selectedBook,
+                            lines = state.bookLines,
+                            selectedLine = state.selectedLine,
+                            onLineSelected = { line ->
+                                onEvents(BookContentEvents.OnLineSelected(line))
+                            },
+                            modifier = Modifier.padding(16.dp)
                         )
                     }
-                    handle {
-                        Box(
-                            Modifier
-                                .width(5.dp)
-                                .fillMaxHeight()
-                                .markAsHandle()
-                                .cursorForHorizontalResize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-
-                        }
+                } else {
+                    // Show placeholder content when no book is selected
+                    Box(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(stringResource(Res.string.select_book))
                     }
                 }
             }

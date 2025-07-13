@@ -20,6 +20,7 @@ data class BookContentState @OptIn(ExperimentalSplitPaneApi::class) constructor(
     val selectedChapter: Int,
     val showCommentaries: Boolean = false, // Flag to show/hide commentaries
     val showBookTree: Boolean = true, // Flag to show/hide book tree, default is true
+    val showToc: Boolean = true, // Flag to show/hide TOC column, default is true
 
     // Database-related state
     val rootCategories: List<Category> = emptyList(),
@@ -50,6 +51,7 @@ fun rememberBookContentState(viewModel: BookContentViewModel): BookContentState 
         selectedChapter = viewModel.selectedChapter.collectAsState().value,
         showCommentaries = viewModel.showCommentaries.collectAsState().value,
         showBookTree = viewModel.showBookTree.collectAsState().value,
+        showToc = viewModel.showToc.collectAsState().value,
 
         // Database-related state
         rootCategories = viewModel.rootCategories.collectAsState().value,

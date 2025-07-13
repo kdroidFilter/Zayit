@@ -75,6 +75,12 @@ class BookContentViewModel(
     )
     val showBookTree = _showBookTree.asStateFlow()
 
+    // Flag to show/hide TOC column
+    private val _showToc = MutableStateFlow(
+        getState<Boolean>("showToc") ?: true
+    )
+    val showToc = _showToc.asStateFlow()
+
     // Search text state
     private val _searchText = MutableStateFlow(
         getState<String>("searchText") ?: ""
@@ -359,6 +365,14 @@ class BookContentViewModel(
         saveState("showBookTree", _showBookTree.value)
     }
 
+    /**
+     * Toggles the display of the TOC column.
+     */
+    fun toggleToc() {
+        _showToc.value = !_showToc.value
+        saveState("showToc", _showToc.value)
+    }
+
     fun onEvent(events: BookContentEvents) {
         when (events) {
             is BookContentEvents.OnUpdateParagraphScrollPosition -> updateParagraphScrollPosition(events.position)
@@ -373,6 +387,7 @@ class BookContentViewModel(
             is BookContentEvents.OnLoadAndSelectLine -> loadAndSelectLine(events.lineId)
             BookContentEvents.OnToggleCommentaries -> toggleCommentaries()
             BookContentEvents.OnToggleBookTree -> toggleBookTree()
+            BookContentEvents.OnToggleToc -> toggleToc()
         }
     }
 
@@ -390,6 +405,7 @@ class BookContentViewModel(
         saveState("selectedChapter", selectedChapter.value)
         saveState("showCommentaries", showCommentaries.value)
         saveState("showBookTree", showBookTree.value)
+        saveState("showToc", showToc.value)
     }
 
     /**

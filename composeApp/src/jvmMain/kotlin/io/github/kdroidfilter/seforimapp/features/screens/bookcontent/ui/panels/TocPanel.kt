@@ -66,24 +66,10 @@ fun TocPanel(
                         },
                         modifier = Modifier.fillMaxHeight()
                     )
-                    
-                    if (isLoading) {
-                        LoadingOverlay()
-                    }
+
                 }
             }
         }
     }
 }
 
-@Composable
-private fun LoadingOverlay() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0x80FFFFFF)),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator()
-    }
-}

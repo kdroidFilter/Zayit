@@ -1,22 +1,17 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.components
+package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
 
 import androidx.compose.runtime.Composable
-import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
-import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
-import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
+import io.github.kdroidfilter.seforimapp.core.presentation.components.*
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.*
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvents
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentState
 import org.jetbrains.compose.resources.stringResource
 import seforimapp.composeapp.generated.resources.*
 
-/**
- * Left vertical bar with navigation options.
- */
 @Composable
 fun StartVerticalBar(
-    state: BookContentState, 
-    onEvents: (BookContentEvents) -> Unit
+    showBookTree: Boolean,
+    showToc: Boolean,
+    onToggleBookTree: () -> Unit,
+    onToggleToc: () -> Unit
 ) {
     VerticalLateralBar(
         position = VerticalLateralBarPosition.Start,
@@ -24,20 +19,16 @@ fun StartVerticalBar(
         topContent = {
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.book_list),
-                onClick = {
-                    onEvents(BookContentEvents.OnToggleBookTree)
-                },
-                isSelected = state.showBookTree,
+                onClick = onToggleBookTree,
+                isSelected = showBookTree,
                 icon = Library,
                 iconDescription = stringResource(Res.string.books),
                 label = stringResource(Res.string.books)
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.book_content),
-                onClick = {
-                    onEvents(BookContentEvents.OnToggleToc)
-                },
-                isSelected = state.showToc,
+                onClick = onToggleToc,
+                isSelected = showToc,
                 icon = TableOfContents,
                 iconDescription = stringResource(Res.string.table_of_contents),
                 label = stringResource(Res.string.table_of_contents)
@@ -47,9 +38,7 @@ fun StartVerticalBar(
         bottomContent = {
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.my_bookmarks),
-                onClick = {
-                    // Placeholder for future functionality
-                },
+                onClick = { },
                 isSelected = false,
                 icon = JournalBookmark,
                 iconDescription = stringResource(Res.string.bookmarks),
@@ -57,9 +46,7 @@ fun StartVerticalBar(
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.my_commentaries),
-                onClick = {
-                    // Placeholder for future functionality
-                },
+                onClick = { },
                 isSelected = false,
                 icon = JournalText,
                 iconDescription = stringResource(Res.string.my_commentaries_label),
@@ -69,13 +56,10 @@ fun StartVerticalBar(
     )
 }
 
-/**
- * Right vertical bar with tools and commentary options.
- */
 @Composable
 fun EndVerticalBar(
-    state: BookContentState,
-    onEvents: (BookContentEvents) -> Unit
+    showCommentaries: Boolean,
+    onToggleCommentaries: () -> Unit
 ) {
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
@@ -83,9 +67,7 @@ fun EndVerticalBar(
         topContent = {
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.zoom_in_tooltip),
-                onClick = {
-                    // Placeholder for future functionality
-                },
+                onClick = { },
                 isSelected = false,
                 icon = ZoomIn,
                 iconDescription = stringResource(Res.string.zoom_in),
@@ -93,9 +75,7 @@ fun EndVerticalBar(
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.zoom_out_tooltip),
-                onClick = {
-                    // Placeholder for future functionality
-                },
+                onClick = { },
                 isSelected = false,
                 icon = ZoomOut,
                 iconDescription = stringResource(Res.string.zoom_out),
@@ -103,9 +83,7 @@ fun EndVerticalBar(
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.add_bookmark_tooltip),
-                onClick = {
-                    // Placeholder for future functionality
-                },
+                onClick = { },
                 isSelected = false,
                 icon = Bookmark,
                 iconDescription = stringResource(Res.string.add_bookmark),
@@ -113,9 +91,7 @@ fun EndVerticalBar(
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.search_in_page_tooltip),
-                onClick = {
-                    // Placeholder for future functionality
-                },
+                onClick = { },
                 isSelected = false,
                 icon = Manage_search,
                 iconDescription = stringResource(Res.string.search_in_page),
@@ -123,9 +99,7 @@ fun EndVerticalBar(
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.print_tooltip),
-                onClick = {
-                    // Placeholder for future functionality
-                },
+                onClick = { },
                 isSelected = false,
                 icon = Print,
                 iconDescription = stringResource(Res.string.print),
@@ -133,32 +107,26 @@ fun EndVerticalBar(
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.report_tooltip),
-                onClick = {
-                    // Placeholder for future functionality
-                },
+                onClick = { },
                 isSelected = false,
                 icon = FileWarning,
                 iconDescription = stringResource(Res.string.report),
                 label = stringResource(Res.string.report)
             )
-        }, 
+        },
         bottomContentLabel = stringResource(Res.string.commentaries),
         bottomContent = {
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.show_commentaries_tooltip),
-                onClick = {
-                    onEvents(BookContentEvents.OnToggleCommentaries)
-                },
-                isSelected = state.showCommentaries,
+                onClick = onToggleCommentaries,
+                isSelected = showCommentaries,
                 icon = ListColumnsReverse,
                 iconDescription = stringResource(Res.string.show_commentaries),
                 label = stringResource(Res.string.show_commentaries)
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.columns_gap_tooltip),
-                onClick = {
-                    // Placeholder for future functionality
-                },
+                onClick = { },
                 isSelected = false,
                 icon = ColumnsGap,
                 iconDescription = stringResource(Res.string.columns_gap),
@@ -166,9 +134,7 @@ fun EndVerticalBar(
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.filter_commentators_tooltip),
-                onClick = {
-                    // Placeholder for future functionality
-                },
+                onClick = { },
                 isSelected = false,
                 icon = Filter,
                 iconDescription = stringResource(Res.string.filter),
@@ -176,10 +142,8 @@ fun EndVerticalBar(
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.write_note_tooltip),
-                onClick = {
-                    // Placeholder for future functionality
-                },
-                isSelected = false, 
+                onClick = { },
+                isSelected = false,
                 icon = NotebookPen,
                 iconDescription = stringResource(Res.string.write_note),
                 label = stringResource(Res.string.write_note)

@@ -2,16 +2,13 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.seforimlibrary.core.models.Book
-import io.github.kdroidfilter.seforimlibrary.core.models.Category
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import io.github.kdroidfilter.seforimlibrary.core.models.*
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
+import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabAwareViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
-import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.*
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
@@ -24,135 +21,227 @@ class BookContentViewModel(
     tabId = savedStateHandle.get<String>("tabId") ?: "",
     stateManager = stateManager
 ) {
+    // Initialize state flows first
+    private val _isLoading = MutableStateFlow(false)
+    private val _rootCategories = MutableStateFlow<List<Category>>(emptyList())
+    private val _expandedCategories = MutableStateFlow<Set<Long>>(emptySet())
+    private val _categoryChildren = MutableStateFlow<Map<Long, List<Category>>>(emptyMap())
+    private val _booksInCategory = MutableStateFlow<Set<Book>>(emptySet())
+    private val _selectedCategory = MutableStateFlow<Category?>(null)
+    private val _selectedBook = MutableStateFlow<Book?>(null)
+    private val _searchText = MutableStateFlow(getState<String>("searchText") ?: "")
+    private val _showBookTree = MutableStateFlow(getState<Boolean>("showBookTree") ?: true)
 
-    // SplitPane states
     @OptIn(ExperimentalSplitPaneApi::class)
     private val _splitPaneState = MutableStateFlow(
-        // Only try to get the position percentage, not the entire SplitPaneState
         SplitPaneState(
             initialPositionPercentage = getState<Float>("splitPanePosition") ?: 0.3f,
-            moveEnabled = true,
+            moveEnabled = true
         )
     )
-
-    @OptIn(ExperimentalSplitPaneApi::class)
-    val splitPaneState = _splitPaneState.asStateFlow()
 
     @OptIn(ExperimentalSplitPaneApi::class)
     private val _tocSplitPaneState = MutableStateFlow(
-        // Only try to get the position percentage, not the entire SplitPaneState
         SplitPaneState(
             initialPositionPercentage = getState<Float>("tocSplitPanePosition") ?: 0.3f,
-            moveEnabled = true,
+            moveEnabled = true
         )
     )
 
-    @OptIn(ExperimentalSplitPaneApi::class)
-    val tocSplitPaneState = _tocSplitPaneState.asStateFlow()
-
-    // Content split pane state for book content and commentaries
     @OptIn(ExperimentalSplitPaneApi::class)
     private val _contentSplitPaneState = MutableStateFlow(
-        // Only try to get the position percentage, not the entire SplitPaneState
         SplitPaneState(
             initialPositionPercentage = getState<Float>("contentSplitPanePosition") ?: 0.7f,
-            moveEnabled = true,
+            moveEnabled = true
         )
     )
 
-    @OptIn(ExperimentalSplitPaneApi::class)
-    val contentSplitPaneState = _contentSplitPaneState.asStateFlow()
-
-    // Flag to show/hide commentaries
-    private val _showCommentaries = MutableStateFlow(
-        getState<Boolean>("showCommentaries") ?: false
-    )
-    val showCommentaries = _showCommentaries.asStateFlow()
-
-    // Flag to show/hide book tree
-    private val _showBookTree = MutableStateFlow(
-        getState<Boolean>("showBookTree") ?: true
-    )
-    val showBookTree = _showBookTree.asStateFlow()
-
-    // Flag to show/hide TOC column
-    private val _showToc = MutableStateFlow(
-        getState<Boolean>("showToc") ?: true
-    )
-    val showToc = _showToc.asStateFlow()
-
-    // Search text state
-    private val _searchText = MutableStateFlow(
-        getState<String>("searchText") ?: ""
-    )
-    val searchText = _searchText.asStateFlow()
-
-    // Scroll position state
-    private val _paragraphScrollPosition = MutableStateFlow(
-        getState<Int>("paragraphScrollPosition") ?: 0
-    )
-    val paragraphScrollPosition = _paragraphScrollPosition.asStateFlow()
-
-    private val _chapterScrollPosition = MutableStateFlow(
-        getState<Int>("chapterScrollPosition") ?: 0
-    )
-    val chapterScrollPosition = _chapterScrollPosition.asStateFlow()
-
-    // Selected chapter state
-    private val _selectedChapter = MutableStateFlow(
-        getState<Int>("selectedChapter") ?: 0
-    )
-    val selectedChapter = _selectedChapter.asStateFlow()
-
-    // Database-related state
-    private val _rootCategories = MutableStateFlow<List<Category>>(emptyList())
-    val rootCategories = _rootCategories.asStateFlow()
-
-    private val _expandedCategories = MutableStateFlow<Set<Long>>(emptySet())
-    val expandedCategories = _expandedCategories.asStateFlow()
-
-    private val _categoryChildren = MutableStateFlow<Map<Long, List<Category>>>(emptyMap())
-    val categoryChildren = _categoryChildren.asStateFlow()
-
-    private val _booksInCategory = MutableStateFlow<Set<Book>>(emptySet())
-    val booksInCategory = _booksInCategory.asStateFlow()
-
-    private val _selectedCategory = MutableStateFlow<Category?>(null)
-    val selectedCategory = _selectedCategory.asStateFlow()
-
-    private val _selectedBook = MutableStateFlow<Book?>(null)
-    val selectedBook = _selectedBook.asStateFlow()
-
     private val _bookLines = MutableStateFlow<List<Line>>(emptyList())
-    val bookLines = _bookLines.asStateFlow()
-
     private val _selectedLine = MutableStateFlow<Line?>(null)
-    val selectedLine = _selectedLine.asStateFlow()
-
     private val _tocEntries = MutableStateFlow<List<TocEntry>>(emptyList())
-    val tocEntries = _tocEntries.asStateFlow()
-
     private val _expandedTocEntries = MutableStateFlow<Set<Long>>(emptySet())
-    val expandedTocEntries = _expandedTocEntries.asStateFlow()
-
     private val _tocChildren = MutableStateFlow<Map<Long, List<TocEntry>>>(emptyMap())
-    val tocChildren = _tocChildren.asStateFlow()
+    private val _showToc = MutableStateFlow(getState<Boolean>("showToc") ?: true)
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading = _isLoading.asStateFlow()
-
-    // Commentaries for the selected line
     private val _commentaries = MutableStateFlow<List<CommentaryWithText>>(emptyList())
-    val commentaries = _commentaries.asStateFlow()
+    private val _showCommentaries = MutableStateFlow(getState<Boolean>("showCommentaries") ?: false)
+    private val _paragraphScrollPosition = MutableStateFlow(getState<Int>("paragraphScrollPosition") ?: 0)
+    private val _chapterScrollPosition = MutableStateFlow(getState<Int>("chapterScrollPosition") ?: 0)
+    private val _selectedChapter = MutableStateFlow(getState<Int>("selectedChapter") ?: 0)
+
+    // Create UI state using combine for better performance
+    @OptIn(ExperimentalSplitPaneApi::class)
+    val uiState: StateFlow<BookContentUiState> = combine(
+        navigationState(),
+        tocState(),
+        contentState(),
+        layoutState(),
+        _isLoading
+    ) { navigation, toc, content, layout, isLoading ->
+        BookContentUiState(
+            navigation = navigation,
+            toc = toc,
+            content = content,
+            layout = layout,
+            isLoading = isLoading
+        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        BookContentUiState(layout = createInitialLayoutState())
+    )
 
     init {
-        // Load root categories on initialization
         loadRootCategories()
     }
 
+    fun onEvent(event: BookContentEvent) {
+        when (event) {
+            // Navigation events
+            is BookContentEvent.SearchTextChanged -> updateSearchText(event.text)
+            is BookContentEvent.CategorySelected -> selectCategory(event.category)
+            is BookContentEvent.BookSelected -> loadBook(event.book)
+            BookContentEvent.ToggleBookTree -> toggleBookTree()
+
+            // TOC events
+            is BookContentEvent.TocEntryExpanded -> expandTocEntry(event.entry)
+            BookContentEvent.ToggleToc -> toggleToc()
+
+            // Content events
+            is BookContentEvent.LineSelected -> selectLine(event.line)
+            is BookContentEvent.LoadAndSelectLine -> loadAndSelectLine(event.lineId)
+            BookContentEvent.ToggleCommentaries -> toggleCommentaries()
+
+            // Scroll events
+            is BookContentEvent.ParagraphScrolled -> updateParagraphScrollPosition(event.position)
+            is BookContentEvent.ChapterScrolled -> updateChapterScrollPosition(event.position)
+            is BookContentEvent.ChapterSelected -> selectChapter(event.index)
+
+            // State management
+            BookContentEvent.SaveState -> saveAllStates()
+        }
+    }
+
+    // Create separate state flows for each UI section
+    private fun navigationState(): StateFlow<NavigationUiState> {
+        return _rootCategories.combine(_expandedCategories) { rootCategories, expanded ->
+            Pair(rootCategories, expanded)
+        }.combine(_categoryChildren) { (rootCategories, expanded), children ->
+            Triple(rootCategories, expanded, children)
+        }.combine(_booksInCategory) { (rootCategories, expanded, children), books ->
+            NavigationData(rootCategories, expanded, children, books)
+        }.combine(_selectedCategory) { data, category ->
+            data.copy(selectedCategory = category)
+        }.combine(_selectedBook) { data, book ->
+            data.copy(selectedBook = book)
+        }.combine(_searchText) { data, search ->
+            data.copy(searchText = search)
+        }.combine(_showBookTree) { data, visible ->
+            NavigationUiState(
+                rootCategories = data.rootCategories,
+                expandedCategories = data.expandedCategories,
+                categoryChildren = data.categoryChildren,
+                booksInCategory = data.booksInCategory,
+                selectedCategory = data.selectedCategory,
+                selectedBook = data.selectedBook,
+                searchText = data.searchText,
+                isVisible = visible
+            )
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, NavigationUiState())
+    }
+
+    private data class NavigationData(
+        val rootCategories: List<Category>,
+        val expandedCategories: Set<Long>,
+        val categoryChildren: Map<Long, List<Category>>,
+        val booksInCategory: Set<Book>,
+        val selectedCategory: Category? = null,
+        val selectedBook: Book? = null,
+        val searchText: String = ""
+    )
+
+    private fun tocState(): StateFlow<TocUiState> =
+        combine(
+            _tocEntries,
+            _expandedTocEntries,
+            _tocChildren,
+            _showToc
+        ) { entries, expanded, children, visible ->
+            TocUiState(
+                entries = entries,
+                expandedEntries = expanded,
+                children = children,
+                isVisible = visible
+            )
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, TocUiState())
+
+    private fun contentState(): StateFlow<ContentUiState> {
+        return _bookLines.combine(_selectedLine) { lines, line ->
+            Pair(lines, line)
+        }.combine(_commentaries) { (lines, line), commentaries ->
+            Triple(lines, line, commentaries)
+        }.combine(_showCommentaries) { (lines, line, commentaries), showComm ->
+            ContentData(lines, line, commentaries, showComm)
+        }.combine(_paragraphScrollPosition) { data, pScroll ->
+            data.copy(paragraphScrollPosition = pScroll)
+        }.combine(_chapterScrollPosition) { data, cScroll ->
+            data.copy(chapterScrollPosition = cScroll)
+        }.combine(_selectedChapter) { data, chapter ->
+            ContentUiState(
+                lines = data.lines,
+                selectedLine = data.selectedLine,
+                commentaries = data.commentaries,
+                showCommentaries = data.showCommentaries,
+                paragraphScrollPosition = data.paragraphScrollPosition,
+                chapterScrollPosition = data.chapterScrollPosition,
+                selectedChapter = chapter
+            )
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, ContentUiState())
+    }
+
+    private data class ContentData(
+        val lines: List<Line>,
+        val selectedLine: Line?,
+        val commentaries: List<CommentaryWithText>,
+        val showCommentaries: Boolean,
+        val paragraphScrollPosition: Int = 0,
+        val chapterScrollPosition: Int = 0
+    )
+
+    @OptIn(ExperimentalSplitPaneApi::class)
+    private fun layoutState(): StateFlow<LayoutUiState> {
+        return _splitPaneState.combine(_tocSplitPaneState) { main, toc ->
+            Pair(main, toc)
+        }.combine(_contentSplitPaneState) { (main, toc), content ->
+            LayoutUiState(
+                mainSplitState = main,
+                tocSplitState = toc,
+                contentSplitState = content
+            )
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, createInitialLayoutState())
+    }
+
+    @OptIn(ExperimentalSplitPaneApi::class)
+    private fun createInitialLayoutState(): LayoutUiState = LayoutUiState(
+        mainSplitState = SplitPaneState(
+            initialPositionPercentage = getState<Float>("splitPanePosition") ?: 0.3f,
+            moveEnabled = true
+        ),
+        tocSplitState = SplitPaneState(
+            initialPositionPercentage = getState<Float>("tocSplitPanePosition") ?: 0.3f,
+            moveEnabled = true
+        ),
+        contentSplitState = SplitPaneState(
+            initialPositionPercentage = getState<Float>("contentSplitPanePosition") ?: 0.7f,
+            moveEnabled = true
+        )
+    )
+
+
+    // Implementation methods
     private fun loadRootCategories() {
-        _isLoading.value = true
         viewModelScope.launch {
+            _isLoading.value = true
             try {
                 _rootCategories.value = repository.getRootCategories()
             } finally {
@@ -161,28 +250,26 @@ class BookContentViewModel(
         }
     }
 
-    fun expandCategory(category: Category) {
-        if (_expandedCategories.value.contains(category.id)) {
-            // Collapse category
-            _expandedCategories.value = _expandedCategories.value - category.id
-        } else {
-            // Expand category
-            _expandedCategories.value = _expandedCategories.value + category.id
+    private fun expandCategory(category: Category) {
+        val isExpanded = _expandedCategories.value.contains(category.id)
 
-            // Load category children if not already loaded
+        if (isExpanded) {
+            _expandedCategories.value -= category.id
+        } else {
+            _expandedCategories.value += category.id
+
             if (!_categoryChildren.value.containsKey(category.id)) {
-                _isLoading.value = true
                 viewModelScope.launch {
+                    _isLoading.value = true
                     try {
                         val children = repository.getCategoryChildren(category.id)
                         if (children.isNotEmpty()) {
-                            _categoryChildren.value = _categoryChildren.value + (category.id to children)
+                            _categoryChildren.value += (category.id to children)
                         }
 
-                        // Load books in this category
                         val books = repository.getBooksByCategory(category.id)
                         if (books.isNotEmpty()) {
-                            _booksInCategory.value = _booksInCategory.value + books
+                            _booksInCategory.value += books
                         }
                     } finally {
                         _isLoading.value = false
@@ -192,37 +279,32 @@ class BookContentViewModel(
         }
     }
 
-    fun selectCategory(category: Category) {
+    private fun selectCategory(category: Category) {
         _selectedCategory.value = category
         expandCategory(category)
     }
 
-    fun loadBook(book: Book) {
+    private fun loadBook(book: Book) {
         _selectedBook.value = book
-        _isLoading.value = true
 
         viewModelScope.launch {
+            _isLoading.value = true
             try {
                 // Load book lines
-                val lines = repository.getLines(book.id, 0, 30)
-                _bookLines.value = lines
+                _bookLines.value = repository.getLines(book.id, 0, 30)
 
-                // Only load root TOC entries initially for better performance
+                // Load root TOC entries
                 val rootToc = repository.getBookRootToc(book.id)
                 _tocEntries.value = rootToc
-
-                // Store root entries with the special key (-1L)
                 _tocChildren.value = mapOf(-1L to rootToc)
 
-                // Auto-expand first TOC entry if exists
-                if (rootToc.isNotEmpty()) {
-                    val firstEntry = rootToc.first()
+                // Auto-expand first TOC entry
+                rootToc.firstOrNull()?.let { firstEntry ->
                     _expandedTocEntries.value = setOf(firstEntry.id)
 
-                    // Load children of the first entry
                     val children = repository.getTocChildren(firstEntry.id)
                     if (children.isNotEmpty()) {
-                        _tocChildren.value = _tocChildren.value + (firstEntry.id to children)
+                        _tocChildren.value += (firstEntry.id to children)
                     }
                 }
             } finally {
@@ -231,30 +313,21 @@ class BookContentViewModel(
         }
     }
 
-    fun expandTocEntry(tocEntry: TocEntry) {
-        if (_expandedTocEntries.value.contains(tocEntry.id)) {
-            // Collapse TOC entry and its descendants
+    private fun expandTocEntry(tocEntry: TocEntry) {
+        val isExpanded = _expandedTocEntries.value.contains(tocEntry.id)
+
+        if (isExpanded) {
             val descendants = getAllDescendantIds(tocEntry.id, _tocChildren.value)
             _expandedTocEntries.value = _expandedTocEntries.value - tocEntry.id - descendants
         } else {
-            // Expand TOC entry
-            _expandedTocEntries.value = _expandedTocEntries.value + tocEntry.id
+            _expandedTocEntries.value += tocEntry.id
 
-            // Load TOC children if not already loaded
             if (!_tocChildren.value.containsKey(tocEntry.id)) {
-                _isLoading.value = true
                 viewModelScope.launch {
+                    _isLoading.value = true
                     try {
-                        // Load only the direct children for this entry
                         val children = repository.getTocChildren(tocEntry.id)
-
-                        // Update the children map
-                        if (children.isNotEmpty()) {
-                            _tocChildren.value = _tocChildren.value + (tocEntry.id to children)
-                        } else {
-                            // If there are no children, add an empty list to mark that we've checked
-                            _tocChildren.value = _tocChildren.value + (tocEntry.id to emptyList())
-                        }
+                        _tocChildren.value += (tocEntry.id to children.ifEmpty { emptyList() })
                     } finally {
                         _isLoading.value = false
                     }
@@ -263,164 +336,95 @@ class BookContentViewModel(
         }
     }
 
-    private fun getAllDescendantIds(entryId: Long, childrenMap: Map<Long, List<TocEntry>>): Set<Long> {
-        val result = mutableSetOf<Long>()
-        childrenMap[entryId]?.forEach { child ->
-            result.add(child.id)
-            result.addAll(getAllDescendantIds(child.id, childrenMap))
+    private fun getAllDescendantIds(entryId: Long, childrenMap: Map<Long, List<TocEntry>>): Set<Long> =
+        buildSet {
+            childrenMap[entryId]?.forEach { child ->
+                add(child.id)
+                addAll(getAllDescendantIds(child.id, childrenMap))
+            }
         }
-        return result
-    }
 
-    fun selectLine(line: Line) {
+    private fun selectLine(line: Line) {
         _selectedLine.value = line
-
-        // Fetch commentaries for the selected line
         fetchCommentariesForLine(line)
     }
 
-    /**
-     * Fetches commentaries for a selected line.
-     */
     private fun fetchCommentariesForLine(line: Line) {
         viewModelScope.launch {
             try {
                 _commentaries.value = repository.getCommentariesForLines(listOf(line.id))
             } catch (e: Exception) {
-                // Handle any errors
-                println("Error fetching commentaries: ${e.message}")
                 _commentaries.value = emptyList()
             }
         }
     }
 
-    /**
-     * Loads a line by its ID and selects it.
-     * If the line is not in the current book, this method does nothing.
-     * If the line is in the current book but not in the current lines list,
-     * it loads a range of lines around it and then selects it.
-     */
-    fun loadAndSelectLine(lineId: Long) {
-        // Make sure we have a book selected
+    private fun loadAndSelectLine(lineId: Long) {
         val currentBook = _selectedBook.value ?: return
 
         viewModelScope.launch {
             try {
-                // Load the line from the repository
-                val line = repository.getLine(lineId)
-
-                // Make sure the line belongs to the current book
-                if (line != null && line.bookId == currentBook.id) {
-                    // Check if the line is already in the current lines list
-                    if (!_bookLines.value.any { it.id == lineId }) {
-                        // If not, load a range of lines around it
-                        val startIndex = maxOf(0, line.lineIndex - 25)
-                        val endIndex = line.lineIndex + 25
-                        _bookLines.value = repository.getLines(currentBook.id, startIndex, endIndex)
+                repository.getLine(lineId)?.let { line ->
+                    if (line.bookId == currentBook.id) {
+                        if (_bookLines.value.none { it.id == lineId }) {
+                            val startIndex = maxOf(0, line.lineIndex - 25)
+                            val endIndex = line.lineIndex + 25
+                            _bookLines.value = repository.getLines(currentBook.id, startIndex, endIndex)
+                        }
+                        _selectedLine.value = line
                     }
-
-                    // Select the line
-                    _selectedLine.value = line
                 }
             } catch (e: Exception) {
-                // Handle any errors
-                println("Error loading line: ${e.message}")
+                // Handle error
             }
         }
     }
 
-    fun updateSearchText(text: String) {
+    private fun updateSearchText(text: String) {
         _searchText.value = text
         saveState("searchText", text)
     }
 
-    fun updateParagraphScrollPosition(position: Int) {
+    private fun updateParagraphScrollPosition(position: Int) {
         _paragraphScrollPosition.value = position
         saveState("paragraphScrollPosition", position)
     }
 
-    fun updateChapterScrollPosition(position: Int) {
+    private fun updateChapterScrollPosition(position: Int) {
         _chapterScrollPosition.value = position
         saveState("chapterScrollPosition", position)
     }
 
-    fun selectChapter(chapter: Int) {
+    private fun selectChapter(chapter: Int) {
         _selectedChapter.value = chapter
         saveState("selectedChapter", chapter)
     }
 
-    /**
-     * Toggles the display of commentaries.
-     */
-    fun toggleCommentaries() {
+    private fun toggleCommentaries() {
         _showCommentaries.value = !_showCommentaries.value
         saveState("showCommentaries", _showCommentaries.value)
     }
 
-    /**
-     * Toggles the display of the book tree.
-     */
-    fun toggleBookTree() {
+    private fun toggleBookTree() {
         _showBookTree.value = !_showBookTree.value
         saveState("showBookTree", _showBookTree.value)
     }
 
-    /**
-     * Toggles the display of the TOC column.
-     */
-    fun toggleToc() {
+    private fun toggleToc() {
         _showToc.value = !_showToc.value
         saveState("showToc", _showToc.value)
     }
 
-    fun onEvent(events: BookContentEvents) {
-        when (events) {
-            is BookContentEvents.OnUpdateParagraphScrollPosition -> updateParagraphScrollPosition(events.position)
-            is BookContentEvents.OnChapterSelected -> selectChapter(events.index)
-            is BookContentEvents.OnSearchTextChange -> updateSearchText(events.text)
-            BookContentEvents.SaveAllStates -> saveAllStates()
-            is BookContentEvents.OnUpdateChapterScrollPosition -> updateChapterScrollPosition(events.position)
-            is BookContentEvents.OnCategorySelected -> selectCategory(events.category)
-            is BookContentEvents.OnBookSelected -> loadBook(events.book)
-            is BookContentEvents.OnTocEntryExpanded -> expandTocEntry(events.tocEntry)
-            is BookContentEvents.OnLineSelected -> selectLine(events.line)
-            is BookContentEvents.OnLoadAndSelectLine -> loadAndSelectLine(events.lineId)
-            BookContentEvents.OnToggleCommentaries -> toggleCommentaries()
-            BookContentEvents.OnToggleBookTree -> toggleBookTree()
-            BookContentEvents.OnToggleToc -> toggleToc()
-        }
-    }
-
     @OptIn(ExperimentalSplitPaneApi::class)
-    fun saveAllStates() {
-        // Only save position percentages, not the entire SplitPaneState objects
-        // This is more efficient and reduces lag during resize operations
-        saveState("splitPanePosition", splitPaneState.value.positionPercentage)
-        saveState("tocSplitPanePosition", tocSplitPaneState.value.positionPercentage)
-        saveState("contentSplitPanePosition", contentSplitPaneState.value.positionPercentage)
-
-        // Save other state values
-        saveState("searchText", searchText.value)
-        saveState("scrollPosition", paragraphScrollPosition.value)
-        saveState("selectedChapter", selectedChapter.value)
-        saveState("showCommentaries", showCommentaries.value)
-        saveState("showBookTree", showBookTree.value)
-        saveState("showToc", showToc.value)
-    }
-
-    /**
-     * Public method to get a state value for a specific key.
-     * This is needed because the getState method in TabAwareViewModel is protected.
-     */
-    fun <T> getStateValue(key: String): T? {
-        return getState(key)
-    }
-
-    /**
-     * Public method to save a state value for a specific key.
-     * This is needed because the saveState method in TabAwareViewModel is protected.
-     */
-    fun saveStateValue(key: String, value: Any) {
-        saveState(key, value)
+    private fun saveAllStates() {
+        saveState("splitPanePosition", _splitPaneState.value.positionPercentage)
+        saveState("tocSplitPanePosition", _tocSplitPaneState.value.positionPercentage)
+        saveState("contentSplitPanePosition", _contentSplitPaneState.value.positionPercentage)
+        saveState("searchText", _searchText.value)
+        saveState("paragraphScrollPosition", _paragraphScrollPosition.value)
+        saveState("selectedChapter", _selectedChapter.value)
+        saveState("showCommentaries", _showCommentaries.value)
+        saveState("showBookTree", _showBookTree.value)
+        saveState("showToc", _showToc.value)
     }
 }

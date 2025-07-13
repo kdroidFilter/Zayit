@@ -1,30 +1,28 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent
 
-import io.github.kdroidfilter.seforimlibrary.core.models.Book
-import io.github.kdroidfilter.seforimlibrary.core.models.Category
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import io.github.kdroidfilter.seforimlibrary.core.models.*
 
-sealed class BookContentEvents {
-    data class OnUpdateParagraphScrollPosition(val position: Int): BookContentEvents()
-    data class OnUpdateChapterScrollPosition(val position: Int): BookContentEvents()
-    data object SaveAllStates : BookContentEvents()
-    data class OnSearchTextChange(val text: String): BookContentEvents()
-    data class OnChapterSelected(val index: Int): BookContentEvents()
+sealed interface BookContentEvent {
+    // Navigation events
+    data class SearchTextChanged(val text: String) : BookContentEvent
+    data class CategorySelected(val category: Category) : BookContentEvent
+    data class BookSelected(val book: Book) : BookContentEvent
+    data object ToggleBookTree : BookContentEvent
 
-    // Database-related events
-    data class OnCategorySelected(val category: Category): BookContentEvents()
-    data class OnBookSelected(val book: Book): BookContentEvents()
-    data class OnTocEntryExpanded(val tocEntry: TocEntry): BookContentEvents()
-    data class OnLineSelected(val line: Line): BookContentEvents()
-    data class OnLoadAndSelectLine(val lineId: Long): BookContentEvents()
+    // TOC events
+    data class TocEntryExpanded(val entry: TocEntry) : BookContentEvent
+    data object ToggleToc : BookContentEvent
 
-    // Commentary-related events
-    data object OnToggleCommentaries : BookContentEvents()
+    // Content events
+    data class LineSelected(val line: Line) : BookContentEvent
+    data class LoadAndSelectLine(val lineId: Long) : BookContentEvent
+    data object ToggleCommentaries : BookContentEvent
 
-    // Book tree-related events
-    data object OnToggleBookTree : BookContentEvents()
+    // Scroll events
+    data class ParagraphScrolled(val position: Int) : BookContentEvent
+    data class ChapterScrolled(val position: Int) : BookContentEvent
+    data class ChapterSelected(val index: Int) : BookContentEvent
 
-    // TOC-related events
-    data object OnToggleToc : BookContentEvents()
+    // State management
+    data object SaveState : BookContentEvent
 }

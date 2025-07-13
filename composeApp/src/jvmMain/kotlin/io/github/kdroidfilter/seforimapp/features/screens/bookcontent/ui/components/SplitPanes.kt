@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.components
+package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -15,9 +15,6 @@ import org.jetbrains.jewel.ui.component.Divider
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForHorizontalResize
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForVerticalResize
 
-/**
- * A reusable component for creating a horizontal split pane with a divider.
- */
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 fun EnhancedHorizontalSplitPane(
@@ -60,17 +57,12 @@ fun EnhancedHorizontalSplitPane(
                         .markAsHandle()
                         .cursorForHorizontalResize(),
                     contentAlignment = Alignment.Center
-                ) {
-                    // Empty box for handle
-                }
+                ) {}
             }
         }
     }
 }
 
-/**
- * A reusable component for creating a vertical split pane with a divider.
- */
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 fun EnhancedVerticalSplitPane(
@@ -113,9 +105,7 @@ fun EnhancedVerticalSplitPane(
                         .markAsHandle()
                         .cursorForVerticalResize(),
                     contentAlignment = Alignment.Center
-                ) {
-                    // Empty box for handle
-                }
+                ) {}
             }
         }
     }

@@ -8,11 +8,13 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabAwareViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
 
+@OptIn(ExperimentalSplitPaneApi::class)
 class BookContentViewModel(
     savedStateHandle: SavedStateHandle,
     stateManager: TabStateManager,
@@ -423,18 +425,84 @@ class BookContentViewModel(
         saveState("selectedChapter", chapter)
     }
 
+    @OptIn(ExperimentalSplitPaneApi::class)
     private fun toggleCommentaries() {
         _showCommentaries.value = !_showCommentaries.value
+
+        // Set appropriate split pane position based on visibility
+        if (_showCommentaries.value) {
+            _contentSplitPaneState.value = SplitPaneState(
+                initialPositionPercentage = _previousContentSplitPosition.value,
+                moveEnabled = true
+            )
+        } else {
+            // Save current position before hiding
+            if (_contentSplitPaneState.value.positionPercentage > 0) {
+                _previousContentSplitPosition.value = _contentSplitPaneState.value.positionPercentage
+            }
+            // Set to a high value to minimize the content area
+            _contentSplitPaneState.value = SplitPaneState(
+                initialPositionPercentage = 0.95f,
+                moveEnabled = false
+            )
+        }
+
         saveState("showCommentaries", _showCommentaries.value)
     }
 
+    // Store previous split pane positions
+    private val _previousMainSplitPosition = MutableStateFlow(0.3f)
+    private val _previousTocSplitPosition = MutableStateFlow(0.3f)
+    private val _previousContentSplitPosition = MutableStateFlow(0.7f)
+
     private fun toggleBookTree() {
-        _showBookTree.value = !_showBookTree.value
+        val isCurrentlyVisible = _showBookTree.value
+        _showBookTree.value = !isCurrentlyVisible
+
+        // Set appropriate split pane position based on visibility
+        if (!isCurrentlyVisible) {
+            _splitPaneState.value = SplitPaneState(
+                initialPositionPercentage = _previousMainSplitPosition.value,
+                moveEnabled = true
+            )
+        } else {
+            // Save current position before hiding
+            if (_splitPaneState.value.positionPercentage > 0) {
+                _previousMainSplitPosition.value = _splitPaneState.value.positionPercentage
+            }
+            // Set to zero to hide the panel
+            _splitPaneState.value = SplitPaneState(
+                initialPositionPercentage = 0f,
+                moveEnabled = false
+            )
+        }
+
         saveState("showBookTree", _showBookTree.value)
     }
 
+    @OptIn(ExperimentalSplitPaneApi::class)
     private fun toggleToc() {
-        _showToc.value = !_showToc.value
+        val isCurrentlyVisible = _showToc.value
+        _showToc.value = !isCurrentlyVisible
+
+        // Set appropriate split pane position based on visibility
+        if (!isCurrentlyVisible) {
+            _tocSplitPaneState.value = SplitPaneState(
+                initialPositionPercentage = _previousTocSplitPosition.value,
+                moveEnabled = true
+            )
+        } else {
+            // Save current position before hiding
+            if (_tocSplitPaneState.value.positionPercentage > 0) {
+                _previousTocSplitPosition.value = _tocSplitPaneState.value.positionPercentage
+            }
+            // Set to zero to hide the panel
+            _tocSplitPaneState.value = SplitPaneState(
+                initialPositionPercentage = 0f,
+                moveEnabled = false
+            )
+        }
+
         saveState("showToc", _showToc.value)
     }
 

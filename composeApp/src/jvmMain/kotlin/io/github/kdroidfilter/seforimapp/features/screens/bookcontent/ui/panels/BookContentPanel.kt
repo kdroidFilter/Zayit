@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -22,6 +23,7 @@ import seforimapp.composeapp.generated.resources.Res
 import seforimapp.composeapp.generated.resources.select_book
 import java.util.UUID
 
+
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 fun BookContentPanel(
@@ -34,6 +36,9 @@ fun BookContentPanel(
     // Get the Navigator from Koin
     val navigator = koinInject<Navigator>()
     val scope = rememberCoroutineScope()
+
+    // Preserve LazyListState across recompositions
+    val bookListState = rememberLazyListState()
     when {
         selectedBook == null -> {
             Box(
@@ -55,7 +60,8 @@ fun BookContentPanel(
                         onLineSelected = { line ->
                             onEvent(BookContentEvent.LineSelected(line))
                         },
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(16.dp),
+                        preservedListState = bookListState
                     )
                 },
                 secondContent = {
@@ -86,7 +92,8 @@ fun BookContentPanel(
                 onLineSelected = { line ->
                     onEvent(BookContentEvent.LineSelected(line))
                 },
-                modifier = modifier.padding(16.dp)
+                modifier = modifier.padding(16.dp),
+                preservedListState = bookListState
             )
         }
     }

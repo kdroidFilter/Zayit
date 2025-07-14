@@ -9,6 +9,7 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compone
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.*
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 
 @OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class)
@@ -17,23 +18,32 @@ fun MainBookContentLayout(
     uiState: BookContentUiState,
     onEvent: (BookContentEvent) -> Unit
 ) {
-    // Save split pane positions with debounce
-    LaunchedEffect(uiState.layout.mainSplitState) {
-        snapshotFlow { uiState.layout.mainSplitState.positionPercentage }
-            .debounce(300)
-            .collect { onEvent(BookContentEvent.SaveState) }
+    // Save split pane positions with debounce - only when panels are visible
+    LaunchedEffect(uiState.layout.mainSplitState, uiState.navigation.isVisible) {
+        if (uiState.navigation.isVisible) {
+            snapshotFlow { uiState.layout.mainSplitState.positionPercentage }
+                .debounce(300)
+                .filter { it > 0 } // Only save non-zero positions
+                .collect { onEvent(BookContentEvent.SaveState) }
+        }
     }
 
-    LaunchedEffect(uiState.layout.tocSplitState) {
-        snapshotFlow { uiState.layout.tocSplitState.positionPercentage }
-            .debounce(300)
-            .collect { onEvent(BookContentEvent.SaveState) }
+    LaunchedEffect(uiState.layout.tocSplitState, uiState.toc.isVisible) {
+        if (uiState.toc.isVisible) {
+            snapshotFlow { uiState.layout.tocSplitState.positionPercentage }
+                .debounce(300)
+                .filter { it > 0 } // Only save non-zero positions
+                .collect { onEvent(BookContentEvent.SaveState) }
+        }
     }
 
-    LaunchedEffect(uiState.layout.contentSplitState) {
-        snapshotFlow { uiState.layout.contentSplitState.positionPercentage }
-            .debounce(300)
-            .collect { onEvent(BookContentEvent.SaveState) }
+    LaunchedEffect(uiState.layout.contentSplitState, uiState.content.showCommentaries) {
+        if (uiState.content.showCommentaries) {
+            snapshotFlow { uiState.layout.contentSplitState.positionPercentage }
+                .debounce(300)
+                .filter { it > 0 && it < 1 } // Only save non-zero and non-one positions
+                .collect { onEvent(BookContentEvent.SaveState) }
+        }
     }
 
     DisposableEffect(Unit) {
@@ -48,10 +58,43 @@ fun MainBookContentLayout(
             onToggleToc = { onEvent(BookContentEvent.ToggleToc) }
         )
 
-        ContentArea(
-            uiState = uiState,
-            onEvent = onEvent,
-            modifier = Modifier.weight(1f)
+        // Always use the same structure - just hide panels by setting width to 0
+        EnhancedHorizontalSplitPane(
+            splitPaneState = uiState.layout.mainSplitState,
+            modifier = Modifier.weight(1f),
+            firstMinSize = if (uiState.navigation.isVisible) 200f else 0f,
+            firstContent = {
+                if (uiState.navigation.isVisible) {
+                    CategoryTreePanel(
+                        navigationState = uiState.navigation,
+                        onEvent = onEvent
+                    )
+                }
+            },
+            secondContent = {
+                EnhancedHorizontalSplitPane(
+                    splitPaneState = uiState.layout.tocSplitState,
+                    firstMinSize = if (uiState.toc.isVisible) 200f else 0f,
+                    firstContent = {
+                        if (uiState.toc.isVisible) {
+                            TocPanel(
+                                selectedBook = uiState.navigation.selectedBook,
+                                tocState = uiState.toc,
+                                isLoading = uiState.isLoading,
+                                onEvent = onEvent
+                            )
+                        }
+                    },
+                    secondContent = {
+                        BookContentPanel(
+                            selectedBook = uiState.navigation.selectedBook,
+                            contentState = uiState.content,
+                            contentSplitState = uiState.layout.contentSplitState,
+                            onEvent = onEvent
+                        )
+                    }
+                )
+            }
         )
 
         EndVerticalBar(

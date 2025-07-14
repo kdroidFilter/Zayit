@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
@@ -20,27 +21,38 @@ fun BookContentView(
     lines: List<Line>,
     selectedLine: Line?,
     onLineSelected: (Line) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    preservedListState: LazyListState? = null
 ) {
-    val listState = rememberLazyListState()
-    
-    // Scroll to selected line
-    LaunchedEffect(selectedLine) {
+    val listState = preservedListState ?: rememberLazyListState()
+    var lastScrolledLineId by remember { mutableStateOf<Long?>(null) }
+
+    // Only scroll when the selected line actually changes
+    LaunchedEffect(selectedLine?.id) {
         selectedLine?.let { selected ->
-            lines.indexOfFirst { it.id == selected.id }
-                .takeIf { it >= 0 }
-                ?.let { index ->
-                    listState.animateScrollToItem(index)
-                }
+            if (selected.id != lastScrolledLineId) {
+                lines.indexOfFirst { it.id == selected.id }
+                    .takeIf { it >= 0 }
+                    ?.let { index ->
+                        // Check if the item is not already visible
+                        val visibleItems = listState.layoutInfo.visibleItemsInfo
+                        val isAlreadyVisible = visibleItems.any { it.index == index }
+
+                        if (!isAlreadyVisible) {
+                            listState.scrollToItem(index)
+                        }
+                        lastScrolledLineId = selected.id
+                    }
+            }
         }
     }
-    
+
     Column(modifier = modifier) {
         Text(
             text = book.title,
             modifier = Modifier.padding(bottom = 16.dp)
         )
-        
+
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize()

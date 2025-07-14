@@ -45,7 +45,7 @@ class BookContentViewModel(
     @OptIn(ExperimentalSplitPaneApi::class)
     private val _tocSplitPaneState = MutableStateFlow(
         SplitPaneState(
-            initialPositionPercentage = getState<Float>("tocSplitPanePosition") ?: 0.05f,
+            initialPositionPercentage = getState<Float>("tocSplitPanePosition") ?: 0.0025f,
             moveEnabled = true
         )
     )
@@ -53,7 +53,7 @@ class BookContentViewModel(
     @OptIn(ExperimentalSplitPaneApi::class)
     private val _contentSplitPaneState = MutableStateFlow(
         SplitPaneState(
-            initialPositionPercentage = getState<Float>("contentSplitPanePosition") ?: 0.7f,
+            initialPositionPercentage = getState<Float>("contentSplitPanePosition") ?: 0.9f,
             moveEnabled = true
         )
     )

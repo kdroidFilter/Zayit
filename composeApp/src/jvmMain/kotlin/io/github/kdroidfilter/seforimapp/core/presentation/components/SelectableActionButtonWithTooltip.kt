@@ -78,7 +78,8 @@ fun SelectableIconButtonWithToolip(
                     label,
                     color = JewelTheme.globalColors.text.normal,
                     fontSize = 10.sp,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    lineHeight = 10.sp,
                 )
             }
         }

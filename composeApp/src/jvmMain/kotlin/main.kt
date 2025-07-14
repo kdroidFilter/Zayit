@@ -115,13 +115,13 @@ fun main() {
                     TitleBar(modifier = Modifier.newFullscreenControls()) {
                         BoxWithConstraints {
                             val windowWidth = maxWidth
-                            val iconsNumber = 4
+                            val iconsNumber = 5
                             val iconWidth = 40
                             Row {
                                 Row(
                                     modifier = Modifier
                                         .padding(
-                                            start = if (isMacOs) 40.dp else 0.dp
+                                            start =0.dp
                                         )
                                         .align(Alignment.Start)
                                         .width(windowWidth - if (isMacOs) iconWidth*(iconsNumber+1).dp else (iconWidth * iconsNumber).dp)

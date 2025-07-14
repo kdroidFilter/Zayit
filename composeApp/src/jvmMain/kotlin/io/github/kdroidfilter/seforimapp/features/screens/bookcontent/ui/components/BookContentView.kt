@@ -27,7 +27,7 @@ fun BookContentView(
     val listState = preservedListState ?: rememberLazyListState()
     var lastScrolledLineId by remember { mutableStateOf<Long?>(null) }
 
-    // Only scroll when the selected line actually changes
+    // Only scroll when the selected line actually changes, without animation
     LaunchedEffect(selectedLine?.id) {
         selectedLine?.let { selected ->
             if (selected.id != lastScrolledLineId) {
@@ -39,7 +39,8 @@ fun BookContentView(
                         val isAlreadyVisible = visibleItems.any { it.index == index }
 
                         if (!isAlreadyVisible) {
-                            listState.scrollToItem(index)
+                            // Set the first visible item index directly to disable animation
+                            listState.scrollToItem(index, 0)
                         }
                         lastScrolledLineId = selected.id
                     }

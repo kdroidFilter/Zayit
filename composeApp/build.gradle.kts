@@ -1,6 +1,6 @@
 import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.jetbrains.compose.reload.ComposeHotRun
+import org.jetbrains.compose.reload.gradle.ComposeHotRun
 import org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 
@@ -85,6 +85,13 @@ kotlin {
             implementation(libs.slf4j.simple)
             implementation("org.jetbrains.compose.components:components-splitpane-desktop:1.8.2")
             api(project(":jewel"))
+//            implementation(libs.jewel.ui)
+//            implementation(libs.jewel.int.ui.decorated.window)
+//            implementation(libs.jewel.int.ui.standalone)
+//            implementation(libs.jewel.decorated.window)
+//            implementation(libs.jetbrains.jewel.foundation)
+//            implementation("com.jetbrains.intellij.platform:icons:251.27812.49")
+
             implementation("app.cash.sqldelight:sqlite-driver:2.1.0")
             implementation("app.cash.sqldelight:jdbc-driver:2.1.0")
         }

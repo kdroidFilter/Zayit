@@ -20,24 +20,51 @@ class BookContentViewModel(
     stateManager: TabStateManager,
     private val repository: SeforimRepository
 ) : TabAwareViewModel(
-    tabId = savedStateHandle.get<String>("tabId") ?: "",
+    tabId = savedStateHandle.get<String>(KEY_TAB_ID) ?: "",
     stateManager = stateManager
 ) {
+    
+    companion object {
+        // State keys
+        const val KEY_TAB_ID = "tabId"
+        const val KEY_BOOK_ID = "bookId"
+        const val KEY_LINE_ID = "lineId"
+        const val KEY_SELECTED_BOOK = "selectedBook"
+        const val KEY_SEARCH_TEXT = "searchText"
+        const val KEY_SHOW_BOOK_TREE = "showBookTree"
+        const val KEY_SPLIT_PANE_POSITION = "splitPanePosition"
+        const val KEY_TOC_SPLIT_PANE_POSITION = "tocSplitPanePosition"
+        const val KEY_CONTENT_SPLIT_PANE_POSITION = "contentSplitPanePosition"
+        const val KEY_SHOW_TOC = "showToc"
+        const val KEY_SHOW_COMMENTARIES = "showCommentaries"
+        const val KEY_PARAGRAPH_SCROLL_POSITION = "paragraphScrollPosition"
+        const val KEY_CHAPTER_SCROLL_POSITION = "chapterScrollPosition"
+        const val KEY_SELECTED_CHAPTER = "selectedChapter"
+        
+        // Additional state keys
+        const val KEY_SELECTED_CATEGORY = "selectedCategory"
+        const val KEY_EXPANDED_CATEGORIES = "expandedCategories"
+        const val KEY_EXPANDED_TOC_ENTRIES = "expandedTocEntries"
+        const val KEY_SELECTED_LINE = "selectedLine"
+        const val KEY_PREVIOUS_MAIN_SPLIT_POSITION = "previousMainSplitPosition"
+        const val KEY_PREVIOUS_TOC_SPLIT_POSITION = "previousTocSplitPosition"
+        const val KEY_PREVIOUS_CONTENT_SPLIT_POSITION = "previousContentSplitPosition"
+    }
     // Initialize state flows first
     private val _isLoading = MutableStateFlow(false)
     private val _rootCategories = MutableStateFlow<List<Category>>(emptyList())
-    private val _expandedCategories = MutableStateFlow<Set<Long>>(emptySet())
+    private val _expandedCategories = MutableStateFlow<Set<Long>>(getState(KEY_EXPANDED_CATEGORIES) ?: emptySet())
     private val _categoryChildren = MutableStateFlow<Map<Long, List<Category>>>(emptyMap())
     private val _booksInCategory = MutableStateFlow<Set<Book>>(emptySet())
-    private val _selectedCategory = MutableStateFlow<Category?>(null)
-    private val _selectedBook = MutableStateFlow<Book?>(getState("selectedBook"))
-    private val _searchText = MutableStateFlow(getState<String>("searchText") ?: "")
-    private val _showBookTree = MutableStateFlow(getState<Boolean>("showBookTree") ?: true)
+    private val _selectedCategory = MutableStateFlow<Category?>(getState(KEY_SELECTED_CATEGORY))
+    private val _selectedBook = MutableStateFlow<Book?>(getState(KEY_SELECTED_BOOK))
+    private val _searchText = MutableStateFlow(getState<String>(KEY_SEARCH_TEXT) ?: "")
+    private val _showBookTree = MutableStateFlow(getState<Boolean>(KEY_SHOW_BOOK_TREE) ?: true)
 
     @OptIn(ExperimentalSplitPaneApi::class)
     private val _splitPaneState = MutableStateFlow(
         SplitPaneState(
-            initialPositionPercentage = getState<Float>("splitPanePosition") ?: 0.05f,
+            initialPositionPercentage = getState<Float>(KEY_SPLIT_PANE_POSITION) ?: 0.05f,
             moveEnabled = true
         )
     )
@@ -45,7 +72,7 @@ class BookContentViewModel(
     @OptIn(ExperimentalSplitPaneApi::class)
     private val _tocSplitPaneState = MutableStateFlow(
         SplitPaneState(
-            initialPositionPercentage = getState<Float>("tocSplitPanePosition") ?: 0.0025f,
+            initialPositionPercentage = getState<Float>(KEY_TOC_SPLIT_PANE_POSITION) ?: 0.0025f,
             moveEnabled = true
         )
     )
@@ -53,23 +80,23 @@ class BookContentViewModel(
     @OptIn(ExperimentalSplitPaneApi::class)
     private val _contentSplitPaneState = MutableStateFlow(
         SplitPaneState(
-            initialPositionPercentage = getState<Float>("contentSplitPanePosition") ?: 0.9f,
+            initialPositionPercentage = getState<Float>(KEY_CONTENT_SPLIT_PANE_POSITION) ?: 0.9f,
             moveEnabled = true
         )
     )
 
     private val _bookLines = MutableStateFlow<List<Line>>(emptyList())
-    private val _selectedLine = MutableStateFlow<Line?>(null)
+    private val _selectedLine = MutableStateFlow<Line?>(getState(KEY_SELECTED_LINE))
     private val _tocEntries = MutableStateFlow<List<TocEntry>>(emptyList())
-    private val _expandedTocEntries = MutableStateFlow<Set<Long>>(emptySet())
+    private val _expandedTocEntries = MutableStateFlow<Set<Long>>(getState(KEY_EXPANDED_TOC_ENTRIES) ?: emptySet())
     private val _tocChildren = MutableStateFlow<Map<Long, List<TocEntry>>>(emptyMap())
-    private val _showToc = MutableStateFlow(getState<Boolean>("showToc") ?: true)
+    private val _showToc = MutableStateFlow(getState<Boolean>(KEY_SHOW_TOC) ?: true)
 
     private val _commentaries = MutableStateFlow<List<CommentaryWithText>>(emptyList())
-    private val _showCommentaries = MutableStateFlow(getState<Boolean>("showCommentaries") ?: false)
-    private val _paragraphScrollPosition = MutableStateFlow(getState<Int>("paragraphScrollPosition") ?: 0)
-    private val _chapterScrollPosition = MutableStateFlow(getState<Int>("chapterScrollPosition") ?: 0)
-    private val _selectedChapter = MutableStateFlow(getState<Int>("selectedChapter") ?: 0)
+    private val _showCommentaries = MutableStateFlow(getState<Boolean>(KEY_SHOW_COMMENTARIES) ?: false)
+    private val _paragraphScrollPosition = MutableStateFlow(getState<Int>(KEY_PARAGRAPH_SCROLL_POSITION) ?: 0)
+    private val _chapterScrollPosition = MutableStateFlow(getState<Int>(KEY_CHAPTER_SCROLL_POSITION) ?: 0)
+    private val _selectedChapter = MutableStateFlow(getState<Int>(KEY_SELECTED_CHAPTER) ?: 0)
 
     // Create UI state using combine for better performance
     @OptIn(ExperimentalSplitPaneApi::class)
@@ -111,7 +138,7 @@ class BookContentViewModel(
             }
         } else {
             // If no restored book, check if we have a bookId in the savedStateHandle
-            savedStateHandle.get<Long>("bookId")?.let { bookId ->
+            savedStateHandle.get<Long>(KEY_BOOK_ID)?.let { bookId ->
                 // Load the book
                 viewModelScope.launch {
                     _isLoading.value = true
@@ -122,7 +149,7 @@ class BookContentViewModel(
                             loadBook(book)
 
                             // Check if we have a lineId in the savedStateHandle
-                            savedStateHandle.get<Long>("lineId")?.let { lineId ->
+                            savedStateHandle.get<Long>(KEY_LINE_ID)?.let { lineId ->
                                 // Load and select the line
                                 loadAndSelectLine(lineId)
                             }
@@ -264,15 +291,15 @@ class BookContentViewModel(
     @OptIn(ExperimentalSplitPaneApi::class)
     private fun createInitialLayoutState(): LayoutUiState = LayoutUiState(
         mainSplitState = SplitPaneState(
-            initialPositionPercentage = getState<Float>("splitPanePosition") ?: 0.3f,
+            initialPositionPercentage = getState<Float>(KEY_SPLIT_PANE_POSITION) ?: 0.3f,
             moveEnabled = true
         ),
         tocSplitState = SplitPaneState(
-            initialPositionPercentage = getState<Float>("tocSplitPanePosition") ?: 0.3f,
+            initialPositionPercentage = getState<Float>(KEY_TOC_SPLIT_PANE_POSITION) ?: 0.3f,
             moveEnabled = true
         ),
         contentSplitState = SplitPaneState(
-            initialPositionPercentage = getState<Float>("contentSplitPanePosition") ?: 0.7f,
+            initialPositionPercentage = getState<Float>(KEY_CONTENT_SPLIT_PANE_POSITION) ?: 0.7f,
             moveEnabled = true
         )
     )
@@ -317,11 +344,17 @@ class BookContentViewModel(
                 }
             }
         }
+        
+        // Save expanded categories state
+        saveState(KEY_EXPANDED_CATEGORIES, _expandedCategories.value)
     }
 
     private fun selectCategory(category: Category) {
         _selectedCategory.value = category
         expandCategory(category)
+        
+        // Save selected category
+        saveState(KEY_SELECTED_CATEGORY, category)
     }
 
     private fun loadBook(book: Book) {
@@ -377,6 +410,9 @@ class BookContentViewModel(
                 }
             }
         }
+        
+        // Save expanded TOC entries state
+        saveState(KEY_EXPANDED_TOC_ENTRIES, _expandedTocEntries.value)
     }
 
     private fun getAllDescendantIds(entryId: Long, childrenMap: Map<Long, List<TocEntry>>): Set<Long> =
@@ -390,6 +426,9 @@ class BookContentViewModel(
     private fun selectLine(line: Line) {
         _selectedLine.value = line
         fetchCommentariesForLine(line)
+        
+        // Save selected line
+        saveState(KEY_SELECTED_LINE, line)
     }
 
     private fun fetchCommentariesForLine(line: Line) {
@@ -425,22 +464,22 @@ class BookContentViewModel(
 
     private fun updateSearchText(text: String) {
         _searchText.value = text
-        saveState("searchText", text)
+        saveState(KEY_SEARCH_TEXT, text)
     }
 
     private fun updateParagraphScrollPosition(position: Int) {
         _paragraphScrollPosition.value = position
-        saveState("paragraphScrollPosition", position)
+        saveState(KEY_PARAGRAPH_SCROLL_POSITION, position)
     }
 
     private fun updateChapterScrollPosition(position: Int) {
         _chapterScrollPosition.value = position
-        saveState("chapterScrollPosition", position)
+        saveState(KEY_CHAPTER_SCROLL_POSITION, position)
     }
 
     private fun selectChapter(chapter: Int) {
         _selectedChapter.value = chapter
-        saveState("selectedChapter", chapter)
+        saveState(KEY_SELECTED_CHAPTER, chapter)
     }
 
     @OptIn(ExperimentalSplitPaneApi::class)
@@ -457,6 +496,8 @@ class BookContentViewModel(
             // Save current position before hiding
             if (_contentSplitPaneState.value.positionPercentage > 0) {
                 _previousContentSplitPosition.value = _contentSplitPaneState.value.positionPercentage
+                // Save previous content split position
+                saveState(KEY_PREVIOUS_CONTENT_SPLIT_POSITION, _previousContentSplitPosition.value)
             }
             // Set to a high value to minimize the content area
             _contentSplitPaneState.value = SplitPaneState(
@@ -465,13 +506,14 @@ class BookContentViewModel(
             )
         }
 
-        saveState("showCommentaries", _showCommentaries.value)
+        saveState(KEY_SHOW_COMMENTARIES, _showCommentaries.value)
+        saveState(KEY_CONTENT_SPLIT_PANE_POSITION, _contentSplitPaneState.value.positionPercentage)
     }
 
     // Store previous split pane positions
-    private val _previousMainSplitPosition = MutableStateFlow(0.3f)
-    private val _previousTocSplitPosition = MutableStateFlow(0.3f)
-    private val _previousContentSplitPosition = MutableStateFlow(0.7f)
+    private val _previousMainSplitPosition = MutableStateFlow(getState<Float>(KEY_PREVIOUS_MAIN_SPLIT_POSITION) ?: 0.3f)
+    private val _previousTocSplitPosition = MutableStateFlow(getState<Float>(KEY_PREVIOUS_TOC_SPLIT_POSITION) ?: 0.3f)
+    private val _previousContentSplitPosition = MutableStateFlow(getState<Float>(KEY_PREVIOUS_CONTENT_SPLIT_POSITION) ?: 0.7f)
 
     private fun toggleBookTree() {
         val isCurrentlyVisible = _showBookTree.value
@@ -487,6 +529,8 @@ class BookContentViewModel(
             // Save current position before hiding
             if (_splitPaneState.value.positionPercentage > 0) {
                 _previousMainSplitPosition.value = _splitPaneState.value.positionPercentage
+                // Save previous main split position
+                saveState(KEY_PREVIOUS_MAIN_SPLIT_POSITION, _previousMainSplitPosition.value)
             }
             // Set to zero to hide the panel
             _splitPaneState.value = SplitPaneState(
@@ -495,7 +539,8 @@ class BookContentViewModel(
             )
         }
 
-        saveState("showBookTree", _showBookTree.value)
+        saveState(KEY_SHOW_BOOK_TREE, _showBookTree.value)
+        saveState(KEY_SPLIT_PANE_POSITION, _splitPaneState.value.positionPercentage)
     }
 
     @OptIn(ExperimentalSplitPaneApi::class)
@@ -513,6 +558,8 @@ class BookContentViewModel(
             // Save current position before hiding
             if (_tocSplitPaneState.value.positionPercentage > 0) {
                 _previousTocSplitPosition.value = _tocSplitPaneState.value.positionPercentage
+                // Save previous TOC split position
+                saveState(KEY_PREVIOUS_TOC_SPLIT_POSITION, _previousTocSplitPosition.value)
             }
             // Set to zero to hide the panel
             _tocSplitPaneState.value = SplitPaneState(
@@ -521,22 +568,44 @@ class BookContentViewModel(
             )
         }
 
-        saveState("showToc", _showToc.value)
+        saveState(KEY_SHOW_TOC, _showToc.value)
+        saveState(KEY_TOC_SPLIT_PANE_POSITION, _tocSplitPaneState.value.positionPercentage)
     }
 
     @OptIn(ExperimentalSplitPaneApi::class)
     private fun saveAllStates() {
-        saveState("splitPanePosition", _splitPaneState.value.positionPercentage)
-        saveState("tocSplitPanePosition", _tocSplitPaneState.value.positionPercentage)
-        saveState("contentSplitPanePosition", _contentSplitPaneState.value.positionPercentage)
-        saveState("searchText", _searchText.value)
-        saveState("paragraphScrollPosition", _paragraphScrollPosition.value)
-        saveState("selectedChapter", _selectedChapter.value)
-        saveState("showCommentaries", _showCommentaries.value)
-        saveState("showBookTree", _showBookTree.value)
-        saveState("showToc", _showToc.value)
+        // Save split pane positions
+        saveState(KEY_SPLIT_PANE_POSITION, _splitPaneState.value.positionPercentage)
+        saveState(KEY_TOC_SPLIT_PANE_POSITION, _tocSplitPaneState.value.positionPercentage)
+        saveState(KEY_CONTENT_SPLIT_PANE_POSITION, _contentSplitPaneState.value.positionPercentage)
+        
+        // Save previous split pane positions
+        saveState(KEY_PREVIOUS_MAIN_SPLIT_POSITION, _previousMainSplitPosition.value)
+        saveState(KEY_PREVIOUS_TOC_SPLIT_POSITION, _previousTocSplitPosition.value)
+        saveState(KEY_PREVIOUS_CONTENT_SPLIT_POSITION, _previousContentSplitPosition.value)
+        
+        // Save UI state
+        saveState(KEY_SEARCH_TEXT, _searchText.value)
+        saveState(KEY_PARAGRAPH_SCROLL_POSITION, _paragraphScrollPosition.value)
+        saveState(KEY_CHAPTER_SCROLL_POSITION, _chapterScrollPosition.value)
+        saveState(KEY_SELECTED_CHAPTER, _selectedChapter.value)
+        saveState(KEY_SHOW_COMMENTARIES, _showCommentaries.value)
+        saveState(KEY_SHOW_BOOK_TREE, _showBookTree.value)
+        saveState(KEY_SHOW_TOC, _showToc.value)
+        
+        // Save selection state
         _selectedBook.value?.let { book ->
-            saveState("selectedBook", book)
+            saveState(KEY_SELECTED_BOOK, book)
         }
+        _selectedCategory.value?.let { category ->
+            saveState(KEY_SELECTED_CATEGORY, category)
+        }
+        _selectedLine.value?.let { line ->
+            saveState(KEY_SELECTED_LINE, line)
+        }
+        
+        // Save expanded items state
+        saveState(KEY_EXPANDED_CATEGORIES, _expandedCategories.value)
+        saveState(KEY_EXPANDED_TOC_ENTRIES, _expandedTocEntries.value)
     }
 }

@@ -30,7 +30,7 @@ class BookContentViewModel(
     private val _categoryChildren = MutableStateFlow<Map<Long, List<Category>>>(emptyMap())
     private val _booksInCategory = MutableStateFlow<Set<Book>>(emptySet())
     private val _selectedCategory = MutableStateFlow<Category?>(null)
-    private val _selectedBook = MutableStateFlow<Book?>(null)
+    private val _selectedBook = MutableStateFlow<Book?>(getState("selectedBook"))
     private val _searchText = MutableStateFlow(getState<String>("searchText") ?: "")
     private val _showBookTree = MutableStateFlow(getState<Boolean>("showBookTree") ?: true)
 
@@ -96,25 +96,40 @@ class BookContentViewModel(
     init {
         loadRootCategories()
 
-        // Check if we have a bookId in the savedStateHandle
-        savedStateHandle.get<Long>("bookId")?.let { bookId ->
-            // Load the book
+        // First check if we have a restored book from saved state
+        val restoredBook = _selectedBook.value
+        if (restoredBook != null) {
+            // Load the associated data for the restored book
             viewModelScope.launch {
                 _isLoading.value = true
                 try {
-                    // Get the book from the repository
-                    repository.getBook(bookId)?.let { book ->
-                        // Load the book
-                        loadBook(book)
-
-                        // Check if we have a lineId in the savedStateHandle
-                        savedStateHandle.get<Long>("lineId")?.let { lineId ->
-                            // Load and select the line
-                            loadAndSelectLine(lineId)
-                        }
-                    }
+                    // Load the book data
+                    loadBookData(restoredBook)
                 } finally {
                     _isLoading.value = false
+                }
+            }
+        } else {
+            // If no restored book, check if we have a bookId in the savedStateHandle
+            savedStateHandle.get<Long>("bookId")?.let { bookId ->
+                // Load the book
+                viewModelScope.launch {
+                    _isLoading.value = true
+                    try {
+                        // Get the book from the repository
+                        repository.getBook(bookId)?.let { book ->
+                            // Load the book
+                            loadBook(book)
+
+                            // Check if we have a lineId in the savedStateHandle
+                            savedStateHandle.get<Long>("lineId")?.let { lineId ->
+                                // Load and select the line
+                                loadAndSelectLine(lineId)
+                            }
+                        }
+                    } finally {
+                        _isLoading.value = false
+                    }
                 }
             }
         }
@@ -311,7 +326,10 @@ class BookContentViewModel(
 
     private fun loadBook(book: Book) {
         _selectedBook.value = book
-
+        loadBookData(book)
+    }
+    
+    private fun loadBookData(book: Book) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
@@ -517,5 +535,8 @@ class BookContentViewModel(
         saveState("showCommentaries", _showCommentaries.value)
         saveState("showBookTree", _showBookTree.value)
         saveState("showToc", _showToc.value)
+        _selectedBook.value?.let { book ->
+            saveState("selectedBook", book)
+        }
     }
 }

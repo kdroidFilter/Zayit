@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight.Companion.Bold
+import androidx.compose.ui.text.font.FontWeight.Companion.Normal
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -157,6 +159,6 @@ private fun BookItem(
         Spacer(modifier = Modifier.width(24.dp))
         Text(text = "📕", modifier = Modifier.width(24.dp))
         Spacer(modifier = Modifier.width(8.dp))
-        Text(text = book.title)
+        Text(text = book.title, fontWeight = if (isSelected) Bold else Normal)
     }
 }

@@ -44,7 +44,10 @@ class BookContentViewModel(
         // Additional state keys
         const val KEY_SELECTED_CATEGORY = "selectedCategory"
         const val KEY_EXPANDED_CATEGORIES = "expandedCategories"
+        const val KEY_CATEGORY_CHILDREN = "categoryChildren"
+        const val KEY_BOOKS_IN_CATEGORY = "booksInCategory"
         const val KEY_EXPANDED_TOC_ENTRIES = "expandedTocEntries"
+        const val KEY_TOC_CHILDREN = "tocChildren"
         const val KEY_SELECTED_LINE = "selectedLine"
         const val KEY_PREVIOUS_MAIN_SPLIT_POSITION = "previousMainSplitPosition"
         const val KEY_PREVIOUS_TOC_SPLIT_POSITION = "previousTocSplitPosition"
@@ -54,8 +57,8 @@ class BookContentViewModel(
     private val _isLoading = MutableStateFlow(false)
     private val _rootCategories = MutableStateFlow<List<Category>>(emptyList())
     private val _expandedCategories = MutableStateFlow<Set<Long>>(getState(KEY_EXPANDED_CATEGORIES) ?: emptySet())
-    private val _categoryChildren = MutableStateFlow<Map<Long, List<Category>>>(emptyMap())
-    private val _booksInCategory = MutableStateFlow<Set<Book>>(emptySet())
+    private val _categoryChildren = MutableStateFlow<Map<Long, List<Category>>>(getState(KEY_CATEGORY_CHILDREN) ?: emptyMap())
+    private val _booksInCategory = MutableStateFlow<Set<Book>>(getState(KEY_BOOKS_IN_CATEGORY) ?: emptySet())
     private val _selectedCategory = MutableStateFlow<Category?>(getState(KEY_SELECTED_CATEGORY))
     private val _selectedBook = MutableStateFlow<Book?>(getState(KEY_SELECTED_BOOK))
     private val _searchText = MutableStateFlow(getState<String>(KEY_SEARCH_TEXT) ?: "")
@@ -89,7 +92,7 @@ class BookContentViewModel(
     private val _selectedLine = MutableStateFlow<Line?>(getState(KEY_SELECTED_LINE))
     private val _tocEntries = MutableStateFlow<List<TocEntry>>(emptyList())
     private val _expandedTocEntries = MutableStateFlow<Set<Long>>(getState(KEY_EXPANDED_TOC_ENTRIES) ?: emptySet())
-    private val _tocChildren = MutableStateFlow<Map<Long, List<TocEntry>>>(emptyMap())
+    private val _tocChildren = MutableStateFlow<Map<Long, List<TocEntry>>>(getState(KEY_TOC_CHILDREN) ?: emptyMap())
     private val _showToc = MutableStateFlow(getState<Boolean>(KEY_SHOW_TOC) ?: true)
 
     private val _commentaries = MutableStateFlow<List<CommentaryWithText>>(emptyList())
@@ -310,7 +313,35 @@ class BookContentViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _rootCategories.value = repository.getRootCategories()
+                // Load root categories
+                val rootCategories = repository.getRootCategories()
+                _rootCategories.value = rootCategories
+                
+                // Get the current expanded categories
+                val expandedCategories = _expandedCategories.value
+                
+                // If there are expanded categories, load their books
+                if (expandedCategories.isNotEmpty()) {
+                    // Load books for all expanded categories
+                    val booksToLoad = mutableSetOf<Book>()
+                    
+                    // Process categories to load books
+                    expandedCategories.forEach { categoryId ->
+                        try {
+                            val books = repository.getBooksByCategory(categoryId)
+                            if (books.isNotEmpty()) {
+                                booksToLoad.addAll(books)
+                            }
+                        } catch (e: Exception) {
+                            // Handle error
+                        }
+                    }
+                    
+                    // Update books in category
+                    if (booksToLoad.isNotEmpty()) {
+                        _booksInCategory.value = _booksInCategory.value + booksToLoad
+                    }
+                }
             } finally {
                 _isLoading.value = false
             }
@@ -331,12 +362,20 @@ class BookContentViewModel(
                     try {
                         val children = repository.getCategoryChildren(category.id)
                         if (children.isNotEmpty()) {
-                            _categoryChildren.value += (category.id to children)
+                            val updatedMap = _categoryChildren.value + (category.id to children)
+                            _categoryChildren.value = updatedMap
+                            
+                            // Save category children map
+                            saveState(KEY_CATEGORY_CHILDREN, updatedMap)
                         }
 
                         val books = repository.getBooksByCategory(category.id)
                         if (books.isNotEmpty()) {
-                            _booksInCategory.value += books
+                            val updatedBooks = _booksInCategory.value + books
+                            _booksInCategory.value = updatedBooks
+                            
+                            // Save books in category
+                            saveState(KEY_BOOKS_IN_CATEGORY, updatedBooks)
                         }
                     } finally {
                         _isLoading.value = false
@@ -403,7 +442,11 @@ class BookContentViewModel(
                     _isLoading.value = true
                     try {
                         val children = repository.getTocChildren(tocEntry.id)
-                        _tocChildren.value += (tocEntry.id to children.ifEmpty { emptyList() })
+                        val updatedChildren = _tocChildren.value + (tocEntry.id to children.ifEmpty { emptyList() })
+                        _tocChildren.value = updatedChildren
+                        
+                        // Save TOC children map
+                        saveState(KEY_TOC_CHILDREN, updatedChildren)
                     } finally {
                         _isLoading.value = false
                     }
@@ -606,6 +649,9 @@ class BookContentViewModel(
         
         // Save expanded items state
         saveState(KEY_EXPANDED_CATEGORIES, _expandedCategories.value)
+        saveState(KEY_CATEGORY_CHILDREN, _categoryChildren.value)
+        saveState(KEY_BOOKS_IN_CATEGORY, _booksInCategory.value)
         saveState(KEY_EXPANDED_TOC_ENTRIES, _expandedTocEntries.value)
+        saveState(KEY_TOC_CHILDREN, _tocChildren.value)
     }
 }

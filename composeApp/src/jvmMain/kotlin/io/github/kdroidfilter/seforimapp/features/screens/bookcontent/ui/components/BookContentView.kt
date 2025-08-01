@@ -20,9 +20,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 
+@OptIn(FlowPreview::class)
 @Composable
 fun BookContentView(
     book: Book,
@@ -30,13 +34,20 @@ fun BookContentView(
     selectedLine: Line?,
     onLineSelected: (Line) -> Unit,
     modifier: Modifier = Modifier,
-    preservedListState: LazyListState? = null
+    preservedListState: LazyListState? = null,
+    scrollIndex: Int = 0,
+    scrollOffset: Int = 0,
+    onScroll: (Int, Int) -> Unit = { _, _ -> }
 ) {
-    val listState = preservedListState ?: rememberLazyListState()
+    val listState = preservedListState ?: rememberLazyListState(
+        initialFirstVisibleItemIndex = scrollIndex,
+        initialFirstVisibleItemScrollOffset = scrollOffset
+    )
     var lastScrolledLineId by remember { mutableStateOf<Long?>(null) }
+    var hasRestored by remember { mutableStateOf(false) }
 
     // Only scroll when the selected line actually changes, without animation
-    LaunchedEffect(selectedLine?.id) {
+    LaunchedEffect(selectedLine?.id, lines.size) {
         selectedLine?.let { selected ->
             if (selected.id != lastScrolledLineId) {
                 lines.indexOfFirst { it.id == selected.id }.takeIf { it >= 0 }?.let { index ->
@@ -49,8 +60,30 @@ fun BookContentView(
                         listState.scrollToItem(index, 0)
                     }
                     lastScrolledLineId = selected.id
+                    hasRestored = true
                 }
             }
+        }
+    }
+    
+    // Restore initial scroll position if no selected line
+    LaunchedEffect(lines.size) {
+        if (lines.isNotEmpty() && !hasRestored && selectedLine == null) {
+            val safeIndex = scrollIndex.coerceIn(0, lines.lastIndex)
+            listState.scrollToItem(safeIndex, scrollOffset)
+            hasRestored = true
+        }
+    }
+    
+    // Collect scroll events only after restoration
+    LaunchedEffect(listState, hasRestored) {
+        if (hasRestored) {
+            snapshotFlow {
+                listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+            }
+                .distinctUntilChanged()
+                .debounce(250)
+                .collect { (index, offset) -> onScroll(index, offset) }
         }
     }
 

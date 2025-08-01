@@ -48,7 +48,9 @@ data class ContentUiState(
     val showCommentaries: Boolean = false,
     val paragraphScrollPosition: Int = 0,
     val chapterScrollPosition: Int = 0,
-    val selectedChapter: Int = 0
+    val selectedChapter: Int = 0,
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0
 )
 
 /**

@@ -61,7 +61,12 @@ fun BookContentPanel(
                             onEvent(BookContentEvent.LineSelected(line))
                         },
                         modifier = Modifier.padding(16.dp),
-                        preservedListState = bookListState
+                        preservedListState = bookListState,
+                        scrollIndex = contentState.scrollIndex,
+                        scrollOffset = contentState.scrollOffset,
+                        onScroll = { index, offset ->
+                            onEvent(BookContentEvent.ContentScrolled(index, offset))
+                        }
                     )
                 },
                 secondContent = {
@@ -93,7 +98,12 @@ fun BookContentPanel(
                     onEvent(BookContentEvent.LineSelected(line))
                 },
                 modifier = modifier.padding(16.dp),
-                preservedListState = bookListState
+                preservedListState = bookListState,
+                scrollIndex = contentState.scrollIndex,
+                scrollOffset = contentState.scrollOffset,
+                onScroll = { index, offset ->
+                    onEvent(BookContentEvent.ContentScrolled(index, offset))
+                }
             )
         }
     }

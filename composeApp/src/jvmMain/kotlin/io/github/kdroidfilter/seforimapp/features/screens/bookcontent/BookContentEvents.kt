@@ -21,6 +21,7 @@ sealed interface BookContentEvent {
     data class LineSelected(val line: Line) : BookContentEvent
     data class LoadAndSelectLine(val lineId: Long) : BookContentEvent
     data object ToggleCommentaries : BookContentEvent
+    data class ContentScrolled(val index: Int, val offset: Int) : BookContentEvent
 
     // Scroll events
     data class ParagraphScrolled(val position: Int) : BookContentEvent

@@ -66,6 +66,9 @@ fun BookContentPanel(
                         scrollOffset = contentState.scrollOffset,
                         onScroll = { index, offset ->
                             onEvent(BookContentEvent.ContentScrolled(index, offset))
+                        },
+                        onLoadMore = {
+                            onEvent(BookContentEvent.LoadMoreLines)
                         }
                     )
                 },
@@ -103,6 +106,9 @@ fun BookContentPanel(
                 scrollOffset = contentState.scrollOffset,
                 onScroll = { index, offset ->
                     onEvent(BookContentEvent.ContentScrolled(index, offset))
+                },
+                onLoadMore = {
+                    onEvent(BookContentEvent.LoadMoreLines)
                 }
             )
         }

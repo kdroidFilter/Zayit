@@ -198,6 +198,7 @@ class BookContentViewModel(
             is BookContentEvent.LoadAndSelectLine -> loadAndSelectLine(event.lineId)
             BookContentEvent.ToggleCommentaries -> toggleCommentaries()
             is BookContentEvent.ContentScrolled -> updateContentScrollPosition(event.index, event.offset)
+            BookContentEvent.LoadMoreLines -> loadMoreLines()
 
             // Scroll events
             is BookContentEvent.ParagraphScrolled -> updateParagraphScrollPosition(event.position)
@@ -547,6 +548,66 @@ class BookContentViewModel(
                 }
             } catch (e: Exception) {
                 // Handle error
+            }
+        }
+    }
+    
+    private fun loadMoreLines() {
+        println("[DEBUG_LOG] loadMoreLines called")
+        val currentBook = _selectedBook.value ?: return
+        val currentLines = _bookLines.value
+        
+        println("[DEBUG_LOG] Current book: ${currentBook.title}, Current lines count: ${currentLines.size}")
+        
+        if (currentLines.isEmpty()) {
+            println("[DEBUG_LOG] Current lines is empty, returning")
+            return
+        }
+        
+        // Check if we're already loading
+        if (_isLoading.value) {
+            println("[DEBUG_LOG] Already loading, returning")
+            return
+        }
+        
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Calculate the next start index (current lines size)
+                val startIndex = currentLines.size
+                // Calculate the end index (start index + 30)
+                val endIndex = startIndex + 30
+                println("[DEBUG_LOG] Loading more lines from index: $startIndex to index: $endIndex")
+                
+                // Load 30 more lines (from startIndex to endIndex)
+                val moreLines = repository.getLines(currentBook.id, startIndex, endIndex)
+                println("[DEBUG_LOG] Loaded ${moreLines.size} more lines")
+                
+                // Only update if we got new lines
+                if (moreLines.isNotEmpty()) {
+                    // Create a set of existing line IDs for faster lookup
+                    val existingIds = currentLines.map { it.id }.toSet()
+                    
+                    // Filter out any new lines that have IDs already in the current list
+                    val uniqueNewLines = moreLines.filter { newLine -> newLine.id !in existingIds }
+                    println("[DEBUG_LOG] Unique new lines: ${uniqueNewLines.size}")
+                    
+                    // Only append if we have unique new lines
+                    if (uniqueNewLines.isNotEmpty()) {
+                        // Append the unique new lines to the existing lines
+                        _bookLines.value = currentLines + uniqueNewLines
+                        println("[DEBUG_LOG] Updated book lines, new total: ${_bookLines.value.size}")
+                    } else {
+                        println("[DEBUG_LOG] No unique new lines to add")
+                    }
+                } else {
+                    println("[DEBUG_LOG] No more lines returned from repository")
+                }
+            } catch (e: Exception) {
+                println("[DEBUG_LOG] Error loading more lines: ${e.message}")
+                e.printStackTrace()
+            } finally {
+                _isLoading.value = false
             }
         }
     }

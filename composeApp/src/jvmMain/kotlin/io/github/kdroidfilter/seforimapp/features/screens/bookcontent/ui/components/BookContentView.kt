@@ -37,7 +37,8 @@ fun BookContentView(
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
     scrollOffset: Int = 0,
-    onScroll: (Int, Int) -> Unit = { _, _ -> }
+    onScroll: (Int, Int) -> Unit = { _, _ -> },
+    onLoadMore: () -> Unit = {}
 ) {
     val listState = preservedListState ?: rememberLazyListState(
         initialFirstVisibleItemIndex = scrollIndex,
@@ -99,6 +100,29 @@ fun BookContentView(
                 .distinctUntilChanged()
                 .debounce(250)
                 .collect { (index, offset) -> onScroll(index, offset) }
+        }
+    }
+    
+    // 4. Detect when user has scrolled near the end of the list and trigger loading more content
+    LaunchedEffect(listState, lines.size) {
+        println("[DEBUG_LOG] LaunchedEffect for infinite scroll started, lines size: ${lines.size}")
+        snapshotFlow { 
+            val layoutInfo = listState.layoutInfo
+            val totalItemsCount = lines.size
+            val lastVisibleItemIndex = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
+            
+            // Check if we're near the end of the list (last 5 items)
+            val isNearEnd = lastVisibleItemIndex >= (totalItemsCount - 5)
+            println("[DEBUG_LOG] Last visible item index: $lastVisibleItemIndex, Total items: $totalItemsCount, Is near end: $isNearEnd")
+            isNearEnd
+        }
+        .distinctUntilChanged()
+        .collect { isNearEnd ->
+            println("[DEBUG_LOG] Is near end changed to: $isNearEnd, Lines empty: ${lines.isEmpty()}")
+            if (isNearEnd && lines.isNotEmpty()) {
+                println("[DEBUG_LOG] Calling onLoadMore")
+                onLoadMore()
+            }
         }
     }
 

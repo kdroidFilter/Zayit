@@ -13,6 +13,9 @@ sealed interface BookContentEvent {
     data class TocEntryExpanded(val entry: TocEntry) : BookContentEvent
     data object ToggleToc : BookContentEvent
     data class TocScrolled(val index: Int, val offset: Int) : BookContentEvent
+    
+    // Book tree events
+    data class BookTreeScrolled(val index: Int, val offset: Int) : BookContentEvent
 
     // Content events
     data class LineSelected(val line: Line) : BookContentEvent

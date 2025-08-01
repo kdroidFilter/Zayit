@@ -19,7 +19,9 @@ data class NavigationUiState(
     val selectedCategory: Category? = null,
     val selectedBook: Book? = null,
     val searchText: String = "",
-    val isVisible: Boolean = true
+    val isVisible: Boolean = true,
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0
 )
 
 /**

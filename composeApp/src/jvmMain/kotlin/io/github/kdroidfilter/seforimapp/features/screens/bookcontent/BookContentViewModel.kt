@@ -54,6 +54,8 @@ class BookContentViewModel(
         const val KEY_PREVIOUS_CONTENT_SPLIT_POSITION = "previousContentSplitPosition"
         const val KEY_TOC_SCROLL_INDEX = "tocScrollIndex"
         const val KEY_TOC_SCROLL_OFFSET = "tocScrollOffset"
+        const val KEY_BOOK_TREE_SCROLL_INDEX = "bookTreeScrollIndex"
+        const val KEY_BOOK_TREE_SCROLL_OFFSET = "bookTreeScrollOffset"
     }
     // Initialize state flows first
     private val _isLoading = MutableStateFlow(false)
@@ -65,6 +67,8 @@ class BookContentViewModel(
     private val _selectedBook = MutableStateFlow<Book?>(getState(KEY_SELECTED_BOOK))
     private val _searchText = MutableStateFlow(getState<String>(KEY_SEARCH_TEXT) ?: "")
     private val _showBookTree = MutableStateFlow(getState<Boolean>(KEY_SHOW_BOOK_TREE) ?: true)
+    private val _bookTreeScrollIndex = MutableStateFlow(getState<Int>(KEY_BOOK_TREE_SCROLL_INDEX) ?: 0)
+    private val _bookTreeScrollOffset = MutableStateFlow(getState<Int>(KEY_BOOK_TREE_SCROLL_OFFSET) ?: 0)
 
     @OptIn(ExperimentalSplitPaneApi::class)
     private val _splitPaneState = MutableStateFlow(
@@ -181,6 +185,9 @@ class BookContentViewModel(
             is BookContentEvent.TocEntryExpanded -> expandTocEntry(event.entry)
             BookContentEvent.ToggleToc -> toggleToc()
             is BookContentEvent.TocScrolled -> updateTocScrollPosition(event.index, event.offset)
+            
+            // Book tree events
+            is BookContentEvent.BookTreeScrolled -> updateBookTreeScrollPosition(event.index, event.offset)
 
             // Content events
             is BookContentEvent.LineSelected -> selectLine(event.line)
@@ -212,6 +219,10 @@ class BookContentViewModel(
         }.combine(_searchText) { data, search ->
             data.copy(searchText = search)
         }.combine(_showBookTree) { data, visible ->
+            Pair(data, visible)
+        }.combine(_bookTreeScrollIndex) { (data, visible), scrollIndex ->
+            Triple(data, visible, scrollIndex)
+        }.combine(_bookTreeScrollOffset) { (data, visible, scrollIndex), scrollOffset ->
             NavigationUiState(
                 rootCategories = data.rootCategories,
                 expandedCategories = data.expandedCategories,
@@ -220,7 +231,9 @@ class BookContentViewModel(
                 selectedCategory = data.selectedCategory,
                 selectedBook = data.selectedBook,
                 searchText = data.searchText,
-                isVisible = visible
+                isVisible = visible,
+                scrollIndex = scrollIndex,
+                scrollOffset = scrollOffset
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, NavigationUiState())
     }
@@ -543,6 +556,13 @@ class BookContentViewModel(
         saveState(KEY_TOC_SCROLL_INDEX, index)
         saveState(KEY_TOC_SCROLL_OFFSET, offset)
     }
+    
+    private fun updateBookTreeScrollPosition(index: Int, offset: Int) {
+        _bookTreeScrollIndex.value = index
+        _bookTreeScrollOffset.value = offset
+        saveState(KEY_BOOK_TREE_SCROLL_INDEX, index)
+        saveState(KEY_BOOK_TREE_SCROLL_OFFSET, offset)
+    }
 
     private fun selectChapter(chapter: Int) {
         _selectedChapter.value = chapter
@@ -661,6 +681,8 @@ class BookContentViewModel(
         saveState(KEY_SHOW_TOC, _showToc.value)
         saveState(KEY_TOC_SCROLL_INDEX, _tocScrollIndex.value)
         saveState(KEY_TOC_SCROLL_OFFSET, _tocScrollOffset.value)
+        saveState(KEY_BOOK_TREE_SCROLL_INDEX, _bookTreeScrollIndex.value)
+        saveState(KEY_BOOK_TREE_SCROLL_OFFSET, _bookTreeScrollOffset.value)
 
         // Save selection state
         _selectedBook.value?.let { book ->

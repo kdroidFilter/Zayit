@@ -3,7 +3,9 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compon
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -13,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.NavigationUiState
+import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.jewel.ui.component.Text
 
 @Stable
@@ -22,11 +25,15 @@ private data class TreeItem(
     val content: @Composable () -> Unit
 )
 
+/**
+ * Hierarchical tree view of categories and books with scroll-state persistence.
+ */
 @Composable
 fun CategoryBookTree(
     navigationState: NavigationUiState,
     onCategoryClick: (Category) -> Unit,
     onBookClick: (Book) -> Unit,
+    onScroll: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val treeItems = remember(
@@ -47,7 +54,36 @@ fun CategoryBookTree(
         )
     }
     
+    /* ---------------------------------------------------------------------
+     * Remember the LazyListState from the saved index/offset.
+     * -------------------------------------------------------------------- */
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = navigationState.scrollIndex,
+        initialFirstVisibleItemScrollOffset = navigationState.scrollOffset
+    )
+    
+    /* ---------------------------------------------------------------------
+     * 1) Send scroll updates upstream without debounce so we never lose the
+     *    very last position.
+     * -------------------------------------------------------------------- */
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .distinctUntilChanged()
+            .collect { (index, offset) -> onScroll(index, offset) }
+    }
+    
+    /* ---------------------------------------------------------------------
+     * 2) Once the list actually has content, make sure we are scrolled to the
+     *    stored position (Compose might have reset us to 0 when it was empty).
+     * -------------------------------------------------------------------- */
+    LaunchedEffect(treeItems.size, navigationState.scrollIndex, navigationState.scrollOffset) {
+        if (treeItems.isNotEmpty()) {
+            listState.scrollToItem(navigationState.scrollIndex, navigationState.scrollOffset)
+        }
+    }
+    
     LazyColumn(
+        state = listState,
         modifier = modifier.fillMaxWidth().fillMaxHeight()
     ) {
         items(

@@ -31,7 +31,8 @@ fun CategoryTreePanel(
         CategoryBookTree(
             navigationState = navigationState,
             onCategoryClick = { onEvent(BookContentEvent.CategorySelected(it)) },
-            onBookClick = { onEvent(BookContentEvent.BookSelected(it)) }
+            onBookClick = { onEvent(BookContentEvent.BookSelected(it)) },
+            onScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) }
         )
     }
 }

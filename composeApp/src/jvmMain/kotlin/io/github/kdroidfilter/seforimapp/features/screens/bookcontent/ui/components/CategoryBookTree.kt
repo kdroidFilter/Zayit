@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.NavigationUiState
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.jewel.ui.component.Text
@@ -26,6 +27,7 @@ private data class TreeItem(
     val content: @Composable () -> Unit
 )
 
+@OptIn(FlowPreview::class)
 @Composable
 fun CategoryBookTree(
     navigationState: NavigationUiState,
@@ -35,7 +37,7 @@ fun CategoryBookTree(
     modifier: Modifier = Modifier
 ) {
     /* ---------------------------------------------------------------------
-     * Construire la liste hiérarchique plate à afficher.
+     * Build the flat hierarchical list to display.
      * -------------------------------------------------------------------- */
     val treeItems = remember(
         navigationState.rootCategories,
@@ -58,7 +60,7 @@ fun CategoryBookTree(
     }
 
     /* ---------------------------------------------------------------------
-     * Restaurer le LazyListState.
+     * Restore the LazyListState.
      * -------------------------------------------------------------------- */
     val listState: LazyListState = rememberLazyListState(
         initialFirstVisibleItemIndex = navigationState.scrollIndex,
@@ -68,23 +70,24 @@ fun CategoryBookTree(
     var hasRestored by remember { mutableStateOf(false) }
 
 
-    /* ---------------- 1. Restaurer quand la liste est vraiment prête -------- */
+    /* ---------------- 1. Restore when the list is truly ready -------- */
     LaunchedEffect(treeItems.size) {
         if (treeItems.isNotEmpty() && !hasRestored) {
             val safeIndex = navigationState.scrollIndex
                 .coerceIn(0, treeItems.lastIndex)
             listState.scrollToItem(safeIndex, navigationState.scrollOffset)
-            hasRestored = true          // ← on attend d’avoir fini avant d’écouter les scrolls
+            hasRestored = true          // ← wait until finished before listening to scrolls
         }
     }
 
-    /* ---------------- 2. Propager les scrolls *après* restauration ---------- */
+    /* ---------------- 2. Propagate scrolls *after* restoration ---------- */
     LaunchedEffect(listState, hasRestored) {
         if (hasRestored) {
             snapshotFlow {
                 listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
             }
                 .distinctUntilChanged()
+                .debounce(250)
                 .collect { (i, o) -> onScroll(i, o) }
         }
     }
@@ -138,7 +141,7 @@ private fun buildTreeItems(
         )
 
         if (expandedCategories.contains(category.id)) {
-            // Livres dans cette catégorie
+            // Books in this category
             booksInCategory
                 .filter { it.categoryId == category.id }
                 .forEach { book ->
@@ -157,7 +160,7 @@ private fun buildTreeItems(
                     )
                 }
 
-            // Sous‑catégories
+            // Subcategories
             categoryChildren[category.id]?.forEach { child ->
                 addCategory(child, level + 1)
             }

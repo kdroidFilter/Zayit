@@ -12,19 +12,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.VisibleTocEntry
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.jewel.ui.component.Text
 
 /**
  * Table-of-contents list with collapsible nodes and scroll-state persistence.
  *
- * Two fixes compared to the previous version:
- * 1. **No debounce** when emitting scroll events, so the very last position is
- *    always sent to the ViewModel even if the user switches tabs quickly.
- * 2. **Explicit restore** of the saved scroll position once the list has real
- *    content (otherwise Compose would clamp the requested index to 0 when the
- *    list was still empty).
+ * Updates:
+ * 1. Added debounce to reduce the frequency of scroll events
+ * 2. Added hasRestored logic to ensure scroll events are only collected after position restoration
+ * 3. Explicit restore of the saved scroll position once the list has real content
+ *    (otherwise Compose would clamp the requested index to 0 when the list was still empty)
  */
+@OptIn(FlowPreview::class)
 @Composable
 fun TocView(
     tocEntries: List<TocEntry>,
@@ -51,24 +53,32 @@ fun TocView(
         initialFirstVisibleItemIndex = scrollIndex,
         initialFirstVisibleItemScrollOffset = scrollOffset
     )
+    
+    // Track whether the initial scroll position has been restored
+    var hasRestored by remember { mutableStateOf(false) }
 
     /* ---------------------------------------------------------------------
-     * 1) Send scroll updates upstream without debounce so we never lose the
-     *    very last position.
+     * 1) Send scroll updates upstream only after restoration, with debounce
+     *    to reduce the frequency of events.
      * -------------------------------------------------------------------- */
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .distinctUntilChanged()
-            .collect { (index, offset) -> onScroll(index, offset) }
+    LaunchedEffect(listState, hasRestored) {
+        if (hasRestored) {
+            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+                .distinctUntilChanged()
+                .debounce(250) // Add debounce to improve performance
+                .collect { (index, offset) -> onScroll(index, offset) }
+        }
     }
 
     /* ---------------------------------------------------------------------
      * 2) Once the list actually has content, make sure we are scrolled to the
      *    stored position (Compose might have reset us to 0 when it was empty).
      * -------------------------------------------------------------------- */
-    LaunchedEffect(visibleEntries.size, scrollIndex, scrollOffset) {
-        if (visibleEntries.isNotEmpty()) {
-            listState.scrollToItem(scrollIndex, scrollOffset)
+    LaunchedEffect(visibleEntries.size) {
+        if (visibleEntries.isNotEmpty() && !hasRestored) {
+            val safeIndex = scrollIndex.coerceIn(0, visibleEntries.lastIndex)
+            listState.scrollToItem(safeIndex, scrollOffset)
+            hasRestored = true // Mark as restored to start collecting scroll events
         }
     }
 

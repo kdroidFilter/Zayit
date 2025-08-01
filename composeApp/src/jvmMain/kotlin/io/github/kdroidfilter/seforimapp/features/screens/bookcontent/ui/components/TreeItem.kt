@@ -26,7 +26,13 @@ private data class TreeItem(
 )
 
 /**
- * Hierarchical tree view of categories and books with scroll-state persistence.
+ * Category / Book tree with scroll‑state persistence.
+ *
+ * 👉 Principales corrections comparé à la version précédente :
+ * 1. **Aucune debounce** sur le flux de scroll (même raison que pour TocView).
+ * 2. **scrollToItem uniquement si l’index existe** afin d’éviter un
+ *    IllegalArgumentException quand on recharge le panneau alors que toutes
+ *    les données (livres ou sous‑catégories) ne sont pas encore chargées.
  */
 @Composable
 fun CategoryBookTree(
@@ -36,11 +42,16 @@ fun CategoryBookTree(
     onScroll: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    /* ---------------------------------------------------------------------
+     * Construire la liste hiérarchique plate à afficher.
+     * -------------------------------------------------------------------- */
     val treeItems = remember(
         navigationState.rootCategories,
         navigationState.expandedCategories,
         navigationState.categoryChildren,
-        navigationState.booksInCategory
+        navigationState.booksInCategory,
+        navigationState.selectedCategory,
+        navigationState.selectedBook
     ) {
         buildTreeItems(
             rootCategories = navigationState.rootCategories,
@@ -53,38 +64,43 @@ fun CategoryBookTree(
             onBookClick = onBookClick
         )
     }
-    
+
     /* ---------------------------------------------------------------------
-     * Remember the LazyListState from the saved index/offset.
+     * Restaurer le LazyListState.
      * -------------------------------------------------------------------- */
-    val listState = rememberLazyListState(
+    val listState: LazyListState = rememberLazyListState(
         initialFirstVisibleItemIndex = navigationState.scrollIndex,
         initialFirstVisibleItemScrollOffset = navigationState.scrollOffset
     )
-    
+
     /* ---------------------------------------------------------------------
-     * 1) Send scroll updates upstream without debounce so we never lose the
-     *    very last position.
+     * 1) Propager les mises à jour de scroll immédiatement.
      * -------------------------------------------------------------------- */
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
             .distinctUntilChanged()
             .collect { (index, offset) -> onScroll(index, offset) }
     }
-    
+
     /* ---------------------------------------------------------------------
-     * 2) Once the list actually has content, make sure we are scrolled to the
-     *    stored position (Compose might have reset us to 0 when it was empty).
+     * 2) Scroller à la position sauvegardée quand les données sont prêtes.
      * -------------------------------------------------------------------- */
     LaunchedEffect(treeItems.size, navigationState.scrollIndex, navigationState.scrollOffset) {
         if (treeItems.isNotEmpty()) {
-            listState.scrollToItem(navigationState.scrollIndex, navigationState.scrollOffset)
+            listState.scrollToItem(
+                navigationState.scrollIndex.coerceIn(0, treeItems.lastIndex),
+                navigationState.scrollOffset
+            )
         }
     }
-    
+
+
+    /* ---------------------------------------------------------------------
+     * UI.
+     * -------------------------------------------------------------------- */
     LazyColumn(
         state = listState,
-        modifier = modifier.fillMaxWidth().fillMaxHeight()
+        modifier = modifier.fillMaxSize()
     ) {
         items(
             items = treeItems,
@@ -97,6 +113,9 @@ fun CategoryBookTree(
     }
 }
 
+/* -------------------------------------------------------------------------
+ * Helpers
+ * ---------------------------------------------------------------------- */
 private fun buildTreeItems(
     rootCategories: List<Category>,
     expandedCategories: Set<Long>,
@@ -122,9 +141,9 @@ private fun buildTreeItems(
                 }
             )
         )
-        
+
         if (expandedCategories.contains(category.id)) {
-            // Add books
+            // Livres dans cette catégorie
             booksInCategory
                 .filter { it.categoryId == category.id }
                 .forEach { book ->
@@ -142,14 +161,14 @@ private fun buildTreeItems(
                         )
                     )
                 }
-            
-            // Add child categories
+
+            // Sous‑catégories
             categoryChildren[category.id]?.forEach { child ->
                 addCategory(child, level + 1)
             }
         }
     }
-    
+
     rootCategories.forEach { category ->
         addCategory(category, 0)
     }

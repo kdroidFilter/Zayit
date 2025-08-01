@@ -65,24 +65,27 @@ fun CategoryBookTree(
         initialFirstVisibleItemScrollOffset = navigationState.scrollOffset
     )
 
-    /* ---------------------------------------------------------------------
-     * 1) Propager les mises à jour de scroll immédiatement.
-     * -------------------------------------------------------------------- */
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .distinctUntilChanged()
-            .collect { (index, offset) -> onScroll(index, offset) }
+    var hasRestored by remember { mutableStateOf(false) }
+
+
+    /* ---------------- 1. Restaurer quand la liste est vraiment prête -------- */
+    LaunchedEffect(treeItems.size) {
+        if (treeItems.isNotEmpty() && !hasRestored) {
+            val safeIndex = navigationState.scrollIndex
+                .coerceIn(0, treeItems.lastIndex)
+            listState.scrollToItem(safeIndex, navigationState.scrollOffset)
+            hasRestored = true          // ← on attend d’avoir fini avant d’écouter les scrolls
+        }
     }
 
-    /* ---------------------------------------------------------------------
-     * 2) Scroller à la position sauvegardée quand les données sont prêtes.
-     * -------------------------------------------------------------------- */
-    LaunchedEffect(treeItems.size, navigationState.scrollIndex, navigationState.scrollOffset) {
-        if (treeItems.isNotEmpty()) {
-            listState.scrollToItem(
-                navigationState.scrollIndex,
-                navigationState.scrollOffset
-            )
+    /* ---------------- 2. Propager les scrolls *après* restauration ---------- */
+    LaunchedEffect(listState, hasRestored) {
+        if (hasRestored) {
+            snapshotFlow {
+                listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+            }
+                .distinctUntilChanged()
+                .collect { (i, o) -> onScroll(i, o) }
         }
     }
 

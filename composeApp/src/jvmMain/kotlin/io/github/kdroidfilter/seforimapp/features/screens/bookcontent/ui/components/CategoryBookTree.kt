@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.NavigationUiState
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.jewel.ui.component.Text
 
@@ -25,15 +26,6 @@ private data class TreeItem(
     val content: @Composable () -> Unit
 )
 
-/**
- * Category / Book tree with scroll‑state persistence.
- *
- * 👉 Principales corrections comparé à la version précédente :
- * 1. **Aucune debounce** sur le flux de scroll (même raison que pour TocView).
- * 2. **scrollToItem uniquement si l’index existe** afin d’éviter un
- *    IllegalArgumentException quand on recharge le panneau alors que toutes
- *    les données (livres ou sous‑catégories) ne sont pas encore chargées.
- */
 @Composable
 fun CategoryBookTree(
     navigationState: NavigationUiState,
@@ -88,7 +80,7 @@ fun CategoryBookTree(
     LaunchedEffect(treeItems.size, navigationState.scrollIndex, navigationState.scrollOffset) {
         if (treeItems.isNotEmpty()) {
             listState.scrollToItem(
-                navigationState.scrollIndex.coerceIn(0, treeItems.lastIndex),
+                navigationState.scrollIndex,
                 navigationState.scrollOffset
             )
         }

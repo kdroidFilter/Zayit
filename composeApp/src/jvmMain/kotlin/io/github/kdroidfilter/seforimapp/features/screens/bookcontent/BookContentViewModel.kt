@@ -23,7 +23,7 @@ class BookContentViewModel(
     tabId = savedStateHandle.get<String>(KEY_TAB_ID) ?: "",
     stateManager = stateManager
 ) {
-    
+
     companion object {
         // State keys
         const val KEY_TAB_ID = "tabId"
@@ -40,7 +40,7 @@ class BookContentViewModel(
         const val KEY_PARAGRAPH_SCROLL_POSITION = "paragraphScrollPosition"
         const val KEY_CHAPTER_SCROLL_POSITION = "chapterScrollPosition"
         const val KEY_SELECTED_CHAPTER = "selectedChapter"
-        
+
         // Additional state keys
         const val KEY_SELECTED_CATEGORY = "selectedCategory"
         const val KEY_EXPANDED_CATEGORIES = "expandedCategories"
@@ -52,6 +52,8 @@ class BookContentViewModel(
         const val KEY_PREVIOUS_MAIN_SPLIT_POSITION = "previousMainSplitPosition"
         const val KEY_PREVIOUS_TOC_SPLIT_POSITION = "previousTocSplitPosition"
         const val KEY_PREVIOUS_CONTENT_SPLIT_POSITION = "previousContentSplitPosition"
+        const val KEY_TOC_SCROLL_INDEX = "tocScrollIndex"
+        const val KEY_TOC_SCROLL_OFFSET = "tocScrollOffset"
     }
     // Initialize state flows first
     private val _isLoading = MutableStateFlow(false)
@@ -94,6 +96,8 @@ class BookContentViewModel(
     private val _expandedTocEntries = MutableStateFlow<Set<Long>>(getState(KEY_EXPANDED_TOC_ENTRIES) ?: emptySet())
     private val _tocChildren = MutableStateFlow<Map<Long, List<TocEntry>>>(getState(KEY_TOC_CHILDREN) ?: emptyMap())
     private val _showToc = MutableStateFlow(getState<Boolean>(KEY_SHOW_TOC) ?: true)
+    private val _tocScrollIndex = MutableStateFlow(getState<Int>(KEY_TOC_SCROLL_INDEX) ?: 0)
+    private val _tocScrollOffset = MutableStateFlow(getState<Int>(KEY_TOC_SCROLL_OFFSET) ?: 0)
 
     private val _commentaries = MutableStateFlow<List<CommentaryWithText>>(emptyList())
     private val _showCommentaries = MutableStateFlow(getState<Boolean>(KEY_SHOW_COMMENTARIES) ?: false)
@@ -176,6 +180,7 @@ class BookContentViewModel(
             // TOC events
             is BookContentEvent.TocEntryExpanded -> expandTocEntry(event.entry)
             BookContentEvent.ToggleToc -> toggleToc()
+            is BookContentEvent.TocScrolled -> updateTocScrollPosition(event.index, event.offset)
 
             // Content events
             is BookContentEvent.LineSelected -> selectLine(event.line)
@@ -235,16 +240,28 @@ class BookContentViewModel(
             _tocEntries,
             _expandedTocEntries,
             _tocChildren,
-            _showToc
-        ) { entries, expanded, children, visible ->
+            _showToc,
+            _tocScrollIndex,
+            _tocScrollOffset
+        ) { array ->
+            @Suppress("UNCHECKED_CAST")
+            val entries = array[0] as List<TocEntry>
+            @Suppress("UNCHECKED_CAST")
+            val expanded = array[1] as Set<Long>
+            @Suppress("UNCHECKED_CAST")
+            val children = array[2] as Map<Long, List<TocEntry>>
+            val visible = array[3] as Boolean
+            val scrollIndex = array[4] as Int
+            val scrollOffset = array[5] as Int
             TocUiState(
                 entries = entries,
                 expandedEntries = expanded,
                 children = children,
-                isVisible = visible
+                isVisible = visible,
+                scrollIndex = scrollIndex,
+                scrollOffset = scrollOffset
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, TocUiState())
-
     private fun contentState(): StateFlow<ContentUiState> {
         return _bookLines.combine(_selectedLine) { lines, line ->
             Pair(lines, line)
@@ -316,15 +333,15 @@ class BookContentViewModel(
                 // Load root categories
                 val rootCategories = repository.getRootCategories()
                 _rootCategories.value = rootCategories
-                
+
                 // Get the current expanded categories
                 val expandedCategories = _expandedCategories.value
-                
+
                 // If there are expanded categories, load their books
                 if (expandedCategories.isNotEmpty()) {
                     // Load books for all expanded categories
                     val booksToLoad = mutableSetOf<Book>()
-                    
+
                     // Process categories to load books
                     expandedCategories.forEach { categoryId ->
                         try {
@@ -336,7 +353,7 @@ class BookContentViewModel(
                             // Handle error
                         }
                     }
-                    
+
                     // Update books in category
                     if (booksToLoad.isNotEmpty()) {
                         _booksInCategory.value = _booksInCategory.value + booksToLoad
@@ -364,7 +381,7 @@ class BookContentViewModel(
                         if (children.isNotEmpty()) {
                             val updatedMap = _categoryChildren.value + (category.id to children)
                             _categoryChildren.value = updatedMap
-                            
+
                             // Save category children map
                             saveState(KEY_CATEGORY_CHILDREN, updatedMap)
                         }
@@ -373,7 +390,7 @@ class BookContentViewModel(
                         if (books.isNotEmpty()) {
                             val updatedBooks = _booksInCategory.value + books
                             _booksInCategory.value = updatedBooks
-                            
+
                             // Save books in category
                             saveState(KEY_BOOKS_IN_CATEGORY, updatedBooks)
                         }
@@ -383,7 +400,7 @@ class BookContentViewModel(
                 }
             }
         }
-        
+
         // Save expanded categories state
         saveState(KEY_EXPANDED_CATEGORIES, _expandedCategories.value)
     }
@@ -391,7 +408,7 @@ class BookContentViewModel(
     private fun selectCategory(category: Category) {
         _selectedCategory.value = category
         expandCategory(category)
-        
+
         // Save selected category
         saveState(KEY_SELECTED_CATEGORY, category)
     }
@@ -400,7 +417,7 @@ class BookContentViewModel(
         _selectedBook.value = book
         loadBookData(book)
     }
-    
+
     private fun loadBookData(book: Book) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -444,7 +461,7 @@ class BookContentViewModel(
                         val children = repository.getTocChildren(tocEntry.id)
                         val updatedChildren = _tocChildren.value + (tocEntry.id to children.ifEmpty { emptyList() })
                         _tocChildren.value = updatedChildren
-                        
+
                         // Save TOC children map
                         saveState(KEY_TOC_CHILDREN, updatedChildren)
                     } finally {
@@ -453,7 +470,7 @@ class BookContentViewModel(
                 }
             }
         }
-        
+
         // Save expanded TOC entries state
         saveState(KEY_EXPANDED_TOC_ENTRIES, _expandedTocEntries.value)
     }
@@ -469,7 +486,7 @@ class BookContentViewModel(
     private fun selectLine(line: Line) {
         _selectedLine.value = line
         fetchCommentariesForLine(line)
-        
+
         // Save selected line
         saveState(KEY_SELECTED_LINE, line)
     }
@@ -518,6 +535,13 @@ class BookContentViewModel(
     private fun updateChapterScrollPosition(position: Int) {
         _chapterScrollPosition.value = position
         saveState(KEY_CHAPTER_SCROLL_POSITION, position)
+    }
+
+    private fun updateTocScrollPosition(index: Int, offset: Int) {
+        _tocScrollIndex.value = index
+        _tocScrollOffset.value = offset
+        saveState(KEY_TOC_SCROLL_INDEX, index)
+        saveState(KEY_TOC_SCROLL_OFFSET, offset)
     }
 
     private fun selectChapter(chapter: Int) {
@@ -621,12 +645,12 @@ class BookContentViewModel(
         saveState(KEY_SPLIT_PANE_POSITION, _splitPaneState.value.positionPercentage)
         saveState(KEY_TOC_SPLIT_PANE_POSITION, _tocSplitPaneState.value.positionPercentage)
         saveState(KEY_CONTENT_SPLIT_PANE_POSITION, _contentSplitPaneState.value.positionPercentage)
-        
+
         // Save previous split pane positions
         saveState(KEY_PREVIOUS_MAIN_SPLIT_POSITION, _previousMainSplitPosition.value)
         saveState(KEY_PREVIOUS_TOC_SPLIT_POSITION, _previousTocSplitPosition.value)
         saveState(KEY_PREVIOUS_CONTENT_SPLIT_POSITION, _previousContentSplitPosition.value)
-        
+
         // Save UI state
         saveState(KEY_SEARCH_TEXT, _searchText.value)
         saveState(KEY_PARAGRAPH_SCROLL_POSITION, _paragraphScrollPosition.value)
@@ -635,7 +659,9 @@ class BookContentViewModel(
         saveState(KEY_SHOW_COMMENTARIES, _showCommentaries.value)
         saveState(KEY_SHOW_BOOK_TREE, _showBookTree.value)
         saveState(KEY_SHOW_TOC, _showToc.value)
-        
+        saveState(KEY_TOC_SCROLL_INDEX, _tocScrollIndex.value)
+        saveState(KEY_TOC_SCROLL_OFFSET, _tocScrollOffset.value)
+
         // Save selection state
         _selectedBook.value?.let { book ->
             saveState(KEY_SELECTED_BOOK, book)
@@ -646,7 +672,7 @@ class BookContentViewModel(
         _selectedLine.value?.let { line ->
             saveState(KEY_SELECTED_LINE, line)
         }
-        
+
         // Save expanded items state
         saveState(KEY_EXPANDED_CATEGORIES, _expandedCategories.value)
         saveState(KEY_CATEGORY_CHILDREN, _categoryChildren.value)

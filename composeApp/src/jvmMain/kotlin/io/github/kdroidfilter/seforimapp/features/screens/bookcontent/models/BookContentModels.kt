@@ -30,7 +30,9 @@ data class TocUiState(
     val entries: List<TocEntry> = emptyList(),
     val expandedEntries: Set<Long> = emptySet(),
     val children: Map<Long, List<TocEntry>> = emptyMap(),
-    val isVisible: Boolean = true
+    val isVisible: Boolean = true,
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0
 )
 
 /**

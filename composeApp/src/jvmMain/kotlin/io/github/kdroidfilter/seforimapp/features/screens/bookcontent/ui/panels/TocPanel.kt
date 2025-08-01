@@ -37,7 +37,7 @@ fun TocPanel(
             fontSize = 16.sp,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-        
+
         when {
             selectedBook == null -> {
                 Box(
@@ -50,12 +50,14 @@ fun TocPanel(
             else -> {
                 val rootEntries = tocState.children[-1L] ?: tocState.entries
                 val displayEntries = rootEntries.ifEmpty { tocState.entries }
-                
+
                 Box(modifier = Modifier.fillMaxHeight()) {
                     TocView(
                         tocEntries = displayEntries,
                         expandedEntries = tocState.expandedEntries,
                         tocChildren = tocState.children,
+                        scrollIndex = tocState.scrollIndex,
+                        scrollOffset = tocState.scrollOffset,
                         onEntryClick = { entry ->
                             entry.lineId?.let { lineId ->
                                 onEvent(BookContentEvent.LoadAndSelectLine(lineId))
@@ -63,6 +65,9 @@ fun TocPanel(
                         },
                         onEntryExpand = { entry ->
                             onEvent(BookContentEvent.TocEntryExpanded(entry))
+                        },
+                        onScroll = { index, offset ->
+                            onEvent(BookContentEvent.TocScrolled(index, offset))
                         },
                         modifier = Modifier.fillMaxHeight()
                     )

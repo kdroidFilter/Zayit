@@ -43,39 +43,54 @@ fun BookContentView(
         initialFirstVisibleItemIndex = scrollIndex,
         initialFirstVisibleItemScrollOffset = scrollOffset
     )
-    var lastScrolledLineId by remember { mutableStateOf<Long?>(null) }
-    var hasRestored by remember { mutableStateOf(false) }
+    // Reset these state variables when book or lines change
+    var lastScrolledLineId by remember(book.id, lines) { mutableStateOf<Long?>(null) }
+    var hasRestored by remember(book.id, lines) { mutableStateOf(false) }
 
-    // Only scroll when the selected line actually changes, without animation
-    LaunchedEffect(selectedLine?.id, lines.size) {
-        selectedLine?.let { selected ->
-            if (selected.id != lastScrolledLineId) {
-                lines.indexOfFirst { it.id == selected.id }.takeIf { it >= 0 }?.let { index ->
-                    // Check if the item is not already visible
-                    val visibleItems = listState.layoutInfo.visibleItemsInfo
-                    val isAlreadyVisible = visibleItems.any { it.index == index }
-
-                    if (!isAlreadyVisible) {
-                        // Set the first visible item index directly to disable animation
-                        listState.scrollToItem(index, 0)
-                    }
-                    lastScrolledLineId = selected.id
-                    hasRestored = true
-                }
-            }
-        }
-    }
-    
-    // Restore initial scroll position if no selected line
+    // 1. First ensure the list is properly restored when it has content
     LaunchedEffect(lines.size) {
-        if (lines.isNotEmpty() && !hasRestored && selectedLine == null) {
-            val safeIndex = scrollIndex.coerceIn(0, lines.lastIndex)
-            listState.scrollToItem(safeIndex, scrollOffset)
+        if (lines.isNotEmpty() && !hasRestored) {
+            // Handle selected line case
+            if (selectedLine != null) {
+                val index = lines.indexOfFirst { it.id == selectedLine.id }
+                if (index >= 0) {
+                    // Found the selected line in the list
+                    listState.scrollToItem(index, 0)
+                    lastScrolledLineId = selectedLine.id
+                } else {
+                    // Selected line not found, use saved scroll position
+                    val safeIndex = scrollIndex.coerceIn(0, lines.lastIndex)
+                    listState.scrollToItem(safeIndex, scrollOffset)
+                }
+            } else {
+                // No selected line, use saved scroll position
+                val safeIndex = scrollIndex.coerceIn(0, lines.lastIndex)
+                listState.scrollToItem(safeIndex, scrollOffset)
+            }
+            
+            // Mark as restored after position is set
             hasRestored = true
         }
     }
     
-    // Collect scroll events only after restoration
+    // 2. Handle subsequent selected line changes after initial restoration
+    LaunchedEffect(selectedLine?.id) {
+        if (hasRestored && selectedLine != null && selectedLine.id != lastScrolledLineId) {
+            lines.indexOfFirst { it.id == selectedLine.id }.takeIf { it >= 0 }?.let { index ->
+                // Check if the item is not already visible
+                val visibleItems = listState.layoutInfo.visibleItemsInfo
+                val isAlreadyVisible = visibleItems.any { it.index == index }
+
+                if (!isAlreadyVisible) {
+                    // Set the first visible item index directly to disable animation
+                    listState.scrollToItem(index, 0)
+                }
+                lastScrolledLineId = selectedLine.id
+            }
+        }
+    }
+    
+    // 3. Collect scroll events only after restoration
     LaunchedEffect(listState, hasRestored) {
         if (hasRestored) {
             snapshotFlow {

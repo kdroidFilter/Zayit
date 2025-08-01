@@ -706,6 +706,8 @@ class BookContentViewModel(
         saveState(KEY_TOC_SCROLL_OFFSET, _tocScrollOffset.value)
         saveState(KEY_BOOK_TREE_SCROLL_INDEX, _bookTreeScrollIndex.value)
         saveState(KEY_BOOK_TREE_SCROLL_OFFSET, _bookTreeScrollOffset.value)
+        saveState(KEY_CONTENT_SCROLL_INDEX, _contentScrollIndex.value)
+        saveState(KEY_CONTENT_SCROLL_OFFSET, _contentScrollOffset.value)
 
         // Save selection state
         _selectedBook.value?.let { book ->

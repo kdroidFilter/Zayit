@@ -7,6 +7,7 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabAwareViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
+import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -582,20 +583,20 @@ class BookContentViewModel(
     }
     
     private fun loadMoreLines(direction: LoadDirection = LoadDirection.FORWARD) {
-        println("[DEBUG_LOG] loadMoreLines called with direction: $direction")
+        debugln { "[DEBUG_LOG] loadMoreLines called with direction: $direction" }
         val currentBook = _selectedBook.value ?: return
         val currentLines = _bookLines.value
         
-        println("[DEBUG_LOG] Current book: ${currentBook.title}, Current lines count: ${currentLines.size}")
+        debugln { "[DEBUG_LOG] Current book: ${currentBook.title}, Current lines count: ${currentLines.size}" }
         
         if (currentLines.isEmpty()) {
-            println("[DEBUG_LOG] Current lines is empty, returning")
+            debugln { "[DEBUG_LOG] Current lines is empty, returning" }
             return
         }
         
         // Check if we're already loading
         if (_isLoading.value) {
-            println("[DEBUG_LOG] Already loading, returning")
+            debugln { "[DEBUG_LOG] Already loading, returning" }
             return
         }
         
@@ -622,13 +623,13 @@ class BookContentViewModel(
                     }
                 }
                 
-                println("[DEBUG_LOG] Loading more lines from index: $startIndex to index: $endIndex")
+                debugln { "[DEBUG_LOG] Loading more lines from index: $startIndex to index: $endIndex" }
                 
                 // Only proceed if we have a valid range to load
                 if (startIndex < endIndex) {
                     // Load lines from the repository for the current book only
                     val moreLines = repository.getLines(currentBook.id, startIndex, endIndex)
-                    println("[DEBUG_LOG] Loaded ${moreLines.size} more lines")
+                    debugln { "[DEBUG_LOG] Loaded ${moreLines.size} more lines" }
                     
                     // Only update if we got new lines
                     if (moreLines.isNotEmpty()) {
@@ -640,7 +641,7 @@ class BookContentViewModel(
                         val uniqueNewLines = moreLines.filter { newLine -> 
                             newLine.id !in existingIds && newLine.bookId == currentBook.id 
                         }
-                        println("[DEBUG_LOG] Unique new lines: ${uniqueNewLines.size}")
+                        debugln { "[DEBUG_LOG] Unique new lines: ${uniqueNewLines.size}" }
                         
                         // Only update if we have unique new lines
                         if (uniqueNewLines.isNotEmpty()) {
@@ -649,18 +650,18 @@ class BookContentViewModel(
                                 LoadDirection.FORWARD -> currentLines + uniqueNewLines
                                 LoadDirection.BACKWARD -> uniqueNewLines + currentLines
                             }
-                            println("[DEBUG_LOG] Updated book lines, new total: ${_bookLines.value.size}")
+                            debugln { "[DEBUG_LOG] Updated book lines, new total: ${_bookLines.value.size}" }
                         } else {
-                            println("[DEBUG_LOG] No unique new lines to add")
+                            debugln { "[DEBUG_LOG] No unique new lines to add" }
                         }
                     } else {
-                        println("[DEBUG_LOG] No more lines returned from repository")
+                        debugln { "[DEBUG_LOG] No more lines returned from repository" }
                     }
                 } else {
-                    println("[DEBUG_LOG] Invalid range: startIndex ($startIndex) >= endIndex ($endIndex)")
+                    debugln { "[DEBUG_LOG] Invalid range: startIndex ($startIndex) >= endIndex ($endIndex)" }
                 }
             } catch (e: Exception) {
-                println("[DEBUG_LOG] Error loading more lines: ${e.message}")
+                debugln { "[DEBUG_LOG] Error loading more lines: ${e.message}" }
                 e.printStackTrace()
             } finally {
                 _isLoading.value = false

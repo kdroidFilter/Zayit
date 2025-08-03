@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.LoadDirection
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
@@ -106,7 +107,7 @@ fun BookContentView(
     
     // 4. Detect when user has scrolled near the end of the list and trigger loading more content
     LaunchedEffect(listState, lines.size) {
-        println("[DEBUG_LOG] LaunchedEffect for forward infinite scroll started, lines size: ${lines.size}")
+        debugln { "[DEBUG_LOG] LaunchedEffect for forward infinite scroll started, lines size: ${lines.size}" }
         snapshotFlow { 
             val layoutInfo = listState.layoutInfo
             val totalItemsCount = lines.size
@@ -114,14 +115,14 @@ fun BookContentView(
             
             // Check if we're near the end of the list (last 5 items)
             val isNearEnd = lastVisibleItemIndex >= (totalItemsCount - 5)
-            println("[DEBUG_LOG] Last visible item index: $lastVisibleItemIndex, Total items: $totalItemsCount, Is near end: $isNearEnd")
+            debugln { "[DEBUG_LOG] Last visible item index: $lastVisibleItemIndex, Total items: $totalItemsCount, Is near end: $isNearEnd" }
             isNearEnd
         }
         .distinctUntilChanged()
         .collect { isNearEnd ->
-            println("[DEBUG_LOG] Is near end changed to: $isNearEnd, Lines empty: ${lines.isEmpty()}")
+            debugln { "[DEBUG_LOG] Is near end changed to: $isNearEnd, Lines empty: ${lines.isEmpty()}" }
             if (isNearEnd && lines.isNotEmpty()) {
-                println("[DEBUG_LOG] Calling onLoadMore with FORWARD direction")
+                debugln { "[DEBUG_LOG] Calling onLoadMore with FORWARD direction" }
                 onLoadMore(LoadDirection.FORWARD)
             }
         }
@@ -129,27 +130,27 @@ fun BookContentView(
     
     // 5. Detect when user has scrolled near the beginning of the list and trigger loading more content
     LaunchedEffect(listState, lines.size) {
-        println("[DEBUG_LOG] LaunchedEffect for backward infinite scroll started, lines size: ${lines.size}")
+        debugln { "[DEBUG_LOG] LaunchedEffect for backward infinite scroll started, lines size: ${lines.size}" }
         snapshotFlow { 
             val layoutInfo = listState.layoutInfo
             val firstVisibleItemIndex = layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0
             
             // Check if we're near the beginning of the list (first 5 items)
             val isNearBeginning = firstVisibleItemIndex <= 5
-            println("[DEBUG_LOG] First visible item index: $firstVisibleItemIndex, Is near beginning: $isNearBeginning")
+            debugln { "[DEBUG_LOG] First visible item index: $firstVisibleItemIndex, Is near beginning: $isNearBeginning" }
             isNearBeginning
         }
         .distinctUntilChanged()
         .collect { isNearBeginning ->
-            println("[DEBUG_LOG] Is near beginning changed to: $isNearBeginning, Lines empty: ${lines.isEmpty()}")
+            debugln { "[DEBUG_LOG] Is near beginning changed to: $isNearBeginning, Lines empty: ${lines.isEmpty()}" }
             if (isNearBeginning && lines.isNotEmpty()) {
                 // Only load more if we're not already at the beginning (index 0)
                 val firstLineIndex = lines.firstOrNull()?.lineIndex ?: 0
                 if (firstLineIndex > 0) {
-                    println("[DEBUG_LOG] Calling onLoadMore with BACKWARD direction")
+                    debugln { "[DEBUG_LOG] Calling onLoadMore with BACKWARD direction" }
                     onLoadMore(LoadDirection.BACKWARD)
                 } else {
-                    println("[DEBUG_LOG] Already at the beginning of the book, not loading more")
+                    debugln { "[DEBUG_LOG] Already at the beginning of the book, not loading more" }
                 }
             }
         }

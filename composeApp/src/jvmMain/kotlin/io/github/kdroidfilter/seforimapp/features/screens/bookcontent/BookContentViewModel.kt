@@ -211,7 +211,7 @@ class BookContentViewModel(
             is BookContentEvent.LoadAndSelectLine -> loadAndSelectLine(event.lineId)
             BookContentEvent.ToggleCommentaries -> toggleCommentaries()
             is BookContentEvent.ContentScrolled -> updateContentScrollPosition(event.index, event.offset)
-            BookContentEvent.LoadMoreLines -> loadMoreLines()
+            is BookContentEvent.LoadMoreLines -> loadMoreLines(event.direction)
             
             // Commentaries events
             is BookContentEvent.CommentariesTabSelected -> updateCommentariesTabIndex(event.index)
@@ -581,8 +581,8 @@ class BookContentViewModel(
         }
     }
     
-    private fun loadMoreLines() {
-        println("[DEBUG_LOG] loadMoreLines called")
+    private fun loadMoreLines(direction: LoadDirection = LoadDirection.FORWARD) {
+        println("[DEBUG_LOG] loadMoreLines called with direction: $direction")
         val currentBook = _selectedBook.value ?: return
         val currentLines = _bookLines.value
         
@@ -602,35 +602,62 @@ class BookContentViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Calculate the next start index (current lines size)
-                val startIndex = currentLines.size
-                // Calculate the end index (start index + 30)
-                val endIndex = startIndex + 30
+                // Calculate the start and end indices based on the direction
+                val (startIndex, endIndex) = when (direction) {
+                    LoadDirection.FORWARD -> {
+                        // Forward: load lines after the current last line
+                        val start = currentLines.size
+                        val end = start + 30
+                        Pair(start, end)
+                    }
+                    LoadDirection.BACKWARD -> {
+                        // Backward: load lines before the current first line
+                        // Get the line index of the first line in our current list
+                        val firstLineIndex = currentLines.firstOrNull()?.lineIndex ?: 0
+                        // Calculate start index (30 lines before the first line, but not less than 0)
+                        val start = maxOf(0, firstLineIndex - 30)
+                        // End index is the index of the first line we currently have
+                        val end = firstLineIndex
+                        Pair(start, end)
+                    }
+                }
+                
                 println("[DEBUG_LOG] Loading more lines from index: $startIndex to index: $endIndex")
                 
-                // Load 30 more lines (from startIndex to endIndex)
-                val moreLines = repository.getLines(currentBook.id, startIndex, endIndex)
-                println("[DEBUG_LOG] Loaded ${moreLines.size} more lines")
-                
-                // Only update if we got new lines
-                if (moreLines.isNotEmpty()) {
-                    // Create a set of existing line IDs for faster lookup
-                    val existingIds = currentLines.map { it.id }.toSet()
+                // Only proceed if we have a valid range to load
+                if (startIndex < endIndex) {
+                    // Load lines from the repository for the current book only
+                    val moreLines = repository.getLines(currentBook.id, startIndex, endIndex)
+                    println("[DEBUG_LOG] Loaded ${moreLines.size} more lines")
                     
-                    // Filter out any new lines that have IDs already in the current list
-                    val uniqueNewLines = moreLines.filter { newLine -> newLine.id !in existingIds }
-                    println("[DEBUG_LOG] Unique new lines: ${uniqueNewLines.size}")
-                    
-                    // Only append if we have unique new lines
-                    if (uniqueNewLines.isNotEmpty()) {
-                        // Append the unique new lines to the existing lines
-                        _bookLines.value = currentLines + uniqueNewLines
-                        println("[DEBUG_LOG] Updated book lines, new total: ${_bookLines.value.size}")
+                    // Only update if we got new lines
+                    if (moreLines.isNotEmpty()) {
+                        // Create a set of existing line IDs for faster lookup
+                        val existingIds = currentLines.map { it.id }.toSet()
+                        
+                        // Filter out any new lines that have IDs already in the current list
+                        // and ensure they belong to the current book
+                        val uniqueNewLines = moreLines.filter { newLine -> 
+                            newLine.id !in existingIds && newLine.bookId == currentBook.id 
+                        }
+                        println("[DEBUG_LOG] Unique new lines: ${uniqueNewLines.size}")
+                        
+                        // Only update if we have unique new lines
+                        if (uniqueNewLines.isNotEmpty()) {
+                            // Update the book lines based on the direction
+                            _bookLines.value = when (direction) {
+                                LoadDirection.FORWARD -> currentLines + uniqueNewLines
+                                LoadDirection.BACKWARD -> uniqueNewLines + currentLines
+                            }
+                            println("[DEBUG_LOG] Updated book lines, new total: ${_bookLines.value.size}")
+                        } else {
+                            println("[DEBUG_LOG] No unique new lines to add")
+                        }
                     } else {
-                        println("[DEBUG_LOG] No unique new lines to add")
+                        println("[DEBUG_LOG] No more lines returned from repository")
                     }
                 } else {
-                    println("[DEBUG_LOG] No more lines returned from repository")
+                    println("[DEBUG_LOG] Invalid range: startIndex ($startIndex) >= endIndex ($endIndex)")
                 }
             } catch (e: Exception) {
                 println("[DEBUG_LOG] Error loading more lines: ${e.message}")

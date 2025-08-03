@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.LoadDirection
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -38,7 +39,7 @@ fun BookContentView(
     scrollIndex: Int = 0,
     scrollOffset: Int = 0,
     onScroll: (Int, Int) -> Unit = { _, _ -> },
-    onLoadMore: () -> Unit = {}
+    onLoadMore: (LoadDirection) -> Unit = { _ -> }
 ) {
     val listState = preservedListState ?: rememberLazyListState(
         initialFirstVisibleItemIndex = scrollIndex,
@@ -105,7 +106,7 @@ fun BookContentView(
     
     // 4. Detect when user has scrolled near the end of the list and trigger loading more content
     LaunchedEffect(listState, lines.size) {
-        println("[DEBUG_LOG] LaunchedEffect for infinite scroll started, lines size: ${lines.size}")
+        println("[DEBUG_LOG] LaunchedEffect for forward infinite scroll started, lines size: ${lines.size}")
         snapshotFlow { 
             val layoutInfo = listState.layoutInfo
             val totalItemsCount = lines.size
@@ -120,8 +121,36 @@ fun BookContentView(
         .collect { isNearEnd ->
             println("[DEBUG_LOG] Is near end changed to: $isNearEnd, Lines empty: ${lines.isEmpty()}")
             if (isNearEnd && lines.isNotEmpty()) {
-                println("[DEBUG_LOG] Calling onLoadMore")
-                onLoadMore()
+                println("[DEBUG_LOG] Calling onLoadMore with FORWARD direction")
+                onLoadMore(LoadDirection.FORWARD)
+            }
+        }
+    }
+    
+    // 5. Detect when user has scrolled near the beginning of the list and trigger loading more content
+    LaunchedEffect(listState, lines.size) {
+        println("[DEBUG_LOG] LaunchedEffect for backward infinite scroll started, lines size: ${lines.size}")
+        snapshotFlow { 
+            val layoutInfo = listState.layoutInfo
+            val firstVisibleItemIndex = layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0
+            
+            // Check if we're near the beginning of the list (first 5 items)
+            val isNearBeginning = firstVisibleItemIndex <= 5
+            println("[DEBUG_LOG] First visible item index: $firstVisibleItemIndex, Is near beginning: $isNearBeginning")
+            isNearBeginning
+        }
+        .distinctUntilChanged()
+        .collect { isNearBeginning ->
+            println("[DEBUG_LOG] Is near beginning changed to: $isNearBeginning, Lines empty: ${lines.isEmpty()}")
+            if (isNearBeginning && lines.isNotEmpty()) {
+                // Only load more if we're not already at the beginning (index 0)
+                val firstLineIndex = lines.firstOrNull()?.lineIndex ?: 0
+                if (firstLineIndex > 0) {
+                    println("[DEBUG_LOG] Calling onLoadMore with BACKWARD direction")
+                    onLoadMore(LoadDirection.BACKWARD)
+                } else {
+                    println("[DEBUG_LOG] Already at the beginning of the book, not loading more")
+                }
             }
         }
     }

@@ -2,6 +2,10 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent
 
 import io.github.kdroidfilter.seforimlibrary.core.models.*
 
+enum class LoadDirection {
+    FORWARD, BACKWARD
+}
+
 sealed interface BookContentEvent {
     // Navigation events
     data class SearchTextChanged(val text: String) : BookContentEvent
@@ -22,7 +26,7 @@ sealed interface BookContentEvent {
     data class LoadAndSelectLine(val lineId: Long) : BookContentEvent
     data object ToggleCommentaries : BookContentEvent
     data class ContentScrolled(val index: Int, val offset: Int) : BookContentEvent
-    data object LoadMoreLines : BookContentEvent
+    data class LoadMoreLines(val direction: LoadDirection = LoadDirection.FORWARD) : BookContentEvent
     
     // Commentaries events
     data class CommentariesTabSelected(val index: Int) : BookContentEvent

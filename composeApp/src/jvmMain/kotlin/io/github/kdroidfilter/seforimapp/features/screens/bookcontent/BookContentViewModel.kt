@@ -147,6 +147,11 @@ class BookContentViewModel(
                 try {
                     // Load the book data
                     loadBookData(restoredBook)
+                    
+                    // Check if we have a restored line and fetch its commentaries
+                    _selectedLine.value?.let { line ->
+                        fetchCommentariesForLine(line)
+                    }
                 } finally {
                     _isLoading.value = false
                 }

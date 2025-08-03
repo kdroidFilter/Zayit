@@ -50,7 +50,10 @@ data class ContentUiState(
     val chapterScrollPosition: Int = 0,
     val selectedChapter: Int = 0,
     val scrollIndex: Int = 0,
-    val scrollOffset: Int = 0
+    val scrollOffset: Int = 0,
+    val commentariesSelectedTab: Int = 0,
+    val commentariesScrollIndex: Int = 0,
+    val commentariesScrollOffset: Int = 0
 )
 
 /**

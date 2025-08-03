@@ -58,6 +58,9 @@ class BookContentViewModel(
         const val KEY_BOOK_TREE_SCROLL_OFFSET = "bookTreeScrollOffset"
         const val KEY_CONTENT_SCROLL_INDEX = "contentScrollIndex"
         const val KEY_CONTENT_SCROLL_OFFSET = "contentScrollOffset"
+        const val KEY_COMMENTARIES_SELECTED_TAB = "commentariesSelectedTab"
+        const val KEY_COMMENTARIES_SCROLL_INDEX = "commentariesScrollIndex"
+        const val KEY_COMMENTARIES_SCROLL_OFFSET = "commentariesScrollOffset"
     }
     // Initialize state flows first
     private val _isLoading = MutableStateFlow(false)
@@ -112,6 +115,11 @@ class BookContentViewModel(
     private val _selectedChapter = MutableStateFlow(getState<Int>(KEY_SELECTED_CHAPTER) ?: 0)
     private val _contentScrollIndex = MutableStateFlow(getState<Int>(KEY_CONTENT_SCROLL_INDEX) ?: 0)
     private val _contentScrollOffset = MutableStateFlow(getState<Int>(KEY_CONTENT_SCROLL_OFFSET) ?: 0)
+    
+    // Commentaries tab and scroll state
+    private val _commentariesSelectedTab = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SELECTED_TAB) ?: 0)
+    private val _commentariesScrollIndex = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SCROLL_INDEX) ?: 0)
+    private val _commentariesScrollOffset = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SCROLL_OFFSET) ?: 0)
 
     // Create UI state using combine for better performance
     @OptIn(ExperimentalSplitPaneApi::class)
@@ -204,6 +212,10 @@ class BookContentViewModel(
             BookContentEvent.ToggleCommentaries -> toggleCommentaries()
             is BookContentEvent.ContentScrolled -> updateContentScrollPosition(event.index, event.offset)
             BookContentEvent.LoadMoreLines -> loadMoreLines()
+            
+            // Commentaries events
+            is BookContentEvent.CommentariesTabSelected -> updateCommentariesTabIndex(event.index)
+            is BookContentEvent.CommentariesScrolled -> updateCommentariesScrollPosition(event.index, event.offset)
 
             // Scroll events
             is BookContentEvent.ParagraphScrolled -> updateParagraphScrollPosition(event.position)
@@ -302,6 +314,12 @@ class BookContentViewModel(
         }.combine(_contentScrollIndex) { (data, chapter), scrollIndex ->
             Triple(data, chapter, scrollIndex)
         }.combine(_contentScrollOffset) { (data, chapter, scrollIndex), scrollOffset ->
+            Pair(data.copy(scrollIndex = scrollIndex, scrollOffset = scrollOffset), chapter)
+        }.combine(_commentariesSelectedTab) { (data, chapter), selectedTab ->
+            Pair(data.copy(commentariesSelectedTab = selectedTab), chapter)
+        }.combine(_commentariesScrollIndex) { (data, chapter), scrollIndex ->
+            Pair(data.copy(commentariesScrollIndex = scrollIndex), chapter)
+        }.combine(_commentariesScrollOffset) { (data, chapter), scrollOffset ->
             ContentUiState(
                 lines = data.lines,
                 selectedLine = data.selectedLine,
@@ -310,8 +328,11 @@ class BookContentViewModel(
                 paragraphScrollPosition = data.paragraphScrollPosition,
                 chapterScrollPosition = data.chapterScrollPosition,
                 selectedChapter = chapter,
-                scrollIndex = scrollIndex,
-                scrollOffset = scrollOffset
+                scrollIndex = data.scrollIndex,
+                scrollOffset = data.scrollOffset,
+                commentariesSelectedTab = data.commentariesSelectedTab,
+                commentariesScrollIndex = data.commentariesScrollIndex,
+                commentariesScrollOffset = scrollOffset
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, ContentUiState())
     }
@@ -324,7 +345,10 @@ class BookContentViewModel(
         val paragraphScrollPosition: Int = 0,
         val chapterScrollPosition: Int = 0,
         val scrollIndex: Int = 0,
-        val scrollOffset: Int = 0
+        val scrollOffset: Int = 0,
+        val commentariesSelectedTab: Int = 0,
+        val commentariesScrollIndex: Int = 0,
+        val commentariesScrollOffset: Int = 0
     )
 
     @OptIn(ExperimentalSplitPaneApi::class)
@@ -652,6 +676,18 @@ class BookContentViewModel(
         saveState(KEY_CONTENT_SCROLL_INDEX, index)
         saveState(KEY_CONTENT_SCROLL_OFFSET, offset)
     }
+    
+    private fun updateCommentariesTabIndex(index: Int) {
+        _commentariesSelectedTab.value = index
+        saveState(KEY_COMMENTARIES_SELECTED_TAB, index)
+    }
+    
+    private fun updateCommentariesScrollPosition(index: Int, offset: Int) {
+        _commentariesScrollIndex.value = index
+        _commentariesScrollOffset.value = offset
+        saveState(KEY_COMMENTARIES_SCROLL_INDEX, index)
+        saveState(KEY_COMMENTARIES_SCROLL_OFFSET, offset)
+    }
 
     private fun selectChapter(chapter: Int) {
         _selectedChapter.value = chapter
@@ -774,6 +810,9 @@ class BookContentViewModel(
         saveState(KEY_BOOK_TREE_SCROLL_OFFSET, _bookTreeScrollOffset.value)
         saveState(KEY_CONTENT_SCROLL_INDEX, _contentScrollIndex.value)
         saveState(KEY_CONTENT_SCROLL_OFFSET, _contentScrollOffset.value)
+        saveState(KEY_COMMENTARIES_SELECTED_TAB, _commentariesSelectedTab.value)
+        saveState(KEY_COMMENTARIES_SCROLL_INDEX, _commentariesScrollIndex.value)
+        saveState(KEY_COMMENTARIES_SCROLL_OFFSET, _commentariesScrollOffset.value)
 
         // Save selection state
         _selectedBook.value?.let { book ->

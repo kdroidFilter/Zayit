@@ -5,7 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
+import kotlinx.coroutines.flow.collect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,7 +36,12 @@ private val connectionTypeNames = mapOf(
 fun LineCommentsView(
     selectedLine: Line?,
     commentaries: List<CommentaryWithText>,
-    onCommentClick: (CommentaryWithText) -> Unit = {}
+    selectedTabIndex: Int = 0,
+    commentariesScrollIndex: Int = 0,
+    commentariesScrollOffset: Int = 0,
+    onCommentClick: (CommentaryWithText) -> Unit = {},
+    onTabSelected: (Int) -> Unit = {},
+    onScroll: (Int, Int) -> Unit = { _, _ -> }
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
@@ -57,7 +64,12 @@ fun LineCommentsView(
                 CommentariesContent(
                     selectedLine = selectedLine,
                     commentaries = commentaries,
-                    onCommentClick = onCommentClick
+                    selectedTabIndex = selectedTabIndex,
+                    commentariesScrollIndex = commentariesScrollIndex,
+                    commentariesScrollOffset = commentariesScrollOffset,
+                    onCommentClick = onCommentClick,
+                    onTabSelected = onTabSelected,
+                    onScroll = onScroll
                 )
             }
         }
@@ -68,7 +80,12 @@ fun LineCommentsView(
 private fun CommentariesContent(
     selectedLine: Line,
     commentaries: List<CommentaryWithText>,
-    onCommentClick: (CommentaryWithText) -> Unit
+    selectedTabIndex: Int = 0,
+    commentariesScrollIndex: Int = 0,
+    commentariesScrollOffset: Int = 0,
+    onCommentClick: (CommentaryWithText) -> Unit,
+    onTabSelected: (Int) -> Unit = {},
+    onScroll: (Int, Int) -> Unit = { _, _ -> }
 ) {
     val lineCommentaries = remember(commentaries, selectedLine) {
         commentaries.filter { it.link.sourceLineId == selectedLine.id }
@@ -82,8 +99,6 @@ private fun CommentariesContent(
             Text("No commentaries available for this line")
         }
     } else {
-        var selectedTabIndex by remember { mutableStateOf(0) }
-        
         val connectionTypes = remember(lineCommentaries) {
             lineCommentaries
                 .map { it.link.connectionType }
@@ -105,7 +120,7 @@ private fun CommentariesContent(
         CommentariesTabs(
             tabTitles = tabTitles,
             selectedTabIndex = selectedTabIndex,
-            onTabSelected = { selectedTabIndex = it }
+            onTabSelected = onTabSelected
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -123,7 +138,10 @@ private fun CommentariesContent(
         
         CommentariesList(
             commentaries = filteredCommentaries,
-            onCommentClick = onCommentClick
+            scrollIndex = commentariesScrollIndex,
+            scrollOffset = commentariesScrollOffset,
+            onCommentClick = onCommentClick,
+            onScroll = onScroll
         )
     }
 }
@@ -159,13 +177,33 @@ private fun CommentariesTabs(
 @Composable
 private fun CommentariesList(
     commentaries: List<CommentaryWithText>,
-    onCommentClick: (CommentaryWithText) -> Unit
+    scrollIndex: Int = 0,
+    scrollOffset: Int = 0,
+    onCommentClick: (CommentaryWithText) -> Unit,
+    onScroll: (Int, Int) -> Unit = { _, _ -> }
 ) {
     val commentariesByBook = remember(commentaries) {
         commentaries.groupBy { it.targetBookTitle }
     }
     
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = scrollIndex,
+        initialFirstVisibleItemScrollOffset = scrollOffset
+    )
+    
+    // Effect to save scroll position when it changes
+    LaunchedEffect(listState) {
+        snapshotFlow { 
+            Pair(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+        }.collect { (index, offset) ->
+            onScroll(index, offset)
+        }
+    }
+    
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize()
+    ) {
         commentariesByBook.forEach { (bookTitle, bookCommentaries) ->
             item(key = bookTitle) {
                 Text(

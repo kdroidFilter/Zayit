@@ -23,6 +23,10 @@ sealed interface BookContentEvent {
     data object ToggleCommentaries : BookContentEvent
     data class ContentScrolled(val index: Int, val offset: Int) : BookContentEvent
     data object LoadMoreLines : BookContentEvent
+    
+    // Commentaries events
+    data class CommentariesTabSelected(val index: Int) : BookContentEvent
+    data class CommentariesScrolled(val index: Int, val offset: Int) : BookContentEvent
 
     // Scroll events
     data class ParagraphScrolled(val position: Int) : BookContentEvent

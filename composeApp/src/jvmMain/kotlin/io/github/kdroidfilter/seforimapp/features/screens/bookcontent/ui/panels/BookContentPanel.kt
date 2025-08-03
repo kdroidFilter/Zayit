@@ -76,6 +76,9 @@ fun BookContentPanel(
                     LineCommentsView(
                         selectedLine = contentState.selectedLine,
                         commentaries = contentState.commentaries,
+                        selectedTabIndex = contentState.commentariesSelectedTab,
+                        commentariesScrollIndex = contentState.commentariesScrollIndex,
+                        commentariesScrollOffset = contentState.commentariesScrollOffset,
                         onCommentClick = { commentary ->
                             // When a commentary is clicked, open a new tab with the book and line of the commentary
                             scope.launch {
@@ -87,6 +90,12 @@ fun BookContentPanel(
                                     )
                                 )
                             }
+                        },
+                        onTabSelected = { index ->
+                            onEvent(BookContentEvent.CommentariesTabSelected(index))
+                        },
+                        onScroll = { index, offset ->
+                            onEvent(BookContentEvent.CommentariesScrolled(index, offset))
                         }
                     )
                 }

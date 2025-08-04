@@ -26,7 +26,7 @@ val desktopModule = module {
     // Register SeforimRepository as a singleton
     single<SeforimRepository> {
         // Use a fixed database path as specified in the requirements
-        val dbPath = "/home/elie-gambache/Documents/otzaria.db"
+        val dbPath = "/Users/elie/IdeaProjects/SeforimApp/SeforimLibrary/generator/otzaria.db"
         val driver = app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver("jdbc:sqlite:$dbPath")
         SeforimRepository(dbPath, driver)
     }

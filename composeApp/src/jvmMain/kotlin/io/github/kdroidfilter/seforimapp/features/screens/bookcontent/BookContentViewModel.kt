@@ -490,13 +490,16 @@ class BookContentViewModel(
                 _tocEntries.value = rootToc
                 _tocChildren.value = mapOf(-1L to rootToc)
 
-                // Auto-expand first TOC entry
+                // Auto-expand first TOC entry si elle a des enfants
+                // Plus besoin de vérifier séparément, hasChildren est dans le modèle !
                 rootToc.firstOrNull()?.let { firstEntry ->
-                    _expandedTocEntries.value = setOf(firstEntry.id)
+                    if (firstEntry.hasChildren) {  // Utilise directement le champ
+                        _expandedTocEntries.value = setOf(firstEntry.id)
 
-                    val children = repository.getTocChildren(firstEntry.id)
-                    if (children.isNotEmpty()) {
-                        _tocChildren.value += (firstEntry.id to children)
+                        val children = repository.getTocChildren(firstEntry.id)
+                        if (children.isNotEmpty()) {
+                            _tocChildren.value += (firstEntry.id to children)
+                        }
                     }
                 }
             } finally {
@@ -504,7 +507,6 @@ class BookContentViewModel(
             }
         }
     }
-
     private fun expandTocEntry(tocEntry: TocEntry) {
         val isExpanded = _expandedTocEntries.value.contains(tocEntry.id)
 
@@ -514,16 +516,17 @@ class BookContentViewModel(
         } else {
             _expandedTocEntries.value += tocEntry.id
 
-            if (!_tocChildren.value.containsKey(tocEntry.id)) {
+            // Charger les enfants seulement si l'entrée en a ET qu'on ne les a pas déjà
+            if (tocEntry.hasChildren && !_tocChildren.value.containsKey(tocEntry.id)) {
                 viewModelScope.launch {
                     _isLoading.value = true
                     try {
                         val children = repository.getTocChildren(tocEntry.id)
-                        val updatedChildren = _tocChildren.value + (tocEntry.id to children.ifEmpty { emptyList() })
-                        _tocChildren.value = updatedChildren
-
-                        // Save TOC children map
-                        saveState(KEY_TOC_CHILDREN, updatedChildren)
+                        if (children.isNotEmpty()) {
+                            val updatedChildren = _tocChildren.value + (tocEntry.id to children)
+                            _tocChildren.value = updatedChildren
+                            saveState(KEY_TOC_CHILDREN, updatedChildren)
+                        }
                     } finally {
                         _isLoading.value = false
                     }
@@ -531,7 +534,6 @@ class BookContentViewModel(
             }
         }
 
-        // Save expanded TOC entries state
         saveState(KEY_EXPANDED_TOC_ENTRIES, _expandedTocEntries.value)
     }
 

@@ -8,7 +8,7 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import java.io.File
 
 // Fixed database path as specified in the requirements
-private const val DB_PATH = "/home/elie-gambache/Documents/otzaria.db"
+private const val DB_PATH = "/Users/elie/IdeaProjects/SeforimApp/SeforimLibrary/generator/otzaria.db"
 
 /**
  * Gets the database path.

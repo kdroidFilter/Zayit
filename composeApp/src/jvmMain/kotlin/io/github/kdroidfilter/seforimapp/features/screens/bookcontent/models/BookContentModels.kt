@@ -86,5 +86,6 @@ data class VisibleTocEntry(
     val entry: TocEntry,
     val level: Int,
     val isExpanded: Boolean,
-    val hasChildren: Boolean
+    val hasChildren: Boolean,
+    val isLastChild: Boolean
 )

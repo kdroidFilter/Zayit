@@ -17,6 +17,7 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -29,7 +30,10 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import org.jetbrains.compose.resources.Font
 import org.jetbrains.jewel.ui.component.Text
+import seforimapp.composeapp.generated.resources.Res
+import seforimapp.composeapp.generated.resources.notoserifhebrew
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -205,6 +209,7 @@ private fun LineItem(
         Text(
             text = annotated,
             textAlign = TextAlign.Justify,
+            fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew, weight = if (isSelected) FontWeight.Bold else FontWeight.Normal) ),
             lineHeight = (baseTextSize * lineHeight).sp,
             modifier = textModifier
         )

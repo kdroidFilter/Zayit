@@ -1,5 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -18,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
@@ -46,11 +49,34 @@ fun LineCommentsView(
     onScroll: (Int, Int) -> Unit = { _, _ -> },
     splitPaneState: SplitPaneState = rememberSplitPaneState(0.3f) // Default to 30% for left pane
 ) {
+    // Collect text size from settings
+    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    
+    // Animate text size changes for smoother transitions
+    val textSize by animateFloatAsState(
+        targetValue = rawTextSize,
+        animationSpec = tween(durationMillis = 300),
+        label = "commentTextSizeAnimation"
+    )
+    
+    // Apply scaling factor to ensure comments are always smaller than main text
+    val commentTextSize = textSize * 0.875f
+    
+    // Collect line height from settings
+    val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
+    
+    // Animate line height changes for smoother transitions
+    val lineHeight by animateFloatAsState(
+        targetValue = rawLineHeight,
+        animationSpec = tween(durationMillis = 300),
+        label = "commentLineHeightAnimation"
+    )
+    
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
             text = stringResource(Res.string.commentaries),
             fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
+            fontSize = 16.sp ,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         
@@ -106,7 +132,9 @@ fun LineCommentsView(
                                 commentariesScrollIndex = commentariesScrollIndex,
                                 commentariesScrollOffset = commentariesScrollOffset,
                                 onCommentClick = onCommentClick,
-                                onScroll = onScroll
+                                onScroll = onScroll,
+                                commentTextSize = commentTextSize,
+                                lineHeight = lineHeight
                             )
                         }
                     )
@@ -124,7 +152,9 @@ private fun CommentariesContent(
     commentariesScrollIndex: Int = 0,
     commentariesScrollOffset: Int = 0,
     onCommentClick: (CommentaryWithText) -> Unit,
-    onScroll: (Int, Int) -> Unit = { _, _ -> }
+    onScroll: (Int, Int) -> Unit = { _, _ -> },
+    commentTextSize: Float = 14f, // Default to 14sp if not provided
+    lineHeight: Float = 1.5f // Default to 1.5 if not provided
 ) {
     // Filter commentaries by line and connection type
     val lineCommentaries = remember(commentaries, selectedLine) {
@@ -143,7 +173,7 @@ private fun CommentariesContent(
         ) {
             Text(
                 text = "Please select a commentator from the list to view their commentaries",
-                fontSize = 14.sp
+                fontSize = commentTextSize.sp
             )
         }
     } else {
@@ -167,7 +197,9 @@ private fun CommentariesContent(
                 scrollIndex = commentariesScrollIndex,
                 scrollOffset = commentariesScrollOffset,
                 onCommentClick = onCommentClick,
-                onScroll = onScroll
+                onScroll = onScroll,
+                commentTextSize = commentTextSize,
+                lineHeight = lineHeight
             )
         }
     }
@@ -242,7 +274,9 @@ private fun CommentariesList(
     scrollIndex: Int = 0,
     scrollOffset: Int = 0,
     onCommentClick: (CommentaryWithText) -> Unit,
-    onScroll: (Int, Int) -> Unit = { _, _ -> }
+    onScroll: (Int, Int) -> Unit = { _, _ -> },
+    commentTextSize: Float = 14f, // Default to 14sp if not provided
+    lineHeight: Float = 1.5f // Default to 1.5 if not provided
 ) {
     val commentariesByBook = remember(commentaries) {
         commentaries.groupBy { it.targetBookTitle }
@@ -282,7 +316,8 @@ private fun CommentariesList(
                         text = commentary.targetText,
                         textAlign = TextAlign.Justify,
                         fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew)),
-                        fontSize = 14.sp
+                        fontSize = commentTextSize.sp,
+                        lineHeight = (commentTextSize * lineHeight).sp
                     )
                 }
                 Divider(

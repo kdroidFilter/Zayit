@@ -1,30 +1,36 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import io.github.kdroidfilter.seforimlibrary.core.models.Book
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.LoadDirection
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
+import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.collect
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 
@@ -46,150 +52,129 @@ fun BookContentView(
         initialFirstVisibleItemIndex = scrollIndex,
         initialFirstVisibleItemScrollOffset = scrollOffset
     )
-    // Reset these state variables when book or lines change
+
     var lastScrolledLineId by remember(book.id, lines) { mutableStateOf<Long?>(null) }
     var hasRestored by remember(book.id, lines) { mutableStateOf(false) }
 
-    // 1. First ensure the list is properly restored when it has content
     LaunchedEffect(lines.size) {
         if (lines.isNotEmpty() && !hasRestored) {
-            // Handle selected line case
-            if (selectedLine != null) {
-                val index = lines.indexOfFirst { it.id == selectedLine.id }
-                if (index >= 0) {
-                    // Found the selected line in the list
-                    listState.scrollToItem(index, 0)
-                    lastScrolledLineId = selectedLine.id
-                } else {
-                    // Selected line not found, use saved scroll position
-                    val safeIndex = scrollIndex.coerceIn(0, lines.lastIndex)
-                    listState.scrollToItem(safeIndex, scrollOffset)
-                }
+            val index = selectedLine?.let { lines.indexOfFirst { it.id == selectedLine.id } } ?: -1
+            if (index >= 0) {
+                listState.scrollToItem(index)
+                lastScrolledLineId = selectedLine?.id
             } else {
-                // No selected line, use saved scroll position
-                val safeIndex = scrollIndex.coerceIn(0, lines.lastIndex)
-                listState.scrollToItem(safeIndex, scrollOffset)
+                listState.scrollToItem(scrollIndex.coerceIn(0, lines.lastIndex), scrollOffset)
             }
-            
-            // Mark as restored after position is set
             hasRestored = true
         }
     }
-    
-    // 2. Handle subsequent selected line changes after initial restoration
+
     LaunchedEffect(selectedLine?.id) {
         if (hasRestored && selectedLine != null && selectedLine.id != lastScrolledLineId) {
             lines.indexOfFirst { it.id == selectedLine.id }.takeIf { it >= 0 }?.let { index ->
-                // Check if the item is not already visible
-                val visibleItems = listState.layoutInfo.visibleItemsInfo
-                val isAlreadyVisible = visibleItems.any { it.index == index }
-
-                if (!isAlreadyVisible) {
-                    // Set the first visible item index directly to disable animation
-                    listState.scrollToItem(index, 0)
+                if (!listState.layoutInfo.visibleItemsInfo.any { it.index == index }) {
+                    listState.scrollToItem(index)
                 }
                 lastScrolledLineId = selectedLine.id
             }
         }
     }
-    
-    // 3. Collect scroll events only after restoration
+
     LaunchedEffect(listState, hasRestored) {
         if (hasRestored) {
-            snapshotFlow {
-                listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
-            }
+            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
                 .distinctUntilChanged()
                 .debounce(250)
                 .collect { (index, offset) -> onScroll(index, offset) }
         }
     }
-    
-    // 4. Detect when user has scrolled near the end of the list and trigger loading more content
+
     LaunchedEffect(listState, lines.size) {
-        debugln { "[DEBUG_LOG] LaunchedEffect for forward infinite scroll started, lines size: ${lines.size}" }
-        snapshotFlow { 
+        snapshotFlow {
             val layoutInfo = listState.layoutInfo
-            val totalItemsCount = lines.size
-            val lastVisibleItemIndex = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
-            
-            // Check if we're near the end of the list (last 5 items)
-            val isNearEnd = lastVisibleItemIndex >= (totalItemsCount - 5)
-            debugln { "[DEBUG_LOG] Last visible item index: $lastVisibleItemIndex, Total items: $totalItemsCount, Is near end: $isNearEnd" }
-            isNearEnd
-        }
-        .distinctUntilChanged()
-        .collect { isNearEnd ->
-            debugln { "[DEBUG_LOG] Is near end changed to: $isNearEnd, Lines empty: ${lines.isEmpty()}" }
-            if (isNearEnd && lines.isNotEmpty()) {
-                debugln { "[DEBUG_LOG] Calling onLoadMore with FORWARD direction" }
+            val lastVisibleItem = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
+            lastVisibleItem >= (lines.size - 5)
+        }.distinctUntilChanged().collect { nearEnd ->
+            if (nearEnd && lines.isNotEmpty()) {
                 onLoadMore(LoadDirection.FORWARD)
             }
         }
     }
-    
-    // 5. Detect when user has scrolled near the beginning of the list and trigger loading more content
+
     LaunchedEffect(listState, lines.size) {
-        debugln { "[DEBUG_LOG] LaunchedEffect for backward infinite scroll started, lines size: ${lines.size}" }
-        snapshotFlow { 
-            val layoutInfo = listState.layoutInfo
-            val firstVisibleItemIndex = layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0
-            
-            // Check if we're near the beginning of the list (first 5 items)
-            val isNearBeginning = firstVisibleItemIndex <= 5
-            debugln { "[DEBUG_LOG] First visible item index: $firstVisibleItemIndex, Is near beginning: $isNearBeginning" }
-            isNearBeginning
-        }
-        .distinctUntilChanged()
-        .collect { isNearBeginning ->
-            debugln { "[DEBUG_LOG] Is near beginning changed to: $isNearBeginning, Lines empty: ${lines.isEmpty()}" }
-            if (isNearBeginning && lines.isNotEmpty()) {
-                // Only load more if we're not already at the beginning (index 0)
+        snapshotFlow {
+            (listState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0) <= 5
+        }.distinctUntilChanged().collect { nearStart ->
+            if (nearStart && lines.isNotEmpty()) {
                 val firstLineIndex = lines.firstOrNull()?.lineIndex ?: 0
-                if (firstLineIndex > 0) {
-                    debugln { "[DEBUG_LOG] Calling onLoadMore with BACKWARD direction" }
-                    onLoadMore(LoadDirection.BACKWARD)
-                } else {
-                    debugln { "[DEBUG_LOG] Already at the beginning of the book, not loading more" }
-                }
+                if (firstLineIndex > 0) onLoadMore(LoadDirection.BACKWARD)
             }
         }
     }
 
     Column(modifier = modifier) {
-        Text(
-            text = book.title, modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        LazyColumn(
-            state = listState, modifier = Modifier.fillMaxSize()
-        ) {
-            items(
-                items = lines, key = { it.id }) { line ->
-                LineItem(
-                    line = line, isSelected = selectedLine?.id == line.id, onClick = { onLineSelected(line) })
+        Text(text = book.title, modifier = Modifier.padding(bottom = 16.dp))
+        SelectionContainer {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                items(items = lines, key = { it.id }) { line ->
+                    LineItem(line = line, isSelected = selectedLine?.id == line.id) {
+                        onLineSelected(line)
+                    }
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LineItem(
-    line: Line, isSelected: Boolean, onClick: () -> Unit
+    line: Line,
+    isSelected: Boolean,
+    onClick: () -> Unit
 ) {
-    Box(
-        modifier = Modifier.fillMaxWidth().padding(8.dp)
-    ) {
-        Text(
-            text = line.content,
-            textAlign = TextAlign.Justify,
-            color = if (isSelected) JewelTheme.globalColors.outlines.focused else JewelTheme.globalColors.text.normal,
-            modifier = Modifier
-                .hoverable(MutableInteractionSource(), enabled = false)
-                .pointerInput(Unit) {
-                    detectTapGestures(onTap = { onClick() })
+    val parsedElements = remember(line.id, line.content) {
+        HtmlParser().parse(line.content)
+    }
+
+    // Construit une seule chaîne annotée => un seul Text, plus de "ligne après"
+    val annotated = remember(parsedElements) {
+        buildAnnotatedString {
+            parsedElements.forEach { e ->
+                if (e.text.isBlank()) return@forEach
+
+                val start = length
+                append(e.text)
+                val end = length
+
+                if (e.isBold) {
+                    addStyle(SpanStyle(fontWeight = FontWeight.Bold), start, end)
                 }
-                .pointerHoverIcon(PointerIcon.Hand)
+                if (e.isHeader || e.headerLevel != null) {
+                    val size = when (e.headerLevel) {
+                        1 -> 24.sp
+                        2 -> 20.sp
+                        3 -> 18.sp
+                        4 -> 16.sp
+                        else -> 16.sp
+                    }
+                    addStyle(SpanStyle(fontSize = size), start, end)
+                }
+            }
+        }
+    }
+
+    val textModifier = Modifier
+        .fillMaxWidth()
+        .pointerHoverIcon(PointerIcon.Hand)
+        .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) }
+
+    Box(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+        // Un seul Text => pas de saut de ligne artificiel avant/après
+        Text(
+            text = annotated,
+            textAlign = TextAlign.Justify,
+            modifier = textModifier
         )
     }
 }

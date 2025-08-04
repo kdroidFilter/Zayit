@@ -136,7 +136,13 @@ private fun TocEntryItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEntryClick(visibleEntry.entry) }
+            .clickable {
+                if (visibleEntry.hasChildren) {
+                    onEntryExpand(visibleEntry.entry)
+                } else {
+                    onEntryClick(visibleEntry.entry)
+                }
+            }
             .padding(
                 start = (visibleEntry.level * 16).dp,
                 top = 4.dp,
@@ -149,7 +155,6 @@ private fun TocEntryItem(
                 text = if (visibleEntry.isExpanded) "-" else "+",
                 modifier = Modifier
                     .width(24.dp)
-                    .clickable { onEntryExpand(visibleEntry.entry) }
             )
         } else {
             Spacer(modifier = Modifier.width(24.dp))

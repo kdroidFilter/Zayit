@@ -68,37 +68,12 @@ fun EndVerticalBar(
 ) {
     // Collect current text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
-    
-    // Animate text size changes for smoother transitions in UI
-    val currentTextSize by animateFloatAsState(
-        targetValue = rawTextSize,
-        animationSpec = tween(durationMillis = 300),
-        label = "buttonTextSizeAnimation"
-    )
-    
+
     // Determine if zoom buttons should be selected based on text size
     // Also check if we've reached min/max limits to disable buttons appropriately
     val canZoomIn = rawTextSize < AppSettings.MAX_TEXT_SIZE
     val canZoomOut = rawTextSize > AppSettings.MIN_TEXT_SIZE
-    val isZoomedIn = rawTextSize > AppSettings.DEFAULT_TEXT_SIZE
-    val isZoomedOut = rawTextSize < AppSettings.DEFAULT_TEXT_SIZE
-    
-    // Collect current line height from settings
-    val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
-    
-    // Animate line height changes for smoother transitions in UI
-    val currentLineHeight by animateFloatAsState(
-        targetValue = rawLineHeight,
-        animationSpec = tween(durationMillis = 300),
-        label = "buttonLineHeightAnimation"
-    )
-    
-    // Determine if line height buttons should be selected based on line height
-    // Also check if we've reached min/max limits to disable buttons appropriately
-    val canIncreaseLineHeight = rawLineHeight < AppSettings.MAX_LINE_HEIGHT
-    val canDecreaseLineHeight = rawLineHeight > AppSettings.MIN_LINE_HEIGHT
-    val isLineHeightIncreased = rawLineHeight > AppSettings.DEFAULT_LINE_HEIGHT
-    val isLineHeightDecreased = rawLineHeight < AppSettings.DEFAULT_LINE_HEIGHT
+
     
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
@@ -127,30 +102,6 @@ fun EndVerticalBar(
                 icon = ZoomOut,
                 iconDescription = stringResource(Res.string.zoom_out),
                 label = stringResource(Res.string.zoom_out)
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText = if (canIncreaseLineHeight) 
-                    "Increase line height" 
-                else 
-                    "Increase line height (${AppSettings.MAX_LINE_HEIGHT} max)",
-                onClick = { AppSettings.increaseLineHeight() },
-                isSelected = isLineHeightIncreased,
-                enabled = canIncreaseLineHeight,
-                icon = ZoomIn,
-                iconDescription = "Increase line height",
-                label = "Line height +"
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText = if (canDecreaseLineHeight) 
-                    "Decrease line height" 
-                else 
-                    "Decrease line height (${AppSettings.MIN_LINE_HEIGHT} min)",
-                onClick = { AppSettings.decreaseLineHeight() },
-                isSelected = isLineHeightDecreased,
-                enabled = canDecreaseLineHeight,
-                icon = ZoomOut,
-                iconDescription = "Decrease line height",
-                label = "Line height -"
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.add_bookmark_tooltip),

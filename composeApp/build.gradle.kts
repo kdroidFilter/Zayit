@@ -55,7 +55,7 @@ kotlin {
             implementation(libs.platformtools.darkmodedetector)
             implementation("io.github.kdroidfilter.seforimlibrary:core")
             implementation("io.github.kdroidfilter.seforimlibrary:dao")
-            implementation("com.github.luben:zstd-jni:1.5.7-4")
+//            implementation("com.github.luben:zstd-jni:1.5.7-4")
 
 
         }
@@ -71,7 +71,7 @@ kotlin {
             implementation(libs.androidx.activityCompose)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kotlinx.coroutines.android)
-            implementation("com.github.luben:zstd-jni:1.5.7-4@aar")
+//            implementation("com.github.luben:zstd-jni:1.5.7-4@aar")
 
         }
 

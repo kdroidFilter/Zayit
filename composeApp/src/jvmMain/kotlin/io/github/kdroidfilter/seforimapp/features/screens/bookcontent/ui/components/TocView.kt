@@ -31,7 +31,7 @@ import org.jetbrains.jewel.ui.component.Text
  * 3. Explicit restore of the saved scroll position once the list has real content
  *    (otherwise Compose would clamp the requested index to 0 when the list was still empty)
  */
-// TocView.kt simplifié
+// TocView.kt simplified
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -104,12 +104,12 @@ private fun buildVisibleTocEntries(
 
     fun addEntries(currentEntries: List<TocEntry>, level: Int) {
         currentEntries.forEach { entry ->
-            // SIMPLIFICATION : Utiliser directement le champ hasChildren de l'entrée
+            // SIMPLIFICATION: Use the hasChildren field of the entry directly
             result += VisibleTocEntry(
                 entry = entry,
                 level = level,
                 isExpanded = expandedEntries.contains(entry.id),
-                hasChildren = entry.hasChildren,  // Directement depuis le modèle !
+                hasChildren = entry.hasChildren,  // Directly from the model!
                 isLastChild = entry.isLastChild
             )
 

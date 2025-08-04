@@ -1,19 +1,17 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
 
-import androidx.compose.foundation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
@@ -24,19 +22,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.LoadDirection
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.collect
-import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 
 @OptIn(FlowPreview::class)
@@ -169,7 +161,7 @@ private fun LineItem(
         HtmlParser().parse(line.content)
     }
 
-    // Construit une seule chaîne annotée => un seul Text, plus de "ligne après"
+    // Builds a single annotated string => a single Text, no more "line after"
     // Include baseTextSize in remember dependencies to ensure recomposition when text size changes
     val annotated = remember(parsedElements, baseTextSize) {
         buildAnnotatedString {
@@ -209,7 +201,7 @@ private fun LineItem(
         .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) }
 
     Box(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-        // Un seul Text => pas de saut de ligne artificiel avant/après
+        // A single Text => no artificial line break before/after
         Text(
             text = annotated,
             textAlign = TextAlign.Justify,

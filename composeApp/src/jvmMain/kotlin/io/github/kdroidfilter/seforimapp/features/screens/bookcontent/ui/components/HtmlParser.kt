@@ -34,7 +34,7 @@ class HtmlParser {
                 commentatorOrder = null
             )
         }
-        // ⚠️ Évite une « ligne après » : retire les <br> terminaux
+        // Avoids a "line after": removes terminal <br> tags
         while (out.lastOrNull()?.isLineBreak == true) {
             out.removeAt(out.lastIndex)
         }
@@ -67,7 +67,6 @@ class HtmlParser {
             is Element -> {
                 val tag = node.normalName()
 
-                // ✅ Réactive <br> comme saut de ligne, sans doublons
                 if (tag == "br") {
                     appendLineBreak(list)
                     return
@@ -153,11 +152,11 @@ class HtmlParser {
         )
     }
 
-    // 🔹 Ajoute un élément de saut de ligne uniquement si nécessaire
+    // Adds a line break element only if necessary
     private fun appendLineBreak(list: MutableList<ParsedHtmlElement>) {
-        if (list.isEmpty()) return                         // pas de <br> en tête
+        if (list.isEmpty()) return                         // no <br> at the beginning
         val last = list.last()
-        if (!last.isLineBreak) {                           // évite <br><br> ⇒ double ligne
+        if (!last.isLineBreak) {                           // avoids <br><br> ⇒ double line
             list.add(ParsedHtmlElement(text = "", isLineBreak = true))
         }
     }

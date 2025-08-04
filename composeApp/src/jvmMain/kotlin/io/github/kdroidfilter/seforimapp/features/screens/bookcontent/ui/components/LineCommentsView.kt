@@ -1,47 +1,50 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.*
-import kotlinx.coroutines.flow.collect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
+import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
+import org.jetbrains.compose.splitpane.SplitPaneState
+import org.jetbrains.compose.splitpane.rememberSplitPaneState
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
-import org.jetbrains.jewel.ui.component.*
-import org.jetbrains.jewel.ui.theme.defaultTabStyle
+import org.jetbrains.jewel.ui.component.Divider
+import org.jetbrains.jewel.ui.component.Text
 import seforimapp.composeapp.generated.resources.Res
 import seforimapp.composeapp.generated.resources.commentaries
+import seforimapp.composeapp.generated.resources.notorashihebrew
+import seforimapp.composeapp.generated.resources.notoserifhebrew
 
-private val connectionTypeNames = mapOf(
-    ConnectionType.COMMENTARY to "פירוש",
-    ConnectionType.TARGUM to "תרגום",
-    ConnectionType.REFERENCE to "הפניה",
-    ConnectionType.OTHER to "אחר"
-)
-
+@OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 fun LineCommentsView(
     selectedLine: Line?,
     commentaries: List<CommentaryWithText>,
-    selectedTabIndex: Int = 0,
     commentariesScrollIndex: Int = 0,
     commentariesScrollOffset: Int = 0,
     onCommentClick: (CommentaryWithText) -> Unit = {},
-    onTabSelected: (Int) -> Unit = {},
-    onScroll: (Int, Int) -> Unit = { _, _ -> }
+    onScroll: (Int, Int) -> Unit = { _, _ -> },
+    splitPaneState: SplitPaneState = rememberSplitPaneState(0.3f) // Default to 30% for left pane
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
@@ -61,16 +64,53 @@ fun LineCommentsView(
                 }
             }
             else -> {
-                CommentariesContent(
-                    selectedLine = selectedLine,
-                    commentaries = commentaries,
-                    selectedTabIndex = selectedTabIndex,
-                    commentariesScrollIndex = commentariesScrollIndex,
-                    commentariesScrollOffset = commentariesScrollOffset,
-                    onCommentClick = onCommentClick,
-                    onTabSelected = onTabSelected,
-                    onScroll = onScroll
-                )
+                // State to track the selected commentator
+                var selectedCommentator by remember { mutableStateOf<String?>(null) }
+                
+                // Filter commentaries for the selected line
+                val lineCommentaries = remember(commentaries, selectedLine) {
+                    commentaries.filter { 
+                        it.link.sourceLineId == selectedLine.id && 
+                        it.link.connectionType == ConnectionType.COMMENTARY 
+                    }
+                }
+                
+                if (lineCommentaries.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No commentaries available for this line")
+                    }
+                } else {
+                    EnhancedHorizontalSplitPane(
+                        splitPaneState = splitPaneState,
+                        modifier = Modifier.fillMaxSize(),
+                        firstMinSize = 150f, // Minimum width for commentators list (30% of screen)
+                        firstContent = {
+                            // Left side: Commentators list
+                            CommentatorsListView(
+                                commentaries = lineCommentaries,
+                                selectedCommentator = selectedCommentator,
+                                onCommentatorSelected = { commentator ->
+                                    selectedCommentator = if (selectedCommentator == commentator) null else commentator
+                                }
+                            )
+                        },
+                        secondContent = {
+                            // Right side: Filtered commentaries
+                            CommentariesContent(
+                                selectedLine = selectedLine,
+                                commentaries = lineCommentaries,
+                                selectedCommentator = selectedCommentator,
+                                commentariesScrollIndex = commentariesScrollIndex,
+                                commentariesScrollOffset = commentariesScrollOffset,
+                                onCommentClick = onCommentClick,
+                                onScroll = onScroll
+                            )
+                        }
+                    )
+                }
             }
         }
     }
@@ -80,98 +120,120 @@ fun LineCommentsView(
 private fun CommentariesContent(
     selectedLine: Line,
     commentaries: List<CommentaryWithText>,
-    selectedTabIndex: Int = 0,
+    selectedCommentator: String? = null,
     commentariesScrollIndex: Int = 0,
     commentariesScrollOffset: Int = 0,
     onCommentClick: (CommentaryWithText) -> Unit,
-    onTabSelected: (Int) -> Unit = {},
     onScroll: (Int, Int) -> Unit = { _, _ -> }
 ) {
+    // Filter commentaries by line and connection type
     val lineCommentaries = remember(commentaries, selectedLine) {
-        commentaries.filter { it.link.sourceLineId == selectedLine.id }
+        commentaries.filter { 
+            it.link.sourceLineId == selectedLine.id && 
+            it.link.connectionType == ConnectionType.COMMENTARY 
+        }
     }
     
-    if (lineCommentaries.isEmpty()) {
+    // Check if a commentator is selected
+    if (selectedCommentator == null) {
+        // If no commentator is selected, show a message prompting the user to select one
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text("No commentaries available for this line")
+            Text(
+                text = "Please select a commentator from the list to view their commentaries",
+                fontSize = 14.sp
+            )
         }
     } else {
-        val connectionTypes = remember(lineCommentaries) {
-            lineCommentaries
-                .map { it.link.connectionType }
-                .distinct()
-                .ifEmpty { listOf(ConnectionType.OTHER) }
+        // Filter commentaries by the selected commentator
+        val filteredCommentaries = remember(lineCommentaries, selectedCommentator) {
+            lineCommentaries.filter { it.targetBookTitle == selectedCommentator }
         }
         
-        val tabTitles = remember(connectionTypes) {
-            listOf("הכל") + connectionTypes.map { connectionTypeNames[it] ?: "אחר" }
-        }
-        
-        Text(
-            text = "פירושים (${lineCommentaries.size}):",
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        
-        CommentariesTabs(
-            tabTitles = tabTitles,
-            selectedTabIndex = selectedTabIndex,
-            onTabSelected = onTabSelected
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        val filteredCommentaries = remember(lineCommentaries, selectedTabIndex, connectionTypes) {
-            if (selectedTabIndex == 0) {
-                lineCommentaries
-            } else if (selectedTabIndex - 1 < connectionTypes.size) {
-                val selectedType = connectionTypes[selectedTabIndex - 1]
-                lineCommentaries.filter { it.link.connectionType == selectedType }
-            } else {
-                lineCommentaries
+        if (filteredCommentaries.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No commentaries available from $selectedCommentator for this line"
+                )
             }
+        } else {
+            CommentariesList(
+                commentaries = filteredCommentaries,
+                scrollIndex = commentariesScrollIndex,
+                scrollOffset = commentariesScrollOffset,
+                onCommentClick = onCommentClick,
+                onScroll = onScroll
+            )
         }
-        
-        CommentariesList(
-            commentaries = filteredCommentaries,
-            scrollIndex = commentariesScrollIndex,
-            scrollOffset = commentariesScrollOffset,
-            onCommentClick = onCommentClick,
-            onScroll = onScroll
-        )
     }
 }
 
 @Composable
-private fun CommentariesTabs(
-    tabTitles: List<String>,
-    selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit
+private fun CommentatorsListView(
+    commentaries: List<CommentaryWithText>,
+    selectedCommentator: String?,
+    onCommentatorSelected: (String) -> Unit
 ) {
-    val tabs = remember(tabTitles, selectedTabIndex) {
-        tabTitles.mapIndexed { index, title ->
-            TabData.Default(
-                selected = index == selectedTabIndex,
-                content = { tabState ->
-                    SimpleTabContent(
-                        label = title,
-                        state = tabState
-                    )
-                },
-                onClick = { onTabSelected(index) }
-            )
-        }
+    // Extract unique book titles (commentators) from the commentaries
+    val commentators = remember(commentaries) {
+        commentaries.map { it.targetBookTitle }.distinct().sorted()
     }
     
-    TabStrip(
-        tabs = tabs,
-        style = JewelTheme.defaultTabStyle,
-        modifier = Modifier.fillMaxWidth()
-    )
+    Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+        if (commentators.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No commentators available")
+            }
+        } else {
+            Box(modifier = Modifier.fillMaxSize()) {
+                val listState = rememberLazyListState()
+                
+                Row(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    ) {
+                        items(commentators) { commentator ->
+                            val isSelected = commentator == selectedCommentator
+                            
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .pointerInput(Unit) { detectTapGestures(onTap = {onCommentatorSelected(commentator)}) }
+                                    .pointerHoverIcon(PointerIcon.Hand)
+                                    .padding(vertical = 8.dp, horizontal = 12.dp)
+                            ) {
+                                Text(
+                                    text = commentator,
+                                    fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew, weight = if (isSelected) FontWeight.Bold else FontWeight.Normal) ),
+                                    fontSize = 14.sp,
+                                )
+                            }
+                            
+                            Divider(
+                                Orientation.Horizontal,
+                                thickness = 0.5.dp,
+                                color = JewelTheme.globalColors.borders.normal
+                            )
+                        }
+                    }
+                    
+                    VerticalScrollbar(
+                        modifier = Modifier.fillMaxHeight(),
+                        adapter = rememberScrollbarAdapter(listState)
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -205,18 +267,6 @@ private fun CommentariesList(
         modifier = Modifier.fillMaxSize()
     ) {
         commentariesByBook.forEach { (bookTitle, bookCommentaries) ->
-            item(key = bookTitle) {
-                Text(
-                    text = bookTitle,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.LightGray.copy(alpha = 0.2f))
-                        .padding(8.dp)
-                )
-            }
-            
             items(
                 items = bookCommentaries,
                 key = { it.link.id }
@@ -224,11 +274,14 @@ private fun CommentariesList(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onCommentClick(commentary) }
+                        .pointerInput(Unit) { detectTapGestures(onTap = { onCommentClick(commentary) }) }
+                        .pointerHoverIcon(PointerIcon.Hand)
                         .padding(vertical = 8.dp, horizontal = 16.dp)
                 ) {
                     Text(
                         text = commentary.targetText,
+                        textAlign = TextAlign.Justify,
+                        fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew)),
                         fontSize = 14.sp
                     )
                 }

@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
+import org.jetbrains.compose.splitpane.rememberSplitPaneState
 import org.jetbrains.jewel.ui.component.Text
 import org.koin.compose.koinInject
 import seforimapp.composeapp.generated.resources.Res
@@ -36,6 +37,9 @@ fun BookContentPanel(
     // Get the Navigator from Koin
     val navigator = koinInject<Navigator>()
     val scope = rememberCoroutineScope()
+
+    // SplitPaneState for the commentaries horizontal split (commentators list and commentaries)
+    val commentariesSplitState = rememberSplitPaneState(0.3f) // 30% for commentators list
 
     // Preserve LazyListState across recompositions
     val bookListState = rememberLazyListState()
@@ -76,7 +80,6 @@ fun BookContentPanel(
                     LineCommentsView(
                         selectedLine = contentState.selectedLine,
                         commentaries = contentState.commentaries,
-                        selectedTabIndex = contentState.commentariesSelectedTab,
                         commentariesScrollIndex = contentState.commentariesScrollIndex,
                         commentariesScrollOffset = contentState.commentariesScrollOffset,
                         onCommentClick = { commentary ->
@@ -91,12 +94,10 @@ fun BookContentPanel(
                                 )
                             }
                         },
-                        onTabSelected = { index ->
-                            onEvent(BookContentEvent.CommentariesTabSelected(index))
-                        },
                         onScroll = { index, offset ->
                             onEvent(BookContentEvent.CommentariesScrolled(index, offset))
-                        }
+                        },
+                        splitPaneState = commentariesSplitState // Pass the horizontal split pane state
                     )
                 }
             )

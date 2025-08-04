@@ -23,6 +23,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.LoadDirection
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -51,6 +55,26 @@ fun BookContentView(
     val listState = preservedListState ?: rememberLazyListState(
         initialFirstVisibleItemIndex = scrollIndex,
         initialFirstVisibleItemScrollOffset = scrollOffset
+    )
+
+    // Collect text size from settings
+    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    
+    // Animate text size changes for smoother transitions
+    val textSize by animateFloatAsState(
+        targetValue = rawTextSize,
+        animationSpec = tween(durationMillis = 300),
+        label = "textSizeAnimation"
+    )
+    
+    // Collect line height from settings
+    val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
+    
+    // Animate line height changes for smoother transitions
+    val lineHeight by animateFloatAsState(
+        targetValue = rawLineHeight,
+        animationSpec = tween(durationMillis = 300),
+        label = "lineHeightAnimation"
     )
 
     var lastScrolledLineId by remember(book.id, lines) { mutableStateOf<Long?>(null) }
@@ -117,7 +141,12 @@ fun BookContentView(
         SelectionContainer {
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 items(items = lines, key = { it.id }) { line ->
-                    LineItem(line = line, isSelected = selectedLine?.id == line.id) {
+                    LineItem(
+                        line = line, 
+                        isSelected = selectedLine?.id == line.id,
+                        baseTextSize = textSize,
+                        lineHeight = lineHeight
+                    ) {
                         onLineSelected(line)
                     }
                 }
@@ -131,6 +160,8 @@ fun BookContentView(
 private fun LineItem(
     line: Line,
     isSelected: Boolean,
+    baseTextSize: Float = 16f,
+    lineHeight: Float = 1.5f,
     onClick: () -> Unit
 ) {
     val parsedElements = remember(line.id, line.content) {
@@ -138,7 +169,8 @@ private fun LineItem(
     }
 
     // Construit une seule chaîne annotée => un seul Text, plus de "ligne après"
-    val annotated = remember(parsedElements) {
+    // Include baseTextSize in remember dependencies to ensure recomposition when text size changes
+    val annotated = remember(parsedElements, baseTextSize) {
         buildAnnotatedString {
             parsedElements.forEach { e ->
                 if (e.text.isBlank()) return@forEach
@@ -152,13 +184,16 @@ private fun LineItem(
                 }
                 if (e.isHeader || e.headerLevel != null) {
                     val size = when (e.headerLevel) {
-                        1 -> 24.sp
-                        2 -> 20.sp
-                        3 -> 18.sp
-                        4 -> 16.sp
-                        else -> 16.sp
+                        1 -> (baseTextSize * 1.5f).sp
+                        2 -> (baseTextSize * 1.25f).sp
+                        3 -> (baseTextSize * 1.125f).sp
+                        4 -> baseTextSize.sp
+                        else -> baseTextSize.sp
                     }
                     addStyle(SpanStyle(fontSize = size), start, end)
+                } else {
+                    // Apply base text size to non-header text
+                    addStyle(SpanStyle(fontSize = baseTextSize.sp), start, end)
                 }
             }
         }
@@ -174,6 +209,7 @@ private fun LineItem(
         Text(
             text = annotated,
             textAlign = TextAlign.Justify,
+            lineHeight = (baseTextSize * lineHeight).sp,
             modifier = textModifier
         )
     }

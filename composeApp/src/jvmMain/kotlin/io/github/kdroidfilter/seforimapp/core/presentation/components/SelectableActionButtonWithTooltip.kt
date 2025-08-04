@@ -28,7 +28,8 @@ fun SelectableIconButtonWithToolip(
     isSelected: Boolean,
     icon : ImageVector,
     iconDescription : String = "",
-    label: String
+    label: String,
+    enabled: Boolean = true
 ){
     Tooltip({
         Text(toolTipText)
@@ -40,7 +41,7 @@ fun SelectableIconButtonWithToolip(
                 .height(64.dp)
                 .pointerHoverIcon(PointerIcon.Hand),
             focusable = false,
-            enabled = true,
+            enabled = enabled,
             style = IconButtonStyle(
                 colors = IconButtonColors(
                     foregroundSelectedActivated = JewelTheme.iconButtonStyle.colors.foregroundSelectedActivated,

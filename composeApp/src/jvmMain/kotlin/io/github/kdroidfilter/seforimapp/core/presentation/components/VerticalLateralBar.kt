@@ -63,6 +63,7 @@ fun VerticalLateralBar(
                             fontSize = 14.sp,
                             textDecoration = TextDecoration.Underline,
                         )
+                        Spacer(Modifier.height(4.dp))
                         Column(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally

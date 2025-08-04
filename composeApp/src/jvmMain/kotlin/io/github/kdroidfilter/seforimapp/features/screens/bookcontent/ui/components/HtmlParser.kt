@@ -9,6 +9,7 @@ import org.jsoup.nodes.TextNode
 data class ParsedHtmlElement(
     val text: String,
     val isBold: Boolean = false,
+    val isItalic: Boolean = false,
     val isHeader: Boolean = false,
     val headerLevel: Int? = null,
     val commentator: String? = null,
@@ -26,6 +27,7 @@ class HtmlParser {
                 node = child,
                 list = out,
                 isBold = false,
+                isItalic = false,
                 isHeader = false,
                 headerLevel = null,
                 commentator = null,
@@ -43,6 +45,7 @@ class HtmlParser {
         node: Node,
         list: MutableList<ParsedHtmlElement>,
         isBold: Boolean,
+        isItalic: Boolean,
         isHeader: Boolean,
         headerLevel: Int?,
         commentator: String?,
@@ -54,6 +57,7 @@ class HtmlParser {
                     list = list,
                     textRaw = node.text(),
                     isBold = isBold,
+                    isItalic = isItalic,
                     isHeader = isHeader,
                     headerLevel = headerLevel,
                     commentator = commentator,
@@ -70,6 +74,7 @@ class HtmlParser {
                 }
 
                 val nextBold = isBold || tag == "b" || tag == "strong"
+                val nextItalic = isItalic || tag == "i" || tag == "em"
                 val isHeaderTag = tag.length == 2 && tag[0] == 'h' && tag[1].isDigit()
                 val nextHeader = isHeader || isHeaderTag
                 val nextHeaderLevel = if (isHeaderTag) tag.substring(1).toInt() else headerLevel
@@ -79,6 +84,7 @@ class HtmlParser {
                         list = list,
                         textRaw = (node.childNode(0) as TextNode).text(),
                         isBold = nextBold,
+                        isItalic = nextItalic,
                         isHeader = nextHeader,
                         headerLevel = nextHeaderLevel,
                         commentator = commentator,
@@ -92,6 +98,7 @@ class HtmlParser {
                         node = child,
                         list = list,
                         isBold = nextBold,
+                        isItalic = nextItalic,
                         isHeader = nextHeader,
                         headerLevel = nextHeaderLevel,
                         commentator = commentator,
@@ -106,6 +113,7 @@ class HtmlParser {
         list: MutableList<ParsedHtmlElement>,
         textRaw: String,
         isBold: Boolean,
+        isItalic: Boolean,
         isHeader: Boolean,
         headerLevel: Int?,
         commentator: String?,
@@ -119,6 +127,7 @@ class HtmlParser {
             val sameStyle =
                 !last.isLineBreak &&
                         last.isBold == isBold &&
+                        last.isItalic == isItalic &&
                         last.isHeader == isHeader &&
                         last.headerLevel == headerLevel &&
                         last.commentator == commentator &&
@@ -135,6 +144,7 @@ class HtmlParser {
             ParsedHtmlElement(
                 text = text,
                 isBold = isBold,
+                isItalic = isItalic,
                 isHeader = isHeader,
                 headerLevel = headerLevel,
                 commentator = commentator,

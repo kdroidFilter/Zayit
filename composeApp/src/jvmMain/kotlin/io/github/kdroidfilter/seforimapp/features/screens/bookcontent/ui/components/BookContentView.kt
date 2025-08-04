@@ -19,6 +19,7 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -181,6 +182,9 @@ private fun LineItem(
 
                 if (e.isBold) {
                     addStyle(SpanStyle(fontWeight = FontWeight.Bold), start, end)
+                }
+                if (e.isItalic) {
+                    addStyle(SpanStyle(fontStyle = FontStyle.Italic), start, end)
                 }
                 if (e.isHeader || e.headerLevel != null) {
                     val size = when (e.headerLevel) {

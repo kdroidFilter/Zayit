@@ -101,7 +101,7 @@ fun CategoryBookTree(
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize().padding(end = 16.dp)
         ) {
             items(
                 items = treeItems,

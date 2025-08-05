@@ -1,22 +1,24 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
-import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.*
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.*
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EndVerticalBar
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedHorizontalSplitPane
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.StartVerticalBar
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.BookContentPanel
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.CategoryTreePanel
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.TocPanel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
-import org.jetbrains.jewel.foundation.theme.JewelTheme
 
 @OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class)
 @Composable

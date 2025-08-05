@@ -4,7 +4,6 @@ import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
@@ -13,12 +12,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
-import io.github.kdroidfilter.seforimlibrary.core.models.LineTocMapping
-import io.github.kdroidfilter.seforimlibrary.core.extensions.findTocEntryId
-import io.github.kdroidfilter.seforimlibrary.core.extensions.hasTocEntry
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.VisibleTocEntry
+import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.core.models.LineTocMapping
+import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -81,7 +78,7 @@ fun TocView(
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize().padding(end = 16.dp)
         ) {
             items(
                 items = visibleEntries,

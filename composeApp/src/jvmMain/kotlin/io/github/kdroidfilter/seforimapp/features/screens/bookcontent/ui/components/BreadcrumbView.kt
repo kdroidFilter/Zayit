@@ -51,7 +51,7 @@ fun BreadcrumbView(
         buildBreadcrumbPath(book, selectedLine, tocEntries, tocChildren, rootCategories, categoryChildren)
     }
     Row(
-        modifier = modifier.padding(vertical = 4.dp),
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.End
     ) {

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -29,22 +30,10 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
 import org.jetbrains.compose.splitpane.rememberSplitPaneState
-import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.CheckboxRow
-import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.styling.LocalCheckboxStyle
-import seforimapp.composeapp.generated.resources.Res
-import seforimapp.composeapp.generated.resources.commentaries
-import seforimapp.composeapp.generated.resources.no_commentaries_for_line
-import seforimapp.composeapp.generated.resources.no_commentaries_from_selected
-import seforimapp.composeapp.generated.resources.no_commentators_available
-import seforimapp.composeapp.generated.resources.notorashihebrew
-import seforimapp.composeapp.generated.resources.notoserifhebrew
-import seforimapp.composeapp.generated.resources.select_at_least_one_commentator
-import seforimapp.composeapp.generated.resources.select_between_1_and_4_commentators
-import seforimapp.composeapp.generated.resources.select_line_for_commentaries
+import seforimapp.composeapp.generated.resources.*
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -225,43 +214,9 @@ private fun CommentatorHeader(
                 textAlign = TextAlign.Center
             )
         }
-        
-        // Divider after the commentator name
-        HorizontalDivider()
     }
 }
 
-/**
- * Helper composable for standard horizontal divider
- */
-@Composable
-private fun HorizontalDivider(
-    thickness: Float = 1f,
-    modifier: Modifier = Modifier
-) {
-    Divider(
-        Orientation.Horizontal,
-        thickness = thickness.dp,
-        color = JewelTheme.globalColors.borders.normal,
-        modifier = modifier
-    )
-}
-
-/**
- * Helper composable for standard vertical divider
- */
-@Composable
-private fun VerticalDivider(
-    thickness: Float = 1f,
-    modifier: Modifier = Modifier
-) {
-    Divider(
-        Orientation.Vertical,
-        thickness = thickness.dp,
-        color = JewelTheme.globalColors.borders.normal,
-        modifier = modifier
-    )
-}
 
 /**
  * Helper composable to display a single commentator column with its commentaries
@@ -329,11 +284,7 @@ private fun CommentatorsRow(
                     .fillMaxHeight()
                     .padding(horizontal = 4.dp)
             )
-            
-            // Add a divider between columns (except after the last one)
-            if (index < commentators.size - 1) {
-                VerticalDivider()
-            }
+
         }
     }
 }
@@ -397,11 +348,6 @@ private fun MultiRowCommentatorsLayout(
                     .weight(1f)
                     .fillMaxWidth()
             )
-            
-            // Add a divider between rows (except after the last one)
-            if (index < commentatorGroups.size - 1) {
-                HorizontalDivider()
-            }
         }
     }
 }
@@ -574,8 +520,6 @@ private fun CommentatorsListView(
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp, horizontal = 8.dp)
                             )
-                            
-                            HorizontalDivider(thickness = 0.5f)
                         }
                     }
                     
@@ -642,7 +586,6 @@ private fun CommentariesList(
                             lineHeight = (commentTextSize * lineHeight).sp
                         )
                     }
-                    HorizontalDivider(thickness = 0.5f)
                 }
             }
         }

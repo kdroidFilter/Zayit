@@ -6,6 +6,7 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.presentation.navigation.DefaultNavigator
 import io.github.kdroidfilter.seforimapp.core.presentation.navigation.Navigator
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentViewModel
@@ -23,6 +24,9 @@ val desktopModule = module {
 
     // Register TabStateManager as a singleton
     single { TabStateManager() }
+    
+    // Register TabTitleUpdateManager as a singleton
+    single { TabTitleUpdateManager() }
 
     // Register SeforimRepository as a singleton
     single<SeforimRepository> {
@@ -33,14 +37,18 @@ val desktopModule = module {
     }
 
     viewModel {
-        TabsViewModel(navigator = get())
+        TabsViewModel(
+            navigator = get(),
+            titleUpdateManager = get()
+        )
     }
 
     viewModel { (savedStateHandle: SavedStateHandle) ->
         BookContentViewModel(
             savedStateHandle = savedStateHandle,
             stateManager = get(),
-            repository = get()
+            repository = get(),
+            titleUpdateManager = get()
         )
     }
 }

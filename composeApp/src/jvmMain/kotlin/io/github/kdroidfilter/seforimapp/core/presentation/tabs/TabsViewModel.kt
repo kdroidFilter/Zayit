@@ -13,11 +13,13 @@ import kotlin.math.max
 data class TabItem(
     val id: Int,
     val title: String = "Default Tab",
-    val destination: TabsDestination = TabsDestination.Home(UUID.randomUUID().toString())
+    val destination: TabsDestination = TabsDestination.Home(UUID.randomUUID().toString()),
+    val tabType: TabType = TabType.SEARCH
 )
 
 class TabsViewModel(
     private val navigator: Navigator,
+    private val titleUpdateManager: TabTitleUpdateManager
 ) : ViewModel() {
 
     private var _nextTabId = 2 // Commence à 2 car on a déjà un onglet par défaut
@@ -38,6 +40,13 @@ class TabsViewModel(
         viewModelScope.launch {
             navigator.navigationRequests.collect { destination ->
                 addTabWithDestination(destination)
+            }
+        }
+        
+        // Écouter les mises à jour de titre
+        viewModelScope.launch {
+            titleUpdateManager.titleUpdates.collect { update ->
+                updateTabTitle(update.tabId, update.newTitle, update.tabType)
             }
         }
     }
@@ -118,8 +127,31 @@ class TabsViewModel(
     private fun getTabTitle(destination: TabsDestination): String {
         return when (destination) {
             is TabsDestination.Home -> "Home"
-            is TabsDestination.Search -> "Search: ${destination.searchQuery}"
-            is TabsDestination.BookContent -> "Book ${destination.bookId}"
+            is TabsDestination.Search -> destination.searchQuery
+            is TabsDestination.BookContent -> "${destination.bookId}"
+        }
+    }
+    
+    /**
+     * Updates the title of a tab with the given tabId.
+     *
+     * @param tabId The ID of the tab to update
+     * @param newTitle The new title for the tab
+     * @param tabType The type of content in the tab
+     */
+    private fun updateTabTitle(tabId: String, newTitle: String, tabType: TabType = TabType.SEARCH) {
+        val currentTabs = _tabs.value
+        val updatedTabs = currentTabs.map { tab ->
+            if (tab.destination.tabId == tabId) {
+                tab.copy(title = newTitle, tabType = tabType)
+            } else {
+                tab
+            }
+        }
+        
+        // Only update if there was a change
+        if (updatedTabs != currentTabs) {
+            _tabs.value = updatedTabs
         }
     }
 }

@@ -24,6 +24,9 @@ object AppSettings {
     const val MAX_LINE_HEIGHT = 2.5f
     const val LINE_HEIGHT_INCREMENT = 0.1f
     
+    // Tab display constants
+    const val MAX_TAB_TITLE_LENGTH = 20
+    
     // Settings keys
     private const val KEY_TEXT_SIZE = "text_size"
     private const val KEY_LINE_HEIGHT = "line_height"

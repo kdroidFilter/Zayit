@@ -7,6 +7,8 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabAwareViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabTitleUpdateManager
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabType
 import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.*
 import kotlinx.coroutines.delay
@@ -19,11 +21,14 @@ import org.jetbrains.compose.splitpane.SplitPaneState
 class BookContentViewModel(
     savedStateHandle: SavedStateHandle,
     stateManager: TabStateManager,
-    private val repository: SeforimRepository
+    private val repository: SeforimRepository,
+    private val titleUpdateManager: TabTitleUpdateManager
 ) : TabAwareViewModel(
     tabId = savedStateHandle.get<String>(KEY_TAB_ID) ?: "",
     stateManager = stateManager
 ) {
+    // Store the tabId for later use
+    private val currentTabId: String = savedStateHandle.get<String>(KEY_TAB_ID) ?: ""
 
     companion object {
         // State keys
@@ -188,6 +193,16 @@ class BookContentViewModel(
                     }
                 }
             }
+        }
+        
+        // Observe the selected book and update the tab title when it changes
+        viewModelScope.launch {
+            _selectedBook
+                .filterNotNull() // Only process non-null books
+                .collect { book ->
+                    // Update the tab title whenever the book changes
+                    updateTabTitle(book)
+                }
         }
     }
 
@@ -481,7 +496,25 @@ class BookContentViewModel(
         // Reset scroll position when loading a new book
         _contentScrollIndex.value = 0
         _contentScrollOffset.value = 0
+        
+        // Update tab title with book name
+        updateTabTitle(book)
+        
         loadBookData(book)
+    }
+    
+    /**
+     * Updates the tab title with the book name
+     *
+     * @param book The book whose name will be used for the tab title
+     */
+    private fun updateTabTitle(book: Book) {
+        // Create a title using the book name
+        val title = book.title
+        
+        // Update the tab title using the stored tabId
+        // Set tabType=TabType.BOOK to indicate this tab contains book content
+        titleUpdateManager.updateTabTitle(currentTabId, title, TabType.BOOK)
     }
 
     private fun loadBookData(book: Book) {

@@ -31,12 +31,20 @@ import org.jetbrains.compose.splitpane.SplitPaneState
 import org.jetbrains.compose.splitpane.rememberSplitPaneState
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.styling.LocalCheckboxStyle
 import seforimapp.composeapp.generated.resources.Res
 import seforimapp.composeapp.generated.resources.commentaries
+import seforimapp.composeapp.generated.resources.no_commentaries_for_line
+import seforimapp.composeapp.generated.resources.no_commentaries_from_selected
+import seforimapp.composeapp.generated.resources.no_commentators_available
 import seforimapp.composeapp.generated.resources.notorashihebrew
 import seforimapp.composeapp.generated.resources.notoserifhebrew
+import seforimapp.composeapp.generated.resources.select_at_least_one_commentator
+import seforimapp.composeapp.generated.resources.select_between_1_and_4_commentators
+import seforimapp.composeapp.generated.resources.select_line_for_commentaries
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -86,13 +94,12 @@ fun LineCommentsView(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Select a line to view its commentaries")
+                    Text(
+                        text = stringResource(Res.string.select_line_for_commentaries)
+                    )
                 }
             }
             else -> {
-                // State to track the selected commentator
-                var selectedCommentator by remember { mutableStateOf<String?>(null) }
-                
                 // Filter commentaries for the selected line
                 val lineCommentaries = remember(commentaries, selectedLine) {
                     commentaries.filter { 
@@ -101,12 +108,35 @@ fun LineCommentsView(
                     }
                 }
                 
+                // Extract available commentators for the current line
+                val availableCommentators = remember(lineCommentaries) {
+                    lineCommentaries.map { it.targetBookTitle }.distinct().toSet()
+                }
+                
+                // State to track the selected commentators (up to 4)
+                // Reset selected commentators if they're no longer available when changing lines or books
+                var selectedCommentators by remember(availableCommentators) { 
+                    // Filter out any previously selected commentators that are no longer available
+                    val currentState = mutableStateOf<Set<String>>(emptySet<String>())
+                    val currentValue = currentState.value
+                    
+                    // If we have any selected commentators, filter them to keep only those still available
+                    if (currentValue.isNotEmpty()) {
+                        val filteredSelection = currentValue.filter { it in availableCommentators }.toSet()
+                        currentState.value = filteredSelection
+                    }
+                    
+                    currentState
+                }
+                
                 if (lineCommentaries.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("No commentaries available for this line")
+                        Text(
+                            text = stringResource(Res.string.no_commentaries_for_line)
+                        )
                     }
                 } else {
                     EnhancedHorizontalSplitPane(
@@ -114,21 +144,31 @@ fun LineCommentsView(
                         modifier = Modifier.fillMaxSize(),
                         firstMinSize = 150f, // Minimum width for commentators list (30% of screen)
                         firstContent = {
-                            // Left side: Commentators list
+                            // Left side: Commentators list with checkboxes
                             CommentatorsListView(
                                 commentaries = lineCommentaries,
-                                selectedCommentator = selectedCommentator,
-                                onCommentatorSelected = { commentator ->
-                                    selectedCommentator = if (selectedCommentator == commentator) null else commentator
+                                selectedCommentators = selectedCommentators,
+                                onCommentatorSelected = { commentator, isSelected ->
+                                    selectedCommentators = if (isSelected) {
+                                        // If trying to select more than 4, don't add
+                                        if (selectedCommentators.size < 4) {
+                                            selectedCommentators + commentator
+                                        } else {
+                                            selectedCommentators
+                                        }
+                                    } else {
+                                        // Remove from selection
+                                        selectedCommentators - commentator
+                                    }
                                 }
                             )
                         },
                         secondContent = {
-                            // Right side: Filtered commentaries
+                            // Right side: Filtered commentaries for selected commentators
                             CommentariesContent(
                                 selectedLine = selectedLine,
                                 commentaries = lineCommentaries,
-                                selectedCommentator = selectedCommentator,
+                                selectedCommentators = selectedCommentators,
                                 commentariesScrollIndex = commentariesScrollIndex,
                                 commentariesScrollOffset = commentariesScrollOffset,
                                 onCommentClick = onCommentClick,
@@ -144,11 +184,233 @@ fun LineCommentsView(
     }
 }
 
+/**
+ * Helper composable to display a centered message
+ */
+@Composable
+private fun CenteredMessage(
+    message: String,
+    fontSize: Float = 14f
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = message,
+            fontSize = fontSize.sp
+        )
+    }
+}
+
+/**
+ * Helper composable to display a commentator header (name + divider)
+ */
+@Composable
+private fun CommentatorHeader(
+    commentator: String,
+    commentTextSize: Float,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        // Commentator name at the top, centered
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = commentator,
+                fontWeight = FontWeight.Bold,
+                fontSize = (commentTextSize * 1.1f).sp,
+                textAlign = TextAlign.Center
+            )
+        }
+        
+        // Divider after the commentator name
+        HorizontalDivider()
+    }
+}
+
+/**
+ * Helper composable for standard horizontal divider
+ */
+@Composable
+private fun HorizontalDivider(
+    thickness: Float = 1f,
+    modifier: Modifier = Modifier
+) {
+    Divider(
+        Orientation.Horizontal,
+        thickness = thickness.dp,
+        color = JewelTheme.globalColors.borders.normal,
+        modifier = modifier
+    )
+}
+
+/**
+ * Helper composable for standard vertical divider
+ */
+@Composable
+private fun VerticalDivider(
+    thickness: Float = 1f,
+    modifier: Modifier = Modifier
+) {
+    Divider(
+        Orientation.Vertical,
+        thickness = thickness.dp,
+        color = JewelTheme.globalColors.borders.normal,
+        modifier = modifier
+    )
+}
+
+/**
+ * Helper composable to display a single commentator column with its commentaries
+ */
+@Composable
+private fun CommentatorColumn(
+    commentator: String,
+    commentaries: List<CommentaryWithText>,
+    scrollIndex: Int,
+    scrollOffset: Int,
+    onCommentClick: (CommentaryWithText) -> Unit,
+    onScroll: (Int, Int) -> Unit,
+    commentTextSize: Float,
+    lineHeight: Float,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        // Display commentator header
+        CommentatorHeader(
+            commentator = commentator,
+            commentTextSize = commentTextSize
+        )
+        
+        // Commentaries for this commentator
+        CommentariesList(
+            commentaries = commentaries,
+            scrollIndex = scrollIndex,
+            scrollOffset = scrollOffset,
+            onCommentClick = onCommentClick,
+            onScroll = onScroll,
+            commentTextSize = commentTextSize,
+            lineHeight = lineHeight
+        )
+    }
+}
+
+/**
+ * Helper composable to display a row of commentators with dividers
+ */
+@Composable
+private fun CommentatorsRow(
+    commentators: List<String>,
+    commentariesByCommentator: Map<String, List<CommentaryWithText>>,
+    scrollIndex: Int,
+    scrollOffset: Int,
+    onCommentClick: (CommentaryWithText) -> Unit,
+    onScroll: (Int, Int) -> Unit,
+    commentTextSize: Float,
+    lineHeight: Float,
+    modifier: Modifier = Modifier
+) {
+    Row(modifier = modifier) {
+        commentators.forEachIndexed { index, commentator ->
+            CommentatorColumn(
+                commentator = commentator,
+                commentaries = commentariesByCommentator[commentator] ?: emptyList(),
+                scrollIndex = scrollIndex,
+                scrollOffset = scrollOffset,
+                onCommentClick = onCommentClick,
+                onScroll = onScroll,
+                commentTextSize = commentTextSize,
+                lineHeight = lineHeight,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(horizontal = 4.dp)
+            )
+            
+            // Add a divider between columns (except after the last one)
+            if (index < commentators.size - 1) {
+                VerticalDivider()
+            }
+        }
+    }
+}
+
+/**
+ * Helper function to create a row of commentators with appropriate layout
+ */
+@Composable
+private fun CommentatorsRowLayout(
+    commentators: List<String>,
+    commentariesByCommentator: Map<String, List<CommentaryWithText>>,
+    scrollIndex: Int,
+    scrollOffset: Int,
+    onCommentClick: (CommentaryWithText) -> Unit,
+    onScroll: (Int, Int) -> Unit,
+    commentTextSize: Float,
+    lineHeight: Float,
+    modifier: Modifier = Modifier
+) {
+    CommentatorsRow(
+        commentators = commentators,
+        commentariesByCommentator = commentariesByCommentator,
+        scrollIndex = scrollIndex,
+        scrollOffset = scrollOffset,
+        onCommentClick = onCommentClick,
+        onScroll = onScroll,
+        commentTextSize = commentTextSize,
+        lineHeight = lineHeight,
+        modifier = modifier
+    )
+}
+
+/**
+ * Helper function to create a multi-row layout of commentators
+ */
+@Composable
+private fun MultiRowCommentatorsLayout(
+    commentatorGroups: List<List<String>>,
+    commentariesByCommentator: Map<String, List<CommentaryWithText>>,
+    scrollIndex: Int,
+    scrollOffset: Int,
+    onCommentClick: (CommentaryWithText) -> Unit,
+    onScroll: (Int, Int) -> Unit,
+    commentTextSize: Float,
+    lineHeight: Float,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        commentatorGroups.forEachIndexed { index, commentators ->
+            // Add a row of commentators
+            CommentatorsRowLayout(
+                commentators = commentators,
+                commentariesByCommentator = commentariesByCommentator,
+                scrollIndex = scrollIndex,
+                scrollOffset = scrollOffset,
+                onCommentClick = onCommentClick,
+                onScroll = onScroll,
+                commentTextSize = commentTextSize,
+                lineHeight = lineHeight,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            )
+            
+            // Add a divider between rows (except after the last one)
+            if (index < commentatorGroups.size - 1) {
+                HorizontalDivider()
+            }
+        }
+    }
+}
+
 @Composable
 private fun CommentariesContent(
     selectedLine: Line,
-    commentaries: List<CommentaryWithText>,
-    selectedCommentator: String? = null,
+    commentaries: List<CommentaryWithText>, // Already filtered for the selected line
+    selectedCommentators: Set<String> = emptySet(),
     commentariesScrollIndex: Int = 0,
     commentariesScrollOffset: Int = 0,
     onCommentClick: (CommentaryWithText) -> Unit,
@@ -156,51 +418,114 @@ private fun CommentariesContent(
     commentTextSize: Float = 14f, // Default to 14sp if not provided
     lineHeight: Float = 1.5f // Default to 1.5 if not provided
 ) {
-    // Filter commentaries by line and connection type
-    val lineCommentaries = remember(commentaries, selectedLine) {
-        commentaries.filter { 
-            it.link.sourceLineId == selectedLine.id && 
-            it.link.connectionType == ConnectionType.COMMENTARY 
-        }
-    }
+    // Use the already filtered commentaries
+    val lineCommentaries = commentaries
     
-    // Check if a commentator is selected
-    if (selectedCommentator == null) {
-        // If no commentator is selected, show a message prompting the user to select one
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Please select a commentator from the list to view their commentaries",
-                fontSize = commentTextSize.sp
-            )
-        }
+    // Check if any commentators are selected
+    if (selectedCommentators.isEmpty()) {
+        CenteredMessage(
+            message = stringResource(Res.string.select_at_least_one_commentator),
+            fontSize = commentTextSize
+        )
     } else {
-        // Filter commentaries by the selected commentator
-        val filteredCommentaries = remember(lineCommentaries, selectedCommentator) {
-            lineCommentaries.filter { it.targetBookTitle == selectedCommentator }
+        // Filter commentaries by the selected commentators
+        val commentariesByCommentator = remember(lineCommentaries, selectedCommentators) {
+            selectedCommentators.associateWith { commentator ->
+                lineCommentaries.filter { it.targetBookTitle == commentator }
+            }
         }
         
-        if (filteredCommentaries.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No commentaries available from $selectedCommentator for this line"
-                )
-            }
-        } else {
-            CommentariesList(
-                commentaries = filteredCommentaries,
-                scrollIndex = commentariesScrollIndex,
-                scrollOffset = commentariesScrollOffset,
-                onCommentClick = onCommentClick,
-                onScroll = onScroll,
-                commentTextSize = commentTextSize,
-                lineHeight = lineHeight
+        // Check if we have any commentaries for the selected commentators
+        val hasCommentaries = commentariesByCommentator.any { it.value.isNotEmpty() }
+        
+        if (!hasCommentaries) {
+            CenteredMessage(
+                message = stringResource(Res.string.no_commentaries_from_selected),
+                fontSize = commentTextSize
             )
+        } else {
+            // Display commentaries based on the number of selected commentators
+            when (selectedCommentators.size) {
+                1 -> {
+                    // Single commentator - display commentator name centered at the top
+                    val commentator = selectedCommentators.first()
+                    val filteredCommentaries = commentariesByCommentator[commentator] ?: emptyList()
+                    
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Display commentator header
+                        CommentatorHeader(
+                            commentator = commentator,
+                            commentTextSize = commentTextSize
+                        )
+                        
+                        // Commentaries list
+                        CommentariesList(
+                            commentaries = filteredCommentaries,
+                            scrollIndex = commentariesScrollIndex,
+                            scrollOffset = commentariesScrollOffset,
+                            onCommentClick = onCommentClick,
+                            onScroll = onScroll,
+                            commentTextSize = commentTextSize,
+                            lineHeight = lineHeight
+                        )
+                    }
+                }
+                2 -> {
+                    // Two commentators - display in 2 columns
+                    CommentatorsRowLayout(
+                        commentators = selectedCommentators.toList(),
+                        commentariesByCommentator = commentariesByCommentator,
+                        scrollIndex = commentariesScrollIndex,
+                        scrollOffset = commentariesScrollOffset,
+                        onCommentClick = onCommentClick,
+                        onScroll = onScroll,
+                        commentTextSize = commentTextSize,
+                        lineHeight = lineHeight,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                3 -> {
+                    // Three commentators - 2 columns in first row, 1 column in second row
+                    val firstRow = selectedCommentators.take(2).toList()
+                    val secondRow = listOf(selectedCommentators.elementAt(2))
+                    
+                    MultiRowCommentatorsLayout(
+                        commentatorGroups = listOf(firstRow, secondRow),
+                        commentariesByCommentator = commentariesByCommentator,
+                        scrollIndex = commentariesScrollIndex,
+                        scrollOffset = commentariesScrollOffset,
+                        onCommentClick = onCommentClick,
+                        onScroll = onScroll,
+                        commentTextSize = commentTextSize,
+                        lineHeight = lineHeight,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                4 -> {
+                    // Four commentators - 2 rows of 2 columns each
+                    val firstRow = selectedCommentators.take(2).toList()
+                    val secondRow = selectedCommentators.drop(2).take(2).toList()
+                    
+                    MultiRowCommentatorsLayout(
+                        commentatorGroups = listOf(firstRow, secondRow),
+                        commentariesByCommentator = commentariesByCommentator,
+                        scrollIndex = commentariesScrollIndex,
+                        scrollOffset = commentariesScrollOffset,
+                        onCommentClick = onCommentClick,
+                        onScroll = onScroll,
+                        commentTextSize = commentTextSize,
+                        lineHeight = lineHeight,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                else -> {
+                    // This shouldn't happen as we limit to 4 commentators, but handle it just in case
+                    CenteredMessage(
+                        message = stringResource(Res.string.select_between_1_and_4_commentators),
+                        fontSize = commentTextSize
+                    )
+                }
+            }
         }
     }
 }
@@ -208,8 +533,8 @@ private fun CommentariesContent(
 @Composable
 private fun CommentatorsListView(
     commentaries: List<CommentaryWithText>,
-    selectedCommentator: String?,
-    onCommentatorSelected: (String) -> Unit
+    selectedCommentators: Set<String>,
+    onCommentatorSelected: (String, Boolean) -> Unit
 ) {
     // Extract unique book titles (commentators) from the commentaries
     val commentators = remember(commentaries) {
@@ -222,7 +547,9 @@ private fun CommentatorsListView(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No commentators available")
+                Text(
+                    text = stringResource(Res.string.no_commentators_available)
+                )
             }
         } else {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -234,27 +561,21 @@ private fun CommentatorsListView(
                         modifier = Modifier.weight(1f).fillMaxHeight()
                     ) {
                         items(commentators) { commentator ->
-                            val isSelected = commentator == selectedCommentator
+                            val isSelected = commentator in selectedCommentators
                             
-                            Column(
+                            CheckboxRow(
+                                text = commentator,
+                                checked = isSelected,
+                                onCheckedChange = { checked -> onCommentatorSelected(commentator, checked) },
+                                colors = LocalCheckboxStyle.current.colors,
+                                metrics = LocalCheckboxStyle.current.metrics,
+                                icons = LocalCheckboxStyle.current.icons,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .pointerInput(Unit) { detectTapGestures(onTap = {onCommentatorSelected(commentator)}) }
-                                    .pointerHoverIcon(PointerIcon.Hand)
-                                    .padding(vertical = 8.dp, horizontal = 12.dp)
-                            ) {
-                                Text(
-                                    text = commentator,
-                                    fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew, weight = if (isSelected) FontWeight.Bold else FontWeight.Normal) ),
-                                    fontSize = 14.sp,
-                                )
-                            }
-                            
-                            Divider(
-                                Orientation.Horizontal,
-                                thickness = 0.5.dp,
-                                color = JewelTheme.globalColors.borders.normal
+                                    .padding(vertical = 4.dp, horizontal = 8.dp)
                             )
+                            
+                            HorizontalDivider(thickness = 0.5f)
                         }
                     }
                     
@@ -296,36 +617,39 @@ private fun CommentariesList(
         }
     }
     
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize()
-    ) {
-        commentariesByBook.forEach { (bookTitle, bookCommentaries) ->
-            items(
-                items = bookCommentaries,
-                key = { it.link.id }
-            ) { commentary ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .pointerInput(Unit) { detectTapGestures(onTap = { onCommentClick(commentary) }) }
-                        .pointerHoverIcon(PointerIcon.Hand)
-                        .padding(vertical = 8.dp, horizontal = 16.dp)
-                ) {
-                    Text(
-                        text = commentary.targetText,
-                        textAlign = TextAlign.Justify,
-                        fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew)),
-                        fontSize = commentTextSize.sp,
-                        lineHeight = (commentTextSize * lineHeight).sp
-                    )
+    Row(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.weight(1f).fillMaxHeight()
+        ) {
+            commentariesByBook.forEach { (bookTitle, bookCommentaries) ->
+                items(
+                    items = bookCommentaries,
+                    key = { it.link.id }
+                ) { commentary ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .pointerInput(Unit) { detectTapGestures(onTap = { onCommentClick(commentary) }) }
+                            .pointerHoverIcon(PointerIcon.Hand)
+                            .padding(vertical = 8.dp, horizontal = 16.dp)
+                    ) {
+                        Text(
+                            text = commentary.targetText,
+                            textAlign = TextAlign.Justify,
+                            fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew)),
+                            fontSize = commentTextSize.sp,
+                            lineHeight = (commentTextSize * lineHeight).sp
+                        )
+                    }
+                    HorizontalDivider(thickness = 0.5f)
                 }
-                Divider(
-                    Orientation.Horizontal,
-                    thickness = 0.5.dp,
-                    color = JewelTheme.globalColors.borders.normal
-                )
             }
         }
+        
+        VerticalScrollbar(
+            modifier = Modifier.fillMaxHeight(),
+            adapter = rememberScrollbarAdapter(listState)
+        )
     }
 }

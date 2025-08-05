@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.application
@@ -19,6 +22,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.framework.di.desktopModule
+import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -37,6 +41,7 @@ import org.jetbrains.jewel.window.styling.TitleBarStyle
 import org.koin.compose.KoinApplication
 import seforimapp.composeapp.generated.resources.Res
 import seforimapp.composeapp.generated.resources.app_name
+import seforimapp.composeapp.generated.resources.notoserifhebrew
 import java.awt.Dimension
 import java.awt.Window
 import java.util.*
@@ -67,13 +72,21 @@ fun main() {
             val isSystemInDarkMode = isSystemInDarkMode()
 
             val themeDefinition = when (theme) {
-                IntUiThemes.Light -> JewelTheme.lightThemeDefinition()
-                IntUiThemes.Dark -> JewelTheme.darkThemeDefinition()
+                IntUiThemes.Light -> JewelTheme.lightThemeDefinition(
+                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),)
+                )
+                IntUiThemes.Dark -> JewelTheme.darkThemeDefinition(
+                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),)
+                )
                 IntUiThemes.System ->
                     if (isSystemInDarkMode) {
-                        JewelTheme.darkThemeDefinition()
+                        JewelTheme.darkThemeDefinition(
+                            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),)
+                        )
                     } else {
-                        JewelTheme.lightThemeDefinition()
+                        JewelTheme.lightThemeDefinition(
+                            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),)
+                        )
                     }
             }
 

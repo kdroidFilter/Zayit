@@ -382,42 +382,53 @@ class BookContentViewModel(
     )
 
 
-    // Implementation methods
-    private fun loadRootCategories() {
+    /**
+     * Helper method to execute a loading operation with proper loading state handling
+     * 
+     * @param block The suspend function to execute while loading
+     */
+    private fun executeLoadingOperation(block: suspend () -> Unit) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Load root categories
-                val rootCategories = repository.getRootCategories()
-                _rootCategories.value = rootCategories
-
-                // Get the current expanded categories
-                val expandedCategories = _expandedCategories.value
-
-                // If there are expanded categories, load their books
-                if (expandedCategories.isNotEmpty()) {
-                    // Load books for all expanded categories
-                    val booksToLoad = mutableSetOf<Book>()
-
-                    // Process categories to load books
-                    expandedCategories.forEach { categoryId ->
-                        try {
-                            val books = repository.getBooksByCategory(categoryId)
-                            if (books.isNotEmpty()) {
-                                booksToLoad.addAll(books)
-                            }
-                        } catch (e: Exception) {
-                            // Handle error
-                        }
-                    }
-
-                    // Update books in category
-                    if (booksToLoad.isNotEmpty()) {
-                        _booksInCategory.value = _booksInCategory.value + booksToLoad
-                    }
-                }
+                block()
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    // Implementation methods
+    private fun loadRootCategories() {
+        executeLoadingOperation {
+            // Load root categories
+            val rootCategories = repository.getRootCategories()
+            _rootCategories.value = rootCategories
+
+            // Get the current expanded categories
+            val expandedCategories = _expandedCategories.value
+
+            // If there are expanded categories, load their books
+            if (expandedCategories.isNotEmpty()) {
+                // Load books for all expanded categories
+                val booksToLoad = mutableSetOf<Book>()
+
+                // Process categories to load books
+                expandedCategories.forEach { categoryId ->
+                    try {
+                        val books = repository.getBooksByCategory(categoryId)
+                        if (books.isNotEmpty()) {
+                            booksToLoad.addAll(books)
+                        }
+                    } catch (e: Exception) {
+                        // Handle error
+                    }
+                }
+
+                // Update books in category
+                if (booksToLoad.isNotEmpty()) {
+                    _booksInCategory.value = _booksInCategory.value + booksToLoad
+                }
             }
         }
     }
@@ -431,28 +442,23 @@ class BookContentViewModel(
             _expandedCategories.value += category.id
 
             if (!_categoryChildren.value.containsKey(category.id)) {
-                viewModelScope.launch {
-                    _isLoading.value = true
-                    try {
-                        val children = repository.getCategoryChildren(category.id)
-                        if (children.isNotEmpty()) {
-                            val updatedMap = _categoryChildren.value + (category.id to children)
-                            _categoryChildren.value = updatedMap
+                executeLoadingOperation {
+                    val children = repository.getCategoryChildren(category.id)
+                    if (children.isNotEmpty()) {
+                        val updatedMap = _categoryChildren.value + (category.id to children)
+                        _categoryChildren.value = updatedMap
 
-                            // Save category children map
-                            saveState(KEY_CATEGORY_CHILDREN, updatedMap)
-                        }
+                        // Save category children map
+                        saveState(KEY_CATEGORY_CHILDREN, updatedMap)
+                    }
 
-                        val books = repository.getBooksByCategory(category.id)
-                        if (books.isNotEmpty()) {
-                            val updatedBooks = _booksInCategory.value + books
-                            _booksInCategory.value = updatedBooks
+                    val books = repository.getBooksByCategory(category.id)
+                    if (books.isNotEmpty()) {
+                        val updatedBooks = _booksInCategory.value + books
+                        _booksInCategory.value = updatedBooks
 
-                            // Save books in category
-                            saveState(KEY_BOOKS_IN_CATEGORY, updatedBooks)
-                        }
-                    } finally {
-                        _isLoading.value = false
+                        // Save books in category
+                        saveState(KEY_BOOKS_IN_CATEGORY, updatedBooks)
                     }
                 }
             }
@@ -479,31 +485,26 @@ class BookContentViewModel(
     }
 
     private fun loadBookData(book: Book) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                // Load book lines
-                _bookLines.value = repository.getLines(book.id, 0, 30)
+        executeLoadingOperation {
+            // Load book lines
+            _bookLines.value = repository.getLines(book.id, 0, 30)
 
-                // Load root TOC entries
-                val rootToc = repository.getBookRootToc(book.id)
-                _tocEntries.value = rootToc
-                _tocChildren.value = mapOf(-1L to rootToc)
+            // Load root TOC entries
+            val rootToc = repository.getBookRootToc(book.id)
+            _tocEntries.value = rootToc
+            _tocChildren.value = mapOf(-1L to rootToc)
 
-                // Auto-expand first TOC entry si elle a des enfants
-                // Plus besoin de vérifier séparément, hasChildren est dans le modèle !
-                rootToc.firstOrNull()?.let { firstEntry ->
-                    if (firstEntry.hasChildren) {  // Utilise directement le champ
-                        _expandedTocEntries.value = setOf(firstEntry.id)
+            // Auto-expand first TOC entry si elle a des enfants
+            // Plus besoin de vérifier séparément, hasChildren est dans le modèle !
+            rootToc.firstOrNull()?.let { firstEntry ->
+                if (firstEntry.hasChildren) {  // Utilise directement le champ
+                    _expandedTocEntries.value = setOf(firstEntry.id)
 
-                        val children = repository.getTocChildren(firstEntry.id)
-                        if (children.isNotEmpty()) {
-                            _tocChildren.value += (firstEntry.id to children)
-                        }
+                    val children = repository.getTocChildren(firstEntry.id)
+                    if (children.isNotEmpty()) {
+                        _tocChildren.value += (firstEntry.id to children)
                     }
                 }
-            } finally {
-                _isLoading.value = false
             }
         }
     }
@@ -518,17 +519,12 @@ class BookContentViewModel(
 
             // Charger les enfants seulement si l'entrée en a ET qu'on ne les a pas déjà
             if (tocEntry.hasChildren && !_tocChildren.value.containsKey(tocEntry.id)) {
-                viewModelScope.launch {
-                    _isLoading.value = true
-                    try {
-                        val children = repository.getTocChildren(tocEntry.id)
-                        if (children.isNotEmpty()) {
-                            val updatedChildren = _tocChildren.value + (tocEntry.id to children)
-                            _tocChildren.value = updatedChildren
-                            saveState(KEY_TOC_CHILDREN, updatedChildren)
-                        }
-                    } finally {
-                        _isLoading.value = false
+                executeLoadingOperation {
+                    val children = repository.getTocChildren(tocEntry.id)
+                    if (children.isNotEmpty()) {
+                        val updatedChildren = _tocChildren.value + (tocEntry.id to children)
+                        _tocChildren.value = updatedChildren
+                        saveState(KEY_TOC_CHILDREN, updatedChildren)
                     }
                 }
             }
@@ -602,33 +598,32 @@ class BookContentViewModel(
             return
         }
         
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                // Calculate the start and end indices based on the direction
-                val (startIndex, endIndex) = when (direction) {
-                    LoadDirection.FORWARD -> {
-                        // Forward: load lines after the current last line
-                        val start = currentLines.size
-                        val end = start + 30
-                        Pair(start, end)
-                    }
-                    LoadDirection.BACKWARD -> {
-                        // Backward: load lines before the current first line
-                        // Get the line index of the first line in our current list
-                        val firstLineIndex = currentLines.firstOrNull()?.lineIndex ?: 0
-                        // Calculate start index (30 lines before the first line, but not less than 0)
-                        val start = maxOf(0, firstLineIndex - 30)
-                        // End index is the index of the first line we currently have
-                        val end = firstLineIndex
-                        Pair(start, end)
-                    }
+        executeLoadingOperation {
+            // Calculate the start and end indices based on the direction
+            val (startIndex, endIndex) = when (direction) {
+                LoadDirection.FORWARD -> {
+                    // Forward: load lines after the current last line
+                    val start = currentLines.size
+                    val end = start + 30
+                    Pair(start, end)
                 }
-                
-                debugln { "[DEBUG_LOG] Loading more lines from index: $startIndex to index: $endIndex" }
-                
-                // Only proceed if we have a valid range to load
-                if (startIndex < endIndex) {
+                LoadDirection.BACKWARD -> {
+                    // Backward: load lines before the current first line
+                    // Get the line index of the first line in our current list
+                    val firstLineIndex = currentLines.firstOrNull()?.lineIndex ?: 0
+                    // Calculate start index (30 lines before the first line, but not less than 0)
+                    val start = maxOf(0, firstLineIndex - 30)
+                    // End index is the index of the first line we currently have
+                    val end = firstLineIndex
+                    Pair(start, end)
+                }
+            }
+            
+            debugln { "[DEBUG_LOG] Loading more lines from index: $startIndex to index: $endIndex" }
+            
+            // Only proceed if we have a valid range to load
+            if (startIndex < endIndex) {
+                try {
                     // Load lines from the repository for the current book only
                     val moreLines = repository.getLines(currentBook.id, startIndex, endIndex)
                     debugln { "[DEBUG_LOG] Loaded ${moreLines.size} more lines" }
@@ -659,14 +654,12 @@ class BookContentViewModel(
                     } else {
                         debugln { "[DEBUG_LOG] No more lines returned from repository" }
                     }
-                } else {
-                    debugln { "[DEBUG_LOG] Invalid range: startIndex ($startIndex) >= endIndex ($endIndex)" }
+                } catch (e: Exception) {
+                    debugln { "[DEBUG_LOG] Error loading more lines: ${e.message}" }
+                    e.printStackTrace()
                 }
-            } catch (e: Exception) {
-                debugln { "[DEBUG_LOG] Error loading more lines: ${e.message}" }
-                e.printStackTrace()
-            } finally {
-                _isLoading.value = false
+            } else {
+                debugln { "[DEBUG_LOG] Invalid range: startIndex ($startIndex) >= endIndex ($endIndex)" }
             }
         }
     }
@@ -676,47 +669,86 @@ class BookContentViewModel(
         saveState(KEY_SEARCH_TEXT, text)
     }
 
+    /**
+     * Generic helper method to update a single scroll position value and save its state
+     * Type parameter T must be a subtype of Any to be compatible with saveState
+     */
+    private fun <T : Any> updateScrollValue(stateFlow: MutableStateFlow<T>, value: T, stateKey: String) {
+        stateFlow.value = value
+        saveState(stateKey, value)
+    }
+    
+    /**
+     * Generic helper method to update a pair of scroll index and offset values and save their states
+     */
+    private fun updateScrollPosition(
+        indexFlow: MutableStateFlow<Int>,
+        offsetFlow: MutableStateFlow<Int>,
+        index: Int,
+        offset: Int,
+        indexKey: String,
+        offsetKey: String
+    ) {
+        indexFlow.value = index
+        offsetFlow.value = offset
+        saveState(indexKey, index)
+        saveState(offsetKey, offset)
+    }
+
     private fun updateParagraphScrollPosition(position: Int) {
-        _paragraphScrollPosition.value = position
-        saveState(KEY_PARAGRAPH_SCROLL_POSITION, position)
+        updateScrollValue(_paragraphScrollPosition, position, KEY_PARAGRAPH_SCROLL_POSITION)
     }
 
     private fun updateChapterScrollPosition(position: Int) {
-        _chapterScrollPosition.value = position
-        saveState(KEY_CHAPTER_SCROLL_POSITION, position)
+        updateScrollValue(_chapterScrollPosition, position, KEY_CHAPTER_SCROLL_POSITION)
     }
 
     private fun updateTocScrollPosition(index: Int, offset: Int) {
-        _tocScrollIndex.value = index
-        _tocScrollOffset.value = offset
-        saveState(KEY_TOC_SCROLL_INDEX, index)
-        saveState(KEY_TOC_SCROLL_OFFSET, offset)
+        updateScrollPosition(
+            _tocScrollIndex, 
+            _tocScrollOffset, 
+            index, 
+            offset, 
+            KEY_TOC_SCROLL_INDEX, 
+            KEY_TOC_SCROLL_OFFSET
+        )
     }
     
     private fun updateBookTreeScrollPosition(index: Int, offset: Int) {
-        _bookTreeScrollIndex.value = index
-        _bookTreeScrollOffset.value = offset
-        saveState(KEY_BOOK_TREE_SCROLL_INDEX, index)
-        saveState(KEY_BOOK_TREE_SCROLL_OFFSET, offset)
+        updateScrollPosition(
+            _bookTreeScrollIndex, 
+            _bookTreeScrollOffset, 
+            index, 
+            offset, 
+            KEY_BOOK_TREE_SCROLL_INDEX, 
+            KEY_BOOK_TREE_SCROLL_OFFSET
+        )
     }
     
     private fun updateContentScrollPosition(index: Int, offset: Int) {
-        _contentScrollIndex.value = index
-        _contentScrollOffset.value = offset
-        saveState(KEY_CONTENT_SCROLL_INDEX, index)
-        saveState(KEY_CONTENT_SCROLL_OFFSET, offset)
+        updateScrollPosition(
+            _contentScrollIndex, 
+            _contentScrollOffset, 
+            index, 
+            offset, 
+            KEY_CONTENT_SCROLL_INDEX, 
+            KEY_CONTENT_SCROLL_OFFSET
+        )
     }
     
     private fun updateCommentariesTabIndex(index: Int) {
-        _commentariesSelectedTab.value = index
-        saveState(KEY_COMMENTARIES_SELECTED_TAB, index)
+        updateScrollValue(_commentariesSelectedTab, index, KEY_COMMENTARIES_SELECTED_TAB)
     }
     
     private fun updateCommentariesScrollPosition(index: Int, offset: Int) {
-        _commentariesScrollIndex.value = index
-        _commentariesScrollOffset.value = offset
-        saveState(KEY_COMMENTARIES_SCROLL_INDEX, index)
-        saveState(KEY_COMMENTARIES_SCROLL_OFFSET, offset)
+        updateScrollPosition(
+            _commentariesScrollIndex, 
+            _commentariesScrollOffset, 
+            index, 
+            offset, 
+            KEY_COMMENTARIES_SCROLL_INDEX, 
+            KEY_COMMENTARIES_SCROLL_OFFSET
+        )
     }
 
     private fun selectChapter(chapter: Int) {
@@ -814,52 +846,98 @@ class BookContentViewModel(
         saveState(KEY_TOC_SPLIT_PANE_POSITION, _tocSplitPaneState.value.positionPercentage)
     }
 
+    /**
+     * Helper method to save a state value with its key
+     * 
+     * @param key The key to use for saving the state
+     * @param stateFlow The state flow containing the value to save
+     */
+    private fun <T : Any> saveStateFromFlow(key: String, stateFlow: StateFlow<T>) {
+        saveState(key, stateFlow.value)
+    }
+    
+    /**
+     * Helper method to save a nullable state value with its key
+     * 
+     * @param key The key to use for saving the state
+     * @param stateFlow The state flow containing the nullable value to save
+     */
+    private fun <T : Any> saveNullableStateFromFlow(key: String, stateFlow: StateFlow<T?>) {
+        stateFlow.value?.let { value ->
+            saveState(key, value)
+        }
+    }
+    
+    /**
+     * Helper method to save a group of related state values
+     * 
+     * @param keyValuePairs Pairs of keys and state flows to save
+     */
+    private fun saveStateGroup(vararg keyValuePairs: Pair<String, StateFlow<*>>) {
+        keyValuePairs.forEach { (key, flow) ->
+            when (flow) {
+                is StateFlow<*> -> {
+                    flow.value?.let { value ->
+                        // All non-null values are instances of Any in Kotlin
+                        saveState(key, value)
+                    }
+                }
+            }
+        }
+    }
+
     @OptIn(ExperimentalSplitPaneApi::class)
     private fun saveAllStates() {
         // Save split pane positions
-        saveState(KEY_SPLIT_PANE_POSITION, _splitPaneState.value.positionPercentage)
-        saveState(KEY_TOC_SPLIT_PANE_POSITION, _tocSplitPaneState.value.positionPercentage)
-        saveState(KEY_CONTENT_SPLIT_PANE_POSITION, _contentSplitPaneState.value.positionPercentage)
+        saveStateGroup(
+            KEY_SPLIT_PANE_POSITION to _splitPaneState.map { it.positionPercentage }.stateIn(viewModelScope, SharingStarted.Eagerly, 0.3f),
+            KEY_TOC_SPLIT_PANE_POSITION to _tocSplitPaneState.map { it.positionPercentage }.stateIn(viewModelScope, SharingStarted.Eagerly, 0.3f),
+            KEY_CONTENT_SPLIT_PANE_POSITION to _contentSplitPaneState.map { it.positionPercentage }.stateIn(viewModelScope, SharingStarted.Eagerly, 0.7f)
+        )
 
         // Save previous split pane positions
-        saveState(KEY_PREVIOUS_MAIN_SPLIT_POSITION, _previousMainSplitPosition.value)
-        saveState(KEY_PREVIOUS_TOC_SPLIT_POSITION, _previousTocSplitPosition.value)
-        saveState(KEY_PREVIOUS_CONTENT_SPLIT_POSITION, _previousContentSplitPosition.value)
+        saveStateGroup(
+            KEY_PREVIOUS_MAIN_SPLIT_POSITION to _previousMainSplitPosition,
+            KEY_PREVIOUS_TOC_SPLIT_POSITION to _previousTocSplitPosition,
+            KEY_PREVIOUS_CONTENT_SPLIT_POSITION to _previousContentSplitPosition
+        )
 
-        // Save UI state
-        saveState(KEY_SEARCH_TEXT, _searchText.value)
-        saveState(KEY_PARAGRAPH_SCROLL_POSITION, _paragraphScrollPosition.value)
-        saveState(KEY_CHAPTER_SCROLL_POSITION, _chapterScrollPosition.value)
-        saveState(KEY_SELECTED_CHAPTER, _selectedChapter.value)
-        saveState(KEY_SHOW_COMMENTARIES, _showCommentaries.value)
-        saveState(KEY_SHOW_BOOK_TREE, _showBookTree.value)
-        saveState(KEY_SHOW_TOC, _showToc.value)
-        saveState(KEY_TOC_SCROLL_INDEX, _tocScrollIndex.value)
-        saveState(KEY_TOC_SCROLL_OFFSET, _tocScrollOffset.value)
-        saveState(KEY_BOOK_TREE_SCROLL_INDEX, _bookTreeScrollIndex.value)
-        saveState(KEY_BOOK_TREE_SCROLL_OFFSET, _bookTreeScrollOffset.value)
-        saveState(KEY_CONTENT_SCROLL_INDEX, _contentScrollIndex.value)
-        saveState(KEY_CONTENT_SCROLL_OFFSET, _contentScrollOffset.value)
-        saveState(KEY_COMMENTARIES_SELECTED_TAB, _commentariesSelectedTab.value)
-        saveState(KEY_COMMENTARIES_SCROLL_INDEX, _commentariesScrollIndex.value)
-        saveState(KEY_COMMENTARIES_SCROLL_OFFSET, _commentariesScrollOffset.value)
+        // Save UI state - scroll positions
+        saveStateGroup(
+            KEY_PARAGRAPH_SCROLL_POSITION to _paragraphScrollPosition,
+            KEY_CHAPTER_SCROLL_POSITION to _chapterScrollPosition,
+            KEY_SELECTED_CHAPTER to _selectedChapter,
+            KEY_TOC_SCROLL_INDEX to _tocScrollIndex,
+            KEY_TOC_SCROLL_OFFSET to _tocScrollOffset,
+            KEY_BOOK_TREE_SCROLL_INDEX to _bookTreeScrollIndex,
+            KEY_BOOK_TREE_SCROLL_OFFSET to _bookTreeScrollOffset,
+            KEY_CONTENT_SCROLL_INDEX to _contentScrollIndex,
+            KEY_CONTENT_SCROLL_OFFSET to _contentScrollOffset,
+            KEY_COMMENTARIES_SELECTED_TAB to _commentariesSelectedTab,
+            KEY_COMMENTARIES_SCROLL_INDEX to _commentariesScrollIndex,
+            KEY_COMMENTARIES_SCROLL_OFFSET to _commentariesScrollOffset
+        )
+        
+        // Save UI state - visibility flags and text
+        saveStateGroup(
+            KEY_SEARCH_TEXT to _searchText,
+            KEY_SHOW_COMMENTARIES to _showCommentaries,
+            KEY_SHOW_BOOK_TREE to _showBookTree,
+            KEY_SHOW_TOC to _showToc
+        )
 
         // Save selection state
-        _selectedBook.value?.let { book ->
-            saveState(KEY_SELECTED_BOOK, book)
-        }
-        _selectedCategory.value?.let { category ->
-            saveState(KEY_SELECTED_CATEGORY, category)
-        }
-        _selectedLine.value?.let { line ->
-            saveState(KEY_SELECTED_LINE, line)
-        }
+        saveNullableStateFromFlow(KEY_SELECTED_BOOK, _selectedBook)
+        saveNullableStateFromFlow(KEY_SELECTED_CATEGORY, _selectedCategory)
+        saveNullableStateFromFlow(KEY_SELECTED_LINE, _selectedLine)
 
         // Save expanded items state
-        saveState(KEY_EXPANDED_CATEGORIES, _expandedCategories.value)
-        saveState(KEY_CATEGORY_CHILDREN, _categoryChildren.value)
-        saveState(KEY_BOOKS_IN_CATEGORY, _booksInCategory.value)
-        saveState(KEY_EXPANDED_TOC_ENTRIES, _expandedTocEntries.value)
-        saveState(KEY_TOC_CHILDREN, _tocChildren.value)
+        saveStateGroup(
+            KEY_EXPANDED_CATEGORIES to _expandedCategories,
+            KEY_CATEGORY_CHILDREN to _categoryChildren,
+            KEY_BOOKS_IN_CATEGORY to _booksInCategory,
+            KEY_EXPANDED_TOC_ENTRIES to _expandedTocEntries,
+            KEY_TOC_CHILDREN to _tocChildren
+        )
     }
 }

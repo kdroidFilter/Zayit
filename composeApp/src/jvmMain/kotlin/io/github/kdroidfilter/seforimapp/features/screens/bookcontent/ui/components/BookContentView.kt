@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compon
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,7 +12,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
@@ -23,14 +27,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.LoadDirection
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
+import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.Font
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.composeapp.generated.resources.Res
 import seforimapp.composeapp.generated.resources.notoserifhebrew
@@ -41,7 +51,13 @@ fun BookContentView(
     book: Book,
     lines: List<Line>,
     selectedLine: Line?,
+    tocEntries: List<TocEntry>,
+    tocChildren: Map<Long, List<TocEntry>>,
+    rootCategories: List<Category>,
+    categoryChildren: Map<Long, List<Category>>,
     onLineSelected: (Line) -> Unit,
+    onTocEntryClick: (TocEntry) -> Unit,
+    onCategoryClick: (Category) -> Unit,
     modifier: Modifier = Modifier,
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
@@ -133,19 +149,17 @@ fun BookContentView(
         }
     }
 
-    Column(modifier = modifier) {
-        Text(text = book.title, modifier = Modifier.padding(bottom = 16.dp))
-        SelectionContainer {
-            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                items(items = lines, key = { it.id }) { line ->
-                    LineItem(
-                        line = line, 
-                        isSelected = selectedLine?.id == line.id,
-                        baseTextSize = textSize,
-                        lineHeight = lineHeight
-                    ) {
-                        onLineSelected(line)
-                    }
+    // No need for breadcrumb padding anymore as it's moved to MainLayoutComponents
+    SelectionContainer(modifier = modifier.fillMaxSize()) {
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+            items(items = lines, key = { it.id }) { line ->
+                LineItem(
+                    line = line,
+                    isSelected = selectedLine?.id == line.id,
+                    baseTextSize = textSize,
+                    lineHeight = lineHeight
+                ) {
+                    onLineSelected(line)
                 }
             }
         }

@@ -1,8 +1,13 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.*
@@ -11,6 +16,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 
 @OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class)
 @Composable
@@ -50,6 +56,7 @@ fun MainBookContentLayout(
         onDispose { onEvent(BookContentEvent.SaveState) }
     }
 
+    // Main content area with panels - now takes full height
     Row(modifier = Modifier.fillMaxSize()) {
         StartVerticalBar(
             showBookTree = uiState.navigation.isVisible,
@@ -89,6 +96,8 @@ fun MainBookContentLayout(
                         BookContentPanel(
                             selectedBook = uiState.navigation.selectedBook,
                             contentState = uiState.content,
+                            tocState = uiState.toc,
+                            navigationState = uiState.navigation,
                             contentSplitState = uiState.layout.contentSplitState,
                             onEvent = onEvent
                         )
@@ -155,6 +164,8 @@ private fun BookContentArea(
                     BookContentPanel(
                         selectedBook = uiState.navigation.selectedBook,
                         contentState = uiState.content,
+                        tocState = uiState.toc,
+                        navigationState = uiState.navigation,
                         contentSplitState = uiState.layout.contentSplitState,
                         onEvent = onEvent
                     )
@@ -164,6 +175,8 @@ private fun BookContentArea(
         else -> BookContentPanel(
             selectedBook = uiState.navigation.selectedBook,
             contentState = uiState.content,
+            tocState = uiState.toc,
+            navigationState = uiState.navigation,
             contentSplitState = uiState.layout.contentSplitState,
             onEvent = onEvent,
             modifier = modifier

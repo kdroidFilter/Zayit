@@ -2,16 +2,18 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.seforimlibrary.core.models.*
-import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
-import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabAwareViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabType
 import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.*
-import kotlinx.coroutines.delay
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
+import io.github.kdroidfilter.seforimlibrary.core.models.Category
+import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
+import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -442,7 +444,7 @@ class BookContentViewModel(
 
                 // Update books in category
                 if (booksToLoad.isNotEmpty()) {
-                    _booksInCategory.value = _booksInCategory.value + booksToLoad
+                    _booksInCategory.value += booksToLoad
                 }
             }
         }

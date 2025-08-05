@@ -9,6 +9,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentViewModel
+import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.database.getRepository
 import org.koin.dsl.module
 import org.koin.core.module.dsl.viewModel
@@ -26,7 +27,7 @@ val desktopModule = module {
     // Register SeforimRepository as a singleton
     single<SeforimRepository> {
         // Use a fixed database path as specified in the requirements
-        val dbPath = "/Users/elie/IdeaProjects/SeforimApp/SeforimLibrary/generator/otzaria.db"
+        val dbPath = getDatabasePath()
         val driver = app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver("jdbc:sqlite:$dbPath")
         SeforimRepository(dbPath, driver)
     }

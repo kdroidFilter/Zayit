@@ -7,22 +7,20 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import java.io.File
 
-// Fixed database path as specified in the requirements
-private const val DB_PATH = "/Users/elie/IdeaProjects/SeforimApp/SeforimLibrary/generator/otzaria.db"
-
 /**
- * Gets the database path.
- * In this implementation, we use a fixed path as specified in the requirements.
+ * Gets the database path from the system environment variable 'seforim_db'.
  */
-@Composable
 fun getDatabasePath(): String {
+    val dbPath = System.getenv("seforim_db") 
+        ?: throw IllegalStateException("The environment variable 'seforim_db' is not defined")
+
     // Check if the database file exists
-    val dbFile = File(DB_PATH)
+    val dbFile = File(dbPath)
     if (!dbFile.exists()) {
-        throw IllegalStateException("Database file not found at $DB_PATH")
+        throw IllegalStateException("Database file not found at $dbPath")
     }
-    
-    return DB_PATH
+
+    return dbPath
 }
 
 /**

@@ -67,5 +67,6 @@
     <string name="no_commentaries_from_selected">אין פירושים זמינים מהפרשנים שנבחרו לשורה זו</string>
     <string name="select_at_least_one_commentator">אנא בחר לפחות פרשן אחד מהרשימה</string>
     <string name="select_between_1_and_4_commentators">אנא בחר בין 1 ל-4 פרשנים</string>
+    <string name="max_commentators_limit">ניתן לבחור עד 4 פרשנים בלבד</string>
     <string name="no_commentators_available">אין פרשנים זמינים</string>
 </resources>

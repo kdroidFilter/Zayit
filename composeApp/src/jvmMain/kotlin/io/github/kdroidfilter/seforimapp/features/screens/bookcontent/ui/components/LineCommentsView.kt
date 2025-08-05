@@ -3,15 +3,19 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compon
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
@@ -25,6 +29,7 @@ import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -69,13 +74,84 @@ fun LineCommentsView(
         label = "commentLineHeightAnimation"
     )
     
+    // State to track if user tried to select more than 4 commentators
+    var showMaxCommentatorsWarning by remember { mutableStateOf(false) }
+    
+    // Auto-hide the warning after 5 seconds
+    LaunchedEffect(showMaxCommentatorsWarning) {
+        if (showMaxCommentatorsWarning) {
+            delay(5000)
+            showMaxCommentatorsWarning = false
+        }
+    }
+    
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text(
-            text = stringResource(Res.string.commentaries),
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp ,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        // Header row with title and warning banner
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Title
+            Text(
+                text = stringResource(Res.string.commentaries),
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                modifier = Modifier.padding(end = 16.dp)
+            )
+            
+            // Warning banner (only shown when needed)
+            if (showMaxCommentatorsWarning) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(
+                            color = Color(0xFFFFF4E5), // Light orange background
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = Color(0xFFFFB74D), // Orange border
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                        .padding(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // Warning icon
+                        Text(
+                            text = "⚠️",
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        
+                        // Warning message
+                        Text(
+                            text = stringResource(Res.string.max_commentators_limit),
+                            color = Color(0xFF7A4F01), // Dark orange text
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        // Close button (small cross)
+                        Text(
+                            text = "✕",
+                            fontSize = 14.sp,
+                            color = Color(0xFF7A4F01), // Dark orange text to match the message
+                            modifier = Modifier
+                                .padding(start = 8.dp)
+                                .pointerHoverIcon(PointerIcon.Hand)
+                                .pointerInput(Unit) {
+                                    detectTapGestures {
+                                        showMaxCommentatorsWarning = false
+                                    }
+                                }
+                        )
+                    }
+                }
+            }
+        }
         
         when {
             selectedLine == null -> {
@@ -143,12 +219,17 @@ fun LineCommentsView(
                                         if (selectedCommentators.size < 4) {
                                             selectedCommentators + commentator
                                         } else {
+                                            // Show warning when trying to select more than 4
+                                            showMaxCommentatorsWarning = true
                                             selectedCommentators
                                         }
                                     } else {
                                         // Remove from selection
                                         selectedCommentators - commentator
                                     }
+                                },
+                                onShowWarning = { show ->
+                                    showMaxCommentatorsWarning = show
                                 }
                             )
                         },
@@ -480,7 +561,8 @@ private fun CommentariesContent(
 private fun CommentatorsListView(
     commentaries: List<CommentaryWithText>,
     selectedCommentators: Set<String>,
-    onCommentatorSelected: (String, Boolean) -> Unit
+    onCommentatorSelected: (String, Boolean) -> Unit,
+    onShowWarning: (Boolean) -> Unit
 ) {
     // Extract unique book titles (commentators) from the commentaries
     val commentators = remember(commentaries) {
@@ -488,6 +570,7 @@ private fun CommentatorsListView(
     }
     
     Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+        
         if (commentators.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -512,7 +595,13 @@ private fun CommentatorsListView(
                             CheckboxRow(
                                 text = commentator,
                                 checked = isSelected,
-                                onCheckedChange = { checked -> onCommentatorSelected(commentator, checked) },
+                                onCheckedChange = { checked -> 
+                                    // Show warning if trying to select more than 4 commentators
+                                    if (checked && selectedCommentators.size >= 4) {
+                                        onShowWarning(true)
+                                    }
+                                    onCommentatorSelected(commentator, checked) 
+                                },
                                 colors = LocalCheckboxStyle.current.colors,
                                 metrics = LocalCheckboxStyle.current.metrics,
                                 icons = LocalCheckboxStyle.current.icons,

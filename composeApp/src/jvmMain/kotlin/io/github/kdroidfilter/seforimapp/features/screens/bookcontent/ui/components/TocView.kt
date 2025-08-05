@@ -168,7 +168,7 @@ private fun TocEntryItem(
 
         Text(
             text = visibleEntry.entry.text,
-            fontWeight = if (isLastChild) FontWeight.Bold else FontWeight.Normal
+            fontWeight = FontWeight.Normal
         )
     }
 }

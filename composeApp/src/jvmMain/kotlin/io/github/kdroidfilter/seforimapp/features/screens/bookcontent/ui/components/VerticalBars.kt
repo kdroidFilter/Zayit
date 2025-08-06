@@ -147,20 +147,12 @@ fun EndVerticalBar(
                 label = stringResource(Res.string.show_commentaries)
             )
             SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.columns_gap_tooltip),
+                toolTipText = stringResource(Res.string.show_links_tooltip),
                 onClick = { },
                 isSelected = false,
-                icon = ColumnsGap,
-                iconDescription = stringResource(Res.string.columns_gap),
-                label = stringResource(Res.string.columns_gap)
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.filter_commentators_tooltip),
-                onClick = { },
-                isSelected = false,
-                icon = Filter,
-                iconDescription = stringResource(Res.string.filter),
-                label = stringResource(Res.string.filter)
+                icon = Library_books,
+                iconDescription = stringResource(Res.string.show_links),
+                label = stringResource(Res.string.show_links)
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.write_note_tooltip),
@@ -169,14 +161,6 @@ fun EndVerticalBar(
                 icon = NotebookPen,
                 iconDescription = stringResource(Res.string.write_note),
                 label = stringResource(Res.string.write_note)
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.show_links_tooltip),
-                onClick = { },
-                isSelected = false,
-                icon = Library_books,
-                iconDescription = stringResource(Res.string.show_links),
-                label = stringResource(Res.string.show_links)
             )
         }
     )

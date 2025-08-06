@@ -53,6 +53,8 @@
     <string name="filter">סנן</string>
     <string name="write_note_tooltip">כתוב הערה על שורה זאת</string>
     <string name="write_note">כתוב הערה</string>
+    <string name="show_links_tooltip">הצג קישורים</string>
+    <string name="show_links">הצג קישורים</string>
 
     <!-- Book Content Screen - Main Content -->
     <string name="search_placeholder">חפש</string>

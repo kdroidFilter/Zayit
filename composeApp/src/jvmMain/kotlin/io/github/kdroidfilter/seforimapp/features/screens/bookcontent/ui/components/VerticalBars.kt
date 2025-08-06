@@ -170,6 +170,14 @@ fun EndVerticalBar(
                 iconDescription = stringResource(Res.string.write_note),
                 label = stringResource(Res.string.write_note)
             )
+            SelectableIconButtonWithToolip(
+                toolTipText = stringResource(Res.string.show_links_tooltip),
+                onClick = { },
+                isSelected = false,
+                icon = Library_books,
+                iconDescription = stringResource(Res.string.show_links),
+                label = stringResource(Res.string.show_links)
+            )
         }
     )
 }

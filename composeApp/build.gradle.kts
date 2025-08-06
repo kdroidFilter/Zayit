@@ -85,7 +85,7 @@ kotlin {
             implementation(libs.composenativetray)
             implementation(libs.kotlinx.coroutines.swing)
             implementation(libs.slf4j.simple)
-            implementation("org.jetbrains.compose.components:components-splitpane-desktop:1.8.2")
+            implementation(libs.split.pane.desktop)
             api(project(":jewel"))
 
             implementation("app.cash.sqldelight:sqlite-driver:2.1.0")

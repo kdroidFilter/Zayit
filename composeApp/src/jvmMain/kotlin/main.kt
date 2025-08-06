@@ -53,6 +53,10 @@ fun main() {
         val windowState = remember { getCenteredWindowState(1280, 720) }
         var isWindowVisible by remember { mutableStateOf(true) }
 
+        SingleInstanceManager.configuration = SingleInstanceManager.Configuration(
+             lockIdentifier =  "io.github.kdroidfilter.seforimapp"
+        )
+
         val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
             isWindowVisible = true
             windowState.isMinimized = false
@@ -122,7 +126,7 @@ fun main() {
                     TitleBar(modifier = Modifier.newFullscreenControls()) {
                         BoxWithConstraints {
                             val windowWidth = maxWidth
-                            val iconsNumber = 5
+                            val iconsNumber = 4
                             val iconWidth = 40
                             Row {
                                 Row(
@@ -131,7 +135,7 @@ fun main() {
                                             start =0.dp
                                         )
                                         .align(Alignment.Start)
-                                        .width(windowWidth - if (isMacOs) iconWidth*(iconsNumber+1).dp else (iconWidth * iconsNumber).dp)
+                                        .width(windowWidth - if (isMacOs) iconWidth*(iconsNumber+2).dp else (iconWidth * iconsNumber).dp)
                                 ) {
                                     TabsView()
                                 }

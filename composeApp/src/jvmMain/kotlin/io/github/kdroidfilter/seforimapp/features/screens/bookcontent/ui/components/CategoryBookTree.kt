@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
 
 import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,13 +15,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.text.font.FontWeight.Companion.Normal
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.ChevronDown
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.ChevronRight
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.NavigationUiState
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.Book_2
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.theme.iconButtonStyle
+
 
 @Stable
 private data class TreeItem(
@@ -112,7 +128,7 @@ fun CategoryBookTree(
                 }
             }
         }
-        
+
         VerticalScrollbar(
             modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
             adapter = rememberScrollbarAdapter(listState)
@@ -191,16 +207,23 @@ private fun CategoryItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(vertical = 4.dp)
+            .pointerHoverIcon(PointerIcon.Hand),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Text(
-            text = if (isExpanded) "-" else "+",
-            modifier = Modifier.width(24.dp)
+        Icon(if (isExpanded) ChevronDown else ChevronRight,
+            contentDescription = "",
+            modifier = Modifier.size(12.dp))
+        Icon(
+            key = AllIconsKeys.Nodes.Folder,
+            contentDescription = null,
         )
-        Text(text = "📁", modifier = Modifier.width(24.dp))
-        Spacer(modifier = Modifier.width(8.dp))
         Text(text = category.title)
     }
 }
@@ -214,13 +237,24 @@ private fun BookItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .pointerHoverIcon(PointerIcon.Hand)
+            .clip(RoundedCornerShape(4.dp))
+            .background(if (isSelected) JewelTheme.iconButtonStyle.colors.backgroundFocused else Color.Transparent)
+            .padding(vertical = 4.dp, horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Spacer(modifier = Modifier.width(24.dp))
-        Text(text = "📕", modifier = Modifier.width(24.dp))
-        Spacer(modifier = Modifier.width(8.dp))
+        Icon(
+           imageVector = Book_2,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = if (isSelected) JewelTheme.globalColors.text.selected else JewelTheme.globalColors.text.normal.copy(alpha = 0.7f)
+        )
         Text(text = book.title, fontWeight = if (isSelected) Bold else Normal)
     }
 }

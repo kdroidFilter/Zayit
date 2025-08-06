@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
+import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalDivider
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.LoadDirection
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -215,17 +216,32 @@ private fun LineItem(
 
     val textModifier = Modifier
         .fillMaxWidth()
-        .pointerHoverIcon(PointerIcon.Hand)
         .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) }
 
     Box(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-        // A single Text => no artificial line break before/after
-        Text(
-            text = annotated,
-            textAlign = TextAlign.Justify,
-            fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew, weight = if (isSelected) FontWeight.Bold else FontWeight.Normal) ),
-            lineHeight = (baseTextSize * lineHeight).sp,
-            modifier = textModifier
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(if (isSelected) JewelTheme.globalColors.borders.disabled else Color.Transparent)
+                    .zIndex(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = annotated,
+                textAlign = TextAlign.Justify,
+                fontFamily = FontFamily(
+                    Font(
+                        resource = Res.font.notoserifhebrew,
+                        weight = FontWeight.Normal
+                    )
+                ),
+                lineHeight = (baseTextSize * lineHeight).sp,
+                modifier = textModifier
+            )
+        }
     }
 }

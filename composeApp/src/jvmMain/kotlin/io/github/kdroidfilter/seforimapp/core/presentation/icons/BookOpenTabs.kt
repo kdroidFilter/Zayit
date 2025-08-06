@@ -1,6 +1,5 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.icons
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -10,7 +9,7 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 
 @Composable
-fun Book_5(): ImageVector {
+fun BookOpenTabs(): ImageVector {
     val _Book_5 = ImageVector.Builder(
         name = "Book_5",
         defaultWidth = 20.dp,

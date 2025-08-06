@@ -3,13 +3,12 @@ package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.Book_5
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.BookOpenTabs
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -45,7 +44,7 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                 content = { tabState ->
                     // Use Book_5 icon for book tabs, otherwise use the default Find icon
                     val icon = if (tabItem.tabType == TabType.BOOK) {
-                        rememberVectorPainter(Book_5())
+                        rememberVectorPainter(BookOpenTabs())
                     } else {
                         val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
                         iconProvider.getPainter(Stateful(tabState)).value

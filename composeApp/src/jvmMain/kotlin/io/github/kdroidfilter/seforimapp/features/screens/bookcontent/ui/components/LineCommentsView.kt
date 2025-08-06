@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -607,39 +608,40 @@ private fun CommentariesList(
             onScroll(index, offset)
         }
     }
-    
-    Row(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f).fillMaxHeight()
-        ) {
-            commentariesByBook.forEach { (bookTitle, bookCommentaries) ->
-                items(
-                    items = bookCommentaries,
-                    key = { it.link.id }
-                ) { commentary ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .pointerInput(Unit) { detectTapGestures(onTap = { onCommentClick(commentary) }) }
-                            .pointerHoverIcon(PointerIcon.Hand)
-                            .padding(vertical = 8.dp, horizontal = 16.dp)
-                    ) {
-                        Text(
-                            text = commentary.targetText,
-                            textAlign = TextAlign.Justify,
-                            fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew)),
-                            fontSize = commentTextSize.sp,
-                            lineHeight = (commentTextSize * lineHeight).sp
-                        )
+
+    SelectionContainer {
+        Row(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            ) {
+                commentariesByBook.forEach { (bookTitle, bookCommentaries) ->
+                    items(
+                        items = bookCommentaries,
+                        key = { it.link.id }
+                    ) { commentary ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .pointerInput(Unit) { detectTapGestures(onTap = { onCommentClick(commentary) }) }
+                                .padding(vertical = 8.dp, horizontal = 16.dp)
+                        ) {
+                            Text(
+                                text = commentary.targetText,
+                                textAlign = TextAlign.Justify,
+                                fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew)),
+                                fontSize = commentTextSize.sp,
+                                lineHeight = (commentTextSize * lineHeight).sp
+                            )
+                        }
                     }
                 }
             }
+
+            VerticalScrollbar(
+                modifier = Modifier.fillMaxHeight(),
+                adapter = rememberScrollbarAdapter(listState)
+            )
         }
-        
-        VerticalScrollbar(
-            modifier = Modifier.fillMaxHeight(),
-            adapter = rememberScrollbarAdapter(listState)
-        )
     }
 }

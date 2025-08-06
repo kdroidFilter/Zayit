@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.framework.di
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.SavedStateHandle
+import com.russhwolf.settings.Settings
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.presentation.navigation.DefaultNavigator
 import io.github.kdroidfilter.seforimapp.core.presentation.navigation.Navigator
@@ -9,6 +10,8 @@ import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsViewModel
+import io.github.kdroidfilter.seforimapp.core.settings.IAppSettings
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettingsImpl
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.database.getRepository
@@ -35,6 +38,12 @@ val desktopModule = module {
         val driver = app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver("jdbc:sqlite:$dbPath")
         SeforimRepository(dbPath, driver)
     }
+    
+    // Register Settings as a singleton
+    single { Settings() }
+    
+    // Register IAppSettings as a singleton
+    single<IAppSettings> { AppSettingsImpl(get()) }
 
     viewModel {
         TabsViewModel(

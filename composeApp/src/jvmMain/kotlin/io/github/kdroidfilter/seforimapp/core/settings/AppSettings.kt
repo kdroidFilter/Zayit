@@ -6,12 +6,138 @@ import com.russhwolf.settings.set
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
+
+/**
+ * Interface for managing application settings and preferences that persist across app restarts.
+ * Uses Multiplatform Settings library for cross-platform storage.
+ */
+interface IAppSettings {
+    // StateFlow to observe text size changes
+    val textSizeFlow: StateFlow<Float>
+    
+    // StateFlow to observe line height changes
+    val lineHeightFlow: StateFlow<Float>
+    
+    /**
+     * Gets the current text size from settings
+     * @return The text size in sp
+     */
+    fun getTextSize(): Float
+    
+    /**
+     * Sets the text size and updates the flow
+     * @param size The new text size in sp
+     */
+    fun setTextSize(size: Float)
+    
+    /**
+     * Increases the text size by the specified increment
+     * @param increment The amount to increase (default is TEXT_SIZE_INCREMENT)
+     */
+    fun increaseTextSize(increment: Float = AppSettings.TEXT_SIZE_INCREMENT)
+    
+    /**
+     * Decreases the text size by the specified decrement
+     * @param decrement The amount to decrease (default is TEXT_SIZE_INCREMENT)
+     */
+    fun decreaseTextSize(decrement: Float = AppSettings.TEXT_SIZE_INCREMENT)
+    
+    /**
+     * Gets the current line height from settings
+     * @return The line height multiplier
+     */
+    fun getLineHeight(): Float
+    
+    /**
+     * Sets the line height and updates the flow
+     * @param height The new line height multiplier
+     */
+    fun setLineHeight(height: Float)
+    
+    /**
+     * Increases the line height by the specified increment
+     * @param increment The amount to increase (default is LINE_HEIGHT_INCREMENT)
+     */
+    fun increaseLineHeight(increment: Float = AppSettings.LINE_HEIGHT_INCREMENT)
+    
+    /**
+     * Decreases the line height by the specified decrement
+     * @param decrement The amount to decrease (default is LINE_HEIGHT_INCREMENT)
+     */
+    fun decreaseLineHeight(decrement: Float = AppSettings.LINE_HEIGHT_INCREMENT)
+}
+
+/**
+ * Implementation of IAppSettings interface that manages application settings and preferences.
+ * Uses Multiplatform Settings library for cross-platform storage.
+ */
+class AppSettingsImpl(private val settings: Settings) : IAppSettings {
+    // Settings keys
+    private companion object {
+        const val KEY_TEXT_SIZE = "text_size"
+        const val KEY_LINE_HEIGHT = "line_height"
+    }
+    
+    // StateFlow to observe text size changes
+    private val _textSizeFlow = MutableStateFlow(getTextSize())
+    override val textSizeFlow: StateFlow<Float> = _textSizeFlow.asStateFlow()
+    
+    // StateFlow to observe line height changes
+    private val _lineHeightFlow = MutableStateFlow(getLineHeight())
+    override val lineHeightFlow: StateFlow<Float> = _lineHeightFlow.asStateFlow()
+    
+    override fun getTextSize(): Float {
+        return settings[KEY_TEXT_SIZE, AppSettings.DEFAULT_TEXT_SIZE]
+    }
+    
+    override fun setTextSize(size: Float) {
+        settings[KEY_TEXT_SIZE] = size
+        _textSizeFlow.value = size
+    }
+    
+    override fun increaseTextSize(increment: Float) {
+        val currentSize = getTextSize()
+        val newSize = (currentSize + increment).coerceAtMost(AppSettings.MAX_TEXT_SIZE)
+        setTextSize(newSize)
+    }
+    
+    override fun decreaseTextSize(decrement: Float) {
+        val currentSize = getTextSize()
+        val newSize = (currentSize - decrement).coerceAtLeast(AppSettings.MIN_TEXT_SIZE)
+        setTextSize(newSize)
+    }
+    
+    override fun getLineHeight(): Float {
+        return settings[KEY_LINE_HEIGHT, AppSettings.DEFAULT_LINE_HEIGHT]
+    }
+    
+    override fun setLineHeight(height: Float) {
+        settings[KEY_LINE_HEIGHT] = height
+        _lineHeightFlow.value = height
+    }
+    
+    override fun increaseLineHeight(increment: Float) {
+        val currentHeight = getLineHeight()
+        val newHeight = (currentHeight + increment).coerceAtMost(AppSettings.MAX_LINE_HEIGHT)
+        setLineHeight(newHeight)
+    }
+    
+    override fun decreaseLineHeight(decrement: Float) {
+        val currentHeight = getLineHeight()
+        val newHeight = (currentHeight - decrement).coerceAtLeast(AppSettings.MIN_LINE_HEIGHT)
+        setLineHeight(newHeight)
+    }
+}
 
 /**
  * Manages application settings and preferences that persist across app restarts.
  * Uses Multiplatform Settings library for cross-platform storage.
+ * 
+ * This object delegates to a Koin-managed implementation of IAppSettings.
  */
-object AppSettings {
+object AppSettings : KoinComponent {
     // Text size constants
     const val DEFAULT_TEXT_SIZE = 16f
     const val MIN_TEXT_SIZE = 8f
@@ -27,92 +153,20 @@ object AppSettings {
     // Tab display constants
     const val MAX_TAB_TITLE_LENGTH = 20
     
-    // Settings keys
-    private const val KEY_TEXT_SIZE = "text_size"
-    private const val KEY_LINE_HEIGHT = "line_height"
+    // Get the implementation from Koin
+    private val impl: IAppSettings by inject()
     
-    // Settings instance
-    private val settings: Settings = Settings()
+    // Delegate to the implementation
+    val textSizeFlow: StateFlow<Float> get() = impl.textSizeFlow
+    val lineHeightFlow: StateFlow<Float> get() = impl.lineHeightFlow
     
-    // StateFlow to observe text size changes
-    private val _textSizeFlow = MutableStateFlow(getTextSize())
-    val textSizeFlow: StateFlow<Float> = _textSizeFlow.asStateFlow()
+    fun getTextSize(): Float = impl.getTextSize()
+    fun setTextSize(size: Float) = impl.setTextSize(size)
+    fun increaseTextSize(increment: Float = TEXT_SIZE_INCREMENT) = impl.increaseTextSize(increment)
+    fun decreaseTextSize(decrement: Float = TEXT_SIZE_INCREMENT) = impl.decreaseTextSize(decrement)
     
-    /**
-     * Gets the current text size from settings
-     * @return The text size in sp
-     */
-    fun getTextSize(): Float {
-        return settings[KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE]
-    }
-    
-    /**
-     * Sets the text size and updates the flow
-     * @param size The new text size in sp
-     */
-    fun setTextSize(size: Float) {
-        settings[KEY_TEXT_SIZE] = size
-        _textSizeFlow.value = size
-    }
-    
-    /**
-     * Increases the text size by the specified increment
-     * @param increment The amount to increase (default is TEXT_SIZE_INCREMENT)
-     */
-    fun increaseTextSize(increment: Float = TEXT_SIZE_INCREMENT) {
-        val currentSize = getTextSize()
-        val newSize = (currentSize + increment).coerceAtMost(MAX_TEXT_SIZE)
-        setTextSize(newSize)
-    }
-    
-    /**
-     * Decreases the text size by the specified decrement
-     * @param decrement The amount to decrease (default is TEXT_SIZE_INCREMENT)
-     */
-    fun decreaseTextSize(decrement: Float = TEXT_SIZE_INCREMENT) {
-        val currentSize = getTextSize()
-        val newSize = (currentSize - decrement).coerceAtLeast(MIN_TEXT_SIZE)
-        setTextSize(newSize)
-    }
-    
-    /**
-     * Gets the current line height from settings
-     * @return The line height multiplier
-     */
-    fun getLineHeight(): Float {
-        return settings[KEY_LINE_HEIGHT, DEFAULT_LINE_HEIGHT]
-    }
-    
-    // StateFlow to observe line height changes
-    private val _lineHeightFlow = MutableStateFlow(getLineHeight())
-    val lineHeightFlow: StateFlow<Float> = _lineHeightFlow.asStateFlow()
-    
-    /**
-     * Sets the line height and updates the flow
-     * @param height The new line height multiplier
-     */
-    fun setLineHeight(height: Float) {
-        settings[KEY_LINE_HEIGHT] = height
-        _lineHeightFlow.value = height
-    }
-    
-    /**
-     * Increases the line height by the specified increment
-     * @param increment The amount to increase (default is LINE_HEIGHT_INCREMENT)
-     */
-    fun increaseLineHeight(increment: Float = LINE_HEIGHT_INCREMENT) {
-        val currentHeight = getLineHeight()
-        val newHeight = (currentHeight + increment).coerceAtMost(MAX_LINE_HEIGHT)
-        setLineHeight(newHeight)
-    }
-    
-    /**
-     * Decreases the line height by the specified decrement
-     * @param decrement The amount to decrease (default is LINE_HEIGHT_INCREMENT)
-     */
-    fun decreaseLineHeight(decrement: Float = LINE_HEIGHT_INCREMENT) {
-        val currentHeight = getLineHeight()
-        val newHeight = (currentHeight - decrement).coerceAtLeast(MIN_LINE_HEIGHT)
-        setLineHeight(newHeight)
-    }
+    fun getLineHeight(): Float = impl.getLineHeight()
+    fun setLineHeight(height: Float) = impl.setLineHeight(height)
+    fun increaseLineHeight(increment: Float = LINE_HEIGHT_INCREMENT) = impl.increaseLineHeight(increment)
+    fun decreaseLineHeight(decrement: Float = LINE_HEIGHT_INCREMENT) = impl.decreaseLineHeight(decrement)
 }

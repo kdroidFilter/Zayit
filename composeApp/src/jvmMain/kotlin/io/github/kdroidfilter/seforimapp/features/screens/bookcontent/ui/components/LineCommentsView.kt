@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
+import io.github.kdroidfilter.seforimapp.core.presentation.components.WarningBanner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -49,7 +50,7 @@ fun LineCommentsView(
     commentariesScrollOffset: Int = 0,
     onCommentClick: (CommentaryWithText) -> Unit = {},
     onScroll: (Int, Int) -> Unit = { _, _ -> },
-    splitPaneState: SplitPaneState = rememberSplitPaneState(0.3f) // Default to 30% for left pane
+    splitPaneState: SplitPaneState
 ) {
     // Collect text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -101,55 +102,11 @@ fun LineCommentsView(
             
             // Warning banner (only shown when needed)
             if (showMaxCommentatorsWarning) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(
-                            color = Color(0xFFFFF4E5), // Light orange background
-                            shape = RoundedCornerShape(4.dp)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = Color(0xFFFFB74D), // Orange border
-                            shape = RoundedCornerShape(4.dp)
-                        )
-                        .padding(8.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        // Warning icon
-                        Text(
-                            text = "⚠️",
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        
-                        // Warning message
-                        Text(
-                            text = stringResource(Res.string.max_commentators_limit),
-                            color = Color(0xFF7A4F01), // Dark orange text
-                            fontSize = 14.sp,
-                            modifier = Modifier.weight(1f)
-                        )
-                        
-                        // Close button (small cross)
-                        Text(
-                            text = "✕",
-                            fontSize = 14.sp,
-                            color = Color(0xFF7A4F01), // Dark orange text to match the message
-                            modifier = Modifier
-                                .padding(start = 8.dp)
-                                .pointerHoverIcon(PointerIcon.Hand)
-                                .pointerInput(Unit) {
-                                    detectTapGestures {
-                                        showMaxCommentatorsWarning = false
-                                    }
-                                }
-                        )
-                    }
-                }
+                WarningBanner(
+                    message = stringResource(Res.string.max_commentators_limit),
+                    onClose = { showMaxCommentatorsWarning = false },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
         
@@ -207,7 +164,7 @@ fun LineCommentsView(
                     EnhancedHorizontalSplitPane(
                         splitPaneState = splitPaneState,
                         modifier = Modifier.fillMaxSize(),
-                        firstMinSize = 150f, // Minimum width for commentators list (30% of screen)
+                        firstMinSize = 150f, // Minimum width for commentators list
                         firstContent = {
                             // Left side: Commentators list with checkboxes
                             CommentatorsListView(
@@ -621,6 +578,7 @@ private fun CommentatorsListView(
         }
     }
 }
+
 
 @Composable
 private fun CommentariesList(

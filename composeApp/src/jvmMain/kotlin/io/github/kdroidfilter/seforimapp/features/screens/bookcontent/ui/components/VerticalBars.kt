@@ -142,7 +142,7 @@ fun EndVerticalBar(
                 toolTipText = stringResource(Res.string.show_commentaries_tooltip),
                 onClick = onToggleCommentaries,
                 isSelected = showCommentaries,
-                icon = ListColumnsReverse,
+                icon = Align_end,
                 iconDescription = stringResource(Res.string.show_commentaries),
                 label = stringResource(Res.string.show_commentaries)
             )

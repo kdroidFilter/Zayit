@@ -47,7 +47,7 @@ fun BookContentPanel(
     val scope = rememberCoroutineScope()
 
     // SplitPaneState for the commentaries horizontal split (commentators list and commentaries)
-    val commentariesSplitState = rememberSplitPaneState(0.3f) // 30% for commentators list
+    val commentariesSplitState = rememberSplitPaneState(0.10f) // 10% for commentators list
 
     // Preserve LazyListState across recompositions
     val bookListState = rememberLazyListState()

@@ -8,8 +8,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
-import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.core.presentation.navigation.Navigator
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsDestination
@@ -17,18 +15,22 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookConten
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.ContentUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.NavigationUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.TocUiState
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.*
-import org.jetbrains.jewel.foundation.theme.JewelTheme
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.BookContentView
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.BreadcrumbView
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedVerticalSplitPane
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.LineCommentsView
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
 import org.jetbrains.compose.splitpane.rememberSplitPaneState
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import org.koin.compose.koinInject
 import seforimapp.composeapp.generated.resources.Res
 import seforimapp.composeapp.generated.resources.select_book
-import java.util.UUID
+import java.util.*
 
 
 @OptIn(ExperimentalSplitPaneApi::class)
@@ -71,6 +73,7 @@ fun BookContentPanel(
                             book = selectedBook,
                             lines = contentState.lines,
                             selectedLine = contentState.selectedLine,
+                            shouldScrollToLine = contentState.shouldScrollToLine,
                             tocEntries = tocState.entries,
                             tocChildren = tocState.children,
                             rootCategories = navigationState.rootCategories,
@@ -86,6 +89,7 @@ fun BookContentPanel(
                             onCategoryClick = { category ->
                                 onEvent(BookContentEvent.CategorySelected(category))
                             },
+                            onEvent = onEvent,  // Pass the complete onEvent function
                             modifier = Modifier.padding(16.dp),
                             preservedListState = bookListState,
                             scrollIndex = contentState.scrollIndex,
@@ -160,6 +164,7 @@ fun BookContentPanel(
                     book = selectedBook,
                     lines = contentState.lines,
                     selectedLine = contentState.selectedLine,
+                    shouldScrollToLine = contentState.shouldScrollToLine,
                     tocEntries = tocState.entries,
                     tocChildren = tocState.children,
                     rootCategories = navigationState.rootCategories,
@@ -175,6 +180,7 @@ fun BookContentPanel(
                     onCategoryClick = { category ->
                         onEvent(BookContentEvent.CategorySelected(category))
                     },
+                    onEvent = onEvent,  // Pass the complete onEvent function
                     modifier = Modifier.weight(1f).padding(16.dp),
                     preservedListState = bookListState,
                     scrollIndex = contentState.scrollIndex,

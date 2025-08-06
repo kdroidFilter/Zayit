@@ -12,12 +12,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.zIndex
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -27,21 +23,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
-import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalDivider
+import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.LoadDirection
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.Orientation
-import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.composeapp.generated.resources.Res
 import seforimapp.composeapp.generated.resources.notoserifhebrew
@@ -52,6 +47,7 @@ fun BookContentView(
     book: Book,
     lines: List<Line>,
     selectedLine: Line?,
+    shouldScrollToLine: Boolean = false,  // NOUVEAU paramètre
     tocEntries: List<TocEntry>,
     tocChildren: Map<Long, List<TocEntry>>,
     rootCategories: List<Category>,
@@ -59,6 +55,7 @@ fun BookContentView(
     onLineSelected: (Line) -> Unit,
     onTocEntryClick: (TocEntry) -> Unit,
     onCategoryClick: (Category) -> Unit,
+    onEvent: (BookContentEvent) -> Unit,  // NOUVEAU : pour envoyer ResetScrollFlag
     modifier: Modifier = Modifier,
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
@@ -90,6 +87,8 @@ fun BookContentView(
         animationSpec = tween(durationMillis = 300),
         label = "lineHeightAnimation"
     )
+    data class ScrollTarget(val lineId: Long, val timestamp: Long = System.currentTimeMillis())
+    var lastScrollTarget by remember(book.id, lines) { mutableStateOf<ScrollTarget?>(null) }
 
     var lastScrolledLineId by remember(book.id, lines) { mutableStateOf<Long?>(null) }
     var hasRestored by remember(book.id, lines) { mutableStateOf(false) }
@@ -107,14 +106,22 @@ fun BookContentView(
         }
     }
 
-    LaunchedEffect(selectedLine?.id) {
-        if (hasRestored && selectedLine != null && selectedLine.id != lastScrolledLineId) {
+    // LaunchedEffect that only scrolls when shouldScrollToLine is true
+    LaunchedEffect(selectedLine?.id, shouldScrollToLine) {
+        if (hasRestored && selectedLine != null && shouldScrollToLine) {
             lines.indexOfFirst { it.id == selectedLine.id }.takeIf { it >= 0 }?.let { index ->
-                if (!listState.layoutInfo.visibleItemsInfo.any { it.index == index }) {
-                    listState.scrollToItem(index)
-                }
-                lastScrolledLineId = selectedLine.id
+                listState.scrollToItem(index)
             }
+        }
+    }
+    
+    // Reset the scroll flag after scrolling
+    LaunchedEffect(shouldScrollToLine) {
+        if (shouldScrollToLine) {
+            // Wait a bit to ensure the scroll has been performed
+            delay(100)
+            // Then reset the flag via the ViewModel
+            onEvent(BookContentEvent.ResetScrollFlag)
         }
     }
 

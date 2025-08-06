@@ -53,7 +53,8 @@ data class ContentUiState(
     val scrollOffset: Int = 0,
     val commentariesSelectedTab: Int = 0,
     val commentariesScrollIndex: Int = 0,
-    val commentariesScrollOffset: Int = 0
+    val commentariesScrollOffset: Int = 0,
+    val shouldScrollToLine: Boolean = false
 )
 
 /**

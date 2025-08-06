@@ -128,6 +128,9 @@ class BookContentViewModel(
     private val _commentariesSelectedTab = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SELECTED_TAB) ?: 0)
     private val _commentariesScrollIndex = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SCROLL_INDEX) ?: 0)
     private val _commentariesScrollOffset = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SCROLL_OFFSET) ?: 0)
+    
+    // Flag to track if we should scroll to the selected line
+    private val _shouldScrollToLine = MutableStateFlow(false)
 
     // Create UI state using combine for better performance
     @OptIn(ExperimentalSplitPaneApi::class)
@@ -227,6 +230,7 @@ class BookContentViewModel(
             // Content events
             is BookContentEvent.LineSelected -> selectLine(event.line)
             is BookContentEvent.LoadAndSelectLine -> loadAndSelectLine(event.lineId)
+            BookContentEvent.ResetScrollFlag -> resetScrollFlag()
             BookContentEvent.ToggleCommentaries -> toggleCommentaries()
             is BookContentEvent.ContentScrolled -> updateContentScrollPosition(event.index, event.offset)
             is BookContentEvent.LoadMoreLines -> loadMoreLines(event.direction)
@@ -323,6 +327,8 @@ class BookContentViewModel(
             Triple(lines, line, commentaries)
         }.combine(_showCommentaries) { (lines, line, commentaries), showComm ->
             ContentData(lines, line, commentaries, showComm)
+        }.combine(_shouldScrollToLine) { data, shouldScroll ->
+            data.copy(shouldScrollToLine = shouldScroll)
         }.combine(_paragraphScrollPosition) { data, pScroll ->
             data.copy(paragraphScrollPosition = pScroll)
         }.combine(_chapterScrollPosition) { data, cScroll ->
@@ -350,7 +356,8 @@ class BookContentViewModel(
                 scrollOffset = data.scrollOffset,
                 commentariesSelectedTab = data.commentariesSelectedTab,
                 commentariesScrollIndex = data.commentariesScrollIndex,
-                commentariesScrollOffset = scrollOffset
+                commentariesScrollOffset = scrollOffset,
+                shouldScrollToLine = data.shouldScrollToLine  // NOUVEAU
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, ContentUiState())
     }
@@ -360,6 +367,7 @@ class BookContentViewModel(
         val selectedLine: Line?,
         val commentaries: List<CommentaryWithText>,
         val showCommentaries: Boolean,
+        val shouldScrollToLine: Boolean = false,  // NOUVEAU
         val paragraphScrollPosition: Int = 0,
         val chapterScrollPosition: Int = 0,
         val scrollIndex: Int = 0,
@@ -529,10 +537,10 @@ class BookContentViewModel(
             _tocEntries.value = rootToc
             _tocChildren.value = mapOf(-1L to rootToc)
 
-            // Auto-expand first TOC entry si elle a des enfants
-            // Plus besoin de vérifier séparément, hasChildren est dans le modèle !
+            // Auto-expand first TOC entry if it has children
+            // No need to check separately, hasChildren is in the model
             rootToc.firstOrNull()?.let { firstEntry ->
-                if (firstEntry.hasChildren) {  // Utilise directement le champ
+                if (firstEntry.hasChildren) {  // Use the field directly
                     _expandedTocEntries.value = setOf(firstEntry.id)
 
                     val children = repository.getTocChildren(firstEntry.id)
@@ -552,7 +560,7 @@ class BookContentViewModel(
         } else {
             _expandedTocEntries.value += tocEntry.id
 
-            // Charger les enfants seulement si l'entrée en a ET qu'on ne les a pas déjà
+            // Load children only if the entry has them AND we don't already have them
             if (tocEntry.hasChildren && !_tocChildren.value.containsKey(tocEntry.id)) {
                 executeLoadingOperation {
                     val children = repository.getTocChildren(tocEntry.id)
@@ -576,8 +584,13 @@ class BookContentViewModel(
             }
         }
 
+    private fun resetScrollFlag() {
+        _shouldScrollToLine.value = false
+    }
+    
     private fun selectLine(line: Line) {
         _selectedLine.value = line
+        _shouldScrollToLine.value = false  // NO scrolling when clicking on a line
         fetchCommentariesForLine(line)
 
         // Save selected line
@@ -601,16 +614,31 @@ class BookContentViewModel(
             try {
                 repository.getLine(lineId)?.let { line ->
                     if (line.bookId == currentBook.id) {
+                        // Check if the line is not already loaded
                         if (_bookLines.value.none { it.id == lineId }) {
                             val startIndex = maxOf(0, line.lineIndex - 25)
                             val endIndex = line.lineIndex + 25
                             _bookLines.value = repository.getLines(currentBook.id, startIndex, endIndex)
                         }
+
+                        // Always reset selectedLine to force the LaunchedEffect
+                        // Even if it's the same line, we force the update
+                        _selectedLine.value = null
+
+                        // Small delay to ensure the null value is propagated
+                        kotlinx.coroutines.delay(10)
+
+                        // Indicate that we want to scroll (because it comes from the TOC)
+                        _shouldScrollToLine.value = true
+                        
+                        // Then select the line
                         _selectedLine.value = line
+                        fetchCommentariesForLine(line)
+                        saveState(KEY_SELECTED_LINE, line)
                     }
                 }
             } catch (e: Exception) {
-                // Handle error
+                debugln { "[DEBUG_LOG] Error in loadAndSelectLine: ${e.message}" }
             }
         }
     }

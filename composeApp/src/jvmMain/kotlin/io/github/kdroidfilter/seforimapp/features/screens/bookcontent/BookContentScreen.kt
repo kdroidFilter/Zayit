@@ -11,6 +11,7 @@ fun BookContentScreen() {
 
     MainBookContentLayout(
         uiState = uiState,
+        linesPagingData = viewModel.linesPagingData, // Pass the paging data flow
         onEvent = viewModel::onEvent
     )
 }

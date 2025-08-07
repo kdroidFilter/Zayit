@@ -57,7 +57,7 @@ kotlin {
             implementation("io.github.kdroidfilter.seforimlibrary:dao")
 //            implementation("com.github.luben:zstd-jni:1.5.7-4")
 
-
+            implementation("app.cash.paging:paging-compose-common:3.3.0-alpha02-0.5.1")
         }
 
         commonTest.dependencies {

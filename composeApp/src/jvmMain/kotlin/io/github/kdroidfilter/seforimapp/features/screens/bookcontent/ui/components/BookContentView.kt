@@ -5,10 +5,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
@@ -24,19 +24,25 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.paging.LoadState
+import app.cash.paging.PagingData
+import app.cash.paging.compose.LazyPagingItems
+import app.cash.paging.compose.collectAsLazyPagingItems
+import app.cash.paging.compose.itemKey
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.LoadDirection
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.composeapp.generated.resources.Res
 import seforimapp.composeapp.generated.resources.notoserifhebrew
@@ -45,9 +51,9 @@ import seforimapp.composeapp.generated.resources.notoserifhebrew
 @Composable
 fun BookContentView(
     book: Book,
-    lines: List<Line>,
+    linesPagingData: Flow<PagingData<Line>>, // NEW: Use paging data flow
     selectedLine: Line?,
-    shouldScrollToLine: Boolean = false,  // NOUVEAU paramètre
+    shouldScrollToLine: Boolean = false,
     tocEntries: List<TocEntry>,
     tocChildren: Map<Long, List<TocEntry>>,
     rootCategories: List<Category>,
@@ -55,14 +61,16 @@ fun BookContentView(
     onLineSelected: (Line) -> Unit,
     onTocEntryClick: (TocEntry) -> Unit,
     onCategoryClick: (Category) -> Unit,
-    onEvent: (BookContentEvent) -> Unit,  // NOUVEAU : pour envoyer ResetScrollFlag
+    onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier,
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
     scrollOffset: Int = 0,
-    onScroll: (Int, Int) -> Unit = { _, _ -> },
-    onLoadMore: (LoadDirection) -> Unit = { _ -> }
+    onScroll: (Int, Int) -> Unit = { _, _ -> }
 ) {
+    // Collect paging data
+    val lazyPagingItems: LazyPagingItems<Line> = linesPagingData.collectAsLazyPagingItems()
+
     val listState = preservedListState ?: rememberLazyListState(
         initialFirstVisibleItemIndex = scrollIndex,
         initialFirstVisibleItemScrollOffset = scrollOffset
@@ -70,51 +78,69 @@ fun BookContentView(
 
     // Collect text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
-    
+
     // Animate text size changes for smoother transitions
     val textSize by animateFloatAsState(
         targetValue = rawTextSize,
         animationSpec = tween(durationMillis = 300),
         label = "textSizeAnimation"
     )
-    
+
     // Collect line height from settings
     val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
-    
+
     // Animate line height changes for smoother transitions
     val lineHeight by animateFloatAsState(
         targetValue = rawLineHeight,
         animationSpec = tween(durationMillis = 300),
         label = "lineHeightAnimation"
     )
-    data class ScrollTarget(val lineId: Long, val timestamp: Long = System.currentTimeMillis())
-    var lastScrollTarget by remember(book.id, lines) { mutableStateOf<ScrollTarget?>(null) }
 
-    var lastScrolledLineId by remember(book.id, lines) { mutableStateOf<Long?>(null) }
-    var hasRestored by remember(book.id, lines) { mutableStateOf(false) }
+    var hasRestored by remember(book.id) { mutableStateOf(false) }
 
-    LaunchedEffect(lines.size) {
-        if (lines.isNotEmpty() && !hasRestored) {
-            val index = selectedLine?.let { lines.indexOfFirst { it.id == selectedLine.id } } ?: -1
+    // Restore scroll position when items are loaded
+    LaunchedEffect(lazyPagingItems.itemCount) {
+        if (lazyPagingItems.itemCount > 0 && !hasRestored) {
+            val index = selectedLine?.let { line ->
+                (0 until lazyPagingItems.itemCount).firstOrNull { idx ->
+                    lazyPagingItems[idx]?.id == line.id
+                }
+            } ?: -1
+
             if (index >= 0) {
                 listState.scrollToItem(index)
-                lastScrolledLineId = selectedLine?.id
             } else {
-                listState.scrollToItem(scrollIndex.coerceIn(0, lines.lastIndex), scrollOffset)
+                val safeIndex = scrollIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
+                if (safeIndex >= 0) {
+                    listState.scrollToItem(safeIndex, scrollOffset)
+                }
             }
             hasRestored = true
         }
     }
 
-    // LaunchedEffect that only scrolls when shouldScrollToLine is true
-    LaunchedEffect(selectedLine?.id, shouldScrollToLine) {
-        if (hasRestored && selectedLine != null && shouldScrollToLine) {
-            lines.indexOfFirst { it.id == selectedLine.id }.takeIf { it >= 0 }?.let { index ->
-                listState.scrollToItem(index)
+    // Scroll to selected line when needed
+    LaunchedEffect(selectedLine?.id, shouldScrollToLine, lazyPagingItems.itemCount) {
+        if (selectedLine != null && shouldScrollToLine && lazyPagingItems.itemCount > 0) {
+            // Add a small delay to ensure items are loaded
+            delay(100)
+
+            // Find the index of the selected line in the paging items
+            var targetIndex: Int? = null
+            for (idx in 0 until lazyPagingItems.itemCount) {
+                val item = lazyPagingItems[idx]
+                if (item?.id == selectedLine.id) {
+                    targetIndex = idx
+                    break
+                }
+            }
+
+            if (targetIndex != null && targetIndex >= 0) {
+                listState.animateScrollToItem(targetIndex)
             }
         }
     }
-    
+
     // Reset the scroll flag after scrolling
     LaunchedEffect(shouldScrollToLine) {
         if (shouldScrollToLine) {
@@ -125,49 +151,116 @@ fun BookContentView(
         }
     }
 
+    // Save scroll position
     LaunchedEffect(listState, hasRestored) {
         if (hasRestored) {
-            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            snapshotFlow {
+                listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+            }
                 .distinctUntilChanged()
                 .debounce(250)
-                .collect { (index, offset) -> onScroll(index, offset) }
+                .collect { (index, offset) ->
+                    onScroll(index, offset)
+                }
         }
     }
 
-    LaunchedEffect(listState, lines.size) {
-        snapshotFlow {
-            val layoutInfo = listState.layoutInfo
-            val lastVisibleItem = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
-            lastVisibleItem >= (lines.size - 5)
-        }.distinctUntilChanged().collect { nearEnd ->
-            if (nearEnd && lines.isNotEmpty()) {
-                onLoadMore(LoadDirection.FORWARD)
-            }
-        }
-    }
-
-    LaunchedEffect(listState, lines.size) {
-        snapshotFlow {
-            (listState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0) <= 5
-        }.distinctUntilChanged().collect { nearStart ->
-            if (nearStart && lines.isNotEmpty()) {
-                val firstLineIndex = lines.firstOrNull()?.lineIndex ?: 0
-                if (firstLineIndex > 0) onLoadMore(LoadDirection.BACKWARD)
-            }
-        }
-    }
-
-    // No need for breadcrumb padding anymore as it's moved to MainLayoutComponents
     SelectionContainer(modifier = modifier.fillMaxSize()) {
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-            items(items = lines, key = { it.id }) { line ->
-                LineItem(
-                    line = line,
-                    isSelected = selectedLine?.id == line.id,
-                    baseTextSize = textSize,
-                    lineHeight = lineHeight
-                ) {
-                    onLineSelected(line)
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            items(
+                count = lazyPagingItems.itemCount,
+                key = lazyPagingItems.itemKey { it.id }
+            ) { index ->
+                val line = lazyPagingItems[index]
+
+                if (line != null) {
+                    LineItem(
+                        line = line,
+                        isSelected = selectedLine?.id == line.id,
+                        baseTextSize = textSize,
+                        lineHeight = lineHeight
+                    ) {
+                        onLineSelected(line)
+                    }
+                } else {
+                    // Placeholder while loading
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .padding(8.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+
+            // Show loading indicator at the end
+            lazyPagingItems.apply {
+                when {
+                    loadState.refresh is LoadState.Loading -> {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = androidx.compose.ui.Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
+                    loadState.append is LoadState.Loading -> {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = androidx.compose.ui.Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+                    loadState.refresh is LoadState.Error -> {
+                        val error = (loadState.refresh as LoadState.Error).error
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = androidx.compose.ui.Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Error: ${error.message}",
+                                    color = Color.Red
+                                )
+                            }
+                        }
+                    }
+                    loadState.append is LoadState.Error -> {
+                        val error = (loadState.append as LoadState.Error).error
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = androidx.compose.ui.Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Error loading more: ${error.message}",
+                                    color = Color.Red
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

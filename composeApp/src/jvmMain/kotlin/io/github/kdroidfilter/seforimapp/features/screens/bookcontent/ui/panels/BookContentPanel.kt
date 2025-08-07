@@ -8,6 +8,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import app.cash.paging.PagingData
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.core.presentation.navigation.Navigator
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsDestination
@@ -20,6 +21,8 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compone
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedVerticalSplitPane
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.LineCommentsView
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
+import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -37,6 +40,7 @@ import java.util.*
 @Composable
 fun BookContentPanel(
     selectedBook: Book?,
+    linesPagingData: Flow<PagingData<Line>>, // NEW: Add paging data flow
     contentState: ContentUiState,
     tocState: TocUiState,
     navigationState: NavigationUiState,
@@ -53,6 +57,7 @@ fun BookContentPanel(
 
     // Preserve LazyListState across recompositions
     val bookListState = rememberLazyListState()
+
     when {
         selectedBook == null -> {
             Box(
@@ -71,7 +76,7 @@ fun BookContentPanel(
                     firstContent = {
                         BookContentView(
                             book = selectedBook,
-                            lines = contentState.lines,
+                            linesPagingData = linesPagingData, // Pass paging data
                             selectedLine = contentState.selectedLine,
                             shouldScrollToLine = contentState.shouldScrollToLine,
                             tocEntries = tocState.entries,
@@ -89,16 +94,13 @@ fun BookContentPanel(
                             onCategoryClick = { category ->
                                 onEvent(BookContentEvent.CategorySelected(category))
                             },
-                            onEvent = onEvent,  // Pass the complete onEvent function
+                            onEvent = onEvent,
                             modifier = Modifier.padding(16.dp),
                             preservedListState = bookListState,
                             scrollIndex = contentState.scrollIndex,
                             scrollOffset = contentState.scrollOffset,
                             onScroll = { index, offset ->
                                 onEvent(BookContentEvent.ContentScrolled(index, offset))
-                            },
-                            onLoadMore = { direction ->
-                                onEvent(BookContentEvent.LoadMoreLines(direction))
                             }
                         )
                     },
@@ -127,7 +129,7 @@ fun BookContentPanel(
                         )
                     }
                 )
-                
+
                 // Breadcrumb at the bottom
                 Column(
                     modifier = Modifier
@@ -162,7 +164,7 @@ fun BookContentPanel(
                 // Main content
                 BookContentView(
                     book = selectedBook,
-                    lines = contentState.lines,
+                    linesPagingData = linesPagingData, // Pass paging data
                     selectedLine = contentState.selectedLine,
                     shouldScrollToLine = contentState.shouldScrollToLine,
                     tocEntries = tocState.entries,
@@ -180,19 +182,16 @@ fun BookContentPanel(
                     onCategoryClick = { category ->
                         onEvent(BookContentEvent.CategorySelected(category))
                     },
-                    onEvent = onEvent,  // Pass the complete onEvent function
+                    onEvent = onEvent,
                     modifier = Modifier.weight(1f).padding(16.dp),
                     preservedListState = bookListState,
                     scrollIndex = contentState.scrollIndex,
                     scrollOffset = contentState.scrollOffset,
                     onScroll = { index, offset ->
                         onEvent(BookContentEvent.ContentScrolled(index, offset))
-                    },
-                    onLoadMore = { direction ->
-                        onEvent(BookContentEvent.LoadMoreLines(direction))
                     }
                 )
-                
+
                 // Breadcrumb at the bottom
                 Column(
                     modifier = Modifier

@@ -2,11 +2,16 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import app.cash.paging.Pager
+import app.cash.paging.PagingConfig
+import app.cash.paging.PagingData
+import app.cash.paging.cachedIn
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabAwareViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabType
 import io.github.kdroidfilter.seforimapp.core.utils.debugln
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.data.LinesPagingSource
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.*
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -69,7 +74,13 @@ class BookContentViewModel(
         const val KEY_COMMENTARIES_SELECTED_TAB = "commentariesSelectedTab"
         const val KEY_COMMENTARIES_SCROLL_INDEX = "commentariesScrollIndex"
         const val KEY_COMMENTARIES_SCROLL_OFFSET = "commentariesScrollOffset"
+
+        // Paging configuration
+        private const val PAGE_SIZE = 30
+        private const val PREFETCH_DISTANCE = 10
+        private const val INITIAL_LOAD_SIZE = 50
     }
+
     // Initialize state flows first
     private val _isLoading = MutableStateFlow(false)
     private val _rootCategories = MutableStateFlow<List<Category>>(emptyList())
@@ -107,7 +118,7 @@ class BookContentViewModel(
         )
     )
 
-    private val _bookLines = MutableStateFlow<List<Line>>(emptyList())
+    // REMOVED: _bookLines - Now using Paging
     private val _selectedLine = MutableStateFlow<Line?>(getState(KEY_SELECTED_LINE))
     private val _tocEntries = MutableStateFlow<List<TocEntry>>(emptyList())
     private val _expandedTocEntries = MutableStateFlow<Set<Long>>(getState(KEY_EXPANDED_TOC_ENTRIES) ?: emptySet())
@@ -123,14 +134,21 @@ class BookContentViewModel(
     private val _selectedChapter = MutableStateFlow(getState<Int>(KEY_SELECTED_CHAPTER) ?: 0)
     private val _contentScrollIndex = MutableStateFlow(getState<Int>(KEY_CONTENT_SCROLL_INDEX) ?: 0)
     private val _contentScrollOffset = MutableStateFlow(getState<Int>(KEY_CONTENT_SCROLL_OFFSET) ?: 0)
-    
+
     // Commentaries tab and scroll state
     private val _commentariesSelectedTab = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SELECTED_TAB) ?: 0)
     private val _commentariesScrollIndex = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SCROLL_INDEX) ?: 0)
     private val _commentariesScrollOffset = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SCROLL_OFFSET) ?: 0)
-    
+
     // Flag to track if we should scroll to the selected line
     private val _shouldScrollToLine = MutableStateFlow(false)
+
+    // NEW: Paging data flow for lines
+    private val _linesPagingData = MutableStateFlow<Flow<PagingData<Line>>?>(null)
+    val linesPagingData: Flow<PagingData<Line>> = _linesPagingData
+        .filterNotNull()
+        .flatMapLatest { it }
+        .cachedIn(viewModelScope)
 
     // Create UI state using combine for better performance
     @OptIn(ExperimentalSplitPaneApi::class)
@@ -164,9 +182,9 @@ class BookContentViewModel(
             viewModelScope.launch {
                 _isLoading.value = true
                 try {
-                    // Load the book data
+                    // Load the book data with paging
                     loadBookData(restoredBook)
-                    
+
                     // Check if we have a restored line and fetch its commentaries
                     _selectedLine.value?.let { line ->
                         fetchCommentariesForLine(line)
@@ -189,8 +207,10 @@ class BookContentViewModel(
 
                             // Check if we have a lineId in the savedStateHandle
                             savedStateHandle.get<Long>(KEY_LINE_ID)?.let { lineId ->
-                                // Load and select the line
-                                loadAndSelectLine(lineId)
+                                // For paging, we'll need to handle this differently
+                                // Store the line ID to scroll to after paging loads
+                                _selectedLine.value = repository.getLine(lineId)
+                                _shouldScrollToLine.value = true
                             }
                         }
                     } finally {
@@ -199,7 +219,7 @@ class BookContentViewModel(
                 }
             }
         }
-        
+
         // Observe the selected book and update the tab title when it changes
         viewModelScope.launch {
             _selectedBook
@@ -223,7 +243,7 @@ class BookContentViewModel(
             is BookContentEvent.TocEntryExpanded -> expandTocEntry(event.entry)
             BookContentEvent.ToggleToc -> toggleToc()
             is BookContentEvent.TocScrolled -> updateTocScrollPosition(event.index, event.offset)
-            
+
             // Book tree events
             is BookContentEvent.BookTreeScrolled -> updateBookTreeScrollPosition(event.index, event.offset)
 
@@ -233,8 +253,8 @@ class BookContentViewModel(
             BookContentEvent.ResetScrollFlag -> resetScrollFlag()
             BookContentEvent.ToggleCommentaries -> toggleCommentaries()
             is BookContentEvent.ContentScrolled -> updateContentScrollPosition(event.index, event.offset)
-            is BookContentEvent.LoadMoreLines -> loadMoreLines(event.direction)
-            
+            // REMOVED: LoadMoreLines - handled by Paging automatically
+
             // Commentaries events
             is BookContentEvent.CommentariesTabSelected -> updateCommentariesTabIndex(event.index)
             is BookContentEvent.CommentariesScrolled -> updateCommentariesScrollPosition(event.index, event.offset)
@@ -246,6 +266,11 @@ class BookContentViewModel(
 
             // State management
             BookContentEvent.SaveState -> saveAllStates()
+
+            // Ignore LoadMoreLines as it's handled by Paging
+            is BookContentEvent.LoadMoreLines -> {
+                // No-op - Paging handles this automatically
+            }
         }
     }
 
@@ -320,13 +345,13 @@ class BookContentViewModel(
                 scrollOffset = scrollOffset
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, TocUiState())
+
     private fun contentState(): StateFlow<ContentUiState> {
-        return _bookLines.combine(_selectedLine) { lines, line ->
-            Pair(lines, line)
-        }.combine(_commentaries) { (lines, line), commentaries ->
-            Triple(lines, line, commentaries)
-        }.combine(_showCommentaries) { (lines, line, commentaries), showComm ->
-            ContentData(lines, line, commentaries, showComm)
+        // MODIFIED: Removed _bookLines from the combine
+        return _selectedLine.combine(_commentaries) { line, commentaries ->
+            Pair(line, commentaries)
+        }.combine(_showCommentaries) { (line, commentaries), showComm ->
+            ContentData(line, commentaries, showComm)
         }.combine(_shouldScrollToLine) { data, shouldScroll ->
             data.copy(shouldScrollToLine = shouldScroll)
         }.combine(_paragraphScrollPosition) { data, pScroll ->
@@ -345,7 +370,7 @@ class BookContentViewModel(
             Pair(data.copy(commentariesScrollIndex = scrollIndex), chapter)
         }.combine(_commentariesScrollOffset) { (data, chapter), scrollOffset ->
             ContentUiState(
-                lines = data.lines,
+                lines = emptyList(), // Lines are now handled by Paging
                 selectedLine = data.selectedLine,
                 commentaries = data.commentaries,
                 showCommentaries = data.showCommentaries,
@@ -357,17 +382,16 @@ class BookContentViewModel(
                 commentariesSelectedTab = data.commentariesSelectedTab,
                 commentariesScrollIndex = data.commentariesScrollIndex,
                 commentariesScrollOffset = scrollOffset,
-                shouldScrollToLine = data.shouldScrollToLine  // NOUVEAU
+                shouldScrollToLine = data.shouldScrollToLine
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, ContentUiState())
     }
 
     private data class ContentData(
-        val lines: List<Line>,
         val selectedLine: Line?,
         val commentaries: List<CommentaryWithText>,
         val showCommentaries: Boolean,
-        val shouldScrollToLine: Boolean = false,  // NOUVEAU
+        val shouldScrollToLine: Boolean = false,
         val paragraphScrollPosition: Int = 0,
         val chapterScrollPosition: Int = 0,
         val scrollIndex: Int = 0,
@@ -406,12 +430,6 @@ class BookContentViewModel(
         )
     )
 
-
-    /**
-     * Helper method to execute a loading operation with proper loading state handling
-     * 
-     * @param block The suspend function to execute while loading
-     */
     private fun executeLoadingOperation(block: suspend () -> Unit) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -423,7 +441,6 @@ class BookContentViewModel(
         }
     }
 
-    // Implementation methods
     private fun loadRootCategories() {
         executeLoadingOperation {
             // Load root categories
@@ -506,22 +523,17 @@ class BookContentViewModel(
         // Reset scroll position when loading a new book
         _contentScrollIndex.value = 0
         _contentScrollOffset.value = 0
-        
+
         // Update tab title with book name
         updateTabTitle(book)
-        
+
         loadBookData(book)
     }
-    
-    /**
-     * Updates the tab title with the book name
-     *
-     * @param book The book whose name will be used for the tab title
-     */
+
     private fun updateTabTitle(book: Book) {
         // Create a title using the book name
         val title = book.title
-        
+
         // Update the tab title using the stored tabId
         // Set tabType=TabType.BOOK to indicate this tab contains book content
         titleUpdateManager.updateTabTitle(currentTabId, title, TabType.BOOK)
@@ -529,8 +541,18 @@ class BookContentViewModel(
 
     private fun loadBookData(book: Book) {
         executeLoadingOperation {
-            // Load book lines
-            _bookLines.value = repository.getLines(book.id, 0, 30)
+            // NEW: Create Pager for the book lines
+            val pager = Pager(
+                config = PagingConfig(
+                    pageSize = PAGE_SIZE,
+                    prefetchDistance = PREFETCH_DISTANCE,
+                    initialLoadSize = INITIAL_LOAD_SIZE,
+                    enablePlaceholders = false
+                ),
+                pagingSourceFactory = { LinesPagingSource(repository, book.id) }
+            )
+
+            _linesPagingData.value = pager.flow.cachedIn(viewModelScope)
 
             // Load root TOC entries
             val rootToc = repository.getBookRootToc(book.id)
@@ -538,9 +560,8 @@ class BookContentViewModel(
             _tocChildren.value = mapOf(-1L to rootToc)
 
             // Auto-expand first TOC entry if it has children
-            // No need to check separately, hasChildren is in the model
             rootToc.firstOrNull()?.let { firstEntry ->
-                if (firstEntry.hasChildren) {  // Use the field directly
+                if (firstEntry.hasChildren) {
                     _expandedTocEntries.value = setOf(firstEntry.id)
 
                     val children = repository.getTocChildren(firstEntry.id)
@@ -551,6 +572,7 @@ class BookContentViewModel(
             }
         }
     }
+
     private fun expandTocEntry(tocEntry: TocEntry) {
         val isExpanded = _expandedTocEntries.value.contains(tocEntry.id)
 
@@ -587,7 +609,7 @@ class BookContentViewModel(
     private fun resetScrollFlag() {
         _shouldScrollToLine.value = false
     }
-    
+
     private fun selectLine(line: Line) {
         _selectedLine.value = line
         _shouldScrollToLine.value = false  // NO scrolling when clicking on a line
@@ -614,25 +636,11 @@ class BookContentViewModel(
             try {
                 repository.getLine(lineId)?.let { line ->
                     if (line.bookId == currentBook.id) {
-                        // Check if the line is not already loaded
-                        if (_bookLines.value.none { it.id == lineId }) {
-                            val startIndex = maxOf(0, line.lineIndex - 25)
-                            val endIndex = line.lineIndex + 25
-                            _bookLines.value = repository.getLines(currentBook.id, startIndex, endIndex)
-                        }
-
-                        // Always reset selectedLine to force the LaunchedEffect
-                        // Even if it's the same line, we force the update
-                        _selectedLine.value = null
-
-                        // Small delay to ensure the null value is propagated
-                        kotlinx.coroutines.delay(10)
-
-                        // Indicate that we want to scroll (because it comes from the TOC)
-                        _shouldScrollToLine.value = true
-                        
-                        // Then select the line
+                        // For paging, we just set the selected line and scroll flag
+                        // The paging will handle loading the appropriate page
                         _selectedLine.value = line
+                        _shouldScrollToLine.value = true
+
                         fetchCommentariesForLine(line)
                         saveState(KEY_SELECTED_LINE, line)
                     }
@@ -642,108 +650,18 @@ class BookContentViewModel(
             }
         }
     }
-    
-    private fun loadMoreLines(direction: LoadDirection = LoadDirection.FORWARD) {
-        debugln { "[DEBUG_LOG] loadMoreLines called with direction: $direction" }
-        val currentBook = _selectedBook.value ?: return
-        val currentLines = _bookLines.value
-        
-        debugln { "[DEBUG_LOG] Current book: ${currentBook.title}, Current lines count: ${currentLines.size}" }
-        
-        if (currentLines.isEmpty()) {
-            debugln { "[DEBUG_LOG] Current lines is empty, returning" }
-            return
-        }
-        
-        // Check if we're already loading
-        if (_isLoading.value) {
-            debugln { "[DEBUG_LOG] Already loading, returning" }
-            return
-        }
-        
-        executeLoadingOperation {
-            // Calculate the start and end indices based on the direction
-            val (startIndex, endIndex) = when (direction) {
-                LoadDirection.FORWARD -> {
-                    // Forward: load lines after the current last line
-                    val start = currentLines.size
-                    val end = start + 30
-                    Pair(start, end)
-                }
-                LoadDirection.BACKWARD -> {
-                    // Backward: load lines before the current first line
-                    // Get the line index of the first line in our current list
-                    val firstLineIndex = currentLines.firstOrNull()?.lineIndex ?: 0
-                    // Calculate start index (30 lines before the first line, but not less than 0)
-                    val start = maxOf(0, firstLineIndex - 30)
-                    // End index is the index of the first line we currently have
-                    val end = firstLineIndex
-                    Pair(start, end)
-                }
-            }
-            
-            debugln { "[DEBUG_LOG] Loading more lines from index: $startIndex to index: $endIndex" }
-            
-            // Only proceed if we have a valid range to load
-            if (startIndex < endIndex) {
-                try {
-                    // Load lines from the repository for the current book only
-                    val moreLines = repository.getLines(currentBook.id, startIndex, endIndex)
-                    debugln { "[DEBUG_LOG] Loaded ${moreLines.size} more lines" }
-                    
-                    // Only update if we got new lines
-                    if (moreLines.isNotEmpty()) {
-                        // Create a set of existing line IDs for faster lookup
-                        val existingIds = currentLines.map { it.id }.toSet()
-                        
-                        // Filter out any new lines that have IDs already in the current list
-                        // and ensure they belong to the current book
-                        val uniqueNewLines = moreLines.filter { newLine -> 
-                            newLine.id !in existingIds && newLine.bookId == currentBook.id 
-                        }
-                        debugln { "[DEBUG_LOG] Unique new lines: ${uniqueNewLines.size}" }
-                        
-                        // Only update if we have unique new lines
-                        if (uniqueNewLines.isNotEmpty()) {
-                            // Update the book lines based on the direction
-                            _bookLines.value = when (direction) {
-                                LoadDirection.FORWARD -> currentLines + uniqueNewLines
-                                LoadDirection.BACKWARD -> uniqueNewLines + currentLines
-                            }
-                            debugln { "[DEBUG_LOG] Updated book lines, new total: ${_bookLines.value.size}" }
-                        } else {
-                            debugln { "[DEBUG_LOG] No unique new lines to add" }
-                        }
-                    } else {
-                        debugln { "[DEBUG_LOG] No more lines returned from repository" }
-                    }
-                } catch (e: Exception) {
-                    debugln { "[DEBUG_LOG] Error loading more lines: ${e.message}" }
-                    e.printStackTrace()
-                }
-            } else {
-                debugln { "[DEBUG_LOG] Invalid range: startIndex ($startIndex) >= endIndex ($endIndex)" }
-            }
-        }
-    }
 
+    // Other methods remain the same...
     private fun updateSearchText(text: String) {
         _searchText.value = text
         saveState(KEY_SEARCH_TEXT, text)
     }
 
-    /**
-     * Generic helper method to update a single scroll position value and save its state
-     * Type parameter T must be a subtype of Any to be compatible with saveState
-     */
     private fun <T : Any> updateScrollValue(stateFlow: MutableStateFlow<T>, value: T, stateKey: String) {
         stateFlow.value = value
         saveState(stateKey, value)
     }
-    
-    /**
-     * Generic helper method to update a pair of scroll index and offset values and save their states
-     */
+
     private fun updateScrollPosition(
         indexFlow: MutableStateFlow<Int>,
         offsetFlow: MutableStateFlow<Int>,
@@ -768,48 +686,48 @@ class BookContentViewModel(
 
     private fun updateTocScrollPosition(index: Int, offset: Int) {
         updateScrollPosition(
-            _tocScrollIndex, 
-            _tocScrollOffset, 
-            index, 
-            offset, 
-            KEY_TOC_SCROLL_INDEX, 
+            _tocScrollIndex,
+            _tocScrollOffset,
+            index,
+            offset,
+            KEY_TOC_SCROLL_INDEX,
             KEY_TOC_SCROLL_OFFSET
         )
     }
-    
+
     private fun updateBookTreeScrollPosition(index: Int, offset: Int) {
         updateScrollPosition(
-            _bookTreeScrollIndex, 
-            _bookTreeScrollOffset, 
-            index, 
-            offset, 
-            KEY_BOOK_TREE_SCROLL_INDEX, 
+            _bookTreeScrollIndex,
+            _bookTreeScrollOffset,
+            index,
+            offset,
+            KEY_BOOK_TREE_SCROLL_INDEX,
             KEY_BOOK_TREE_SCROLL_OFFSET
         )
     }
-    
+
     private fun updateContentScrollPosition(index: Int, offset: Int) {
         updateScrollPosition(
-            _contentScrollIndex, 
-            _contentScrollOffset, 
-            index, 
-            offset, 
-            KEY_CONTENT_SCROLL_INDEX, 
+            _contentScrollIndex,
+            _contentScrollOffset,
+            index,
+            offset,
+            KEY_CONTENT_SCROLL_INDEX,
             KEY_CONTENT_SCROLL_OFFSET
         )
     }
-    
+
     private fun updateCommentariesTabIndex(index: Int) {
         updateScrollValue(_commentariesSelectedTab, index, KEY_COMMENTARIES_SELECTED_TAB)
     }
-    
+
     private fun updateCommentariesScrollPosition(index: Int, offset: Int) {
         updateScrollPosition(
-            _commentariesScrollIndex, 
-            _commentariesScrollOffset, 
-            index, 
-            offset, 
-            KEY_COMMENTARIES_SCROLL_INDEX, 
+            _commentariesScrollIndex,
+            _commentariesScrollOffset,
+            index,
+            offset,
+            KEY_COMMENTARIES_SCROLL_INDEX,
             KEY_COMMENTARIES_SCROLL_OFFSET
         )
     }
@@ -909,33 +827,16 @@ class BookContentViewModel(
         saveState(KEY_TOC_SPLIT_PANE_POSITION, _tocSplitPaneState.value.positionPercentage)
     }
 
-    /**
-     * Helper method to save a state value with its key
-     * 
-     * @param key The key to use for saving the state
-     * @param stateFlow The state flow containing the value to save
-     */
     private fun <T : Any> saveStateFromFlow(key: String, stateFlow: StateFlow<T>) {
         saveState(key, stateFlow.value)
     }
-    
-    /**
-     * Helper method to save a nullable state value with its key
-     * 
-     * @param key The key to use for saving the state
-     * @param stateFlow The state flow containing the nullable value to save
-     */
+
     private fun <T : Any> saveNullableStateFromFlow(key: String, stateFlow: StateFlow<T?>) {
         stateFlow.value?.let { value ->
             saveState(key, value)
         }
     }
-    
-    /**
-     * Helper method to save a group of related state values
-     * 
-     * @param keyValuePairs Pairs of keys and state flows to save
-     */
+
     private fun saveStateGroup(vararg keyValuePairs: Pair<String, StateFlow<*>>) {
         keyValuePairs.forEach { (key, flow) ->
             when (flow) {
@@ -980,7 +881,7 @@ class BookContentViewModel(
             KEY_COMMENTARIES_SCROLL_INDEX to _commentariesScrollIndex,
             KEY_COMMENTARIES_SCROLL_OFFSET to _commentariesScrollOffset
         )
-        
+
         // Save UI state - visibility flags and text
         saveStateGroup(
             KEY_SEARCH_TEXT to _searchText,

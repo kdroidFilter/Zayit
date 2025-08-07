@@ -528,6 +528,8 @@ class BookContentViewModel(
         // Reset scroll position when loading a new book
         _contentScrollIndex.value = 0
         _contentScrollOffset.value = 0
+        _tocScrollIndex.value = 0      // Reset TOC scroll position
+        _tocScrollOffset.value = 0     // Reset TOC scroll offset
 
         // Update tab title with book name
         updateTabTitle(book)
@@ -564,15 +566,19 @@ class BookContentViewModel(
             _tocEntries.value = rootToc
             _tocChildren.value = mapOf(-1L to rootToc)
 
-            // Auto-expand first TOC entry if it has children
-            rootToc.firstOrNull()?.let { firstEntry ->
-                if (firstEntry.hasChildren) {
-                    _expandedTocEntries.value = setOf(firstEntry.id)
+            // Only set expanded entries if no state has already been restored
+            if (_expandedTocEntries.value.isEmpty()) {
+                rootToc.firstOrNull()
+                    ?.takeIf { it.hasChildren }
+                    ?.let { _expandedTocEntries.value = setOf(it.id) }
+            }
 
-                    val children = repository.getTocChildren(firstEntry.id)
-                    if (children.isNotEmpty()) {
-                        _tocChildren.value += (firstEntry.id to children)
-                    }
+            // Populate children for EACH already expanded entry
+            _expandedTocEntries.value.forEach { id ->
+                if (!_tocChildren.value.containsKey(id)) {
+                    repository.getTocChildren(id)
+                        .takeIf { it.isNotEmpty() }
+                        ?.let { _tocChildren.value += (id to it) }
                 }
             }
         }

@@ -169,12 +169,14 @@ fun BookContentView(
         if (hasRestored) {
             snapshotFlow {
                 val anchorIdx = listState.firstVisibleItemIndex
-                val anchorId = lazyPagingItems[anchorIdx]?.id ?: -1L
+                val safeIdx = anchorIdx.coerceAtMost(lazyPagingItems.itemCount - 1)
+                val anchorId = if (safeIdx >= 0) lazyPagingItems[safeIdx]?.id ?: -1L else -1L
                 val scrollIdx = anchorIdx
                 val scrollOff = listState.firstVisibleItemScrollOffset
                 
                 // Return the four values needed for pixel-perfect restoration
-                anchorId to (anchorIdx to (scrollIdx to scrollOff))
+                // Quadruple(anchorId, safeIdx, anchorIdx, scrollOff)
+                anchorId to (safeIdx to (scrollIdx to scrollOff))
             }
                 .distinctUntilChanged()
                 .debounce(250)

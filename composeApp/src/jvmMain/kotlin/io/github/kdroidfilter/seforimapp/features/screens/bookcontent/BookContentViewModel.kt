@@ -35,7 +35,6 @@ class BookContentViewModel(
     tabId = savedStateHandle.get<String>(KEY_TAB_ID) ?: "",
     stateManager = stateManager
 ) {
-    // Store the tabId for later use
     private val currentTabId: String = savedStateHandle.get<String>(KEY_TAB_ID) ?: ""
 
     companion object {
@@ -121,7 +120,6 @@ class BookContentViewModel(
         )
     )
 
-    // REMOVED: _bookLines - Now using Paging
     private val _selectedLine = MutableStateFlow<Line?>(getState(KEY_SELECTED_LINE))
     private val _tocEntries = MutableStateFlow<List<TocEntry>>(emptyList())
     private val _expandedTocEntries = MutableStateFlow<Set<Long>>(getState(KEY_EXPANDED_TOC_ENTRIES) ?: emptySet())
@@ -276,7 +274,6 @@ class BookContentViewModel(
             )
             BookContentEvent.NavigateToPreviousLine -> navigateToPreviousLine()
             BookContentEvent.NavigateToNextLine -> navigateToNextLine()
-            // REMOVED: LoadMoreLines - handled by Paging automatically
 
             // Commentaries events
             is BookContentEvent.CommentariesTabSelected -> updateCommentariesTabIndex(event.index)
@@ -290,7 +287,6 @@ class BookContentViewModel(
             // State management
             BookContentEvent.SaveState -> saveAllStates()
 
-            // Ignore LoadMoreLines as it's handled by Paging
             is BookContentEvent.LoadMoreLines -> {
                 // No-op - Paging handles this automatically
             }
@@ -370,7 +366,6 @@ class BookContentViewModel(
         }.stateIn(viewModelScope, SharingStarted.Eagerly, TocUiState())
 
     private fun contentState(): StateFlow<ContentUiState> {
-        // MODIFIED: Removed _bookLines from the combine
         return _selectedLine.combine(_commentaries) { line, commentaries ->
             Pair(line, commentaries)
         }.combine(_showCommentaries) { (line, commentaries), showComm ->
@@ -392,7 +387,7 @@ class BookContentViewModel(
         }.combine(_commentariesScrollOffset) { (data, chapter), scrollOffset ->
             Pair(
                 ContentUiState(
-                    lines = emptyList(), // Lines are now handled by Paging
+                    lines = emptyList(),
                     selectedLine = data.selectedLine,
                     commentaries = data.commentaries,
                     showCommentaries = data.showCommentaries,
@@ -496,7 +491,7 @@ class BookContentViewModel(
                             booksToLoad.addAll(books)
                         }
                     } catch (e: Exception) {
-                        // Handle error
+                        // Exception caught and ignored
                     }
                 }
 
@@ -555,7 +550,7 @@ class BookContentViewModel(
         val previousBook = _selectedBook.value
         _selectedBook.value = book
 
-        // Si on change de livre ET qu'on ne veut pas préserver la position
+        // If we change the book AND we don't want to preserve the position
         if (previousBook?.id != book.id && !preservePosition) {
             debugln { "Loading new book, resetting scroll position" }
             _contentScrollIndex.value = 0
@@ -591,8 +586,8 @@ class BookContentViewModel(
 
     private fun loadBookData(book: Book, forceAnchorId: Long? = null) {
         executeLoadingOperation {
-            // Déterminer la ligne initiale pour le PagingSource
-            // Utiliser l'ancre SEULEMENT si elle est valide et qu'on a scrollé au-delà de la première page
+            // Determine the initial line for the PagingSource
+            // Use the anchor ONLY if it is valid and we have scrolled beyond the first page
             val shouldUseAnchor = _contentAnchorId.value != -1L &&
                     _contentScrollIndex.value > INITIAL_LOAD_SIZE
 
@@ -679,7 +674,6 @@ class BookContentViewModel(
         debugln { "[selectLine] Selecting line with id=${line.id}, index=${line.lineIndex}" }
         
         _selectedLine.value = line
-        // No scrolling when clicking on a line (removed _shouldScrollToLine reference)
         fetchCommentariesForLine(line)
 
         // Save selected line
@@ -692,6 +686,7 @@ class BookContentViewModel(
             try {
                 _commentaries.value = repository.getCommentariesForLines(listOf(line.id))
             } catch (e: Exception) {
+                // Reset commentaries to empty list on error
                 _commentaries.value = emptyList()
             }
         }
@@ -706,7 +701,7 @@ class BookContentViewModel(
 
                 debugln { "[loadAndSelectLine] Loading line $lineId at index ${targetLine.lineIndex}" }
 
-                // Recréer le pager centré sur la ligne cible
+                // Recreate the pager centered on the target line
                 val pager = Pager(
                     config = PagingConfig(
                         pageSize = PAGE_SIZE,
@@ -722,7 +717,7 @@ class BookContentViewModel(
                 _linesPagingData.value = pager.flow.cachedIn(viewModelScope)
                 _selectedLine.value = targetLine
 
-                // Mettre à jour l'ancre pour une future restauration
+                // Update the anchor for future restoration
                 _contentAnchorId.value = targetLine.id
                 _contentAnchorIndex.value = 0 // Will be updated when scrolling
                 saveState(KEY_CONTENT_ANCHOR_ID, targetLine.id)
@@ -860,7 +855,7 @@ class BookContentViewModel(
                     _scrollToLineTimestamp.value = System.currentTimeMillis()
                 }
             } catch (e: Exception) {
-                // Handle any errors
+                // Log the error and continue
                 debugln { "[navigateToPreviousLine] Error: ${e.message}" }
             }
         }
@@ -891,7 +886,7 @@ class BookContentViewModel(
                     _scrollToLineTimestamp.value = System.currentTimeMillis()
                 }
             } catch (e: Exception) {
-                // Handle any errors
+                // Log the error and continue
                 debugln { "[navigateToNextLine] Error: ${e.message}" }
             }
         }

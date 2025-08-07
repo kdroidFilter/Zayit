@@ -27,6 +27,8 @@ sealed interface BookContentEvent {
     data object ToggleCommentaries : BookContentEvent
     data class ContentScrolled(val index: Int, val offset: Int) : BookContentEvent
     data class LoadMoreLines(val direction: LoadDirection = LoadDirection.FORWARD) : BookContentEvent
+    data object NavigateToPreviousLine : BookContentEvent
+    data object NavigateToNextLine : BookContentEvent
     
     // Commentaries events
     data class CommentariesTabSelected(val index: Int) : BookContentEvent

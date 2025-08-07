@@ -253,6 +253,8 @@ class BookContentViewModel(
             is BookContentEvent.LoadAndSelectLine -> loadAndSelectLine(event.lineId)
             BookContentEvent.ToggleCommentaries -> toggleCommentaries()
             is BookContentEvent.ContentScrolled -> updateContentScrollPosition(event.index, event.offset)
+            BookContentEvent.NavigateToPreviousLine -> navigateToPreviousLine()
+            BookContentEvent.NavigateToNextLine -> navigateToNextLine()
             // REMOVED: LoadMoreLines - handled by Paging automatically
 
             // Commentaries events
@@ -610,6 +612,8 @@ class BookContentViewModel(
         }
 
     private fun selectLine(line: Line) {
+        debugln { "[selectLine] Selecting line with id=${line.id}, index=${line.lineIndex}" }
+        
         _selectedLine.value = line
         // No scrolling when clicking on a line (removed _shouldScrollToLine reference)
         fetchCommentariesForLine(line)
@@ -750,6 +754,71 @@ class BookContentViewModel(
     private fun selectChapter(chapter: Int) {
         _selectedChapter.value = chapter
         saveState(KEY_SELECTED_CHAPTER, chapter)
+    }
+    
+    private fun navigateToPreviousLine() {
+        val currentLine = _selectedLine.value ?: return
+        val currentBook = _selectedBook.value ?: return
+        
+        debugln { "[navigateToPreviousLine] Called with currentLine.lineIndex=${currentLine.lineIndex}" }
+        
+        // Ensure we're only navigating within the same book
+        if (currentLine.bookId != currentBook.id) return
+        
+        // If we're already at the first line, do nothing
+        if (currentLine.lineIndex <= 0) return
+        
+        viewModelScope.launch {
+            try {
+                // Get the previous line using the repository method
+                val previousLine = repository.getPreviousLine(currentBook.id, currentLine.lineIndex)
+                
+                debugln { "[navigateToPreviousLine] Previous line: ${previousLine?.lineIndex}" }
+                
+                // If we found a previous line, select it
+                if (previousLine != null) {
+                    debugln { "[navigateToPreviousLine] Selecting line with index ${previousLine.lineIndex}" }
+                    selectLine(previousLine)
+                    
+                    // Update timestamp to force scroll to the selected line
+                    _scrollToLineTimestamp.value = System.currentTimeMillis()
+                }
+            } catch (e: Exception) {
+                // Handle any errors
+                debugln { "[navigateToPreviousLine] Error: ${e.message}" }
+            }
+        }
+    }
+    
+    private fun navigateToNextLine() {
+        val currentLine = _selectedLine.value ?: return
+        val currentBook = _selectedBook.value ?: return
+        
+        debugln { "[navigateToNextLine] Called with currentLine.lineIndex=${currentLine.lineIndex}" }
+        
+        // Ensure we're only navigating within the same book
+        if (currentLine.bookId != currentBook.id) return
+        
+        viewModelScope.launch {
+            try {
+                // Get the next line using the repository method
+                val nextLine = repository.getNextLine(currentBook.id, currentLine.lineIndex)
+                
+                debugln { "[navigateToNextLine] Next line: ${nextLine?.lineIndex}" }
+                
+                // If we found a next line, select it
+                if (nextLine != null) {
+                    debugln { "[navigateToNextLine] Selecting line with index ${nextLine.lineIndex}" }
+                    selectLine(nextLine)
+                    
+                    // Update timestamp to force scroll to the selected line
+                    _scrollToLineTimestamp.value = System.currentTimeMillis()
+                }
+            } catch (e: Exception) {
+                // Handle any errors
+                debugln { "[navigateToNextLine] Error: ${e.message}" }
+            }
+        }
     }
 
     @OptIn(ExperimentalSplitPaneApi::class)

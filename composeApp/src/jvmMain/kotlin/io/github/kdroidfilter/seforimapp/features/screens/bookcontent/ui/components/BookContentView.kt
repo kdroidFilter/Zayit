@@ -14,6 +14,11 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -156,7 +161,34 @@ fun BookContentView(
         }
     }
 
-    SelectionContainer(modifier = modifier.fillMaxSize()) {
+    SelectionContainer(
+        modifier = modifier
+            .fillMaxSize()
+            .onKeyEvent { keyEvent ->
+                debugln { "[BookContentView] Key event: key=${keyEvent.key}, type=${keyEvent.type}" }
+                
+                // Only process key down events to prevent multiple events for a single key press
+                // This fixes the issue where navigation was skipping 2 lines instead of moving by 1 line
+                // The issue was that both KeyDown and KeyUp events were being processed for a single key press
+                if (keyEvent.type != KeyEventType.KeyDown) {
+                    return@onKeyEvent false
+                }
+                
+                when (keyEvent.key) {
+                    Key.DirectionUp -> {
+                        debugln { "[BookContentView] Up arrow key pressed, navigating to previous line" }
+                        onEvent(BookContentEvent.NavigateToPreviousLine)
+                        true
+                    }
+                    Key.DirectionDown -> {
+                        debugln { "[BookContentView] Down arrow key pressed, navigating to next line" }
+                        onEvent(BookContentEvent.NavigateToNextLine)
+                        true
+                    }
+                    else -> false
+                }
+            }
+    ) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize()

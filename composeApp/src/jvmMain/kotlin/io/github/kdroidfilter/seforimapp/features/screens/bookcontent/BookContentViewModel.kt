@@ -249,7 +249,7 @@ class BookContentViewModel(
             is BookContentEvent.BookTreeScrolled -> updateBookTreeScrollPosition(event.index, event.offset)
 
             // Content events
-            is BookContentEvent.LineSelected -> (event.line)
+            is BookContentEvent.LineSelected -> selectLine(event.line)
             is BookContentEvent.LoadAndSelectLine -> loadAndSelectLine(event.lineId)
             BookContentEvent.ToggleCommentaries -> toggleCommentaries()
             is BookContentEvent.ContentScrolled -> updateContentScrollPosition(event.index, event.offset)

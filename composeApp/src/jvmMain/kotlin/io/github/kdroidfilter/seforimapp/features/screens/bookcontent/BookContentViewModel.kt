@@ -142,9 +142,6 @@ class BookContentViewModel(
     private val _commentariesScrollIndex = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SCROLL_INDEX) ?: 0)
     private val _commentariesScrollOffset = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SCROLL_OFFSET) ?: 0)
 
-    // Flag to track if we should scroll to the selected line
-    private val _shouldScrollToLine = MutableStateFlow(false)
-
     // NEW: Paging data flow for lines
     private val _linesPagingData = MutableStateFlow<Flow<PagingData<Line>>?>(null)
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -213,7 +210,8 @@ class BookContentViewModel(
                                 // For paging, we'll need to handle this differently
                                 // Store the line ID to scroll to after paging loads
                                 _selectedLine.value = repository.getLine(lineId)
-                                _shouldScrollToLine.value = true
+                                // Trigger scroll by updating timestamp
+                                _scrollToLineTimestamp.value = System.currentTimeMillis()
                             }
                         }
                     } finally {
@@ -253,7 +251,6 @@ class BookContentViewModel(
             // Content events
             is BookContentEvent.LineSelected -> (event.line)
             is BookContentEvent.LoadAndSelectLine -> loadAndSelectLine(event.lineId)
-            BookContentEvent.ResetScrollFlag -> resetScrollFlag()
             BookContentEvent.ToggleCommentaries -> toggleCommentaries()
             is BookContentEvent.ContentScrolled -> updateContentScrollPosition(event.index, event.offset)
             // REMOVED: LoadMoreLines - handled by Paging automatically
@@ -355,8 +352,6 @@ class BookContentViewModel(
             Pair(line, commentaries)
         }.combine(_showCommentaries) { (line, commentaries), showComm ->
             ContentData(line, commentaries, showComm)
-        }.combine(_shouldScrollToLine) { data, shouldScroll ->
-            data.copy(shouldScrollToLine = shouldScroll)
         }.combine(_paragraphScrollPosition) { data, pScroll ->
             data.copy(paragraphScrollPosition = pScroll)
         }.combine(_chapterScrollPosition) { data, cScroll ->
@@ -614,13 +609,9 @@ class BookContentViewModel(
             }
         }
 
-    private fun resetScrollFlag() {
-        _shouldScrollToLine.value = false
-    }
-
     private fun selectLine(line: Line) {
         _selectedLine.value = line
-        _shouldScrollToLine.value = false  // NO scrolling when clicking on a line
+        // No scrolling when clicking on a line (removed _shouldScrollToLine reference)
         fetchCommentariesForLine(line)
 
         // Save selected line
@@ -663,7 +654,6 @@ class BookContentViewModel(
 
                 _linesPagingData.value = pager.flow.cachedIn(viewModelScope)
                 _selectedLine.value = targetLine
-                _shouldScrollToLine.value = true
                 
                 // Fetch commentaries
                 fetchCommentariesForLine(targetLine)

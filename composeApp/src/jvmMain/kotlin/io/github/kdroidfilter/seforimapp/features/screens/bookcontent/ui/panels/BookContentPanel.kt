@@ -2,8 +2,10 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,7 +58,7 @@ fun BookContentPanel(
     val commentariesSplitState = rememberSplitPaneState(0.10f) // 10% for commentators list
 
     // Preserve LazyListState across recompositions
-    val bookListState = rememberLazyListState()
+    val bookListState = remember(selectedBook?.id) { LazyListState() }
 
     when {
         selectedBook == null -> {

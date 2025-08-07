@@ -57,7 +57,7 @@ import seforimapp.composeapp.generated.resources.notoserifhebrew
 @Composable
 fun BookContentView(
     book: Book,
-    linesPagingData: Flow<PagingData<Line>>, // NEW: Use paging data flow
+    linesPagingData: Flow<PagingData<Line>>,
     selectedLine: Line?,
     shouldScrollToLine: Boolean = false,
     tocEntries: List<TocEntry>,
@@ -80,9 +80,11 @@ fun BookContentView(
     // Collect paging data
     val lazyPagingItems: LazyPagingItems<Line> = linesPagingData.collectAsLazyPagingItems()
 
+    // Don't use the saved scroll position initially if we have an anchor
+    // The restoration will be handled after pagination loads
     val listState = preservedListState ?: rememberLazyListState(
-        initialFirstVisibleItemIndex = scrollIndex,
-        initialFirstVisibleItemScrollOffset = scrollOffset
+        initialFirstVisibleItemIndex = if (anchorId != -1L) 0 else scrollIndex,
+        initialFirstVisibleItemScrollOffset = if (anchorId != -1L) 0 else scrollOffset
     )
 
     // Collect text size from settings
@@ -105,89 +107,104 @@ fun BookContentView(
         label = "lineHeightAnimation"
     )
 
+    // Track restoration state per book
     var hasRestored by remember(book.id) { mutableStateOf(false) }
 
+    // Track the restored anchor to avoid re-restoration
+    var restoredAnchorId by remember(book.id) { mutableStateOf(-1L) }
+
+    // Handle scrolling to selected line when timestamp changes
     LaunchedEffect(scrollToLineTimestamp) {
         val target = selectedLine ?: return@LaunchedEffect
         if (scrollToLineTimestamp == 0L) return@LaunchedEffect
 
-        // 1. attendre la fin du premier chargement Paging
+        // Wait for initial loading to complete
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-            delay(16)          // ≈ 1 frame
+            delay(16)
         }
 
-        // 2. Chercher l’index de la ligne voulue dans le snapshot courant
+        // Find and scroll to the selected line
         val index = lazyPagingItems.itemSnapshotList.indexOfFirst { it?.id == target.id }
         if (index >= 0) {
             listState.scrollToItem(index)
         }
     }
 
-    // Pixel-perfect scroll restoration algorithm
-    LaunchedEffect(lazyPagingItems.itemCount, selectedLine?.id) {
-        if (lazyPagingItems.itemCount > 0 && !hasRestored) {
-            // 1. Wait for the refresh to complete (the page is loaded)
-            while (lazyPagingItems.loadState.refresh is LoadState.Loading) delay(16)
-            
-            // Try to find and scroll to selected line first (priority)
-            if (selectedLine != null) {
-                val index = (0 until lazyPagingItems.itemCount).firstOrNull { idx ->
-                    lazyPagingItems[idx]?.id == selectedLine.id
-                }
+    // Improved restoration algorithm for pagination
+    LaunchedEffect(lazyPagingItems.loadState, anchorId) {
+        // Only restore if we haven't already and we have items and an anchor
+        if (!hasRestored && anchorId != -1L && anchorId != restoredAnchorId) {
 
-                if (index != null && index >= 0) {
-                    listState.scrollToItem(index)
-                    hasRestored = true
-                    return@LaunchedEffect
+            // Wait for the initial page load to complete
+            if (lazyPagingItems.loadState.refresh is LoadState.Loading) {
+                // Wait for loading to finish
+                while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
+                    delay(16)
                 }
             }
-            
-            // 2. Find the current index of the anchor line using the provided anchorId
-            if (anchorId != -1L) {
-                val newAnchorIndex = lazyPagingItems.itemSnapshotList
+
+            // Now check if we have items
+            if (lazyPagingItems.itemCount > 0) {
+                // Find the anchor line in the current page
+                val anchorLineIndex = lazyPagingItems.itemSnapshotList
                     .indexOfFirst { it?.id == anchorId }
 
-                if (newAnchorIndex >= 0) {
-                    // 3. Calculate the offset between the anchor index and the scroll index
-                    val delta = scrollIndex - anchorIndex  // Use the provided anchorIndex
-                    val target = (newAnchorIndex + delta)
-                        .coerceIn(0, lazyPagingItems.itemCount - 1)
-                    
-                    // 4. Scroll to the target index with the saved offset
-                    listState.scrollToItem(target, scrollOffset)
+                if (anchorLineIndex >= 0) {
+                    debugln { "Found anchor at index $anchorLineIndex, scrolling with offset $scrollOffset" }
+
+                    // Scroll directly to the anchor with the saved offset
+                    listState.scrollToItem(anchorLineIndex, scrollOffset)
                     hasRestored = true
-                    return@LaunchedEffect
+                    restoredAnchorId = anchorId
+                } else {
+                    debugln { "Anchor line $anchorId not found in current page" }
+
+                    // The anchor is not in the current page
+                    // This shouldn't happen if the ViewModel correctly sets initialLineId
+                    // As a fallback, check if we have a selected line
+                    if (selectedLine != null) {
+                        val selectedIndex = lazyPagingItems.itemSnapshotList
+                            .indexOfFirst { it?.id == selectedLine.id }
+                        if (selectedIndex >= 0) {
+                            listState.scrollToItem(selectedIndex)
+                            hasRestored = true
+                        }
+                    }
                 }
             }
-
-            // Fallback: If anchor line is still not found, use the saved scroll position directly
-            val safe = scrollIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
-            listState.scrollToItem(safe, scrollOffset)
-            hasRestored = true
         }
     }
 
-
-    // Save scroll position with anchor information for pixel-perfect restoration
+    // Save scroll position with anchor information
     LaunchedEffect(listState, hasRestored) {
-        if (hasRestored) {
+        if (hasRestored || lazyPagingItems.itemCount > 0) {
             snapshotFlow {
-                val anchorIdx = listState.firstVisibleItemIndex
-                val safeIdx = anchorIdx.coerceAtMost(lazyPagingItems.itemCount - 1)
-                val anchorId = if (safeIdx >= 0) lazyPagingItems[safeIdx]?.id ?: -1L else -1L
-                val scrollIdx = anchorIdx
+                val firstVisibleIndex = listState.firstVisibleItemIndex
+                val safeIndex = firstVisibleIndex.coerceAtMost(lazyPagingItems.itemCount - 1)
+
+                // Get the ID of the first visible line as the anchor
+                val currentAnchorId = if (safeIndex >= 0 && safeIndex < lazyPagingItems.itemCount) {
+                    lazyPagingItems[safeIndex]?.id ?: -1L
+                } else {
+                    -1L
+                }
+
                 val scrollOff = listState.firstVisibleItemScrollOffset
-                
-                // Return the four values needed for pixel-perfect restoration
-                // Quadruple(anchorId, safeIdx, anchorIdx, scrollOff)
-                anchorId to (safeIdx to (scrollIdx to scrollOff))
+
+                // Return anchor info and scroll position
+                // The anchorIndex is the same as scrollIndex in this context
+                AnchorData(
+                    anchorId = currentAnchorId,
+                    anchorIndex = safeIndex,
+                    scrollIndex = firstVisibleIndex,
+                    scrollOffset = scrollOff
+                )
             }
                 .distinctUntilChanged()
                 .debounce(250)
-                .collect { (anchorId, rest) ->
-                    val (anchorIdx, scrollData) = rest
-                    val (scrollIdx, scrollOff) = scrollData
-                    onScroll(anchorId, anchorIdx, scrollIdx, scrollOff)
+                .collect { data ->
+                    debugln { "Saving scroll: anchor=${data.anchorId}, index=${data.scrollIndex}, offset=${data.scrollOffset}" }
+                    onScroll(data.anchorId, data.anchorIndex, data.scrollIndex, data.scrollOffset)
                 }
         }
     }
@@ -197,14 +214,11 @@ fun BookContentView(
             .fillMaxSize()
             .onKeyEvent { keyEvent ->
                 debugln { "[BookContentView] Key event: key=${keyEvent.key}, type=${keyEvent.type}" }
-                
-                // Only process key down events to prevent multiple events for a single key press
-                // This fixes the issue where navigation was skipping 2 lines instead of moving by 1 line
-                // The issue was that both KeyDown and KeyUp events were being processed for a single key press
+
                 if (keyEvent.type != KeyEventType.KeyDown) {
                     return@onKeyEvent false
                 }
-                
+
                 when (keyEvent.key) {
                     Key.DirectionUp -> {
                         debugln { "[BookContentView] Up arrow key pressed, navigating to previous line" }
@@ -254,7 +268,7 @@ fun BookContentView(
                 }
             }
 
-            // Show loading indicator at the end
+            // Show loading indicators
             lazyPagingItems.apply {
                 when {
                     loadState.refresh is LoadState.Loading -> {
@@ -321,6 +335,14 @@ fun BookContentView(
     }
 }
 
+// Data class for anchor information
+private data class AnchorData(
+    val anchorId: Long,
+    val anchorIndex: Int,
+    val scrollIndex: Int,
+    val scrollOffset: Int
+)
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LineItem(
@@ -334,8 +356,6 @@ private fun LineItem(
         HtmlParser().parse(line.content)
     }
 
-    // Builds a single annotated string => a single Text, no more "line after"
-    // Include baseTextSize in remember dependencies to ensure recomposition when text size changes
     val annotated = remember(parsedElements, baseTextSize) {
         buildAnnotatedString {
             parsedElements.forEach { e ->
@@ -361,7 +381,6 @@ private fun LineItem(
                     }
                     addStyle(SpanStyle(fontSize = size), start, end)
                 } else {
-                    // Apply base text size to non-header text
                     addStyle(SpanStyle(fontSize = baseTextSize.sp), start, end)
                 }
             }

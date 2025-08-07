@@ -182,11 +182,14 @@ class BookContentViewModel(
         // First check if we have a restored book from saved state
         val restoredBook = _selectedBook.value
         if (restoredBook != null) {
-            // Load the associated data for the restored book
+            // We have a restored book with saved scroll position
+            debugln { "Restoring book ${restoredBook.id} with saved position: anchor=${_contentAnchorId.value}, index=${_contentScrollIndex.value}" }
+
             viewModelScope.launch {
                 _isLoading.value = true
                 try {
-                    // Load the book data with paging
+                    // Load the book data with the restored position
+                    // Don't call loadBook as it might reset the position
                     loadBookData(restoredBook)
 
                     // Check if we have a restored line and fetch its commentaries
@@ -200,22 +203,32 @@ class BookContentViewModel(
         } else {
             // If no restored book, check if we have a bookId in the savedStateHandle
             savedStateHandle.get<Long>(KEY_BOOK_ID)?.let { bookId ->
-                // Load the book
                 viewModelScope.launch {
                     _isLoading.value = true
                     try {
                         // Get the book from the repository
                         repository.getBook(bookId)?.let { book ->
-                            // Load the book
-                            loadBook(book)
+                            // Check if we have a lineId to center on
+                            val targetLineId = savedStateHandle.get<Long>(KEY_LINE_ID)
 
-                            // Check if we have a lineId in the savedStateHandle
-                            savedStateHandle.get<Long>(KEY_LINE_ID)?.let { lineId ->
-                                // For paging, we'll need to handle this differently
-                                // Store the line ID to scroll to after paging loads
-                                _selectedLine.value = repository.getLine(lineId)
-                                // Trigger scroll by updating timestamp
-                                _scrollToLineTimestamp.value = System.currentTimeMillis()
+                            if (targetLineId != null) {
+                                // Load with specific line as anchor
+                                _selectedBook.value = book
+                                _contentAnchorId.value = targetLineId
+                                _contentScrollIndex.value = 0  // Start at beginning, will scroll to line
+                                _contentScrollOffset.value = 0
+                                loadBookData(book, targetLineId)
+
+                                // Also select the line
+                                repository.getLine(targetLineId)?.let { line ->
+                                    _selectedLine.value = line
+                                    fetchCommentariesForLine(line)
+                                    // Trigger scroll by updating timestamp
+                                    _scrollToLineTimestamp.value = System.currentTimeMillis()
+                                }
+                            } else {
+                                // Normal load - this will reset positions
+                                loadBook(book)
                             }
                         }
                     } finally {
@@ -228,9 +241,8 @@ class BookContentViewModel(
         // Observe the selected book and update the tab title when it changes
         viewModelScope.launch {
             _selectedBook
-                .filterNotNull() // Only process non-null books
+                .filterNotNull()
                 .collect { book ->
-                    // Update the tab title whenever the book changes
                     updateTabTitle(book)
                 }
         }
@@ -539,19 +551,28 @@ class BookContentViewModel(
         saveState(KEY_SELECTED_CATEGORY, category)
     }
 
-    private fun loadBook(book: Book) {
+    private fun loadBook(book: Book, preservePosition: Boolean = false) {
+        val previousBook = _selectedBook.value
         _selectedBook.value = book
-        // Reset scroll position when loading a new book
-        _contentScrollIndex.value = 0
-        _contentScrollOffset.value = 0
-        _tocScrollIndex.value = 0      // Reset TOC scroll position
-        _tocScrollOffset.value = 0     // Reset TOC scroll offset
-        
-        // Reset anchor values to avoid incorrect inter-book anchoring
-        _contentAnchorId.value = -1L
-        _contentAnchorIndex.value = 0
-        saveState(KEY_CONTENT_ANCHOR_ID, -1L)
-        saveState(KEY_CONTENT_ANCHOR_INDEX, 0)
+
+        // Si on change de livre ET qu'on ne veut pas préserver la position
+        if (previousBook?.id != book.id && !preservePosition) {
+            debugln { "Loading new book, resetting scroll position" }
+            _contentScrollIndex.value = 0
+            _contentScrollOffset.value = 0
+            _tocScrollIndex.value = 0
+            _tocScrollOffset.value = 0
+
+            // Reset anchor values to avoid incorrect inter-book anchoring
+            _contentAnchorId.value = -1L
+            _contentAnchorIndex.value = 0
+            saveState(KEY_CONTENT_ANCHOR_ID, -1L)
+            saveState(KEY_CONTENT_ANCHOR_INDEX, 0)
+            saveState(KEY_CONTENT_SCROLL_INDEX, 0)
+            saveState(KEY_CONTENT_SCROLL_OFFSET, 0)
+        } else {
+            debugln { "Loading book with preserved position: anchorId=${_contentAnchorId.value}, scrollIndex=${_contentScrollIndex.value}" }
+        }
 
         // Update tab title with book name
         updateTabTitle(book)
@@ -568,11 +589,22 @@ class BookContentViewModel(
         titleUpdateManager.updateTabTitle(currentTabId, title, TabType.BOOK)
     }
 
-    private fun loadBookData(book: Book) {
+    private fun loadBookData(book: Book, forceAnchorId: Long? = null) {
         executeLoadingOperation {
-            // Use saved anchorIndex as initialKey if available
-            val initialLineId = _contentAnchorId.value.takeIf { it != -1L }
-            
+            // Déterminer la ligne initiale pour le PagingSource
+            // Utiliser l'ancre SEULEMENT si elle est valide et qu'on a scrollé au-delà de la première page
+            val shouldUseAnchor = _contentAnchorId.value != -1L &&
+                    _contentScrollIndex.value > INITIAL_LOAD_SIZE
+
+            val initialLineId = when {
+                forceAnchorId != null -> forceAnchorId
+                shouldUseAnchor -> _contentAnchorId.value
+                _selectedLine.value != null -> _selectedLine.value?.id
+                else -> null
+            }
+
+            debugln { "Loading book data - Using anchor: $shouldUseAnchor, initialLineId: $initialLineId, scrollIndex: ${_contentScrollIndex.value}" }
+
             val pager = Pager<Int, Line>(
                 config = PagingConfig(
                     pageSize = PAGE_SIZE,
@@ -580,7 +612,9 @@ class BookContentViewModel(
                     initialLoadSize = INITIAL_LOAD_SIZE,
                     enablePlaceholders = false
                 ),
-                pagingSourceFactory = { LinesPagingSource(repository, book.id, initialLineId) }
+                pagingSourceFactory = {
+                    LinesPagingSource(repository, book.id, initialLineId)
+                }
             )
 
             _linesPagingData.value = pager.flow.cachedIn(viewModelScope)
@@ -672,8 +706,7 @@ class BookContentViewModel(
 
                 debugln { "[loadAndSelectLine] Loading line $lineId at index ${targetLine.lineIndex}" }
 
-                // Always recreate the pager centered on the target line
-                // This ensures the line will always be available for scrolling
+                // Recréer le pager centré sur la ligne cible
                 val pager = Pager(
                     config = PagingConfig(
                         pageSize = PAGE_SIZE,
@@ -688,19 +721,21 @@ class BookContentViewModel(
 
                 _linesPagingData.value = pager.flow.cachedIn(viewModelScope)
                 _selectedLine.value = targetLine
-                
+
+                // Mettre à jour l'ancre pour une future restauration
+                _contentAnchorId.value = targetLine.id
+                _contentAnchorIndex.value = 0 // Will be updated when scrolling
+                saveState(KEY_CONTENT_ANCHOR_ID, targetLine.id)
+
                 // Fetch commentaries
                 fetchCommentariesForLine(targetLine)
-                
+
                 // Update timestamp to force scroll
                 _scrollToLineTimestamp.value = System.currentTimeMillis()
             }
         }
     }
 
-
-
-    // Other methods remain the same...
     private fun updateSearchText(text: String) {
         _searchText.value = text
         saveState(KEY_SEARCH_TEXT, text)
@@ -755,22 +790,26 @@ class BookContentViewModel(
         )
     }
 
-    private fun updateContentScrollPosition(anchorId: Long, anchorIndex: Int, scrollIndex: Int, scrollOffset: Int) {
-        // Update anchor information
+    private fun updateContentScrollPosition(
+        anchorId: Long,
+        anchorIndex: Int,
+        scrollIndex: Int,
+        scrollOffset: Int
+    ) {
+        debugln { "Updating scroll position: anchor=$anchorId, anchorIndex=$anchorIndex, scrollIndex=$scrollIndex, offset=$scrollOffset" }
+
+        // Always update all values, even if anchorId is -1L
+        // This ensures we have the scroll position saved for first page scenarios
         _contentAnchorId.value = anchorId
         _contentAnchorIndex.value = anchorIndex
+        _contentScrollIndex.value = scrollIndex
+        _contentScrollOffset.value = scrollOffset
+
+        // Save all values immediately
         saveState(KEY_CONTENT_ANCHOR_ID, anchorId)
         saveState(KEY_CONTENT_ANCHOR_INDEX, anchorIndex)
-        
-        // Update scroll position
-        updateScrollPosition(
-            _contentScrollIndex,
-            _contentScrollOffset,
-            scrollIndex,
-            scrollOffset,
-            KEY_CONTENT_SCROLL_INDEX,
-            KEY_CONTENT_SCROLL_OFFSET
-        )
+        saveState(KEY_CONTENT_SCROLL_INDEX, scrollIndex)
+        saveState(KEY_CONTENT_SCROLL_OFFSET, scrollOffset)
     }
 
     private fun updateCommentariesTabIndex(index: Int) {

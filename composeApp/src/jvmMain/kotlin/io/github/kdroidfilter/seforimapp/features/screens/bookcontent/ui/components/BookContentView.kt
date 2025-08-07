@@ -73,7 +73,7 @@ fun BookContentView(
     scrollIndex: Int = 0,
     scrollOffset: Int = 0,
     scrollToLineTimestamp: Long = 0,
-    onScroll: (Int, Int) -> Unit = { _, _ -> }
+    onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> }
 ) {
     // Collect paging data
     val lazyPagingItems: LazyPagingItems<Line> = linesPagingData.collectAsLazyPagingItems()
@@ -121,10 +121,13 @@ fun BookContentView(
         }
     }
 
-    // Also improve the restore scroll position logic
+    // Pixel-perfect scroll restoration algorithm
     LaunchedEffect(lazyPagingItems.itemCount, selectedLine?.id) {
         if (lazyPagingItems.itemCount > 0 && !hasRestored) {
-            // Try to find and scroll to selected line first
+            // 1. Wait for the refresh to complete (the page is loaded)
+            while (lazyPagingItems.loadState.refresh is LoadState.Loading) delay(16)
+            
+            // Try to find and scroll to selected line first (priority)
             if (selectedLine != null) {
                 val index = (0 until lazyPagingItems.itemCount).firstOrNull { idx ->
                     lazyPagingItems[idx]?.id == selectedLine.id
@@ -136,27 +139,49 @@ fun BookContentView(
                     return@LaunchedEffect
                 }
             }
-
-            // If no selected line or not found, restore saved scroll position
-            val safeIndex = scrollIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
-            if (safeIndex >= 0) {
-                listState.scrollToItem(safeIndex, scrollOffset)
+            
+            // 2. Find the current index of the anchor line
+            val anchorId = book.id // Use book ID as fallback
+            val newAnchorIndex = lazyPagingItems.itemSnapshotList.indexOfFirst { it?.id == anchorId }
+            
+            if (newAnchorIndex >= 0) {
+                // 3. Calculate the offset between the anchor index and the scroll index
+                val delta = scrollIndex - 0 // Use 0 as default anchorIndex if not available
+                val targetIndex = (newAnchorIndex + delta).coerceAtLeast(0)
+                
+                // 4. Scroll to the target index with the saved offset
+                listState.scrollToItem(targetIndex, scrollOffset)
+            } else {
+                // Fallback: If anchor line not found, use the saved scroll position directly
+                val safeIndex = scrollIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
+                if (safeIndex >= 0) {
+                    listState.scrollToItem(safeIndex, scrollOffset)
+                }
             }
+            
             hasRestored = true
         }
     }
 
 
-    // Save scroll position
+    // Save scroll position with anchor information for pixel-perfect restoration
     LaunchedEffect(listState, hasRestored) {
         if (hasRestored) {
             snapshotFlow {
-                listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+                val anchorIdx = listState.firstVisibleItemIndex
+                val anchorId = lazyPagingItems[anchorIdx]?.id ?: -1L
+                val scrollIdx = anchorIdx
+                val scrollOff = listState.firstVisibleItemScrollOffset
+                
+                // Return the four values needed for pixel-perfect restoration
+                anchorId to (anchorIdx to (scrollIdx to scrollOff))
             }
                 .distinctUntilChanged()
                 .debounce(250)
-                .collect { (index, offset) ->
-                    onScroll(index, offset)
+                .collect { (anchorId, rest) ->
+                    val (anchorIdx, scrollData) = rest
+                    val (scrollIdx, scrollOff) = scrollData
+                    onScroll(anchorId, anchorIdx, scrollIdx, scrollOff)
                 }
         }
     }

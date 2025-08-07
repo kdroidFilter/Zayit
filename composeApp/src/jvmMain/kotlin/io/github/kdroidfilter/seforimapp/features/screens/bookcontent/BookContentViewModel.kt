@@ -72,6 +72,8 @@ class BookContentViewModel(
         const val KEY_BOOK_TREE_SCROLL_OFFSET = "bookTreeScrollOffset"
         const val KEY_CONTENT_SCROLL_INDEX = "contentScrollIndex"
         const val KEY_CONTENT_SCROLL_OFFSET = "contentScrollOffset"
+        const val KEY_CONTENT_ANCHOR_ID = "contentAnchorId"
+        const val KEY_CONTENT_ANCHOR_INDEX = "contentAnchorIndex"
         const val KEY_COMMENTARIES_SELECTED_TAB = "commentariesSelectedTab"
         const val KEY_COMMENTARIES_SCROLL_INDEX = "commentariesScrollIndex"
         const val KEY_COMMENTARIES_SCROLL_OFFSET = "commentariesScrollOffset"
@@ -135,6 +137,8 @@ class BookContentViewModel(
     private val _selectedChapter = MutableStateFlow(getState<Int>(KEY_SELECTED_CHAPTER) ?: 0)
     private val _contentScrollIndex = MutableStateFlow(getState<Int>(KEY_CONTENT_SCROLL_INDEX) ?: 0)
     private val _contentScrollOffset = MutableStateFlow(getState<Int>(KEY_CONTENT_SCROLL_OFFSET) ?: 0)
+    private val _contentAnchorId = MutableStateFlow(getState<Long>(KEY_CONTENT_ANCHOR_ID) ?: -1L)
+    private val _contentAnchorIndex = MutableStateFlow(getState<Int>(KEY_CONTENT_ANCHOR_INDEX) ?: 0)
     private val _scrollToLineTimestamp = MutableStateFlow(0L)
 
     // Commentaries tab and scroll state
@@ -252,7 +256,12 @@ class BookContentViewModel(
             is BookContentEvent.LineSelected -> selectLine(event.line)
             is BookContentEvent.LoadAndSelectLine -> loadAndSelectLine(event.lineId)
             BookContentEvent.ToggleCommentaries -> toggleCommentaries()
-            is BookContentEvent.ContentScrolled -> updateContentScrollPosition(event.index, event.offset)
+            is BookContentEvent.ContentScrolled -> updateContentScrollPosition(
+                event.anchorId, 
+                event.anchorIndex, 
+                event.scrollIndex, 
+                event.scrollOffset
+            )
             BookContentEvent.NavigateToPreviousLine -> navigateToPreviousLine()
             BookContentEvent.NavigateToNextLine -> navigateToNextLine()
             // REMOVED: LoadMoreLines - handled by Paging automatically
@@ -548,15 +557,17 @@ class BookContentViewModel(
 
     private fun loadBookData(book: Book) {
         executeLoadingOperation {
-            // NEW: Create Pager for the book lines
-            val pager = Pager(
+            // Use saved anchorIndex as initialKey if available
+            val initialLineId = _contentAnchorId.value.takeIf { it != -1L }
+            
+            val pager = Pager<Int, Line>(
                 config = PagingConfig(
                     pageSize = PAGE_SIZE,
                     prefetchDistance = PREFETCH_DISTANCE,
                     initialLoadSize = INITIAL_LOAD_SIZE,
                     enablePlaceholders = false
                 ),
-                pagingSourceFactory = { LinesPagingSource(repository, book.id) }
+                pagingSourceFactory = { LinesPagingSource(repository, book.id, initialLineId) }
             )
 
             _linesPagingData.value = pager.flow.cachedIn(viewModelScope)
@@ -731,12 +742,19 @@ class BookContentViewModel(
         )
     }
 
-    private fun updateContentScrollPosition(index: Int, offset: Int) {
+    private fun updateContentScrollPosition(anchorId: Long, anchorIndex: Int, scrollIndex: Int, scrollOffset: Int) {
+        // Update anchor information
+        _contentAnchorId.value = anchorId
+        _contentAnchorIndex.value = anchorIndex
+        saveState(KEY_CONTENT_ANCHOR_ID, anchorId)
+        saveState(KEY_CONTENT_ANCHOR_INDEX, anchorIndex)
+        
+        // Update scroll position
         updateScrollPosition(
             _contentScrollIndex,
             _contentScrollOffset,
-            index,
-            offset,
+            scrollIndex,
+            scrollOffset,
             KEY_CONTENT_SCROLL_INDEX,
             KEY_CONTENT_SCROLL_OFFSET
         )

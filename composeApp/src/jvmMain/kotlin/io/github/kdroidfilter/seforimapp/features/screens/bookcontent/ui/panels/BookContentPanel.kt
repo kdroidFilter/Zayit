@@ -100,6 +100,8 @@ fun BookContentPanel(
                             scrollIndex = contentState.scrollIndex,
                             scrollOffset = contentState.scrollOffset,
                             scrollToLineTimestamp = contentState.scrollToLineTimestamp,
+                            anchorId = contentState.anchorId,
+                            anchorIndex = contentState.anchorIndex,
                             onScroll = { anchorId, anchorIndex, scrollIndex, scrollOffset ->
                                 onEvent(BookContentEvent.ContentScrolled(
                                     anchorId = anchorId,
@@ -194,6 +196,8 @@ fun BookContentPanel(
                     scrollIndex = contentState.scrollIndex,
                     scrollOffset = contentState.scrollOffset,
                     scrollToLineTimestamp = contentState.scrollToLineTimestamp,
+                    anchorId = contentState.anchorId,
+                    anchorIndex = contentState.anchorIndex,
                     onScroll = { anchorId, anchorIndex, scrollIndex, scrollOffset ->
                         onEvent(BookContentEvent.ContentScrolled(
                             anchorId = anchorId,

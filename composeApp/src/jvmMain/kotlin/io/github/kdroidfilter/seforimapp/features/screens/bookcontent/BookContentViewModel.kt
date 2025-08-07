@@ -398,7 +398,14 @@ class BookContentViewModel(
             )
         }.combine(_scrollToLineTimestamp) { (contentState, _), timestamp ->
             contentState.copy(scrollToLineTimestamp = timestamp)
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, ContentUiState())
+        }
+        .combine(_contentAnchorId) { content, anchorId ->
+            content.copy(anchorId = anchorId)
+        }
+        .combine(_contentAnchorIndex) { content, anchorIndex ->
+            content.copy(anchorIndex = anchorIndex)
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ContentUiState())
     }
 
     private data class ContentData(
@@ -539,6 +546,12 @@ class BookContentViewModel(
         _contentScrollOffset.value = 0
         _tocScrollIndex.value = 0      // Reset TOC scroll position
         _tocScrollOffset.value = 0     // Reset TOC scroll offset
+        
+        // Reset anchor values to avoid incorrect inter-book anchoring
+        _contentAnchorId.value = -1L
+        _contentAnchorIndex.value = 0
+        saveState(KEY_CONTENT_ANCHOR_ID, -1L)
+        saveState(KEY_CONTENT_ANCHOR_INDEX, 0)
 
         // Update tab title with book name
         updateTabTitle(book)

@@ -73,6 +73,8 @@ fun BookContentView(
     scrollIndex: Int = 0,
     scrollOffset: Int = 0,
     scrollToLineTimestamp: Long = 0,
+    anchorId: Long = -1L,
+    anchorIndex: Int = 0,
     onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> }
 ) {
     // Collect paging data
@@ -140,25 +142,27 @@ fun BookContentView(
                 }
             }
             
-            // 2. Find the current index of the anchor line
-            val anchorId = book.id // Use book ID as fallback
-            val newAnchorIndex = lazyPagingItems.itemSnapshotList.indexOfFirst { it?.id == anchorId }
-            
-            if (newAnchorIndex >= 0) {
-                // 3. Calculate the offset between the anchor index and the scroll index
-                val delta = scrollIndex - 0 // Use 0 as default anchorIndex if not available
-                val targetIndex = (newAnchorIndex + delta).coerceAtLeast(0)
-                
-                // 4. Scroll to the target index with the saved offset
-                listState.scrollToItem(targetIndex, scrollOffset)
-            } else {
-                // Fallback: If anchor line not found, use the saved scroll position directly
-                val safeIndex = scrollIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
-                if (safeIndex >= 0) {
-                    listState.scrollToItem(safeIndex, scrollOffset)
+            // 2. Find the current index of the anchor line using the provided anchorId
+            if (anchorId != -1L) {
+                val newAnchorIndex = lazyPagingItems.itemSnapshotList
+                    .indexOfFirst { it?.id == anchorId }
+
+                if (newAnchorIndex >= 0) {
+                    // 3. Calculate the offset between the anchor index and the scroll index
+                    val delta = scrollIndex - anchorIndex  // Use the provided anchorIndex
+                    val target = (newAnchorIndex + delta)
+                        .coerceIn(0, lazyPagingItems.itemCount - 1)
+                    
+                    // 4. Scroll to the target index with the saved offset
+                    listState.scrollToItem(target, scrollOffset)
+                    hasRestored = true
+                    return@LaunchedEffect
                 }
             }
-            
+
+            // Fallback: If anchor line is still not found, use the saved scroll position directly
+            val safe = scrollIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
+            listState.scrollToItem(safe, scrollOffset)
             hasRestored = true
         }
     }

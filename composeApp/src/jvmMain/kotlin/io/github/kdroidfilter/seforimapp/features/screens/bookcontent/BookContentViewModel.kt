@@ -19,6 +19,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -134,6 +135,7 @@ class BookContentViewModel(
     private val _selectedChapter = MutableStateFlow(getState<Int>(KEY_SELECTED_CHAPTER) ?: 0)
     private val _contentScrollIndex = MutableStateFlow(getState<Int>(KEY_CONTENT_SCROLL_INDEX) ?: 0)
     private val _contentScrollOffset = MutableStateFlow(getState<Int>(KEY_CONTENT_SCROLL_OFFSET) ?: 0)
+    private val _scrollToLineTimestamp = MutableStateFlow(0L)
 
     // Commentaries tab and scroll state
     private val _commentariesSelectedTab = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SELECTED_TAB) ?: 0)
@@ -145,6 +147,7 @@ class BookContentViewModel(
 
     // NEW: Paging data flow for lines
     private val _linesPagingData = MutableStateFlow<Flow<PagingData<Line>>?>(null)
+    @OptIn(ExperimentalCoroutinesApi::class)
     val linesPagingData: Flow<PagingData<Line>> = _linesPagingData
         .filterNotNull()
         .flatMapLatest { it }
@@ -248,7 +251,7 @@ class BookContentViewModel(
             is BookContentEvent.BookTreeScrolled -> updateBookTreeScrollPosition(event.index, event.offset)
 
             // Content events
-            is BookContentEvent.LineSelected -> selectLine(event.line)
+            is BookContentEvent.LineSelected -> (event.line)
             is BookContentEvent.LoadAndSelectLine -> loadAndSelectLine(event.lineId)
             BookContentEvent.ResetScrollFlag -> resetScrollFlag()
             BookContentEvent.ToggleCommentaries -> toggleCommentaries()
@@ -369,21 +372,26 @@ class BookContentViewModel(
         }.combine(_commentariesScrollIndex) { (data, chapter), scrollIndex ->
             Pair(data.copy(commentariesScrollIndex = scrollIndex), chapter)
         }.combine(_commentariesScrollOffset) { (data, chapter), scrollOffset ->
-            ContentUiState(
-                lines = emptyList(), // Lines are now handled by Paging
-                selectedLine = data.selectedLine,
-                commentaries = data.commentaries,
-                showCommentaries = data.showCommentaries,
-                paragraphScrollPosition = data.paragraphScrollPosition,
-                chapterScrollPosition = data.chapterScrollPosition,
-                selectedChapter = chapter,
-                scrollIndex = data.scrollIndex,
-                scrollOffset = data.scrollOffset,
-                commentariesSelectedTab = data.commentariesSelectedTab,
-                commentariesScrollIndex = data.commentariesScrollIndex,
-                commentariesScrollOffset = scrollOffset,
-                shouldScrollToLine = data.shouldScrollToLine
+            Pair(
+                ContentUiState(
+                    lines = emptyList(), // Lines are now handled by Paging
+                    selectedLine = data.selectedLine,
+                    commentaries = data.commentaries,
+                    showCommentaries = data.showCommentaries,
+                    paragraphScrollPosition = data.paragraphScrollPosition,
+                    chapterScrollPosition = data.chapterScrollPosition,
+                    selectedChapter = chapter,
+                    scrollIndex = data.scrollIndex,
+                    scrollOffset = data.scrollOffset,
+                    commentariesSelectedTab = data.commentariesSelectedTab,
+                    commentariesScrollIndex = data.commentariesScrollIndex,
+                    commentariesScrollOffset = scrollOffset,
+                    shouldScrollToLine = data.shouldScrollToLine
+                ),
+                scrollOffset
             )
+        }.combine(_scrollToLineTimestamp) { (contentState, _), timestamp ->
+            contentState.copy(scrollToLineTimestamp = timestamp)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, ContentUiState())
     }
 
@@ -619,6 +627,7 @@ class BookContentViewModel(
         saveState(KEY_SELECTED_LINE, line)
     }
 
+
     private fun fetchCommentariesForLine(line: Line) {
         viewModelScope.launch {
             try {
@@ -631,31 +640,40 @@ class BookContentViewModel(
 
     private fun loadAndSelectLine(lineId: Long) {
         val book = _selectedBook.value ?: return
+
         viewModelScope.launch {
-            repository.getLine(lineId)?.let { line ->
-                if (line.bookId == book.id) {
+            repository.getLine(lineId)?.let { targetLine ->
+                if (targetLine.bookId != book.id) return@launch
 
-                    // ❶ Pager recentré sur la ligne demandée
-                    val pager = Pager(
-                        config = PagingConfig(
-                            pageSize = PAGE_SIZE,
-                            prefetchDistance = PREFETCH_DISTANCE,
-                            initialLoadSize = INITIAL_LOAD_SIZE,
-                            enablePlaceholders = false
-                        ),
-                        pagingSourceFactory = {
-                            LinesPagingSource(repository, book.id, line.id)   // <-- initialLineId
-                        }
-                    )
-                    _linesPagingData.value = pager.flow.cachedIn(viewModelScope)
+                debugln { "[loadAndSelectLine] Loading line $lineId at index ${targetLine.lineIndex}" }
 
-                    // ❷ Sélection + déclenchement du scroll
-                    _selectedLine.value = line
-                    _shouldScrollToLine.value = true
-                }
+                // Always recreate the pager centered on the target line
+                // This ensures the line will always be available for scrolling
+                val pager = Pager(
+                    config = PagingConfig(
+                        pageSize = PAGE_SIZE,
+                        prefetchDistance = PREFETCH_DISTANCE,
+                        initialLoadSize = INITIAL_LOAD_SIZE,
+                        enablePlaceholders = false
+                    ),
+                    pagingSourceFactory = {
+                        LinesPagingSource(repository, book.id, targetLine.id)
+                    }
+                )
+
+                _linesPagingData.value = pager.flow.cachedIn(viewModelScope)
+                _selectedLine.value = targetLine
+                _shouldScrollToLine.value = true
+                
+                // Fetch commentaries
+                fetchCommentariesForLine(targetLine)
+                
+                // Update timestamp to force scroll
+                _scrollToLineTimestamp.value = System.currentTimeMillis()
             }
         }
     }
+
 
 
     // Other methods remain the same...

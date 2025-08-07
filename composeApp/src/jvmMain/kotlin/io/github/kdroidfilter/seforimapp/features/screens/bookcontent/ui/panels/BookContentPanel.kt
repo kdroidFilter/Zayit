@@ -99,6 +99,7 @@ fun BookContentPanel(
                             preservedListState = bookListState,
                             scrollIndex = contentState.scrollIndex,
                             scrollOffset = contentState.scrollOffset,
+                            scrollToLineTimestamp = contentState.scrollToLineTimestamp,
                             onScroll = { index, offset ->
                                 onEvent(BookContentEvent.ContentScrolled(index, offset))
                             }
@@ -187,6 +188,7 @@ fun BookContentPanel(
                     preservedListState = bookListState,
                     scrollIndex = contentState.scrollIndex,
                     scrollOffset = contentState.scrollOffset,
+                    scrollToLineTimestamp = contentState.scrollToLineTimestamp,
                     onScroll = { index, offset ->
                         onEvent(BookContentEvent.ContentScrolled(index, offset))
                     }

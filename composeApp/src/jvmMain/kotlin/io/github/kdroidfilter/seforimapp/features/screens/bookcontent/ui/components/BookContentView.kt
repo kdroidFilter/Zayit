@@ -30,6 +30,7 @@ import app.cash.paging.compose.LazyPagingItems
 import app.cash.paging.compose.collectAsLazyPagingItems
 import app.cash.paging.compose.itemKey
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -66,6 +67,7 @@ fun BookContentView(
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
     scrollOffset: Int = 0,
+    scrollToLineTimestamp: Long = 0,
     onScroll: (Int, Int) -> Unit = { _, _ -> }
 ) {
     // Collect paging data
@@ -98,58 +100,47 @@ fun BookContentView(
 
     var hasRestored by remember(book.id) { mutableStateOf(false) }
 
-    // Restore scroll position when items are loaded
-    LaunchedEffect(lazyPagingItems.itemCount) {
-        if (lazyPagingItems.itemCount > 0 && !hasRestored) {
-            val index = selectedLine?.let { line ->
-                (0 until lazyPagingItems.itemCount).firstOrNull { idx ->
-                    lazyPagingItems[idx]?.id == line.id
-                }
-            } ?: -1
+    LaunchedEffect(scrollToLineTimestamp) {
+        val target = selectedLine ?: return@LaunchedEffect
+        if (scrollToLineTimestamp == 0L) return@LaunchedEffect
 
-            if (index >= 0) {
-                listState.scrollToItem(index)
-            } else {
-                val safeIndex = scrollIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
-                if (safeIndex >= 0) {
-                    listState.scrollToItem(safeIndex, scrollOffset)
+        // 1. attendre la fin du premier chargement Paging
+        while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
+            delay(16)          // ≈ 1 frame
+        }
+
+        // 2. Chercher l’index de la ligne voulue dans le snapshot courant
+        val index = lazyPagingItems.itemSnapshotList.indexOfFirst { it?.id == target.id }
+        if (index >= 0) {
+            listState.scrollToItem(index)
+        }
+    }
+
+    // Also improve the restore scroll position logic
+    LaunchedEffect(lazyPagingItems.itemCount, selectedLine?.id) {
+        if (lazyPagingItems.itemCount > 0 && !hasRestored) {
+            // Try to find and scroll to selected line first
+            if (selectedLine != null) {
+                val index = (0 until lazyPagingItems.itemCount).firstOrNull { idx ->
+                    lazyPagingItems[idx]?.id == selectedLine.id
                 }
+
+                if (index != null && index >= 0) {
+                    listState.scrollToItem(index)
+                    hasRestored = true
+                    return@LaunchedEffect
+                }
+            }
+
+            // If no selected line or not found, restore saved scroll position
+            val safeIndex = scrollIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
+            if (safeIndex >= 0) {
+                listState.scrollToItem(safeIndex, scrollOffset)
             }
             hasRestored = true
         }
     }
 
-    // Scroll to selected line when needed
-    LaunchedEffect(selectedLine?.id, shouldScrollToLine, lazyPagingItems.itemCount) {
-        if (selectedLine != null && shouldScrollToLine && lazyPagingItems.itemCount > 0) {
-            // Add a small delay to ensure items are loaded
-            delay(100)
-
-            // Find the index of the selected line in the paging items
-            var targetIndex: Int? = null
-            for (idx in 0 until lazyPagingItems.itemCount) {
-                val item = lazyPagingItems[idx]
-                if (item?.id == selectedLine.id) {
-                    targetIndex = idx
-                    break
-                }
-            }
-
-            if (targetIndex != null && targetIndex >= 0) {
-                listState.animateScrollToItem(targetIndex)
-            }
-        }
-    }
-
-    // Reset the scroll flag after scrolling
-    LaunchedEffect(shouldScrollToLine) {
-        if (shouldScrollToLine) {
-            // Wait a bit to ensure the scroll has been performed
-            delay(100)
-            // Then reset the flag via the ViewModel
-            onEvent(BookContentEvent.ResetScrollFlag)
-        }
-    }
 
     // Save scroll position
     LaunchedEffect(listState, hasRestored) {

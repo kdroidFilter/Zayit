@@ -630,26 +630,33 @@ class BookContentViewModel(
     }
 
     private fun loadAndSelectLine(lineId: Long) {
-        val currentBook = _selectedBook.value ?: return
-
+        val book = _selectedBook.value ?: return
         viewModelScope.launch {
-            try {
-                repository.getLine(lineId)?.let { line ->
-                    if (line.bookId == currentBook.id) {
-                        // For paging, we just set the selected line and scroll flag
-                        // The paging will handle loading the appropriate page
-                        _selectedLine.value = line
-                        _shouldScrollToLine.value = true
+            repository.getLine(lineId)?.let { line ->
+                if (line.bookId == book.id) {
 
-                        fetchCommentariesForLine(line)
-                        saveState(KEY_SELECTED_LINE, line)
-                    }
+                    // ❶ Pager recentré sur la ligne demandée
+                    val pager = Pager(
+                        config = PagingConfig(
+                            pageSize = PAGE_SIZE,
+                            prefetchDistance = PREFETCH_DISTANCE,
+                            initialLoadSize = INITIAL_LOAD_SIZE,
+                            enablePlaceholders = false
+                        ),
+                        pagingSourceFactory = {
+                            LinesPagingSource(repository, book.id, line.id)   // <-- initialLineId
+                        }
+                    )
+                    _linesPagingData.value = pager.flow.cachedIn(viewModelScope)
+
+                    // ❷ Sélection + déclenchement du scroll
+                    _selectedLine.value = line
+                    _shouldScrollToLine.value = true
                 }
-            } catch (e: Exception) {
-                debugln { "[DEBUG_LOG] Error in loadAndSelectLine: ${e.message}" }
             }
         }
     }
+
 
     // Other methods remain the same...
     private fun updateSearchText(text: String) {

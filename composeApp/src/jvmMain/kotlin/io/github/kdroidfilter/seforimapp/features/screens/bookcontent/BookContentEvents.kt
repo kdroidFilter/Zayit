@@ -1,12 +1,49 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent
 
-sealed class BookContentEvents {
-    data class OnUpdateParagraphScrollPosition(val position: Int): BookContentEvents()
+import io.github.kdroidfilter.seforimlibrary.core.models.*
 
-    data class OnUpdateChapterScrollPosition(val position: Int): BookContentEvents()
-    data object SaveAllStates : BookContentEvents()
-    data class OnSearchTextChange(val text: String): BookContentEvents()
-    data class OnChapterSelected(val index: Int): BookContentEvents()
+enum class LoadDirection {
+    FORWARD, BACKWARD
+}
 
+sealed interface BookContentEvent {
+    // Navigation events
+    data class SearchTextChanged(val text: String) : BookContentEvent
+    data class CategorySelected(val category: Category) : BookContentEvent
+    data class BookSelected(val book: Book) : BookContentEvent
+    data object ToggleBookTree : BookContentEvent
 
+    // TOC events
+    data class TocEntryExpanded(val entry: TocEntry) : BookContentEvent
+    data object ToggleToc : BookContentEvent
+    data class TocScrolled(val index: Int, val offset: Int) : BookContentEvent
+    
+    // Book tree events
+    data class BookTreeScrolled(val index: Int, val offset: Int) : BookContentEvent
+
+    // Content events
+    data class LineSelected(val line: Line) : BookContentEvent
+    data class LoadAndSelectLine(val lineId: Long) : BookContentEvent
+    data object ToggleCommentaries : BookContentEvent
+    data class ContentScrolled(
+        val anchorId: Long,
+        val anchorIndex: Int,
+        val scrollIndex: Int,
+        val scrollOffset: Int
+    ) : BookContentEvent
+    data class LoadMoreLines(val direction: LoadDirection = LoadDirection.FORWARD) : BookContentEvent
+    data object NavigateToPreviousLine : BookContentEvent
+    data object NavigateToNextLine : BookContentEvent
+    
+    // Commentaries events
+    data class CommentariesTabSelected(val index: Int) : BookContentEvent
+    data class CommentariesScrolled(val index: Int, val offset: Int) : BookContentEvent
+
+    // Scroll events
+    data class ParagraphScrolled(val position: Int) : BookContentEvent
+    data class ChapterScrolled(val position: Int) : BookContentEvent
+    data class ChapterSelected(val index: Int) : BookContentEvent
+
+    // State management
+    data object SaveState : BookContentEvent
 }

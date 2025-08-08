@@ -19,6 +19,7 @@ sealed interface TabsDestination {
     @Serializable
     data class BookContent(
         val bookId: Long,
-        override val tabId: String
+        override val tabId: String,
+        val lineId: Long? = null
     ) : TabsDestination
 }

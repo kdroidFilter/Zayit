@@ -1,6 +1,6 @@
 import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.jetbrains.compose.reload.ComposeHotRun
+import org.jetbrains.compose.reload.gradle.ComposeHotRun
 import org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 
@@ -47,15 +47,17 @@ kotlin {
             implementation(libs.koin.compose.viewmodel)
 
             implementation(libs.multiplatformSettings)
+
+
             implementation(libs.kotlinx.datetime)
             implementation(libs.materialKolor)
             implementation(libs.platformtools.core)
             implementation(libs.platformtools.darkmodedetector)
             implementation("io.github.kdroidfilter.seforimlibrary:core")
             implementation("io.github.kdroidfilter.seforimlibrary:dao")
-            implementation("com.github.luben:zstd-jni:1.5.7-4")
+//            implementation("com.github.luben:zstd-jni:1.5.7-4")
 
-
+            implementation("app.cash.paging:paging-compose-common:3.3.0-alpha02-0.5.1")
         }
 
         commonTest.dependencies {
@@ -69,7 +71,7 @@ kotlin {
             implementation(libs.androidx.activityCompose)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kotlinx.coroutines.android)
-            implementation("com.github.luben:zstd-jni:1.5.7-4@aar")
+//            implementation("com.github.luben:zstd-jni:1.5.7-4@aar")
 
         }
 
@@ -83,8 +85,13 @@ kotlin {
             implementation(libs.composenativetray)
             implementation(libs.kotlinx.coroutines.swing)
             implementation(libs.slf4j.simple)
-            implementation("org.jetbrains.compose.components:components-splitpane-desktop:1.8.2")
+            implementation(libs.split.pane.desktop)
             api(project(":jewel"))
+
+            implementation("app.cash.sqldelight:sqlite-driver:2.1.0")
+            implementation("app.cash.sqldelight:jdbc-driver:2.1.0")
+            implementation("org.jsoup:jsoup:1.17.2")
+
         }
 
     }
@@ -117,6 +124,7 @@ compose.desktop {
         mainClass = "MainKt"
 
         nativeDistributions {
+            modules("java.sql", "jdk.unsupported")
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "SeforimApp"
             packageVersion = "1.0.0"

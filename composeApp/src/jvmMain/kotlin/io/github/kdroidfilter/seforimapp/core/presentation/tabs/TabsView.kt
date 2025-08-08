@@ -1,25 +1,30 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
+import io.github.kdroidfilter.seforimapp.core.presentation.icons.BookOpenTabs
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.IconButton
+import seforimapp.composeapp.generated.resources.Res
+import seforimapp.composeapp.generated.resources.add_tab
 import org.jetbrains.jewel.ui.component.SimpleTabContent
 import org.jetbrains.jewel.ui.component.TabData
 import org.jetbrains.jewel.ui.component.TabStrip
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.styling.TabStyle
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import org.koin.compose.viewmodel.koinViewModel
-import kotlin.math.max
 
 
 @Composable
@@ -29,6 +34,7 @@ fun TabsView() {
     DefaultTabShowcase(state = state, onEvents = viewModel::onEvent)
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState) {
     val tabs = remember(state.tabs, state.selectedTabIndex) {
@@ -36,13 +42,39 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
             TabData.Default(
                 selected = index == state.selectedTabIndex,
                 content = { tabState ->
-                    val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
-                    val icon by iconProvider.getPainter(Stateful(tabState))
-                    SimpleTabContent(
-                        label = tabItem.title,
-                        state = tabState,
-                        icon = icon
-                    )
+                    // Use Book_5 icon for book tabs, otherwise use the default Find icon
+                    val icon = if (tabItem.tabType == TabType.BOOK) {
+                        rememberVectorPainter(BookOpenTabs())
+                    } else {
+                        val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
+                        iconProvider.getPainter(Stateful(tabState)).value
+                    }
+                    // Truncate tab title if it's longer than MAX_TAB_TITLE_LENGTH characters
+                    val isTruncated = tabItem.title.length > AppSettings.MAX_TAB_TITLE_LENGTH
+                    val truncatedTitle = if (isTruncated) {
+                        tabItem.title.take(AppSettings.MAX_TAB_TITLE_LENGTH) + "..."
+                    } else {
+                        tabItem.title
+                    }
+                    
+                    // Add tooltip with full title for truncated tabs
+                    if (isTruncated) {
+                        Tooltip({
+                            Text(tabItem.title)
+                        }) {
+                            SimpleTabContent(
+                                label = truncatedTitle,
+                                state = tabState,
+                                icon = icon,
+                            )
+                        }
+                    } else {
+                        SimpleTabContent(
+                            label = truncatedTitle,
+                            state = tabState,
+                            icon = icon,
+                        )
+                    }
                 },
                 onClose = {
                     onEvents(TabsEvents.onClose(index))
@@ -64,11 +96,11 @@ private fun TabStripWithAddButton(tabs: List<TabData>, style: TabStyle, onAddCli
     Row(verticalAlignment = Alignment.CenterVertically) {
         TabStrip(tabs = tabs, style = style, modifier = Modifier.weight(1f))
 
-        IconButton(
+        TitleBarActionButton(
             onClick = onAddClick,
-            modifier = Modifier.size(JewelTheme.defaultTabStyle.metrics.tabHeight)
-        ) {
-            Icon(key = AllIconsKeys.General.Add, contentDescription = "Add a tab")
-        }
+            key = AllIconsKeys.General.Add,
+            contentDescription = stringResource(Res.string.add_tab),
+            tooltipText = stringResource(Res.string.add_tab)
+        )
     }
 }

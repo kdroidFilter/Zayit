@@ -1,0 +1,62 @@
+package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.NavigationUiState
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.CategoryBookTree
+import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.TextField
+import seforimapp.composeapp.generated.resources.Res
+import seforimapp.composeapp.generated.resources.search_placeholder
+
+@Composable
+fun CategoryTreePanel(
+    navigationState: NavigationUiState,
+    onEvent: (BookContentEvent) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.padding(16.dp)) {
+        SearchField(
+            searchText = navigationState.searchText,
+            onSearchTextChange = { onEvent(BookContentEvent.SearchTextChanged(it)) }
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        CategoryBookTree(
+            navigationState = navigationState,
+            onCategoryClick = { onEvent(BookContentEvent.CategorySelected(it)) },
+            onBookClick = { onEvent(BookContentEvent.BookSelected(it)) },
+            onScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) }
+        )
+    }
+}
+
+@Composable
+private fun SearchField(
+    searchText: String,
+    onSearchTextChange: (String) -> Unit
+) {
+    val textFieldState = rememberTextFieldState(searchText)
+    
+    LaunchedEffect(searchText) {
+        if (textFieldState.text.toString() != searchText) {
+            textFieldState.edit { replace(0, length, searchText) }
+        }
+    }
+    
+    LaunchedEffect(textFieldState.text) {
+        onSearchTextChange(textFieldState.text.toString())
+    }
+    
+    TextField(
+        state = textFieldState,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text(stringResource(Res.string.search_placeholder)) }
+    )
+}

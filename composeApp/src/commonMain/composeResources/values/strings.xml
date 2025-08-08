@@ -1,3 +1,74 @@
 <resources>
     <string name="app_name">ספורים</string>
+
+    <!-- Title Bar Action Buttons View-->
+    <string name="light_theme">ערכת נושא בהירה</string>
+    <string name="dark_theme">ערכת נושא כהה</string>
+    <string name="system_theme">ערכת נושא מערכת</string>
+    <string name="switch_to_dark_theme">עבור לערכת נושא כהה</string>
+    <string name="switch_to_system_theme">עבור לערכת נושא מערכת</string>
+    <string name="switch_to_light_theme">עבור לערכת נושא בהירה</string>
+    <string name="find">חיפוש</string>
+    <string name="find_tooltip">חפש בכל המאגר</string>
+    <string name="info">מידע</string>
+    <string name="info_tooltip">הצג מידע</string>
+    <string name="settings">הגדרות</string>
+
+    <!-- Tabs View -->
+    <string name="settings_tooltip">פתח הגדרות</string>
+    <string name="add_tab">הוסף לשונית</string>
+
+    <!-- Book Content Screen - Start Vertical Bar -->
+    <string name="navigation">ניווט</string>
+    <string name="book_list">רשימת הספרים</string>
+    <string name="books">ספרים</string>
+    <string name="book_content">תוכן הספר</string>
+    <string name="table_of_contents">תוכן עניינים של הספר</string>
+    <string name="personal">אישי</string>
+    <string name="my_bookmarks">הסימניות שלי</string>
+    <string name="bookmarks">סימניות</string>
+    <string name="my_commentaries">הפירושים שלי</string>
+    <string name="my_commentaries_label">פירושים שלי</string>
+
+    <!-- Book Content Screen - End Vertical Bar -->
+    <string name="tools">כלים</string>
+    <string name="zoom_in_tooltip">הגדל גודל הטקסט</string>
+    <string name="zoom_in">הגדל</string>
+    <string name="zoom_out_tooltip">הקטן גודל הטקסט</string>
+    <string name="zoom_out">הקטן</string>
+    <string name="add_bookmark_tooltip">הוסף סימנייה</string>
+    <string name="add_bookmark">הוסף סימנייה</string>
+    <string name="search_in_page_tooltip">חפש בתוך העמוד</string>
+    <string name="search_in_page">חפש בעמוד</string>
+    <string name="print_tooltip">הדפס עמוד זה</string>
+    <string name="print">הדפס</string>
+    <string name="report_tooltip">דווח על בעיה בעמוד זה</string>
+    <string name="report">דיווח</string>
+    <string name="commentaries">פירושים</string>
+    <string name="show_commentaries_tooltip">הצג את הפירושים הקיימים על שורה זאת</string>
+    <string name="show_commentaries">הציג פירושים</string>
+    <string name="columns_gap_tooltip">שנה את מבנה העמודות</string>
+    <string name="columns_gap">מבנה עמודות</string>
+    <string name="filter_commentators_tooltip">סנן את הפרשנים</string>
+    <string name="filter">סנן</string>
+    <string name="write_note_tooltip">כתוב הערה על שורה זאת</string>
+    <string name="write_note">כתוב הערה</string>
+    <string name="show_links_tooltip">הצג קישורים</string>
+    <string name="show_links">הצג קישורים</string>
+
+    <!-- Book Content Screen - Main Content -->
+    <string name="search_placeholder">חפש</string>
+    <string name="chapter">פרק</string>
+    <string name="paragraph">פסקה %1$d מפרק %2$d</string>
+    <string name="select_book">בחר ספר כדי לצפות בתוכן</string>
+    <string name="select_book_for_toc">בחר ספר כדי לצפות בתוכן העניינים שלו</string>
+    
+    <!-- Line Comments View -->
+    <string name="select_line_for_commentaries">בחר שורה כדי לצפות בפירושים שלה</string>
+    <string name="no_commentaries_for_line">אין פירושים זמינים לשורה זו</string>
+    <string name="no_commentaries_from_selected">אין פירושים זמינים מהפרשנים שנבחרו לשורה זו</string>
+    <string name="select_at_least_one_commentator">אנא בחר לפחות פרשן אחד מהרשימה</string>
+    <string name="select_between_1_and_4_commentators">אנא בחר בין 1 ל-4 פרשנים</string>
+    <string name="max_commentators_limit">ניתן לבחור עד 4 פרשנים בלבד</string>
+    <string name="no_commentators_available">אין פרשנים זמינים</string>
 </resources>

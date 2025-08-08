@@ -24,6 +24,7 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compone
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.LineCommentsPagedView
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -43,8 +44,7 @@ import java.util.*
 fun BookContentPanel(
     selectedBook: Book?,
     linesPagingData: Flow<PagingData<Line>>, // Paging data flow for lines
-    commentsPagingData: Flow<PagingData<io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText>>, // Paging data flow for comments (legacy param, not used in per-commentator UI)
-    buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText>>,
+    buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
     contentState: ContentUiState,
     tocState: TocUiState,
@@ -120,7 +120,6 @@ fun BookContentPanel(
                     secondContent = {
                         LineCommentsPagedView(
                             selectedLine = contentState.selectedLine,
-                            commentsPagingData = commentsPagingData,
                             buildCommentariesPagerFor = buildCommentariesPagerFor,
                             getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
                             commentariesScrollIndex = contentState.commentariesScrollIndex,

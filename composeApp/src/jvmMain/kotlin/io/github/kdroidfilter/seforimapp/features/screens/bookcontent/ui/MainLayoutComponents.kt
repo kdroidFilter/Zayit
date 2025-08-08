@@ -29,7 +29,6 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 fun MainBookContentLayout(
     uiState: BookContentUiState,
     linesPagingData: Flow<PagingData<Line>>, // Paging data flow for lines
-    commentsPagingData: Flow<PagingData<CommentaryWithText>>, // Paging data flow for comments
     buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
     onEvent: (BookContentEvent) -> Unit
@@ -106,7 +105,6 @@ fun MainBookContentLayout(
                         BookContentPanel(
                             selectedBook = uiState.navigation.selectedBook,
                             linesPagingData = linesPagingData, // Pass paging data
-                            commentsPagingData = commentsPagingData, // Pass comments paging data
                             buildCommentariesPagerFor = buildCommentariesPagerFor,
                             getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
                             contentState = uiState.content,

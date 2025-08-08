@@ -11,8 +11,8 @@ import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabType
 import io.github.kdroidfilter.seforimapp.core.utils.debugln
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.data.LinesPagingSource
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.data.LineCommentsPagingSource
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.LinesPagingSource
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.LineCommentsPagingSource
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.*
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -158,13 +158,6 @@ class BookContentViewModel(
         .flatMapLatest { it }
         .cachedIn(viewModelScope)
 
-    // NEW: Paging data flow for commentaries (per selected line)
-    private val _commentsPagingData = MutableStateFlow<Flow<PagingData<CommentaryWithText>>?>(null)
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val commentsPagingData: Flow<PagingData<CommentaryWithText>> = _commentsPagingData
-        .filterNotNull()
-        .flatMapLatest { it }
-        .cachedIn(viewModelScope)
 
     // Create UI state using combine for better performance
     @OptIn(ExperimentalSplitPaneApi::class)
@@ -696,20 +689,7 @@ class BookContentViewModel(
 
 
     private fun fetchCommentariesForLine(line: Line) {
-        // Build a paging flow for commentaries of the selected line
-        val pager = Pager(
-            config = PagingConfig(
-                pageSize = COMMENT_PAGE_SIZE,
-                prefetchDistance = COMMENT_PREFETCH_DISTANCE,
-                initialLoadSize = COMMENT_INITIAL_LOAD_SIZE,
-                enablePlaceholders = false
-            ),
-            pagingSourceFactory = {
-                LineCommentsPagingSource(repository, line.id)
-            }
-        )
-        _commentsPagingData.value = pager.flow.cachedIn(viewModelScope)
-        // Clear legacy list to avoid stale data usage in old UI
+        // Legacy list-based storage is cleared; UI now builds pagers per commentator via ViewModel
         _commentaries.value = emptyList()
     }
 

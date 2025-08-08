@@ -47,7 +47,6 @@ import seforimapp.composeapp.generated.resources.select_line_for_commentaries
 @Composable
 fun LineCommentsPagedView(
     selectedLine: Line?,
-    commentsPagingData: Flow<PagingData<CommentaryWithText>>, // Ignored; we build per-commentator pagers
     buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
     commentariesScrollIndex: Int = 0,

@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.data
+package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination
 
 import app.cash.paging.PagingSource
 import app.cash.paging.PagingState

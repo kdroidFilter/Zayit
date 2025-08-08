@@ -1,5 +1,5 @@
 // HtmlParser.kt
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
+package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.utils
 
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element

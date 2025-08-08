@@ -293,10 +293,6 @@ class BookContentViewModel(
 
             // State management
             BookContentEvent.SaveState -> saveAllStates()
-
-            is BookContentEvent.LoadMoreLines -> {
-                // No-op - Paging handles this automatically
-            }
         }
     }
 

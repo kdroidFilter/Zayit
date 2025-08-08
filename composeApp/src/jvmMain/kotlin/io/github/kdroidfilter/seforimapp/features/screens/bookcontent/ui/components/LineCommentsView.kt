@@ -50,6 +50,8 @@ fun LineCommentsView(
     getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
     commentariesScrollIndex: Int = 0,
     commentariesScrollOffset: Int = 0,
+    initiallySelectedCommentatorIds: Set<Long> = emptySet(),
+    onSelectedCommentatorsChange: (Set<Long>) -> Unit = {},
     onCommentClick: (CommentaryWithText) -> Unit = {},
     onScroll: (Int, Int) -> Unit = { _, _ -> }
 ) {
@@ -114,6 +116,23 @@ fun LineCommentsView(
                     }
 
                     var selectedCommentators by remember(availableCommentators) { mutableStateOf<Set<String>>(emptySet()) }
+                    // Initialize selection from ViewModel-provided IDs when available
+                    LaunchedEffect(initiallySelectedCommentatorIds, titleToIdMap) {
+                        if (initiallySelectedCommentatorIds.isNotEmpty() && titleToIdMap.isNotEmpty()) {
+                            val desiredNames = titleToIdMap
+                                .filterValues { it in initiallySelectedCommentatorIds }
+                                .keys
+                                .toSet()
+                            if (desiredNames != selectedCommentators) {
+                                selectedCommentators = desiredNames
+                            }
+                        }
+                    }
+                    // Emit selection changes upward as IDs
+                    LaunchedEffect(selectedCommentators, titleToIdMap) {
+                        val ids = selectedCommentators.mapNotNull { titleToIdMap[it] }.toSet()
+                        onSelectedCommentatorsChange(ids)
+                    }
                     // Ensure selection remains within available only when list changes
                     LaunchedEffect(availableCommentators) {
                         val filtered = selectedCommentators.filter { it in availableCommentators.toSet() }.toSet()

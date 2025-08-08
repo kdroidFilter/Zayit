@@ -50,12 +50,6 @@ fun BookContentPanel(
     // Preserve LazyListState across recompositions
     val bookListState = remember(selectedBook?.id) { LazyListState() }
 
-    // Hide commentaries when the selected book changes
-    LaunchedEffect(selectedBook?.id) {
-        if (contentState.showCommentaries) {
-            onEvent(BookContentEvent.ToggleCommentaries)
-        }
-    }
 
     when {
         selectedBook == null -> {
@@ -106,6 +100,12 @@ fun BookContentPanel(
                             getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
                             commentariesScrollIndex = contentState.commentariesScrollIndex,
                             commentariesScrollOffset = contentState.commentariesScrollOffset,
+                            initiallySelectedCommentatorIds = contentState.selectedCommentatorIds,
+                            onSelectedCommentatorsChange = { ids ->
+                                contentState.selectedLine?.let { line ->
+                                    onEvent(BookContentEvent.SelectedCommentatorsChanged(line.id, ids))
+                                }
+                            },
                             onCommentClick = { commentary ->
                                 onEvent(
                                     BookContentEvent.OpenCommentaryTarget(

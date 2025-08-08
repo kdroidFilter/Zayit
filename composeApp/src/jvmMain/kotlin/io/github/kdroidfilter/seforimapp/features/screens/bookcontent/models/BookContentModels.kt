@@ -56,6 +56,7 @@ data class ContentUiState(
     val commentariesSelectedTab: Int = 0,
     val commentariesScrollIndex: Int = 0,
     val commentariesScrollOffset: Int = 0,
+    val selectedCommentatorIds: Set<Long> = emptySet(),
     val shouldScrollToLine: Boolean = false,
     val scrollToLineTimestamp: Long = 0
 )

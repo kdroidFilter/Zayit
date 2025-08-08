@@ -35,6 +35,7 @@ sealed interface BookContentEvent {
     data class CommentariesTabSelected(val index: Int) : BookContentEvent
     data class CommentariesScrolled(val index: Int, val offset: Int) : BookContentEvent
     data class OpenCommentaryTarget(val bookId: Long, val lineId: Long?) : BookContentEvent
+    data class SelectedCommentatorsChanged(val lineId: Long, val selectedIds: Set<Long>) : BookContentEvent
 
     // Scroll events
     data class ParagraphScrolled(val position: Int) : BookContentEvent

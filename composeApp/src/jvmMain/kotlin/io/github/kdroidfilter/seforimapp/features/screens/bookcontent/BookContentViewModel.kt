@@ -80,6 +80,7 @@ class BookContentViewModel(
         const val KEY_COMMENTARIES_SELECTED_TAB = "commentariesSelectedTab"
         const val KEY_COMMENTARIES_SCROLL_INDEX = "commentariesScrollIndex"
         const val KEY_COMMENTARIES_SCROLL_OFFSET = "commentariesScrollOffset"
+        const val KEY_SELECTED_COMMENTATORS_BY_LINE = "selectedCommentatorsByLine"
 
     }
 
@@ -143,6 +144,11 @@ class BookContentViewModel(
     private val _commentariesSelectedTab = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SELECTED_TAB) ?: 0)
     private val _commentariesScrollIndex = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SCROLL_INDEX) ?: 0)
     private val _commentariesScrollOffset = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SCROLL_OFFSET) ?: 0)
+
+    // Selected commentators per line (lineId -> set of commentator bookIds)
+    private val _selectedCommentatorsByLine = MutableStateFlow<Map<Long, Set<Long>>>(
+        getState(KEY_SELECTED_COMMENTATORS_BY_LINE) ?: emptyMap()
+    )
 
     // Paging data flow for lines
     private val _linesPagingData = MutableStateFlow<Flow<PagingData<Line>>?>(null)
@@ -290,6 +296,7 @@ class BookContentViewModel(
             // Commentaries events
             is BookContentEvent.CommentariesTabSelected -> updateCommentariesTabIndex(event.index)
             is BookContentEvent.CommentariesScrolled -> updateCommentariesScrollPosition(event.index, event.offset)
+            is BookContentEvent.SelectedCommentatorsChanged -> updateSelectedCommentators(event.lineId, event.selectedIds)
 
             // Scroll events
             is BookContentEvent.ParagraphScrolled -> updateParagraphScrollPosition(event.position)
@@ -419,6 +426,10 @@ class BookContentViewModel(
         }
         .combine(_contentAnchorIndex) { content, anchorIndex ->
             content.copy(anchorIndex = anchorIndex)
+        }
+        .combine(_selectedCommentatorsByLine) { content, map ->
+            val ids = content.selectedLine?.let { line -> map[line.id] } ?: emptySet()
+            content.copy(selectedCommentatorIds = ids)
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, ContentUiState())
     }
@@ -573,6 +584,11 @@ class BookContentViewModel(
             saveState(KEY_CONTENT_ANCHOR_INDEX, 0)
             saveState(KEY_CONTENT_SCROLL_INDEX, 0)
             saveState(KEY_CONTENT_SCROLL_OFFSET, 0)
+
+            // Hide commentaries pane on explicit book change to preserve UX
+            if (_showCommentaries.value) {
+                toggleCommentaries()
+            }
         } else {
             debugln { "Loading book with preserved position: anchorId=${_contentAnchorId.value}, scrollIndex=${_contentScrollIndex.value}" }
         }
@@ -841,6 +857,18 @@ class BookContentViewModel(
         )
     }
 
+    private fun updateSelectedCommentators(lineId: Long, selectedIds: Set<Long>) {
+        val current = _selectedCommentatorsByLine.value.toMutableMap()
+        if (selectedIds.isEmpty()) {
+            current.remove(lineId)
+        } else {
+            current[lineId] = selectedIds
+        }
+        _selectedCommentatorsByLine.value = current
+        // Persist
+        saveState(KEY_SELECTED_COMMENTATORS_BY_LINE, current)
+    }
+
     private fun selectChapter(chapter: Int) {
         _selectedChapter.value = chapter
         saveState(KEY_SELECTED_CHAPTER, chapter)
@@ -1053,7 +1081,8 @@ class BookContentViewModel(
             KEY_CONTENT_SCROLL_OFFSET to _contentScrollOffset,
             KEY_COMMENTARIES_SELECTED_TAB to _commentariesSelectedTab,
             KEY_COMMENTARIES_SCROLL_INDEX to _commentariesScrollIndex,
-            KEY_COMMENTARIES_SCROLL_OFFSET to _commentariesScrollOffset
+            KEY_COMMENTARIES_SCROLL_OFFSET to _commentariesScrollOffset,
+            KEY_SELECTED_COMMENTATORS_BY_LINE to _selectedCommentatorsByLine
         )
 
         // Save UI state - visibility flags and text

@@ -17,6 +17,7 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.CategoryTreePanel
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.TocPanel
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
@@ -28,7 +29,9 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 fun MainBookContentLayout(
     uiState: BookContentUiState,
     linesPagingData: Flow<PagingData<Line>>, // Paging data flow for lines
-    commentsPagingData: Flow<PagingData<io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText>>, // Paging data flow for comments
+    commentsPagingData: Flow<PagingData<CommentaryWithText>>, // Paging data flow for comments
+    buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
     onEvent: (BookContentEvent) -> Unit
 ) {
     // Save split pane positions with debounce - only when panels are visible
@@ -104,6 +107,8 @@ fun MainBookContentLayout(
                             selectedBook = uiState.navigation.selectedBook,
                             linesPagingData = linesPagingData, // Pass paging data
                             commentsPagingData = commentsPagingData, // Pass comments paging data
+                            buildCommentariesPagerFor = buildCommentariesPagerFor,
+                            getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
                             contentState = uiState.content,
                             tocState = uiState.toc,
                             navigationState = uiState.navigation,

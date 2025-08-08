@@ -82,6 +82,11 @@ class BookContentViewModel(
         private const val PAGE_SIZE = 30
         private const val PREFETCH_DISTANCE = 10
         private const val INITIAL_LOAD_SIZE = 50
+
+        // Comment-specific paging configuration (smaller display area)
+        const val COMMENT_PAGE_SIZE = 10
+        const val COMMENT_PREFETCH_DISTANCE = 5
+        const val COMMENT_INITIAL_LOAD_SIZE = 10
     }
 
     // Initialize state flows first
@@ -694,9 +699,9 @@ class BookContentViewModel(
         // Build a paging flow for commentaries of the selected line
         val pager = Pager(
             config = PagingConfig(
-                pageSize = PAGE_SIZE,
-                prefetchDistance = PREFETCH_DISTANCE,
-                initialLoadSize = INITIAL_LOAD_SIZE,
+                pageSize = COMMENT_PAGE_SIZE,
+                prefetchDistance = COMMENT_PREFETCH_DISTANCE,
+                initialLoadSize = COMMENT_INITIAL_LOAD_SIZE,
                 enablePlaceholders = false
             ),
             pagingSourceFactory = {
@@ -706,6 +711,38 @@ class BookContentViewModel(
         _commentsPagingData.value = pager.flow.cachedIn(viewModelScope)
         // Clear legacy list to avoid stale data usage in old UI
         _commentaries.value = emptyList()
+    }
+
+    fun buildCommentariesPagerFor(lineId: Long, commentatorId: Long? = null): Flow<PagingData<CommentaryWithText>> {
+        val ids = commentatorId?.let { setOf(it) } ?: emptySet()
+        val pager = Pager(
+            config = PagingConfig(
+                pageSize = COMMENT_PAGE_SIZE,
+                prefetchDistance = COMMENT_PREFETCH_DISTANCE,
+                initialLoadSize = COMMENT_INITIAL_LOAD_SIZE,
+                enablePlaceholders = false
+            ),
+            pagingSourceFactory = {
+                LineCommentsPagingSource(repository, lineId, ids)
+            }
+        )
+        return pager.flow.cachedIn(viewModelScope)
+    }
+
+    suspend fun getAvailableCommentatorsForLine(lineId: Long): Map<String, Long> {
+        return try {
+            val list = repository.getCommentariesForLines(listOf(lineId))
+                .filter { it.link.connectionType == io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType.COMMENTARY }
+            val map = LinkedHashMap<String, Long>()
+            list.forEach { c ->
+                if (!map.containsKey(c.targetBookTitle)) {
+                    map[c.targetBookTitle] = c.link.targetBookId
+                }
+            }
+            map
+        } catch (e: Exception) {
+            emptyMap()
+        }
     }
 
     private fun loadAndSelectLine(lineId: Long) {

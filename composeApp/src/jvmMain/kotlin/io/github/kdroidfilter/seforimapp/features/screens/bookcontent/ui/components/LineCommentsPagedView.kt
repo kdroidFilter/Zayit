@@ -19,18 +19,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
-import app.cash.paging.Pager
-import app.cash.paging.PagingConfig
 import app.cash.paging.PagingData
 import app.cash.paging.compose.LazyPagingItems
 import app.cash.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforimapp.core.presentation.components.WarningBanner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.data.LineCommentsPagingSource
-import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
-import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.resources.Font
@@ -39,7 +34,6 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.rememberSplitPaneState
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
-import org.koin.compose.koinInject
 import seforimapp.composeapp.generated.resources.Res
 import seforimapp.composeapp.generated.resources.commentaries
 import seforimapp.composeapp.generated.resources.max_commentators_limit
@@ -54,12 +48,13 @@ import seforimapp.composeapp.generated.resources.select_line_for_commentaries
 fun LineCommentsPagedView(
     selectedLine: Line?,
     commentsPagingData: Flow<PagingData<CommentaryWithText>>, // Ignored; we build per-commentator pagers
+    buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
     commentariesScrollIndex: Int = 0,
     commentariesScrollOffset: Int = 0,
     onCommentClick: (CommentaryWithText) -> Unit = {},
     onScroll: (Int, Int) -> Unit = { _, _ -> }
 ) {
-    val repository = koinInject<SeforimRepository>()
 
     // Animated settings for consistency with old UI
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -103,23 +98,21 @@ fun LineCommentsPagedView(
                 }
             }
             else -> {
-                // Load non-paged commentaries for the selected line to derive available commentators (exactly like old)
-                var lineCommentaries by remember(selectedLine.id) { mutableStateOf<List<CommentaryWithText>>(emptyList()) }
+                // Ask ViewModel for available commentators for the selected line (title -> bookId)
+                var titleToIdMap by remember(selectedLine.id) { mutableStateOf<Map<String, Long>>(emptyMap()) }
                 LaunchedEffect(selectedLine.id) {
-                    runCatching { repository.getCommentariesForLines(listOf(selectedLine.id)) }
-                        .onSuccess { list ->
-                            lineCommentaries = list.filter { it.link.connectionType == ConnectionType.COMMENTARY }
-                        }
-                        .onFailure { lineCommentaries = emptyList() }
+                    runCatching { getAvailableCommentatorsForLine(selectedLine.id) }
+                        .onSuccess { map -> titleToIdMap = map }
+                        .onFailure { titleToIdMap = emptyMap() }
                 }
 
-                if (lineCommentaries.isEmpty()) {
+                if (titleToIdMap.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(text = stringResource(Res.string.no_commentaries_for_line))
                     }
                 } else {
-                    val availableCommentators = remember(lineCommentaries) {
-                        lineCommentaries.map { it.targetBookTitle }.distinct().sorted().toList()
+                    val availableCommentators = remember(titleToIdMap) {
+                        titleToIdMap.keys.sorted().toList()
                     }
 
                     var selectedCommentators by remember(availableCommentators) { mutableStateOf<Set<String>>(emptySet()) }
@@ -158,14 +151,8 @@ fun LineCommentsPagedView(
                             if (selectedCommentators.isEmpty()) {
                                 CenteredMessage(message = stringResource(Res.string.select_at_least_one_commentator), fontSize = commentTextSize)
                             } else {
-                                // Map commentator title -> id (from current line's commentaries)
-                                val titleToId: Map<String, Long> = remember(lineCommentaries) {
-                                    val orderSeen = LinkedHashMap<String, Long>()
-                                    lineCommentaries.forEach { c ->
-                                        if (!orderSeen.containsKey(c.targetBookTitle)) orderSeen[c.targetBookTitle] = c.link.targetBookId
-                                    }
-                                    orderSeen
-                                }
+                                // title -> id map provided by ViewModel
+                                val titleToId: Map<String, Long> = titleToIdMap
 
                                 val selectedList = selectedCommentators.toList()
 
@@ -177,7 +164,7 @@ fun LineCommentsPagedView(
                                             Column(modifier = Modifier.fillMaxSize()) {
                                                 CommentatorHeader(commentator = name, commentTextSize = commentTextSize)
                                                 PagedCommentariesList(
-                                                    repository = repository,
+                                                    buildCommentariesPagerFor = buildCommentariesPagerFor,
                                                     lineId = selectedLine.id,
                                                     commentatorId = id,
                                                     isPrimary = true,
@@ -196,7 +183,7 @@ fun LineCommentsPagedView(
                                             names = selectedList,
                                             titleToId = titleToId,
                                             lineId = selectedLine.id,
-                                            repository = repository,
+                                            buildCommentariesPagerFor = buildCommentariesPagerFor,
                                             primaryIndex = 0,
                                             commentariesScrollIndex = commentariesScrollIndex,
                                             commentariesScrollOffset = commentariesScrollOffset,
@@ -215,7 +202,7 @@ fun LineCommentsPagedView(
                                                 names = firstRow,
                                                 titleToId = titleToId,
                                                 lineId = selectedLine.id,
-                                                repository = repository,
+                                                buildCommentariesPagerFor = buildCommentariesPagerFor,
                                                 primaryIndex = 0,
                                                 commentariesScrollIndex = commentariesScrollIndex,
                                                 commentariesScrollOffset = commentariesScrollOffset,
@@ -229,7 +216,7 @@ fun LineCommentsPagedView(
                                                 names = secondRow,
                                                 titleToId = titleToId,
                                                 lineId = selectedLine.id,
-                                                repository = repository,
+                                                buildCommentariesPagerFor = buildCommentariesPagerFor,
                                                 primaryIndex = -1,
                                                 commentariesScrollIndex = commentariesScrollIndex,
                                                 commentariesScrollOffset = commentariesScrollOffset,
@@ -249,7 +236,7 @@ fun LineCommentsPagedView(
                                                 names = firstRow,
                                                 titleToId = titleToId,
                                                 lineId = selectedLine.id,
-                                                repository = repository,
+                                                buildCommentariesPagerFor = buildCommentariesPagerFor,
                                                 primaryIndex = 0,
                                                 commentariesScrollIndex = commentariesScrollIndex,
                                                 commentariesScrollOffset = commentariesScrollOffset,
@@ -263,7 +250,7 @@ fun LineCommentsPagedView(
                                                 names = secondRow,
                                                 titleToId = titleToId,
                                                 lineId = selectedLine.id,
-                                                repository = repository,
+                                                buildCommentariesPagerFor = buildCommentariesPagerFor,
                                                 primaryIndex = -1,
                                                 commentariesScrollIndex = commentariesScrollIndex,
                                                 commentariesScrollOffset = commentariesScrollOffset,
@@ -347,7 +334,7 @@ private fun PagedCommentatorsRow(
     names: List<String>,
     titleToId: Map<String, Long>,
     lineId: Long,
-    repository: SeforimRepository,
+    buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     primaryIndex: Int, // index in names that should drive onScroll; -1 = none
     commentariesScrollIndex: Int,
     commentariesScrollOffset: Int,
@@ -364,7 +351,7 @@ private fun PagedCommentatorsRow(
                 Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(horizontal = 4.dp)) {
                     CommentatorHeader(commentator = name, commentTextSize = commentTextSize)
                     PagedCommentariesList(
-                        repository = repository,
+                        buildCommentariesPagerFor = buildCommentariesPagerFor,
                         lineId = lineId,
                         commentatorId = commentatorId,
                         isPrimary = (index == primaryIndex),
@@ -383,7 +370,7 @@ private fun PagedCommentatorsRow(
 
 @Composable
 private fun PagedCommentariesList(
-    repository: SeforimRepository,
+    buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     lineId: Long,
     commentatorId: Long,
     isPrimary: Boolean,
@@ -394,12 +381,9 @@ private fun PagedCommentariesList(
     commentTextSize: Float,
     lineHeight: Float
 ) {
-    // Build a pager per commentator
+    // Build a pager per commentator via ViewModel
     val pagerFlow: Flow<PagingData<CommentaryWithText>> = remember(lineId, commentatorId) {
-        Pager(
-            config = PagingConfig(pageSize = 30, prefetchDistance = 10, initialLoadSize = 50, enablePlaceholders = false),
-            pagingSourceFactory = { LineCommentsPagingSource(repository, lineId, setOf(commentatorId)) }
-        ).flow
+        buildCommentariesPagerFor(lineId, commentatorId)
     }
 
     val lazyPagingItems: LazyPagingItems<CommentaryWithText> = pagerFlow.collectAsLazyPagingItems()

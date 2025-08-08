@@ -43,7 +43,9 @@ import java.util.*
 fun BookContentPanel(
     selectedBook: Book?,
     linesPagingData: Flow<PagingData<Line>>, // Paging data flow for lines
-    commentsPagingData: Flow<PagingData<io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText>>, // Paging data flow for comments
+    commentsPagingData: Flow<PagingData<io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText>>, // Paging data flow for comments (legacy param, not used in per-commentator UI)
+    buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText>>,
+    getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
     contentState: ContentUiState,
     tocState: TocUiState,
     navigationState: NavigationUiState,
@@ -119,6 +121,8 @@ fun BookContentPanel(
                         LineCommentsPagedView(
                             selectedLine = contentState.selectedLine,
                             commentsPagingData = commentsPagingData,
+                            buildCommentariesPagerFor = buildCommentariesPagerFor,
+                            getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
                             commentariesScrollIndex = contentState.commentariesScrollIndex,
                             commentariesScrollOffset = contentState.commentariesScrollOffset,
                             onCommentClick = { commentary ->

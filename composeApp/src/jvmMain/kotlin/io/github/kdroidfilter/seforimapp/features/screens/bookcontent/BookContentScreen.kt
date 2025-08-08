@@ -13,6 +13,8 @@ fun BookContentScreen() {
         uiState = uiState,
         linesPagingData = viewModel.linesPagingData, // Pass the lines paging data flow
         commentsPagingData = viewModel.commentsPagingData, // Pass the comments paging data flow
+        buildCommentariesPagerFor = viewModel::buildCommentariesPagerFor,
+        getAvailableCommentatorsForLine = viewModel::getAvailableCommentatorsForLine,
         onEvent = viewModel::onEvent
     )
 }

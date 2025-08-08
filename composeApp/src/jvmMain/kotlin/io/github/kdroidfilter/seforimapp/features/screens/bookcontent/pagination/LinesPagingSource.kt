@@ -5,17 +5,13 @@ import app.cash.paging.PagingState
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.utils.debugln
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.PagingDefaults
 
 class LinesPagingSource(
     private val repository: SeforimRepository,
     private val bookId: Long,
     private val initialLineId: Long? = null // For scrolling to a specific line
 ) : PagingSource<Int, Line>() {
-
-    companion object {
-        const val PAGE_SIZE = 30
-        const val INITIAL_LOAD_SIZE = 50
-    }
 
     // Keep track of loaded line indices to avoid duplicates
     private val loadedLineIndices = mutableSetOf<Int>()
@@ -45,14 +41,14 @@ class LinesPagingSource(
                         val targetLine = repository.getLine(initialLineId)
                         if (targetLine != null && targetLine.bookId == bookId) {
                             val targetIndex = targetLine.lineIndex
-                            val start = maxOf(0, targetIndex - INITIAL_LOAD_SIZE / 2)
+                            val start = maxOf(0, targetIndex - PagingDefaults.LINES.INITIAL_LOAD_SIZE / 2)
                             debugln { "[LinesPagingSource] Centering on line $initialLineId at index $targetIndex" }
-                            Pair(start, INITIAL_LOAD_SIZE)
+                            Pair(start, PagingDefaults.LINES.INITIAL_LOAD_SIZE)
                         } else {
-                            Pair(0, INITIAL_LOAD_SIZE)
+                            Pair(0, PagingDefaults.LINES.INITIAL_LOAD_SIZE)
                         }
                     } else {
-                        Pair(pageNumber * PAGE_SIZE, INITIAL_LOAD_SIZE)
+                        Pair(pageNumber * PagingDefaults.LINES.PAGE_SIZE, PagingDefaults.LINES.INITIAL_LOAD_SIZE)
                     }
                 }
 
@@ -61,26 +57,26 @@ class LinesPagingSource(
                     if (loadedLineIndices.isNotEmpty()) {
                         val lastLoadedIndex = loadedLineIndices.maxOrNull() ?: 0
                         // Start from the next index after the last loaded one
-                        Pair(lastLoadedIndex + 1, PAGE_SIZE)
+                        Pair(lastLoadedIndex + 1, PagingDefaults.LINES.PAGE_SIZE)
                     } else {
                         // Fallback calculation
-                        Pair(pageNumber * PAGE_SIZE, PAGE_SIZE)
+                        Pair(pageNumber * PagingDefaults.LINES.PAGE_SIZE, PagingDefaults.LINES.PAGE_SIZE)
                     }
                 }
 
                 is LoadParams.Prepend -> {
                     // Calculate the previous start index
                     if (loadedLineIndices.isNotEmpty()) {
-                        val firstLoadedIndex = loadedLineIndices.minOrNull() ?: PAGE_SIZE
-                        val start = maxOf(0, firstLoadedIndex - PAGE_SIZE)
-                        Pair(start, minOf(PAGE_SIZE, firstLoadedIndex))
+                        val firstLoadedIndex = loadedLineIndices.minOrNull() ?: PagingDefaults.LINES.PAGE_SIZE
+                        val start = maxOf(0, firstLoadedIndex - PagingDefaults.LINES.PAGE_SIZE)
+                        Pair(start, minOf(PagingDefaults.LINES.PAGE_SIZE, firstLoadedIndex))
                     } else {
                         // No prepend if we don't have loaded data
                         return LoadResult.Page(data = emptyList(), prevKey = null, nextKey = null)
                     }
                 }
 
-                else -> Pair(pageNumber * PAGE_SIZE, params.loadSize)
+                else -> Pair(pageNumber * PagingDefaults.LINES.PAGE_SIZE, params.loadSize)
             }
 
             val endIndex = startIndex + loadSize

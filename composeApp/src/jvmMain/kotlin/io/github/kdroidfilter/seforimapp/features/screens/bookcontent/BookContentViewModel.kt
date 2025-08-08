@@ -13,6 +13,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabType
 import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.LinesPagingSource
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.LineCommentsPagingSource
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.PagingDefaults
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.*
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -78,15 +79,7 @@ class BookContentViewModel(
         const val KEY_COMMENTARIES_SCROLL_INDEX = "commentariesScrollIndex"
         const val KEY_COMMENTARIES_SCROLL_OFFSET = "commentariesScrollOffset"
 
-        // Paging configuration
-        private const val PAGE_SIZE = 30
-        private const val PREFETCH_DISTANCE = 10
-        private const val INITIAL_LOAD_SIZE = 50
-
-        // Comment-specific paging configuration (smaller display area)
-        const val COMMENT_PAGE_SIZE = 10
-        const val COMMENT_PREFETCH_DISTANCE = 5
-        const val COMMENT_INITIAL_LOAD_SIZE = 10
+        // Paging configuration is centralized in PagingDefaults (see pagination/PagingDefaults.kt)
     }
 
     // Initialize state flows first
@@ -592,7 +585,7 @@ class BookContentViewModel(
             // Determine the initial line for the PagingSource
             // Use the anchor ONLY if it is valid and we have scrolled beyond the first page
             val shouldUseAnchor = _contentAnchorId.value != -1L &&
-                    _contentScrollIndex.value > INITIAL_LOAD_SIZE
+                    _contentScrollIndex.value > PagingDefaults.LINES.INITIAL_LOAD_SIZE
 
             val initialLineId = when {
                 forceAnchorId != null -> forceAnchorId
@@ -604,12 +597,7 @@ class BookContentViewModel(
             debugln { "Loading book data - Using anchor: $shouldUseAnchor, initialLineId: $initialLineId, scrollIndex: ${_contentScrollIndex.value}" }
 
             val pager = Pager<Int, Line>(
-                config = PagingConfig(
-                    pageSize = PAGE_SIZE,
-                    prefetchDistance = PREFETCH_DISTANCE,
-                    initialLoadSize = INITIAL_LOAD_SIZE,
-                    enablePlaceholders = false
-                ),
+                config = PagingDefaults.LINES.config(placeholders = false),
                 pagingSourceFactory = {
                     LinesPagingSource(repository, book.id, initialLineId)
                 }
@@ -692,12 +680,7 @@ class BookContentViewModel(
     fun buildCommentariesPagerFor(lineId: Long, commentatorId: Long? = null): Flow<PagingData<CommentaryWithText>> {
         val ids = commentatorId?.let { setOf(it) } ?: emptySet()
         val pager = Pager(
-            config = PagingConfig(
-                pageSize = COMMENT_PAGE_SIZE,
-                prefetchDistance = COMMENT_PREFETCH_DISTANCE,
-                initialLoadSize = COMMENT_INITIAL_LOAD_SIZE,
-                enablePlaceholders = false
-            ),
+            config = PagingDefaults.COMMENTS.config(placeholders = false),
             pagingSourceFactory = {
                 LineCommentsPagingSource(repository, lineId, ids)
             }
@@ -732,12 +715,7 @@ class BookContentViewModel(
 
                 // Recreate the pager centered on the target line
                 val pager = Pager(
-                    config = PagingConfig(
-                        pageSize = PAGE_SIZE,
-                        prefetchDistance = PREFETCH_DISTANCE,
-                        initialLoadSize = INITIAL_LOAD_SIZE,
-                        enablePlaceholders = false
-                    ),
+                    config = PagingDefaults.LINES.config(placeholders = false),
                     pagingSourceFactory = {
                         LinesPagingSource(repository, book.id, targetLine.id)
                     }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -20,7 +21,7 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.Toc
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.BookContentView
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.BreadcrumbView
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedVerticalSplitPane
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.LineCommentsPagedView
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.LineCommentsView
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
@@ -57,6 +58,13 @@ fun BookContentPanel(
 
     // Preserve LazyListState across recompositions
     val bookListState = remember(selectedBook?.id) { LazyListState() }
+
+    // Hide commentaries when the selected book changes
+    LaunchedEffect(selectedBook?.id) {
+        if (contentState.showCommentaries) {
+            onEvent(BookContentEvent.ToggleCommentaries)
+        }
+    }
 
     when {
         selectedBook == null -> {
@@ -101,7 +109,7 @@ fun BookContentPanel(
                         )
                     },
                     secondContent = {
-                        LineCommentsPagedView(
+                        LineCommentsView(
                             selectedLine = contentState.selectedLine,
                             buildCommentariesPagerFor = buildCommentariesPagerFor,
                             getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,

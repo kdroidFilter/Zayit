@@ -39,13 +39,12 @@ import seforimapp.composeapp.generated.resources.commentaries
 import seforimapp.composeapp.generated.resources.max_commentators_limit
 import seforimapp.composeapp.generated.resources.notorashihebrew
 import seforimapp.composeapp.generated.resources.no_commentaries_for_line
-import seforimapp.composeapp.generated.resources.no_commentaries_from_selected
 import seforimapp.composeapp.generated.resources.select_at_least_one_commentator
 import seforimapp.composeapp.generated.resources.select_line_for_commentaries
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
-fun LineCommentsPagedView(
+fun LineCommentsView(
     selectedLine: Line?,
     buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,

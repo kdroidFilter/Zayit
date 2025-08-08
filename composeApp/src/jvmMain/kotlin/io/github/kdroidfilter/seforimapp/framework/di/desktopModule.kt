@@ -57,7 +57,8 @@ val desktopModule = module {
             savedStateHandle = savedStateHandle,
             stateManager = get(),
             repository = get(),
-            titleUpdateManager = get()
+            titleUpdateManager = get(),
+            navigator = get()
         )
     }
 }

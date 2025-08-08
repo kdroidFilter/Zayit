@@ -10,6 +10,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabAwareViewMode
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabType
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.LinesPagingSource
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.LineCommentsPagingSource
@@ -32,7 +33,8 @@ class BookContentViewModel(
     savedStateHandle: SavedStateHandle,
     stateManager: TabStateManager,
     private val repository: SeforimRepository,
-    private val titleUpdateManager: TabTitleUpdateManager
+    private val titleUpdateManager: TabTitleUpdateManager,
+    private val navigator: io.github.kdroidfilter.seforimapp.core.presentation.navigation.Navigator
 ) : TabAwareViewModel(
     tabId = savedStateHandle.get<String>(KEY_TAB_ID) ?: "",
     stateManager = stateManager
@@ -79,7 +81,6 @@ class BookContentViewModel(
         const val KEY_COMMENTARIES_SCROLL_INDEX = "commentariesScrollIndex"
         const val KEY_COMMENTARIES_SCROLL_OFFSET = "commentariesScrollOffset"
 
-        // Paging configuration is centralized in PagingDefaults (see pagination/PagingDefaults.kt)
     }
 
     // Initialize state flows first
@@ -143,7 +144,7 @@ class BookContentViewModel(
     private val _commentariesScrollIndex = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SCROLL_INDEX) ?: 0)
     private val _commentariesScrollOffset = MutableStateFlow(getState<Int>(KEY_COMMENTARIES_SCROLL_OFFSET) ?: 0)
 
-    // NEW: Paging data flow for lines
+    // Paging data flow for lines
     private val _linesPagingData = MutableStateFlow<Flow<PagingData<Line>>?>(null)
     @OptIn(ExperimentalCoroutinesApi::class)
     val linesPagingData: Flow<PagingData<Line>> = _linesPagingData
@@ -274,6 +275,17 @@ class BookContentViewModel(
             )
             BookContentEvent.NavigateToPreviousLine -> navigateToPreviousLine()
             BookContentEvent.NavigateToNextLine -> navigateToNextLine()
+            is BookContentEvent.OpenCommentaryTarget -> {
+                viewModelScope.launch {
+                    navigator.navigate(
+                        TabsDestination.BookContent(
+                            bookId = event.bookId,
+                            tabId = java.util.UUID.randomUUID().toString(),
+                            lineId = event.lineId
+                        )
+                    )
+                }
+            }
 
             // Commentaries events
             is BookContentEvent.CommentariesTabSelected -> updateCommentariesTabIndex(event.index)

@@ -81,6 +81,7 @@ class BookContentViewModel(
         const val KEY_COMMENTARIES_SCROLL_INDEX = "commentariesScrollIndex"
         const val KEY_COMMENTARIES_SCROLL_OFFSET = "commentariesScrollOffset"
         const val KEY_SELECTED_COMMENTATORS_BY_LINE = "selectedCommentatorsByLine"
+        const val KEY_SELECTED_COMMENTATORS_BY_BOOK = "selectedCommentatorsByBook"
 
     }
 
@@ -150,6 +151,11 @@ class BookContentViewModel(
         getState(KEY_SELECTED_COMMENTATORS_BY_LINE) ?: emptyMap()
     )
 
+    // Selected commentators per book (bookId -> set of commentator bookIds)
+    private val _selectedCommentatorsByBook = MutableStateFlow<Map<Long, Set<Long>>>(
+        getState(KEY_SELECTED_COMMENTATORS_BY_BOOK) ?: emptyMap()
+    )
+
     // Paging data flow for lines
     private val _linesPagingData = MutableStateFlow<Flow<PagingData<Line>>?>(null)
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -200,6 +206,8 @@ class BookContentViewModel(
                     // Check if we have a restored line and fetch its commentaries
                     _selectedLine.value?.let { line ->
                         fetchCommentariesForLine(line)
+                        // Reapply previously selected commentators for this book on the restored line
+                        reapplySelectedCommentatorsForLine(line)
                     }
                 } finally {
                     _isLoading.value = false
@@ -694,6 +702,8 @@ class BookContentViewModel(
         
         _selectedLine.value = line
         fetchCommentariesForLine(line)
+        // Reapply previously selected commentators for this book on this new line
+        reapplySelectedCommentatorsForLine(line)
 
         // Save selected line
         saveState(KEY_SELECTED_LINE, line)
@@ -703,6 +713,31 @@ class BookContentViewModel(
     private fun fetchCommentariesForLine(line: Line) {
         // Legacy list-based storage is cleared; UI now builds pagers per commentator via ViewModel
         _commentaries.value = emptyList()
+    }
+
+    // Reapply previously selected commentators (per-book) for a newly selected line
+    private fun reapplySelectedCommentatorsForLine(line: Line) {
+        val bookId = _selectedBook.value?.id ?: line.bookId
+        val remembered = _selectedCommentatorsByBook.value[bookId] ?: emptySet()
+        if (remembered.isEmpty()) return
+
+        viewModelScope.launch {
+            try {
+                val availableMap = getAvailableCommentatorsForLine(line.id)
+                val availableIds = availableMap.values.toSet()
+                val intersection = remembered.intersect(availableIds)
+                val byLine = _selectedCommentatorsByLine.value.toMutableMap()
+                if (intersection.isEmpty()) {
+                    byLine.remove(line.id)
+                } else {
+                    byLine[line.id] = intersection
+                }
+                _selectedCommentatorsByLine.value = byLine
+                saveState(KEY_SELECTED_COMMENTATORS_BY_LINE, byLine)
+            } catch (e: Exception) {
+                // ignore errors silently; selection memory is best-effort
+            }
+        }
     }
 
     fun buildCommentariesPagerFor(lineId: Long, commentatorId: Long? = null): Flow<PagingData<CommentaryWithText>> {
@@ -759,7 +794,9 @@ class BookContentViewModel(
 
                 // Fetch commentaries
                 fetchCommentariesForLine(targetLine)
-
+                // Reapply previously selected commentators for this book on this new line
+                reapplySelectedCommentatorsForLine(targetLine)
+                
                 // Update timestamp to force scroll
                 _scrollToLineTimestamp.value = System.currentTimeMillis()
             }
@@ -858,6 +895,7 @@ class BookContentViewModel(
     }
 
     private fun updateSelectedCommentators(lineId: Long, selectedIds: Set<Long>) {
+        // Update per-line selection
         val current = _selectedCommentatorsByLine.value.toMutableMap()
         if (selectedIds.isEmpty()) {
             current.remove(lineId)
@@ -865,8 +903,34 @@ class BookContentViewModel(
             current[lineId] = selectedIds
         }
         _selectedCommentatorsByLine.value = current
-        // Persist
+        // Persist per-line
         saveState(KEY_SELECTED_COMMENTATORS_BY_LINE, current)
+
+        // Also update per-book memory so selections follow across lines of the same book.
+        // Preserve previously remembered commentators that are not available on this line.
+        _selectedBook.value?.let { book ->
+            viewModelScope.launch {
+                val availableIds = try {
+                    getAvailableCommentatorsForLine(lineId).values.toSet()
+                } catch (e: Exception) {
+                    emptySet()
+                }
+                val previous = _selectedCommentatorsByBook.value[book.id] ?: emptySet()
+                val newMemory = if (selectedIds.isEmpty()) {
+                    emptySet()
+                } else {
+                    (previous - availableIds) + selectedIds
+                }
+                val byBook = _selectedCommentatorsByBook.value.toMutableMap()
+                if (newMemory.isEmpty()) {
+                    byBook.remove(book.id)
+                } else {
+                    byBook[book.id] = newMemory
+                }
+                _selectedCommentatorsByBook.value = byBook
+                saveState(KEY_SELECTED_COMMENTATORS_BY_BOOK, byBook)
+            }
+        }
     }
 
     private fun selectChapter(chapter: Int) {
@@ -1082,7 +1146,8 @@ class BookContentViewModel(
             KEY_COMMENTARIES_SELECTED_TAB to _commentariesSelectedTab,
             KEY_COMMENTARIES_SCROLL_INDEX to _commentariesScrollIndex,
             KEY_COMMENTARIES_SCROLL_OFFSET to _commentariesScrollOffset,
-            KEY_SELECTED_COMMENTATORS_BY_LINE to _selectedCommentatorsByLine
+            KEY_SELECTED_COMMENTATORS_BY_LINE to _selectedCommentatorsByLine,
+            KEY_SELECTED_COMMENTATORS_BY_BOOK to _selectedCommentatorsByBook
         )
 
         // Save UI state - visibility flags and text

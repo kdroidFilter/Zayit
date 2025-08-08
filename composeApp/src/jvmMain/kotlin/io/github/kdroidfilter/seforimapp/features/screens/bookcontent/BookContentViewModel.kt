@@ -726,6 +726,8 @@ class BookContentViewModel(
                 val availableMap = getAvailableCommentatorsForLine(line.id)
                 val availableIds = availableMap.values.toSet()
                 val intersection = remembered.intersect(availableIds)
+
+                // Update per-line selection
                 val byLine = _selectedCommentatorsByLine.value.toMutableMap()
                 if (intersection.isEmpty()) {
                     byLine.remove(line.id)
@@ -734,6 +736,16 @@ class BookContentViewModel(
                 }
                 _selectedCommentatorsByLine.value = byLine
                 saveState(KEY_SELECTED_COMMENTATORS_BY_LINE, byLine)
+
+                // Also update per-book memory to the intersection — treat missing as deselected
+                val byBook = _selectedCommentatorsByBook.value.toMutableMap()
+                if (intersection.isEmpty()) {
+                    byBook.remove(bookId)
+                } else {
+                    byBook[bookId] = intersection
+                }
+                _selectedCommentatorsByBook.value = byBook
+                saveState(KEY_SELECTED_COMMENTATORS_BY_BOOK, byBook)
             } catch (e: Exception) {
                 // ignore errors silently; selection memory is best-effort
             }
@@ -906,26 +918,14 @@ class BookContentViewModel(
         // Persist per-line
         saveState(KEY_SELECTED_COMMENTATORS_BY_LINE, current)
 
-        // Also update per-book memory so selections follow across lines of the same book.
-        // Preserve previously remembered commentators that are not available on this line.
+        // Also update per-book memory to exactly the current selection (treat others as deselected)
         _selectedBook.value?.let { book ->
             viewModelScope.launch {
-                val availableIds = try {
-                    getAvailableCommentatorsForLine(lineId).values.toSet()
-                } catch (e: Exception) {
-                    emptySet()
-                }
-                val previous = _selectedCommentatorsByBook.value[book.id] ?: emptySet()
-                val newMemory = if (selectedIds.isEmpty()) {
-                    emptySet()
-                } else {
-                    (previous - availableIds) + selectedIds
-                }
                 val byBook = _selectedCommentatorsByBook.value.toMutableMap()
-                if (newMemory.isEmpty()) {
+                if (selectedIds.isEmpty()) {
                     byBook.remove(book.id)
                 } else {
-                    byBook[book.id] = newMemory
+                    byBook[book.id] = selectedIds
                 }
                 _selectedCommentatorsByBook.value = byBook
                 saveState(KEY_SELECTED_COMMENTATORS_BY_BOOK, byBook)

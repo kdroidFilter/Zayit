@@ -12,6 +12,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabTitleUpdateMa
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabType
 import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.data.LinesPagingSource
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.data.LineCommentsPagingSource
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.*
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -148,6 +149,14 @@ class BookContentViewModel(
     private val _linesPagingData = MutableStateFlow<Flow<PagingData<Line>>?>(null)
     @OptIn(ExperimentalCoroutinesApi::class)
     val linesPagingData: Flow<PagingData<Line>> = _linesPagingData
+        .filterNotNull()
+        .flatMapLatest { it }
+        .cachedIn(viewModelScope)
+
+    // NEW: Paging data flow for commentaries (per selected line)
+    private val _commentsPagingData = MutableStateFlow<Flow<PagingData<CommentaryWithText>>?>(null)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val commentsPagingData: Flow<PagingData<CommentaryWithText>> = _commentsPagingData
         .filterNotNull()
         .flatMapLatest { it }
         .cachedIn(viewModelScope)
@@ -682,14 +691,21 @@ class BookContentViewModel(
 
 
     private fun fetchCommentariesForLine(line: Line) {
-        viewModelScope.launch {
-            try {
-                _commentaries.value = repository.getCommentariesForLines(listOf(line.id))
-            } catch (e: Exception) {
-                // Reset commentaries to empty list on error
-                _commentaries.value = emptyList()
+        // Build a paging flow for commentaries of the selected line
+        val pager = Pager(
+            config = PagingConfig(
+                pageSize = PAGE_SIZE,
+                prefetchDistance = PREFETCH_DISTANCE,
+                initialLoadSize = INITIAL_LOAD_SIZE,
+                enablePlaceholders = false
+            ),
+            pagingSourceFactory = {
+                LineCommentsPagingSource(repository, line.id)
             }
-        }
+        )
+        _commentsPagingData.value = pager.flow.cachedIn(viewModelScope)
+        // Clear legacy list to avoid stale data usage in old UI
+        _commentaries.value = emptyList()
     }
 
     private fun loadAndSelectLine(lineId: Long) {

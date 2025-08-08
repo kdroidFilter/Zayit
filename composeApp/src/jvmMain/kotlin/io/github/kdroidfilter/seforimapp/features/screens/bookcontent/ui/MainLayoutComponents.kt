@@ -27,7 +27,8 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 @Composable
 fun MainBookContentLayout(
     uiState: BookContentUiState,
-    linesPagingData: Flow<PagingData<Line>>, // NEW: Add paging data flow
+    linesPagingData: Flow<PagingData<Line>>, // Paging data flow for lines
+    commentsPagingData: Flow<PagingData<io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText>>, // Paging data flow for comments
     onEvent: (BookContentEvent) -> Unit
 ) {
     // Save split pane positions with debounce - only when panels are visible
@@ -102,6 +103,7 @@ fun MainBookContentLayout(
                         BookContentPanel(
                             selectedBook = uiState.navigation.selectedBook,
                             linesPagingData = linesPagingData, // Pass paging data
+                            commentsPagingData = commentsPagingData, // Pass comments paging data
                             contentState = uiState.content,
                             tocState = uiState.toc,
                             navigationState = uiState.navigation,

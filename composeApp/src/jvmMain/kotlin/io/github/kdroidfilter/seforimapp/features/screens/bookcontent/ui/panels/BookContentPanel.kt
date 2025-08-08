@@ -21,7 +21,7 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.Toc
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.BookContentView
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.BreadcrumbView
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedVerticalSplitPane
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.LineCommentsView
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.LineCommentsPagedView
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import kotlinx.coroutines.flow.Flow
@@ -42,7 +42,8 @@ import java.util.*
 @Composable
 fun BookContentPanel(
     selectedBook: Book?,
-    linesPagingData: Flow<PagingData<Line>>, // NEW: Add paging data flow
+    linesPagingData: Flow<PagingData<Line>>, // Paging data flow for lines
+    commentsPagingData: Flow<PagingData<io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText>>, // Paging data flow for comments
     contentState: ContentUiState,
     tocState: TocUiState,
     navigationState: NavigationUiState,
@@ -115,13 +116,12 @@ fun BookContentPanel(
                         )
                     },
                     secondContent = {
-                        LineCommentsView(
+                        LineCommentsPagedView(
                             selectedLine = contentState.selectedLine,
-                            commentaries = contentState.commentaries,
+                            commentsPagingData = commentsPagingData,
                             commentariesScrollIndex = contentState.commentariesScrollIndex,
                             commentariesScrollOffset = contentState.commentariesScrollOffset,
                             onCommentClick = { commentary ->
-                                // When a commentary is clicked, open a new tab with the book and line of the commentary
                                 scope.launch {
                                     navigator.navigate(
                                         TabsDestination.BookContent(
@@ -134,8 +134,7 @@ fun BookContentPanel(
                             },
                             onScroll = { index, offset ->
                                 onEvent(BookContentEvent.CommentariesScrolled(index, offset))
-                            },
-                            splitPaneState = commentariesSplitState // Pass the horizontal split pane state
+                            }
                         )
                     }
                 )

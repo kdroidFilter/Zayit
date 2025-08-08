@@ -3,7 +3,6 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -30,7 +29,6 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
-import org.jetbrains.compose.splitpane.rememberSplitPaneState
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import org.koin.compose.koinInject
@@ -57,9 +55,6 @@ fun BookContentPanel(
     val navigator = koinInject<Navigator>()
     val scope = rememberCoroutineScope()
 
-    // SplitPaneState for the commentaries horizontal split (commentators list and commentaries)
-    val commentariesSplitState = rememberSplitPaneState(0.10f) // 10% for commentators list
-
     // Preserve LazyListState across recompositions
     val bookListState = remember(selectedBook?.id) { LazyListState() }
 
@@ -83,21 +78,9 @@ fun BookContentPanel(
                             book = selectedBook,
                             linesPagingData = linesPagingData, // Pass paging data
                             selectedLine = contentState.selectedLine,
-                            shouldScrollToLine = contentState.shouldScrollToLine,
-                            tocEntries = tocState.entries,
-                            tocChildren = tocState.children,
-                            rootCategories = navigationState.rootCategories,
-                            categoryChildren = navigationState.categoryChildren,
+
                             onLineSelected = { line ->
                                 onEvent(BookContentEvent.LineSelected(line))
-                            },
-                            onTocEntryClick = { entry ->
-                                entry.lineId?.let { lineId ->
-                                    onEvent(BookContentEvent.LoadAndSelectLine(lineId))
-                                }
-                            },
-                            onCategoryClick = { category ->
-                                onEvent(BookContentEvent.CategorySelected(category))
                             },
                             onEvent = onEvent,
                             modifier = Modifier.padding(16.dp),
@@ -178,21 +161,9 @@ fun BookContentPanel(
                     book = selectedBook,
                     linesPagingData = linesPagingData, // Pass paging data
                     selectedLine = contentState.selectedLine,
-                    shouldScrollToLine = contentState.shouldScrollToLine,
-                    tocEntries = tocState.entries,
-                    tocChildren = tocState.children,
-                    rootCategories = navigationState.rootCategories,
-                    categoryChildren = navigationState.categoryChildren,
+
                     onLineSelected = { line ->
                         onEvent(BookContentEvent.LineSelected(line))
-                    },
-                    onTocEntryClick = { entry ->
-                        entry.lineId?.let { lineId ->
-                            onEvent(BookContentEvent.LoadAndSelectLine(lineId))
-                        }
-                    },
-                    onCategoryClick = { category ->
-                        onEvent(BookContentEvent.CategorySelected(category))
                     },
                     onEvent = onEvent,
                     modifier = Modifier.weight(1f).padding(16.dp),

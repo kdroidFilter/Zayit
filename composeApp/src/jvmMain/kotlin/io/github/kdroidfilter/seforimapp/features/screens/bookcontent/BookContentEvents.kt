@@ -8,6 +8,7 @@ sealed interface BookContentEvent {
     data class SearchTextChanged(val text: String) : BookContentEvent
     data class CategorySelected(val category: Category) : BookContentEvent
     data class BookSelected(val book: Book) : BookContentEvent
+    data class BookSelectedInNewTab(val book: Book) : BookContentEvent
     data object ToggleBookTree : BookContentEvent
 
     // TOC events

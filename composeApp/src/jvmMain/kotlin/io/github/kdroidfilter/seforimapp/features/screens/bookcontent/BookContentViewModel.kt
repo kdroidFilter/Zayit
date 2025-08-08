@@ -267,6 +267,16 @@ class BookContentViewModel(
             is BookContentEvent.SearchTextChanged -> updateSearchText(event.text)
             is BookContentEvent.CategorySelected -> selectCategory(event.category)
             is BookContentEvent.BookSelected -> loadBook(event.book)
+            is BookContentEvent.BookSelectedInNewTab -> {
+                viewModelScope.launch {
+                    navigator.navigate(
+                        TabsDestination.BookContent(
+                            bookId = event.book.id,
+                            tabId = java.util.UUID.randomUUID().toString()
+                        )
+                    )
+                }
+            }
             BookContentEvent.ToggleBookTree -> toggleBookTree()
 
             // TOC events

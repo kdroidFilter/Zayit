@@ -5,6 +5,9 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.NavigationUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.CategoryBookTree
@@ -28,10 +31,18 @@ fun CategoryTreePanel(
         
         Spacer(modifier = Modifier.height(16.dp))
         
+        val windowInfo = LocalWindowInfo.current
         CategoryBookTree(
             navigationState = navigationState,
             onCategoryClick = { onEvent(BookContentEvent.CategorySelected(it)) },
-            onBookClick = { onEvent(BookContentEvent.BookSelected(it)) },
+            onBookClick = {
+                val mods = windowInfo.keyboardModifiers
+                if (mods.isCtrlPressed || mods.isMetaPressed) {
+                    onEvent(BookContentEvent.BookSelectedInNewTab(it))
+                } else {
+                    onEvent(BookContentEvent.BookSelected(it))
+                }
+            },
             onScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) }
         )
     }

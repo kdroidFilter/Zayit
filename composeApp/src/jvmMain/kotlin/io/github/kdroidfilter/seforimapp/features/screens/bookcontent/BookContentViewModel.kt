@@ -239,6 +239,8 @@ class BookContentViewModel(
                                     // Trigger scroll by updating timestamp
                                     _scrollToLineTimestamp.value = System.currentTimeMillis()
                                 }
+                                // Trigger GC after opening book with anchor
+                                System.gc()
                             } else {
                                 // Normal load - this will reset positions
                                 loadBook(book)
@@ -623,6 +625,8 @@ class BookContentViewModel(
             if (_showCommentaries.value) {
                 toggleCommentaries()
             }
+            // Trigger GC on explicit book change
+            System.gc()
         } else {
             debugln { "Loading book with preserved position: anchorId=${_contentAnchorId.value}, scrollIndex=${_contentScrollIndex.value}" }
         }

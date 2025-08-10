@@ -106,6 +106,8 @@ class TabsViewModel(
         )
         _tabs.value = _tabs.value + newTab
         _selectedTabIndex.value = _tabs.value.lastIndex
+        // Trigger GC when a new tab is opened via the plus button
+        System.gc()
     }
 
     private fun addTabWithDestination(destination: TabsDestination) {
@@ -123,6 +125,8 @@ class TabsViewModel(
         )
         _tabs.value = _tabs.value + newTab
         _selectedTabIndex.value = _tabs.value.lastIndex
+        // Trigger GC when a new tab is opened via navigation
+        System.gc()
     }
 
     private fun getTabTitle(destination: TabsDestination): String {

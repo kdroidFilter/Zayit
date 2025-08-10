@@ -33,7 +33,7 @@ fun processKeyShortcuts(keyEvent: KeyEvent, onNavigateTo: (String) -> Unit): Boo
     if (keyEvent.type != KeyEventType.KeyDown) return false
     
     // Debug log the key event
-    debugln { "[DEBUG_LOG] Key event: key=${keyEvent.key}, isCtrlPressed=${keyEvent.isCtrlPressed}, isMetaPressed=${keyEvent.isMetaPressed}, isShiftPressed=${keyEvent.isShiftPressed}" }
+    // debugln { "[DEBUG_LOG] Key event: key=${keyEvent.key}, isCtrlPressed=${keyEvent.isCtrlPressed}, isMetaPressed=${keyEvent.isMetaPressed}, isShiftPressed=${keyEvent.isShiftPressed}" }
     
     // Check for Ctrl/Cmd + and Ctrl/Cmd - for zooming
     val isCtrlOrCmdPressed = keyEvent.isCtrlPressed || keyEvent.isMetaPressed

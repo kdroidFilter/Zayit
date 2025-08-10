@@ -10,9 +10,9 @@ import app.cash.paging.PagingConfig
  */
 object PagingDefaults {
     object LINES {
-        const val PAGE_SIZE: Int = 30
+        const val PAGE_SIZE: Int = 10
         const val PREFETCH_DISTANCE: Int = 10
-        const val INITIAL_LOAD_SIZE: Int = 50
+        const val INITIAL_LOAD_SIZE: Int = 30
 
         fun config(placeholders: Boolean = false): PagingConfig =
             PagingConfig(

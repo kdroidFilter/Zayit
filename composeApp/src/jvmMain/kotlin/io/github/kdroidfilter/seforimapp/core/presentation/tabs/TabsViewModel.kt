@@ -19,7 +19,8 @@ data class TabItem(
 
 class TabsViewModel(
     private val navigator: Navigator,
-    private val titleUpdateManager: TabTitleUpdateManager
+    private val titleUpdateManager: TabTitleUpdateManager,
+    private val stateManager: TabStateManager
 ) : ViewModel() {
 
     private var _nextTabId = 2 // Commence à 2 car on a déjà un onglet par défaut
@@ -65,6 +66,11 @@ class TabsViewModel(
 
         if (index < 0 || index >= currentTabs.size) return // Index invalide
 
+        // Capture tabId to clear any per-tab cached state
+        val tabIdToClose = currentTabs[index].destination.tabId
+        // Clear any state associated with this tab to free memory
+        stateManager.clearTabState(tabIdToClose)
+
         // Supprimer l'onglet à l'index donné
         val newTabs = currentTabs.toMutableList().apply { removeAt(index) }
         _tabs.value = newTabs
@@ -89,12 +95,17 @@ class TabsViewModel(
         }
 
         _selectedTabIndex.value = newSelectedIndex
+
+        // Encourage memory reclamation after closing a tab
+        System.gc()
     }
 
     private fun selectTab(index: Int) {
         val currentTabs = _tabs.value
-        if (index in 0..currentTabs.lastIndex) {
+        if (index in 0..currentTabs.lastIndex && index != _selectedTabIndex.value) {
             _selectedTabIndex.value = index
+            // Trigger GC when switching tabs
+            System.gc()
         }
     }
 

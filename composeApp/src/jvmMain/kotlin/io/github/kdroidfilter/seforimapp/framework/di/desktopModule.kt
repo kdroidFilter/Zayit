@@ -48,7 +48,8 @@ val desktopModule = module {
     viewModel {
         TabsViewModel(
             navigator = get(),
-            titleUpdateManager = get()
+            titleUpdateManager = get(),
+            stateManager = get()
         )
     }
 

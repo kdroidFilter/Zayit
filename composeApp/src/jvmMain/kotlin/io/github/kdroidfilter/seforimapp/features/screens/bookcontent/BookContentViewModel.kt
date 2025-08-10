@@ -31,7 +31,7 @@ import org.jetbrains.compose.splitpane.SplitPaneState
 @OptIn(ExperimentalSplitPaneApi::class)
 class BookContentViewModel(
     savedStateHandle: SavedStateHandle,
-    stateManager: TabStateManager,
+    private val stateManager: TabStateManager,
     private val repository: SeforimRepository,
     private val titleUpdateManager: TabTitleUpdateManager,
     private val navigator: io.github.kdroidfilter.seforimapp.core.presentation.navigation.Navigator
@@ -269,10 +269,26 @@ class BookContentViewModel(
             is BookContentEvent.BookSelected -> loadBook(event.book)
             is BookContentEvent.BookSelectedInNewTab -> {
                 viewModelScope.launch {
+                    val newTabId = java.util.UUID.randomUUID().toString()
+                    // Copy CategoryBookTree state to the new tab so it opens with the same tree state.
+                    stateManager.copyKeys(
+                        fromTabId = currentTabId,
+                        toTabId = newTabId,
+                        keys = listOf(
+                            KEY_EXPANDED_CATEGORIES,
+                            KEY_CATEGORY_CHILDREN,
+                            KEY_BOOKS_IN_CATEGORY,
+                            KEY_BOOK_TREE_SCROLL_INDEX,
+                            KEY_BOOK_TREE_SCROLL_OFFSET,
+                            KEY_SELECTED_CATEGORY,
+                            KEY_SEARCH_TEXT,
+                            KEY_SHOW_BOOK_TREE
+                        )
+                    )
                     navigator.navigate(
                         TabsDestination.BookContent(
                             bookId = event.book.id,
-                            tabId = java.util.UUID.randomUUID().toString()
+                            tabId = newTabId
                         )
                     )
                 }

@@ -35,6 +35,18 @@ class TabStateManager {
     }
 
     /**
+     * Copies selected keys from one tab to another.
+     * This allows initializing a new tab with the state of an existing tab.
+     */
+    fun copyKeys(fromTabId: String, toTabId: String, keys: Collection<String>) {
+        val source = stateCache[fromTabId] ?: return
+        val dest = stateCache.getOrPut(toTabId) { mutableMapOf() }
+        keys.forEach { key ->
+            source[key]?.let { value -> dest[key] = value }
+        }
+    }
+
+    /**
      * Clears all state for a specific tab.
      *
      * @param tabId The ID of the tab

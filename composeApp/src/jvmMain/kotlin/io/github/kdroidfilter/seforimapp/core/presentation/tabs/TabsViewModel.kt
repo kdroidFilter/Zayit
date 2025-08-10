@@ -109,10 +109,11 @@ class TabsViewModel(
     }
 
     private fun addTabWithDestination(destination: TabsDestination) {
+        // Preserve the provided tabId to allow callers to pre-initialize tab state (e.g., via TabStateManager).
         val newDestination = when (destination) {
-            is TabsDestination.Home -> TabsDestination.Home(UUID.randomUUID().toString())
-            is TabsDestination.Search -> TabsDestination.Search(destination.searchQuery, UUID.randomUUID().toString())
-            is TabsDestination.BookContent -> TabsDestination.BookContent(destination.bookId, UUID.randomUUID().toString(), destination.lineId)
+            is TabsDestination.Home -> TabsDestination.Home(destination.tabId)
+            is TabsDestination.Search -> TabsDestination.Search(destination.searchQuery, destination.tabId)
+            is TabsDestination.BookContent -> TabsDestination.BookContent(destination.bookId, destination.tabId, destination.lineId)
         }
 
         val newTab = TabItem(

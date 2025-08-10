@@ -4,14 +4,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.application
-import com.kdroid.composetray.tray.api.Tray
 import com.kdroid.composetray.utils.SingleInstanceManager
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.darkmodedetector.isSystemInDarkMode
@@ -23,6 +20,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
+import io.github.kdroidfilter.seforimapp.core.utils.SilenceLogs
 import io.github.kdroidfilter.seforimapp.framework.di.desktopModule
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
@@ -50,6 +48,7 @@ import java.util.*
 
 @OptIn(ExperimentalFoundationApi::class)
 fun main() {
+//    SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)
     Locale.setDefault(Locale.Builder().setLanguage("he").setRegion("IL").build())
     application {
         val windowState = remember { getCenteredWindowState(1280, 720) }

@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -46,7 +47,25 @@ fun TocPanel(
             }
             else -> {
                 val rootEntries = tocState.children[-1L] ?: tocState.entries
-                val displayEntries = rootEntries.ifEmpty { tocState.entries }
+                var displayEntries = rootEntries.ifEmpty { tocState.entries }
+
+                // If there is exactly one top-level parent, auto-open and show its children
+                if (displayEntries.size == 1) {
+                    val soleParent = displayEntries.first()
+                    val directChildren = tocState.children[soleParent.id]
+
+                    if (directChildren.isNullOrEmpty()) {
+                        // Children not loaded yet: trigger expansion once to load them
+                        if (soleParent.hasChildren && !tocState.expandedEntries.contains(soleParent.id)) {
+                            LaunchedEffect(selectedBook?.id, soleParent.id) {
+                                onEvent(BookContentEvent.TocEntryExpanded(soleParent))
+                            }
+                        }
+                        // Keep displaying the root until children are available
+                    } else {
+                        displayEntries = directChildren
+                    }
+                }
 
                 Box(modifier = Modifier.fillMaxHeight()) {
                     TocView(

@@ -4,10 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.cash.paging.PagingData
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
@@ -53,12 +53,7 @@ fun BookContentPanel(
 
     when {
         selectedBook == null -> {
-            Box(
-                modifier = modifier.padding(16.dp).fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(stringResource(Res.string.select_book))
-            }
+            SelectBookPane(modifier)
         }
         contentState.showCommentaries -> {
             Column(modifier = modifier.fillMaxSize()) {
@@ -67,146 +62,175 @@ fun BookContentPanel(
                     splitPaneState = contentSplitState,
                     modifier = Modifier.weight(1f),
                     firstContent = {
-                        BookContentView(
+                        BookContentPane(
                             book = selectedBook,
-                            linesPagingData = linesPagingData, // Pass paging data
-                            selectedLine = contentState.selectedLine,
-
-                            onLineSelected = { line ->
-                                onEvent(BookContentEvent.LineSelected(line))
-                            },
+                            linesPagingData = linesPagingData,
+                            contentState = contentState,
                             onEvent = onEvent,
-                            modifier = Modifier.padding(16.dp),
                             preservedListState = bookListState,
-                            scrollIndex = contentState.scrollIndex,
-                            scrollOffset = contentState.scrollOffset,
-                            scrollToLineTimestamp = contentState.scrollToLineTimestamp,
-                            anchorId = contentState.anchorId,
-                            anchorIndex = contentState.anchorIndex,
-                            onScroll = { anchorId, anchorIndex, scrollIndex, scrollOffset ->
-                                onEvent(BookContentEvent.ContentScrolled(
-                                    anchorId = anchorId,
-                                    anchorIndex = anchorIndex,
-                                    scrollIndex = scrollIndex,
-                                    scrollOffset = scrollOffset
-                                ))
-                            }
+                            modifier = Modifier.padding(16.dp)
                         )
                     },
                     secondContent = {
-                        LineCommentsView(
-                            selectedLine = contentState.selectedLine,
+                        CommentsPane(
+                            contentState = contentState,
                             buildCommentariesPagerFor = buildCommentariesPagerFor,
                             getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
-                            commentariesScrollIndex = contentState.commentariesScrollIndex,
-                            commentariesScrollOffset = contentState.commentariesScrollOffset,
-                            initiallySelectedCommentatorIds = contentState.selectedCommentatorIds,
-                            onSelectedCommentatorsChange = { ids ->
-                                contentState.selectedLine?.let { line ->
-                                    onEvent(BookContentEvent.SelectedCommentatorsChanged(line.id, ids))
-                                }
-                            },
-                            onCommentClick = { commentary ->
-                                onEvent(
-                                    BookContentEvent.OpenCommentaryTarget(
-                                        bookId = commentary.link.targetBookId,
-                                        lineId = commentary.link.targetLineId
-                                    )
-                                )
-                            },
-                            onScroll = { index, offset ->
-                                onEvent(BookContentEvent.CommentariesScrolled(index, offset))
-                            }
+                            onEvent = onEvent
                         )
                     }
                 )
 
-                // Breadcrumb at the bottom
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(JewelTheme.globalColors.panelBackground)
-                ) {
-                    HorizontalDivider()
-                    BreadcrumbView(
-                        book = selectedBook,
-                        selectedLine = contentState.selectedLine,
-                        tocEntries = tocState.entries,
-                        tocChildren = tocState.children,
-                        rootCategories = navigationState.rootCategories,
-                        categoryChildren = navigationState.categoryChildren,
-                        onTocEntryClick = { entry ->
-                            entry.lineId?.let { lineId ->
-                                onEvent(BookContentEvent.LoadAndSelectLine(lineId))
-                            }
-                        },
-                        onCategoryClick = { category ->
-                            onEvent(BookContentEvent.CategorySelected(category))
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 0.dp, horizontal = 16.dp)
-                    )
-                }
+                BreadcrumbSection(
+                    book = selectedBook!!,
+                    contentState = contentState,
+                    tocState = tocState,
+                    navigationState = navigationState,
+                    onEvent = onEvent,
+                    verticalPadding = 0.dp
+                )
             }
         }
         else -> {
             Column(modifier = modifier.fillMaxSize()) {
                 // Main content
-                BookContentView(
-                    book = selectedBook,
-                    linesPagingData = linesPagingData, // Pass paging data
-                    selectedLine = contentState.selectedLine,
-
-                    onLineSelected = { line ->
-                        onEvent(BookContentEvent.LineSelected(line))
-                    },
+                BookContentPane(
+                    book = selectedBook!!,
+                    linesPagingData = linesPagingData,
+                    contentState = contentState,
                     onEvent = onEvent,
-                    modifier = Modifier.weight(1f).padding(16.dp),
                     preservedListState = bookListState,
-                    scrollIndex = contentState.scrollIndex,
-                    scrollOffset = contentState.scrollOffset,
-                    scrollToLineTimestamp = contentState.scrollToLineTimestamp,
-                    anchorId = contentState.anchorId,
-                    anchorIndex = contentState.anchorIndex,
-                    onScroll = { anchorId, anchorIndex, scrollIndex, scrollOffset ->
-                        onEvent(BookContentEvent.ContentScrolled(
-                            anchorId = anchorId,
-                            anchorIndex = anchorIndex,
-                            scrollIndex = scrollIndex,
-                            scrollOffset = scrollOffset
-                        ))
-                    }
+                    modifier = Modifier.weight(1f).padding(16.dp)
                 )
 
-                // Breadcrumb at the bottom
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(JewelTheme.globalColors.panelBackground)
-                ) {
-                    HorizontalDivider()
-                    BreadcrumbView(
-                        book = selectedBook,
-                        selectedLine = contentState.selectedLine,
-                        tocEntries = tocState.entries,
-                        tocChildren = tocState.children,
-                        rootCategories = navigationState.rootCategories,
-                        categoryChildren = navigationState.categoryChildren,
-                        onTocEntryClick = { entry ->
-                            entry.lineId?.let { lineId ->
-                                onEvent(BookContentEvent.LoadAndSelectLine(lineId))
-                            }
-                        },
-                        onCategoryClick = { category ->
-                            onEvent(BookContentEvent.CategorySelected(category))
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp, horizontal = 16.dp)
-                    )
-                }
+                BreadcrumbSection(
+                    book = selectedBook,
+                    contentState = contentState,
+                    tocState = tocState,
+                    navigationState = navigationState,
+                    onEvent = onEvent,
+                    verticalPadding = 8.dp
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun SelectBookPane(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.padding(16.dp).fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(stringResource(Res.string.select_book))
+    }
+}
+
+@Composable
+private fun BookContentPane(
+    book: Book,
+    linesPagingData: Flow<PagingData<Line>>,
+    contentState: ContentUiState,
+    onEvent: (BookContentEvent) -> Unit,
+    preservedListState: LazyListState,
+    modifier: Modifier = Modifier
+) {
+    BookContentView(
+        book = book,
+        linesPagingData = linesPagingData,
+        selectedLine = contentState.selectedLine,
+        onLineSelected = { line ->
+            onEvent(BookContentEvent.LineSelected(line))
+        },
+        onEvent = onEvent,
+        modifier = modifier,
+        preservedListState = preservedListState,
+        scrollIndex = contentState.scrollIndex,
+        scrollOffset = contentState.scrollOffset,
+        scrollToLineTimestamp = contentState.scrollToLineTimestamp,
+        anchorId = contentState.anchorId,
+        anchorIndex = contentState.anchorIndex,
+        onScroll = { anchorId, anchorIndex, scrollIndex, scrollOffset ->
+            onEvent(
+                BookContentEvent.ContentScrolled(
+                    anchorId = anchorId,
+                    anchorIndex = anchorIndex,
+                    scrollIndex = scrollIndex,
+                    scrollOffset = scrollOffset
+                )
+            )
+        }
+    )
+}
+
+@Composable
+private fun CommentsPane(
+    contentState: ContentUiState,
+    buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
+    onEvent: (BookContentEvent) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LineCommentsView(
+        selectedLine = contentState.selectedLine,
+        buildCommentariesPagerFor = buildCommentariesPagerFor,
+        getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
+        commentariesScrollIndex = contentState.commentariesScrollIndex,
+        commentariesScrollOffset = contentState.commentariesScrollOffset,
+        initiallySelectedCommentatorIds = contentState.selectedCommentatorIds,
+        onSelectedCommentatorsChange = { ids ->
+            contentState.selectedLine?.let { line ->
+                onEvent(BookContentEvent.SelectedCommentatorsChanged(line.id, ids))
+            }
+        },
+        onCommentClick = { commentary ->
+            onEvent(
+                BookContentEvent.OpenCommentaryTarget(
+                    bookId = commentary.link.targetBookId,
+                    lineId = commentary.link.targetLineId
+                )
+            )
+        },
+        onScroll = { index, offset ->
+            onEvent(BookContentEvent.CommentariesScrolled(index, offset))
+        }
+    )
+}
+
+@Composable
+private fun BreadcrumbSection(
+    book: Book,
+    contentState: ContentUiState,
+    tocState: TocUiState,
+    navigationState: NavigationUiState,
+    onEvent: (BookContentEvent) -> Unit,
+    verticalPadding: Dp,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(JewelTheme.globalColors.panelBackground)
+    ) {
+        HorizontalDivider()
+        BreadcrumbView(
+            book = book,
+            selectedLine = contentState.selectedLine,
+            tocEntries = tocState.entries,
+            tocChildren = tocState.children,
+            rootCategories = navigationState.rootCategories,
+            categoryChildren = navigationState.categoryChildren,
+            onTocEntryClick = { entry ->
+                entry.lineId?.let { lineId ->
+                    onEvent(BookContentEvent.LoadAndSelectLine(lineId))
+                }
+            },
+            onCategoryClick = { category ->
+                onEvent(BookContentEvent.CategorySelected(category))
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = verticalPadding, horizontal = 16.dp)
+        )
     }
 }

@@ -110,7 +110,7 @@ fun MainBookContentLayout(
                             contentState = uiState.content,
                             tocState = uiState.toc,
                             navigationState = uiState.navigation,
-                            contentSplitState = uiState.layout.contentSplitState,
+                            verticalContentSplitState = uiState.layout.contentSplitState,
                             onEvent = onEvent
                         )
                     }
@@ -120,7 +120,9 @@ fun MainBookContentLayout(
 
         EndVerticalBar(
             showCommentaries = uiState.content.showCommentaries,
-            onToggleCommentaries = { onEvent(BookContentEvent.ToggleCommentaries) }
+            onToggleCommentaries = { onEvent(BookContentEvent.ToggleCommentaries) },
+            showLinks = uiState.content.showLinks,
+            onToggleLinks = { onEvent(BookContentEvent.ToggleLinks) }
         )
     }
 }

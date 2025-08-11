@@ -46,6 +46,7 @@ data class ContentUiState(
     val selectedLine: Line? = null,
     val commentaries: List<CommentaryWithText> = emptyList(),
     val showCommentaries: Boolean = false,
+    val showLinks : Boolean = false,
     val paragraphScrollPosition: Int = 0,
     val chapterScrollPosition: Int = 0,
     val selectedChapter: Int = 0,

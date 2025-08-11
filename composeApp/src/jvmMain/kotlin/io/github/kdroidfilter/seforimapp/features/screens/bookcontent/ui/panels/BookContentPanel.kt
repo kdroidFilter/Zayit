@@ -17,6 +17,7 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.Nav
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.TocUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.BookContentView
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.BreadcrumbView
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedVerticalSplitPane
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.LineCommentsView
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -42,7 +43,7 @@ fun BookContentPanel(
     contentState: ContentUiState,
     tocState: TocUiState,
     navigationState: NavigationUiState,
-    contentSplitState: SplitPaneState,
+    verticalContentSplitState: SplitPaneState,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -50,58 +51,64 @@ fun BookContentPanel(
     // Preserve LazyListState across recompositions
     val bookListState = remember(selectedBook?.id) { LazyListState() }
 
-    when {
-        selectedBook == null -> {
-            SelectBookPane(modifier)
-        }
-
-        else -> {
-            Column(modifier = modifier.fillMaxSize()) {
-
-                    EnhancedVerticalSplitPane(
-                        splitPaneState = contentSplitState,
-                        modifier = Modifier.weight(1f),
-                        firstContent = {
-                            BookContentPane(
-                                book = selectedBook,
-                                linesPagingData = linesPagingData,
-                                contentState = contentState,
-                                onEvent = onEvent,
-                                preservedListState = bookListState,
-                                modifier = Modifier.padding(16.dp)
-                            )
-                        },
-                        secondContent = if (contentState.showCommentaries)  {
-                            {
-                                CommentsPane(
-                                    contentState = contentState,
-                                    buildCommentariesPagerFor = buildCommentariesPagerFor,
-                                    getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
-                                    onEvent = onEvent
-                                )
-                            }
-                        } else null
-                    )
-
-                BreadcrumbSection(
-                    book = selectedBook,
-                    contentState = contentState,
-                    tocState = tocState,
-                    navigationState = navigationState,
-                    onEvent = onEvent,
-                    verticalPadding = 8.dp
-                )
-            }
-        }
+    if (selectedBook == null) {
+        SelectBookPane(modifier = modifier)
+        return
     }
 
+    Column(modifier = modifier.fillMaxSize()) {
+
+        EnhancedVerticalSplitPane(
+            splitPaneState = verticalContentSplitState,
+            modifier = Modifier.weight(1f),
+            firstContent = {
+                EnhancedHorizontalSplitPane(
+                    verticalContentSplitState, firstContent = {
+                    BookContentPane(
+                        book = selectedBook,
+                        linesPagingData = linesPagingData,
+                        contentState = contentState,
+                        onEvent = onEvent,
+                        preservedListState = bookListState,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }, secondContent = if (contentState.showLinks) {
+                    {
+                        CommentsPane(
+                            contentState = contentState,
+                            buildCommentariesPagerFor = buildCommentariesPagerFor,
+                            getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
+                            onEvent = onEvent
+                        )
+                    }
+                } else null)
+            },
+            secondContent = if (contentState.showCommentaries) {
+                {
+                    CommentsPane(
+                        contentState = contentState,
+                        buildCommentariesPagerFor = buildCommentariesPagerFor,
+                        getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
+                        onEvent = onEvent
+                    )
+                }
+            } else null)
+
+        BreadcrumbSection(
+            book = selectedBook,
+            contentState = contentState,
+            tocState = tocState,
+            navigationState = navigationState,
+            onEvent = onEvent,
+            verticalPadding = 8.dp
+        )
+    }
 }
 
 @Composable
 private fun SelectBookPane(modifier: Modifier = Modifier) {
     Box(
-        modifier = modifier.padding(16.dp).fillMaxSize(),
-        contentAlignment = Alignment.Center
+        modifier = modifier.padding(16.dp).fillMaxSize(), contentAlignment = Alignment.Center
     ) {
         Text(stringResource(Res.string.select_book))
     }
@@ -140,8 +147,7 @@ private fun BookContentPane(
                     scrollOffset = scrollOffset
                 )
             )
-        }
-    )
+        })
 }
 
 @Composable
@@ -150,7 +156,6 @@ private fun CommentsPane(
     buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
     onEvent: (BookContentEvent) -> Unit,
-    modifier: Modifier = Modifier
 ) {
     LineCommentsView(
         selectedLine = contentState.selectedLine,
@@ -167,15 +172,13 @@ private fun CommentsPane(
         onCommentClick = { commentary ->
             onEvent(
                 BookContentEvent.OpenCommentaryTarget(
-                    bookId = commentary.link.targetBookId,
-                    lineId = commentary.link.targetLineId
+                    bookId = commentary.link.targetBookId, lineId = commentary.link.targetLineId
                 )
             )
         },
         onScroll = { index, offset ->
             onEvent(BookContentEvent.CommentariesScrolled(index, offset))
-        }
-    )
+        })
 }
 
 @Composable
@@ -189,9 +192,7 @@ private fun BreadcrumbSection(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(JewelTheme.globalColors.panelBackground)
+        modifier = modifier.fillMaxWidth().background(JewelTheme.globalColors.panelBackground)
     ) {
         HorizontalDivider()
         BreadcrumbView(
@@ -209,9 +210,7 @@ private fun BreadcrumbSection(
             onCategoryClick = { category ->
                 onEvent(BookContentEvent.CategorySelected(category))
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = verticalPadding, horizontal = 16.dp)
+            modifier = Modifier.fillMaxWidth().padding(vertical = verticalPadding, horizontal = 16.dp)
         )
     }
 }

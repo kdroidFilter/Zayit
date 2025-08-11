@@ -64,7 +64,9 @@ fun StartVerticalBar(
 @Composable
 fun EndVerticalBar(
     showCommentaries: Boolean,
-    onToggleCommentaries: () -> Unit
+    onToggleCommentaries: () -> Unit,
+    showLinks: Boolean,
+    onToggleLinks: () -> Unit
 ) {
     // Collect current text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -148,8 +150,8 @@ fun EndVerticalBar(
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.show_links_tooltip),
-                onClick = { },
-                isSelected = false,
+                onClick = onToggleLinks,
+                isSelected = showLinks,
                 icon = Library_books,
                 iconDescription = stringResource(Res.string.show_links),
                 label = stringResource(Res.string.show_links)

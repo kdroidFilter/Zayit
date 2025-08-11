@@ -54,6 +54,7 @@ class BookContentViewModel(
         const val KEY_CONTENT_SPLIT_PANE_POSITION = "contentSplitPanePosition"
         const val KEY_SHOW_TOC = "showToc"
         const val KEY_SHOW_COMMENTARIES = "showCommentaries"
+        const val KEY_SHOW_LINKS = "showLinks"
         const val KEY_PARAGRAPH_SCROLL_POSITION = "paragraphScrollPosition"
         const val KEY_CHAPTER_SCROLL_POSITION = "chapterScrollPosition"
         const val KEY_SELECTED_CHAPTER = "selectedChapter"
@@ -132,6 +133,7 @@ class BookContentViewModel(
 
     private val _commentaries = MutableStateFlow<List<CommentaryWithText>>(emptyList())
     private val _showCommentaries = MutableStateFlow(getState<Boolean>(KEY_SHOW_COMMENTARIES) ?: false)
+    private val _showLinks = MutableStateFlow(getState<Boolean>(KEY_SHOW_LINKS) ?: false)
     private val _paragraphScrollPosition = MutableStateFlow(getState<Int>(KEY_PARAGRAPH_SCROLL_POSITION) ?: 0)
     private val _chapterScrollPosition = MutableStateFlow(getState<Int>(KEY_CHAPTER_SCROLL_POSITION) ?: 0)
     private val _selectedChapter = MutableStateFlow(getState<Int>(KEY_SELECTED_CHAPTER) ?: 0)
@@ -309,6 +311,7 @@ class BookContentViewModel(
             is BookContentEvent.LineSelected -> selectLine(event.line)
             is BookContentEvent.LoadAndSelectLine -> loadAndSelectLine(event.lineId)
             BookContentEvent.ToggleCommentaries -> toggleCommentaries()
+            BookContentEvent.ToggleLinks -> toggleLinks()
             is BookContentEvent.ContentScrolled -> updateContentScrollPosition(
                 event.anchorId, 
                 event.anchorIndex, 
@@ -466,6 +469,9 @@ class BookContentViewModel(
         .combine(_selectedCommentatorsByLine) { content, map ->
             val ids = content.selectedLine?.let { line -> map[line.id] } ?: emptySet()
             content.copy(selectedCommentatorIds = ids)
+        }
+        .combine(_showLinks) { content, showLinks ->
+            content.copy(showLinks = showLinks)
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, ContentUiState())
     }
@@ -1123,6 +1129,11 @@ class BookContentViewModel(
         saveState(KEY_TOC_SPLIT_PANE_POSITION, _tocSplitPaneState.value.positionPercentage)
     }
 
+    private fun toggleLinks() {
+        _showLinks.value = !_showLinks.value
+        saveState(KEY_SHOW_LINKS, _showLinks.value)
+    }
+
     private fun <T : Any> saveStateFromFlow(key: String, stateFlow: StateFlow<T>) {
         saveState(key, stateFlow.value)
     }
@@ -1184,6 +1195,7 @@ class BookContentViewModel(
         saveStateGroup(
             KEY_SEARCH_TEXT to _searchText,
             KEY_SHOW_COMMENTARIES to _showCommentaries,
+            KEY_SHOW_LINKS to _showLinks,
             KEY_SHOW_BOOK_TREE to _showBookTree,
             KEY_SHOW_TOC to _showToc
         )

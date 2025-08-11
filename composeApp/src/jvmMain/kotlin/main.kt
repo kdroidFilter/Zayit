@@ -48,7 +48,7 @@ import java.util.*
 
 @OptIn(ExperimentalFoundationApi::class)
 fun main() {
-//    SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)
+    SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)
     Locale.setDefault(Locale.Builder().setLanguage("he").setRegion("IL").build())
     application {
         val windowState = remember { getCenteredWindowState(1280, 720) }

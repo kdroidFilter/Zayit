@@ -1,5 +1,6 @@
 [versions]
 
+jsoup = "1.17.2"
 kotlin = "2.2.0"
 compose = "1.9.0-beta01"
 agp = "8.10.1"
@@ -18,6 +19,7 @@ buildConfig = "5.6.7"
 materialKolor = "2.1.1"
 jewel = "0.29.0-252.24604"
 jna = "5.17.0"
+pagingComposeCommon = "3.3.0-alpha02-0.5.1"
 platformtools = "0.5.0"
 composenativetray = "0.7.0"
 kotlinx-coroutines = "1.10.2"
@@ -26,12 +28,15 @@ maven-publish = "0.34.0"
 sqlDelight = "2.1.0"
 adaptiveNavigation = "1.1.2"
 navigationCompose = "2.9.0-beta04"
+sqliteDriver = "2.1.0"
 
 [libraries]
 
 androidx-activityCompose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
 androidx-uitest-testManifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "androidx-uiTest" }
 androidx-uitest-junit4 = { module = "androidx.compose.ui:ui-test-junit4", version.ref = "androidx-uiTest" }
+jdbc-driver = { module = "app.cash.sqldelight:jdbc-driver", version.ref = "sqliteDriver" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
@@ -61,6 +66,7 @@ jewel-int-ui-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-dec
 jewel-int-ui-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
 jewel-ui = { module = "org.jetbrains.jewel:jewel-ui", version.ref = "jewel" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+paging-compose-common = { module = "app.cash.paging:paging-compose-common", version.ref = "pagingComposeCommon" }
 platformtools-core = { module = "io.github.kdroidfilter:platformtools.core", version.ref = "platformtools" }
 platformtools-darkmodedetector = { module = "io.github.kdroidfilter:platformtools.darkmodedetector", version.ref = "platformtools" }
 platformtools-rtlwindows = { module = "io.github.kdroidfilter:platformtools.rtlwindows", version.ref = "platformtools" }
@@ -73,6 +79,7 @@ adaptive-layout = { module = "org.jetbrains.compose.material3.adaptive:adaptive-
 adaptive-navigation = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation", version.ref = "adaptiveNavigation" }
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 split-pane-desktop = { module = "org.jetbrains.compose.components:components-splitpane-desktop", version.ref = "compose"}
+sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqliteDriver" }
 
 [plugins]
 

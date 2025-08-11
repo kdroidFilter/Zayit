@@ -57,7 +57,7 @@ kotlin {
             implementation("io.github.kdroidfilter.seforimlibrary:dao")
 //            implementation("com.github.luben:zstd-jni:1.5.7-4")
 
-            implementation("app.cash.paging:paging-compose-common:3.3.0-alpha02-0.5.1")
+            implementation(libs.paging.compose.common)
         }
 
         commonTest.dependencies {
@@ -88,9 +88,9 @@ kotlin {
             implementation(libs.split.pane.desktop)
             api(project(":jewel"))
 
-            implementation("app.cash.sqldelight:sqlite-driver:2.1.0")
-            implementation("app.cash.sqldelight:jdbc-driver:2.1.0")
-            implementation("org.jsoup:jsoup:1.17.2")
+            implementation(libs.sqlite.driver)
+            implementation(libs.jdbc.driver)
+            implementation(libs.jsoup)
 
         }
 

@@ -3,17 +3,13 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compon
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.lazy.grid.GridCells.Adaptive
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,12 +34,7 @@ import org.jetbrains.compose.splitpane.rememberSplitPaneState
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.RadioButtonChip
 import org.jetbrains.jewel.ui.component.Text
-import seforimapp.composeapp.generated.resources.Res
-import seforimapp.composeapp.generated.resources.links
-import seforimapp.composeapp.generated.resources.notorashihebrew
-import seforimapp.composeapp.generated.resources.no_links_for_line
-import seforimapp.composeapp.generated.resources.select_at_least_one_source
-import seforimapp.composeapp.generated.resources.select_line_for_links
+import seforimapp.composeapp.generated.resources.*
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -126,13 +117,6 @@ fun LineLinksView(
                         splitPaneState = splitState,
                         firstMinSize = 120f,
                         firstContent = {
-                            ChipsSourcesListView(
-                                sources = availableSources,
-                                selected = selectedSource,
-                                onSelected = { name -> selectedSource = name }
-                            )
-                        },
-                        secondContent = {
                             val id = selectedSource?.let { titleToIdMap[it] }
                             if (id == null) {
                                 CenteredMessage(message = stringResource(Res.string.select_at_least_one_source))
@@ -150,6 +134,13 @@ fun LineLinksView(
                                     lineHeight = lineHeight
                                 )
                             }
+                        },
+                        secondContent = {
+                            ChipsSourcesListView(
+                                sources = availableSources,
+                                selected = selectedSource,
+                                onSelected = { name -> selectedSource = name }
+                            )
                         }
                     )
                 }
@@ -240,7 +231,7 @@ private fun PagedLinksList(
                         Text(
                             text = item.targetText,
                             textAlign = TextAlign.Justify,
-                            fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew)),
+                            fontFamily = FontFamily(Font(resource = Res.font.frankruhllibre)),
                             fontSize = commentTextSize.sp,
                             lineHeight = (commentTextSize * lineHeight).sp
                         )

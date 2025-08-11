@@ -29,6 +29,7 @@ sqlDelight = "2.1.0"
 adaptiveNavigation = "1.1.2"
 navigationCompose = "2.9.0-beta04"
 sqliteDriver = "2.1.0"
+zstdJni = "1.5.7-4"
 
 [libraries]
 
@@ -80,6 +81,7 @@ adaptive-navigation = { module = "org.jetbrains.compose.material3.adaptive:adapt
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 split-pane-desktop = { module = "org.jetbrains.compose.components:components-splitpane-desktop", version.ref = "compose"}
 sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqliteDriver" }
+zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstdJni" }
 
 [plugins]
 

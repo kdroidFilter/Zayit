@@ -55,7 +55,6 @@ kotlin {
             implementation(libs.platformtools.darkmodedetector)
             implementation("io.github.kdroidfilter.seforimlibrary:core")
             implementation("io.github.kdroidfilter.seforimlibrary:dao")
-//            implementation("com.github.luben:zstd-jni:1.5.7-4")
 
             implementation(libs.paging.compose.common)
         }
@@ -87,6 +86,7 @@ kotlin {
             implementation(libs.slf4j.simple)
             implementation(libs.split.pane.desktop)
             api(project(":jewel"))
+            implementation(libs.zstd.jni)
 
             implementation(libs.sqlite.driver)
             implementation(libs.jdbc.driver)

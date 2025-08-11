@@ -57,22 +57,18 @@ import seforimapp.composeapp.generated.resources.add_tab
 @Composable
 fun Modifier.verticalWheelToHorizontal(
     scrollState: ScrollState,
-    multiplier: Float = 80f // 60–120 feels good on desktop wheels/trackpads
+    multiplier: Float = 80f
 ): Modifier {
     val scope = rememberCoroutineScope()
     return this.onPointerEvent(PointerEventType.Scroll) { event ->
         val dy = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
         if (dy != 0f) {
-            // In RTL, flip the direction so the wheel feels natural
-            val dir =  1f
-            scope.launch {
-                // immediate scroll (no easing), with a sensible gain
-                scrollState.scrollBy(dy * multiplier * dir)
-            }
+            scope.launch { scrollState.scrollBy(dy * multiplier) }
             event.changes.forEach { it.consume() }
         }
     }
 }
+
 
 @Composable
 fun TabsView() {
@@ -213,25 +209,25 @@ private fun RtlAwareTabStripWithAddButton(
     tabs: List<TabData>,
     style: TabStyle,
     isRtl: Boolean,
-    newTabAdded: Boolean,
+    newTabAdded: Boolean, // <- tu peux supprimer ce param si tu veux
     onAddClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
-    val selectedIndex = tabs.indexOfFirst { it.selected }
 
-    // Auto-scroll when a new tab is added
-    LaunchedEffect(newTabAdded) {
-        if (newTabAdded) {
-            delay(100) // Allow layout to complete
-            if (isRtl) {
-                // In RTL, new tab appears at the beginning (left) of the reversed list
-                // We need to scroll to the end (maxValue) to see it
-                scrollState.animateScrollTo(scrollState.maxValue)
-            } else {
-                // In LTR, new tab appears at the end (right)
-                // We need to scroll to the end (maxValue) to see it
-                scrollState.animateScrollTo(scrollState.maxValue)
-            }
+    // On mémorise la taille précédente côté strip
+    var lastCount by remember { mutableStateOf(tabs.size) }
+
+    LaunchedEffect(tabs.size, isRtl) {
+        val added = tabs.size > lastCount
+        lastCount = tabs.size
+        if (added) {
+            // attendre que le layout mette à jour maxValue
+            withFrameNanos { }
+            // si première frame = maxValue encore 0, attendre encore une frame
+            if (scrollState.maxValue == 0) withFrameNanos { }
+
+            val target = scrollState.maxValue
+            scrollState.animateScrollTo(target)
         }
     }
 
@@ -239,7 +235,6 @@ private fun RtlAwareTabStripWithAddButton(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Add button on the left for RTL
         if (isRtl) {
             TitleBarActionButton(
                 onClick = onAddClick,
@@ -249,7 +244,6 @@ private fun RtlAwareTabStripWithAddButton(
             )
         }
 
-        // Custom Tab strip that handles RTL properly
         RtlAwareTabStripContent(
             tabs = tabs,
             style = style,
@@ -266,7 +260,6 @@ private fun RtlAwareTabStripWithAddButton(
             color = JewelTheme.globalColors.borders.disabled
         )
 
-        // Add button on the right for LTR
         if (!isRtl) {
             TitleBarActionButton(
                 onClick = onAddClick,
@@ -277,6 +270,7 @@ private fun RtlAwareTabStripWithAddButton(
         }
     }
 }
+
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable

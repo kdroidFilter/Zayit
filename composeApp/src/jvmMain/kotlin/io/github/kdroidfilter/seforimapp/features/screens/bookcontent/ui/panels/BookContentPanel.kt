@@ -198,8 +198,12 @@ private fun LinksPane(
         getAvailableLinksForLine = getAvailableLinksForLine,
         commentariesScrollIndex = contentState.commentariesScrollIndex,
         commentariesScrollOffset = contentState.commentariesScrollOffset,
-        initiallySelectedSourceIds = emptySet(),
-        onSelectedSourcesChange = { _ -> /* no-op for links */ },
+        initiallySelectedSourceIds = contentState.selectedLinkSourceIds,
+        onSelectedSourcesChange = { ids ->
+            contentState.selectedLine?.let { line ->
+                onEvent(BookContentEvent.SelectedLinksSourcesChanged(line.id, ids))
+            }
+        },
         onLinkClick = { commentary ->
             onEvent(
                 BookContentEvent.OpenCommentaryTarget(

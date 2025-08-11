@@ -85,6 +85,8 @@ class BookContentViewModel(
         const val KEY_COMMENTARIES_SCROLL_OFFSET = "commentariesScrollOffset"
         const val KEY_SELECTED_COMMENTATORS_BY_LINE = "selectedCommentatorsByLine"
         const val KEY_SELECTED_COMMENTATORS_BY_BOOK = "selectedCommentatorsByBook"
+        const val KEY_SELECTED_LINK_SOURCES_BY_LINE = "selectedLinkSourcesByLine"
+        const val KEY_SELECTED_LINK_SOURCES_BY_BOOK = "selectedLinkSourcesByBook"
 
     }
 
@@ -166,6 +168,16 @@ class BookContentViewModel(
     // Selected commentators per book (bookId -> set of commentator bookIds)
     private val _selectedCommentatorsByBook = MutableStateFlow<Map<Long, Set<Long>>>(
         getState(KEY_SELECTED_COMMENTATORS_BY_BOOK) ?: emptyMap()
+    )
+
+    // Selected link sources per line (lineId -> set of source bookIds)
+    private val _selectedLinkSourcesByLine = MutableStateFlow<Map<Long, Set<Long>>>(
+        getState(KEY_SELECTED_LINK_SOURCES_BY_LINE) ?: emptyMap()
+    )
+
+    // Selected link sources per book (bookId -> set of source bookIds)
+    private val _selectedLinkSourcesByBook = MutableStateFlow<Map<Long, Set<Long>>>(
+        getState(KEY_SELECTED_LINK_SOURCES_BY_BOOK) ?: emptyMap()
     )
 
     // Paging data flow for lines
@@ -346,6 +358,7 @@ class BookContentViewModel(
             is BookContentEvent.CommentariesTabSelected -> updateCommentariesTabIndex(event.index)
             is BookContentEvent.CommentariesScrolled -> updateCommentariesScrollPosition(event.index, event.offset)
             is BookContentEvent.SelectedCommentatorsChanged -> updateSelectedCommentators(event.lineId, event.selectedIds)
+            is BookContentEvent.SelectedLinksSourcesChanged -> updateSelectedLinkSources(event.lineId, event.selectedIds)
 
             // Scroll events
             is BookContentEvent.ParagraphScrolled -> updateParagraphScrollPosition(event.position)
@@ -482,6 +495,10 @@ class BookContentViewModel(
         }
         .combine(_showLinks) { content, showLinks ->
             content.copy(showLinks = showLinks)
+        }
+        .combine(_selectedLinkSourcesByLine) { content, map ->
+            val ids = content.selectedLine?.let { line -> map[line.id] } ?: emptySet()
+            content.copy(selectedLinkSourceIds = ids)
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, ContentUiState())
     }
@@ -757,6 +774,8 @@ class BookContentViewModel(
         fetchCommentariesForLine(line)
         // Reapply previously selected commentators for this book on this new line
         reapplySelectedCommentatorsForLine(line)
+        // Reapply previously selected link sources for this book on this new line
+        reapplySelectedLinksForLine(line)
 
         // Save selected line
         saveState(KEY_SELECTED_LINE, line)
@@ -801,6 +820,41 @@ class BookContentViewModel(
                 saveState(KEY_SELECTED_COMMENTATORS_BY_BOOK, byBook)
             } catch (e: Exception) {
                 // ignore errors silently; selection memory is best-effort
+            }
+        }
+    }
+
+    // Reapply previously selected link sources (per-book) for a newly selected line
+    private fun reapplySelectedLinksForLine(line: Line) {
+        val bookId = _selectedBook.value?.id ?: line.bookId
+        val remembered = _selectedLinkSourcesByBook.value[bookId] ?: emptySet()
+        if (remembered.isEmpty()) return
+
+        viewModelScope.launch {
+            try {
+                val availableMap = getAvailableLinksForLine(line.id)
+                val availableIds = availableMap.values.toSet()
+                val intersection = remembered.intersect(availableIds)
+
+                val byLine = _selectedLinkSourcesByLine.value.toMutableMap()
+                if (intersection.isEmpty()) {
+                    byLine.remove(line.id)
+                } else {
+                    byLine[line.id] = intersection
+                }
+                _selectedLinkSourcesByLine.value = byLine
+                saveState(KEY_SELECTED_LINK_SOURCES_BY_LINE, byLine)
+
+                val byBook = _selectedLinkSourcesByBook.value.toMutableMap()
+                if (intersection.isEmpty()) {
+                    byBook.remove(bookId)
+                } else {
+                    byBook[bookId] = intersection
+                }
+                _selectedLinkSourcesByBook.value = byBook
+                saveState(KEY_SELECTED_LINK_SOURCES_BY_BOOK, byBook)
+            } catch (e: Exception) {
+                // ignore errors silently
             }
         }
     }
@@ -894,7 +948,9 @@ class BookContentViewModel(
                 fetchCommentariesForLine(targetLine)
                 // Reapply previously selected commentators for this book on this new line
                 reapplySelectedCommentatorsForLine(targetLine)
-                
+                // Reapply previously selected link sources for this book on this new line
+                reapplySelectedLinksForLine(targetLine)
+                    
                 // Update timestamp to force scroll
                 _scrollToLineTimestamp.value = System.currentTimeMillis()
             }
@@ -1015,6 +1071,32 @@ class BookContentViewModel(
                 }
                 _selectedCommentatorsByBook.value = byBook
                 saveState(KEY_SELECTED_COMMENTATORS_BY_BOOK, byBook)
+            }
+        }
+    }
+
+    private fun updateSelectedLinkSources(lineId: Long, selectedIds: Set<Long>) {
+        // Update per-line selection for links
+        val current = _selectedLinkSourcesByLine.value.toMutableMap()
+        if (selectedIds.isEmpty()) {
+            current.remove(lineId)
+        } else {
+            current[lineId] = selectedIds
+        }
+        _selectedLinkSourcesByLine.value = current
+        saveState(KEY_SELECTED_LINK_SOURCES_BY_LINE, current)
+
+        // Update per-book memory
+        _selectedBook.value?.let { book ->
+            viewModelScope.launch {
+                val byBook = _selectedLinkSourcesByBook.value.toMutableMap()
+                if (selectedIds.isEmpty()) {
+                    byBook.remove(book.id)
+                } else {
+                    byBook[book.id] = selectedIds
+                }
+                _selectedLinkSourcesByBook.value = byBook
+                saveState(KEY_SELECTED_LINK_SOURCES_BY_BOOK, byBook)
             }
         }
     }
@@ -1263,7 +1345,9 @@ class BookContentViewModel(
             KEY_COMMENTARIES_SCROLL_INDEX to _commentariesScrollIndex,
             KEY_COMMENTARIES_SCROLL_OFFSET to _commentariesScrollOffset,
             KEY_SELECTED_COMMENTATORS_BY_LINE to _selectedCommentatorsByLine,
-            KEY_SELECTED_COMMENTATORS_BY_BOOK to _selectedCommentatorsByBook
+            KEY_SELECTED_COMMENTATORS_BY_BOOK to _selectedCommentatorsByBook,
+            KEY_SELECTED_LINK_SOURCES_BY_LINE to _selectedLinkSourcesByLine,
+            KEY_SELECTED_LINK_SOURCES_BY_BOOK to _selectedLinkSourcesByBook
         )
 
         // Save UI state - visibility flags and text

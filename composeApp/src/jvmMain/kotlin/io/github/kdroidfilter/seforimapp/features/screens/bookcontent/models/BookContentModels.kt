@@ -41,26 +41,27 @@ data class TocUiState(
  * UI state for book content
  */
 @Immutable
-data class ContentUiState(
-    val lines: List<Line> = emptyList(),
-    val selectedLine: Line? = null,
-    val commentaries: List<CommentaryWithText> = emptyList(),
-    val showCommentaries: Boolean = false,
-    val showLinks : Boolean = false,
-    val paragraphScrollPosition: Int = 0,
-    val chapterScrollPosition: Int = 0,
-    val selectedChapter: Int = 0,
-    val scrollIndex: Int = 0,
-    val scrollOffset: Int = 0,
-    val anchorId: Long = -1L,
-    val anchorIndex: Int = 0,
-    val commentariesSelectedTab: Int = 0,
-    val commentariesScrollIndex: Int = 0,
-    val commentariesScrollOffset: Int = 0,
-    val selectedCommentatorIds: Set<Long> = emptySet(),
-    val shouldScrollToLine: Boolean = false,
-    val scrollToLineTimestamp: Long = 0
-)
+ data class ContentUiState(
+     val lines: List<Line> = emptyList(),
+     val selectedLine: Line? = null,
+     val commentaries: List<CommentaryWithText> = emptyList(),
+     val showCommentaries: Boolean = false,
+     val showLinks : Boolean = false,
+     val paragraphScrollPosition: Int = 0,
+     val chapterScrollPosition: Int = 0,
+     val selectedChapter: Int = 0,
+     val scrollIndex: Int = 0,
+     val scrollOffset: Int = 0,
+     val anchorId: Long = -1L,
+     val anchorIndex: Int = 0,
+     val commentariesSelectedTab: Int = 0,
+     val commentariesScrollIndex: Int = 0,
+     val commentariesScrollOffset: Int = 0,
+     val selectedCommentatorIds: Set<Long> = emptySet(),
+     val selectedLinkSourceIds: Set<Long> = emptySet(),
+     val shouldScrollToLine: Boolean = false,
+     val scrollToLineTimestamp: Long = 0
+ )
 
 /**
  * UI state for layout configuration

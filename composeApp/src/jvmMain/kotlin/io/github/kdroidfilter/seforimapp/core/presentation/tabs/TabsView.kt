@@ -6,12 +6,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.*
@@ -34,10 +32,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
-import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalDivider
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.BookOpenTabs
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -55,6 +51,7 @@ import seforimapp.composeapp.generated.resources.add_tab
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
+@Stable
 fun Modifier.verticalWheelToHorizontal(
     scrollState: ScrollState,
     multiplier: Float = 80f
@@ -209,7 +206,7 @@ private fun RtlAwareTabStripWithAddButton(
     tabs: List<TabData>,
     style: TabStyle,
     isRtl: Boolean,
-    newTabAdded: Boolean, // <- tu peux supprimer ce param si tu veux
+    newTabAdded: Boolean,
     onAddClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()

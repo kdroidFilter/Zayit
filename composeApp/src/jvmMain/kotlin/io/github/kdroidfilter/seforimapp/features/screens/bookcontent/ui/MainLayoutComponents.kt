@@ -31,6 +31,8 @@ fun MainBookContentLayout(
     linesPagingData: Flow<PagingData<Line>>, // Paging data flow for lines
     buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
+    buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
     onEvent: (BookContentEvent) -> Unit
 ) {
     // Save split pane positions with debounce - only when panels are visible
@@ -57,6 +59,15 @@ fun MainBookContentLayout(
             snapshotFlow { uiState.layout.contentSplitState.positionPercentage }
                 .debounce(300)
                 .filter { it > 0 && it < 1 } // Only save non-zero and non-one positions
+                .collect { onEvent(BookContentEvent.SaveState) }
+        }
+    }
+
+    LaunchedEffect(uiState.layout.linksSplitState, uiState.content.showLinks) {
+        if (uiState.content.showLinks) {
+            snapshotFlow { uiState.layout.linksSplitState.positionPercentage }
+                .debounce(300)
+                .filter { it > 0 && it < 1 }
                 .collect { onEvent(BookContentEvent.SaveState) }
         }
     }
@@ -107,10 +118,13 @@ fun MainBookContentLayout(
                             linesPagingData = linesPagingData, // Pass paging data
                             buildCommentariesPagerFor = buildCommentariesPagerFor,
                             getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
+                            buildLinksPagerFor = buildLinksPagerFor,
+                            getAvailableLinksForLine = getAvailableLinksForLine,
                             contentState = uiState.content,
                             tocState = uiState.toc,
                             navigationState = uiState.navigation,
                             verticalContentSplitState = uiState.layout.contentSplitState,
+                            horizontalLinksSplitState = uiState.layout.linksSplitState,
                             onEvent = onEvent
                         )
                     }

@@ -69,7 +69,8 @@ data class ContentUiState(
 data class LayoutUiState @OptIn(ExperimentalSplitPaneApi::class) constructor(
     val mainSplitState: SplitPaneState,
     val tocSplitState: SplitPaneState,
-    val contentSplitState: SplitPaneState
+    val contentSplitState: SplitPaneState,
+    val linksSplitState: SplitPaneState
 )
 
 /**

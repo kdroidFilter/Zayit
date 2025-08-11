@@ -52,6 +52,7 @@ class BookContentViewModel(
         const val KEY_SPLIT_PANE_POSITION = "splitPanePosition"
         const val KEY_TOC_SPLIT_PANE_POSITION = "tocSplitPanePosition"
         const val KEY_CONTENT_SPLIT_PANE_POSITION = "contentSplitPanePosition"
+        const val KEY_LINKS_SPLIT_PANE_POSITION = "linksSplitPanePosition"
         const val KEY_SHOW_TOC = "showToc"
         const val KEY_SHOW_COMMENTARIES = "showCommentaries"
         const val KEY_SHOW_LINKS = "showLinks"
@@ -70,6 +71,7 @@ class BookContentViewModel(
         const val KEY_PREVIOUS_MAIN_SPLIT_POSITION = "previousMainSplitPosition"
         const val KEY_PREVIOUS_TOC_SPLIT_POSITION = "previousTocSplitPosition"
         const val KEY_PREVIOUS_CONTENT_SPLIT_POSITION = "previousContentSplitPosition"
+        const val KEY_PREVIOUS_LINKS_SPLIT_POSITION = "previousLinksSplitPosition"
         const val KEY_TOC_SCROLL_INDEX = "tocScrollIndex"
         const val KEY_TOC_SCROLL_OFFSET = "tocScrollOffset"
         const val KEY_BOOK_TREE_SCROLL_INDEX = "bookTreeScrollIndex"
@@ -119,6 +121,14 @@ class BookContentViewModel(
     private val _contentSplitPaneState = MutableStateFlow(
         SplitPaneState(
             initialPositionPercentage = getState<Float>(KEY_CONTENT_SPLIT_PANE_POSITION) ?: 0.9f,
+            moveEnabled = true
+        )
+    )
+
+    @OptIn(ExperimentalSplitPaneApi::class)
+    private val _linksSplitPaneState = MutableStateFlow(
+        SplitPaneState(
+            initialPositionPercentage = getState<Float>(KEY_LINKS_SPLIT_PANE_POSITION) ?: 0.8f,
             moveEnabled = true
         )
     )
@@ -495,10 +505,13 @@ class BookContentViewModel(
         return _splitPaneState.combine(_tocSplitPaneState) { main, toc ->
             Pair(main, toc)
         }.combine(_contentSplitPaneState) { (main, toc), content ->
+            Triple(main, toc, content)
+        }.combine(_linksSplitPaneState) { (main, toc, content), links ->
             LayoutUiState(
                 mainSplitState = main,
                 tocSplitState = toc,
-                contentSplitState = content
+                contentSplitState = content,
+                linksSplitState = links
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, createInitialLayoutState())
     }
@@ -515,6 +528,10 @@ class BookContentViewModel(
         ),
         contentSplitState = SplitPaneState(
             initialPositionPercentage = getState<Float>(KEY_CONTENT_SPLIT_PANE_POSITION) ?: 0.7f,
+            moveEnabled = true
+        ),
+        linksSplitState = SplitPaneState(
+            initialPositionPercentage = getState<Float>(KEY_LINKS_SPLIT_PANE_POSITION) ?: 0.8f,
             moveEnabled = true
         )
     )
@@ -799,10 +816,43 @@ class BookContentViewModel(
         return pager.flow.cachedIn(viewModelScope)
     }
 
+    // Build a pager for non-commentary links (REFERENCE, OTHER)
+    fun buildLinksPagerFor(lineId: Long, sourceBookId: Long? = null): Flow<PagingData<CommentaryWithText>> {
+        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+        val pager = Pager(
+            config = PagingDefaults.COMMENTS.config(placeholders = false),
+            pagingSourceFactory = {
+                io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.LineLinksPagingSource(repository, lineId, ids)
+            }
+        )
+        return pager.flow.cachedIn(viewModelScope)
+    }
+
     suspend fun getAvailableCommentatorsForLine(lineId: Long): Map<String, Long> {
         return try {
             val list = repository.getCommentariesForLines(listOf(lineId))
                 .filter { it.link.connectionType == io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType.COMMENTARY }
+            val map = LinkedHashMap<String, Long>()
+            list.forEach { c ->
+                if (!map.containsKey(c.targetBookTitle)) {
+                    map[c.targetBookTitle] = c.link.targetBookId
+                }
+            }
+            map
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    // Available link sources (REFERENCE, OTHER) for a specific line
+    suspend fun getAvailableLinksForLine(lineId: Long): Map<String, Long> {
+        return try {
+            val list = repository.getCommentariesForLines(listOf(lineId))
+                .filter {
+                    val t = it.link.connectionType
+                    t == io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType.REFERENCE ||
+                        t == io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType.OTHER
+                }
             val map = LinkedHashMap<String, Long>()
             list.forEach { c ->
                 if (!map.containsKey(c.targetBookTitle)) {
@@ -1071,6 +1121,7 @@ class BookContentViewModel(
     private val _previousMainSplitPosition = MutableStateFlow(getState<Float>(KEY_PREVIOUS_MAIN_SPLIT_POSITION) ?: 0.3f)
     private val _previousTocSplitPosition = MutableStateFlow(getState<Float>(KEY_PREVIOUS_TOC_SPLIT_POSITION) ?: 0.3f)
     private val _previousContentSplitPosition = MutableStateFlow(getState<Float>(KEY_PREVIOUS_CONTENT_SPLIT_POSITION) ?: 0.7f)
+    private val _previousLinksSplitPosition = MutableStateFlow(getState<Float>(KEY_PREVIOUS_LINKS_SPLIT_POSITION) ?: 0.8f)
 
     private fun toggleBookTree() {
         val isCurrentlyVisible = _showBookTree.value
@@ -1129,9 +1180,31 @@ class BookContentViewModel(
         saveState(KEY_TOC_SPLIT_PANE_POSITION, _tocSplitPaneState.value.positionPercentage)
     }
 
+    @OptIn(ExperimentalSplitPaneApi::class)
     private fun toggleLinks() {
         _showLinks.value = !_showLinks.value
+
+        // Manage links split pane state based on visibility
+        if (_showLinks.value) {
+            _linksSplitPaneState.value = SplitPaneState(
+                initialPositionPercentage = _previousLinksSplitPosition.value,
+                moveEnabled = true
+            )
+        } else {
+            // Save current position before hiding
+            if (_linksSplitPaneState.value.positionPercentage > 0) {
+                _previousLinksSplitPosition.value = _linksSplitPaneState.value.positionPercentage
+                saveState(KEY_PREVIOUS_LINKS_SPLIT_POSITION, _previousLinksSplitPosition.value)
+            }
+            // Collapse the links panel and disable movement
+            _linksSplitPaneState.value = SplitPaneState(
+                initialPositionPercentage = 0.95f,
+                moveEnabled = false
+            )
+        }
+
         saveState(KEY_SHOW_LINKS, _showLinks.value)
+        saveState(KEY_LINKS_SPLIT_PANE_POSITION, _linksSplitPaneState.value.positionPercentage)
     }
 
     private fun <T : Any> saveStateFromFlow(key: String, stateFlow: StateFlow<T>) {
@@ -1163,14 +1236,16 @@ class BookContentViewModel(
         saveStateGroup(
             KEY_SPLIT_PANE_POSITION to _splitPaneState.map { it.positionPercentage }.stateIn(viewModelScope, SharingStarted.Eagerly, 0.3f),
             KEY_TOC_SPLIT_PANE_POSITION to _tocSplitPaneState.map { it.positionPercentage }.stateIn(viewModelScope, SharingStarted.Eagerly, 0.3f),
-            KEY_CONTENT_SPLIT_PANE_POSITION to _contentSplitPaneState.map { it.positionPercentage }.stateIn(viewModelScope, SharingStarted.Eagerly, 0.7f)
+            KEY_CONTENT_SPLIT_PANE_POSITION to _contentSplitPaneState.map { it.positionPercentage }.stateIn(viewModelScope, SharingStarted.Eagerly, 0.7f),
+            KEY_LINKS_SPLIT_PANE_POSITION to _linksSplitPaneState.map { it.positionPercentage }.stateIn(viewModelScope, SharingStarted.Eagerly, 0.8f)
         )
 
         // Save previous split pane positions
         saveStateGroup(
             KEY_PREVIOUS_MAIN_SPLIT_POSITION to _previousMainSplitPosition,
             KEY_PREVIOUS_TOC_SPLIT_POSITION to _previousTocSplitPosition,
-            KEY_PREVIOUS_CONTENT_SPLIT_POSITION to _previousContentSplitPosition
+            KEY_PREVIOUS_CONTENT_SPLIT_POSITION to _previousContentSplitPosition,
+            KEY_PREVIOUS_LINKS_SPLIT_POSITION to _previousLinksSplitPosition
         )
 
         // Save UI state - scroll positions

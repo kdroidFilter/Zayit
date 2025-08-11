@@ -20,6 +20,7 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compone
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedVerticalSplitPane
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.LineCommentsView
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.LineLinksView
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
@@ -40,10 +41,13 @@ fun BookContentPanel(
     linesPagingData: Flow<PagingData<Line>>, // Paging data flow for lines
     buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
+    buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
     contentState: ContentUiState,
     tocState: TocUiState,
     navigationState: NavigationUiState,
     verticalContentSplitState: SplitPaneState,
+    horizontalLinksSplitState: SplitPaneState,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -63,7 +67,7 @@ fun BookContentPanel(
             modifier = Modifier.weight(1f),
             firstContent = {
                 EnhancedHorizontalSplitPane(
-                    verticalContentSplitState, firstContent = {
+                    horizontalLinksSplitState, firstContent = {
                     BookContentPane(
                         book = selectedBook,
                         linesPagingData = linesPagingData,
@@ -74,10 +78,10 @@ fun BookContentPanel(
                     )
                 }, secondContent = if (contentState.showLinks) {
                     {
-                        CommentsPane(
+                        LinksPane(
                             contentState = contentState,
-                            buildCommentariesPagerFor = buildCommentariesPagerFor,
-                            getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
+                            buildLinksPagerFor = buildLinksPagerFor,
+                            getAvailableLinksForLine = getAvailableLinksForLine,
                             onEvent = onEvent
                         )
                     }
@@ -170,6 +174,33 @@ private fun CommentsPane(
             }
         },
         onCommentClick = { commentary ->
+            onEvent(
+                BookContentEvent.OpenCommentaryTarget(
+                    bookId = commentary.link.targetBookId, lineId = commentary.link.targetLineId
+                )
+            )
+        },
+        onScroll = { index, offset ->
+            onEvent(BookContentEvent.CommentariesScrolled(index, offset))
+        })
+}
+
+@Composable
+private fun LinksPane(
+    contentState: ContentUiState,
+    buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
+    onEvent: (BookContentEvent) -> Unit,
+) {
+    LineLinksView(
+        selectedLine = contentState.selectedLine,
+        buildLinksPagerFor = buildLinksPagerFor,
+        getAvailableLinksForLine = getAvailableLinksForLine,
+        commentariesScrollIndex = contentState.commentariesScrollIndex,
+        commentariesScrollOffset = contentState.commentariesScrollOffset,
+        initiallySelectedSourceIds = emptySet(),
+        onSelectedSourcesChange = { _ -> /* no-op for links */ },
+        onLinkClick = { commentary ->
             onEvent(
                 BookContentEvent.OpenCommentaryTarget(
                     bookId = commentary.link.targetBookId, lineId = commentary.link.targetLineId

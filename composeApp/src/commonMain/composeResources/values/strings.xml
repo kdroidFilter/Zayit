@@ -71,4 +71,11 @@
     <string name="select_between_1_and_4_commentators">אנא בחר בין 1 ל-4 פרשנים</string>
     <string name="max_commentators_limit">ניתן לבחור עד 4 פרשנים בלבד</string>
     <string name="no_commentators_available">אין פרשנים זמינים</string>
+
+    <!-- Line Links View (special links strings) -->
+    <string name="links">קישורים</string>
+    <string name="select_line_for_links">בחר שורה כדי לצפות בקישורים שלה</string>
+    <string name="no_links_for_line">אין קישורים זמינים לשורה זו</string>
+    <string name="select_at_least_one_source">אנא בחר לפחות מקור אחד מהרשימה</string>
+    <string name="max_sources_limit">ניתן לבחור עד 4 מקורות בלבד</string>
 </resources>

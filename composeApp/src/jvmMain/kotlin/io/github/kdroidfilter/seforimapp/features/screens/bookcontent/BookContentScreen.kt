@@ -14,6 +14,8 @@ fun BookContentScreen() {
         linesPagingData = viewModel.linesPagingData, // Pass the lines paging data flow
         buildCommentariesPagerFor = viewModel::buildCommentariesPagerFor,
         getAvailableCommentatorsForLine = viewModel::getAvailableCommentatorsForLine,
+        buildLinksPagerFor = viewModel::buildLinksPagerFor,
+        getAvailableLinksForLine = viewModel::getAvailableLinksForLine,
         onEvent = viewModel::onEvent
     )
 }

@@ -23,8 +23,16 @@ fun EnhancedHorizontalSplitPane(
     firstMinSize: Float = 200f,
     secondMinSize: Float = 200f,
     firstContent: @Composable BoxScope.() -> Unit,
-    secondContent: @Composable BoxScope.() -> Unit
+    secondContent: (@Composable BoxScope.() -> Unit)?
 ) {
+    if (secondContent == null) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            content = firstContent
+        )
+        return
+    }
+
     HorizontalSplitPane(
         splitPaneState = splitPaneState,
         modifier = modifier
@@ -71,8 +79,16 @@ fun EnhancedVerticalSplitPane(
     firstMinSize: Float = 200f,
     secondMinSize: Float = 200f,
     firstContent: @Composable BoxScope.() -> Unit,
-    secondContent: @Composable BoxScope.() -> Unit
+    secondContent: (@Composable BoxScope.() -> Unit)?
 ) {
+    if (secondContent == null) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            content = firstContent
+        )
+        return
+    }
+
     VerticalSplitPane(
         splitPaneState = splitPaneState,
         modifier = modifier

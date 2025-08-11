@@ -50,58 +50,38 @@ fun BookContentPanel(
     // Preserve LazyListState across recompositions
     val bookListState = remember(selectedBook?.id) { LazyListState() }
 
-
     when {
         selectedBook == null -> {
             SelectBookPane(modifier)
         }
-        contentState.showCommentaries -> {
-            Column(modifier = modifier.fillMaxSize()) {
-                // Main content with commentaries
-                EnhancedVerticalSplitPane(
-                    splitPaneState = contentSplitState,
-                    modifier = Modifier.weight(1f),
-                    firstContent = {
-                        BookContentPane(
-                            book = selectedBook,
-                            linesPagingData = linesPagingData,
-                            contentState = contentState,
-                            onEvent = onEvent,
-                            preservedListState = bookListState,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    },
-                    secondContent = {
-                        CommentsPane(
-                            contentState = contentState,
-                            buildCommentariesPagerFor = buildCommentariesPagerFor,
-                            getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
-                            onEvent = onEvent
-                        )
-                    }
-                )
 
-                BreadcrumbSection(
-                    book = selectedBook!!,
-                    contentState = contentState,
-                    tocState = tocState,
-                    navigationState = navigationState,
-                    onEvent = onEvent,
-                    verticalPadding = 0.dp
-                )
-            }
-        }
         else -> {
             Column(modifier = modifier.fillMaxSize()) {
-                // Main content
-                BookContentPane(
-                    book = selectedBook!!,
-                    linesPagingData = linesPagingData,
-                    contentState = contentState,
-                    onEvent = onEvent,
-                    preservedListState = bookListState,
-                    modifier = Modifier.weight(1f).padding(16.dp)
-                )
+
+                    EnhancedVerticalSplitPane(
+                        splitPaneState = contentSplitState,
+                        modifier = Modifier.weight(1f),
+                        firstContent = {
+                            BookContentPane(
+                                book = selectedBook,
+                                linesPagingData = linesPagingData,
+                                contentState = contentState,
+                                onEvent = onEvent,
+                                preservedListState = bookListState,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        },
+                        secondContent = if (contentState.showCommentaries)  {
+                            {
+                                CommentsPane(
+                                    contentState = contentState,
+                                    buildCommentariesPagerFor = buildCommentariesPagerFor,
+                                    getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
+                                    onEvent = onEvent
+                                )
+                            }
+                        } else null
+                    )
 
                 BreadcrumbSection(
                     book = selectedBook,
@@ -114,6 +94,7 @@ fun BookContentPanel(
             }
         }
     }
+
 }
 
 @Composable

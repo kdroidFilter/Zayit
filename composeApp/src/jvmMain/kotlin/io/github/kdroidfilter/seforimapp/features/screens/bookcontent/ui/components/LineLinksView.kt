@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -64,7 +65,12 @@ fun LineLinksView(
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Text(text = stringResource(Res.string.links), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(end = 16.dp))
+            Text(
+                text = stringResource(Res.string.links),
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                modifier = Modifier.padding(end = 16.dp)
+            )
         }
 
         when (selectedLine) {
@@ -73,6 +79,7 @@ fun LineLinksView(
                     Text(text = stringResource(Res.string.select_line_for_links))
                 }
             }
+
             else -> {
                 var titleToIdMap by remember(selectedLine.id) { mutableStateOf<Map<String, Long>>(emptyMap()) }
                 LaunchedEffect(selectedLine.id) {
@@ -93,7 +100,8 @@ fun LineLinksView(
                     // Initialize from initiallySelectedSourceIds (pick first match)
                     LaunchedEffect(initiallySelectedSourceIds, titleToIdMap) {
                         if (selectedSource == null && initiallySelectedSourceIds.isNotEmpty() && titleToIdMap.isNotEmpty()) {
-                            val firstMatch = titleToIdMap.firstNotNullOfOrNull { (name, id) -> name.takeIf { id in initiallySelectedSourceIds } }
+                            val firstMatch =
+                                titleToIdMap.firstNotNullOfOrNull { (name, id) -> name.takeIf { id in initiallySelectedSourceIds } }
                             if (firstMatch != null) selectedSource = firstMatch
                         }
                     }
@@ -139,7 +147,8 @@ fun LineLinksView(
                             ChipsSourcesListView(
                                 sources = availableSources,
                                 selected = selectedSource,
-                                onSelected = { name -> selectedSource = name }
+                                onSelected = { name -> selectedSource = name },
+                                modifier = Modifier.padding(vertical = 8.dp)
                             )
                         }
                     )
@@ -156,35 +165,38 @@ private fun CenteredMessage(message: String, fontSize: Float = 14f) {
     }
 }
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ChipsSourcesListView(
     sources: List<String>,
     selected: String?,
-    onSelected: (String) -> Unit
+    onSelected: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     // Make chips area vertically scrollable with a vertical scrollbar when content exceeds height
-    Box(modifier = Modifier.fillMaxSize()) {
-        val scrollState = androidx.compose.foundation.rememberScrollState()
-        androidx.compose.foundation.layout.FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp)
-                .verticalScroll(scrollState)
-        ) {
-            sources.forEach { source ->
-                val isSelected = source == selected
-                RadioButtonChip(
-                    selected = isSelected,
-                    onClick = { onSelected(source) },
-                    enabled = true
-                ) { Text(source) }
+    Box(modifier = modifier.fillMaxSize()) {
+        val scrollState = rememberScrollState()
+        Column {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp)
+                    .verticalScroll(scrollState)
+            ) {
+                sources.forEach { source ->
+                    val isSelected = source == selected
+                    RadioButtonChip(
+                        selected = isSelected,
+                        onClick = { onSelected(source) },
+                        enabled = true
+                    ) { Text(source) }
+                }
             }
         }
         VerticalScrollbar(
-            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight().padding(horizontal = 4.dp),
             adapter = rememberScrollbarAdapter(scrollState)
         )
     }
@@ -209,11 +221,19 @@ private fun PagedLinksList(
 
     val lazyPagingItems: LazyPagingItems<CommentaryWithText> = pagerFlow.collectAsLazyPagingItems()
 
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex, initialFirstVisibleItemScrollOffset = initialOffset)
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = initialIndex,
+        initialFirstVisibleItemScrollOffset = initialOffset
+    )
 
     if (isPrimary) {
         LaunchedEffect(listState) {
-            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }.collect { (i, o) -> onScroll(i, o) }
+            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }.collect { (i, o) ->
+                onScroll(
+                    i,
+                    o
+                )
+            }
         }
     }
 
@@ -243,6 +263,7 @@ private fun PagedLinksList(
                 is LoadState.Error -> {
                     item { CenteredMessage(message = state.error.message ?: "Error loading more") }
                 }
+
                 is LoadState.Loading -> {
                     item {
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -250,6 +271,7 @@ private fun PagedLinksList(
                         }
                     }
                 }
+
                 else -> {}
             }
         }

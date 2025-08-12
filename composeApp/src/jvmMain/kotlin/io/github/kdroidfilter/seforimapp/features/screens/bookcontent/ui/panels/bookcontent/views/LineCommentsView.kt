@@ -99,7 +99,7 @@ private fun CommentariesHeader(
             fontWeight = FontWeight.Bold,
             fontSize = 18.sp,
             textDecoration = TextDecoration.Underline,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
         )
         if (showWarning) {
             WarningBanner(
@@ -264,7 +264,7 @@ private fun CommentariesLayout(
     uiState: BookContentUiState,
     onEvent: (BookContentEvent) -> Unit
 ) {
-    val count = layoutConfig.selectedCommentators.size
+    layoutConfig.selectedCommentators.size
 
     CommentatorsGridView(layoutConfig, uiState)
 }
@@ -393,13 +393,13 @@ private fun CommentaryItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp, horizontal = 16.dp)
-            .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Press) { event ->
+            .onPointerEvent(PointerEventType.Press) { event ->
                 isCtrlPressed = event.keyboardModifiers.isCtrlPressed
             }
-            .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Move) { event ->
+            .onPointerEvent(PointerEventType.Move) { event ->
                 isCtrlPressed = event.keyboardModifiers.isCtrlPressed
             }
-            .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Release) {
+            .onPointerEvent(PointerEventType.Release) {
                 isCtrlPressed = false
             }
             .pointerInput(Unit) {

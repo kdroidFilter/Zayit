@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSplitPaneApi::class)
+
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state
 
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
@@ -23,8 +25,8 @@ class BookContentStateManager(
      */
     @OptIn(ExperimentalSplitPaneApi::class)
     private fun loadInitialState(): BookContentState {
-        val mainPos = getState<Float>(StateKeys.SPLIT_PANE_POSITION) ?: 0.3f
-        val tocPos = getState<Float>(StateKeys.TOC_SPLIT_PANE_POSITION) ?: 0.3f
+        val mainPos = getState<Float>(StateKeys.SPLIT_PANE_POSITION) ?: SplitDefaults.MAIN
+        val tocPos = getState<Float>(StateKeys.TOC_SPLIT_PANE_POSITION) ?: SplitDefaults.TOC
         val contentPos = getState<Float>(StateKeys.CONTENT_SPLIT_PANE_POSITION) ?: 0.7f
         val targumPos = getState<Float>(StateKeys.TARGUM_SPLIT_PANE_POSITION) ?: 0.8f
 
@@ -72,8 +74,8 @@ class BookContentStateManager(
                 contentSplitState = SplitPaneState(initialPositionPercentage = contentPos, moveEnabled = true),
                 targumSplitState = SplitPaneState(initialPositionPercentage = targumPos, moveEnabled = true),
                 previousPositions = PreviousPositions(
-                    main = getState(StateKeys.PREVIOUS_MAIN_SPLIT_POSITION) ?: 0.3f,
-                    toc = getState(StateKeys.PREVIOUS_TOC_SPLIT_POSITION) ?: 0.3f,
+                    main = getState(StateKeys.PREVIOUS_MAIN_SPLIT_POSITION) ?: SplitDefaults.MAIN,
+                    toc = getState(StateKeys.PREVIOUS_TOC_SPLIT_POSITION) ?: SplitDefaults.TOC,
                     content = getState(StateKeys.PREVIOUS_CONTENT_SPLIT_POSITION) ?: 0.7f,
                     links = getState(StateKeys.PREVIOUS_TARGUM_SPLIT_POSITION) ?: 0.8f
                 )

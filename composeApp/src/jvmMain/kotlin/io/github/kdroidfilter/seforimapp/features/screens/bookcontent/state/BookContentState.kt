@@ -124,8 +124,8 @@ data class ContentState(
  */
 @Stable
 data class LayoutState @OptIn(ExperimentalSplitPaneApi::class) constructor(
-    val mainSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = 0.3f, moveEnabled = true),
-    val tocSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = 0.3f, moveEnabled = true),
+    val mainSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = SplitDefaults.MAIN, moveEnabled = true),
+    val tocSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = SplitDefaults.TOC, moveEnabled = true),
     val contentSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = 0.7f, moveEnabled = true),
     val targumSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = 0.8f, moveEnabled = true),
     val previousPositions: PreviousPositions = PreviousPositions()
@@ -133,8 +133,8 @@ data class LayoutState @OptIn(ExperimentalSplitPaneApi::class) constructor(
 
 @Immutable
 data class PreviousPositions(
-    val main: Float = 0.3f,
-    val toc: Float = 0.3f,
+    val main: Float = SplitDefaults.MAIN,
+    val toc: Float = SplitDefaults.TOC,
     val content: Float = 0.7f,
     val links: Float = 0.8f
 )

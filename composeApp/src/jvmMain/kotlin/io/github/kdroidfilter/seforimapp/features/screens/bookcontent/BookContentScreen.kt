@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
 import org.koin.compose.viewmodel.koinViewModel
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.SplitDefaults
 
 /**
  * Composable function to display the book content screen.
@@ -95,7 +96,7 @@ fun BookContentView(
         EnhancedHorizontalSplitPane(
             splitPaneState = uiState.layout.mainSplitState,
             modifier = Modifier.weight(1f),
-            firstMinSize = if (uiState.navigation.isVisible) 200f else 0f,
+            firstMinSize = if (uiState.navigation.isVisible) SplitDefaults.MIN_MAIN else 0f,
             firstContent = {
                 if (uiState.navigation.isVisible) {
                     CategoryTreePanel(uiState = uiState, onEvent = onEvent)
@@ -104,7 +105,7 @@ fun BookContentView(
             secondContent = {
                 EnhancedHorizontalSplitPane(
                     splitPaneState = uiState.layout.tocSplitState,
-                    firstMinSize = if (uiState.toc.isVisible) 200f else 0f,
+                    firstMinSize = if (uiState.toc.isVisible) SplitDefaults.MIN_TOC else 0f,
                     firstContent = {
                         if (uiState.toc.isVisible) {
                             BookTocPanel(uiState = uiState, onEvent = onEvent)

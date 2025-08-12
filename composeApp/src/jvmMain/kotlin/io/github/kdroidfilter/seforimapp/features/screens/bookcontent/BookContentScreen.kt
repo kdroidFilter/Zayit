@@ -49,7 +49,7 @@ fun BookContentView(
     uiState: BookContentUiState,
     onEvent: (BookContentEvent) -> Unit
 ) {
-    // Configuration des split panes à surveiller
+    // Configuration of split panes to monitor
     val splitPaneConfigs = listOf(
         SplitPaneConfig(
             splitState = uiState.layout.mainSplitState,

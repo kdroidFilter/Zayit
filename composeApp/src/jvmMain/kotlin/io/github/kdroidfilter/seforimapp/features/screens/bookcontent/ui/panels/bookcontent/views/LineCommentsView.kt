@@ -16,6 +16,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -378,18 +381,29 @@ private fun CommentaryListView(
     }
 }
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun CommentaryItem(
     commentary: CommentaryWithText,
     textSizes: AnimatedTextSizes,
     onClick: () -> Unit
 ) {
+    var isCtrlPressed by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp, horizontal = 16.dp)
+            .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Press) { event ->
+                isCtrlPressed = event.keyboardModifiers.isCtrlPressed
+            }
+            .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Move) { event ->
+                isCtrlPressed = event.keyboardModifiers.isCtrlPressed
+            }
+            .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Release) {
+                isCtrlPressed = false
+            }
             .pointerInput(Unit) {
-                detectTapGestures(onTap = { onClick() })
+                detectTapGestures(onTap = { if (isCtrlPressed) onClick() })
             }
     ) {
         // Parse HTML content and build styled text like in BookContentView

@@ -13,6 +13,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -193,6 +196,7 @@ private fun CenteredMessage(message: String, fontSize: Float = 14f) {
     }
 }
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun PagedLinksList(
     buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
@@ -233,11 +237,21 @@ private fun PagedLinksList(
             repeat(lazyPagingItems.itemCount) { index ->
                 val item = lazyPagingItems[index]
                 if (item != null) {
+                    var isCtrlPressed by remember { mutableStateOf(false) }
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp, horizontal = 16.dp)
-                            .pointerInput(Unit) { detectTapGestures(onTap = { onLinkClick(item) }) }
+                            .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Press) {
+                                isCtrlPressed = it.keyboardModifiers.isCtrlPressed
+                            }
+                            .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Move) {
+                                isCtrlPressed = it.keyboardModifiers.isCtrlPressed
+                            }
+                            .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Release) {
+                                isCtrlPressed = false
+                            }
+                            .pointerInput(Unit) { detectTapGestures(onTap = { if (isCtrlPressed) onLinkClick(item) }) }
                     ) {
                         // Parse HTML and render styled text similar to book content
                         val parsedElements = remember(item.link.id, item.targetText) {

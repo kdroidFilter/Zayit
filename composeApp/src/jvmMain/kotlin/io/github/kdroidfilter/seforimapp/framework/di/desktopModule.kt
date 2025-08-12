@@ -53,7 +53,7 @@ val desktopModule = module {
     viewModel { (savedStateHandle: SavedStateHandle) ->
         BookContentViewModel(
             savedStateHandle = savedStateHandle,
-            stateManager = get(),
+            tabStateManager = get(),
             repository = get(),
             titleUpdateManager = get(),
             navigator = get()

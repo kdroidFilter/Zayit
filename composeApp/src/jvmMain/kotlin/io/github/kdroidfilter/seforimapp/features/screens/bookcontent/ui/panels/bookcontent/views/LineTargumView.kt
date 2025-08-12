@@ -283,11 +283,42 @@ private fun PagedLinksList(
                             .padding(vertical = 8.dp, horizontal = 16.dp)
                             .pointerInput(Unit) { detectTapGestures(onTap = { onLinkClick(item) }) }
                     ) {
+                        // Parse HTML and render styled text similar to book content
+                        val parsedElements = remember(item.link.id, item.targetText) {
+                            io.github.kdroidfilter.seforimapp.core.utils.HtmlParser().parse(item.targetText)
+                        }
+                        val annotated = remember(parsedElements, commentTextSize) {
+                            androidx.compose.ui.text.buildAnnotatedString {
+                                parsedElements.forEach { e ->
+                                    if (e.text.isBlank()) return@forEach
+                                    val start = length
+                                    append(e.text)
+                                    val end = length
+                                    if (e.isBold) {
+                                        addStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold), start, end)
+                                    }
+                                    if (e.isItalic) {
+                                        addStyle(androidx.compose.ui.text.SpanStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic), start, end)
+                                    }
+                                    if (e.isHeader || e.headerLevel != null) {
+                                        val size = when (e.headerLevel) {
+                                            1 -> (commentTextSize * 1.5f).sp
+                                            2 -> (commentTextSize * 1.25f).sp
+                                            3 -> (commentTextSize * 1.125f).sp
+                                            4 -> commentTextSize.sp
+                                            else -> commentTextSize.sp
+                                        }
+                                        addStyle(androidx.compose.ui.text.SpanStyle(fontSize = size), start, end)
+                                    } else {
+                                        addStyle(androidx.compose.ui.text.SpanStyle(fontSize = commentTextSize.sp), start, end)
+                                    }
+                                }
+                            }
+                        }
                         Text(
-                            text = item.targetText,
+                            text = annotated,
                             textAlign = TextAlign.Justify,
                             fontFamily = FontFamily(Font(resource = Res.font.frankruhllibre)),
-                            fontSize = commentTextSize.sp,
                             lineHeight = (commentTextSize * lineHeight).sp
                         )
                     }

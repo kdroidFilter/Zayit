@@ -450,11 +450,42 @@ private fun CommentaryItem(
                 detectTapGestures(onTap = { onClick() })
             }
     ) {
+        // Parse HTML content and build styled text like in BookContentView
+        val parsedElements = remember(commentary.link.id, commentary.targetText) {
+            io.github.kdroidfilter.seforimapp.core.utils.HtmlParser().parse(commentary.targetText)
+        }
+        val annotated = remember(parsedElements, textSizes.commentTextSize) {
+            androidx.compose.ui.text.buildAnnotatedString {
+                parsedElements.forEach { e ->
+                    if (e.text.isBlank()) return@forEach
+                    val start = length
+                    append(e.text)
+                    val end = length
+                    if (e.isBold) {
+                        addStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold), start, end)
+                    }
+                    if (e.isItalic) {
+                        addStyle(androidx.compose.ui.text.SpanStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic), start, end)
+                    }
+                    if (e.isHeader || e.headerLevel != null) {
+                        val size = when (e.headerLevel) {
+                            1 -> (textSizes.commentTextSize * 1.5f).sp
+                            2 -> (textSizes.commentTextSize * 1.25f).sp
+                            3 -> (textSizes.commentTextSize * 1.125f).sp
+                            4 -> textSizes.commentTextSize.sp
+                            else -> textSizes.commentTextSize.sp
+                        }
+                        addStyle(androidx.compose.ui.text.SpanStyle(fontSize = size), start, end)
+                    } else {
+                        addStyle(androidx.compose.ui.text.SpanStyle(fontSize = textSizes.commentTextSize.sp), start, end)
+                    }
+                }
+            }
+        }
         Text(
-            text = commentary.targetText,
+            text = annotated,
             textAlign = TextAlign.Justify,
             fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew)),
-            fontSize = textSizes.commentTextSize.sp,
             lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp
         )
     }

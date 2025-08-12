@@ -1,31 +1,55 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state
 
-import io.github.kdroidfilter.seforimlibrary.core.models.Book
-import io.github.kdroidfilter.seforimlibrary.core.models.Category
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
+import app.cash.paging.PagingData
+import io.github.kdroidfilter.seforimlibrary.core.models.*
+import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
+import kotlinx.coroutines.flow.Flow
+import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
+import org.jetbrains.compose.splitpane.SplitPaneState
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 
 /**
- * État centralisé pour l'écran de contenu du livre
+ * Auxiliary models that are not part of the persistent state
  */
-data class BookContentState(
-    // Navigation
-    val navigation: NavigationState = NavigationState(),
-
-    // Table of Contents
-    val toc: TocState = TocState(),
-
-    // Content
-    val content: ContentState = ContentState(),
-
-    // Layout
-    val layout: LayoutState = LayoutState(),
-
-    // Loading
-    val isLoading: Boolean = false
+@Immutable
+data class Providers(
+    val linesPagingData: Flow<PagingData<Line>>,
+    val buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    val getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
+    val buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    val getAvailableLinksForLine: suspend (Long) -> Map<String, Long>
 )
 
+/**
+ * Represents a visible TOC entry in the flattened list
+ */
+@Immutable
+data class VisibleTocEntry(
+    val entry: TocEntry,
+    val level: Int,
+    val isExpanded: Boolean,
+    val hasChildren: Boolean,
+    val isLastChild: Boolean
+)
+/**
+ * Unified state for BookContent (UI + Business)
+ */
+@Stable
+data class BookContentState @OptIn(ExperimentalSplitPaneApi::class) constructor(
+    val navigation: NavigationState = NavigationState(),
+    val toc: TocState = TocState(),
+    val content: ContentState = ContentState(),
+    val layout: LayoutState = LayoutState(),
+    val isLoading: Boolean = false,
+    val providers: Providers? = null
+)
+
+@Immutable
 data class NavigationState(
+    // Business
     val rootCategories: List<Category> = emptyList(),
     val expandedCategories: Set<Long> = emptySet(),
     val categoryChildren: Map<Long, List<Category>> = emptyMap(),
@@ -33,49 +57,81 @@ data class NavigationState(
     val selectedCategory: Category? = null,
     val selectedBook: Book? = null,
     val searchText: String = "",
+
+    // UI
     val isVisible: Boolean = true,
-    val scrollPosition: ScrollPosition = ScrollPosition()
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0
 )
 
+@Immutable
 data class TocState(
+    // Business
     val entries: List<TocEntry> = emptyList(),
     val expandedEntries: Set<Long> = emptySet(),
     val children: Map<Long, List<TocEntry>> = emptyMap(),
+
+    // UI
     val isVisible: Boolean = true,
-    val scrollPosition: ScrollPosition = ScrollPosition()
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0
 )
 
+@Immutable
 data class ContentState(
+    // Data
+    val lines: List<Line> = emptyList(),
     val selectedLine: Line? = null,
+    val commentaries: List<CommentaryWithText> = emptyList(),
+
+    // Visibility
     val showCommentaries: Boolean = false,
-    val showLinks: Boolean = false,
-    val scrollPosition: ScrollPosition = ScrollPosition(),
-    val anchorId: Long = -1L,
-    val anchorIndex: Int = 0,
+    val showTargum: Boolean = false,
+
+    // Scroll positions
     val paragraphScrollPosition: Int = 0,
     val chapterScrollPosition: Int = 0,
     val selectedChapter: Int = 0,
-    val commentariesState: CommentariesState = CommentariesState(),
-    val scrollToLineTimestamp: Long = 0L
-)
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0,
 
-data class CommentariesState(
-    val selectedTab: Int = 0,
-    val scrollPosition: ScrollPosition = ScrollPosition(),
+    // Anchoring
+    val anchorId: Long = -1L,
+    val anchorIndex: Int = 0,
+
+    // Commentaries UI state
+    val commentariesSelectedTab: Int = 0,
+    val commentariesScrollIndex: Int = 0,
+    val commentariesScrollOffset: Int = 0,
+
+    // Filters selected in UI (for current line)
+    val selectedCommentatorIds: Set<Long> = emptySet(),
+    val selectedTargumSourceIds: Set<Long> = emptySet(),
+
+    // Business selections by line/book (kept for use cases)
     val selectedCommentatorsByLine: Map<Long, Set<Long>> = emptyMap(),
     val selectedCommentatorsByBook: Map<Long, Set<Long>> = emptyMap(),
     val selectedLinkSourcesByLine: Map<Long, Set<Long>> = emptyMap(),
-    val selectedLinkSourcesByBook: Map<Long, Set<Long>> = emptyMap()
+    val selectedLinkSourcesByBook: Map<Long, Set<Long>> = emptyMap(),
+
+    // Scrolling behavior control
+    val shouldScrollToLine: Boolean = false,
+    val scrollToLineTimestamp: Long = 0L
 )
 
-data class LayoutState(
-    val mainSplitPosition: Float = 0.3f,
-    val tocSplitPosition: Float = 0.3f,
-    val contentSplitPosition: Float = 0.7f,
-    val linksSplitPosition: Float = 0.8f,
+/**
+ * Layout state uses SplitPaneState to directly bind with UI panes
+ */
+@Stable
+data class LayoutState @OptIn(ExperimentalSplitPaneApi::class) constructor(
+    val mainSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = 0.3f, moveEnabled = true),
+    val tocSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = 0.3f, moveEnabled = true),
+    val contentSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = 0.7f, moveEnabled = true),
+    val targumSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = 0.8f, moveEnabled = true),
     val previousPositions: PreviousPositions = PreviousPositions()
 )
 
+@Immutable
 data class PreviousPositions(
     val main: Float = 0.3f,
     val toc: Float = 0.3f,
@@ -83,7 +139,8 @@ data class PreviousPositions(
     val links: Float = 0.8f
 )
 
-data class ScrollPosition(
-    val index: Int = 0,
-    val offset: Int = 0
-)
+// Typealiases to keep old UI names working without refactor
+
+typealias BookContentUiState = BookContentState
+
+typealias NavigationUiState = NavigationState

@@ -23,7 +23,8 @@ fun EnhancedHorizontalSplitPane(
     firstMinSize: Float = 200f,
     secondMinSize: Float = 200f,
     firstContent: @Composable BoxScope.() -> Unit,
-    secondContent: (@Composable BoxScope.() -> Unit)?
+    secondContent: (@Composable BoxScope.() -> Unit)?,
+    showSplitter: Boolean = true
 ) {
     if (secondContent == null) {
         Box(
@@ -49,23 +50,25 @@ fun EnhancedHorizontalSplitPane(
                 content = secondContent
             )
         }
-        splitter {
-            visiblePart {
-                Divider(
-                    Orientation.Vertical,
-                    Modifier.fillMaxHeight().width(1.dp),
-                    color = JewelTheme.globalColors.borders.disabled
-                )
-            }
-            handle {
-                Box(
-                    Modifier
-                        .width(5.dp)
-                        .fillMaxHeight()
-                        .markAsHandle()
-                        .cursorForHorizontalResize(),
-                    contentAlignment = Alignment.Center
-                ) {}
+        if (showSplitter) {
+            splitter {
+                visiblePart {
+                    Divider(
+                        Orientation.Vertical,
+                        Modifier.fillMaxHeight().width(1.dp),
+                        color = JewelTheme.globalColors.borders.disabled
+                    )
+                }
+                handle {
+                    Box(
+                        Modifier
+                            .width(5.dp)
+                            .fillMaxHeight()
+                            .markAsHandle()
+                            .cursorForHorizontalResize(),
+                        contentAlignment = Alignment.Center
+                    ) {}
+                }
             }
         }
     }
@@ -79,7 +82,8 @@ fun EnhancedVerticalSplitPane(
     firstMinSize: Float = 200f,
     secondMinSize: Float = 200f,
     firstContent: @Composable BoxScope.() -> Unit,
-    secondContent: (@Composable BoxScope.() -> Unit)?
+    secondContent: (@Composable BoxScope.() -> Unit)?,
+    showSplitter: Boolean = true
 ) {
     if (secondContent == null) {
         Box(
@@ -105,23 +109,25 @@ fun EnhancedVerticalSplitPane(
                 content = secondContent
             )
         }
-        splitter {
-            visiblePart {
-                Divider(
-                    Orientation.Horizontal,
-                    Modifier.fillMaxWidth().height(1.dp),
-                    color = JewelTheme.globalColors.borders.disabled
-                )
-            }
-            handle {
-                Box(
-                    Modifier
-                        .height(5.dp)
-                        .fillMaxWidth()
-                        .markAsHandle()
-                        .cursorForVerticalResize(),
-                    contentAlignment = Alignment.Center
-                ) {}
+        if (showSplitter) {
+            splitter {
+                visiblePart {
+                    Divider(
+                        Orientation.Horizontal,
+                        Modifier.fillMaxWidth().height(1.dp),
+                        color = JewelTheme.globalColors.borders.disabled
+                    )
+                }
+                handle {
+                    Box(
+                        Modifier
+                            .height(5.dp)
+                            .fillMaxWidth()
+                            .markAsHandle()
+                            .cursorForVerticalResize(),
+                        contentAlignment = Alignment.Center
+                    ) {}
+                }
             }
         }
     }

@@ -113,9 +113,11 @@ fun BookContentView(
                     },
                     secondContent = {
                         BookContentPanel(uiState = uiState, onEvent = onEvent)
-                    }
+                    },
+                    showSplitter = uiState.toc.isVisible
                 )
-            }
+            },
+            showSplitter = uiState.navigation.isVisible
         )
 
         EndVerticalBar(uiState = uiState, onEvent = onEvent)

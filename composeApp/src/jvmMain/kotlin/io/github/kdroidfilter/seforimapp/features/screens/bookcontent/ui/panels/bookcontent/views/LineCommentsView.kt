@@ -62,7 +62,7 @@ fun LineCommentsView(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
         // Header
         CommentariesHeader(showMaxCommentatorsWarning) {
             showMaxCommentatorsWarning = false

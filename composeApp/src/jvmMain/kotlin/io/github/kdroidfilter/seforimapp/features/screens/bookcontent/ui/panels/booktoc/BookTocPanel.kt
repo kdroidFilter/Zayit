@@ -8,7 +8,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.composeapp.generated.resources.Res

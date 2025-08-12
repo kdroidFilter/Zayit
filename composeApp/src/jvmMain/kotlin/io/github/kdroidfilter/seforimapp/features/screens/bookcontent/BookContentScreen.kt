@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EndVerticalBar
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.StartVerticalBar

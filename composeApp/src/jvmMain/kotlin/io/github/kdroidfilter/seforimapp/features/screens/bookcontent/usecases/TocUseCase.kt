@@ -24,12 +24,12 @@ class TocUseCase(
                 entries = rootToc,
                 children = mapOf(-1L to rootToc),
                 // Auto-expand la première entrée si elle a des enfants
-                expandedEntries = if (expandedEntries.isEmpty()) {
+                expandedEntries = expandedEntries.ifEmpty {
                     rootToc.firstOrNull()
                         ?.takeIf { it.hasChildren }
                         ?.let { setOf(it.id) }
                         ?: emptySet()
-                } else expandedEntries
+                }
             )
         }
         
@@ -105,21 +105,20 @@ class TocUseCase(
         
         if (isVisible) {
             // Cacher
-            newPosition = 0f
+            val prev = currentState.layout.tocSplitState.positionPercentage
             stateManager.updateLayout {
                 copy(
-                    tocSplitPosition = newPosition,
                     previousPositions = previousPositions.copy(
-                        toc = currentState.layout.tocSplitPosition
+                        toc = prev
                     )
                 )
             }
+            newPosition = 0f
+            currentState.layout.tocSplitState.positionPercentage = newPosition
         } else {
             // Montrer
             newPosition = currentState.layout.previousPositions.toc
-            stateManager.updateLayout {
-                copy(tocSplitPosition = newPosition)
-            }
+            currentState.layout.tocSplitState.positionPercentage = newPosition
         }
         
         stateManager.updateToc {
@@ -135,10 +134,8 @@ class TocUseCase(
     fun updateTocScrollPosition(index: Int, offset: Int) {
         stateManager.updateToc {
             copy(
-                scrollPosition = scrollPosition.copy(
-                    index = index,
-                    offset = offset
-                )
+                scrollIndex = index,
+                scrollOffset = offset
             )
         }
     }
@@ -152,7 +149,8 @@ class TocUseCase(
                 entries = emptyList(),
                 expandedEntries = emptySet(),
                 children = emptyMap(),
-                scrollPosition = scrollPosition.copy(index = 0, offset = 0)
+                scrollIndex = 0,
+                scrollOffset = 0
             )
         }
     }

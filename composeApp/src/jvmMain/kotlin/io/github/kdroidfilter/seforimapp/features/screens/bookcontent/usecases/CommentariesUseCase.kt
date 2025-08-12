@@ -103,11 +103,11 @@ class CommentariesUseCase(
      * Met à jour les commentateurs sélectionnés pour une ligne
      */
     suspend fun updateSelectedCommentators(lineId: Long, selectedIds: Set<Long>) {
-        val currentState = stateManager.state.first().content.commentariesState
+        val currentContent = stateManager.state.first().content
         val bookId = stateManager.state.first().navigation.selectedBook?.id ?: return
         
         // Mettre à jour par ligne
-        val byLine = currentState.selectedCommentatorsByLine.toMutableMap()
+        val byLine = currentContent.selectedCommentatorsByLine.toMutableMap()
         if (selectedIds.isEmpty()) {
             byLine.remove(lineId)
         } else {
@@ -115,7 +115,7 @@ class CommentariesUseCase(
         }
         
         // Mettre à jour par livre
-        val byBook = currentState.selectedCommentatorsByBook.toMutableMap()
+        val byBook = currentContent.selectedCommentatorsByBook.toMutableMap()
         if (selectedIds.isEmpty()) {
             byBook.remove(bookId)
         } else {
@@ -124,10 +124,8 @@ class CommentariesUseCase(
         
         stateManager.updateContent {
             copy(
-                commentariesState = commentariesState.copy(
-                    selectedCommentatorsByLine = byLine,
-                    selectedCommentatorsByBook = byBook
-                )
+                selectedCommentatorsByLine = byLine,
+                selectedCommentatorsByBook = byBook
             )
         }
     }
@@ -136,11 +134,11 @@ class CommentariesUseCase(
      * Met à jour les sources de liens sélectionnées pour une ligne
      */
     suspend fun updateSelectedLinkSources(lineId: Long, selectedIds: Set<Long>) {
-        val currentState = stateManager.state.first().content.commentariesState
+        val currentContent = stateManager.state.first().content
         val bookId = stateManager.state.first().navigation.selectedBook?.id ?: return
         
         // Mettre à jour par ligne
-        val byLine = currentState.selectedLinkSourcesByLine.toMutableMap()
+        val byLine = currentContent.selectedLinkSourcesByLine.toMutableMap()
         if (selectedIds.isEmpty()) {
             byLine.remove(lineId)
         } else {
@@ -148,7 +146,7 @@ class CommentariesUseCase(
         }
         
         // Mettre à jour par livre
-        val byBook = currentState.selectedLinkSourcesByBook.toMutableMap()
+        val byBook = currentContent.selectedLinkSourcesByBook.toMutableMap()
         if (selectedIds.isEmpty()) {
             byBook.remove(bookId)
         } else {
@@ -157,10 +155,8 @@ class CommentariesUseCase(
         
         stateManager.updateContent {
             copy(
-                commentariesState = commentariesState.copy(
-                    selectedLinkSourcesByLine = byLine,
-                    selectedLinkSourcesByBook = byBook
-                )
+                selectedLinkSourcesByLine = byLine,
+                selectedLinkSourcesByBook = byBook
             )
         }
     }
@@ -171,7 +167,7 @@ class CommentariesUseCase(
     suspend fun reapplySelectedCommentators(line: Line) {
         val currentState = stateManager.state.first()
         val bookId = currentState.navigation.selectedBook?.id ?: line.bookId
-        val remembered = currentState.content.commentariesState.selectedCommentatorsByBook[bookId] ?: emptySet()
+        val remembered = currentState.content.selectedCommentatorsByBook[bookId] ?: emptySet()
         
         if (remembered.isEmpty()) return
         
@@ -194,7 +190,7 @@ class CommentariesUseCase(
     suspend fun reapplySelectedLinkSources(line: Line) {
         val currentState = stateManager.state.first()
         val bookId = currentState.navigation.selectedBook?.id ?: line.bookId
-        val remembered = currentState.content.commentariesState.selectedLinkSourcesByBook[bookId] ?: emptySet()
+        val remembered = currentState.content.selectedLinkSourcesByBook[bookId] ?: emptySet()
         
         if (remembered.isEmpty()) return
         
@@ -217,9 +213,7 @@ class CommentariesUseCase(
     fun updateCommentariesTab(index: Int) {
         stateManager.updateContent {
             copy(
-                commentariesState = commentariesState.copy(
-                    selectedTab = index
-                )
+                commentariesSelectedTab = index
             )
         }
     }
@@ -230,12 +224,8 @@ class CommentariesUseCase(
     fun updateCommentariesScrollPosition(index: Int, offset: Int) {
         stateManager.updateContent {
             copy(
-                commentariesState = commentariesState.copy(
-                    scrollPosition = commentariesState.scrollPosition.copy(
-                        index = index,
-                        offset = offset
-                    )
-                )
+                commentariesScrollIndex = index,
+                commentariesScrollOffset = offset
             )
         }
     }

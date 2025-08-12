@@ -117,21 +117,20 @@ class NavigationUseCase(
         
         if (isVisible) {
             // Cacher - sauvegarder la position actuelle
-            newPosition = 0f
+            val prev = currentState.layout.mainSplitState.positionPercentage
             stateManager.updateLayout {
                 copy(
-                    mainSplitPosition = newPosition,
                     previousPositions = previousPositions.copy(
-                        main = currentState.layout.mainSplitPosition
+                        main = prev
                     )
                 )
             }
+            newPosition = 0f
+            currentState.layout.mainSplitState.positionPercentage = newPosition
         } else {
             // Montrer - restaurer la position précédente
             newPosition = currentState.layout.previousPositions.main
-            stateManager.updateLayout {
-                copy(mainSplitPosition = newPosition)
-            }
+            currentState.layout.mainSplitState.positionPercentage = newPosition
         }
         
         stateManager.updateNavigation {
@@ -147,10 +146,8 @@ class NavigationUseCase(
     fun updateBookTreeScrollPosition(index: Int, offset: Int) {
         stateManager.updateNavigation {
             copy(
-                scrollPosition = scrollPosition.copy(
-                    index = index,
-                    offset = offset
-                )
+                scrollIndex = index,
+                scrollOffset = offset
             )
         }
     }

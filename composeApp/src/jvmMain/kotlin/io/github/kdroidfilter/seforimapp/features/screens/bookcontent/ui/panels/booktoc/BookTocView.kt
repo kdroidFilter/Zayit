@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.ChevronDown
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.ChevronRight
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.VisibleTocEntry
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.VisibleTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.LineTocMapping
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry

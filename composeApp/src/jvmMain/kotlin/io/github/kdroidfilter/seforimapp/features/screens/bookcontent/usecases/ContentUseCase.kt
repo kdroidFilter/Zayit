@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSplitPaneApi::class)
+
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases
 
 import app.cash.paging.Pager
@@ -11,6 +13,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 
 /**
  * UseCase pour gérer le contenu du livre et la navigation dans les lignes
@@ -150,10 +153,8 @@ class ContentUseCase(
             copy(
                 anchorId = anchorId,
                 anchorIndex = anchorIndex,
-                scrollPosition = scrollPosition.copy(
-                    index = scrollIndex,
-                    offset = scrollOffset
-                )
+                scrollIndex = scrollIndex,
+                scrollOffset = scrollOffset
             )
         }
     }
@@ -168,21 +169,20 @@ class ContentUseCase(
         
         if (isVisible) {
             // Cacher
-            newPosition = 0.95f
+            val prev = currentState.layout.contentSplitState.positionPercentage
             stateManager.updateLayout {
                 copy(
-                    contentSplitPosition = newPosition,
                     previousPositions = previousPositions.copy(
-                        content = currentState.layout.contentSplitPosition
+                        content = prev
                     )
                 )
             }
+            newPosition = 0.95f
+            currentState.layout.contentSplitState.positionPercentage = newPosition
         } else {
             // Montrer
             newPosition = currentState.layout.previousPositions.content
-            stateManager.updateLayout {
-                copy(contentSplitPosition = newPosition)
-            }
+            currentState.layout.contentSplitState.positionPercentage = newPosition
         }
         
         stateManager.updateContent {
@@ -197,30 +197,28 @@ class ContentUseCase(
      */
     fun toggleLinks(): Boolean {
         val currentState = stateManager.state.value
-        val isVisible = currentState.content.showLinks
+        val isVisible = currentState.content.showTargum
         val newPosition: Float
         
         if (isVisible) {
             // Cacher
             newPosition = 0.95f
+            currentState.layout.targumSplitState.positionPercentage = newPosition
             stateManager.updateLayout {
                 copy(
-                    linksSplitPosition = newPosition,
                     previousPositions = previousPositions.copy(
-                        links = currentState.layout.linksSplitPosition
+                        links = currentState.layout.targumSplitState.positionPercentage
                     )
                 )
             }
         } else {
             // Montrer
             newPosition = currentState.layout.previousPositions.links
-            stateManager.updateLayout {
-                copy(linksSplitPosition = newPosition)
-            }
+            currentState.layout.targumSplitState.positionPercentage = newPosition
         }
         
         stateManager.updateContent {
-            copy(showLinks = !isVisible)
+            copy(showTargum = !isVisible)
         }
         
         return !isVisible
@@ -253,7 +251,8 @@ class ContentUseCase(
     fun resetScrollPositions() {
         stateManager.updateContent(save = false) {
             copy(
-                scrollPosition = scrollPosition.copy(index = 0, offset = 0),
+                scrollIndex = 0,
+                scrollOffset = 0,
                 anchorId = -1L,
                 anchorIndex = 0,
                 paragraphScrollPosition = 0,

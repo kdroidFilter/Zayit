@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
+import org.jetbrains.compose.splitpane.SplitPaneState
 
 /**
  * Gestionnaire d'état centralisé pour BookContent
@@ -19,7 +21,13 @@ class BookContentStateManager(
     /**
      * Charge l'état initial depuis le TabStateManager
      */
+    @OptIn(ExperimentalSplitPaneApi::class)
     private fun loadInitialState(): BookContentState {
+        val mainPos = getState<Float>(StateKeys.SPLIT_PANE_POSITION) ?: 0.3f
+        val tocPos = getState<Float>(StateKeys.TOC_SPLIT_PANE_POSITION) ?: 0.3f
+        val contentPos = getState<Float>(StateKeys.CONTENT_SPLIT_PANE_POSITION) ?: 0.7f
+        val targumPos = getState<Float>(StateKeys.TARGUM_SPLIT_PANE_POSITION) ?: 0.8f
+
         return BookContentState(
             navigation = NavigationState(
                 expandedCategories = getState(StateKeys.EXPANDED_CATEGORIES) ?: emptySet(),
@@ -29,50 +37,40 @@ class BookContentStateManager(
                 selectedBook = getState(StateKeys.SELECTED_BOOK),
                 searchText = getState(StateKeys.SEARCH_TEXT) ?: "",
                 isVisible = getState(StateKeys.SHOW_BOOK_TREE) ?: true,
-                scrollPosition = ScrollPosition(
-                    index = getState(StateKeys.BOOK_TREE_SCROLL_INDEX) ?: 0,
-                    offset = getState(StateKeys.BOOK_TREE_SCROLL_OFFSET) ?: 0
-                )
+                scrollIndex = getState(StateKeys.BOOK_TREE_SCROLL_INDEX) ?: 0,
+                scrollOffset = getState(StateKeys.BOOK_TREE_SCROLL_OFFSET) ?: 0
             ),
             toc = TocState(
                 expandedEntries = getState(StateKeys.EXPANDED_TOC_ENTRIES) ?: emptySet(),
                 children = getState(StateKeys.TOC_CHILDREN) ?: emptyMap(),
                 isVisible = getState(StateKeys.SHOW_TOC) ?: true,
-                scrollPosition = ScrollPosition(
-                    index = getState(StateKeys.TOC_SCROLL_INDEX) ?: 0,
-                    offset = getState(StateKeys.TOC_SCROLL_OFFSET) ?: 0
-                )
+                scrollIndex = getState(StateKeys.TOC_SCROLL_INDEX) ?: 0,
+                scrollOffset = getState(StateKeys.TOC_SCROLL_OFFSET) ?: 0
             ),
             content = ContentState(
                 selectedLine = getState(StateKeys.SELECTED_LINE),
                 showCommentaries = getState(StateKeys.SHOW_COMMENTARIES) ?: false,
-                showLinks = getState(StateKeys.SHOW_TARGUM) ?: false,
-                scrollPosition = ScrollPosition(
-                    index = getState(StateKeys.CONTENT_SCROLL_INDEX) ?: 0,
-                    offset = getState(StateKeys.CONTENT_SCROLL_OFFSET) ?: 0
-                ),
+                showTargum = getState(StateKeys.SHOW_TARGUM) ?: false,
+                scrollIndex = getState(StateKeys.CONTENT_SCROLL_INDEX) ?: 0,
+                scrollOffset = getState(StateKeys.CONTENT_SCROLL_OFFSET) ?: 0,
                 anchorId = getState(StateKeys.CONTENT_ANCHOR_ID) ?: -1L,
                 anchorIndex = getState(StateKeys.CONTENT_ANCHOR_INDEX) ?: 0,
                 paragraphScrollPosition = getState(StateKeys.PARAGRAPH_SCROLL_POSITION) ?: 0,
                 chapterScrollPosition = getState(StateKeys.CHAPTER_SCROLL_POSITION) ?: 0,
                 selectedChapter = getState(StateKeys.SELECTED_CHAPTER) ?: 0,
-                commentariesState = CommentariesState(
-                    selectedTab = getState(StateKeys.COMMENTARIES_SELECTED_TAB) ?: 0,
-                    scrollPosition = ScrollPosition(
-                        index = getState(StateKeys.COMMENTARIES_SCROLL_INDEX) ?: 0,
-                        offset = getState(StateKeys.COMMENTARIES_SCROLL_OFFSET) ?: 0
-                    ),
-                    selectedCommentatorsByLine = getState(StateKeys.SELECTED_COMMENTATORS_BY_LINE) ?: emptyMap(),
-                    selectedCommentatorsByBook = getState(StateKeys.SELECTED_COMMENTATORS_BY_BOOK) ?: emptyMap(),
-                    selectedLinkSourcesByLine = getState(StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE) ?: emptyMap(),
-                    selectedLinkSourcesByBook = getState(StateKeys.SELECTED_TARGUM_SOURCES_BY_BOOK) ?: emptyMap()
-                )
+                commentariesSelectedTab = getState(StateKeys.COMMENTARIES_SELECTED_TAB) ?: 0,
+                commentariesScrollIndex = getState(StateKeys.COMMENTARIES_SCROLL_INDEX) ?: 0,
+                commentariesScrollOffset = getState(StateKeys.COMMENTARIES_SCROLL_OFFSET) ?: 0,
+                selectedCommentatorsByLine = getState(StateKeys.SELECTED_COMMENTATORS_BY_LINE) ?: emptyMap(),
+                selectedCommentatorsByBook = getState(StateKeys.SELECTED_COMMENTATORS_BY_BOOK) ?: emptyMap(),
+                selectedLinkSourcesByLine = getState(StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE) ?: emptyMap(),
+                selectedLinkSourcesByBook = getState(StateKeys.SELECTED_TARGUM_SOURCES_BY_BOOK) ?: emptyMap()
             ),
             layout = LayoutState(
-                mainSplitPosition = getState(StateKeys.SPLIT_PANE_POSITION) ?: 0.3f,
-                tocSplitPosition = getState(StateKeys.TOC_SPLIT_PANE_POSITION) ?: 0.3f,
-                contentSplitPosition = getState(StateKeys.CONTENT_SPLIT_PANE_POSITION) ?: 0.7f,
-                linksSplitPosition = getState(StateKeys.TARGUM_SPLIT_PANE_POSITION) ?: 0.8f,
+                mainSplitState = SplitPaneState(initialPositionPercentage = mainPos, moveEnabled = true),
+                tocSplitState = SplitPaneState(initialPositionPercentage = tocPos, moveEnabled = true),
+                contentSplitState = SplitPaneState(initialPositionPercentage = contentPos, moveEnabled = true),
+                targumSplitState = SplitPaneState(initialPositionPercentage = targumPos, moveEnabled = true),
                 previousPositions = PreviousPositions(
                     main = getState(StateKeys.PREVIOUS_MAIN_SPLIT_POSITION) ?: 0.3f,
                     toc = getState(StateKeys.PREVIOUS_TOC_SPLIT_POSITION) ?: 0.3f,
@@ -157,22 +155,22 @@ class BookContentStateManager(
         currentState.navigation.selectedBook?.let { saveState(StateKeys.SELECTED_BOOK, it) }
         saveState(StateKeys.SEARCH_TEXT, currentState.navigation.searchText)
         saveState(StateKeys.SHOW_BOOK_TREE, currentState.navigation.isVisible)
-        saveState(StateKeys.BOOK_TREE_SCROLL_INDEX, currentState.navigation.scrollPosition.index)
-        saveState(StateKeys.BOOK_TREE_SCROLL_OFFSET, currentState.navigation.scrollPosition.offset)
+        saveState(StateKeys.BOOK_TREE_SCROLL_INDEX, currentState.navigation.scrollIndex)
+        saveState(StateKeys.BOOK_TREE_SCROLL_OFFSET, currentState.navigation.scrollOffset)
         
         // TOC
         saveState(StateKeys.EXPANDED_TOC_ENTRIES, currentState.toc.expandedEntries)
         saveState(StateKeys.TOC_CHILDREN, currentState.toc.children)
         saveState(StateKeys.SHOW_TOC, currentState.toc.isVisible)
-        saveState(StateKeys.TOC_SCROLL_INDEX, currentState.toc.scrollPosition.index)
-        saveState(StateKeys.TOC_SCROLL_OFFSET, currentState.toc.scrollPosition.offset)
+        saveState(StateKeys.TOC_SCROLL_INDEX, currentState.toc.scrollIndex)
+        saveState(StateKeys.TOC_SCROLL_OFFSET, currentState.toc.scrollOffset)
         
         // Content
         currentState.content.selectedLine?.let { saveState(StateKeys.SELECTED_LINE, it) }
         saveState(StateKeys.SHOW_COMMENTARIES, currentState.content.showCommentaries)
-        saveState(StateKeys.SHOW_TARGUM, currentState.content.showLinks)
-        saveState(StateKeys.CONTENT_SCROLL_INDEX, currentState.content.scrollPosition.index)
-        saveState(StateKeys.CONTENT_SCROLL_OFFSET, currentState.content.scrollPosition.offset)
+        saveState(StateKeys.SHOW_TARGUM, currentState.content.showTargum)
+        saveState(StateKeys.CONTENT_SCROLL_INDEX, currentState.content.scrollIndex)
+        saveState(StateKeys.CONTENT_SCROLL_OFFSET, currentState.content.scrollOffset)
         saveState(StateKeys.CONTENT_ANCHOR_ID, currentState.content.anchorId)
         saveState(StateKeys.CONTENT_ANCHOR_INDEX, currentState.content.anchorIndex)
         saveState(StateKeys.PARAGRAPH_SCROLL_POSITION, currentState.content.paragraphScrollPosition)
@@ -180,20 +178,19 @@ class BookContentStateManager(
         saveState(StateKeys.SELECTED_CHAPTER, currentState.content.selectedChapter)
         
         // Commentaries
-        val commentaries = currentState.content.commentariesState
-        saveState(StateKeys.COMMENTARIES_SELECTED_TAB, commentaries.selectedTab)
-        saveState(StateKeys.COMMENTARIES_SCROLL_INDEX, commentaries.scrollPosition.index)
-        saveState(StateKeys.COMMENTARIES_SCROLL_OFFSET, commentaries.scrollPosition.offset)
-        saveState(StateKeys.SELECTED_COMMENTATORS_BY_LINE, commentaries.selectedCommentatorsByLine)
-        saveState(StateKeys.SELECTED_COMMENTATORS_BY_BOOK, commentaries.selectedCommentatorsByBook)
-        saveState(StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE, commentaries.selectedLinkSourcesByLine)
-        saveState(StateKeys.SELECTED_TARGUM_SOURCES_BY_BOOK, commentaries.selectedLinkSourcesByBook)
+        saveState(StateKeys.COMMENTARIES_SELECTED_TAB, currentState.content.commentariesSelectedTab)
+        saveState(StateKeys.COMMENTARIES_SCROLL_INDEX, currentState.content.commentariesScrollIndex)
+        saveState(StateKeys.COMMENTARIES_SCROLL_OFFSET, currentState.content.commentariesScrollOffset)
+        saveState(StateKeys.SELECTED_COMMENTATORS_BY_LINE, currentState.content.selectedCommentatorsByLine)
+        saveState(StateKeys.SELECTED_COMMENTATORS_BY_BOOK, currentState.content.selectedCommentatorsByBook)
+        saveState(StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE, currentState.content.selectedLinkSourcesByLine)
+        saveState(StateKeys.SELECTED_TARGUM_SOURCES_BY_BOOK, currentState.content.selectedLinkSourcesByBook)
         
         // Layout
-        saveState(StateKeys.SPLIT_PANE_POSITION, currentState.layout.mainSplitPosition)
-        saveState(StateKeys.TOC_SPLIT_PANE_POSITION, currentState.layout.tocSplitPosition)
-        saveState(StateKeys.CONTENT_SPLIT_PANE_POSITION, currentState.layout.contentSplitPosition)
-        saveState(StateKeys.TARGUM_SPLIT_PANE_POSITION, currentState.layout.linksSplitPosition)
+        saveState(StateKeys.SPLIT_PANE_POSITION, currentState.layout.mainSplitState.positionPercentage)
+        saveState(StateKeys.TOC_SPLIT_PANE_POSITION, currentState.layout.tocSplitState.positionPercentage)
+        saveState(StateKeys.CONTENT_SPLIT_PANE_POSITION, currentState.layout.contentSplitState.positionPercentage)
+        saveState(StateKeys.TARGUM_SPLIT_PANE_POSITION, currentState.layout.targumSplitState.positionPercentage)
         saveState(StateKeys.PREVIOUS_MAIN_SPLIT_POSITION, currentState.layout.previousPositions.main)
         saveState(StateKeys.PREVIOUS_TOC_SPLIT_POSITION, currentState.layout.previousPositions.toc)
         saveState(StateKeys.PREVIOUS_CONTENT_SPLIT_POSITION, currentState.layout.previousPositions.content)

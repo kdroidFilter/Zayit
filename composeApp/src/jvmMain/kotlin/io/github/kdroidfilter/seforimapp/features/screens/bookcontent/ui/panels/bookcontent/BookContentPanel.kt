@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.*
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views.BookContentView
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views.BreadcrumbView

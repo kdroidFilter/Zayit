@@ -7,17 +7,17 @@ import app.cash.paging.cachedIn
 import io.github.kdroidfilter.seforimapp.core.presentation.navigation.Navigator
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.*
 import io.github.kdroidfilter.seforimapp.core.utils.debugln
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.*
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.*
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.Providers
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases.*
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
-import org.jetbrains.compose.splitpane.SplitPaneState
 
 /**
  * ViewModel simplifié pour l'écran de contenu du livre
@@ -53,41 +53,48 @@ class BookContentViewModel(
         .flatMapLatest { it }
         .cachedIn(viewModelScope)
 
-    // État UI unifié
+    // État UI unifié (state is already UI-ready; just inject providers and compute per-line selections)
     val uiState: StateFlow<BookContentUiState> = stateManager.state
         .map { state ->
-            BookContentUiState(
-                navigation = createNavigationUiState(state.navigation),
-                toc = createTocUiState(state.toc),
-                content = createContentUiState(state),
-                layout = createLayoutUiState(state.layout),
-                isLoading = state.isLoading,
+            val lineId = state.content.selectedLine?.id
+            val selectedCommentators = lineId?.let { state.content.selectedCommentatorsByLine[it] } ?: emptySet()
+            val selectedLinks = lineId?.let { state.content.selectedLinkSourcesByLine[it] } ?: emptySet()
+            state.copy(
                 providers = Providers(
                     linesPagingData = linesPagingData,
                     buildCommentariesPagerFor = commentariesUseCase::buildCommentariesPager,
                     getAvailableCommentatorsForLine = commentariesUseCase::getAvailableCommentators,
                     buildLinksPagerFor = commentariesUseCase::buildLinksPager,
                     getAvailableLinksForLine = commentariesUseCase::getAvailableLinks
+                ),
+                content = state.content.copy(
+                    selectedCommentatorIds = selectedCommentators,
+                    selectedTargumSourceIds = selectedLinks
                 )
             )
         }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
-            BookContentUiState(
-                navigation = createNavigationUiState(stateManager.state.value.navigation),
-                toc = createTocUiState(stateManager.state.value.toc),
-                content = createContentUiState(stateManager.state.value),
-                layout = createLayoutUiState(stateManager.state.value.layout),
-                isLoading = stateManager.state.value.isLoading,
-                providers = Providers(
-                    linesPagingData = linesPagingData,
-                    buildCommentariesPagerFor = commentariesUseCase::buildCommentariesPager,
-                    getAvailableCommentatorsForLine = commentariesUseCase::getAvailableCommentators,
-                    buildLinksPagerFor = commentariesUseCase::buildLinksPager,
-                    getAvailableLinksForLine = commentariesUseCase::getAvailableLinks
+            run {
+                val s = stateManager.state.value
+                val lineId = s.content.selectedLine?.id
+                val selectedCommentators = lineId?.let { s.content.selectedCommentatorsByLine[it] } ?: emptySet()
+                val selectedLinks = lineId?.let { s.content.selectedLinkSourcesByLine[it] } ?: emptySet()
+                s.copy(
+                    providers = Providers(
+                        linesPagingData = linesPagingData,
+                        buildCommentariesPagerFor = commentariesUseCase::buildCommentariesPager,
+                        getAvailableCommentatorsForLine = commentariesUseCase::getAvailableCommentators,
+                        buildLinksPagerFor = commentariesUseCase::buildLinksPager,
+                        getAvailableLinksForLine = commentariesUseCase::getAvailableLinks
+                    ),
+                    content = s.content.copy(
+                        selectedCommentatorIds = selectedCommentators,
+                        selectedTargumSourceIds = selectedLinks
+                    )
                 )
-            )
+            }
         )
 
     init {
@@ -235,7 +242,8 @@ class BookContentViewModel(
                     stateManager.updateContent {
                         copy(
                             anchorId = lineId,
-                            scrollPosition = scrollPosition.copy(index = 0, offset = 0)
+                            scrollIndex = 0,
+                            scrollOffset = 0
                         )
                     }
                     loadBookData(book, lineId)
@@ -292,7 +300,7 @@ class BookContentViewModel(
             try {
                 val state = stateManager.state.value
                 val shouldUseAnchor = state.content.anchorId != -1L &&
-                        state.content.scrollPosition.index > 50 // INITIAL_LOAD_SIZE
+                        state.content.scrollIndex > 50 // INITIAL_LOAD_SIZE
 
                 val initialLineId = when {
                     forceAnchorId != null -> forceAnchorId
@@ -370,92 +378,6 @@ class BookContentViewModel(
         )
     }
 
-    /**
-     * Crée l'état UI de navigation
-     */
-    private fun createNavigationUiState(state: NavigationState): NavigationUiState {
-        return NavigationUiState(
-            rootCategories = state.rootCategories,
-            expandedCategories = state.expandedCategories,
-            categoryChildren = state.categoryChildren,
-            booksInCategory = state.booksInCategory,
-            selectedCategory = state.selectedCategory,
-            selectedBook = state.selectedBook,
-            searchText = state.searchText,
-            isVisible = state.isVisible,
-            scrollIndex = state.scrollPosition.index,
-            scrollOffset = state.scrollPosition.offset
-        )
-    }
-
-    /**
-     * Crée l'état UI du TOC
-     */
-    private fun createTocUiState(state: TocState): TocUiState {
-        return TocUiState(
-            entries = state.entries,
-            expandedEntries = state.expandedEntries,
-            children = state.children,
-            isVisible = state.isVisible,
-            scrollIndex = state.scrollPosition.index,
-            scrollOffset = state.scrollPosition.offset
-        )
-    }
-
-    /**
-     * Crée l'état UI du contenu
-     */
-    private fun createContentUiState(state: BookContentState): ContentUiState {
-        return ContentUiState(
-            lines = emptyList(), // Géré par PagingData
-            selectedLine = state.content.selectedLine,
-            commentaries = emptyList(), // Géré par les pagers
-            showCommentaries = state.content.showCommentaries,
-            showTargum = state.content.showLinks,
-            paragraphScrollPosition = state.content.paragraphScrollPosition,
-            chapterScrollPosition = state.content.chapterScrollPosition,
-            selectedChapter = state.content.selectedChapter,
-            scrollIndex = state.content.scrollPosition.index,
-            scrollOffset = state.content.scrollPosition.offset,
-            anchorId = state.content.anchorId,
-            anchorIndex = state.content.anchorIndex,
-            scrollToLineTimestamp = state.content.scrollToLineTimestamp,
-            commentariesSelectedTab = state.content.commentariesState.selectedTab,
-            commentariesScrollIndex = state.content.commentariesState.scrollPosition.index,
-            commentariesScrollOffset = state.content.commentariesState.scrollPosition.offset,
-            selectedCommentatorIds = state.content.selectedLine?.let { line ->
-                state.content.commentariesState.selectedCommentatorsByLine[line.id]
-            } ?: emptySet(),
-            selectedTargumSourceIds = state.content.selectedLine?.let { line ->
-                state.content.commentariesState.selectedLinkSourcesByLine[line.id]
-            } ?: emptySet()
-        )
-    }
-
-    /**
-     * Crée l'état UI du layout
-     */
-    @OptIn(ExperimentalSplitPaneApi::class)
-    private fun createLayoutUiState(state: LayoutState): LayoutUiState {
-        return LayoutUiState(
-            mainSplitState = SplitPaneState(
-                initialPositionPercentage = state.mainSplitPosition,
-                moveEnabled = true
-            ),
-            tocSplitState = SplitPaneState(
-                initialPositionPercentage = state.tocSplitPosition,
-                moveEnabled = true
-            ),
-            contentSplitState = SplitPaneState(
-                initialPositionPercentage = state.contentSplitPosition,
-                moveEnabled = true
-            ),
-            targumSplitState = SplitPaneState(
-                initialPositionPercentage = state.linksSplitPosition,
-                moveEnabled = true
-            )
-        )
-    }
 }
 
 /**

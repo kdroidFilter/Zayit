@@ -19,7 +19,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.icons.ChevronDown
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.ChevronRight
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.NavigationUiState
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.NavigationUiState
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged

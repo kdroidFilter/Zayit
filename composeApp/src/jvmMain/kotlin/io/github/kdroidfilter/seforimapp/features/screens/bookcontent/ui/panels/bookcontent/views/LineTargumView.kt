@@ -1,7 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views
 
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween

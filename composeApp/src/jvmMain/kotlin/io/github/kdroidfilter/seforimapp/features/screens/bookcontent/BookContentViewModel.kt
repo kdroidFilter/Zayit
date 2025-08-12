@@ -27,6 +27,13 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
 
+/**
+ * ViewModel responsible for managing the state and behavior of a book content and its related UI sections.
+ *
+ * This class handles state management for navigating book categories, managing tabs, handling table of contents (TOC),
+ * displaying book content, loading commentaries and links, as well as managing split-pane layout states and scroll positions.
+ * It coordinates interactions between the repository, navigation logic, and UI elements.
+ */
 @OptIn(ExperimentalSplitPaneApi::class)
 class BookContentViewModel(
     savedStateHandle: SavedStateHandle,
@@ -40,6 +47,20 @@ class BookContentViewModel(
 ) {
     private val currentTabId: String = savedStateHandle.get<String>(KEY_TAB_ID) ?: ""
 
+    /**
+     * Companion object for managing state keys and constants used within the BookContentViewModel class.
+     *
+     * This object contains a collection of keys that represent various states and configurations
+     * pertaining to the book content view. These keys are typically used for saving, restoring,
+     * and accessing UI-related states and preferences within the application.
+     *
+     * The keys are categorized into general state keys and additional state keys, which cover
+     * different areas such as tab management, navigation, UI layout positions, scroll positions,
+     * and selection states for books, chapters, lines, categories, and other elements.
+     *
+     * It also includes keys specific to managing table of contents, commentaries, and targum sources
+     * to enable flexible and user-centric functionality in navigating and interacting with content.
+     */
     companion object {
         // State keys
         const val KEY_TAB_ID = "tabId"
@@ -188,7 +209,24 @@ class BookContentViewModel(
         .cachedIn(viewModelScope)
 
 
-    // Create UI state using combine for better performance
+    /**
+     * Represents the state flow for the complete UI state of the book content screen.
+     * Combines multiple state flows related to navigation, table of contents (TOC),
+     * content, layout, and loading status into a single state flow of `BookContentUiState`.
+     * The resulting state flow is observed within the view model's lifecycle and
+     * indicates the current state of the book content UI.
+     *
+     * The `uiState` is initialized with default values for `BookContentUiState`
+     * using the `combine` function for optimal performance, ensuring state updates
+     * only occur when any of the combined state flows change.
+     *
+     * @property navigationState A state flow representing the navigation state of the book content.
+     * @property tocState A state flow representing the table of contents (TOC) state.
+     * @property contentState A state flow representing the content displayed in the book UI.
+     * @property layoutState A state flow representing the UI layout configuration.
+     * @property _isLoading A state flow indicating whether the UI is currently in a loading state.
+     */
+// Create UI state using combine for better performance
     @OptIn(ExperimentalSplitPaneApi::class)
     val uiState: StateFlow<BookContentUiState> = combine(
         navigationState(),
@@ -509,6 +547,21 @@ class BookContentViewModel(
         .stateIn(viewModelScope, SharingStarted.Eagerly, ContentUiState())
     }
 
+    /**
+     * Encapsulates data related to the content displayed in the book content view.
+     *
+     * @property selectedLine The currently selected line in the content, or null if no line is selected.
+     * @property commentaries A list of commentaries associated with the content.
+     * @property showCommentaries Flag indicating whether the commentaries panel is currently visible.
+     * @property shouldScrollToLine Flag indicating whether the content should scroll to the currently selected line.
+     * @property paragraphScrollPosition The vertical scroll position within a paragraph.
+     * @property chapterScrollPosition The vertical scroll position within a chapter.
+     * @property scrollIndex The index of the currently visible scroll position in the main content.
+     * @property scrollOffset The offset position in pixels relative to the current scrollIndex in the main content.
+     * @property commentariesSelectedTab Index of the currently selected tab in the commentaries section.
+     * @property commentariesScrollIndex The index of the currently visible scroll position in the commentaries tab.
+     * @property commentariesScrollOffset The offset position in pixels relative to the current commentariesScrollIndex.
+     */
     private data class ContentData(
         val selectedLine: Line?,
         val commentaries: List<CommentaryWithText>,

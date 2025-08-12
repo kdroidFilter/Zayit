@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels
+package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.categorytree
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -10,8 +10,6 @@ import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.NavigationUiState
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.CategoryBookTree
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
@@ -33,7 +31,7 @@ fun CategoryTreePanel(
         Spacer(modifier = Modifier.height(16.dp))
         
         val windowInfo = LocalWindowInfo.current
-        CategoryBookTree(
+        CategoryBookTreeView(
             navigationState = uiState.navigation,
             onCategoryClick = { onEvent(BookContentEvent.CategorySelected(it)) },
             onBookClick = {

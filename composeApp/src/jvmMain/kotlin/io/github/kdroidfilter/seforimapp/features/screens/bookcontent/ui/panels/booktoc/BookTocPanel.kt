@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels
+package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.booktoc
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -9,7 +9,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.TocView
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.composeapp.generated.resources.Res
@@ -43,7 +42,7 @@ fun BookTocPanel(
             }
             else -> {
                 Box(modifier = Modifier.fillMaxHeight()) {
-                    TocView(
+                    BookTocView(
                         uiState = uiState,
                         onEvent = onEvent,
                         modifier = Modifier.fillMaxHeight()

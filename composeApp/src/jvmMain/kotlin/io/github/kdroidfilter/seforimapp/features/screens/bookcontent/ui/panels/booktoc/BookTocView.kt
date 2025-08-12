@@ -1,7 +1,6 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
+package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.booktoc
 
 import androidx.compose.foundation.VerticalScrollbar
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -12,7 +11,6 @@ import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
@@ -28,10 +26,8 @@ import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.theme.iconButtonStyle
 
 /**
  * Table-of-contents list with collapsible nodes and scroll-state persistence.
@@ -42,11 +38,10 @@ import org.jetbrains.jewel.ui.theme.iconButtonStyle
  * 3. Explicit restore of the saved scroll position once the list has real content
  *    (otherwise Compose would clamp the requested index to 0 when the list was still empty)
  */
-// TocView.kt simplified
 
 @OptIn(FlowPreview::class)
 @Composable
-fun TocView(
+fun BookTocView(
     tocEntries: List<TocEntry>,
     expandedEntries: Set<Long>,
     tocChildren: Map<Long, List<TocEntry>>,
@@ -60,7 +55,7 @@ fun TocView(
     modifier: Modifier = Modifier
 ) {
     val visibleEntries = remember(tocEntries, expandedEntries, tocChildren, lines, lineTocMappings) {
-        buildVisibleTocEntries(tocEntries, expandedEntries, tocChildren, lines, lineTocMappings)
+        buildVisibleTocEntries(tocEntries, expandedEntries, tocChildren)
     }
 
     val listState = rememberLazyListState(
@@ -113,7 +108,7 @@ fun TocView(
 
 @OptIn(FlowPreview::class)
 @Composable
-fun TocView(
+fun BookTocView(
     uiState: BookContentUiState,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
@@ -138,7 +133,7 @@ fun TocView(
         }
     }
 
-    TocView(
+    BookTocView(
         tocEntries = displayEntries,
         expandedEntries = uiState.toc.expandedEntries,
         tocChildren = uiState.toc.children,
@@ -163,19 +158,16 @@ private fun buildVisibleTocEntries(
     entries: List<TocEntry>,
     expandedEntries: Set<Long>,
     tocChildren: Map<Long, List<TocEntry>>,
-    lines: List<Line> = emptyList(),
-    lineTocMappings: List<LineTocMapping> = emptyList()
 ): List<VisibleTocEntry> {
     val result = mutableListOf<VisibleTocEntry>()
 
     fun addEntries(currentEntries: List<TocEntry>, level: Int) {
         currentEntries.forEach { entry ->
-            // SIMPLIFICATION: Use the hasChildren field of the entry directly
             result += VisibleTocEntry(
                 entry = entry,
                 level = level,
                 isExpanded = expandedEntries.contains(entry.id),
-                hasChildren = entry.hasChildren,  // Directly from the model!
+                hasChildren = entry.hasChildren,
                 isLastChild = entry.isLastChild
             )
 
@@ -220,7 +212,7 @@ private fun TocEntryItem(
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (visibleEntry.hasChildren) {  // Utilise directement hasChildren
+        if (visibleEntry.hasChildren) {
             Icon(if (visibleEntry.isExpanded) ChevronDown else ChevronRight,
                 contentDescription = "",
                 modifier = Modifier.height(12.dp).width(24.dp))

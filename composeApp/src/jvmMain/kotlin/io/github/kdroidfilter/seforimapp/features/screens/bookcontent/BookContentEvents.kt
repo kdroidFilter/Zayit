@@ -3,6 +3,12 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent
 import io.github.kdroidfilter.seforimlibrary.core.models.*
 
 
+/**
+ * Represents different events related to book content, including navigation, table of contents (TOC),
+ * book tree interaction, content-specific actions, commentaries, targum, scroll events, and state management.
+ * This sealed interface is used as an event model for handling various user interactions and application states
+ * in the context of book content exploration.
+ */
 sealed interface BookContentEvent {
     // Navigation events
     data class SearchTextChanged(val text: String) : BookContentEvent

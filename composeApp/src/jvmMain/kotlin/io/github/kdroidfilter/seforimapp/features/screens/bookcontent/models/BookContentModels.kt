@@ -8,6 +8,19 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
 
 /**
+ * Complete UI state for book content screen
+ */
+@Stable
+data class BookContentUiState(
+    val navigation: NavigationUiState = NavigationUiState(),
+    val toc: TocUiState = TocUiState(),
+    val content: ContentUiState = ContentUiState(),
+    val layout: LayoutUiState,
+    val isLoading: Boolean = false,
+    val providers: Providers? = null
+)
+
+/**
  * UI state for navigation panel (categories and books)
  */
 @Immutable
@@ -81,19 +94,6 @@ data class Providers(
     val getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
     val buildLinksPagerFor: (Long, Long?) -> kotlinx.coroutines.flow.Flow<app.cash.paging.PagingData<CommentaryWithText>>,
     val getAvailableLinksForLine: suspend (Long) -> Map<String, Long>
-)
-
-/**
- * Complete UI state for book content screen
- */
-@Stable
-data class BookContentUiState(
-    val navigation: NavigationUiState = NavigationUiState(),
-    val toc: TocUiState = TocUiState(),
-    val content: ContentUiState = ContentUiState(),
-    val layout: LayoutUiState,
-    val isLoading: Boolean = false,
-    val providers: Providers? = null
 )
 
 /**

@@ -1,6 +1,5 @@
 package io.github.kdroidfilter.seforimapp.framework.di
 
-import androidx.compose.runtime.Composable
 import androidx.lifecycle.SavedStateHandle
 import com.russhwolf.settings.Settings
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
@@ -14,10 +13,8 @@ import io.github.kdroidfilter.seforimapp.core.settings.IAppSettings
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettingsImpl
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
-import io.github.kdroidfilter.seforimapp.framework.database.getRepository
 import org.koin.dsl.module
 import org.koin.core.module.dsl.viewModel
-import org.koin.core.module.dsl.singleOf
 import java.util.UUID
 
 val desktopModule = module {

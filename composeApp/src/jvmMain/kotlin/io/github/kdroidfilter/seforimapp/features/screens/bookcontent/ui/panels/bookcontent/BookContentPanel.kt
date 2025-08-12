@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels
+package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,6 +13,10 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.Horizontal
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.*
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views.BookContentView
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views.BreadcrumbView
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views.LineCommentsView
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views.LineTargumView
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -49,32 +53,32 @@ fun BookContentPanel(
             firstContent = {
                 EnhancedHorizontalSplitPane(
                     uiState.layout.targumSplitState, firstContent = {
-                    BookContentView(
-                        book = uiState.navigation.selectedBook,
-                        linesPagingData = providers.linesPagingData,
-                        selectedLine = uiState.content.selectedLine,
-                        onLineSelected = { line ->
-                            onEvent(BookContentEvent.LineSelected(line))
-                        },
-                        onEvent = onEvent,
-                        modifier = Modifier.padding(16.dp),
-                        preservedListState = bookListState,
-                        scrollIndex = uiState.content.scrollIndex,
-                        scrollOffset = uiState.content.scrollOffset,
-                        scrollToLineTimestamp = uiState.content.scrollToLineTimestamp,
-                        anchorId = uiState.content.anchorId,
-                        anchorIndex = uiState.content.anchorIndex,
-                        onScroll = { anchorId, anchorIndex, scrollIndex, scrollOffset ->
-                            onEvent(
-                                BookContentEvent.ContentScrolled(
-                                    anchorId = anchorId,
-                                    anchorIndex = anchorIndex,
-                                    scrollIndex = scrollIndex,
-                                    scrollOffset = scrollOffset
+                        BookContentView(
+                            book = uiState.navigation.selectedBook,
+                            linesPagingData = providers.linesPagingData,
+                            selectedLine = uiState.content.selectedLine,
+                            onLineSelected = { line ->
+                                onEvent(BookContentEvent.LineSelected(line))
+                            },
+                            onEvent = onEvent,
+                            modifier = Modifier.padding(16.dp),
+                            preservedListState = bookListState,
+                            scrollIndex = uiState.content.scrollIndex,
+                            scrollOffset = uiState.content.scrollOffset,
+                            scrollToLineTimestamp = uiState.content.scrollToLineTimestamp,
+                            anchorId = uiState.content.anchorId,
+                            anchorIndex = uiState.content.anchorIndex,
+                            onScroll = { anchorId, anchorIndex, scrollIndex, scrollOffset ->
+                                onEvent(
+                                    BookContentEvent.ContentScrolled(
+                                        anchorId = anchorId,
+                                        anchorIndex = anchorIndex,
+                                        scrollIndex = scrollIndex,
+                                        scrollOffset = scrollOffset
+                                    )
                                 )
-                            )
-                        }
-                    )
+                            }
+                        )
                 }, secondContent = if (uiState.content.showTargum) {
                     {
                         TargumPane(

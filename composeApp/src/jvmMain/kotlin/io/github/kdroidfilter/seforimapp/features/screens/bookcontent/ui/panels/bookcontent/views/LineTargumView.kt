@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
+package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views
 
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
@@ -124,7 +124,7 @@ fun LineTargumView(
 
                     val splitState = rememberSplitPaneState(0.2f)
 
-                    EnhancedVerticalSplitPane(
+                    _root_ide_package_.io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedVerticalSplitPane(
                         splitPaneState = splitState,
                         firstMinSize = 120f,
                         firstContent = {

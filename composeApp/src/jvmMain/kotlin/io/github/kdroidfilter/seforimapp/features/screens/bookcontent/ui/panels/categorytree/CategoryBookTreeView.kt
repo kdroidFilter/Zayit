@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
+package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.categorytree
 
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
@@ -24,7 +24,6 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -47,7 +46,7 @@ private data class TreeItem(
 
 @OptIn(FlowPreview::class)
 @Composable
-fun CategoryBookTree(
+fun CategoryBookTreeView(
     navigationState: NavigationUiState,
     onCategoryClick: (Category) -> Unit,
     onBookClick: (Book) -> Unit,

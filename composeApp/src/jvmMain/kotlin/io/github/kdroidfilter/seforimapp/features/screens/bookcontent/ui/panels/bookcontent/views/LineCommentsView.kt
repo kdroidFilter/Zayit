@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
+package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views
 
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
@@ -140,7 +140,7 @@ private fun CommentariesContent(
 
     val splitState = rememberSplitPaneState(0.10f)
 
-    EnhancedHorizontalSplitPane(
+    _root_ide_package_.io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedHorizontalSplitPane(
         splitPaneState = splitState,
         firstMinSize = 150f,
         firstContent = {

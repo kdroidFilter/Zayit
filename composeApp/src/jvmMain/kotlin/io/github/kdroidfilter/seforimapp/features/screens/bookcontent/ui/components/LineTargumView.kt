@@ -1,5 +1,8 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
 
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.VerticalScrollbar
@@ -156,6 +159,38 @@ fun LineTargumView(
             }
         }
     }
+}
+
+@Composable
+fun LineTargumView(
+    uiState: BookContentUiState,
+    onEvent: (BookContentEvent) -> Unit,
+) {
+    val providers = uiState.providers ?: return
+    val contentState = uiState.content
+    LineTargumView(
+        selectedLine = contentState.selectedLine,
+        buildLinksPagerFor = providers.buildLinksPagerFor,
+        getAvailableLinksForLine = providers.getAvailableLinksForLine,
+        commentariesScrollIndex = contentState.commentariesScrollIndex,
+        commentariesScrollOffset = contentState.commentariesScrollOffset,
+        initiallySelectedSourceIds = contentState.selectedTargumSourceIds,
+        onSelectedSourcesChange = { ids ->
+            contentState.selectedLine?.let { line ->
+                onEvent(BookContentEvent.SelectedTargumSourcesChanged(line.id, ids))
+            }
+        },
+        onLinkClick = { commentary ->
+            onEvent(
+                BookContentEvent.OpenCommentaryTarget(
+                    bookId = commentary.link.targetBookId, lineId = commentary.link.targetLineId
+                )
+            )
+        },
+        onScroll = { index, offset ->
+            onEvent(BookContentEvent.CommentariesScrolled(index, offset))
+        }
+    )
 }
 
 @Composable

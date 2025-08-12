@@ -1,22 +1,22 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import io.github.kdroidfilter.seforimapp.core.presentation.components.*
+import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
+import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
+import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.*
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
 import org.jetbrains.compose.resources.stringResource
 import seforimapp.composeapp.generated.resources.*
 
 @Composable
 fun StartVerticalBar(
-    showBookTree: Boolean,
-    showToc: Boolean,
-    onToggleBookTree: () -> Unit,
-    onToggleToc: () -> Unit
+    uiState: BookContentUiState,
+    onEvent: (BookContentEvent) -> Unit
 ) {
     VerticalLateralBar(
         position = VerticalLateralBarPosition.Start,
@@ -24,16 +24,16 @@ fun StartVerticalBar(
         topContent = {
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.book_list),
-                onClick = onToggleBookTree,
-                isSelected = showBookTree,
+                onClick = { onEvent(BookContentEvent.ToggleBookTree) },
+                isSelected = uiState.navigation.isVisible,
                 icon = Library,
                 iconDescription = stringResource(Res.string.books),
                 label = stringResource(Res.string.books)
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.book_content),
-                onClick = onToggleToc,
-                isSelected = showToc,
+                onClick = { onEvent(BookContentEvent.ToggleToc) },
+                isSelected = uiState.toc.isVisible,
                 icon = TableOfContents,
                 iconDescription = stringResource(Res.string.table_of_contents),
                 label = stringResource(Res.string.table_of_contents)
@@ -63,10 +63,8 @@ fun StartVerticalBar(
 
 @Composable
 fun EndVerticalBar(
-    showCommentaries: Boolean,
-    onToggleCommentaries: () -> Unit,
-    showTargum: Boolean,
-    onToggleTargum: () -> Unit
+    uiState: BookContentUiState,
+    onEvent: (BookContentEvent) -> Unit
 ) {
     // Collect current text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -142,16 +140,16 @@ fun EndVerticalBar(
         bottomContent = {
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.show_links_tooltip),
-                onClick = onToggleTargum,
-                isSelected = showTargum,
+                onClick = { onEvent(BookContentEvent.ToggleTargum) },
+                isSelected = uiState.content.showTargum,
                 icon = Library_books,
                 iconDescription = stringResource(Res.string.show_links),
                 label = stringResource(Res.string.show_links)
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.show_commentaries_tooltip),
-                onClick = onToggleCommentaries,
-                isSelected = showCommentaries,
+                onClick = { onEvent(BookContentEvent.ToggleCommentaries) },
+                isSelected = uiState.content.showCommentaries,
                 icon = Align_end,
                 iconDescription = stringResource(Res.string.show_commentaries),
                 label = stringResource(Res.string.show_commentaries)

@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -112,6 +114,32 @@ fun BreadcrumbView(
  * @param categoryChildren Map of category ID to list of child categories
  * @return A list of breadcrumb items representing the path from the category root to the selected line
  */
+@Composable
+fun BreadcrumbView(
+    uiState: BookContentUiState,
+    onEvent: (BookContentEvent) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val book = uiState.navigation.selectedBook ?: return
+    BreadcrumbView(
+        book = book,
+        selectedLine = uiState.content.selectedLine,
+        tocEntries = uiState.toc.entries,
+        tocChildren = uiState.toc.children,
+        rootCategories = uiState.navigation.rootCategories,
+        categoryChildren = uiState.navigation.categoryChildren,
+        onTocEntryClick = { entry ->
+            entry.lineId?.let { lineId ->
+                onEvent(BookContentEvent.LoadAndSelectLine(lineId))
+            }
+        },
+        onCategoryClick = { category ->
+            onEvent(BookContentEvent.CategorySelected(category))
+        },
+        modifier = modifier
+    )
+}
+
 private fun buildBreadcrumbPath(
     book: Book,
     selectedLine: Line?,

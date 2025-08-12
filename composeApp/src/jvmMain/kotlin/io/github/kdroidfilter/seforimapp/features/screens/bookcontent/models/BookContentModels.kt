@@ -74,6 +74,15 @@ data class LayoutUiState @OptIn(ExperimentalSplitPaneApi::class) constructor(
     val targumSplitState: SplitPaneState
 )
 
+@Immutable
+data class Providers(
+    val linesPagingData: kotlinx.coroutines.flow.Flow<app.cash.paging.PagingData<Line>>,
+    val buildCommentariesPagerFor: (Long, Long?) -> kotlinx.coroutines.flow.Flow<app.cash.paging.PagingData<CommentaryWithText>>,
+    val getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
+    val buildLinksPagerFor: (Long, Long?) -> kotlinx.coroutines.flow.Flow<app.cash.paging.PagingData<CommentaryWithText>>,
+    val getAvailableLinksForLine: suspend (Long) -> Map<String, Long>
+)
+
 /**
  * Complete UI state for book content screen
  */
@@ -83,7 +92,8 @@ data class BookContentUiState(
     val toc: TocUiState = TocUiState(),
     val content: ContentUiState = ContentUiState(),
     val layout: LayoutUiState,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val providers: Providers? = null
 )
 
 /**

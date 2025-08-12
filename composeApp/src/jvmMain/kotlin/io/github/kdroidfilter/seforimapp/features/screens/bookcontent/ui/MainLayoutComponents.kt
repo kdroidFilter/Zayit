@@ -7,7 +7,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import app.cash.paging.PagingData
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EndVerticalBar
@@ -15,11 +14,8 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compone
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.StartVerticalBar
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.CategoryTreePanel
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.TocPanel
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.BookTocPanel
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -28,11 +24,6 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 @Composable
 fun MainBookContentLayout(
     uiState: BookContentUiState,
-    linesPagingData: Flow<PagingData<Line>>, // Paging data flow for lines
-    buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
-    getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
-    buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
-    getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
     onEvent: (BookContentEvent) -> Unit
 ) {
     // Save split pane positions with debounce - only when panels are visible
@@ -79,10 +70,8 @@ fun MainBookContentLayout(
     // Main content area with panels - now takes full height
     Row(modifier = Modifier.fillMaxSize()) {
         StartVerticalBar(
-            showBookTree = uiState.navigation.isVisible,
-            showToc = uiState.toc.isVisible,
-            onToggleBookTree = { onEvent(BookContentEvent.ToggleBookTree) },
-            onToggleToc = { onEvent(BookContentEvent.ToggleToc) }
+            uiState = uiState,
+            onEvent = onEvent
         )
 
         // Always use the same structure - just hide panels by setting width to 0
@@ -93,7 +82,7 @@ fun MainBookContentLayout(
             firstContent = {
                 if (uiState.navigation.isVisible) {
                     CategoryTreePanel(
-                        navigationState = uiState.navigation,
+                        uiState = uiState,
                         onEvent = onEvent
                     )
                 }
@@ -104,27 +93,15 @@ fun MainBookContentLayout(
                     firstMinSize = if (uiState.toc.isVisible) 200f else 0f,
                     firstContent = {
                         if (uiState.toc.isVisible) {
-                            TocPanel(
-                                selectedBook = uiState.navigation.selectedBook,
-                                tocState = uiState.toc,
-                                isLoading = uiState.isLoading,
+                            BookTocPanel(
+                                uiState = uiState,
                                 onEvent = onEvent
                             )
                         }
                     },
                     secondContent = {
                         BookContentPanel(
-                            selectedBook = uiState.navigation.selectedBook,
-                            linesPagingData = linesPagingData, // Pass paging data
-                            buildCommentariesPagerFor = buildCommentariesPagerFor,
-                            getAvailableCommentatorsForLine = getAvailableCommentatorsForLine,
-                            buildLinksPagerFor = buildLinksPagerFor,
-                            getAvailableLinksForLine = getAvailableLinksForLine,
-                            contentState = uiState.content,
-                            tocState = uiState.toc,
-                            navigationState = uiState.navigation,
-                            verticalContentSplitState = uiState.layout.contentSplitState,
-                            horizontalTargumSplitState = uiState.layout.targumSplitState,
+                            uiState = uiState,
                             onEvent = onEvent
                         )
                     }
@@ -133,10 +110,8 @@ fun MainBookContentLayout(
         )
 
         EndVerticalBar(
-            showCommentaries = uiState.content.showCommentaries,
-            onToggleCommentaries = { onEvent(BookContentEvent.ToggleCommentaries) },
-            showTargum = uiState.content.showTargum,
-            onToggleTargum = { onEvent(BookContentEvent.ToggleTargum) }
+            uiState = uiState,
+            onEvent = onEvent
         )
     }
 }

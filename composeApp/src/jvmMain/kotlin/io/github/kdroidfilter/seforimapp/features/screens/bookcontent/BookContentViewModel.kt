@@ -202,7 +202,14 @@ class BookContentViewModel(
             toc = toc,
             content = content,
             layout = layout,
-            isLoading = isLoading
+            isLoading = isLoading,
+            providers = Providers(
+                linesPagingData = linesPagingData,
+                buildCommentariesPagerFor = ::buildCommentariesPagerFor,
+                getAvailableCommentatorsForLine = ::getAvailableCommentatorsForLine,
+                buildLinksPagerFor = ::buildTargumPagerFor,
+                getAvailableLinksForLine = ::getAvailableTargumForLine
+            )
         )
     }.stateIn(
         viewModelScope,

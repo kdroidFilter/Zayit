@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.ChevronDown
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.ChevronRight
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.VisibleTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.LineTocMapping
@@ -107,6 +109,54 @@ fun TocView(
             adapter = rememberScrollbarAdapter(listState)
         )
     }
+}
+
+@OptIn(FlowPreview::class)
+@Composable
+fun TocView(
+    uiState: BookContentUiState,
+    onEvent: (BookContentEvent) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val rootEntries = uiState.toc.children[-1L] ?: uiState.toc.entries
+    var displayEntries by remember(uiState.toc.entries, uiState.toc.children, uiState.navigation.selectedBook?.id) {
+        mutableStateOf(rootEntries.ifEmpty { uiState.toc.entries })
+    }
+
+    if (displayEntries.size == 1) {
+        val soleParent = displayEntries.first()
+        val directChildren = uiState.toc.children[soleParent.id]
+
+        if (directChildren.isNullOrEmpty()) {
+            if (soleParent.hasChildren && !uiState.toc.expandedEntries.contains(soleParent.id)) {
+                LaunchedEffect(uiState.navigation.selectedBook?.id, soleParent.id) {
+                    onEvent(BookContentEvent.TocEntryExpanded(soleParent))
+                }
+            }
+        } else {
+            displayEntries = directChildren
+        }
+    }
+
+    TocView(
+        tocEntries = displayEntries,
+        expandedEntries = uiState.toc.expandedEntries,
+        tocChildren = uiState.toc.children,
+        scrollIndex = uiState.toc.scrollIndex,
+        scrollOffset = uiState.toc.scrollOffset,
+        onEntryClick = { entry ->
+            entry.lineId?.let { lineId ->
+                onEvent(BookContentEvent.LoadAndSelectLine(lineId))
+            }
+        },
+        onEntryExpand = { entry ->
+            onEvent(BookContentEvent.TocEntryExpanded(entry))
+        },
+        onScroll = { index, offset ->
+            onEvent(BookContentEvent.TocScrolled(index, offset))
+        },
+        modifier = modifier
+    )
 }
 
 private fun buildVisibleTocEntries(

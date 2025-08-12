@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.BookContentUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.models.NavigationUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.CategoryBookTree
 import org.jetbrains.compose.resources.stringResource
@@ -19,13 +20,13 @@ import seforimapp.composeapp.generated.resources.search_placeholder
 
 @Composable
 fun CategoryTreePanel(
-    navigationState: NavigationUiState,
+    uiState: BookContentUiState,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.padding(16.dp)) {
         SearchField(
-            searchText = navigationState.searchText,
+            searchText = uiState.navigation.searchText,
             onSearchTextChange = { onEvent(BookContentEvent.SearchTextChanged(it)) }
         )
         
@@ -33,7 +34,7 @@ fun CategoryTreePanel(
         
         val windowInfo = LocalWindowInfo.current
         CategoryBookTree(
-            navigationState = navigationState,
+            navigationState = uiState.navigation,
             onCategoryClick = { onEvent(BookContentEvent.CategorySelected(it)) },
             onBookClick = {
                 val mods = windowInfo.keyboardModifiers

@@ -260,114 +260,40 @@ private fun CommentariesLayout(
 ) {
     val count = layoutConfig.selectedCommentators.size
 
-    when (count) {
-        1 -> SingleCommentatorView(layoutConfig, uiState)
-        2 -> TwoCommentatorsView(layoutConfig, uiState)
-        3 -> ThreeCommentatorsView(layoutConfig, uiState)
-        4 -> FourCommentatorsView(layoutConfig, uiState)
-    }
+    CommentatorsGridView(layoutConfig, uiState)
 }
 
 @Composable
-private fun SingleCommentatorView(
+private fun CommentatorsGridView(
     config: CommentariesLayoutConfig,
     uiState: BookContentUiState,
 ) {
-    val name = config.selectedCommentators[0]
-    val id = config.titleToIdMap[name] ?: return
-
+    val rows = remember(config.selectedCommentators) {
+        buildCommentatorRows(config.selectedCommentators)
+    }
+    var primaryAssigned = false
     Column(modifier = Modifier.fillMaxSize()) {
-        CommentatorHeader(name, config.textSizes.commentTextSize)
-        CommentaryListView(
-            lineId = config.lineId,
-            commentatorId = id,
-            isPrimary = true,
-            config = config,
-            uiState = uiState,
-        )
-    }
-}
-
-@Composable
-private fun TwoCommentatorsView(
-    config: CommentariesLayoutConfig,
-    uiState: BookContentUiState,
-) {
-    Row(modifier = Modifier.fillMaxSize()) {
-        config.selectedCommentators.forEachIndexed { index, name ->
-            val id = config.titleToIdMap[name] ?: return@forEachIndexed
-            Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
-                CommentatorHeader(name, config.textSizes.commentTextSize)
-                CommentaryListView(
-                    lineId = config.lineId,
-                    commentatorId = id,
-                    isPrimary = index == 0,
-                    config = config,
-                    uiState = uiState,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ThreeCommentatorsView(
-    config: CommentariesLayoutConfig,
-    uiState: BookContentUiState,
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        // First row with 2 commentators
-        Row(modifier = Modifier.weight(1f)) {
-            config.selectedCommentators.take(2).forEachIndexed { index, name ->
-                val id = config.titleToIdMap[name] ?: return@forEachIndexed
-                Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
-                    CommentatorHeader(name, config.textSizes.commentTextSize)
-                    CommentaryListView(
-                        lineId = config.lineId,
-                        commentatorId = id,
-                        isPrimary = index == 0,
-                        config = config,
-                        uiState = uiState,
-                    )
-                }
-            }
-        }
-        // Second row with 1 commentator
-        val thirdName = config.selectedCommentators[2]
-        val thirdId = config.titleToIdMap[thirdName] ?: return
-        Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
-            CommentatorHeader(thirdName, config.textSizes.commentTextSize)
-            CommentaryListView(
-                lineId = config.lineId,
-                commentatorId = thirdId,
-                isPrimary = false,
-                config = config,
-                uiState = uiState,
-            )
-        }
-    }
-}
-
-@Composable
-private fun FourCommentatorsView(
-    config: CommentariesLayoutConfig,
-    uiState: BookContentUiState,
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Two rows with 2 commentators each
-        listOf(
-            config.selectedCommentators.take(2),
-            config.selectedCommentators.drop(2)
-        ).forEachIndexed { rowIndex, rowCommentators ->
-            Row(modifier = Modifier.weight(1f)) {
+        rows.forEachIndexed { rowIndex, rowCommentators ->
+            val rowModifier = if (rows.size > 1) Modifier.weight(1f) else Modifier.fillMaxHeight()
+            Row(modifier = rowModifier.fillMaxWidth()) {
                 rowCommentators.forEachIndexed { colIndex, name ->
                     val id = config.titleToIdMap[name] ?: return@forEachIndexed
-                    Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
+                    val isPrimary = if (!primaryAssigned) {
+                        primaryAssigned = true
+                        true
+                    } else false
+                    val singleRowSingleCol = rows.size == 1 && rowCommentators.size == 1
+                    val colModifier = if (singleRowSingleCol) {
+                        Modifier.fillMaxHeight().weight(1f)
+                    } else {
+                        Modifier.weight(1f).padding(horizontal = 4.dp)
+                    }
+                    Column(modifier = colModifier) {
                         CommentatorHeader(name, config.textSizes.commentTextSize)
                         CommentaryListView(
                             lineId = config.lineId,
                             commentatorId = id,
-                            isPrimary = rowIndex == 0 && colIndex == 0,
+                            isPrimary = isPrimary,
                             config = config,
                             uiState = uiState,
                         )
@@ -377,6 +303,19 @@ private fun FourCommentatorsView(
         }
     }
 }
+
+private fun buildCommentatorRows(selected: List<String>): List<List<String>> {
+    return when (selected.size) {
+        0 -> emptyList()
+        1 -> listOf(selected)
+        2 -> listOf(selected)
+        3 -> listOf(selected.take(2), selected.drop(2))
+        else -> listOf(selected.take(2), selected.drop(2).take(2))
+    }
+}
+
+
+
 
 @Composable
 private fun CommentaryListView(

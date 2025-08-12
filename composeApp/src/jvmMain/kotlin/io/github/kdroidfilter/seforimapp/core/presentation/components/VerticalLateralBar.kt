@@ -30,9 +30,9 @@ enum class VerticalLateralBarPosition {
 
 @Composable
 fun VerticalLateralBar(
-    topContentLabel: String,
+    topContentLabel: String? = null,
     topContent: @Composable () -> Unit,
-    bottomContentLabel: String,
+    bottomContentLabel: String? = null,
     bottomContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     position: VerticalLateralBarPosition,
@@ -50,7 +50,7 @@ fun VerticalLateralBar(
         }
         Column(modifier = Modifier.weight(1f)) {
             Box(
-                modifier = boxModifier.fillMaxHeight(0.5f),
+                modifier = boxModifier,
                 contentAlignment = Alignment.TopCenter
             ) {
                 LazyColumn(
@@ -58,45 +58,49 @@ fun VerticalLateralBar(
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     item {
                         Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = topContentLabel,
-                            fontSize = 14.sp,
-                            textDecoration = TextDecoration.Underline,
-                        )
-                        Spacer(Modifier.height(4.dp))
+                        if (topContentLabel != null) {
+                            Text(
+                                text = topContentLabel,
+                                fontSize = 14.sp,
+                                textDecoration = TextDecoration.Underline,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                        }
                         Column(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             topContent()
                         }
-                    }
-                }
-            }
-            Box(
-                modifier = boxModifier.fillMaxHeight(),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = lazyColumnVerticalArrangement,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    item {
                         Divider(
                             orientation = Orientation.Horizontal,
                             modifier = Modifier
                                 .fillMaxWidth(0.5f)
                                 .width(1.dp)
-                                .padding(bottom = 4.dp),
+                                .padding(vertical = 4.dp),
                             color = JewelTheme.globalColors.borders.disabled
                         )
-                        Text(
-                            text = bottomContentLabel,
-                            fontSize = 14.sp,
-                            textDecoration = TextDecoration.Underline
-                        )
-                        Spacer(Modifier.height(4.dp))
+                    }
+                }
+            }
+            Box(
+                modifier = boxModifier,
+                contentAlignment = Alignment.TopCenter
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Bottom,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    item {
+                        if (bottomContentLabel != null) {
+                            Text(
+                                text = bottomContentLabel,
+                                fontSize = 14.sp,
+                                textDecoration = TextDecoration.Underline
+                            )
+                            Spacer(Modifier.height(4.dp))
+                        }
                         Column(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally

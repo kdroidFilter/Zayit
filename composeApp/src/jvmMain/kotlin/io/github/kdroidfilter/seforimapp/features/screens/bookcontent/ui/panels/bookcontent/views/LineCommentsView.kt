@@ -19,6 +19,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
@@ -91,9 +92,11 @@ private fun CommentariesHeader(
     ) {
         Text(
             text = stringResource(Res.string.commentaries),
+            textAlign = TextAlign.Center,
             fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            modifier = Modifier.padding(end = 16.dp)
+            fontSize = 18.sp,
+            textDecoration = TextDecoration.Underline,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         )
         if (showWarning) {
             WarningBanner(

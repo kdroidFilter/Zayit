@@ -1,17 +1,12 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views
 
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
-
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
@@ -21,6 +16,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
@@ -28,15 +24,16 @@ import app.cash.paging.PagingData
 import app.cash.paging.compose.LazyPagingItems
 import app.cash.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.core.utils.HtmlParser
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
-import org.jetbrains.compose.splitpane.rememberSplitPaneState
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
-import org.jetbrains.jewel.ui.component.RadioButtonChip
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.composeapp.generated.resources.*
 
@@ -66,14 +63,19 @@ fun LineTargumView(
         label = "linkLineHeightAnim"
     )
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxSize().padding(top = 8.dp, start = 8.dp, end = 8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text(
                 text = stringResource(Res.string.links),
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                modifier = Modifier.padding(end = 16.dp)
-            )
+                fontSize = 18.sp,
+                modifier = Modifier.padding(bottom = 16.dp),
+                textDecoration = TextDecoration.Underline,
+                )
         }
 
         when (selectedLine) {
@@ -98,63 +100,54 @@ fun LineTargumView(
                 } else {
                     val availableSources = remember(titleToIdMap) { titleToIdMap.keys.sorted().toList() }
 
-                    var selectedSource by remember(availableSources) { mutableStateOf<String?>(null) }
-
-                    // Initialize from initiallySelectedSourceIds (pick first match)
-                    LaunchedEffect(initiallySelectedSourceIds, titleToIdMap) {
-                        if (selectedSource == null && initiallySelectedSourceIds.isNotEmpty() && titleToIdMap.isNotEmpty()) {
-                            val firstMatch =
-                                titleToIdMap.firstNotNullOfOrNull { (name, id) -> name.takeIf { id in initiallySelectedSourceIds } }
-                            if (firstMatch != null) selectedSource = firstMatch
-                        }
+                    // We no longer select a single source; display all sources sequentially.
+                    // Emit all available source IDs so state stays consistent.
+                    LaunchedEffect(titleToIdMap) {
+                        onSelectedSourcesChange(titleToIdMap.values.toSet())
                     }
 
-                    // Keep selection valid when list changes
-                    LaunchedEffect(availableSources) {
-                        if (selectedSource != null && selectedSource !in availableSources) {
-                            selectedSource = null
-                        }
-                    }
+                    // Stack all targum blocks vertically with commentator name above each block.
+                    // Each block contains its own scrollable list with a bounded height.
+                    val outerScroll = rememberScrollState()
 
-                    // Emit selection as a single-ID set
-                    LaunchedEffect(selectedSource, titleToIdMap) {
-                        val id = selectedSource?.let { titleToIdMap[it] }
-                        onSelectedSourcesChange(if (id != null) setOf(id) else emptySet())
-                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(outerScroll),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        availableSources.forEachIndexed { index, source ->
+                            val id = titleToIdMap[source]
+                            if (id != null) {
 
-                    val splitState = rememberSplitPaneState(0.2f)
+                                // Header: commentator name
+                                Text(
+                                    text = source,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                )
 
-                    _root_ide_package_.io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedVerticalSplitPane(
-                        splitPaneState = splitState,
-                        firstMinSize = 120f,
-                        firstContent = {
-                            val id = selectedSource?.let { titleToIdMap[it] }
-                            if (id == null) {
-                                CenteredMessage(message = stringResource(Res.string.select_at_least_one_source))
-                            } else {
                                 PagedLinksList(
                                     buildLinksPagerFor = buildLinksPagerFor,
                                     lineId = selectedLine.id,
                                     sourceBookId = id,
-                                    isPrimary = true,
-                                    initialIndex = commentariesScrollIndex,
-                                    initialOffset = commentariesScrollOffset,
+                                    isPrimary = index == 0,
+                                    initialIndex = if (index == 0) commentariesScrollIndex else 0,
+                                    initialOffset = if (index == 0) commentariesScrollOffset else 0,
                                     onScroll = onScroll,
                                     onLinkClick = onLinkClick,
                                     commentTextSize = commentTextSize,
                                     lineHeight = lineHeight
                                 )
+
+                                Spacer(modifier = Modifier.height(8.dp))
                             }
-                        },
-                        secondContent = {
-                            ChipsSourcesListView(
-                                sources = availableSources,
-                                selected = selectedSource,
-                                onSelected = { name -> selectedSource = name },
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
                         }
-                    )
+                    }
+
                 }
             }
         }
@@ -200,43 +193,6 @@ private fun CenteredMessage(message: String, fontSize: Float = 14f) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ChipsSourcesListView(
-    sources: List<String>,
-    selected: String?,
-    onSelected: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    // Make chips area vertically scrollable with a vertical scrollbar when content exceeds height
-    Box(modifier = modifier.fillMaxSize()) {
-        val scrollState = rememberScrollState()
-        Column {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 8.dp)
-                    .verticalScroll(scrollState)
-            ) {
-                sources.forEach { source ->
-                    val isSelected = source == selected
-                    RadioButtonChip(
-                        selected = isSelected,
-                        onClick = { onSelected(source) },
-                        enabled = true
-                    ) { Text(source) }
-                }
-            }
-        }
-        VerticalScrollbar(
-            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight().padding(horizontal = 4.dp),
-            adapter = rememberScrollbarAdapter(scrollState)
-        )
-    }
-}
-
 @Composable
 private fun PagedLinksList(
     buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
@@ -256,25 +212,25 @@ private fun PagedLinksList(
 
     val lazyPagingItems: LazyPagingItems<CommentaryWithText> = pagerFlow.collectAsLazyPagingItems()
 
-    val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = initialIndex,
-        initialFirstVisibleItemScrollOffset = initialOffset
-    )
+    // Column + ScrollState au lieu de LazyColumn + LazyListState
+    val scrollState = rememberScrollState(initial = if (isPrimary) initialOffset else 0)
 
     if (isPrimary) {
-        LaunchedEffect(listState) {
-            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }.collect { (i, o) ->
-                onScroll(
-                    i,
-                    o
-                )
+        LaunchedEffect(scrollState) {
+            snapshotFlow { scrollState.value }.collect { o ->
+                onScroll(0, o)
             }
         }
     }
 
     SelectionContainer {
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-            items(lazyPagingItems.itemCount) { index ->
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 0.dp, max = 480.dp)
+                .verticalScroll(scrollState)
+        ) {
+            repeat(lazyPagingItems.itemCount) { index ->
                 val item = lazyPagingItems[index]
                 if (item != null) {
                     Column(
@@ -285,7 +241,7 @@ private fun PagedLinksList(
                     ) {
                         // Parse HTML and render styled text similar to book content
                         val parsedElements = remember(item.link.id, item.targetText) {
-                            io.github.kdroidfilter.seforimapp.core.utils.HtmlParser().parse(item.targetText)
+                            HtmlParser().parse(item.targetText)
                         }
                         val annotated = remember(parsedElements, commentTextSize) {
                             androidx.compose.ui.text.buildAnnotatedString {
@@ -295,10 +251,18 @@ private fun PagedLinksList(
                                     append(e.text)
                                     val end = length
                                     if (e.isBold) {
-                                        addStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold), start, end)
+                                        addStyle(
+                                            androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold),
+                                            start,
+                                            end
+                                        )
                                     }
                                     if (e.isItalic) {
-                                        addStyle(androidx.compose.ui.text.SpanStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic), start, end)
+                                        addStyle(
+                                            androidx.compose.ui.text.SpanStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
+                                            start,
+                                            end
+                                        )
                                     }
                                     if (e.isHeader || e.headerLevel != null) {
                                         val size = when (e.headerLevel) {
@@ -310,7 +274,11 @@ private fun PagedLinksList(
                                         }
                                         addStyle(androidx.compose.ui.text.SpanStyle(fontSize = size), start, end)
                                     } else {
-                                        addStyle(androidx.compose.ui.text.SpanStyle(fontSize = commentTextSize.sp), start, end)
+                                        addStyle(
+                                            androidx.compose.ui.text.SpanStyle(fontSize = commentTextSize.sp),
+                                            start,
+                                            end
+                                        )
                                     }
                                 }
                             }
@@ -327,14 +295,12 @@ private fun PagedLinksList(
 
             when (val state = lazyPagingItems.loadState.append) {
                 is LoadState.Error -> {
-                    item { CenteredMessage(message = state.error.message ?: "Error loading more") }
+                    CenteredMessage(message = state.error.message ?: "Error loading more")
                 }
 
                 is LoadState.Loading -> {
-                    item {
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
                 }
 

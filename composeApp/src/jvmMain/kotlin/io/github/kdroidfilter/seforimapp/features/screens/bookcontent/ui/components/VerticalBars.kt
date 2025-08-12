@@ -20,7 +20,6 @@ fun StartVerticalBar(
 ) {
     VerticalLateralBar(
         position = VerticalLateralBarPosition.Start,
-        topContentLabel = stringResource(Res.string.navigation),
         topContent = {
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.book_list),
@@ -39,7 +38,6 @@ fun StartVerticalBar(
                 label = stringResource(Res.string.table_of_contents)
             )
         },
-        bottomContentLabel = stringResource(Res.string.personal),
         bottomContent = {
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.my_bookmarks),
@@ -56,6 +54,14 @@ fun StartVerticalBar(
                 icon = JournalText,
                 iconDescription = stringResource(Res.string.my_commentaries_label),
                 label = stringResource(Res.string.my_commentaries_label)
+            )
+            SelectableIconButtonWithToolip(
+                toolTipText = stringResource(Res.string.write_note_tooltip),
+                onClick = { },
+                isSelected = false,
+                icon = NotebookPen,
+                iconDescription = stringResource(Res.string.write_note),
+                label = stringResource(Res.string.write_note)
             )
         }
     )
@@ -77,7 +83,6 @@ fun EndVerticalBar(
     
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
-        topContentLabel = stringResource(Res.string.tools),
         topContent = {
             SelectableIconButtonWithToolip(
                 toolTipText = if (canZoomIn) 
@@ -111,40 +116,15 @@ fun EndVerticalBar(
                 iconDescription = stringResource(Res.string.add_bookmark),
                 label = stringResource(Res.string.add_bookmark)
             )
-            SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.search_in_page_tooltip),
-                onClick = { },
-                isSelected = false,
-                icon = Manage_search,
-                iconDescription = stringResource(Res.string.search_in_page),
-                label = stringResource(Res.string.search_in_page)
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.print_tooltip),
-                onClick = { },
-                isSelected = false,
-                icon = Print,
-                iconDescription = stringResource(Res.string.print),
-                label = stringResource(Res.string.print)
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.report_tooltip),
-                onClick = { },
-                isSelected = false,
-                icon = FileWarning,
-                iconDescription = stringResource(Res.string.report),
-                label = stringResource(Res.string.report)
-            )
         },
-        bottomContentLabel = stringResource(Res.string.commentaries),
         bottomContent = {
             SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.show_links_tooltip),
+                toolTipText = stringResource(Res.string.show_targumim_tooltip),
                 onClick = { onEvent(BookContentEvent.ToggleTargum) },
                 isSelected = uiState.content.showTargum,
-                icon = Library_books,
-                iconDescription = stringResource(Res.string.show_links),
-                label = stringResource(Res.string.show_links)
+                icon = Contextual_token,
+                iconDescription = stringResource(Res.string.show_targumim),
+                label = stringResource(Res.string.show_targumim)
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.show_commentaries_tooltip),
@@ -154,14 +134,16 @@ fun EndVerticalBar(
                 iconDescription = stringResource(Res.string.show_commentaries),
                 label = stringResource(Res.string.show_commentaries)
             )
+            // Show Links button (UI-only for now)
             SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.write_note_tooltip),
+                toolTipText = stringResource(Res.string.show_links_tooltip),
                 onClick = { },
                 isSelected = false,
-                icon = NotebookPen,
-                iconDescription = stringResource(Res.string.write_note),
-                label = stringResource(Res.string.write_note)
+                icon = Library_books,
+                iconDescription = stringResource(Res.string.show_links),
+                label = stringResource(Res.string.show_links)
             )
+
         }
     )
 }

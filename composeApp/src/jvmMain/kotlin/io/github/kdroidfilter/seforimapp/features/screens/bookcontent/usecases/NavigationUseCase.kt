@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSplitPaneApi::class)
+
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases
 
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentStateManager
@@ -5,6 +7,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.flow.first
+import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 
 /**
  * UseCase pour gérer la navigation dans l'arbre des catégories et livres

@@ -2,10 +2,9 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.paginatio
 
 import app.cash.paging.PagingSource
 import app.cash.paging.PagingState
+import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import io.github.kdroidfilter.seforimapp.core.utils.debugln
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.PagingDefaults
 
 class LinesPagingSource(
     private val repository: SeforimRepository,
@@ -75,8 +74,6 @@ class LinesPagingSource(
                         return LoadResult.Page(data = emptyList(), prevKey = null, nextKey = null)
                     }
                 }
-
-                else -> Pair(pageNumber * PagingDefaults.LINES.PAGE_SIZE, params.loadSize)
             }
 
             val endIndex = startIndex + loadSize

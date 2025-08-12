@@ -3,7 +3,6 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import app.cash.paging.Pager
-import app.cash.paging.PagingConfig
 import app.cash.paging.PagingData
 import app.cash.paging.cachedIn
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabAwareViewModel
@@ -52,10 +51,10 @@ class BookContentViewModel(
         const val KEY_SPLIT_PANE_POSITION = "splitPanePosition"
         const val KEY_TOC_SPLIT_PANE_POSITION = "tocSplitPanePosition"
         const val KEY_CONTENT_SPLIT_PANE_POSITION = "contentSplitPanePosition"
-        const val KEY_LINKS_SPLIT_PANE_POSITION = "linksSplitPanePosition"
+        const val KEY_TARGUM_SPLIT_PANE_POSITION = "targumSplitPanePosition"
         const val KEY_SHOW_TOC = "showToc"
         const val KEY_SHOW_COMMENTARIES = "showCommentaries"
-        const val KEY_SHOW_LINKS = "showLinks"
+        const val KEY_SHOW_TARGUM = "showTargum"
         const val KEY_PARAGRAPH_SCROLL_POSITION = "paragraphScrollPosition"
         const val KEY_CHAPTER_SCROLL_POSITION = "chapterScrollPosition"
         const val KEY_SELECTED_CHAPTER = "selectedChapter"
@@ -71,7 +70,7 @@ class BookContentViewModel(
         const val KEY_PREVIOUS_MAIN_SPLIT_POSITION = "previousMainSplitPosition"
         const val KEY_PREVIOUS_TOC_SPLIT_POSITION = "previousTocSplitPosition"
         const val KEY_PREVIOUS_CONTENT_SPLIT_POSITION = "previousContentSplitPosition"
-        const val KEY_PREVIOUS_LINKS_SPLIT_POSITION = "previousLinksSplitPosition"
+        const val KEY_PREVIOUS_TARGUM_SPLIT_POSITION = "previousTargumSplitPosition"
         const val KEY_TOC_SCROLL_INDEX = "tocScrollIndex"
         const val KEY_TOC_SCROLL_OFFSET = "tocScrollOffset"
         const val KEY_BOOK_TREE_SCROLL_INDEX = "bookTreeScrollIndex"
@@ -85,8 +84,8 @@ class BookContentViewModel(
         const val KEY_COMMENTARIES_SCROLL_OFFSET = "commentariesScrollOffset"
         const val KEY_SELECTED_COMMENTATORS_BY_LINE = "selectedCommentatorsByLine"
         const val KEY_SELECTED_COMMENTATORS_BY_BOOK = "selectedCommentatorsByBook"
-        const val KEY_SELECTED_LINK_SOURCES_BY_LINE = "selectedLinkSourcesByLine"
-        const val KEY_SELECTED_LINK_SOURCES_BY_BOOK = "selectedLinkSourcesByBook"
+        const val KEY_SELECTED_TARGUM_SOURCES_BY_LINE = "selectedTargumSourcesByLine"
+        const val KEY_SELECTED_TARGUM_SOURCES_BY_BOOK = "selectedTargumSourcesByBook"
 
     }
 
@@ -130,7 +129,7 @@ class BookContentViewModel(
     @OptIn(ExperimentalSplitPaneApi::class)
     private val _linksSplitPaneState = MutableStateFlow(
         SplitPaneState(
-            initialPositionPercentage = getState<Float>(KEY_LINKS_SPLIT_PANE_POSITION) ?: 0.8f,
+            initialPositionPercentage = getState<Float>(KEY_TARGUM_SPLIT_PANE_POSITION) ?: 0.8f,
             moveEnabled = true
         )
     )
@@ -145,7 +144,7 @@ class BookContentViewModel(
 
     private val _commentaries = MutableStateFlow<List<CommentaryWithText>>(emptyList())
     private val _showCommentaries = MutableStateFlow(getState<Boolean>(KEY_SHOW_COMMENTARIES) ?: false)
-    private val _showLinks = MutableStateFlow(getState<Boolean>(KEY_SHOW_LINKS) ?: false)
+    private val _showLinks = MutableStateFlow(getState<Boolean>(KEY_SHOW_TARGUM) ?: false)
     private val _paragraphScrollPosition = MutableStateFlow(getState<Int>(KEY_PARAGRAPH_SCROLL_POSITION) ?: 0)
     private val _chapterScrollPosition = MutableStateFlow(getState<Int>(KEY_CHAPTER_SCROLL_POSITION) ?: 0)
     private val _selectedChapter = MutableStateFlow(getState<Int>(KEY_SELECTED_CHAPTER) ?: 0)
@@ -172,12 +171,12 @@ class BookContentViewModel(
 
     // Selected link sources per line (lineId -> set of source bookIds)
     private val _selectedLinkSourcesByLine = MutableStateFlow<Map<Long, Set<Long>>>(
-        getState(KEY_SELECTED_LINK_SOURCES_BY_LINE) ?: emptyMap()
+        getState(KEY_SELECTED_TARGUM_SOURCES_BY_LINE) ?: emptyMap()
     )
 
     // Selected link sources per book (bookId -> set of source bookIds)
     private val _selectedLinkSourcesByBook = MutableStateFlow<Map<Long, Set<Long>>>(
-        getState(KEY_SELECTED_LINK_SOURCES_BY_BOOK) ?: emptyMap()
+        getState(KEY_SELECTED_TARGUM_SOURCES_BY_BOOK) ?: emptyMap()
     )
 
     // Paging data flow for lines
@@ -333,7 +332,7 @@ class BookContentViewModel(
             is BookContentEvent.LineSelected -> selectLine(event.line)
             is BookContentEvent.LoadAndSelectLine -> loadAndSelectLine(event.lineId)
             BookContentEvent.ToggleCommentaries -> toggleCommentaries()
-            BookContentEvent.ToggleLinks -> toggleLinks()
+            BookContentEvent.ToggleTargum -> toggleTargum()
             is BookContentEvent.ContentScrolled -> updateContentScrollPosition(
                 event.anchorId, 
                 event.anchorIndex, 
@@ -358,7 +357,7 @@ class BookContentViewModel(
             is BookContentEvent.CommentariesTabSelected -> updateCommentariesTabIndex(event.index)
             is BookContentEvent.CommentariesScrolled -> updateCommentariesScrollPosition(event.index, event.offset)
             is BookContentEvent.SelectedCommentatorsChanged -> updateSelectedCommentators(event.lineId, event.selectedIds)
-            is BookContentEvent.SelectedLinksSourcesChanged -> updateSelectedLinkSources(event.lineId, event.selectedIds)
+            is BookContentEvent.SelectedTargumSourcesChanged -> updateSelectedTargumSources(event.lineId, event.selectedIds)
 
             // Scroll events
             is BookContentEvent.ParagraphScrolled -> updateParagraphScrollPosition(event.position)
@@ -494,11 +493,11 @@ class BookContentViewModel(
             content.copy(selectedCommentatorIds = ids)
         }
         .combine(_showLinks) { content, showLinks ->
-            content.copy(showLinks = showLinks)
+            content.copy(showTargum = showLinks)
         }
         .combine(_selectedLinkSourcesByLine) { content, map ->
             val ids = content.selectedLine?.let { line -> map[line.id] } ?: emptySet()
-            content.copy(selectedLinkSourceIds = ids)
+            content.copy(selectedTargumSourceIds = ids)
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, ContentUiState())
     }
@@ -528,7 +527,7 @@ class BookContentViewModel(
                 mainSplitState = main,
                 tocSplitState = toc,
                 contentSplitState = content,
-                linksSplitState = links
+                targumSplitState = links
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, createInitialLayoutState())
     }
@@ -547,8 +546,8 @@ class BookContentViewModel(
             initialPositionPercentage = getState<Float>(KEY_CONTENT_SPLIT_PANE_POSITION) ?: 0.7f,
             moveEnabled = true
         ),
-        linksSplitState = SplitPaneState(
-            initialPositionPercentage = getState<Float>(KEY_LINKS_SPLIT_PANE_POSITION) ?: 0.8f,
+        targumSplitState = SplitPaneState(
+            initialPositionPercentage = getState<Float>(KEY_TARGUM_SPLIT_PANE_POSITION) ?: 0.8f,
             moveEnabled = true
         )
     )
@@ -775,7 +774,7 @@ class BookContentViewModel(
         // Reapply previously selected commentators for this book on this new line
         reapplySelectedCommentatorsForLine(line)
         // Reapply previously selected link sources for this book on this new line
-        reapplySelectedLinksForLine(line)
+        reapplySelectedTargumForLine(line)
 
         // Save selected line
         saveState(KEY_SELECTED_LINE, line)
@@ -825,14 +824,14 @@ class BookContentViewModel(
     }
 
     // Reapply previously selected link sources (per-book) for a newly selected line
-    private fun reapplySelectedLinksForLine(line: Line) {
+    private fun reapplySelectedTargumForLine(line: Line) {
         val bookId = _selectedBook.value?.id ?: line.bookId
         val remembered = _selectedLinkSourcesByBook.value[bookId] ?: emptySet()
         if (remembered.isEmpty()) return
 
         viewModelScope.launch {
             try {
-                val availableMap = getAvailableLinksForLine(line.id)
+                val availableMap = getAvailableTargumForLine(line.id)
                 val availableIds = availableMap.values.toSet()
                 val intersection = remembered.intersect(availableIds)
 
@@ -843,7 +842,7 @@ class BookContentViewModel(
                     byLine[line.id] = intersection
                 }
                 _selectedLinkSourcesByLine.value = byLine
-                saveState(KEY_SELECTED_LINK_SOURCES_BY_LINE, byLine)
+                saveState(KEY_SELECTED_TARGUM_SOURCES_BY_LINE, byLine)
 
                 val byBook = _selectedLinkSourcesByBook.value.toMutableMap()
                 if (intersection.isEmpty()) {
@@ -852,7 +851,7 @@ class BookContentViewModel(
                     byBook[bookId] = intersection
                 }
                 _selectedLinkSourcesByBook.value = byBook
-                saveState(KEY_SELECTED_LINK_SOURCES_BY_BOOK, byBook)
+                saveState(KEY_SELECTED_TARGUM_SOURCES_BY_BOOK, byBook)
             } catch (e: Exception) {
                 // ignore errors silently
             }
@@ -871,12 +870,12 @@ class BookContentViewModel(
     }
 
     // Build a pager for non-commentary links (REFERENCE, OTHER)
-    fun buildLinksPagerFor(lineId: Long, sourceBookId: Long? = null): Flow<PagingData<CommentaryWithText>> {
+    fun buildTargumPagerFor(lineId: Long, sourceBookId: Long? = null): Flow<PagingData<CommentaryWithText>> {
         val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
         val pager = Pager(
             config = PagingDefaults.COMMENTS.config(placeholders = false),
             pagingSourceFactory = {
-                io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.LineLinksPagingSource(repository, lineId, ids)
+                io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.LineTargumPagingSource(repository, lineId, ids)
             }
         )
         return pager.flow.cachedIn(viewModelScope)
@@ -899,13 +898,12 @@ class BookContentViewModel(
     }
 
     // Available link sources (REFERENCE, OTHER) for a specific line
-    suspend fun getAvailableLinksForLine(lineId: Long): Map<String, Long> {
+    suspend fun getAvailableTargumForLine(lineId: Long): Map<String, Long> {
         return try {
             val list = repository.getCommentariesForLines(listOf(lineId))
                 .filter {
                     val t = it.link.connectionType
-                    t == io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType.REFERENCE ||
-                        t == io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType.OTHER
+                    t == io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType.TARGUM
                 }
             val map = LinkedHashMap<String, Long>()
             list.forEach { c ->
@@ -949,7 +947,7 @@ class BookContentViewModel(
                 // Reapply previously selected commentators for this book on this new line
                 reapplySelectedCommentatorsForLine(targetLine)
                 // Reapply previously selected link sources for this book on this new line
-                reapplySelectedLinksForLine(targetLine)
+                reapplySelectedTargumForLine(targetLine)
                     
                 // Update timestamp to force scroll
                 _scrollToLineTimestamp.value = System.currentTimeMillis()
@@ -1075,7 +1073,7 @@ class BookContentViewModel(
         }
     }
 
-    private fun updateSelectedLinkSources(lineId: Long, selectedIds: Set<Long>) {
+    private fun updateSelectedTargumSources(lineId: Long, selectedIds: Set<Long>) {
         // Update per-line selection for links
         val current = _selectedLinkSourcesByLine.value.toMutableMap()
         if (selectedIds.isEmpty()) {
@@ -1084,7 +1082,7 @@ class BookContentViewModel(
             current[lineId] = selectedIds
         }
         _selectedLinkSourcesByLine.value = current
-        saveState(KEY_SELECTED_LINK_SOURCES_BY_LINE, current)
+        saveState(KEY_SELECTED_TARGUM_SOURCES_BY_LINE, current)
 
         // Update per-book memory
         _selectedBook.value?.let { book ->
@@ -1096,7 +1094,7 @@ class BookContentViewModel(
                     byBook[book.id] = selectedIds
                 }
                 _selectedLinkSourcesByBook.value = byBook
-                saveState(KEY_SELECTED_LINK_SOURCES_BY_BOOK, byBook)
+                saveState(KEY_SELECTED_TARGUM_SOURCES_BY_BOOK, byBook)
             }
         }
     }
@@ -1203,7 +1201,7 @@ class BookContentViewModel(
     private val _previousMainSplitPosition = MutableStateFlow(getState<Float>(KEY_PREVIOUS_MAIN_SPLIT_POSITION) ?: 0.3f)
     private val _previousTocSplitPosition = MutableStateFlow(getState<Float>(KEY_PREVIOUS_TOC_SPLIT_POSITION) ?: 0.3f)
     private val _previousContentSplitPosition = MutableStateFlow(getState<Float>(KEY_PREVIOUS_CONTENT_SPLIT_POSITION) ?: 0.7f)
-    private val _previousLinksSplitPosition = MutableStateFlow(getState<Float>(KEY_PREVIOUS_LINKS_SPLIT_POSITION) ?: 0.8f)
+    private val _previousLinksSplitPosition = MutableStateFlow(getState<Float>(KEY_PREVIOUS_TARGUM_SPLIT_POSITION) ?: 0.8f)
 
     private fun toggleBookTree() {
         val isCurrentlyVisible = _showBookTree.value
@@ -1263,7 +1261,7 @@ class BookContentViewModel(
     }
 
     @OptIn(ExperimentalSplitPaneApi::class)
-    private fun toggleLinks() {
+    private fun toggleTargum() {
         _showLinks.value = !_showLinks.value
 
         // Manage links split pane state based on visibility
@@ -1276,7 +1274,7 @@ class BookContentViewModel(
             // Save current position before hiding
             if (_linksSplitPaneState.value.positionPercentage > 0) {
                 _previousLinksSplitPosition.value = _linksSplitPaneState.value.positionPercentage
-                saveState(KEY_PREVIOUS_LINKS_SPLIT_POSITION, _previousLinksSplitPosition.value)
+                saveState(KEY_PREVIOUS_TARGUM_SPLIT_POSITION, _previousLinksSplitPosition.value)
             }
             // Collapse the links panel and disable movement
             _linksSplitPaneState.value = SplitPaneState(
@@ -1285,8 +1283,8 @@ class BookContentViewModel(
             )
         }
 
-        saveState(KEY_SHOW_LINKS, _showLinks.value)
-        saveState(KEY_LINKS_SPLIT_PANE_POSITION, _linksSplitPaneState.value.positionPercentage)
+        saveState(KEY_SHOW_TARGUM, _showLinks.value)
+        saveState(KEY_TARGUM_SPLIT_PANE_POSITION, _linksSplitPaneState.value.positionPercentage)
     }
 
     private fun <T : Any> saveStateFromFlow(key: String, stateFlow: StateFlow<T>) {
@@ -1319,7 +1317,7 @@ class BookContentViewModel(
             KEY_SPLIT_PANE_POSITION to _splitPaneState.map { it.positionPercentage }.stateIn(viewModelScope, SharingStarted.Eagerly, 0.3f),
             KEY_TOC_SPLIT_PANE_POSITION to _tocSplitPaneState.map { it.positionPercentage }.stateIn(viewModelScope, SharingStarted.Eagerly, 0.3f),
             KEY_CONTENT_SPLIT_PANE_POSITION to _contentSplitPaneState.map { it.positionPercentage }.stateIn(viewModelScope, SharingStarted.Eagerly, 0.7f),
-            KEY_LINKS_SPLIT_PANE_POSITION to _linksSplitPaneState.map { it.positionPercentage }.stateIn(viewModelScope, SharingStarted.Eagerly, 0.8f)
+            KEY_TARGUM_SPLIT_PANE_POSITION to _linksSplitPaneState.map { it.positionPercentage }.stateIn(viewModelScope, SharingStarted.Eagerly, 0.8f)
         )
 
         // Save previous split pane positions
@@ -1327,7 +1325,7 @@ class BookContentViewModel(
             KEY_PREVIOUS_MAIN_SPLIT_POSITION to _previousMainSplitPosition,
             KEY_PREVIOUS_TOC_SPLIT_POSITION to _previousTocSplitPosition,
             KEY_PREVIOUS_CONTENT_SPLIT_POSITION to _previousContentSplitPosition,
-            KEY_PREVIOUS_LINKS_SPLIT_POSITION to _previousLinksSplitPosition
+            KEY_PREVIOUS_TARGUM_SPLIT_POSITION to _previousLinksSplitPosition
         )
 
         // Save UI state - scroll positions
@@ -1346,15 +1344,15 @@ class BookContentViewModel(
             KEY_COMMENTARIES_SCROLL_OFFSET to _commentariesScrollOffset,
             KEY_SELECTED_COMMENTATORS_BY_LINE to _selectedCommentatorsByLine,
             KEY_SELECTED_COMMENTATORS_BY_BOOK to _selectedCommentatorsByBook,
-            KEY_SELECTED_LINK_SOURCES_BY_LINE to _selectedLinkSourcesByLine,
-            KEY_SELECTED_LINK_SOURCES_BY_BOOK to _selectedLinkSourcesByBook
+            KEY_SELECTED_TARGUM_SOURCES_BY_LINE to _selectedLinkSourcesByLine,
+            KEY_SELECTED_TARGUM_SOURCES_BY_BOOK to _selectedLinkSourcesByBook
         )
 
         // Save UI state - visibility flags and text
         saveStateGroup(
             KEY_SEARCH_TEXT to _searchText,
             KEY_SHOW_COMMENTARIES to _showCommentaries,
-            KEY_SHOW_LINKS to _showLinks,
+            KEY_SHOW_TARGUM to _showLinks,
             KEY_SHOW_BOOK_TREE to _showBookTree,
             KEY_SHOW_TOC to _showToc
         )

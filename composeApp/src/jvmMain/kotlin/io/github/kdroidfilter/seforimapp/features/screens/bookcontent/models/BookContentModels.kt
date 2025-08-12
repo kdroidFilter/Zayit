@@ -46,7 +46,7 @@ data class TocUiState(
      val selectedLine: Line? = null,
      val commentaries: List<CommentaryWithText> = emptyList(),
      val showCommentaries: Boolean = false,
-     val showLinks : Boolean = false,
+     val showTargum : Boolean = false,
      val paragraphScrollPosition: Int = 0,
      val chapterScrollPosition: Int = 0,
      val selectedChapter: Int = 0,
@@ -58,7 +58,7 @@ data class TocUiState(
      val commentariesScrollIndex: Int = 0,
      val commentariesScrollOffset: Int = 0,
      val selectedCommentatorIds: Set<Long> = emptySet(),
-     val selectedLinkSourceIds: Set<Long> = emptySet(),
+     val selectedTargumSourceIds: Set<Long> = emptySet(),
      val shouldScrollToLine: Boolean = false,
      val scrollToLineTimestamp: Long = 0
  )
@@ -71,7 +71,7 @@ data class LayoutUiState @OptIn(ExperimentalSplitPaneApi::class) constructor(
     val mainSplitState: SplitPaneState,
     val tocSplitState: SplitPaneState,
     val contentSplitState: SplitPaneState,
-    val linksSplitState: SplitPaneState
+    val targumSplitState: SplitPaneState
 )
 
 /**

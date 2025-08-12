@@ -39,7 +39,7 @@ import seforimapp.composeapp.generated.resources.*
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
-fun LineLinksView(
+fun LineTargumView(
     selectedLine: Line?,
     buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,

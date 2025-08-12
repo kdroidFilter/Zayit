@@ -10,7 +10,7 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
  * Paging source for non-commentary links (REFERENCE and OTHER) attached to a line.
  * Optionally filters by a set of target book IDs ("sources").
  */
-class LineLinksPagingSource(
+class LineTargumPagingSource(
     private val repository: SeforimRepository,
     private val lineId: Long,
     private val sourceBookIds: Set<Long> = emptySet()
@@ -34,7 +34,7 @@ class LineLinksPagingSource(
                 activeCommentatorIds = sourceBookIds, // reuse filtering by target book IDs
                 offset = offset,
                 limit = limit
-            ).filter { it.link.connectionType == ConnectionType.REFERENCE || it.link.connectionType == ConnectionType.OTHER }
+            ).filter { it.link.connectionType == ConnectionType.TARGUM }
 
             val prevKey = if (page == 0) null else page - 1
             val nextKey = if (links.isEmpty()) null else page + 1

@@ -53,8 +53,8 @@
     <string name="filter">סנן</string>
     <string name="write_note_tooltip">כתוב הערה על שורה זאת</string>
     <string name="write_note">כתוב הערה</string>
-    <string name="show_links_tooltip">הצג קישורים</string>
-    <string name="show_links">הצג קישורים</string>
+    <string name="show_links_tooltip">הצג תרגומים</string>
+    <string name="show_links">הצג תרגומים</string>
 
     <!-- Book Content Screen - Main Content -->
     <string name="search_placeholder">חפש</string>
@@ -73,9 +73,9 @@
     <string name="no_commentators_available">אין פרשנים זמינים</string>
 
     <!-- Line Links View (special links strings) -->
-    <string name="links">קישורים</string>
-    <string name="select_line_for_links">בחר שורה כדי לצפות בקישורים שלה</string>
-    <string name="no_links_for_line">אין קישורים זמינים לשורה זו</string>
-    <string name="select_at_least_one_source">אנא בחר לפחות מקור אחד מהרשימה</string>
+    <string name="links">תרגומים</string>
+    <string name="select_line_for_links">בחר שורה כדי לצפות בתרגומים שלה</string>
+    <string name="no_links_for_line">אין תרגומים זמינים לשורה זו</string>
+    <string name="select_at_least_one_source">אנא בחר לפחות מקור תרגום אחד מהרשימה</string>
     <string name="max_sources_limit">ניתן לבחור עד 4 מקורות בלבד</string>
 </resources>

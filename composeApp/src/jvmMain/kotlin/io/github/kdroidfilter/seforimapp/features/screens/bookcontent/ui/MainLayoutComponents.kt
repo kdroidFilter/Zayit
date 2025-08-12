@@ -63,9 +63,9 @@ fun MainBookContentLayout(
         }
     }
 
-    LaunchedEffect(uiState.layout.linksSplitState, uiState.content.showLinks) {
-        if (uiState.content.showLinks) {
-            snapshotFlow { uiState.layout.linksSplitState.positionPercentage }
+    LaunchedEffect(uiState.layout.targumSplitState, uiState.content.showTargum) {
+        if (uiState.content.showTargum) {
+            snapshotFlow { uiState.layout.targumSplitState.positionPercentage }
                 .debounce(300)
                 .filter { it > 0 && it < 1 }
                 .collect { onEvent(BookContentEvent.SaveState) }
@@ -124,7 +124,7 @@ fun MainBookContentLayout(
                             tocState = uiState.toc,
                             navigationState = uiState.navigation,
                             verticalContentSplitState = uiState.layout.contentSplitState,
-                            horizontalLinksSplitState = uiState.layout.linksSplitState,
+                            horizontalTargumSplitState = uiState.layout.targumSplitState,
                             onEvent = onEvent
                         )
                     }
@@ -135,8 +135,8 @@ fun MainBookContentLayout(
         EndVerticalBar(
             showCommentaries = uiState.content.showCommentaries,
             onToggleCommentaries = { onEvent(BookContentEvent.ToggleCommentaries) },
-            showLinks = uiState.content.showLinks,
-            onToggleLinks = { onEvent(BookContentEvent.ToggleLinks) }
+            showTargum = uiState.content.showTargum,
+            onToggleTargum = { onEvent(BookContentEvent.ToggleTargum) }
         )
     }
 }

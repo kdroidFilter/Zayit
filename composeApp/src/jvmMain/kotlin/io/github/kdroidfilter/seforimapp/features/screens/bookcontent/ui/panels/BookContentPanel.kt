@@ -20,7 +20,7 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compone
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedVerticalSplitPane
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.LineCommentsView
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.LineLinksView
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.LineTargumView
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
@@ -47,7 +47,7 @@ fun BookContentPanel(
     tocState: TocUiState,
     navigationState: NavigationUiState,
     verticalContentSplitState: SplitPaneState,
-    horizontalLinksSplitState: SplitPaneState,
+    horizontalTargumSplitState: SplitPaneState,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -67,7 +67,7 @@ fun BookContentPanel(
             modifier = Modifier.weight(1f),
             firstContent = {
                 EnhancedHorizontalSplitPane(
-                    horizontalLinksSplitState, firstContent = {
+                    horizontalTargumSplitState, firstContent = {
                     BookContentPane(
                         book = selectedBook,
                         linesPagingData = linesPagingData,
@@ -76,9 +76,9 @@ fun BookContentPanel(
                         preservedListState = bookListState,
                         modifier = Modifier.padding(16.dp)
                     )
-                }, secondContent = if (contentState.showLinks) {
+                }, secondContent = if (contentState.showTargum) {
                     {
-                        LinksPane(
+                        TargumPane(
                             contentState = contentState,
                             buildLinksPagerFor = buildLinksPagerFor,
                             getAvailableLinksForLine = getAvailableLinksForLine,
@@ -186,22 +186,22 @@ private fun CommentsPane(
 }
 
 @Composable
-private fun LinksPane(
+private fun TargumPane(
     contentState: ContentUiState,
     buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
     onEvent: (BookContentEvent) -> Unit,
 ) {
-    LineLinksView(
+    LineTargumView(
         selectedLine = contentState.selectedLine,
         buildLinksPagerFor = buildLinksPagerFor,
         getAvailableLinksForLine = getAvailableLinksForLine,
         commentariesScrollIndex = contentState.commentariesScrollIndex,
         commentariesScrollOffset = contentState.commentariesScrollOffset,
-        initiallySelectedSourceIds = contentState.selectedLinkSourceIds,
+        initiallySelectedSourceIds = contentState.selectedTargumSourceIds,
         onSelectedSourcesChange = { ids ->
             contentState.selectedLine?.let { line ->
-                onEvent(BookContentEvent.SelectedLinksSourcesChanged(line.id, ids))
+                onEvent(BookContentEvent.SelectedTargumSourcesChanged(line.id, ids))
             }
         },
         onLinkClick = { commentary ->

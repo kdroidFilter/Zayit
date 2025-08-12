@@ -122,7 +122,7 @@ fun EndVerticalBar(
                 toolTipText = stringResource(Res.string.show_targumim_tooltip),
                 onClick = { onEvent(BookContentEvent.ToggleTargum) },
                 isSelected = uiState.content.showTargum,
-                icon = Contextual_token,
+                icon = Align_horizontal_right,
                 iconDescription = stringResource(Res.string.show_targumim),
                 label = stringResource(Res.string.show_targumim)
             )

@@ -8,7 +8,6 @@ import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.LinesPagingSource
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.PagingDefaults
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentStateManager
-import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.flow.Flow
@@ -195,24 +194,25 @@ class ContentUseCase(
     /**
      * Toggle l'affichage des liens/targum
      */
-    fun toggleLinks(): Boolean {
+    fun toggleTargum(): Boolean {
         val currentState = stateManager.state.value
         val isVisible = currentState.content.showTargum
         val newPosition: Float
         
         if (isVisible) {
-            // Cacher
-            newPosition = 0.95f
-            currentState.layout.targumSplitState.positionPercentage = newPosition
+            // Cacher: d'abord sauvegarder la position actuelle, puis réduire
+            val prev = currentState.layout.targumSplitState.positionPercentage
             stateManager.updateLayout {
                 copy(
                     previousPositions = previousPositions.copy(
-                        links = currentState.layout.targumSplitState.positionPercentage
+                        links = prev
                     )
                 )
             }
+            newPosition = 0.95f
+            currentState.layout.targumSplitState.positionPercentage = newPosition
         } else {
-            // Montrer
+            // Montrer: restaurer la dernière position enregistrée
             newPosition = currentState.layout.previousPositions.links
             currentState.layout.targumSplitState.positionPercentage = newPosition
         }

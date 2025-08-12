@@ -190,7 +190,7 @@ class BookContentViewModel(
                     contentUseCase.toggleCommentaries()
 
                 BookContentEvent.ToggleTargum ->
-                    contentUseCase.toggleLinks()
+                    contentUseCase.toggleTargum()
 
                 is BookContentEvent.ContentScrolled ->
                     contentUseCase.updateContentScrollPosition(
@@ -274,16 +274,20 @@ class BookContentViewModel(
 
         // Réinitialiser les positions si on change de livre
         if (previousBook?.id != book.id) {
-            debugln { "Loading new book, resetting positions" }
-            contentUseCase.resetScrollPositions()
-            tocUseCase.resetToc()
+        debugln { "Loading new book, resetting positions" }
+        contentUseCase.resetScrollPositions()
+        tocUseCase.resetToc()
 
-            // Cacher les commentaires lors du changement de livre
-            if (stateManager.state.value.content.showCommentaries) {
-                contentUseCase.toggleCommentaries()
-            }
-            System.gc()
+        // Cacher les commentaires lors du changement de livre
+        if (stateManager.state.value.content.showCommentaries) {
+            contentUseCase.toggleCommentaries()
         }
+        // Cacher le targum lors du changement de livre
+        if (stateManager.state.value.content.showTargum) {
+            contentUseCase.toggleTargum()
+        }
+        System.gc()
+    }
 
         loadBookData(book)
     }

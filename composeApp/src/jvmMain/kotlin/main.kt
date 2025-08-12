@@ -48,6 +48,7 @@ import java.util.*
 
 @OptIn(ExperimentalFoundationApi::class)
 fun main() {
+
     val enableLogs = System.getenv("ENABLE_LOGS")
     if (enableLogs == null) {
         SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)

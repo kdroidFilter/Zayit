@@ -16,6 +16,18 @@ fun buildAnnotatedFromHtml(
     baseTextSize: Float
 ): AnnotatedString {
     val parsedElements = HtmlParser().parse(html)
+
+    // Optimization: we only add styles if necessary
+    val headerSizes = floatArrayOf(
+        baseTextSize * 1.5f,    // h1
+        baseTextSize * 1.25f,   // h2
+        baseTextSize * 1.125f,  // h3
+        baseTextSize,           // h4
+        baseTextSize,           // h5
+        baseTextSize            // h6
+    )
+    val defaultSize = baseTextSize.sp
+
     return buildAnnotatedString {
         parsedElements.forEach { e ->
             if (e.isLineBreak) {
@@ -28,24 +40,22 @@ fun buildAnnotatedFromHtml(
             append(e.text)
             val end = length
 
+            // Optimization: we only add styles if necessary
             if (e.isBold) {
                 addStyle(SpanStyle(fontWeight = FontWeight.Bold), start, end)
             }
             if (e.isItalic) {
                 addStyle(SpanStyle(fontStyle = FontStyle.Italic), start, end)
             }
-            if (e.isHeader || e.headerLevel != null) {
-                val size = when (e.headerLevel) {
-                    1 -> (baseTextSize * 1.5f).sp
-                    2 -> (baseTextSize * 1.25f).sp
-                    3 -> (baseTextSize * 1.125f).sp
-                    4 -> baseTextSize.sp
-                    else -> baseTextSize.sp
+
+            // Optimized font size calculation
+            val fontSize = when {
+                e.headerLevel != null && e.headerLevel in 1..6 -> {
+                    headerSizes[e.headerLevel - 1].sp
                 }
-                addStyle(SpanStyle(fontSize = size), start, end)
-            } else {
-                addStyle(SpanStyle(fontSize = baseTextSize.sp), start, end)
+                else -> defaultSize
             }
+            addStyle(SpanStyle(fontSize = fontSize), start, end)
         }
     }
 }

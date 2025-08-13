@@ -49,7 +49,6 @@ fun PaneHeader(
         modifier = Modifier
             .fillMaxWidth()
             .hoverable(headerHoverSource)
-            .padding(bottom = 8.dp),
     ) {
         Row(
             modifier = Modifier

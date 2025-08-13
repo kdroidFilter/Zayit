@@ -172,7 +172,7 @@ private fun CommentatorsList(
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         val listState = rememberLazyListState()
-        Row(modifier = Modifier.fillMaxSize().padding(end = 4.dp)) {
+        Row(modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
             VerticallyScrollableContainer(
                 scrollState = listState,
             ) {
@@ -190,7 +190,7 @@ private fun CommentatorsList(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp, horizontal = 8.dp)
+                                .padding(horizontal = 8.dp)
                         )
                     }
                 }
@@ -382,7 +382,7 @@ private fun CommentaryItem(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 16.dp)
+            .padding(horizontal = 16.dp)
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { onClick() })
             }

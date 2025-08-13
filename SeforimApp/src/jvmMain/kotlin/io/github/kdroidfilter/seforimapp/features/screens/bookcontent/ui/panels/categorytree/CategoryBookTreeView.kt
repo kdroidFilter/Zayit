@@ -111,7 +111,7 @@ fun CategoryBookTreeView(
     /* ---------------------------------------------------------------------
      * UI.
      * -------------------------------------------------------------------- */
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize().padding(bottom = 8.dp)) {
         VerticallyScrollableContainer(
             scrollState = listState,
         ) {

@@ -215,7 +215,6 @@ private fun CategoryItem(
     ) {
         ChevronIcon(
             expanded = isExpanded,
-            modifier = Modifier.size(12.dp),
             tint = JewelTheme.globalColors.text.normal,
             contentDescription = ""
         )

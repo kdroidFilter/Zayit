@@ -20,10 +20,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -37,7 +34,7 @@ import app.cash.paging.compose.itemKey
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.core.utils.HtmlParser
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import kotlinx.coroutines.FlowPreview
@@ -345,39 +342,8 @@ private fun LineItem(
     lineHeight: Float = 1.5f,
     onClick: () -> Unit
 ) {
-    val parsedElements = remember(line.id, line.content) {
-        HtmlParser().parse(line.content)
-    }
-
-    val annotated = remember(parsedElements, baseTextSize) {
-        buildAnnotatedString {
-            parsedElements.forEach { e ->
-                if (e.text.isBlank()) return@forEach
-
-                val start = length
-                append(e.text)
-                val end = length
-
-                if (e.isBold) {
-                    addStyle(SpanStyle(fontWeight = FontWeight.Bold), start, end)
-                }
-                if (e.isItalic) {
-                    addStyle(SpanStyle(fontStyle = FontStyle.Italic), start, end)
-                }
-                if (e.isHeader || e.headerLevel != null) {
-                    val size = when (e.headerLevel) {
-                        1 -> (baseTextSize * 1.5f).sp
-                        2 -> (baseTextSize * 1.25f).sp
-                        3 -> (baseTextSize * 1.125f).sp
-                        4 -> baseTextSize.sp
-                        else -> baseTextSize.sp
-                    }
-                    addStyle(SpanStyle(fontSize = size), start, end)
-                } else {
-                    addStyle(SpanStyle(fontSize = baseTextSize.sp), start, end)
-                }
-            }
-        }
+    val annotated = remember(line.id, line.content, baseTextSize) {
+        buildAnnotatedFromHtml(line.content, baseTextSize)
     }
 
     val textModifier = Modifier

@@ -4,8 +4,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -14,8 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.onPointerEvent
-import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.text.font.FontFamily
@@ -29,9 +25,9 @@ import app.cash.paging.PagingData
 import app.cash.paging.compose.LazyPagingItems
 import app.cash.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.core.utils.HtmlParser
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.flow.Flow
@@ -249,49 +245,12 @@ private fun PagedLinksList(
                             .padding(vertical = 8.dp, horizontal = 16.dp)
                             .pointerInput(Unit) { detectTapGestures(onTap = { onLinkClick(item) }) }
                     ) {
-                        // Parse HTML and render styled text similar to book content
-                        val parsedElements = remember(item.link.id, item.targetText) {
-                            HtmlParser().parse(item.targetText)
-                        }
-                        val annotated = remember(parsedElements, commentTextSize) {
-                            androidx.compose.ui.text.buildAnnotatedString {
-                                parsedElements.forEach { e ->
-                                    if (e.text.isBlank()) return@forEach
-                                    val start = length
-                                    append(e.text)
-                                    val end = length
-                                    if (e.isBold) {
-                                        addStyle(
-                                            androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold),
-                                            start,
-                                            end
-                                        )
-                                    }
-                                    if (e.isItalic) {
-                                        addStyle(
-                                            androidx.compose.ui.text.SpanStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
-                                            start,
-                                            end
-                                        )
-                                    }
-                                    if (e.isHeader || e.headerLevel != null) {
-                                        val size = when (e.headerLevel) {
-                                            1 -> (commentTextSize * 1.5f).sp
-                                            2 -> (commentTextSize * 1.25f).sp
-                                            3 -> (commentTextSize * 1.125f).sp
-                                            4 -> commentTextSize.sp
-                                            else -> commentTextSize.sp
-                                        }
-                                        addStyle(androidx.compose.ui.text.SpanStyle(fontSize = size), start, end)
-                                    } else {
-                                        addStyle(
-                                            androidx.compose.ui.text.SpanStyle(fontSize = commentTextSize.sp),
-                                            start,
-                                            end
-                                        )
-                                    }
-                                }
-                            }
+                        // Unified HTML to AnnotatedString
+                        val annotated = remember(item.link.id, item.targetText, commentTextSize) {
+                            buildAnnotatedFromHtml(
+                                item.targetText,
+                                commentTextSize
+                            )
                         }
                         Text(
                             text = annotated,

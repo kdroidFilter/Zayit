@@ -33,6 +33,7 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compone
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -91,6 +92,7 @@ fun LineTargumView(
 
                 else -> {
                     var titleToIdMap by remember(selectedLine.id) { mutableStateOf<Map<String, Long>>(emptyMap()) }
+
                     LaunchedEffect(selectedLine.id) {
                         runCatching { getAvailableLinksForLine(selectedLine.id) }
                             .onSuccess { map -> titleToIdMap = map }
@@ -102,16 +104,19 @@ fun LineTargumView(
                             Text(text = stringResource(Res.string.no_links_for_line))
                         }
                     } else {
-                        val availableSources = remember(titleToIdMap) { titleToIdMap.keys.sorted().toList() }
-
-                        // We no longer select a single source; display all sources sequentially.
-                        // Emit all available source IDs so state stays consistent.
-                        LaunchedEffect(titleToIdMap) {
-                            onSelectedSourcesChange(titleToIdMap.values.toSet())
+                        val availableSources by remember(titleToIdMap) {
+                            derivedStateOf {
+                                titleToIdMap.keys.sorted().toList()
+                            }
                         }
 
-                        // Stack all targum blocks vertically with commentator name above each block.
-                        // Each block contains its own scrollable list with a bounded height.
+                        LaunchedEffect(titleToIdMap) {
+                            val ids = titleToIdMap.values.toSet()
+                            if (ids != initiallySelectedSourceIds) {
+                                onSelectedSourcesChange(ids)
+                            }
+                        }
+
                         val outerScroll = rememberScrollState()
 
                         Column(
@@ -121,37 +126,35 @@ fun LineTargumView(
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             availableSources.forEachIndexed { index, source ->
-                                val id = titleToIdMap[source]
-                                if (id != null) {
+                                titleToIdMap[source]?.let { id ->
+                                    key(id) {
+                                        // Header: commentator name
+                                        Text(
+                                            text = source,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = (commentTextSize * 1.1f).sp,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
 
-                                    // Header: commentator name
-                                    Text(
-                                        text = source,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = (commentTextSize * 1.1f).sp,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                    )
+                                        PagedLinksList(
+                                            buildLinksPagerFor = buildLinksPagerFor,
+                                            lineId = selectedLine.id,
+                                            sourceBookId = id,
+                                            isPrimary = index == 0,
+                                            initialIndex = if (index == 0) commentariesScrollIndex else 0,
+                                            initialOffset = if (index == 0) commentariesScrollOffset else 0,
+                                            onScroll = onScroll,
+                                            onLinkClick = onLinkClick,
+                                            commentTextSize = commentTextSize,
+                                            lineHeight = lineHeight
+                                        )
 
-                                    PagedLinksList(
-                                        buildLinksPagerFor = buildLinksPagerFor,
-                                        lineId = selectedLine.id,
-                                        sourceBookId = id,
-                                        isPrimary = index == 0,
-                                        initialIndex = if (index == 0) commentariesScrollIndex else 0,
-                                        initialOffset = if (index == 0) commentariesScrollOffset else 0,
-                                        onScroll = onScroll,
-                                        onLinkClick = onLinkClick,
-                                        commentTextSize = commentTextSize,
-                                        lineHeight = lineHeight
-                                    )
-
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                    }
                                 }
                             }
                         }
-
                     }
                 }
             }
@@ -159,6 +162,7 @@ fun LineTargumView(
     }
 }
 
+@Stable
 @Composable
 fun LineTargumView(
     uiState: BookContentUiState,
@@ -167,6 +171,40 @@ fun LineTargumView(
     val providers = uiState.providers ?: return
     val contentState = uiState.content
     val windowInfo = LocalWindowInfo.current
+
+    val onSelectedSourcesChange = remember(contentState.selectedLine) {
+        { ids: Set<Long> ->
+            contentState.selectedLine?.let { line ->
+                onEvent(BookContentEvent.SelectedTargumSourcesChanged(line.id, ids))
+            }
+            Unit
+        }
+    }
+
+    val onLinkClick = remember(windowInfo) {
+        { commentary: CommentaryWithText ->
+            val mods = windowInfo.keyboardModifiers
+            if (mods.isCtrlPressed || mods.isMetaPressed) {
+                onEvent(
+                    BookContentEvent.OpenCommentaryTarget(
+                        bookId = commentary.link.targetBookId,
+                        lineId = commentary.link.targetLineId
+                    )
+                )
+            }
+        }
+    }
+
+    val onScroll = remember {
+        { index: Int, offset: Int ->
+            onEvent(BookContentEvent.CommentariesScrolled(index, offset))
+        }
+    }
+
+    val onHide = remember {
+        { onEvent(BookContentEvent.ToggleTargum) }
+    }
+
     LineTargumView(
         selectedLine = contentState.selectedLine,
         buildLinksPagerFor = providers.buildLinksPagerFor,
@@ -174,25 +212,10 @@ fun LineTargumView(
         commentariesScrollIndex = contentState.commentariesScrollIndex,
         commentariesScrollOffset = contentState.commentariesScrollOffset,
         initiallySelectedSourceIds = contentState.selectedTargumSourceIds,
-        onSelectedSourcesChange = { ids ->
-            contentState.selectedLine?.let { line ->
-                onEvent(BookContentEvent.SelectedTargumSourcesChanged(line.id, ids))
-            }
-        },
-        onLinkClick = { commentary ->
-            val mods = windowInfo.keyboardModifiers
-            if (mods.isCtrlPressed || mods.isMetaPressed) {
-                onEvent(
-                    BookContentEvent.OpenCommentaryTarget(
-                        bookId = commentary.link.targetBookId, lineId = commentary.link.targetLineId
-                    )
-                )
-            }
-        },
-        onScroll = { index, offset ->
-            onEvent(BookContentEvent.CommentariesScrolled(index, offset))
-        },
-        onHide = { onEvent(BookContentEvent.ToggleTargum) }
+        onSelectedSourcesChange = onSelectedSourcesChange,
+        onLinkClick = onLinkClick,
+        onScroll = onScroll,
+        onHide = onHide
     )
 }
 
@@ -218,19 +241,20 @@ private fun PagedLinksList(
     lineHeight: Float
 ) {
     val pagerFlow: Flow<PagingData<CommentaryWithText>> = remember(lineId, sourceBookId) {
-        buildLinksPagerFor(lineId, sourceBookId)
+        buildLinksPagerFor(lineId, sourceBookId).distinctUntilChanged()
     }
 
     val lazyPagingItems: LazyPagingItems<CommentaryWithText> = pagerFlow.collectAsLazyPagingItems()
 
-    // Column + ScrollState au lieu de LazyColumn + LazyListState
     val scrollState = rememberScrollState(initial = if (isPrimary) initialOffset else 0)
 
     if (isPrimary) {
         LaunchedEffect(scrollState) {
-            snapshotFlow { scrollState.value }.collect { o ->
-                onScroll(0, o)
-            }
+            snapshotFlow { scrollState.value }
+                .distinctUntilChanged() // Évite appels répétés avec même valeur
+                .collect { o ->
+                    onScroll(0, o)
+                }
         }
     }
 
@@ -241,32 +265,18 @@ private fun PagedLinksList(
                 .heightIn(min = 0.dp, max = 480.dp)
                 .verticalScroll(scrollState)
         ) {
-            repeat(lazyPagingItems.itemCount) { index ->
-                val item = lazyPagingItems[index]
-                if (item != null) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp, horizontal = 16.dp)
-                            .pointerInput(Unit) { detectTapGestures(onTap = { onLinkClick(item) }) }
-                    ) {
-                        // Unified HTML to AnnotatedString
-                        val annotated = remember(item.link.id, item.targetText, commentTextSize) {
-                            buildAnnotatedFromHtml(
-                                item.targetText,
-                                commentTextSize
-                            )
-                        }
-                        Text(
-                            text = annotated,
-                            textAlign = TextAlign.Justify,
-                            fontFamily = FontFamily(Font(resource = Res.font.frankruhllibre)),
-                            lineHeight = (commentTextSize * lineHeight).sp
-                        )
-                    }
+            for (index in 0 until lazyPagingItems.itemCount) {
+                lazyPagingItems[index]?.let { item ->
+                    LinkItem(
+                        item = item,
+                        commentTextSize = commentTextSize,
+                        lineHeight = lineHeight,
+                        onLinkClick = onLinkClick
+                    )
                 }
             }
 
+            // Gestion des états de chargement
             when (val state = lazyPagingItems.loadState.append) {
                 is LoadState.Error -> {
                     CenteredMessage(message = state.error.message ?: "Error loading more")
@@ -281,5 +291,43 @@ private fun PagedLinksList(
                 else -> {}
             }
         }
+    }
+}
+
+@Composable
+private fun LinkItem(
+    item: CommentaryWithText,
+    commentTextSize: Float,
+    lineHeight: Float,
+    onLinkClick: (CommentaryWithText) -> Unit
+) {
+    // Optimisation : mémorisation du callback pour éviter recréation
+    val onClick = remember(item, onLinkClick) {
+        { onLinkClick(item) }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 16.dp)
+            .pointerInput(item) {
+                detectTapGestures(onTap = { onClick() })
+            }
+    ) {
+        val annotated = remember(item.link.id, item.targetText, commentTextSize) {
+            buildAnnotatedFromHtml(
+                item.targetText,
+                commentTextSize
+            )
+        }
+
+        val fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew))
+
+        Text(
+            text = annotated,
+            textAlign = TextAlign.Justify,
+            fontFamily = fontFamily,
+            lineHeight = (commentTextSize * lineHeight).sp
+        )
     }
 }

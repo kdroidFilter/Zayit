@@ -14,11 +14,13 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -233,6 +235,8 @@ private fun CommentariesDisplay(
         return
     }
 
+    val windowInfo = LocalWindowInfo.current
+
     val layoutConfig = CommentariesLayoutConfig(
         selectedCommentators = selectedCommentators,
         titleToIdMap = titleToIdMap,
@@ -243,10 +247,15 @@ private fun CommentariesDisplay(
             onEvent(BookContentEvent.CommentariesScrolled(index, offset))
         },
         onCommentClick = { commentary ->
-            onEvent(BookContentEvent.OpenCommentaryTarget(
-                bookId = commentary.link.targetBookId,
-                lineId = commentary.link.targetLineId
-            ))
+            val mods = windowInfo.keyboardModifiers
+            if (mods.isCtrlPressed || mods.isMetaPressed) {
+                onEvent(
+                    BookContentEvent.OpenCommentaryTarget(
+                        bookId = commentary.link.targetBookId,
+                        lineId = commentary.link.targetLineId
+                    )
+                )
+            }
         },
         textSizes = textSizes
     )
@@ -388,22 +397,12 @@ private fun CommentaryItem(
     textSizes: AnimatedTextSizes,
     onClick: () -> Unit
 ) {
-    var isCtrlPressed by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp, horizontal = 16.dp)
-            .onPointerEvent(PointerEventType.Press) { event ->
-                isCtrlPressed = event.keyboardModifiers.isCtrlPressed
-            }
-            .onPointerEvent(PointerEventType.Move) { event ->
-                isCtrlPressed = event.keyboardModifiers.isCtrlPressed
-            }
-            .onPointerEvent(PointerEventType.Release) {
-                isCtrlPressed = false
-            }
             .pointerInput(Unit) {
-                detectTapGestures(onTap = { if (isCtrlPressed) onClick() })
+                detectTapGestures(onTap = { onClick() })
             }
     ) {
         // Parse HTML content and build styled text like in BookContentView

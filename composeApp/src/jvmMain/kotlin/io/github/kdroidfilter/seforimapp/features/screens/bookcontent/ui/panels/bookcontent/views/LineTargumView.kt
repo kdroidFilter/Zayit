@@ -11,11 +11,13 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -164,6 +166,7 @@ fun LineTargumView(
 ) {
     val providers = uiState.providers ?: return
     val contentState = uiState.content
+        val windowInfo = LocalWindowInfo.current
     LineTargumView(
         selectedLine = contentState.selectedLine,
         buildLinksPagerFor = providers.buildLinksPagerFor,
@@ -177,11 +180,14 @@ fun LineTargumView(
             }
         },
         onLinkClick = { commentary ->
-            onEvent(
-                BookContentEvent.OpenCommentaryTarget(
-                    bookId = commentary.link.targetBookId, lineId = commentary.link.targetLineId
+            val mods = windowInfo.keyboardModifiers
+            if (mods.isCtrlPressed || mods.isMetaPressed) {
+                onEvent(
+                    BookContentEvent.OpenCommentaryTarget(
+                        bookId = commentary.link.targetBookId, lineId = commentary.link.targetLineId
+                    )
                 )
-            )
+            }
         },
         onScroll = { index, offset ->
             onEvent(BookContentEvent.CommentariesScrolled(index, offset))
@@ -237,21 +243,11 @@ private fun PagedLinksList(
             repeat(lazyPagingItems.itemCount) { index ->
                 val item = lazyPagingItems[index]
                 if (item != null) {
-                    var isCtrlPressed by remember { mutableStateOf(false) }
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp, horizontal = 16.dp)
-                            .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Press) {
-                                isCtrlPressed = it.keyboardModifiers.isCtrlPressed
-                            }
-                            .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Move) {
-                                isCtrlPressed = it.keyboardModifiers.isCtrlPressed
-                            }
-                            .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Release) {
-                                isCtrlPressed = false
-                            }
-                            .pointerInput(Unit) { detectTapGestures(onTap = { if (isCtrlPressed) onLinkClick(item) }) }
+                            .pointerInput(Unit) { detectTapGestures(onTap = { onLinkClick(item) }) }
                     ) {
                         // Parse HTML and render styled text similar to book content
                         val parsedElements = remember(item.link.id, item.targetText) {

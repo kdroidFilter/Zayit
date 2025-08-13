@@ -1,7 +1,7 @@
-package io.github.kdroidfilter.seforimapp.core.presentation.navigation
+package io.github.kdroidfilter.seforim.navigation
 
 import androidx.navigation.NavOptionsBuilder
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsDestination
+import io.github.kdroidfilter.seforim.tabs.TabsDestination
 
 sealed interface NavigationAction {
 

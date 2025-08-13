@@ -14,9 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import io.github.kdroidfilter.seforimapp.core.presentation.navigation.NavigationAction
-import io.github.kdroidfilter.seforimapp.core.presentation.navigation.Navigator
-import io.github.kdroidfilter.seforimapp.core.presentation.navigation.nonAnimatedComposable
+import io.github.kdroidfilter.seforim.navigation.NavigationAction
+import io.github.kdroidfilter.seforim.navigation.Navigator
+import io.github.kdroidfilter.seforim.navigation.nonAnimatedComposable
+import io.github.kdroidfilter.seforim.tabs.TabsDestination
+import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.ObserveAsEvents
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentScreen
 import kotlinx.coroutines.launch

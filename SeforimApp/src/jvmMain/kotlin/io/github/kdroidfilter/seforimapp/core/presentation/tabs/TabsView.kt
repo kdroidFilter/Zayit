@@ -31,6 +31,11 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.seforim.tabs.TabType
+import io.github.kdroidfilter.seforim.tabs.TabsEvents
+import io.github.kdroidfilter.seforim.tabs.TabsState
+import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforim.tabs.rememberTabsState
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
 import io.github.kdroidfilter.seforimapp.core.presentation.icons.BookOpenTabs
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings

@@ -1,9 +1,9 @@
 // tabs/TabsViewModel.kt
-package io.github.kdroidfilter.seforimapp.core.presentation.tabs
+package io.github.kdroidfilter.seforim.tabs
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.seforimapp.core.presentation.navigation.Navigator
+import io.github.kdroidfilter.seforim.navigation.Navigator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch

@@ -1,8 +1,8 @@
 // navigation/Navigator.kt
-package io.github.kdroidfilter.seforimapp.core.presentation.navigation
+package io.github.kdroidfilter.seforim.navigation
 
 import androidx.navigation.NavOptionsBuilder
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsDestination
+import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow

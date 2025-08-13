@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.core.presentation.navigation
+package io.github.kdroidfilter.seforim.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition

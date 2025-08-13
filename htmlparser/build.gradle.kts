@@ -24,7 +24,6 @@ kotlin {
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(libs.jsoup)
-
         }
 
         androidMain.dependencies {

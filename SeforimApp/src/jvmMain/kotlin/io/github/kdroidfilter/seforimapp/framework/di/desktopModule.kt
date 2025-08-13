@@ -1,14 +1,16 @@
 package io.github.kdroidfilter.seforimapp.framework.di
 
 import androidx.lifecycle.SavedStateHandle
+import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.russhwolf.settings.Settings
+import io.github.kdroidfilter.seforim.navigation.DefaultNavigator
+import io.github.kdroidfilter.seforim.navigation.Navigator
+import io.github.kdroidfilter.seforim.tabs.TabStateManager
+import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
+import io.github.kdroidfilter.seforim.tabs.TabsDestination
+import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import io.github.kdroidfilter.seforimapp.core.presentation.navigation.DefaultNavigator
-import io.github.kdroidfilter.seforimapp.core.presentation.navigation.Navigator
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabTitleUpdateManager
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsDestination
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsViewModel
+
 import io.github.kdroidfilter.seforimapp.core.settings.IAppSettings
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettingsImpl
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentViewModel
@@ -32,7 +34,7 @@ val desktopModule = module {
     single<SeforimRepository> {
         // Use a fixed database path as specified in the requirements
         val dbPath = getDatabasePath()
-        val driver = app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver("jdbc:sqlite:$dbPath")
+        val driver = JdbcSqliteDriver("jdbc:sqlite:$dbPath")
         SeforimRepository(dbPath, driver)
     }
     

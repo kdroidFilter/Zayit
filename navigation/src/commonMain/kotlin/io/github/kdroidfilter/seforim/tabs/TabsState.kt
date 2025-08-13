@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.core.presentation.tabs
+package io.github.kdroidfilter.seforim.tabs
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState

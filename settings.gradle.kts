@@ -39,6 +39,9 @@ plugins {
 }
 
 include(":SeforimApp")
+
 include(":jewel")
 include((":htmlparser"))
+include(":navigation")
+
 includeBuild("SeforimLibrary")

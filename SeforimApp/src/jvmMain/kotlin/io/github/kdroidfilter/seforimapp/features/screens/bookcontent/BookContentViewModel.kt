@@ -4,7 +4,12 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import app.cash.paging.PagingData
 import app.cash.paging.cachedIn
-import io.github.kdroidfilter.seforimapp.core.presentation.navigation.Navigator
+import io.github.kdroidfilter.seforim.navigation.Navigator
+import io.github.kdroidfilter.seforim.tabs.TabAwareViewModel
+import io.github.kdroidfilter.seforim.tabs.TabStateManager
+import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
+import io.github.kdroidfilter.seforim.tabs.TabType
+import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.*
 import io.github.kdroidfilter.seforimapp.core.utils.debugln
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentStateManager

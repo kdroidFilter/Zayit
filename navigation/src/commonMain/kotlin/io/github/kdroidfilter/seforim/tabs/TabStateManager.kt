@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.core.presentation.tabs
+package io.github.kdroidfilter.seforim.tabs
 
 /**
  * Manages state persistence across tabs.

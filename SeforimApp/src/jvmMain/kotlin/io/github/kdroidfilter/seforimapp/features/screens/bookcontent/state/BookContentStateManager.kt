@@ -2,7 +2,7 @@
 
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state
 
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabStateManager
+import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

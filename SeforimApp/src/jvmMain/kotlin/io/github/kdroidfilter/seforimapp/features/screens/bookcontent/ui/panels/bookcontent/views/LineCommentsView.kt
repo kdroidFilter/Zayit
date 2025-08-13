@@ -1,35 +1,36 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views
 
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
-
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import app.cash.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
-import io.github.kdroidfilter.seforimapp.core.presentation.components.WarningBanner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedHorizontalSplitPane
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.delay
@@ -66,11 +67,20 @@ fun LineCommentsView(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+    val paneInteractionSource = remember { MutableInteractionSource() }
+
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp).hoverable(paneInteractionSource)) {
         // Header
-        CommentariesHeader(showMaxCommentatorsWarning) {
-            showMaxCommentatorsWarning = false
-        }
+        PaneHeader(
+            label = stringResource(Res.string.commentaries),
+            warningMsg = stringResource(Res.string.max_commentators_limit),
+            showWarning = showMaxCommentatorsWarning,
+            onCloseWarning = {
+                showMaxCommentatorsWarning = false
+            },
+            interactionSource = paneInteractionSource,
+            onHide = { onEvent(BookContentEvent.ToggleCommentaries) }
+        )
 
         when (selectedLine) {
             null -> CenteredMessage(stringResource(Res.string.select_line_for_commentaries))
@@ -85,32 +95,6 @@ fun LineCommentsView(
     }
 }
 
-@Composable
-private fun CommentariesHeader(
-    showWarning: Boolean,
-    onCloseWarning: () -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            text = stringResource(Res.string.commentaries),
-            textAlign = TextAlign.Center,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            textDecoration = TextDecoration.Underline,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-        )
-        if (showWarning) {
-            WarningBanner(
-                message = stringResource(Res.string.max_commentators_limit),
-                onClose = onCloseWarning,
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -147,7 +131,7 @@ private fun CommentariesContent(
 
     val splitState = rememberSplitPaneState(0.10f)
 
-    _root_ide_package_.io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.EnhancedHorizontalSplitPane(
+    EnhancedHorizontalSplitPane(
         splitPaneState = splitState,
         firstMinSize = 150f,
         firstContent = {
@@ -329,8 +313,6 @@ private fun buildCommentatorRows(selected: List<String>): List<List<String>> {
 }
 
 
-
-
 @Composable
 private fun CommentaryListView(
     lineId: Long,
@@ -383,6 +365,7 @@ private fun CommentaryListView(
                 is LoadState.Error -> item {
                     ErrorMessage((lazyPagingItems.loadState.refresh as LoadState.Error).error)
                 }
+
                 else -> {}
             }
         }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
@@ -23,13 +24,15 @@ fun VerticalDivider() {
 }
 
 @Composable
-fun HorizontalDivider() {
+fun HorizontalDivider(
+    color : Color = JewelTheme.globalColors.borders.disabled
+) {
     Divider(
         orientation = Orientation.Horizontal,
         modifier = Modifier
             .fillMaxWidth()
             .width(1.dp)
             .padding(bottom = 4.dp),
-        color = JewelTheme.globalColors.borders.disabled
+        color = color
     )
 }

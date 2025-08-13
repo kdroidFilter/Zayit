@@ -17,6 +17,8 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
+import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.jetbrains.jewel.ui.component.Text
 
 /**
@@ -79,5 +81,16 @@ fun WarningBanner(
                     }
             )
         }
+    }
+}
+
+@Preview
+@Composable
+fun WarningBannerPreview() {
+    PreviewContainer {
+        WarningBanner(
+            message = "This is a warning message",
+            onClose = {}
+        )
     }
 }

@@ -7,17 +7,18 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
@@ -28,6 +29,7 @@ import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.flow.Flow
@@ -49,7 +51,8 @@ fun LineTargumView(
     initiallySelectedSourceIds: Set<Long> = emptySet(),
     onSelectedSourcesChange: (Set<Long>) -> Unit = {},
     onLinkClick: (CommentaryWithText) -> Unit = {},
-    onScroll: (Int, Int) -> Unit = { _, _ -> }
+    onScroll: (Int, Int) -> Unit = { _, _ -> },
+    onHide: () -> Unit = {}
 ) {
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val commentTextSize by animateFloatAsState(
@@ -64,19 +67,23 @@ fun LineTargumView(
         label = "linkLineHeightAnim"
     )
 
-    Column(modifier = Modifier.fillMaxSize().padding(top = 8.dp, start = 8.dp, end = 8.dp)) {
+    val paneInteractionSource = remember { MutableInteractionSource() }
+
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .padding(horizontal = 8.dp)
+        .hoverable(paneInteractionSource)
+    ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                text = stringResource(Res.string.links),
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                modifier = Modifier.padding(bottom = 16.dp),
-                textDecoration = TextDecoration.Underline,
-                )
+            PaneHeader(
+                label = stringResource(Res.string.links),
+                interactionSource = paneInteractionSource,
+                onHide = onHide
+            )
         }
 
         when (selectedLine) {
@@ -187,7 +194,8 @@ fun LineTargumView(
         },
         onScroll = { index, offset ->
             onEvent(BookContentEvent.CommentariesScrolled(index, offset))
-        }
+        },
+        onHide = { onEvent(BookContentEvent.ToggleTargum) }
     )
 }
 

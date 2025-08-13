@@ -15,6 +15,7 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases.C
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases.NavigationUseCase
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases.TocUseCase
 import io.github.kdroidfilter.seforimapp.logger.debugln
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -270,27 +271,30 @@ class BookContentViewModel(
     /**
      * Charge un livre
      */
-    private fun loadBook(book: io.github.kdroidfilter.seforimlibrary.core.models.Book) {
+    private fun loadBook(book: Book) {
         val previousBook = stateManager.state.value.navigation.selectedBook
 
         navigationUseCase.selectBook(book)
 
-        // Réinitialiser les positions si on change de livre
+        // Réinitialiser les positions et les sélections si on change de livre
         if (previousBook?.id != book.id) {
-        debugln { "Loading new book, resetting positions" }
-        contentUseCase.resetScrollPositions()
-        tocUseCase.resetToc()
+            debugln { "Loading new book, resetting positions and selections" }
+            contentUseCase.resetScrollPositions()
+            tocUseCase.resetToc()
 
-        // Cacher les commentaires lors du changement de livre
-        if (stateManager.state.value.content.showCommentaries) {
-            contentUseCase.toggleCommentaries()
+            // Réinitialiser les sélections de commentateurs et de targum/links et la ligne sélectionnée
+            stateManager.resetForNewBook()
+
+            // Cacher les commentaires lors du changement de livre
+            if (stateManager.state.value.content.showCommentaries) {
+                contentUseCase.toggleCommentaries()
+            }
+            // Cacher le targum lors du changement de livre
+            if (stateManager.state.value.content.showTargum) {
+                contentUseCase.toggleTargum()
+            }
+            System.gc()
         }
-        // Cacher le targum lors du changement de livre
-        if (stateManager.state.value.content.showTargum) {
-            contentUseCase.toggleTargum()
-        }
-        System.gc()
-    }
 
         loadBookData(book)
     }
@@ -299,7 +303,7 @@ class BookContentViewModel(
      * Charge les données du livre
      */
     private fun loadBookData(
-        book: io.github.kdroidfilter.seforimlibrary.core.models.Book,
+        book: Book,
         forceAnchorId: Long? = null
     ) {
         viewModelScope.launch {
@@ -358,7 +362,7 @@ class BookContentViewModel(
     /**
      * Ouvre un livre dans un nouvel onglet
      */
-    private suspend fun openBookInNewTab(book: io.github.kdroidfilter.seforimlibrary.core.models.Book) {
+    private suspend fun openBookInNewTab(book: Book) {
         val newTabId = java.util.UUID.randomUUID().toString()
 
         // Copier l'état de navigation vers le nouvel onglet

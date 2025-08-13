@@ -127,6 +127,23 @@ class BookContentStateManager(
     }
     
     /**
+     * Réinitialise les sélections et positions de contenu lors d'un changement de livre
+     * (rend le code appelant plus propre)
+     */
+    fun resetForNewBook() {
+        updateContent {
+            copy(
+                selectedCommentatorsByLine = emptyMap(),
+                selectedLinkSourcesByLine = emptyMap(),
+                selectedLine = null,
+                anchorId = -1L,
+                scrollIndex = 0,
+                scrollOffset = 0
+            )
+        }
+    }
+
+    /**
      * Met à jour uniquement le layout
      */
     fun updateLayout(

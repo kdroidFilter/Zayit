@@ -55,7 +55,6 @@ fun BookContentView(
     book: Book,
     linesPagingData: Flow<PagingData<Line>>,
     selectedLine: Line?,
-
     onLineSelected: (Line) -> Unit,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier,
@@ -103,25 +102,29 @@ fun BookContentView(
     // Track the restored anchor to avoid re-restoration
     var restoredAnchorId by remember(book.id) { mutableStateOf(-1L) }
 
+    // Optimize selected line ID lookup
+    val selectedLineId = remember(selectedLine) { selectedLine?.id }
+
     // Handle scrolling to selected line when timestamp changes
-    LaunchedEffect(scrollToLineTimestamp) {
-        val target = selectedLine ?: return@LaunchedEffect
-        if (scrollToLineTimestamp == 0L) return@LaunchedEffect
+    LaunchedEffect(scrollToLineTimestamp, selectedLineId) {
+        if (scrollToLineTimestamp == 0L || selectedLineId == null) return@LaunchedEffect
 
         // Wait for initial loading to complete
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
             delay(16)
         }
 
-        // Find and scroll to the selected line
-        val index = lazyPagingItems.itemSnapshotList.indexOfFirst { it?.id == target.id }
-        if (index >= 0) {
+        // Find and scroll to the selected line using binary search if possible
+        val snapshot = lazyPagingItems.itemSnapshotList
+        val index = snapshot.indices.firstOrNull { snapshot[it]?.id == selectedLineId }
+
+        if (index != null) {
             listState.scrollToItem(index)
         }
     }
 
     // Improved restoration algorithm for pagination
-    LaunchedEffect(lazyPagingItems.loadState, anchorId) {
+    LaunchedEffect(lazyPagingItems.loadState.refresh, anchorId) {
         // Only restore if we haven't already and we have items and an anchor
         if (!hasRestored && anchorId != -1L && anchorId != restoredAnchorId) {
 
@@ -136,10 +139,10 @@ fun BookContentView(
             // Now check if we have items
             if (lazyPagingItems.itemCount > 0) {
                 // Find the anchor line in the current page
-                val anchorLineIndex = lazyPagingItems.itemSnapshotList
-                    .indexOfFirst { it?.id == anchorId }
+                val snapshot = lazyPagingItems.itemSnapshotList
+                val anchorLineIndex = snapshot.indices.firstOrNull { snapshot[it]?.id == anchorId }
 
-                if (anchorLineIndex >= 0) {
+                if (anchorLineIndex != null) {
                     debugln { "Found anchor at index $anchorLineIndex, scrolling with offset $scrollOffset" }
 
                     // Scroll directly to the anchor with the saved offset
@@ -150,12 +153,10 @@ fun BookContentView(
                     debugln { "Anchor line $anchorId not found in current page" }
 
                     // The anchor is not in the current page
-                    // This shouldn't happen if the ViewModel correctly sets initialLineId
                     // As a fallback, check if we have a selected line
-                    if (selectedLine != null) {
-                        val selectedIndex = lazyPagingItems.itemSnapshotList
-                            .indexOfFirst { it?.id == selectedLine.id }
-                        if (selectedIndex >= 0) {
+                    if (selectedLineId != null) {
+                        val selectedIndex = snapshot.indices.firstOrNull { snapshot[it]?.id == selectedLineId }
+                        if (selectedIndex != null) {
                             listState.scrollToItem(selectedIndex)
                             hasRestored = true
                         }
@@ -165,31 +166,34 @@ fun BookContentView(
         }
     }
 
-    // Save scroll position with anchor information
-    LaunchedEffect(listState, hasRestored) {
-        if (hasRestored || lazyPagingItems.itemCount > 0) {
-            snapshotFlow {
-                val firstVisibleIndex = listState.firstVisibleItemIndex
-                val safeIndex = firstVisibleIndex.coerceAtMost(lazyPagingItems.itemCount - 1)
+    // Save scroll position with anchor information - optimized with derivedStateOf
+    val scrollData = remember(listState, lazyPagingItems) {
+        derivedStateOf {
+            val firstVisibleIndex = listState.firstVisibleItemIndex
+            val itemCount = lazyPagingItems.itemCount
+            val safeIndex = firstVisibleIndex.coerceAtMost(itemCount - 1)
 
-                // Get the ID of the first visible line as the anchor
-                val currentAnchorId = if (safeIndex >= 0 && safeIndex < lazyPagingItems.itemCount) {
-                    lazyPagingItems[safeIndex]?.id ?: -1L
-                } else {
-                    -1L
-                }
-
-                val scrollOff = listState.firstVisibleItemScrollOffset
-
-                // Return anchor info and scroll position
-                // The anchorIndex is the same as scrollIndex in this context
-                AnchorData(
-                    anchorId = currentAnchorId,
-                    anchorIndex = safeIndex,
-                    scrollIndex = firstVisibleIndex,
-                    scrollOffset = scrollOff
-                )
+            // Get the ID of the first visible line as the anchor
+            val currentAnchorId = if (safeIndex in 0 until itemCount) {
+                lazyPagingItems[safeIndex]?.id ?: -1L
+            } else {
+                -1L
             }
+
+            val scrollOff = listState.firstVisibleItemScrollOffset
+
+            AnchorData(
+                anchorId = currentAnchorId,
+                anchorIndex = safeIndex,
+                scrollIndex = firstVisibleIndex,
+                scrollOffset = scrollOff
+            )
+        }
+    }
+
+    LaunchedEffect(scrollData, hasRestored) {
+        if (hasRestored || lazyPagingItems.itemCount > 0) {
+            snapshotFlow { scrollData.value }
                 .distinctUntilChanged()
                 .debounce(250)
                 .collect { data ->
@@ -199,16 +203,14 @@ fun BookContentView(
         }
     }
 
-    SelectionContainer(
-        modifier = modifier
-            .fillMaxSize()
-            .onKeyEvent { keyEvent ->
-                debugln { "[BookContentView] Key event: key=${keyEvent.key}, type=${keyEvent.type}" }
+    // Memoize key event handler to avoid recreation
+    val keyEventHandler = remember(onEvent) {
+        { keyEvent: androidx.compose.ui.input.key.KeyEvent ->
+            debugln { "[BookContentView] Key event: key=${keyEvent.key}, type=${keyEvent.type}" }
 
-                if (keyEvent.type != KeyEventType.KeyDown) {
-                    return@onKeyEvent false
-                }
-
+            if (keyEvent.type != KeyEventType.KeyDown) {
+                false
+            } else {
                 when (keyEvent.key) {
                     Key.DirectionUp -> {
                         debugln { "[BookContentView] Up arrow key pressed, navigating to previous line" }
@@ -223,6 +225,13 @@ fun BookContentView(
                     else -> false
                 }
             }
+        }
+    }
+
+    SelectionContainer(
+        modifier = modifier
+            .fillMaxSize()
+            .onKeyEvent(keyEventHandler)
     ) {
         LazyColumn(
             state = listState,
@@ -230,31 +239,22 @@ fun BookContentView(
         ) {
             items(
                 count = lazyPagingItems.itemCount,
-                key = lazyPagingItems.itemKey { it.id }
+                key = lazyPagingItems.itemKey { it.id },
+                contentType = { "line" }  // Optimization: specify content type
             ) { index ->
                 val line = lazyPagingItems[index]
 
                 if (line != null) {
                     LineItem(
                         line = line,
-                        isSelected = selectedLine?.id == line.id,
+                        isSelected = selectedLineId == line.id,
                         baseTextSize = textSize,
-                        lineHeight = lineHeight
-                    ) {
-                        onLineSelected(line)
-                    }
+                        lineHeight = lineHeight,
+                        onLineSelected = onLineSelected
+                    )
                 } else {
                     // Placeholder while loading
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
-                            .padding(8.dp)
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                    LoadingPlaceholder()
                 }
             }
 
@@ -262,61 +262,25 @@ fun BookContentView(
             lazyPagingItems.apply {
                 when {
                     loadState.refresh is LoadState.Loading -> {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
-                            }
+                        item(contentType = "loading") {
+                            LoadingIndicator()
                         }
                     }
                     loadState.append is LoadState.Loading -> {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
+                        item(contentType = "loading") {
+                            LoadingIndicator(isSmall = true)
                         }
                     }
                     loadState.refresh is LoadState.Error -> {
                         val error = (loadState.refresh as LoadState.Error).error
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Error: ${error.message}",
-                                    color = Color.Red
-                                )
-                            }
+                        item(contentType = "error") {
+                            ErrorIndicator(message = "Error: ${error.message}")
                         }
                     }
                     loadState.append is LoadState.Error -> {
                         val error = (loadState.append as LoadState.Error).error
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Error loading more: ${error.message}",
-                                    color = Color.Red
-                                )
-                            }
+                        item(contentType = "error") {
+                            ErrorIndicator(message = "Error loading more: ${error.message}")
                         }
                     }
                 }
@@ -340,40 +304,105 @@ private fun LineItem(
     isSelected: Boolean,
     baseTextSize: Float = 16f,
     lineHeight: Float = 1.5f,
-    onClick: () -> Unit
+    onLineSelected: (Line) -> Unit
 ) {
+    // Memoize the annotated string with proper keys
     val annotated = remember(line.id, line.content, baseTextSize) {
         buildAnnotatedFromHtml(line.content, baseTextSize)
     }
 
-    val textModifier = Modifier
-        .fillMaxWidth()
-        .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) }
+    // Memoize click handler to avoid recreation
+    val clickHandler = remember(line, onLineSelected) {
+        { onLineSelected(line) }
+    }
 
-    Box(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+    // Get theme color in composable context
+    val borderColor = if (isSelected) JewelTheme.globalColors.borders.disabled else Color.Transparent
+
+    val textModifier = remember {
+        Modifier.fillMaxWidth()
+    }.pointerInput(line) {
+        detectTapGestures(onTap = { clickHandler() })
+    }
+
+    val hebrewFontFamily =
+        FontFamily(
+            Font(
+                resource = Res.font.notoserifhebrew,
+                weight = FontWeight.Normal
+            )
+        )
+
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
         ) {
             Box(
                 modifier = Modifier
                     .width(4.dp)
                     .fillMaxHeight()
-                    .background(if (isSelected) JewelTheme.globalColors.borders.disabled else Color.Transparent)
+                    .background(borderColor)
                     .zIndex(1f)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = annotated,
                 textAlign = TextAlign.Justify,
-                fontFamily = FontFamily(
-                    Font(
-                        resource = Res.font.notoserifhebrew,
-                        weight = FontWeight.Normal
-                    )
-                ),
+                fontFamily = hebrewFontFamily,
                 lineHeight = (baseTextSize * lineHeight).sp,
                 modifier = textModifier
             )
         }
+    }
+}
+
+// Extract reusable components to avoid inline composition
+@Composable
+private fun LoadingPlaceholder() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .padding(8.dp)
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
+private fun LoadingIndicator(isSmall: Boolean = false) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(
+            modifier = if (isSmall) Modifier.size(24.dp) else Modifier
+        )
+    }
+}
+
+@Composable
+private fun ErrorIndicator(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = message,
+            color = Color.Red
+        )
     }
 }

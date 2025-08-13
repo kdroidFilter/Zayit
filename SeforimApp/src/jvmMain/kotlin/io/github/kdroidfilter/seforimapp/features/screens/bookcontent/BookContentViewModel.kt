@@ -220,6 +220,12 @@ class BookContentViewModel(
                 is BookContentEvent.CommentariesScrolled ->
                     commentariesUseCase.updateCommentariesScrollPosition(event.index, event.offset)
 
+                is BookContentEvent.CommentatorsListScrolled ->
+                    commentariesUseCase.updateCommentatorsListScrollPosition(event.index, event.offset)
+
+                is BookContentEvent.CommentaryColumnScrolled ->
+                    commentariesUseCase.updateCommentaryColumnScrollPosition(event.commentatorId, event.index, event.offset)
+
                 is BookContentEvent.SelectedCommentatorsChanged ->
                     commentariesUseCase.updateSelectedCommentators(event.lineId, event.selectedIds)
 

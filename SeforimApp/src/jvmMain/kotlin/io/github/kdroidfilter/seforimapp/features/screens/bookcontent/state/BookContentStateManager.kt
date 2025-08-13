@@ -63,6 +63,10 @@ class BookContentStateManager(
                 commentariesSelectedTab = getState(StateKeys.COMMENTARIES_SELECTED_TAB) ?: 0,
                 commentariesScrollIndex = getState(StateKeys.COMMENTARIES_SCROLL_INDEX) ?: 0,
                 commentariesScrollOffset = getState(StateKeys.COMMENTARIES_SCROLL_OFFSET) ?: 0,
+                commentatorsListScrollIndex = getState(StateKeys.COMMENTATORS_LIST_SCROLL_INDEX) ?: 0,
+                commentatorsListScrollOffset = getState(StateKeys.COMMENTATORS_LIST_SCROLL_OFFSET) ?: 0,
+                commentariesColumnScrollIndexByCommentator = getState(StateKeys.COMMENTARIES_COLUMN_SCROLL_INDEX_BY_COMMENTATOR) ?: emptyMap(),
+                commentariesColumnScrollOffsetByCommentator = getState(StateKeys.COMMENTARIES_COLUMN_SCROLL_OFFSET_BY_COMMENTATOR) ?: emptyMap(),
                 selectedCommentatorsByLine = getState(StateKeys.SELECTED_COMMENTATORS_BY_LINE) ?: emptyMap(),
                 selectedCommentatorsByBook = getState(StateKeys.SELECTED_COMMENTATORS_BY_BOOK) ?: emptyMap(),
                 selectedLinkSourcesByLine = getState(StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE) ?: emptyMap(),
@@ -200,6 +204,10 @@ class BookContentStateManager(
         saveState(StateKeys.COMMENTARIES_SELECTED_TAB, currentState.content.commentariesSelectedTab)
         saveState(StateKeys.COMMENTARIES_SCROLL_INDEX, currentState.content.commentariesScrollIndex)
         saveState(StateKeys.COMMENTARIES_SCROLL_OFFSET, currentState.content.commentariesScrollOffset)
+        saveState(StateKeys.COMMENTATORS_LIST_SCROLL_INDEX, currentState.content.commentatorsListScrollIndex)
+        saveState(StateKeys.COMMENTATORS_LIST_SCROLL_OFFSET, currentState.content.commentatorsListScrollOffset)
+        saveState(StateKeys.COMMENTARIES_COLUMN_SCROLL_INDEX_BY_COMMENTATOR, currentState.content.commentariesColumnScrollIndexByCommentator)
+        saveState(StateKeys.COMMENTARIES_COLUMN_SCROLL_OFFSET_BY_COMMENTATOR, currentState.content.commentariesColumnScrollOffsetByCommentator)
         saveState(StateKeys.SELECTED_COMMENTATORS_BY_LINE, currentState.content.selectedCommentatorsByLine)
         saveState(StateKeys.SELECTED_COMMENTATORS_BY_BOOK, currentState.content.selectedCommentatorsByBook)
         saveState(StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE, currentState.content.selectedLinkSourcesByLine)

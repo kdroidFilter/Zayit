@@ -229,4 +229,32 @@ class CommentariesUseCase(
             )
         }
     }
+    
+    /**
+     * Met à jour la position de scroll de la liste des commentateurs
+     */
+    fun updateCommentatorsListScrollPosition(index: Int, offset: Int) {
+        stateManager.updateContent {
+            copy(
+                commentatorsListScrollIndex = index,
+                commentatorsListScrollOffset = offset
+            )
+        }
+    }
+    
+    /**
+     * Met à jour la position de scroll d'une colonne de commentaires (par commentateur)
+     */
+    fun updateCommentaryColumnScrollPosition(commentatorId: Long, index: Int, offset: Int) {
+        stateManager.updateContent {
+            val idxMap = commentariesColumnScrollIndexByCommentator.toMutableMap()
+            val offMap = commentariesColumnScrollOffsetByCommentator.toMutableMap()
+            idxMap[commentatorId] = index
+            offMap[commentatorId] = offset
+            copy(
+                commentariesColumnScrollIndexByCommentator = idxMap,
+                commentariesColumnScrollOffsetByCommentator = offMap
+            )
+        }
+    }
 }

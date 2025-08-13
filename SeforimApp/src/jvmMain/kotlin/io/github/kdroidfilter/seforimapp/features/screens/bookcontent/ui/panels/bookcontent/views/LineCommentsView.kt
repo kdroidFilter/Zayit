@@ -31,7 +31,10 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compone
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.debounce
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -138,6 +141,11 @@ private fun CommentariesContent(
             CommentatorsList(
                 commentators = titleToIdMap.keys.sorted(),
                 selectedCommentators = selectedCommentators.value,
+                initialScrollIndex = uiState.content.commentatorsListScrollIndex,
+                initialScrollOffset = uiState.content.commentatorsListScrollOffset,
+                onScroll = { index, offset ->
+                    onEvent(BookContentEvent.CommentatorsListScrolled(index, offset))
+                },
                 onSelectionChange = { name, checked ->
                     if (checked && selectedCommentators.value.size >= MAX_COMMENTATORS) {
                         onShowWarning()
@@ -164,14 +172,27 @@ private fun CommentariesContent(
     )
 }
 
+@OptIn(FlowPreview::class)
 @Composable
 private fun CommentatorsList(
     commentators: List<String>,
     selectedCommentators: Set<String>,
+    initialScrollIndex: Int,
+    initialScrollOffset: Int,
+    onScroll: (Int, Int) -> Unit,
     onSelectionChange: (String, Boolean) -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
-        val listState = rememberLazyListState()
+        val listState = rememberLazyListState(
+            initialFirstVisibleItemIndex = initialScrollIndex,
+            initialFirstVisibleItemScrollOffset = initialScrollOffset
+        )
+        LaunchedEffect(listState) {
+            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+                .distinctUntilChanged()
+                .debounce(250)
+                .collect { (i, o) -> onScroll(i, o) }
+        }
         Row(modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
             VerticallyScrollableContainer(
                 scrollState = listState,
@@ -258,13 +279,14 @@ private fun CommentariesLayout(
 ) {
     layoutConfig.selectedCommentators.size
 
-    CommentatorsGridView(layoutConfig, uiState)
+    CommentatorsGridView(layoutConfig, uiState, onEvent)
 }
 
 @Composable
 private fun CommentatorsGridView(
     config: CommentariesLayoutConfig,
     uiState: BookContentUiState,
+    onEvent: (BookContentEvent) -> Unit,
 ) {
     val rows = remember(config.selectedCommentators) {
         buildCommentatorRows(config.selectedCommentators)
@@ -294,6 +316,13 @@ private fun CommentatorsGridView(
                             isPrimary = isPrimary,
                             config = config,
                             uiState = uiState,
+                            initialIndex = uiState.content.commentariesColumnScrollIndexByCommentator[id]
+                                ?: uiState.content.commentariesScrollIndex,
+                            initialOffset = uiState.content.commentariesColumnScrollOffsetByCommentator[id]
+                                ?: uiState.content.commentariesScrollOffset,
+                            onScroll = { i, o ->
+                                onEvent(BookContentEvent.CommentaryColumnScrolled(id, i, o))
+                            }
                         )
                     }
                 }
@@ -313,6 +342,7 @@ private fun buildCommentatorRows(selected: List<String>): List<List<String>> {
 }
 
 
+@OptIn(FlowPreview::class)
 @Composable
 private fun CommentaryListView(
     lineId: Long,
@@ -320,6 +350,9 @@ private fun CommentaryListView(
     isPrimary: Boolean,
     config: CommentariesLayoutConfig,
     uiState: BookContentUiState,
+    initialIndex: Int,
+    initialOffset: Int,
+    onScroll: (Int, Int) -> Unit,
 ) {
     val providers = uiState.providers ?: return
 
@@ -330,18 +363,36 @@ private fun CommentaryListView(
     val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
 
     val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = config.scrollIndex,
-        initialFirstVisibleItemScrollOffset = config.scrollOffset
+        initialFirstVisibleItemIndex = initialIndex,
+        initialFirstVisibleItemScrollOffset = initialOffset
     )
 
-    if (isPrimary) {
-        LaunchedEffect(listState) {
-            snapshotFlow {
-                listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
-            }.collect { (i, o) ->
-                config.onScroll(i, o)
+    // Ensure restoration occurs after paging completes
+    var hasRestored by remember(lineId, commentatorId) { mutableStateOf(false) }
+    LaunchedEffect(lineId, commentatorId, lazyPagingItems.loadState, initialIndex, initialOffset) {
+        if (!hasRestored) {
+            // Wait until initial refresh finishes
+            if (lazyPagingItems.loadState.refresh is LoadState.Loading) {
+                while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
+                    delay(16)
+                }
+            }
+            if (lazyPagingItems.itemCount > 0) {
+                val safeIndex = initialIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
+                val safeOffset = initialOffset.coerceAtLeast(0)
+                listState.scrollToItem(safeIndex, safeOffset)
+                hasRestored = true
             }
         }
+    }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .distinctUntilChanged()
+            .debounce(250)
+            .collect { (i, o) ->
+                onScroll(i, o)
+            }
     }
 
     SelectionContainer {
@@ -365,7 +416,6 @@ private fun CommentaryListView(
                 is LoadState.Error -> item {
                     ErrorMessage((lazyPagingItems.loadState.refresh as LoadState.Error).error)
                 }
-
                 else -> {}
             }
         }

@@ -21,7 +21,7 @@ import java.util.UUID
 
 val desktopModule = module {
     single<Navigator> {
-        DefaultNavigator(startDestination = TabsDestination.Home(UUID.randomUUID().toString()))
+        DefaultNavigator(startDestination = TabsDestination.BookContent(tabId = UUID.randomUUID().toString(), bookId = 1))
     }
 
     // Register TabStateManager as a singleton

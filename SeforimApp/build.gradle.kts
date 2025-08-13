@@ -16,7 +16,7 @@ plugins {
 
 kotlin {
     androidTarget {
-        //https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-test.html
+        // https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-test.html
         instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
     }
 
@@ -24,43 +24,55 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            // Compose
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
-
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
 
+            // Ktor
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.client.logging)
             implementation(libs.ktor.client.serialization)
             implementation(libs.ktor.serialization.json)
-            implementation(libs.ktor.client.logging)
 
-            implementation(libs.androidx.lifecycle.viewmodel)
+            // AndroidX (multiplatform-friendly artifacts)
             implementation(libs.androidx.lifecycle.runtime)
+            implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.navigation.compose)
 
-            implementation(libs.kotlinx.serialization.json)
+            // KotlinX
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.serialization.json)
 
+            // DI
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
 
+            // Settings & platform utils
             implementation(libs.multiplatformSettings)
-
-            implementation(libs.kotlinx.datetime)
-            implementation(libs.materialKolor)
             implementation(libs.platformtools.core)
             implementation(libs.platformtools.darkmodedetector)
 
+            // UI & theme utils
+            implementation(libs.materialKolor)
+
+            // Project / domain libs
             implementation("io.github.kdroidfilter.seforimlibrary:core")
             implementation("io.github.kdroidfilter.seforimlibrary:dao")
-            implementation(project(":htmlparser"))
-            implementation(project(":navigation"))
-            implementation(project(":icons"))
 
+            // Local projects
+            implementation(project(":htmlparser"))
+            implementation(project(":icons"))
+            implementation(project(":logger"))
+            implementation(project(":navigation"))
+            implementation(project(":pagination"))
+
+            // Paging
             implementation(libs.paging.compose.common)
         }
 
@@ -73,31 +85,27 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.uiTooling)
             implementation(libs.androidx.activityCompose)
-            implementation(libs.ktor.client.okhttp)
             implementation(libs.kotlinx.coroutines.android)
-//            implementation("com.github.luben:zstd-jni:1.5.7-4@aar")
-
+            implementation(libs.ktor.client.okhttp)
         }
 
         jvmMain.dependencies {
+            api(project(":jewel"))
+
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
             }
 
-            implementation(libs.ktor.client.okhttp)
-            implementation(libs.platformtools.rtlwindows)
             implementation(libs.composenativetray)
+            implementation(libs.jdbc.driver)
             implementation(libs.kotlinx.coroutines.swing)
+            implementation(libs.platformtools.rtlwindows)
             implementation(libs.slf4j.simple)
             implementation(libs.split.pane.desktop)
-            api(project(":jewel"))
-            implementation(libs.zstd.jni)
-
             implementation(libs.sqlite.driver)
-            implementation(libs.jdbc.driver)
-
+            implementation(libs.zstd.jni)
+            implementation(libs.ktor.client.okhttp)
         }
-
     }
 }
 
@@ -106,10 +114,9 @@ android {
     compileSdk = 35
 
     defaultConfig {
+        applicationId = "io.github.kdroidfilter.seforimapp.androidApp"
         minSdk = 21
         targetSdk = 35
-
-        applicationId = "io.github.kdroidfilter.seforimapp.androidApp"
         versionCode = 1
         versionName = "1.0.0"
 
@@ -117,7 +124,7 @@ android {
     }
 }
 
-//https://developer.android.com/develop/ui/compose/testing#setup
+// https://developer.android.com/develop/ui/compose/testing#setup
 dependencies {
     androidTestImplementation(libs.androidx.uitest.junit4)
     debugImplementation(libs.androidx.uitest.testManifest)
@@ -147,15 +154,15 @@ compose.desktop {
     }
 }
 
-//https://github.com/JetBrains/compose-hot-reload
+// https://github.com/JetBrains/compose-hot-reload
 composeCompiler {
     featureFlags.add(ComposeFeatureFlag.OptimizeNonSkippingGroups)
 }
+
 tasks.withType<ComposeHotRun>().configureEach {
     mainClass.set("MainKt")
 }
 
 buildConfig {
-    // BuildConfig configuration here.
     // https://github.com/gmazzo/gradle-buildconfig-plugin#usage-in-kts
 }

@@ -1,14 +1,19 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination
+package io.github.kdroidfilter.seforimapp.pagination
 
 import app.cash.paging.PagingSource
 import app.cash.paging.PagingState
+import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 
-class LineCommentsPagingSource(
+/**
+ * Paging source for non-commentary links (REFERENCE and OTHER) attached to a line.
+ * Optionally filters by a set of target book IDs ("sources").
+ */
+class LineTargumPagingSource(
     private val repository: SeforimRepository,
     private val lineId: Long,
-    private val commentatorIds: Set<Long> = emptySet()
+    private val sourceBookIds: Set<Long> = emptySet()
 ) : PagingSource<Int, CommentaryWithText>() {
 
     override fun getRefreshKey(state: PagingState<Int, CommentaryWithText>): Int? {
@@ -24,18 +29,18 @@ class LineCommentsPagingSource(
             val limit = params.loadSize
             val offset = page * limit
 
-            val commentaries = repository.getCommentariesForLineRange(
+            val links = repository.getCommentariesForLineRange(
                 lineIds = listOf(lineId),
-                activeCommentatorIds = commentatorIds,
+                activeCommentatorIds = sourceBookIds, // reuse filtering by target book IDs
                 offset = offset,
                 limit = limit
-            ).filter { it.link.connectionType == io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType.COMMENTARY }
+            ).filter { it.link.connectionType == ConnectionType.TARGUM }
 
             val prevKey = if (page == 0) null else page - 1
-            val nextKey = if (commentaries.isEmpty()) null else page + 1
+            val nextKey = if (links.isEmpty()) null else page + 1
 
             LoadResult.Page(
-                data = commentaries,
+                data = links,
                 prevKey = prevKey,
                 nextKey = nextKey
             )

@@ -20,8 +20,8 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
-import io.github.kdroidfilter.seforimapp.core.utils.SilenceLogs
 import io.github.kdroidfilter.seforimapp.framework.di.desktopModule
+import io.github.kdroidfilter.seforimapp.logger.SilenceLogs
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.trackActivation

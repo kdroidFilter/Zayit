@@ -3,10 +3,10 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases
 import app.cash.paging.Pager
 import app.cash.paging.PagingData
 import app.cash.paging.cachedIn
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.LineCommentsPagingSource
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.LineTargumPagingSource
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.PagingDefaults
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.pagination.LineCommentsPagingSource
+import io.github.kdroidfilter.seforimapp.pagination.LineTargumPagingSource
+import io.github.kdroidfilter.seforimapp.pagination.PagingDefaults
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText

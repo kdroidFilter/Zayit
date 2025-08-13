@@ -1,8 +1,8 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination
+package io.github.kdroidfilter.seforimapp.pagination
 
 import app.cash.paging.PagingSource
 import app.cash.paging.PagingState
-import io.github.kdroidfilter.seforimapp.core.utils.debugln
+import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 

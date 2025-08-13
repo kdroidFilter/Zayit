@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.core.utils
+package io.github.kdroidfilter.seforimapp.logger
 
 import java.text.SimpleDateFormat
 import java.util.Date

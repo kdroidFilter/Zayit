@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.core.utils
+package io.github.kdroidfilter.seforimapp.logger
 
 @Suppress("TooGenericExceptionCaught")
 object SilenceLogs {

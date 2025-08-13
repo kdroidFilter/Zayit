@@ -4,10 +4,10 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases
 
 import app.cash.paging.Pager
 import app.cash.paging.PagingData
-import io.github.kdroidfilter.seforimapp.core.utils.debugln
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.LinesPagingSource
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.pagination.PagingDefaults
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.logger.debugln
+import io.github.kdroidfilter.seforimapp.pagination.LinesPagingSource
+import io.github.kdroidfilter.seforimapp.pagination.PagingDefaults
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.flow.Flow

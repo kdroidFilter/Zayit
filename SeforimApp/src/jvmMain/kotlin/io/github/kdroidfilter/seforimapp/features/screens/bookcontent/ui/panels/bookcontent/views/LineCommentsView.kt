@@ -2,14 +2,12 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +39,7 @@ import org.jetbrains.compose.splitpane.rememberSplitPaneState
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import seforimapp.seforimapp.generated.resources.*
 
 private const val MAX_COMMENTATORS = 4
@@ -173,29 +172,29 @@ private fun CommentatorsList(
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         val listState = rememberLazyListState()
-        Row(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.weight(1f).fillMaxHeight()
+        Row(modifier = Modifier.fillMaxSize().padding(end = 4.dp)) {
+            VerticallyScrollableContainer(
+                scrollState = listState,
             ) {
-                items(count = commentators.size) { idx ->
-                    val commentator = commentators[idx]
-                    CheckboxRow(
-                        text = commentator,
-                        checked = commentator in selectedCommentators,
-                        onCheckedChange = { checked ->
-                            onSelectionChange(commentator, checked)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp, horizontal = 8.dp)
-                    )
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxHeight()
+                ) {
+                    items(count = commentators.size) { idx ->
+                        val commentator = commentators[idx]
+                        CheckboxRow(
+                            text = commentator,
+                            checked = commentator in selectedCommentators,
+                            onCheckedChange = { checked ->
+                                onSelectionChange(commentator, checked)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp, horizontal = 8.dp)
+                        )
+                    }
                 }
             }
-            VerticalScrollbar(
-                modifier = Modifier.fillMaxHeight(),
-                adapter = rememberScrollbarAdapter(listState)
-            )
         }
     }
 }

@@ -30,9 +30,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import io.github.kdroidfilter.seforimapp.core.presentation.components.ChevronIcon
 import io.github.kdroidfilter.seforimapp.icons.Book_2
-import io.github.kdroidfilter.seforimapp.icons.ChevronDown
-import io.github.kdroidfilter.seforimapp.icons.ChevronRight
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.theme.iconButtonStyle
 
@@ -216,9 +215,12 @@ private fun CategoryItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Icon(if (isExpanded) ChevronDown else ChevronRight,
-            contentDescription = "",
-            modifier = Modifier.size(12.dp))
+        ChevronIcon(
+            expanded = isExpanded,
+            modifier = Modifier.size(12.dp),
+            tint = JewelTheme.globalColors.text.normal,
+            contentDescription = ""
+        )
         Icon(
             key = AllIconsKeys.Nodes.Folder,
             contentDescription = null,

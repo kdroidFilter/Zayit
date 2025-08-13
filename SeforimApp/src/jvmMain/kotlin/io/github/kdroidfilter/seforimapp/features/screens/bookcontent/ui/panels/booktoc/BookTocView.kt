@@ -15,19 +15,18 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.seforimapp.core.presentation.components.ChevronIcon
 
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.VisibleTocEntry
-import io.github.kdroidfilter.seforimapp.icons.ChevronDown
-import io.github.kdroidfilter.seforimapp.icons.ChevronRight
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.LineTocMapping
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 
 /**
@@ -214,9 +213,12 @@ private fun TocEntryItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (visibleEntry.hasChildren) {
-            Icon(if (visibleEntry.isExpanded) ChevronDown else ChevronRight,
-                contentDescription = "",
-                modifier = Modifier.height(12.dp).width(24.dp))
+            ChevronIcon(
+                expanded = visibleEntry.isExpanded,
+                modifier = Modifier.height(12.dp).width(24.dp),
+                tint = JewelTheme.globalColors.text.normal,
+                contentDescription = ""
+            )
         } else {
             Spacer(modifier = Modifier.width(24.dp))
         }

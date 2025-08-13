@@ -128,7 +128,7 @@ fun LineTargumView(
                                     Text(
                                         text = source,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
+                                        fontSize = (commentTextSize * 1.1f).sp,
                                         textAlign = TextAlign.Center,
                                         modifier = Modifier
                                             .fillMaxWidth()

@@ -43,5 +43,5 @@ include(":SeforimApp")
 include(":jewel")
 include((":htmlparser"))
 include(":navigation")
-
+include(":icons")
 includeBuild("SeforimLibrary")

@@ -15,8 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.text.font.FontWeight.Companion.Normal
 import androidx.compose.ui.unit.dp
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.ChevronDown
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.ChevronRight
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.NavigationUiState
@@ -32,7 +30,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.Book_2
+import io.github.kdroidfilter.seforimapp.icons.Book_2
+import io.github.kdroidfilter.seforimapp.icons.ChevronDown
+import io.github.kdroidfilter.seforimapp.icons.ChevronRight
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.theme.iconButtonStyle
 

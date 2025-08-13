@@ -37,8 +37,8 @@ import io.github.kdroidfilter.seforim.tabs.TabsState
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforim.tabs.rememberTabsState
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.BookOpenTabs
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.icons.BookOpenTabs
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -106,7 +106,7 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                     selected = isSelected,
                     content = { tabState ->
                         val icon: Painter = if (tabItem.tabType == TabType.BOOK) {
-                            rememberVectorPainter(BookOpenTabs())
+                            rememberVectorPainter(BookOpenTabs(JewelTheme.globalColors.text.normal))
                         } else {
                             val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
                             iconProvider.getPainter(Stateful(tabState)).value
@@ -154,7 +154,7 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                     selected = isSelected,
                     content = { tabState ->
                         val icon: Painter = if (tabItem.tabType == TabType.BOOK) {
-                            rememberVectorPainter(BookOpenTabs())
+                            rememberVectorPainter(BookOpenTabs(JewelTheme.globalColors.text.normal))
                         } else {
                             val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
                             iconProvider.getPainter(Stateful(tabState)).value

@@ -59,6 +59,7 @@ kotlin {
             implementation("io.github.kdroidfilter.seforimlibrary:dao")
             implementation(project(":htmlparser"))
             implementation(project(":navigation"))
+            implementation(project(":icons"))
 
             implementation(libs.paging.compose.common)
         }

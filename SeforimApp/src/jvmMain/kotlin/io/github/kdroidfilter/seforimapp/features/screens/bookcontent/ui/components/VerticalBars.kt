@@ -6,10 +6,20 @@ import androidx.compose.runtime.getValue
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
-import io.github.kdroidfilter.seforimapp.core.presentation.icons.*
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.icons.Align_end
+import io.github.kdroidfilter.seforimapp.icons.Align_horizontal_right
+import io.github.kdroidfilter.seforimapp.icons.Bookmark
+import io.github.kdroidfilter.seforimapp.icons.JournalBookmark
+import io.github.kdroidfilter.seforimapp.icons.JournalText
+import io.github.kdroidfilter.seforimapp.icons.Library
+import io.github.kdroidfilter.seforimapp.icons.Library_books
+import io.github.kdroidfilter.seforimapp.icons.NotebookPen
+import io.github.kdroidfilter.seforimapp.icons.TableOfContents
+import io.github.kdroidfilter.seforimapp.icons.ZoomIn
+import io.github.kdroidfilter.seforimapp.icons.ZoomOut
 import org.jetbrains.compose.resources.stringResource
 import seforimapp.seforimapp.generated.resources.*
 

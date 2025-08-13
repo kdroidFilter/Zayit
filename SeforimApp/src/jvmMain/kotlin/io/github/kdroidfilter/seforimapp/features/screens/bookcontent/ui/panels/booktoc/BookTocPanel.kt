@@ -1,7 +1,9 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.booktoc
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.hoverable
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -9,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.PaneHeader
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
@@ -21,32 +24,36 @@ fun BookTocPanel(
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val paneHoverSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Column(
-        modifier = modifier.padding(16.dp).fillMaxHeight()
+        modifier = modifier
+            .fillMaxHeight()
+            .hoverable(paneHoverSource)
     ) {
-        Text(
-            text = stringResource(Res.string.table_of_contents),
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            modifier = Modifier.padding(bottom = 8.dp)
+        PaneHeader(
+            label = stringResource(Res.string.table_of_contents),
+            interactionSource = paneHoverSource,
+            onHide = { onEvent(BookContentEvent.ToggleToc) }
         )
-
-        when {
-            uiState.navigation.selectedBook == null -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(stringResource(Res.string.select_book_for_toc))
+        Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+            when {
+                uiState.navigation.selectedBook == null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(stringResource(Res.string.select_book_for_toc))
+                    }
                 }
-            }
-            else -> {
-                Box(modifier = Modifier.fillMaxHeight()) {
-                    BookTocView(
-                        uiState = uiState,
-                        onEvent = onEvent,
-                        modifier = Modifier.fillMaxHeight()
-                    )
+
+                else -> {
+                    Box(modifier = Modifier.fillMaxHeight()) {
+                        BookTocView(
+                            uiState = uiState,
+                            onEvent = onEvent,
+                            modifier = Modifier.fillMaxHeight()
+                        )
+                    }
                 }
             }
         }

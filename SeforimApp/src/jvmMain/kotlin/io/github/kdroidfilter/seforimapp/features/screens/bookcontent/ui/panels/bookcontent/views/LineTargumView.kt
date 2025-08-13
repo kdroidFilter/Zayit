@@ -69,93 +69,90 @@ fun LineTargumView(
 
     val paneInteractionSource = remember { MutableInteractionSource() }
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .padding(horizontal = 8.dp)
-        .hoverable(paneInteractionSource)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .hoverable(paneInteractionSource)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            PaneHeader(
-                label = stringResource(Res.string.links),
-                interactionSource = paneInteractionSource,
-                onHide = onHide
-            )
-        }
 
-        when (selectedLine) {
-            null -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = stringResource(Res.string.select_line_for_links))
-                }
-            }
+        PaneHeader(
+            label = stringResource(Res.string.links),
+            interactionSource = paneInteractionSource,
+            onHide = onHide
+        )
 
-            else -> {
-                var titleToIdMap by remember(selectedLine.id) { mutableStateOf<Map<String, Long>>(emptyMap()) }
-                LaunchedEffect(selectedLine.id) {
-                    runCatching { getAvailableLinksForLine(selectedLine.id) }
-                        .onSuccess { map -> titleToIdMap = map }
-                        .onFailure { titleToIdMap = emptyMap() }
-                }
-
-                if (titleToIdMap.isEmpty()) {
+        Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+            when (selectedLine) {
+                null -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = stringResource(Res.string.no_links_for_line))
+                        Text(text = stringResource(Res.string.select_line_for_links))
                     }
-                } else {
-                    val availableSources = remember(titleToIdMap) { titleToIdMap.keys.sorted().toList() }
+                }
 
-                    // We no longer select a single source; display all sources sequentially.
-                    // Emit all available source IDs so state stays consistent.
-                    LaunchedEffect(titleToIdMap) {
-                        onSelectedSourcesChange(titleToIdMap.values.toSet())
+                else -> {
+                    var titleToIdMap by remember(selectedLine.id) { mutableStateOf<Map<String, Long>>(emptyMap()) }
+                    LaunchedEffect(selectedLine.id) {
+                        runCatching { getAvailableLinksForLine(selectedLine.id) }
+                            .onSuccess { map -> titleToIdMap = map }
+                            .onFailure { titleToIdMap = emptyMap() }
                     }
 
-                    // Stack all targum blocks vertically with commentator name above each block.
-                    // Each block contains its own scrollable list with a bounded height.
-                    val outerScroll = rememberScrollState()
+                    if (titleToIdMap.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(text = stringResource(Res.string.no_links_for_line))
+                        }
+                    } else {
+                        val availableSources = remember(titleToIdMap) { titleToIdMap.keys.sorted().toList() }
 
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(outerScroll),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        availableSources.forEachIndexed { index, source ->
-                            val id = titleToIdMap[source]
-                            if (id != null) {
+                        // We no longer select a single source; display all sources sequentially.
+                        // Emit all available source IDs so state stays consistent.
+                        LaunchedEffect(titleToIdMap) {
+                            onSelectedSourcesChange(titleToIdMap.values.toSet())
+                        }
 
-                                // Header: commentator name
-                                Text(
-                                    text = source,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                )
+                        // Stack all targum blocks vertically with commentator name above each block.
+                        // Each block contains its own scrollable list with a bounded height.
+                        val outerScroll = rememberScrollState()
 
-                                PagedLinksList(
-                                    buildLinksPagerFor = buildLinksPagerFor,
-                                    lineId = selectedLine.id,
-                                    sourceBookId = id,
-                                    isPrimary = index == 0,
-                                    initialIndex = if (index == 0) commentariesScrollIndex else 0,
-                                    initialOffset = if (index == 0) commentariesScrollOffset else 0,
-                                    onScroll = onScroll,
-                                    onLinkClick = onLinkClick,
-                                    commentTextSize = commentTextSize,
-                                    lineHeight = lineHeight
-                                )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(outerScroll),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            availableSources.forEachIndexed { index, source ->
+                                val id = titleToIdMap[source]
+                                if (id != null) {
 
-                                Spacer(modifier = Modifier.height(8.dp))
+                                    // Header: commentator name
+                                    Text(
+                                        text = source,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                    )
+
+                                    PagedLinksList(
+                                        buildLinksPagerFor = buildLinksPagerFor,
+                                        lineId = selectedLine.id,
+                                        sourceBookId = id,
+                                        isPrimary = index == 0,
+                                        initialIndex = if (index == 0) commentariesScrollIndex else 0,
+                                        initialOffset = if (index == 0) commentariesScrollOffset else 0,
+                                        onScroll = onScroll,
+                                        onLinkClick = onLinkClick,
+                                        commentTextSize = commentTextSize,
+                                        lineHeight = lineHeight
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
                             }
                         }
-                    }
 
+                    }
                 }
             }
         }
@@ -169,7 +166,7 @@ fun LineTargumView(
 ) {
     val providers = uiState.providers ?: return
     val contentState = uiState.content
-        val windowInfo = LocalWindowInfo.current
+    val windowInfo = LocalWindowInfo.current
     LineTargumView(
         selectedLine = contentState.selectedLine,
         buildLinksPagerFor = providers.buildLinksPagerFor,

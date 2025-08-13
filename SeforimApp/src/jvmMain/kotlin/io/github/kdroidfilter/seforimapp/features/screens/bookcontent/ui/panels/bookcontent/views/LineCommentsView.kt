@@ -69,7 +69,7 @@ fun LineCommentsView(
 
     val paneInteractionSource = remember { MutableInteractionSource() }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp).hoverable(paneInteractionSource)) {
+    Column(modifier = Modifier.fillMaxSize().hoverable(paneInteractionSource)) {
         // Header
         PaneHeader(
             label = stringResource(Res.string.commentaries),
@@ -81,16 +81,17 @@ fun LineCommentsView(
             interactionSource = paneInteractionSource,
             onHide = { onEvent(BookContentEvent.ToggleCommentaries) }
         )
-
-        when (selectedLine) {
-            null -> CenteredMessage(stringResource(Res.string.select_line_for_commentaries))
-            else -> CommentariesContent(
-                selectedLine = selectedLine,
-                uiState = uiState,
-                onEvent = onEvent,
-                textSizes = textSizes,
-                onShowWarning = { showMaxCommentatorsWarning = true }
-            )
+        Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+            when (selectedLine) {
+                null -> CenteredMessage(stringResource(Res.string.select_line_for_commentaries))
+                else -> CommentariesContent(
+                    selectedLine = selectedLine,
+                    uiState = uiState,
+                    onEvent = onEvent,
+                    textSizes = textSizes,
+                    onShowWarning = { showMaxCommentatorsWarning = true }
+                )
+            }
         }
     }
 }

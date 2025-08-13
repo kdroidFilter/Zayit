@@ -311,8 +311,6 @@ private fun RtlAwareTabStripContent(
             exit = fadeOut(tween(durationMillis = 125, delayMillis = 700, easing = LinearEasing)),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-
-            // Si tu veux absolument le style Jewel :
             HorizontalScrollbar(
                 scrollState,
                 style = style.scrollbarStyle,

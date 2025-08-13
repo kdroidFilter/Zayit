@@ -1,4 +1,3 @@
-// tabs/TabsNavHost.kt
 package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 
 import androidx.compose.foundation.layout.Box
@@ -19,8 +18,8 @@ import io.github.kdroidfilter.seforim.navigation.Navigator
 import io.github.kdroidfilter.seforim.navigation.nonAnimatedComposable
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforim.utils.ObserveAsEvents
 
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.ObserveAsEvents
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentScreen
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Text

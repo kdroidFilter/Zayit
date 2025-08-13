@@ -53,6 +53,7 @@ import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import org.koin.compose.viewmodel.koinViewModel
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.add_tab
+import seforimapp.seforimapp.generated.resources.home
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -116,7 +117,7 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                         val truncatedTitle = if (isTruncated) {
                             tabItem.title.take(AppSettings.MAX_TAB_TITLE_LENGTH) + "..."
                         } else {
-                            tabItem.title
+                            tabItem.title.ifEmpty { stringResource(Res.string.home) }
                         }
 
                         if (isTruncated) {
@@ -344,6 +345,7 @@ private fun RtlAwareTab(
                 is PressInteraction.Press -> tabState = tabState.copy(pressed = true)
                 is PressInteraction.Cancel,
                 is PressInteraction.Release -> tabState = tabState.copy(pressed = false)
+
                 is HoverInteraction.Enter -> tabState = tabState.copy(hovered = true)
                 is HoverInteraction.Exit -> tabState = tabState.copy(hovered = false)
             }
@@ -408,6 +410,7 @@ private fun RtlAwareTab(
                             is PressInteraction.Release -> {
                                 closeButtonState = closeButtonState.copy(pressed = false)
                             }
+
                             is HoverInteraction.Enter -> closeButtonState = closeButtonState.copy(hovered = true)
                             is HoverInteraction.Exit -> closeButtonState = closeButtonState.copy(hovered = false)
                         }

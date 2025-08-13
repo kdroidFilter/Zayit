@@ -17,6 +17,7 @@
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>
     <string name="add_tab">הוסף לשונית</string>
+    <string name="home">דף הבית</string>
 
     <!-- Book Content Screen - Start Vertical Bar -->
     <string name="navigation">ניווט</string>

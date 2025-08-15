@@ -1,14 +1,18 @@
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
+import androidx.compose.ui.window.Tray
 import androidx.compose.ui.window.application
+import com.kdroid.composetray.tray.api.Tray
 import com.kdroid.composetray.utils.SingleInstanceManager
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.darkmodedetector.isSystemInDarkMode
@@ -21,6 +25,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.framework.di.desktopModule
+import io.github.kdroidfilter.seforimapp.icons.Bookmark
 import io.github.kdroidfilter.seforimapp.logger.SilenceLogs
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource

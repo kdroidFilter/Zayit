@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.windows.about
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -18,9 +19,8 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Text
-import androidx.compose.material3.MaterialTheme
+
+
 import androidx.compose.foundation.layout.Row
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -32,10 +32,14 @@ import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.intui.window.styling.dark
 import org.jetbrains.jewel.intui.window.styling.lightWithLightHeader
 import org.jetbrains.jewel.ui.ComponentStyling
+import org.jetbrains.jewel.ui.component.Checkbox
+import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.window.styling.TitleBarStyle
 import org.koin.compose.viewmodel.koinViewModel
 import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
 import seforimapp.seforimapp.generated.resources.notoserifhebrew
+import seforimapp.seforimapp.generated.resources.settings
 
 @Composable
 fun Settings(onClose: () -> Unit) {
@@ -90,7 +94,11 @@ private fun SettingsView(state: SettingsState, onClose: () -> Unit, onToggleClos
                 },
             )
     ) {
-        DialogWindow(onCloseRequest = onClose, state = rememberDialogState(size = DpSize(800.dp, 600.dp))) {
+        DialogWindow(
+            onCloseRequest = onClose,
+            state = rememberDialogState(size = DpSize(800.dp, 600.dp)),
+            title = stringResource(Res.string.settings),
+        ) {
             window.setWindowsAdaptiveTitleBar()
             Column(
                 modifier =
@@ -98,16 +106,15 @@ private fun SettingsView(state: SettingsState, onClose: () -> Unit, onToggleClos
                         .background(JewelTheme.globalColors.panelBackground),
             ) {
                 Row(
-                    modifier = Modifier
-                        .background(JewelTheme.globalColors.panelBackground)
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Checkbox(
                         checked = state.closedAutomaticallyBookTreePaneOnNewBookSelected,
                         onCheckedChange = { onToggleCloseTree(it) }
                     )
                     Text(
-                        text = "סגור אוטומטית את חלונית העץ בעת בחירת ספר חדש",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = stringResource(Res.string.close_book_tree_on_new_book),
                     )
                 }
             }

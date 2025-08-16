@@ -72,7 +72,7 @@ data class TocState(
     val children: Map<Long, List<TocEntry>> = emptyMap(),
 
     // UI
-    val isVisible: Boolean = true,
+    val isVisible: Boolean = false,
     val scrollIndex: Int = 0,
     val scrollOffset: Int = 0
 )

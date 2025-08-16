@@ -282,6 +282,16 @@ class BookContentViewModel(
 
         navigationUseCase.selectBook(book)
 
+        // Afficher automatiquement le TOC lors de la première sélection d'un livre si caché
+        if (previousBook == null && !stateManager.state.value.toc.isVisible) {
+            val current = stateManager.state.value
+            // Restaurer la position précédente du séparateur TOC
+            current.layout.tocSplitState.positionPercentage = current.layout.previousPositions.toc
+            stateManager.updateToc {
+                copy(isVisible = true)
+            }
+        }
+
         // Réinitialiser les positions et les sélections si on change de livre
         if (previousBook?.id != book.id) {
             debugln { "Loading new book, resetting positions and selections" }

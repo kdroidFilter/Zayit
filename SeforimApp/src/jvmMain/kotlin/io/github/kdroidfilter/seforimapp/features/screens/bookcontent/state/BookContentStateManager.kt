@@ -45,7 +45,7 @@ class BookContentStateManager(
             toc = TocState(
                 expandedEntries = getState(StateKeys.EXPANDED_TOC_ENTRIES) ?: emptySet(),
                 children = getState(StateKeys.TOC_CHILDREN) ?: emptyMap(),
-                isVisible = getState(StateKeys.SHOW_TOC) ?: true,
+                isVisible = getState(StateKeys.SHOW_TOC) ?: false,
                 scrollIndex = getState(StateKeys.TOC_SCROLL_INDEX) ?: 0,
                 scrollOffset = getState(StateKeys.TOC_SCROLL_OFFSET) ?: 0
             ),

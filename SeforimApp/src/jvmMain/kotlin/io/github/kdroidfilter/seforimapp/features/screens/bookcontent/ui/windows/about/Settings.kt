@@ -13,9 +13,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
 import io.github.kdroidfilter.platformtools.darkmodedetector.isSystemInDarkMode
+import io.github.kdroidfilter.platformtools.darkmodedetector.windows.setWindowsAdaptiveTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
 import org.jetbrains.compose.resources.Font
+import org.jetbrains.compose.resources.stringResource
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.Row
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -35,11 +41,13 @@ import seforimapp.seforimapp.generated.resources.notoserifhebrew
 fun Settings(onClose: () -> Unit) {
     val viewModel: SettingsViewModel = koinViewModel()
     val state = collectSettingsState(viewModel)
-    SettingsView(state, onClose)
+    SettingsView(state, onClose, onToggleCloseTree = { value ->
+        viewModel.onEvent(SettingsEvents.SetCloseBookTreeOnNewBookSelected(value))
+    })
 }
 
 @Composable
-private fun SettingsView(state: SettingsState, onClose: () -> Unit) {
+private fun SettingsView(state: SettingsState, onClose: () -> Unit, onToggleCloseTree: (Boolean) -> Unit) {
     val themeViewModel = ThemeViewModel
     val theme = themeViewModel.theme.collectAsState().value
     val isSystemInDarkMode = isSystemInDarkMode()
@@ -83,13 +91,25 @@ private fun SettingsView(state: SettingsState, onClose: () -> Unit) {
             )
     ) {
         DialogWindow(onCloseRequest = onClose, state = rememberDialogState(size = DpSize(800.dp, 600.dp))) {
+            window.setWindowsAdaptiveTitleBar()
             Column(
                 modifier =
                     Modifier.trackActivation().fillMaxSize()
                         .background(JewelTheme.globalColors.panelBackground),
             ) {
-
-
+                Row(
+                    modifier = Modifier
+                        .background(JewelTheme.globalColors.panelBackground)
+                ) {
+                    Checkbox(
+                        checked = state.closedAutomaticallyBookTreePaneOnNewBookSelected,
+                        onCheckedChange = { onToggleCloseTree(it) }
+                    )
+                    Text(
+                        text = "סגור אוטומטית את חלונית העץ בעת בחירת ספר חדש",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
     }

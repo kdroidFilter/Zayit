@@ -86,4 +86,6 @@
     <string name="commentaries_not_available_in_book">אין פירושים זמינים בספר זה</string>
     <string name="links_not_available_in_book">אין קישורים זמינים בספר זה</string>
     <string name="please_select_a_book">אנא בחר ספר</string>
+    <!-- Settings -->
+    <string name="close_book_tree_on_new_book">סגור אוטומטית את חלונית העץ בעת בחירת ספר חדש</string>
 </resources>

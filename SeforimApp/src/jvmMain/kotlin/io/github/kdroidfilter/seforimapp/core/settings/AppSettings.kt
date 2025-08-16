@@ -18,6 +18,7 @@ class AppSettingsImpl(private val settings: Settings) : IAppSettings {
     private companion object {
         const val KEY_TEXT_SIZE = "text_size"
         const val KEY_LINE_HEIGHT = "line_height"
+        const val KEY_CLOSE_TREE_ON_NEW_BOOK = "close_tree_on_new_book"
     }
     
     // StateFlow to observe text size changes
@@ -27,6 +28,10 @@ class AppSettingsImpl(private val settings: Settings) : IAppSettings {
     // StateFlow to observe line height changes
     private val _lineHeightFlow = MutableStateFlow(getLineHeight())
     override val lineHeightFlow: StateFlow<Float> = _lineHeightFlow.asStateFlow()
+
+    // StateFlow for auto-close book tree setting
+    private val _closeTreeOnNewBookFlow = MutableStateFlow(getCloseBookTreeOnNewBookSelected())
+    override val closeBookTreeOnNewBookSelectedFlow: StateFlow<Boolean> = _closeTreeOnNewBookFlow.asStateFlow()
     
     override fun getTextSize(): Float {
         return settings[KEY_TEXT_SIZE, AppSettings.DEFAULT_TEXT_SIZE]
@@ -69,6 +74,15 @@ class AppSettingsImpl(private val settings: Settings) : IAppSettings {
         val newHeight = (currentHeight - decrement).coerceAtLeast(AppSettings.MIN_LINE_HEIGHT)
         setLineHeight(newHeight)
     }
+
+    override fun getCloseBookTreeOnNewBookSelected(): Boolean {
+        return settings[KEY_CLOSE_TREE_ON_NEW_BOOK, false]
+    }
+
+    override fun setCloseBookTreeOnNewBookSelected(value: Boolean) {
+        settings[KEY_CLOSE_TREE_ON_NEW_BOOK] = value
+        _closeTreeOnNewBookFlow.value = value
+    }
 }
 
 /**
@@ -99,6 +113,7 @@ object AppSettings : KoinComponent {
     // Delegate to the implementation
     val textSizeFlow: StateFlow<Float> get() = impl.textSizeFlow
     val lineHeightFlow: StateFlow<Float> get() = impl.lineHeightFlow
+    val closeBookTreeOnNewBookSelectedFlow: StateFlow<Boolean> get() = impl.closeBookTreeOnNewBookSelectedFlow
     
     fun getTextSize(): Float = impl.getTextSize()
     fun setTextSize(size: Float) = impl.setTextSize(size)
@@ -109,4 +124,7 @@ object AppSettings : KoinComponent {
     fun setLineHeight(height: Float) = impl.setLineHeight(height)
     fun increaseLineHeight(increment: Float = LINE_HEIGHT_INCREMENT) = impl.increaseLineHeight(increment)
     fun decreaseLineHeight(decrement: Float = LINE_HEIGHT_INCREMENT) = impl.decreaseLineHeight(decrement)
+
+    fun getCloseBookTreeOnNewBookSelected(): Boolean = impl.getCloseBookTreeOnNewBookSelected()
+    fun setCloseBookTreeOnNewBookSelected(value: Boolean) = impl.setCloseBookTreeOnNewBookSelected(value)
 }

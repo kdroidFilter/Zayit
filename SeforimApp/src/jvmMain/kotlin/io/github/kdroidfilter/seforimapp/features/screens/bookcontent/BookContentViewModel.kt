@@ -15,6 +15,7 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases.C
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases.NavigationUseCase
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases.TocUseCase
 import io.github.kdroidfilter.seforimapp.logger.debugln
+import io.github.kdroidfilter.seforimapp.core.settings.IAppSettings
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
@@ -32,7 +33,8 @@ class BookContentViewModel(
     private val tabStateManager: TabStateManager,
     private val repository: SeforimRepository,
     private val titleUpdateManager: TabTitleUpdateManager,
-    private val navigator: Navigator
+    private val navigator: Navigator,
+    private val appSettings: IAppSettings
 ) : TabAwareViewModel(
     tabId = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: "",
     stateManager = tabStateManager
@@ -309,6 +311,15 @@ class BookContentViewModel(
             if (stateManager.state.value.content.showTargum) {
                 contentUseCase.toggleTargum()
             }
+
+            // Fermer automatiquement le panneau de l'arbre des livres si l'option est activée
+            if (appSettings.getCloseBookTreeOnNewBookSelected()) {
+                val isTreeVisible = stateManager.state.value.navigation.isVisible
+                if (isTreeVisible) {
+                    navigationUseCase.toggleBookTree()
+                }
+            }
+
             System.gc()
         }
 

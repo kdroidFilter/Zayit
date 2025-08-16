@@ -3,4 +3,5 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.window
 sealed class SettingsEvents {
     object onOpen : SettingsEvents()
     object onClose : SettingsEvents()
+    data class SetCloseBookTreeOnNewBookSelected(val value: Boolean) : SettingsEvents()
 }

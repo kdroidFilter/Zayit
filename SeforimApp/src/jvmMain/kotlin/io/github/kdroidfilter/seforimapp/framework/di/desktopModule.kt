@@ -59,11 +59,12 @@ val desktopModule = module {
             tabStateManager = get(),
             repository = get(),
             titleUpdateManager = get(),
-            navigator = get()
+            navigator = get(),
+            appSettings = get()
         )
     }
 
     viewModel {
-        SettingsViewModel()
+        SettingsViewModel(get())
     }
 }

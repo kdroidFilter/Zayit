@@ -13,6 +13,9 @@ interface IAppSettings {
     // StateFlow to observe line height changes
     val lineHeightFlow: StateFlow<Float>
 
+    // StateFlow to observe auto-close book tree setting changes
+    val closeBookTreeOnNewBookSelectedFlow: StateFlow<Boolean>
+
     /**
      * Gets the current text size from settings
      * @return The text size in sp
@@ -60,4 +63,10 @@ interface IAppSettings {
      * @param decrement The amount to decrease (default is LINE_HEIGHT_INCREMENT)
      */
     fun decreaseLineHeight(decrement: Float = AppSettings.LINE_HEIGHT_INCREMENT)
+
+    /**
+     * Gets/sets whether to close the Book Tree pane automatically when selecting a new book
+     */
+    fun getCloseBookTreeOnNewBookSelected(): Boolean
+    fun setCloseBookTreeOnNewBookSelected(value: Boolean)
 }

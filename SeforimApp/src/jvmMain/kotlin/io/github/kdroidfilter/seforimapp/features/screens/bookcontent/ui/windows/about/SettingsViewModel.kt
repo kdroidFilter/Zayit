@@ -5,15 +5,25 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class SettingsViewModel : ViewModel() {
+import io.github.kdroidfilter.seforimapp.core.settings.IAppSettings
 
-    private val _state = MutableStateFlow(SettingsState())
+class SettingsViewModel(private val appSettings: IAppSettings) : ViewModel() {
+
+    private val _state = MutableStateFlow(
+        SettingsState(
+            closedAutomaticallyBookTreePaneOnNewBookSelected = appSettings.getCloseBookTreeOnNewBookSelected()
+        )
+    )
     val state: StateFlow<SettingsState> = _state.asStateFlow()
 
     fun onEvent(events: SettingsEvents) {
         when (events) {
             is SettingsEvents.onOpen -> _state.value = _state.value.copy(isVisible = true)
             is SettingsEvents.onClose -> _state.value = _state.value.copy(isVisible = false)
+            is SettingsEvents.SetCloseBookTreeOnNewBookSelected -> {
+                appSettings.setCloseBookTreeOnNewBookSelected(events.value)
+                _state.value = _state.value.copy(closedAutomaticallyBookTreePaneOnNewBookSelected = events.value)
+            }
         }
     }
 }

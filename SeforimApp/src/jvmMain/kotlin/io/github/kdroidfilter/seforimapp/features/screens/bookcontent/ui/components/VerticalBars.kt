@@ -90,7 +90,9 @@ fun EndVerticalBar(
     val canZoomIn = rawTextSize < AppSettings.MAX_TEXT_SIZE
     val canZoomOut = rawTextSize > AppSettings.MIN_TEXT_SIZE
 
-    
+    val selectedBook = uiState.navigation.selectedBook
+    val noBookSelected = selectedBook == null
+
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
         topContent = {
@@ -116,42 +118,65 @@ fun EndVerticalBar(
                 enabled = canZoomOut,
                 icon = ZoomOut,
                 iconDescription = stringResource(Res.string.zoom_out),
-                label = stringResource(Res.string.zoom_out)
+                label = stringResource(Res.string.zoom_out),
             )
             SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.add_bookmark_tooltip),
+                toolTipText = stringResource(
+                    if (noBookSelected) Res.string.please_select_a_book else Res.string.add_bookmark_tooltip
+                ),
                 onClick = { },
                 isSelected = false,
                 icon = Bookmark,
                 iconDescription = stringResource(Res.string.add_bookmark),
-                label = stringResource(Res.string.add_bookmark)
+                label = stringResource(Res.string.add_bookmark),
+                enabled = !noBookSelected
             )
         },
         bottomContent = {
+
+            val targumEnabled = selectedBook?.hasTargumConnection == true
+            val commentaryEnabled = selectedBook?.hasCommentaryConnection == true
+            val linksEnabled = (selectedBook?.hasReferenceConnection == true) || (selectedBook?.hasOtherConnection == true)
+
             SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.show_targumim_tooltip),
+                toolTipText = when {
+                    noBookSelected -> stringResource(Res.string.please_select_a_book)
+                    targumEnabled -> stringResource(Res.string.show_targumim_tooltip)
+                    else -> stringResource(Res.string.targum_not_available_in_book)
+                },
                 onClick = { onEvent(BookContentEvent.ToggleTargum) },
                 isSelected = uiState.content.showTargum,
                 icon = Align_horizontal_right,
                 iconDescription = stringResource(Res.string.show_targumim),
-                label = stringResource(Res.string.show_targumim)
+                label = stringResource(Res.string.show_targumim),
+                enabled = targumEnabled
             )
             SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.show_commentaries_tooltip),
+                toolTipText = when {
+                    noBookSelected -> stringResource(Res.string.please_select_a_book)
+                    commentaryEnabled -> stringResource(Res.string.show_commentaries_tooltip)
+                    else -> stringResource(Res.string.commentaries_not_available_in_book)
+                },
                 onClick = { onEvent(BookContentEvent.ToggleCommentaries) },
                 isSelected = uiState.content.showCommentaries,
                 icon = Align_end,
                 iconDescription = stringResource(Res.string.show_commentaries),
-                label = stringResource(Res.string.show_commentaries)
+                label = stringResource(Res.string.show_commentaries),
+                enabled = commentaryEnabled
             )
             // Show Links button (UI-only for now)
             SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.show_links_tooltip),
+                toolTipText = when {
+                    noBookSelected -> stringResource(Res.string.please_select_a_book)
+                    linksEnabled -> stringResource(Res.string.show_links_tooltip)
+                    else -> stringResource(Res.string.links_not_available_in_book)
+                },
                 onClick = { },
                 isSelected = false,
                 icon = Library_books,
                 iconDescription = stringResource(Res.string.show_links),
-                label = stringResource(Res.string.show_links)
+                label = stringResource(Res.string.show_links),
+                enabled = linksEnabled
             )
 
         }

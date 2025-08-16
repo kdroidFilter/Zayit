@@ -81,4 +81,9 @@
     <string name="no_links_for_line">אין תרגומים זמינים לשורה זו</string>
     <string name="select_at_least_one_source">אנא בחר לפחות מקור תרגום אחד מהרשימה</string>
     <string name="max_sources_limit">ניתן לבחור עד 4 מקורות בלבד</string>
+    <string name="not_available_in_book">לא זמין בספר זה</string>
+    <string name="targum_not_available_in_book">אין תרגומים זמינים בספר זה</string>
+    <string name="commentaries_not_available_in_book">אין פירושים זמינים בספר זה</string>
+    <string name="links_not_available_in_book">אין קישורים זמינים בספר זה</string>
+    <string name="please_select_a_book">אנא בחר ספר</string>
 </resources>

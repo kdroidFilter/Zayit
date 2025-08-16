@@ -36,12 +36,12 @@ fun CategoryTreePanel(
         Column(
             modifier = Modifier.padding(horizontal = 8.dp)
         ) {
-            SearchField(
-                searchText = uiState.navigation.searchText,
-                onSearchTextChange = { onEvent(BookContentEvent.SearchTextChanged(it)) }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
+//            SearchField(
+//                searchText = uiState.navigation.searchText,
+//                onSearchTextChange = { onEvent(BookContentEvent.SearchTextChanged(it)) }
+//            )
+//
+//            Spacer(modifier = Modifier.height(16.dp))
 
             val windowInfo = LocalWindowInfo.current
             CategoryBookTreeView(

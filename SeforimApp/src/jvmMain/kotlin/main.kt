@@ -16,6 +16,7 @@ import com.kdroid.composetray.tray.api.Tray
 import com.kdroid.composetray.utils.SingleInstanceManager
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.darkmodedetector.isSystemInDarkMode
+import io.github.kdroidfilter.platformtools.darkmodedetector.mac.setMacOsAdaptiveTitleBar
 import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionsButtonsView
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsNavHost
@@ -53,6 +54,7 @@ import java.util.*
 
 @OptIn(ExperimentalFoundationApi::class)
 fun main() {
+    setMacOsAdaptiveTitleBar()
 
     val enableLogs = System.getenv("ENABLE_LOGS")
     if (enableLogs == null) {

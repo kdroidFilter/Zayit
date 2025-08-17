@@ -92,6 +92,7 @@
     <string name="search_mode_text">טקסט</string>
     <string name="search_mode_reference_explicit">חיפוש לפי מקור</string>
     <string name="search_mode_text_explicit">חיפוש בטקסט</string>
+    <string name="search_by_category_or_book">חפש לפי קטגוריה או ספר</string>
 
     <!-- Home Page View - Search hints -->
     <string name="reference_hint_1">שו"ע אורח חיים סימן רסח</string>

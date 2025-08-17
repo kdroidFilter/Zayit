@@ -56,10 +56,10 @@ import java.util.*
 fun main() {
     setMacOsAdaptiveTitleBar()
 
-    val enableLogs = System.getenv("ENABLE_LOGS")
-    if (enableLogs == null) {
-        SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)
-    }
+//    val enableLogs = System.getenv("ENABLE_LOGS")
+//    if (enableLogs == null) {
+//        SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)
+//    }
     Locale.setDefault(Locale.Builder().setLanguage("he").setRegion("IL").build())
     application {
         val windowState = remember { getCenteredWindowState(1280, 720) }

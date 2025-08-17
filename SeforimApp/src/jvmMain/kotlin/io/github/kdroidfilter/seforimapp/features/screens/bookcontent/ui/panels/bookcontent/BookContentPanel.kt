@@ -44,7 +44,7 @@ fun BookContentPanel(
     val bookListState = remember(uiState.navigation.selectedBook?.id) { LazyListState() }
 
     if (uiState.navigation.selectedBook == null) {
-        HomeView(modifier = modifier)
+        HomeView(uiState = uiState, onEvent = onEvent, modifier = modifier)
         return
     }
 

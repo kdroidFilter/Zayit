@@ -4,10 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.windows.about.Settings
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.windows.about.SettingsEvents
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.windows.about.SettingsViewModel
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.windows.about.collectSettingsState
+import io.github.kdroidfilter.seforimapp.features.windows.settings.Settings
+import io.github.kdroidfilter.seforimapp.features.windows.settings.SettingsEvents
+import io.github.kdroidfilter.seforimapp.features.windows.settings.SettingsViewModel
+import io.github.kdroidfilter.seforimapp.features.windows.settings.collectSettingsState
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.koin.compose.viewmodel.koinViewModel

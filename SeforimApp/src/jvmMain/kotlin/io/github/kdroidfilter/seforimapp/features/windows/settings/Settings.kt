@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.windows.about
+package io.github.kdroidfilter.seforimapp.features.windows.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +22,7 @@ import org.jetbrains.compose.resources.stringResource
 
 
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -106,7 +107,7 @@ private fun SettingsView(state: SettingsState, onClose: () -> Unit, onToggleClos
                         .background(JewelTheme.globalColors.panelBackground),
             ) {
                 Row(
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Checkbox(

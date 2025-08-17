@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.windows.about
+package io.github.kdroidfilter.seforimapp.features.windows.settings
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState

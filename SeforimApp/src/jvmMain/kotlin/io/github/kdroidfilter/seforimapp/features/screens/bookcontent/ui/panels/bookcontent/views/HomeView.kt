@@ -72,27 +72,22 @@ private fun SearchBar(
     onFilterChange: (SearchFilter) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Fake hints
-    val referenceHints = remember {
-        listOf(
-            "שו\"ע אורח חיים סימן רסח",
-            "רמב\"ם הלכות שבת פרק כ",
-            "משנה ברורה סימן רלה סעיף קטן ד",
-            "ברכות דף ב עמוד א",
-            "תהילים פרק כג פסוק ד"
-        )
-    }
+    // Hints from string resources
+    val referenceHints = listOf(
+        stringResource(Res.string.reference_hint_1),
+        stringResource(Res.string.reference_hint_2),
+        stringResource(Res.string.reference_hint_3),
+        stringResource(Res.string.reference_hint_4),
+        stringResource(Res.string.reference_hint_5)
+    )
 
-    val textHints = remember {
-        listOf(
-            "הכל בידי שמים חוץ מיראת שמים",
-            "ואהבת לרעך כמוך",
-            "שמע ישראל ה׳ אלקינו ה׳ אחד",
-            "מי שטרח בערב שבת יאכל בשבת",
-            "אין עוד מלבדו"
-        )
-    }
-
+    val textHints = listOf(
+        stringResource(Res.string.text_hint_1),
+        stringResource(Res.string.text_hint_2),
+        stringResource(Res.string.text_hint_3),
+        stringResource(Res.string.text_hint_4),
+        stringResource(Res.string.text_hint_5)
+    )
 
     val hints = if (selectedFilter == SearchFilter.REFERENCE) referenceHints else textHints
 

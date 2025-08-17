@@ -152,15 +152,58 @@ fun BookContentView(
                 } else {
                     debugln { "Anchor line $anchorId not found in current page" }
 
-                    // The anchor is not in the current page
-                    // As a fallback, check if we have a selected line
-                    if (selectedLineId != null) {
-                        val selectedIndex = snapshot.indices.firstOrNull { snapshot[it]?.id == selectedLineId }
-                        if (selectedIndex != null) {
-                            listState.scrollToItem(selectedIndex)
+                    // Fallback strategy when anchor is not in current page:
+                    // 1) Try selected line if present in snapshot
+                    // 2) Otherwise, fall back to saved anchorIndex/scrollIndex within bounds
+                    val selectedIndex = if (selectedLineId != null) {
+                        snapshot.indices.firstOrNull { snapshot[it]?.id == selectedLineId }
+                    } else null
+
+                    if (selectedIndex != null) {
+                        debugln { "Fallback to selected line at index $selectedIndex" }
+                        listState.scrollToItem(selectedIndex)
+                        hasRestored = true
+                    } else {
+                        val itemCount = lazyPagingItems.itemCount
+                        if (itemCount > 0) {
+                            // Prefer anchorIndex if it’s in range; otherwise use scrollIndex; clamp to [0, itemCount-1]
+                            val indexByAnchor = anchorIndex.takeIf { it in 0 until itemCount }
+                            val indexByScroll = scrollIndex.takeIf { it in 0 until itemCount }
+                            val targetIndex = (indexByAnchor ?: indexByScroll ?: (itemCount - 1).coerceAtLeast(0))
+                            val targetOffset = if (targetIndex == scrollIndex) scrollOffset.coerceAtLeast(0) else 0
+                            debugln { "Fallback to index-based restore: index=$targetIndex, offset=$targetOffset (anchor missing)" }
+                            listState.scrollToItem(targetIndex, targetOffset)
                             hasRestored = true
                         }
                     }
+                }
+            }
+        }
+    }
+
+    // Fallback restoration when no anchor is available: use saved scrollIndex/scrollOffset
+    LaunchedEffect(lazyPagingItems.loadState.refresh, scrollIndex, scrollOffset, anchorId) {
+        // Only attempt if we haven't restored yet, there is no anchor, and we actually have a non-zero saved position
+        if (!hasRestored && anchorId == -1L && (scrollIndex > 0 || scrollOffset > 0)) {
+            // Even if a preservedListState is provided, actively restore the position when we have saved scroll values
+
+            // Wait for the initial page load to complete
+            if (lazyPagingItems.loadState.refresh is LoadState.Loading) {
+                while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
+                    delay(16)
+                }
+            }
+
+            // Now, if we have items, try to scroll to the saved index/offset
+            if (lazyPagingItems.itemCount > 0) {
+                val itemCount = lazyPagingItems.itemCount
+                val targetIndex = scrollIndex.coerceIn(0, maxOf(0, itemCount - 1))
+                val targetOffset = scrollOffset.coerceAtLeast(0)
+
+                if (targetIndex != 0 || targetOffset != 0) {
+                    debugln { "Restoring scroll by index/offset: index=$targetIndex, offset=$targetOffset (no anchor)" }
+                    listState.scrollToItem(targetIndex, targetOffset)
+                    hasRestored = true
                 }
             }
         }
@@ -191,16 +234,24 @@ fun BookContentView(
         }
     }
 
-    LaunchedEffect(scrollData, hasRestored) {
-        if (hasRestored || lazyPagingItems.itemCount > 0) {
-            snapshotFlow { scrollData.value }
-                .distinctUntilChanged()
-                .debounce(250)
-                .collect { data ->
-                    debugln { "Saving scroll: anchor=${data.anchorId}, index=${data.scrollIndex}, offset=${data.scrollOffset}" }
-                    onScroll(data.anchorId, data.anchorIndex, data.scrollIndex, data.scrollOffset)
+    LaunchedEffect(scrollData, hasRestored, scrollIndex, scrollOffset) {
+        // Guard: avoid overwriting a previously saved non-zero position with (0,0) before restoration
+        // Start collecting always, but filter out the initial top emission if we still need to restore
+        snapshotFlow { scrollData.value }
+            .distinctUntilChanged()
+            .debounce(250)
+            .collect { data ->
+                if (!hasRestored) {
+                    val hasSavedNonZero = (scrollIndex > 0 || scrollOffset > 0)
+                    val isCurrentZero = (data.scrollIndex == 0 && data.scrollOffset == 0)
+                    if (hasSavedNonZero && isCurrentZero) {
+                        debugln { "Skipping early (0,0) scroll save to preserve saved position: saved=($scrollIndex,$scrollOffset)" }
+                        return@collect
+                    }
                 }
-        }
+                debugln { "Saving scroll: anchor=${data.anchorId}, index=${data.scrollIndex}, offset=${data.scrollOffset}" }
+                onScroll(data.anchorId, data.anchorIndex, data.scrollIndex, data.scrollOffset)
+            }
     }
 
     // Memoize key event handler to avoid recreation

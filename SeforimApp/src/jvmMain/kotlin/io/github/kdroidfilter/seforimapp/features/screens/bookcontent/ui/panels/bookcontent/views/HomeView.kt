@@ -7,11 +7,14 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.TextStyle
@@ -20,11 +23,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforimapp.icons.Article
+import io.github.kdroidfilter.seforimapp.icons.Book
+import io.github.kdroidfilter.seforimapp.icons.Format_letter_spacing
+import io.github.kdroidfilter.seforimapp.icons.Link
+import io.github.kdroidfilter.seforimapp.icons.Target
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Slider
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.component.Tooltip
@@ -36,12 +46,24 @@ enum class SearchFilter() {
     TEXT
 }
 
+data class SearchFilterCard(
+    val icons: ImageVector,
+    val label: StringResource,
+    val desc: StringResource,
+    val explanation : StringResource
+)
+
 @Composable
 fun HomeView(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier.padding(16.dp).fillMaxSize(), contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.width(600.dp)
+        ) {
+            WelcomeUser(username = "אליהו")
             Image(
                 painterResource(Res.drawable.zayit_transparent),
                 contentDescription = null,
@@ -51,7 +73,7 @@ fun HomeView(modifier: Modifier = Modifier) {
             val searchState = remember { TextFieldState() }
 
             var selectedFilter by remember {
-                mutableStateOf(SearchFilter.REFERENCE)
+                mutableStateOf(SearchFilter.TEXT)
 
             }
 
@@ -60,9 +82,74 @@ fun HomeView(modifier: Modifier = Modifier) {
                 selectedFilter = selectedFilter,
                 onFilterChange = { selectedFilter = it }
             )
+
+            val filtersCard: List<SearchFilterCard> = listOf(
+                SearchFilterCard(
+                    Target,
+                    Res.string.search_level_1_value,
+                    Res.string.search_level_1_description,
+                    Res.string.search_level_1_explanation
+                ),
+                SearchFilterCard(
+                    Link,
+                    Res.string.search_level_2_value,
+                    Res.string.search_level_2_description,
+                    Res.string.search_level_2_explanation
+                ),
+                SearchFilterCard(
+                    Format_letter_spacing,
+                    Res.string.search_level_3_value,
+                    Res.string.search_level_3_description,
+                    Res.string.search_level_3_explanation
+                ),
+                SearchFilterCard(
+                    Article,
+                    Res.string.search_level_4_value,
+                    Res.string.search_level_4_description,
+                    Res.string.search_level_4_explanation
+                ),
+                SearchFilterCard(
+                    Book,
+                    Res.string.search_level_5_value,
+                    Res.string.search_level_5_description,
+                    Res.string.search_level_5_explanation
+                )
+            )
+            if (selectedFilter == SearchFilter.TEXT) {
+                // Synchronize cards with slider position
+                var sliderPosition by remember { mutableFloatStateOf(0f) }
+                val maxIndex = (filtersCard.size - 1).coerceAtLeast(0)
+                val selectedIndex = sliderPosition.coerceIn(0f, maxIndex.toFloat()).toInt()
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    filtersCard.forEachIndexed { index, filterCard ->
+                        SearchLevelCard(
+                            data = filterCard,
+                            selected = index == selectedIndex,
+                            onClick = { sliderPosition = index.toFloat() }
+                        )
+                    }
+                }
+
+                Slider(
+                    value = selectedIndex.toFloat(),
+                    onValueChange = { newValue -> sliderPosition = newValue },
+                    valueRange = 0f..maxIndex.toFloat(),
+                    steps = (filtersCard.size - 2).coerceAtLeast(0)
+                )
+            }
+
         }
     }
 
+}
+
+@Composable
+private fun WelcomeUser(username: String) {
+    Text("שלום $username !", textAlign = TextAlign.Center, fontSize = 36.sp)
 }
 
 @Composable
@@ -134,42 +221,41 @@ private fun IntegratedSwitch(
     onFilterChange: (SearchFilter) -> Unit,
     modifier: Modifier = Modifier
 ) {
-
-        Row(
-            modifier = modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(JewelTheme.globalColors.panelBackground)
-                .border(
-                    width = 1.dp,
-                    color = JewelTheme.globalColors.borders.disabled,
-                    shape = RoundedCornerShape(20.dp)
-                )
-                .padding(2.dp),
-            horizontalArrangement = Arrangement.spacedBy(1.dp)
-        ) {
-            SearchFilter.entries.forEach { filter ->
-                Tooltip(
-                    tooltip = {
-                        Text(
-                            text = when (filter) {
-                                SearchFilter.REFERENCE -> stringResource(Res.string.search_mode_reference_explicit)
-                                SearchFilter.TEXT -> stringResource(Res.string.search_mode_text_explicit)
-                            },
-                            fontSize = 13.sp
-                        )
-                    }
-                ) {
-                    FilterButton(
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(JewelTheme.globalColors.panelBackground)
+            .border(
+                width = 1.dp,
+                color = JewelTheme.globalColors.borders.disabled,
+                shape = RoundedCornerShape(20.dp)
+            )
+            .padding(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(1.dp)
+    ) {
+        SearchFilter.entries.forEach { filter ->
+            Tooltip(
+                tooltip = {
+                    Text(
                         text = when (filter) {
-                            SearchFilter.REFERENCE -> stringResource(Res.string.search_mode_reference)
-                            SearchFilter.TEXT -> stringResource(Res.string.search_mode_text)
+                            SearchFilter.REFERENCE -> stringResource(Res.string.search_mode_reference_explicit)
+                            SearchFilter.TEXT -> stringResource(Res.string.search_mode_text_explicit)
                         },
-                        isSelected = selectedFilter == filter,
-                        onClick = { onFilterChange(filter) }
+                        fontSize = 13.sp
                     )
                 }
+            ) {
+                FilterButton(
+                    text = when (filter) {
+                        SearchFilter.REFERENCE -> stringResource(Res.string.search_mode_reference)
+                        SearchFilter.TEXT -> stringResource(Res.string.search_mode_text)
+                    },
+                    isSelected = selectedFilter == filter,
+                    onClick = { onFilterChange(filter) }
+                )
             }
         }
+    }
 
 }
 
@@ -209,6 +295,55 @@ private fun FilterButton(
     )
 }
 
+
+@Composable
+private fun SearchLevelCard(
+    data: SearchFilterCard,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val shape = RoundedCornerShape(16.dp)
+    val backgroundColor= if (selected) Color(0xFF0E639C) else  Color.Transparent
+
+    val borderColor = if (selected) JewelTheme.globalColors.borders.focused else JewelTheme.globalColors.borders.disabled
+
+    Box(
+        modifier = modifier
+            .width(96.dp)
+            .height(144.dp)
+            .clip(shape)
+            .background(backgroundColor)
+            .border(width = if (selected) 2.dp else 1.dp, color = borderColor, shape = shape)
+            .clickable(onClick = onClick)
+            .pointerHoverIcon(PointerIcon.Hand),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                data.icons,
+                contentDescription = stringResource(data.label),
+                modifier = Modifier.size(40.dp),
+                tint = JewelTheme.contentColor
+            )
+            Text(
+                stringResource(data.label),
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center,
+                color = if (selected) Color.White else Color(0xFFCCCCCC)
+            )
+            Text(
+                stringResource(data.desc),
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+                color = if (selected) Color.White else Color(0xFFCCCCCC)
+            )
+        }
+    }
+}
 
 @androidx.compose.desktop.ui.tooling.preview.Preview
 @Composable

@@ -106,6 +106,31 @@
     <string name="text_hint_4">מי שטרח בערב שבת יאכל בשבת</string>
     <string name="text_hint_5">אין עוד מלבדו</string>
 
+    <!-- Search Levels - Values -->
+    <string name="search_level_1_value">דיוק מושלם</string>
+    <string name="search_level_2_value">דיוק גבוה</string>
+    <string name="search_level_3_value">חיפוש מאוזן</string>
+    <string name="search_level_4_value">חיפוש רחב</string>
+    <string name="search_level_5_value">חיפוש כללי</string>
+
+    <!-- Search Levels - Descriptions -->
+    <string name="search_level_1_description">מילים\nצמודות</string>
+    <string name="search_level_2_description">מילים\nקרובות</string>
+    <string name="search_level_3_description">באותו\nפסוק</string>
+    <string name="search_level_4_description">באותה\nפסקה</string>
+    <string name="search_level_5_description">באותו\nהקשר</string>
+
+    <!-- Search Current Selection Section -->
+    <string name="search_selection_title">✨ הגדרת החיפוש</string>
+
+    <!-- Search Level Explanations -->
+    <string name="search_level_1_explanation">חיפוש מדויק במיוחד: מוצא מילים הבאות זו אחר זו ברצף</string>
+    <string name="search_level_2_explanation">חיפוש מדויק: מוצא מילים קרובות מאוד בטקסט</string>
+    <string name="search_level_3_explanation">חיפוש מאוזן: מוצא מילים באותו פסוק או משפט</string>
+    <string name="search_level_4_explanation">חיפוש רחב: מוצא מילים באותה פסקה או קטע</string>
+    <string name="search_level_5_explanation">חיפוש כללי: מוצא מילים באותו הקשר או נושא</string>
+
+
     <!-- Settings -->
     <string name="close_book_tree_on_new_book">סגור אוטומטית את חלונית העץ בעת בחירת ספר חדש</string>
 </resources>

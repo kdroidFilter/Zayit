@@ -135,7 +135,7 @@ fun HomeView(modifier: Modifier = Modifier) {
                 }
 
                 Slider(
-                    value = selectedIndex.toFloat(),
+                    value = sliderPosition,
                     onValueChange = { newValue -> sliderPosition = newValue },
                     valueRange = 0f..maxIndex.toFloat(),
                     steps = (filtersCard.size - 2).coerceAtLeast(0)

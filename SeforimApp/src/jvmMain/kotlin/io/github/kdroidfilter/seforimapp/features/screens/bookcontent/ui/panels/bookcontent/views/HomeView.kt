@@ -115,33 +115,40 @@ fun HomeView(modifier: Modifier = Modifier) {
                     Res.string.search_level_5_explanation
                 )
             )
-            if (selectedFilter == SearchFilter.TEXT) {
-                // Synchronize cards with slider position
-                var sliderPosition by remember { mutableFloatStateOf(0f) }
-                val maxIndex = (filtersCard.size - 1).coerceAtLeast(0)
-                val selectedIndex = sliderPosition.coerceIn(0f, maxIndex.toFloat()).toInt()
+            Column(
+                modifier = Modifier.height(200.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ){
+                if (selectedFilter == SearchFilter.TEXT) {
+                    // Synchronize cards with slider position
+                    var sliderPosition by remember { mutableFloatStateOf(0f) }
+                    val maxIndex = (filtersCard.size - 1).coerceAtLeast(0)
+                    val selectedIndex = sliderPosition.coerceIn(0f, maxIndex.toFloat()).toInt()
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    filtersCard.forEachIndexed { index, filterCard ->
-                        SearchLevelCard(
-                            data = filterCard,
-                            selected = index == selectedIndex,
-                            onClick = { sliderPosition = index.toFloat() }
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        filtersCard.forEachIndexed { index, filterCard ->
+                            SearchLevelCard(
+                                data = filterCard,
+                                selected = index == selectedIndex,
+                                onClick = { sliderPosition = index.toFloat() }
+                            )
+                        }
                     }
+
+
+
+                    Slider(
+                        value = sliderPosition,
+                        onValueChange = { newValue -> sliderPosition = newValue },
+                        valueRange = 0f..maxIndex.toFloat(),
+                        steps = (filtersCard.size - 2).coerceAtLeast(0),
+                        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                    )
                 }
-
-                Slider(
-                    value = sliderPosition,
-                    onValueChange = { newValue -> sliderPosition = newValue },
-                    valueRange = 0f..maxIndex.toFloat(),
-                    steps = (filtersCard.size - 2).coerceAtLeast(0)
-                )
             }
-
         }
     }
 

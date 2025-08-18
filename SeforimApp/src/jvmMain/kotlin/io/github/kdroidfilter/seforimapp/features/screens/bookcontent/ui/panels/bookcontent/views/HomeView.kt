@@ -570,7 +570,7 @@ private fun SearchLevelCard(
     Box(
         modifier = modifier
             .width(96.dp)
-            .height(120.dp)
+            .height(110.dp)
             .clip(shape)
             .background(backgroundColor)
             .border(width = if (selected) 2.dp else 1.dp, color = borderColor, shape = shape)
@@ -580,7 +580,7 @@ private fun SearchLevelCard(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             val contentColor = if (selected) Color.White else JewelTheme.contentColor
             Icon(

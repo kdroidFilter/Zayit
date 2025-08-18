@@ -107,10 +107,14 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                     selected = isSelected,
                     content = { tabState ->
                         val icon: Painter = if (tabItem.tabType == TabType.BOOK) {
-                            rememberVectorPainter(BookOpenTabs(JewelTheme.globalColors.text.normal))
+                            rememberVectorPainter(BookOpenTabs(JewelTheme.contentColor))
                         } else {
-                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
-                            iconProvider.getPainter(Stateful(tabState)).value
+                            if (tabItem.title.isEmpty()) {
+                                rememberVectorPainter(io.github.kdroidfilter.seforimapp.icons.HomeTabs(JewelTheme.contentColor))
+                            } else {
+                                val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
+                                iconProvider.getPainter(Stateful(tabState)).value
+                            }
                         }
 
                         val isTruncated = tabItem.title.length > AppSettings.MAX_TAB_TITLE_LENGTH
@@ -157,15 +161,19 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                         val icon: Painter = if (tabItem.tabType == TabType.BOOK) {
                             rememberVectorPainter(BookOpenTabs(JewelTheme.globalColors.text.normal))
                         } else {
-                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
-                            iconProvider.getPainter(Stateful(tabState)).value
+                            if (tabItem.title.isEmpty()) {
+                                rememberVectorPainter(io.github.kdroidfilter.seforimapp.icons.HomeTabs(JewelTheme.globalColors.text.normal))
+                            } else {
+                                val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
+                                iconProvider.getPainter(Stateful(tabState)).value
+                            }
                         }
 
                         val isTruncated = tabItem.title.length > AppSettings.MAX_TAB_TITLE_LENGTH
                         val truncatedTitle = if (isTruncated) {
                             tabItem.title.take(AppSettings.MAX_TAB_TITLE_LENGTH) + "..."
                         } else {
-                            tabItem.title
+                            tabItem.title.ifEmpty { stringResource(Res.string.home) }
                         }
 
                         if (isTruncated) {

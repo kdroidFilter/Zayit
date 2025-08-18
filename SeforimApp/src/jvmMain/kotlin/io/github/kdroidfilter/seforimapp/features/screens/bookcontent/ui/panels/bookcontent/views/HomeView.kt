@@ -484,7 +484,7 @@ private fun SearchLevelCard(
     Box(
         modifier = modifier
             .width(96.dp)
-            .height(144.dp)
+            .height(120.dp)
             .clip(shape)
             .background(backgroundColor)
             .border(width = if (selected) 2.dp else 1.dp, color = borderColor, shape = shape)

@@ -5,6 +5,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.Icon
@@ -58,34 +60,54 @@ fun HomeView(
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier.padding(16.dp).fillMaxSize(), contentAlignment = Alignment.Center
+    val listState = rememberLazyListState()
+    VerticallyScrollableContainer(
+        scrollState = listState,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.width(600.dp)
+        Box(
+            modifier = modifier.padding(16.dp).fillMaxSize(), contentAlignment = Alignment.Center
         ) {
-            WelcomeUser(username = "אליהו")
-            LogoImage()
-
+            // Keep state outside LazyColumn so it persists across item recompositions
             val searchState = remember { TextFieldState() }
             var selectedFilter by remember { mutableStateOf(SearchFilter.TEXT) }
 
-            SearchBar(
-                state = searchState,
-                selectedFilter = selectedFilter,
-                onFilterChange = { selectedFilter = it }
-            )
-
-            Column(
-                modifier = Modifier.height(250.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            LazyColumn(
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.width(600.dp)
             ) {
-                if (selectedFilter == SearchFilter.TEXT) {
-                    SearchLevelsPanel()
-                    ReferenceByCategorySection(modifier)
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        WelcomeUser(username = "אליהו")
+                    }
+                }
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        LogoImage()
+                    }
+                }
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        SearchBar(
+                            state = searchState,
+                            selectedFilter = selectedFilter,
+                            onFilterChange = { selectedFilter = it }
+                        )
+                    }
+                }
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Column(
+                            modifier = Modifier.height(250.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            if (selectedFilter == SearchFilter.TEXT) {
+                                SearchLevelsPanel()
+                                ReferenceByCategorySection(modifier)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -560,23 +582,24 @@ private fun SearchLevelCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            val contentColor = if (selected) Color.White else JewelTheme.contentColor
             Icon(
                 data.icons,
                 contentDescription = stringResource(data.label),
                 modifier = Modifier.size(40.dp),
-                tint = JewelTheme.contentColor
+                tint = contentColor
             )
             Text(
                 stringResource(data.label),
                 fontSize = 16.sp,
                 textAlign = TextAlign.Center,
-                color = if (selected) Color.White else Color(0xFFCCCCCC)
+                color = contentColor
             )
             Text(
                 stringResource(data.desc),
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center,
-                color = if (selected) Color.White else Color(0xFFCCCCCC)
+                color = contentColor
             )
         }
     }

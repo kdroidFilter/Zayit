@@ -7,14 +7,9 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.kotlinx.serialization)
-    id("com.android.library")
 }
 
 kotlin {
-    androidTarget {
-        //https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-test.html
-        instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
-    }
 
     jvm()
 
@@ -23,8 +18,6 @@ kotlin {
 
         }
 
-        androidMain.dependencies {
-        }
 
         jvmMain.dependencies {
         }
@@ -32,21 +25,6 @@ kotlin {
     }
 }
 
-android {
-    namespace = "io.github.kdroidfilter.seforimapp"
-    compileSdk = 35
 
-    defaultConfig {
-        minSdk = 21
-        targetSdk = 35
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-}
-
-//https://developer.android.com/develop/ui/compose/testing#setup
-dependencies {
-    androidTestImplementation(libs.androidx.uitest.junit4)
-    debugImplementation(libs.androidx.uitest.testManifest)
-}
 
 

@@ -10,7 +10,7 @@ import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun HomeTabs(tint: Color): ImageVector {
+fun homeTabs(tint: Color): ImageVector {
     return ImageVector.Builder(
         name = "Home_Tabs",
         defaultWidth = 20.dp,

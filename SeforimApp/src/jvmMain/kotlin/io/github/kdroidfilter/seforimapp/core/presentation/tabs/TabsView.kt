@@ -110,7 +110,7 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                             rememberVectorPainter(BookOpenTabs(JewelTheme.contentColor))
                         } else {
                             if (tabItem.title.isEmpty()) {
-                                rememberVectorPainter(io.github.kdroidfilter.seforimapp.icons.HomeTabs(JewelTheme.contentColor))
+                                rememberVectorPainter(io.github.kdroidfilter.seforimapp.icons.homeTabs(JewelTheme.contentColor))
                             } else {
                                 val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
                                 iconProvider.getPainter(Stateful(tabState)).value
@@ -162,7 +162,7 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                             rememberVectorPainter(BookOpenTabs(JewelTheme.globalColors.text.normal))
                         } else {
                             if (tabItem.title.isEmpty()) {
-                                rememberVectorPainter(io.github.kdroidfilter.seforimapp.icons.HomeTabs(JewelTheme.globalColors.text.normal))
+                                rememberVectorPainter(io.github.kdroidfilter.seforimapp.icons.homeTabs(JewelTheme.globalColors.text.normal))
                             } else {
                                 val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
                                 iconProvider.getPainter(Stateful(tabState)).value

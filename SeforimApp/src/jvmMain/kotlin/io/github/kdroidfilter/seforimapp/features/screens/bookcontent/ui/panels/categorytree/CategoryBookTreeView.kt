@@ -1,39 +1,37 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.categorytree
 
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight.Companion.Bold
-import androidx.compose.ui.text.font.FontWeight.Companion.Normal
-import androidx.compose.ui.unit.dp
-import io.github.kdroidfilter.seforimlibrary.core.models.Book
-import io.github.kdroidfilter.seforimlibrary.core.models.Category
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.NavigationUiState
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.text.font.FontWeight.Companion.Bold
+import androidx.compose.ui.text.font.FontWeight.Companion.Normal
+import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.seforimapp.core.presentation.components.ChevronIcon
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.NavigationUiState
 import io.github.kdroidfilter.seforimapp.icons.Book_2
-import io.github.kdroidfilter.seforimapp.icons.ChevronDown
-import io.github.kdroidfilter.seforimapp.icons.ChevronRight
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
+import io.github.kdroidfilter.seforimlibrary.core.models.Category
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.iconButtonStyle
 
 
@@ -113,25 +111,24 @@ fun CategoryBookTreeView(
     /* ---------------------------------------------------------------------
      * UI.
      * -------------------------------------------------------------------- */
-    Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().padding(end = 16.dp)
+    Box(modifier = modifier.fillMaxSize().padding(bottom = 8.dp)) {
+        VerticallyScrollableContainer(
+            scrollState = listState,
         ) {
-            items(
-                items = treeItems,
-                key = { it.id }
-            ) { item ->
-                Box(modifier = Modifier.padding(start = (item.level * 16).dp)) {
-                    item.content()
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().padding(end = 16.dp)
+            ) {
+                items(
+                    items = treeItems,
+                    key = { it.id }
+                ) { item ->
+                    Box(modifier = Modifier.padding(start = (item.level * 16).dp)) {
+                        item.content()
+                    }
                 }
             }
         }
-
-        VerticalScrollbar(
-            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-            adapter = rememberScrollbarAdapter(listState)
-        )
     }
 }
 
@@ -216,9 +213,11 @@ private fun CategoryItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Icon(if (isExpanded) ChevronDown else ChevronRight,
-            contentDescription = "",
-            modifier = Modifier.size(12.dp))
+        ChevronIcon(
+            expanded = isExpanded,
+            tint = JewelTheme.globalColors.text.normal,
+            contentDescription = ""
+        )
         Icon(
             key = AllIconsKeys.Nodes.Folder,
             contentDescription = null,

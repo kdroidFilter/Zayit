@@ -1,3 +1,7 @@
 [submodule "SeforimLibrary"]
 	path = SeforimLibrary
 	url = https://github.com/kdroidFilter/SeforimLibrary.git
+
+[submodule "SeforimAcronymizer"]
+	path = SeforimAcronymizer
+	url = https://github.com/kdroidFilter/SeforimAcronymizer.git

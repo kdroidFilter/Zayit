@@ -14,6 +14,7 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.settings.IAppSettings
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettingsImpl
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentViewModel
+import io.github.kdroidfilter.seforimapp.features.windows.settings.SettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import org.koin.dsl.module
 import org.koin.core.module.dsl.viewModel
@@ -21,7 +22,7 @@ import java.util.UUID
 
 val desktopModule = module {
     single<Navigator> {
-        DefaultNavigator(startDestination = TabsDestination.BookContent(tabId = UUID.randomUUID().toString(), bookId = 1))
+        DefaultNavigator(startDestination = TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString()))
     }
 
     // Register TabStateManager as a singleton
@@ -58,7 +59,12 @@ val desktopModule = module {
             tabStateManager = get(),
             repository = get(),
             titleUpdateManager = get(),
-            navigator = get()
+            navigator = get(),
+            appSettings = get()
         )
+    }
+
+    viewModel {
+        SettingsViewModel(get())
     }
 }

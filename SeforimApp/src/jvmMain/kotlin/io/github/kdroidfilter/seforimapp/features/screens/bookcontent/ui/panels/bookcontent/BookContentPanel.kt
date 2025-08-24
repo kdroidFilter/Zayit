@@ -1,28 +1,35 @@
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.*
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views.BookContentView
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views.BreadcrumbView
+import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views.HomeView
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views.LineCommentsView
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.bookcontent.views.LineTargumView
-import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.TextField
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.select_book
+import seforimapp.seforimapp.generated.resources.zayit_transparent
 
 
 @OptIn(ExperimentalSplitPaneApi::class)
@@ -37,7 +44,7 @@ fun BookContentPanel(
     val bookListState = remember(uiState.navigation.selectedBook?.id) { LazyListState() }
 
     if (uiState.navigation.selectedBook == null) {
-        SelectBookPane(modifier = modifier)
+        HomeView(uiState = uiState, onEvent = onEvent, modifier = modifier)
         return
     }
 
@@ -104,16 +111,6 @@ fun BookContentPanel(
         )
     }
 }
-
-@Composable
-private fun SelectBookPane(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.padding(16.dp).fillMaxSize(), contentAlignment = Alignment.Center
-    ) {
-        Text(stringResource(Res.string.select_book))
-    }
-}
-
 
 @Composable
 private fun CommentsPane(

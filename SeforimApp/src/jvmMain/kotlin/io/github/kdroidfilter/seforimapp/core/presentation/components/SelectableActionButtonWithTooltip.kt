@@ -71,13 +71,13 @@ fun SelectableIconButtonWithToolip(
                 Icon(
                     icon,
                     iconDescription,
-                    tint = JewelTheme.globalColors.text.selected,
+                    tint = if (enabled )JewelTheme.globalColors.text.selected else JewelTheme.globalColors.text.disabled,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     label,
-                    color = JewelTheme.globalColors.text.normal,
+                    color = if (enabled) JewelTheme.globalColors.text.normal else JewelTheme.globalColors.text.disabled,
                     fontSize = 10.sp,
                     textAlign = TextAlign.Center,
                     lineHeight = 10.sp,

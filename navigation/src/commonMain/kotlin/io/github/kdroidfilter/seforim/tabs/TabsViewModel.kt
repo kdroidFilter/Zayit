@@ -7,6 +7,7 @@ import io.github.kdroidfilter.seforim.navigation.Navigator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.UUID
 import kotlin.math.max
 
@@ -110,10 +111,11 @@ class TabsViewModel(
     }
 
     private fun addTab() {
+        val destination = TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())
         val newTab = TabItem(
             id = _nextTabId++,
-            title = "New Tab",
-            destination = TabsDestination.Home(UUID.randomUUID().toString())
+            title = getTabTitle(destination),
+            destination = destination
         )
         _tabs.value = _tabs.value + newTab
         _selectedTabIndex.value = _tabs.value.lastIndex
@@ -144,10 +146,12 @@ class TabsViewModel(
         return when (destination) {
             is TabsDestination.Home -> "Home"
             is TabsDestination.Search -> destination.searchQuery
-            is TabsDestination.BookContent -> "${destination.bookId}"
+            is TabsDestination.BookContent -> if (destination.bookId > 0) "${destination.bookId}" else ""
         }
     }
-    
+
+
+
     /**
      * Updates the title of a tab with the given tabId.
      *

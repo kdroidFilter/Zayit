@@ -17,6 +17,7 @@
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>
     <string name="add_tab">הוסף לשונית</string>
+    <string name="home">דף הבית</string>
 
     <!-- Book Content Screen - Start Vertical Bar -->
     <string name="navigation">ניווט</string>
@@ -80,4 +81,57 @@
     <string name="no_links_for_line">אין תרגומים זמינים לשורה זו</string>
     <string name="select_at_least_one_source">אנא בחר לפחות מקור תרגום אחד מהרשימה</string>
     <string name="max_sources_limit">ניתן לבחור עד 4 מקורות בלבד</string>
+    <string name="not_available_in_book">לא זמין בספר זה</string>
+    <string name="targum_not_available_in_book">אין תרגומים זמינים בספר זה</string>
+    <string name="commentaries_not_available_in_book">אין פירושים זמינים בספר זה</string>
+    <string name="links_not_available_in_book">אין קישורים זמינים בספר זה</string>
+    <string name="please_select_a_book">אנא בחר ספר</string>
+
+    <!-- Home Page View -->
+    <string name="search_mode_reference">מקור</string>
+    <string name="search_mode_text">טקסט</string>
+    <string name="search_mode_reference_explicit">חיפוש לפי מקור</string>
+    <string name="search_mode_text_explicit">חיפוש בטקסט</string>
+    <string name="search_by_category_or_book">חפש לפי קטגוריה או ספר</string>
+
+    <!-- Home Page View - Search hints -->
+    <string name="reference_hint_1">שו"ע אורח חיים סימן רסח</string>
+    <string name="reference_hint_2">רמב"ם הלכות שבת פרק כ</string>
+    <string name="reference_hint_3">משנה ברורה סימן רלה סעיף קטן ד</string>
+    <string name="reference_hint_4">ברכות דף ב עמוד א</string>
+    <string name="reference_hint_5">תהילים פרק כג פסוק ד</string>
+
+    <string name="text_hint_1">הכל בידי שמים חוץ מיראת שמים</string>
+    <string name="text_hint_2">ואהבת לרעך כמוך</string>
+    <string name="text_hint_3">שמע ישראל ה׳ אלקינו ה׳ אחד</string>
+    <string name="text_hint_4">מי שטרח בערב שבת יאכל בשבת</string>
+    <string name="text_hint_5">אין עוד מלבדו</string>
+
+    <!-- Search Levels - Values -->
+    <string name="search_level_1_value">דיוק מושלם</string>
+    <string name="search_level_2_value">דיוק גבוה</string>
+    <string name="search_level_3_value">חיפוש מאוזן</string>
+    <string name="search_level_4_value">חיפוש רחב</string>
+    <string name="search_level_5_value">חיפוש כללי</string>
+
+    <!-- Search Levels - Descriptions -->
+    <string name="search_level_1_description">מילים\nצמודות</string>
+    <string name="search_level_2_description">מילים\nקרובות</string>
+    <string name="search_level_3_description">באותו\nפסוק</string>
+    <string name="search_level_4_description">באותה\nפסקה</string>
+    <string name="search_level_5_description">באותו\nהקשר</string>
+
+    <!-- Search Current Selection Section -->
+    <string name="search_selection_title">✨ הגדרת החיפוש</string>
+
+    <!-- Search Level Explanations -->
+    <string name="search_level_1_explanation">חיפוש מדויק במיוחד: מוצא מילים הבאות זו אחר זו ברצף</string>
+    <string name="search_level_2_explanation">חיפוש מדויק: מוצא מילים קרובות מאוד בטקסט</string>
+    <string name="search_level_3_explanation">חיפוש מאוזן: מוצא מילים באותו פסוק או משפט</string>
+    <string name="search_level_4_explanation">חיפוש רחב: מוצא מילים באותה פסקה או קטע</string>
+    <string name="search_level_5_explanation">חיפוש כללי: מוצא מילים באותו הקשר או נושא</string>
+
+
+    <!-- Settings -->
+    <string name="close_book_tree_on_new_book">סגור אוטומטית את חלונית העץ בעת בחירת ספר חדש</string>
 </resources>

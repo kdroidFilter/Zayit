@@ -14,10 +14,13 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels.
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
 import org.koin.compose.viewmodel.koinViewModel
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.SplitDefaults
+import kotlin.math.roundToInt
 
 /**
  * Composable function to display the book content screen.
@@ -79,6 +82,8 @@ fun BookContentView(
         LaunchedEffect(config.splitState, config.isVisible) {
             if (config.isVisible) {
                 snapshotFlow { config.splitState.positionPercentage }
+                    .map { ((it * 100).roundToInt() / 100f) }
+                    .distinctUntilChanged()
                     .debounce(300)
                     .filter(config.positionFilter)
                     .collect { onEvent(BookContentEvent.SaveState) }

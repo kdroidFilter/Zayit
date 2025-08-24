@@ -72,7 +72,7 @@ data class TocState(
     val children: Map<Long, List<TocEntry>> = emptyMap(),
 
     // UI
-    val isVisible: Boolean = true,
+    val isVisible: Boolean = false,
     val scrollIndex: Int = 0,
     val scrollOffset: Int = 0
 )
@@ -103,6 +103,11 @@ data class ContentState(
     val commentariesSelectedTab: Int = 0,
     val commentariesScrollIndex: Int = 0,
     val commentariesScrollOffset: Int = 0,
+    val commentatorsListScrollIndex: Int = 0,
+    val commentatorsListScrollOffset: Int = 0,
+    // Per-column (per commentator) scroll positions
+    val commentariesColumnScrollIndexByCommentator: Map<Long, Int> = emptyMap(),
+    val commentariesColumnScrollOffsetByCommentator: Map<Long, Int> = emptyMap(),
 
     // Filters selected in UI (for current line)
     val selectedCommentatorIds: Set<Long> = emptySet(),

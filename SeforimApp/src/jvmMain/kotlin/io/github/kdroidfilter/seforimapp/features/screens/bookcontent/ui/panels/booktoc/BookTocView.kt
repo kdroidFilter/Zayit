@@ -15,29 +15,32 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.seforimapp.core.presentation.components.ChevronIcon
 
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentUiState
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.VisibleTocEntry
-import io.github.kdroidfilter.seforimapp.icons.ChevronDown
-import io.github.kdroidfilter.seforimapp.icons.ChevronRight
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.LineTocMapping
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 
 /**
- * Table-of-contents list with collapsible nodes and scroll-state persistence.
+ * Table-of-contents list with collapsible nodes and scroll-state
+ * persistence.
  *
  * Updates:
  * 1. Added debounce to reduce the frequency of scroll events
- * 2. Added hasRestored logic to ensure scroll events are only collected after position restoration
- * 3. Explicit restore of the saved scroll position once the list has real content
- *    (otherwise Compose would clamp the requested index to 0 when the list was still empty)
+ * 2. Added hasRestored logic to ensure scroll events are only collected
+ *    after position restoration
+ * 3. Explicit restore of the saved scroll position once the list has real
+ *    content (otherwise Compose would clamp the requested index to 0 when
+ *    the list was still empty)
  */
 
 @OptIn(FlowPreview::class)
@@ -83,27 +86,26 @@ fun BookTocView(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().padding(end = 16.dp)
+    Box(modifier = modifier.fillMaxSize().padding(bottom = 8.dp)) {
+        VerticallyScrollableContainer(
+            scrollState = listState,
         ) {
-            items(
-                items = visibleEntries,
-                key = { it.entry.id }
-            ) { visibleEntry ->
-                TocEntryItem(
-                    visibleEntry = visibleEntry,
-                    onEntryClick = onEntryClick,
-                    onEntryExpand = onEntryExpand
-                )
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().padding(end = 16.dp)
+            ) {
+                items(
+                    items = visibleEntries,
+                    key = { it.entry.id }
+                ) { visibleEntry ->
+                    TocEntryItem(
+                        visibleEntry = visibleEntry,
+                        onEntryClick = onEntryClick,
+                        onEntryExpand = onEntryExpand
+                    )
+                }
             }
         }
-        
-        VerticalScrollbar(
-            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-            adapter = rememberScrollbarAdapter(listState)
-        )
     }
 }
 
@@ -214,9 +216,12 @@ private fun TocEntryItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (visibleEntry.hasChildren) {
-            Icon(if (visibleEntry.isExpanded) ChevronDown else ChevronRight,
-                contentDescription = "",
-                modifier = Modifier.height(12.dp).width(24.dp))
+            ChevronIcon(
+                expanded = visibleEntry.isExpanded,
+                modifier = Modifier.height(12.dp).width(24.dp),
+                tint = JewelTheme.globalColors.text.normal,
+                contentDescription = ""
+            )
         } else {
             Spacer(modifier = Modifier.width(24.dp))
         }

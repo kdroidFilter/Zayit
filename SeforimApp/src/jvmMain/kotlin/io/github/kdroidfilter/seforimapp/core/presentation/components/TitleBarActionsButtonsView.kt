@@ -4,8 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
+import io.github.kdroidfilter.seforimapp.features.windows.settings.Settings
+import io.github.kdroidfilter.seforimapp.features.windows.settings.SettingsEvents
+import io.github.kdroidfilter.seforimapp.features.windows.settings.SettingsViewModel
+import io.github.kdroidfilter.seforimapp.features.windows.settings.collectSettingsState
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.koin.compose.viewmodel.koinViewModel
 import seforimapp.seforimapp.generated.resources.dark_theme
 import seforimapp.seforimapp.generated.resources.find
 import seforimapp.seforimapp.generated.resources.find_tooltip
@@ -25,12 +30,16 @@ fun TitleBarActionsButtonsView() {
     val themeViewModel = ThemeViewModel
     val theme = themeViewModel.theme.collectAsState().value
 
-    val iconDescription = when(theme) {
+    // Use ViewModel-driven settings window visibility to respect MVVM conventions
+    val settingsViewModel: SettingsViewModel = koinViewModel()
+    val settingsState = collectSettingsState(settingsViewModel)
+
+    val iconDescription = when (theme) {
         IntUiThemes.Light -> stringResource(Res.string.light_theme)
         IntUiThemes.Dark -> stringResource(Res.string.dark_theme)
         IntUiThemes.System -> stringResource(Res.string.system_theme)
     }
-    val iconToolTipText = when(theme) {
+    val iconToolTipText = when (theme) {
         IntUiThemes.Light -> stringResource(Res.string.switch_to_dark_theme)
         IntUiThemes.Dark -> stringResource(Res.string.switch_to_system_theme)
         IntUiThemes.System -> stringResource(Res.string.switch_to_light_theme)
@@ -52,7 +61,7 @@ fun TitleBarActionsButtonsView() {
         contentDescription = iconDescription,
         onClick = {
             themeViewModel.setTheme(
-                when(theme) {
+                when (theme) {
                     IntUiThemes.Light -> IntUiThemes.Dark
                     IntUiThemes.Dark -> IntUiThemes.System
                     IntUiThemes.System -> IntUiThemes.Light
@@ -73,8 +82,12 @@ fun TitleBarActionsButtonsView() {
         key = AllIconsKeys.General.Settings,
         contentDescription = stringResource(Res.string.settings),
         onClick = {
-            //TODO
+            settingsViewModel.onEvent(SettingsEvents.onOpen)
         },
         tooltipText = stringResource(Res.string.settings_tooltip),
     )
+
+    if (settingsState.isVisible) {
+        Settings(onClose = { settingsViewModel.onEvent(SettingsEvents.onClose) })
+    }
 }

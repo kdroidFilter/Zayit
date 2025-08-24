@@ -2,14 +2,12 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.panels
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,7 +31,10 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compone
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.debounce
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -41,10 +42,12 @@ import org.jetbrains.compose.splitpane.rememberSplitPaneState
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import seforimapp.seforimapp.generated.resources.*
 
 private const val MAX_COMMENTATORS = 4
 private const val WARNING_DISPLAY_TIME = 5000L
+private const val SCROLL_DEBOUNCE_MS = 100L
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -55,7 +58,7 @@ fun LineCommentsView(
     val contentState = uiState.content
     val selectedLine = contentState.selectedLine
 
-    // Animation settings
+    // Animation settings with stable memorization
     val textSizes = rememberAnimatedTextSettings()
 
     // Warning state
@@ -69,7 +72,7 @@ fun LineCommentsView(
 
     val paneInteractionSource = remember { MutableInteractionSource() }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp).hoverable(paneInteractionSource)) {
+    Column(modifier = Modifier.fillMaxSize().hoverable(paneInteractionSource)) {
         // Header
         PaneHeader(
             label = stringResource(Res.string.commentaries),
@@ -81,20 +84,20 @@ fun LineCommentsView(
             interactionSource = paneInteractionSource,
             onHide = { onEvent(BookContentEvent.ToggleCommentaries) }
         )
-
-        when (selectedLine) {
-            null -> CenteredMessage(stringResource(Res.string.select_line_for_commentaries))
-            else -> CommentariesContent(
-                selectedLine = selectedLine,
-                uiState = uiState,
-                onEvent = onEvent,
-                textSizes = textSizes,
-                onShowWarning = { showMaxCommentatorsWarning = true }
-            )
+        Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+            when (selectedLine) {
+                null -> CenteredMessage(stringResource(Res.string.select_line_for_commentaries))
+                else -> CommentariesContent(
+                    selectedLine = selectedLine,
+                    uiState = uiState,
+                    onEvent = onEvent,
+                    textSizes = textSizes,
+                    onShowWarning = { showMaxCommentatorsWarning = true }
+                )
+            }
         }
     }
 }
-
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -108,7 +111,7 @@ private fun CommentariesContent(
     val providers = uiState.providers ?: return
     val contentState = uiState.content
 
-    // Load available commentators
+    // Load available commentators with stable key
     val titleToIdMap = rememberCommentators(
         lineId = selectedLine.id,
         getAvailableCommentatorsForLine = providers.getAvailableCommentatorsForLine
@@ -119,9 +122,14 @@ private fun CommentariesContent(
         return
     }
 
+    // Cache the sorted list to avoid re-sorting each time it is recomposed
+    val sortedCommentators = remember(titleToIdMap) {
+        titleToIdMap.keys.sorted()
+    }
+
     // Manage selected commentators
     val selectedCommentators = rememberSelectedCommentators(
-        availableCommentators = titleToIdMap.keys.sorted(),
+        availableCommentators = sortedCommentators,
         initiallySelectedIds = contentState.selectedCommentatorIds,
         titleToIdMap = titleToIdMap,
         onSelectionChange = { ids ->
@@ -136,8 +144,13 @@ private fun CommentariesContent(
         firstMinSize = 150f,
         firstContent = {
             CommentatorsList(
-                commentators = titleToIdMap.keys.sorted(),
+                commentators = sortedCommentators,
                 selectedCommentators = selectedCommentators.value,
+                initialScrollIndex = uiState.content.commentatorsListScrollIndex,
+                initialScrollOffset = uiState.content.commentatorsListScrollOffset,
+                onScroll = { index, offset ->
+                    onEvent(BookContentEvent.CommentatorsListScrolled(index, offset))
+                },
                 onSelectionChange = { name, checked ->
                     if (checked && selectedCommentators.value.size >= MAX_COMMENTATORS) {
                         onShowWarning()
@@ -164,37 +177,58 @@ private fun CommentariesContent(
     )
 }
 
+@OptIn(FlowPreview::class)
 @Composable
 private fun CommentatorsList(
     commentators: List<String>,
     selectedCommentators: Set<String>,
+    initialScrollIndex: Int,
+    initialScrollOffset: Int,
+    onScroll: (Int, Int) -> Unit,
     onSelectionChange: (String, Boolean) -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
-        val listState = rememberLazyListState()
-        Row(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.weight(1f).fillMaxHeight()
+        val listState = rememberLazyListState(
+            initialFirstVisibleItemIndex = initialScrollIndex,
+            initialFirstVisibleItemScrollOffset = initialScrollOffset
+        )
+
+        LaunchedEffect(listState) {
+            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+                .distinctUntilChanged()
+                .debounce(SCROLL_DEBOUNCE_MS)
+                .collect { (i, o) -> onScroll(i, o) }
+        }
+
+        Row(modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
+            VerticallyScrollableContainer(
+                scrollState = listState,
             ) {
-                items(count = commentators.size) { idx ->
-                    val commentator = commentators[idx]
-                    CheckboxRow(
-                        text = commentator,
-                        checked = commentator in selectedCommentators,
-                        onCheckedChange = { checked ->
-                            onSelectionChange(commentator, checked)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp, horizontal = 8.dp)
-                    )
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxHeight()
+                ) {
+                    items(
+                        count = commentators.size,
+                        key = { commentators[it] }
+                    ) { idx ->
+                        val commentator = commentators[idx]
+                        val isSelected = remember(selectedCommentators, commentator) {
+                            commentator in selectedCommentators
+                        }
+                        CheckboxRow(
+                            text = commentator,
+                            checked = isSelected,
+                            onCheckedChange = { checked ->
+                                onSelectionChange(commentator, checked)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp)
+                        )
+                    }
                 }
             }
-            VerticalScrollbar(
-                modifier = Modifier.fillMaxHeight(),
-                adapter = rememberScrollbarAdapter(listState)
-            )
         }
     }
 }
@@ -220,28 +254,38 @@ private fun CommentariesDisplay(
 
     val windowInfo = LocalWindowInfo.current
 
-    val layoutConfig = CommentariesLayoutConfig(
-        selectedCommentators = selectedCommentators,
-        titleToIdMap = titleToIdMap,
-        lineId = selectedLine.id,
-        scrollIndex = contentState.commentariesScrollIndex,
-        scrollOffset = contentState.commentariesScrollOffset,
-        onScroll = { index, offset ->
-            onEvent(BookContentEvent.CommentariesScrolled(index, offset))
-        },
-        onCommentClick = { commentary ->
-            val mods = windowInfo.keyboardModifiers
-            if (mods.isCtrlPressed || mods.isMetaPressed) {
-                onEvent(
-                    BookContentEvent.OpenCommentaryTarget(
-                        bookId = commentary.link.targetBookId,
-                        lineId = commentary.link.targetLineId
+    // Memorizes the configuration to avoid recreating it
+    val layoutConfig = remember(
+        selectedCommentators,
+        titleToIdMap,
+        selectedLine.id,
+        contentState.commentariesScrollIndex,
+        contentState.commentariesScrollOffset,
+        textSizes
+    ) {
+        CommentariesLayoutConfig(
+            selectedCommentators = selectedCommentators,
+            titleToIdMap = titleToIdMap,
+            lineId = selectedLine.id,
+            scrollIndex = contentState.commentariesScrollIndex,
+            scrollOffset = contentState.commentariesScrollOffset,
+            onScroll = { index, offset ->
+                onEvent(BookContentEvent.CommentariesScrolled(index, offset))
+            },
+            onCommentClick = { commentary ->
+                val mods = windowInfo.keyboardModifiers
+                if (mods.isCtrlPressed || mods.isMetaPressed) {
+                    onEvent(
+                        BookContentEvent.OpenCommentaryTarget(
+                            bookId = commentary.link.targetBookId,
+                            lineId = commentary.link.targetLineId
+                        )
                     )
-                )
-            }
-        },
-        textSizes = textSizes
-    )
+                }
+            },
+            textSizes = textSizes
+        )
+    }
 
     CommentariesLayout(
         layoutConfig = layoutConfig,
@@ -256,35 +300,43 @@ private fun CommentariesLayout(
     uiState: BookContentUiState,
     onEvent: (BookContentEvent) -> Unit
 ) {
-    layoutConfig.selectedCommentators.size
-
-    CommentatorsGridView(layoutConfig, uiState)
+    CommentatorsGridView(layoutConfig, uiState, onEvent)
 }
 
 @Composable
 private fun CommentatorsGridView(
     config: CommentariesLayoutConfig,
     uiState: BookContentUiState,
+    onEvent: (BookContentEvent) -> Unit,
 ) {
+    // Cache the calculation of lines
     val rows = remember(config.selectedCommentators) {
         buildCommentatorRows(config.selectedCommentators)
     }
+
     var primaryAssigned = false
+
     Column(modifier = Modifier.fillMaxSize()) {
         rows.forEachIndexed { rowIndex, rowCommentators ->
-            val rowModifier = if (rows.size > 1) Modifier.weight(1f) else Modifier.fillMaxHeight()
+            val rowModifier = remember(rows.size) {
+                if (rows.size > 1) Modifier.weight(1f) else Modifier.fillMaxHeight()
+            }
             Row(modifier = rowModifier.fillMaxWidth()) {
                 rowCommentators.forEachIndexed { colIndex, name ->
                     val id = config.titleToIdMap[name] ?: return@forEachIndexed
-                    val isPrimary = if (!primaryAssigned) {
-                        primaryAssigned = true
-                        true
-                    } else false
+                    val isPrimary = remember(primaryAssigned) {
+                        if (!primaryAssigned) {
+                            primaryAssigned = true
+                            true
+                        } else false
+                    }
                     val singleRowSingleCol = rows.size == 1 && rowCommentators.size == 1
-                    val colModifier = if (singleRowSingleCol) {
-                        Modifier.fillMaxHeight().weight(1f)
-                    } else {
-                        Modifier.weight(1f).padding(horizontal = 4.dp)
+                    val colModifier = remember(singleRowSingleCol) {
+                        if (singleRowSingleCol) {
+                            Modifier.fillMaxHeight().weight(1f)
+                        } else {
+                            Modifier.weight(1f).padding(horizontal = 4.dp)
+                        }
                     }
                     Column(modifier = colModifier) {
                         CommentatorHeader(name, config.textSizes.commentTextSize)
@@ -294,6 +346,13 @@ private fun CommentatorsGridView(
                             isPrimary = isPrimary,
                             config = config,
                             uiState = uiState,
+                            initialIndex = uiState.content.commentariesColumnScrollIndexByCommentator[id]
+                                ?: uiState.content.commentariesScrollIndex,
+                            initialOffset = uiState.content.commentariesColumnScrollOffsetByCommentator[id]
+                                ?: uiState.content.commentariesScrollOffset,
+                            onScroll = { i, o ->
+                                onEvent(BookContentEvent.CommentaryColumnScrolled(id, i, o))
+                            }
                         )
                     }
                 }
@@ -302,17 +361,17 @@ private fun CommentatorsGridView(
     }
 }
 
-private fun buildCommentatorRows(selected: List<String>): List<List<String>> {
+private inline fun buildCommentatorRows(selected: List<String>): List<List<String>> {
     return when (selected.size) {
         0 -> emptyList()
         1 -> listOf(selected)
         2 -> listOf(selected)
-        3 -> listOf(selected.take(2), selected.drop(2))
-        else -> listOf(selected.take(2), selected.drop(2).take(2))
+        3 -> listOf(selected.subList(0, 2), selected.subList(2, selected.size))
+        else -> listOf(selected.subList(0, 2), selected.subList(2, minOf(4, selected.size)))
     }
 }
 
-
+@OptIn(FlowPreview::class)
 @Composable
 private fun CommentaryListView(
     lineId: Long,
@@ -320,6 +379,9 @@ private fun CommentaryListView(
     isPrimary: Boolean,
     config: CommentariesLayoutConfig,
     uiState: BookContentUiState,
+    initialIndex: Int,
+    initialOffset: Int,
+    onScroll: (Int, Int) -> Unit,
 ) {
     val providers = uiState.providers ?: return
 
@@ -330,18 +392,29 @@ private fun CommentaryListView(
     val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
 
     val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = config.scrollIndex,
-        initialFirstVisibleItemScrollOffset = config.scrollOffset
+        initialFirstVisibleItemIndex = initialIndex,
+        initialFirstVisibleItemScrollOffset = initialOffset
     )
 
-    if (isPrimary) {
-        LaunchedEffect(listState) {
-            snapshotFlow {
-                listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
-            }.collect { (i, o) ->
-                config.onScroll(i, o)
+    var hasRestored by remember(lineId, commentatorId) { mutableStateOf(false) }
+    LaunchedEffect(lineId, commentatorId, lazyPagingItems.loadState.refresh, initialIndex, initialOffset) {
+        if (!hasRestored && lazyPagingItems.loadState.refresh !is LoadState.Loading) {
+            if (lazyPagingItems.itemCount > 0) {
+                val safeIndex = initialIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
+                val safeOffset = initialOffset.coerceAtLeast(0)
+                listState.scrollToItem(safeIndex, safeOffset)
+                hasRestored = true
             }
         }
+    }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .distinctUntilChanged()
+            .debounce(SCROLL_DEBOUNCE_MS)
+            .collect { (i, o) ->
+                onScroll(i, o)
+            }
     }
 
     SelectionContainer {
@@ -349,7 +422,10 @@ private fun CommentaryListView(
             state = listState,
             modifier = Modifier.fillMaxSize()
         ) {
-            items(lazyPagingItems.itemCount) { index ->
+            items(
+                count = lazyPagingItems.itemCount,
+                key = { index -> lazyPagingItems[index]?.link?.id ?: index } // Clé stable
+            ) { index ->
                 lazyPagingItems[index]?.let { commentary ->
                     CommentaryItem(
                         commentary = commentary,
@@ -360,44 +436,50 @@ private fun CommentaryListView(
             }
 
             // Loading states
-            when (lazyPagingItems.loadState.refresh) {
+            when (val loadState = lazyPagingItems.loadState.refresh) {
                 is LoadState.Loading -> item { LoadingIndicator() }
                 is LoadState.Error -> item {
-                    ErrorMessage((lazyPagingItems.loadState.refresh as LoadState.Error).error)
+                    ErrorMessage(loadState.error)
                 }
-
                 else -> {}
             }
         }
     }
 }
 
-@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun CommentaryItem(
     commentary: CommentaryWithText,
     textSizes: AnimatedTextSizes,
     onClick: () -> Unit
 ) {
+    // Memorizes the pointerInput to avoid recreating it
+    val clickModifier = remember {
+        Modifier.pointerInput(Unit) {
+            detectTapGestures(onTap = { onClick() })
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 16.dp)
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { onClick() })
-            }
+            .padding(horizontal = 16.dp)
+            .then(clickModifier)
     ) {
-        // Unified HTML to AnnotatedString
-        val annotated = remember(commentary.link.id, commentary.targetText, textSizes.commentTextSize) {
+        // Cache the annotation to avoid rebuilding it
+        val annotated = remember(commentary.targetText, textSizes.commentTextSize) {
             buildAnnotatedFromHtml(
                 commentary.targetText,
                 textSizes.commentTextSize
             )
         }
+
+        val fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew))
+
         Text(
             text = annotated,
             textAlign = TextAlign.Justify,
-            fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew)),
+            fontFamily = fontFamily,
             lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp
         )
     }
@@ -464,17 +546,19 @@ private fun rememberAnimatedTextSettings(): AnimatedTextSizes {
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val commentTextSize by animateFloatAsState(
         targetValue = rawTextSize * 0.875f,
-        animationSpec = tween(durationMillis = 300),
+        animationSpec = tween(durationMillis = 200), // Réduit de 300ms
         label = "commentTextSizeAnim"
     )
     val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
     val lineHeight by animateFloatAsState(
         targetValue = rawLineHeight,
-        animationSpec = tween(durationMillis = 300),
+        animationSpec = tween(durationMillis = 200), // Réduit de 300ms
         label = "commentLineHeightAnim"
     )
 
-    return AnimatedTextSizes(commentTextSize, lineHeight)
+    return remember(commentTextSize, lineHeight) {
+        AnimatedTextSizes(commentTextSize, lineHeight)
+    }
 }
 
 @Composable
@@ -510,32 +594,37 @@ private fun rememberSelectedCommentators(
         mutableStateOf<Set<String>>(emptySet())
     }
 
-    // Initialize selection
+    // Initialize selection with optimization
     LaunchedEffect(initiallySelectedIds, titleToIdMap) {
         if (initiallySelectedIds.isNotEmpty() && titleToIdMap.isNotEmpty()) {
-            val desiredNames = titleToIdMap
-                .filterValues { it in initiallySelectedIds }
-                .keys
-                .toSet()
+            val desiredNames = buildSet {
+                titleToIdMap.forEach { (name, id) ->
+                    if (id in initiallySelectedIds) add(name)
+                }
+            }
             if (desiredNames != selectedCommentators.value) {
                 selectedCommentators.value = desiredNames
             }
         }
     }
 
-    // Emit selection changes
+    // Emit selection changes with optimization
     LaunchedEffect(selectedCommentators.value, titleToIdMap) {
-        val ids = selectedCommentators.value
-            .mapNotNull { titleToIdMap[it] }
-            .toSet()
+        val ids = buildSet {
+            selectedCommentators.value.forEach { name ->
+                titleToIdMap[name]?.let { add(it) }
+            }
+        }
         onSelectionChange(ids)
     }
 
-    // Keep selection valid
-    LaunchedEffect(availableCommentators) {
-        val filtered = selectedCommentators.value
-            .filter { it in availableCommentators.toSet() }
-            .toSet()
+    // Keep selection valid with optimization
+    val availableSet = remember(availableCommentators) {
+        availableCommentators.toSet()
+    }
+
+    LaunchedEffect(availableSet) {
+        val filtered = selectedCommentators.value.intersect(availableSet)
         if (filtered != selectedCommentators.value) {
             selectedCommentators.value = filtered
         }
@@ -544,11 +633,13 @@ private fun rememberSelectedCommentators(
     return selectedCommentators
 }
 
+@Immutable
 private data class AnimatedTextSizes(
     val commentTextSize: Float,
     val lineHeight: Float
 )
 
+@Immutable
 private data class CommentariesLayoutConfig(
     val selectedCommentators: List<String>,
     val titleToIdMap: Map<String, Long>,

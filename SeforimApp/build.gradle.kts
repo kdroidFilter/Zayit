@@ -71,6 +71,7 @@ kotlin {
             implementation(project(":logger"))
             implementation(project(":navigation"))
             implementation(project(":pagination"))
+            implementation(project(":texteffects"))
 
             // Paging
             implementation(libs.paging.compose.common)

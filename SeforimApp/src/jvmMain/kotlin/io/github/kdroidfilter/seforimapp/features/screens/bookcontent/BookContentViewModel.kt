@@ -15,6 +15,8 @@ import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases.C
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases.NavigationUseCase
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases.TocUseCase
 import io.github.kdroidfilter.seforimapp.logger.debugln
+import io.github.kdroidfilter.seforimapp.core.settings.IAppSettings
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,7 +33,8 @@ class BookContentViewModel(
     private val tabStateManager: TabStateManager,
     private val repository: SeforimRepository,
     private val titleUpdateManager: TabTitleUpdateManager,
-    private val navigator: Navigator
+    private val navigator: Navigator,
+    private val appSettings: IAppSettings
 ) : TabAwareViewModel(
     tabId = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: "",
     stateManager = tabStateManager
@@ -219,6 +222,12 @@ class BookContentViewModel(
                 is BookContentEvent.CommentariesScrolled ->
                     commentariesUseCase.updateCommentariesScrollPosition(event.index, event.offset)
 
+                is BookContentEvent.CommentatorsListScrolled ->
+                    commentariesUseCase.updateCommentatorsListScrollPosition(event.index, event.offset)
+
+                is BookContentEvent.CommentaryColumnScrolled ->
+                    commentariesUseCase.updateCommentaryColumnScrollPosition(event.commentatorId, event.index, event.offset)
+
                 is BookContentEvent.SelectedCommentatorsChanged ->
                     commentariesUseCase.updateSelectedCommentators(event.lineId, event.selectedIds)
 
@@ -270,27 +279,49 @@ class BookContentViewModel(
     /**
      * Charge un livre
      */
-    private fun loadBook(book: io.github.kdroidfilter.seforimlibrary.core.models.Book) {
+    private fun loadBook(book: Book) {
         val previousBook = stateManager.state.value.navigation.selectedBook
 
         navigationUseCase.selectBook(book)
 
-        // Réinitialiser les positions si on change de livre
-        if (previousBook?.id != book.id) {
-        debugln { "Loading new book, resetting positions" }
-        contentUseCase.resetScrollPositions()
-        tocUseCase.resetToc()
+        // Afficher automatiquement le TOC lors de la première sélection d'un livre si caché
+        if (previousBook == null && !stateManager.state.value.toc.isVisible) {
+            val current = stateManager.state.value
+            // Restaurer la position précédente du séparateur TOC
+            current.layout.tocSplitState.positionPercentage = current.layout.previousPositions.toc
+            stateManager.updateToc {
+                copy(isVisible = true)
+            }
+        }
 
-        // Cacher les commentaires lors du changement de livre
-        if (stateManager.state.value.content.showCommentaries) {
-            contentUseCase.toggleCommentaries()
+        // Réinitialiser les positions et les sélections si on change de livre
+        if (previousBook?.id != book.id) {
+            debugln { "Loading new book, resetting positions and selections" }
+            contentUseCase.resetScrollPositions()
+            tocUseCase.resetToc()
+
+            // Réinitialiser les sélections de commentateurs et de targum/links et la ligne sélectionnée
+            stateManager.resetForNewBook()
+
+            // Cacher les commentaires lors du changement de livre
+            if (stateManager.state.value.content.showCommentaries) {
+                contentUseCase.toggleCommentaries()
+            }
+            // Cacher le targum lors du changement de livre
+            if (stateManager.state.value.content.showTargum) {
+                contentUseCase.toggleTargum()
+            }
+
+            // Fermer automatiquement le panneau de l'arbre des livres si l'option est activée
+            if (appSettings.getCloseBookTreeOnNewBookSelected()) {
+                val isTreeVisible = stateManager.state.value.navigation.isVisible
+                if (isTreeVisible) {
+                    navigationUseCase.toggleBookTree()
+                }
+            }
+
+            System.gc()
         }
-        // Cacher le targum lors du changement de livre
-        if (stateManager.state.value.content.showTargum) {
-            contentUseCase.toggleTargum()
-        }
-        System.gc()
-    }
 
         loadBookData(book)
     }
@@ -299,7 +330,7 @@ class BookContentViewModel(
      * Charge les données du livre
      */
     private fun loadBookData(
-        book: io.github.kdroidfilter.seforimlibrary.core.models.Book,
+        book: Book,
         forceAnchorId: Long? = null
     ) {
         viewModelScope.launch {
@@ -358,7 +389,7 @@ class BookContentViewModel(
     /**
      * Ouvre un livre dans un nouvel onglet
      */
-    private suspend fun openBookInNewTab(book: io.github.kdroidfilter.seforimlibrary.core.models.Book) {
+    private suspend fun openBookInNewTab(book: Book) {
         val newTabId = java.util.UUID.randomUUID().toString()
 
         // Copier l'état de navigation vers le nouvel onglet

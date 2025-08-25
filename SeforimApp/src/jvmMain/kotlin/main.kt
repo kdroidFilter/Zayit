@@ -2,9 +2,12 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -12,7 +15,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.Tray
 import androidx.compose.ui.window.application
+import com.kdroid.composetray.tray.api.ExperimentalTrayAppApi
 import com.kdroid.composetray.tray.api.Tray
+import com.kdroid.composetray.tray.api.TrayApp
 import com.kdroid.composetray.utils.SingleInstanceManager
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.darkmodedetector.isSystemInDarkMode
@@ -27,8 +32,10 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWind
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.framework.di.desktopModule
 import io.github.kdroidfilter.seforimapp.icons.Bookmark
+import io.github.kdroidfilter.seforimapp.icons.Library
 import io.github.kdroidfilter.seforimapp.logger.SilenceLogs
 import org.jetbrains.compose.resources.Font
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -52,7 +59,7 @@ import java.awt.Dimension
 import java.awt.Window
 import java.util.*
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
     setMacOsAdaptiveTitleBar()
 
@@ -62,11 +69,25 @@ fun main() {
 //    }
     Locale.setDefault(Locale.Builder().setLanguage("he").setRegion("IL").build())
     application {
+        val itemText = stringResource(Res.string.app_name)
+        TrayApp(icon = Library, tooltip = "Seforim", menu = {
+            Item(itemText, Bookmark) { exitApplication() }
+        }) {
+            MaterialTheme {
+                Box(modifier = Modifier
+                    .fillMaxSize()
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(MaterialTheme.colorScheme.background)) {
+                    Text("Hello World !")
+                }
+            }
+        }
+
         val windowState = remember { getCenteredWindowState(1280, 720) }
         var isWindowVisible by remember { mutableStateOf(true) }
 
         SingleInstanceManager.configuration = SingleInstanceManager.Configuration(
-             lockIdentifier =  "io.github.kdroidfilter.seforimapp"
+            lockIdentifier = "io.github.kdroidfilter.seforimapp"
         )
 
         val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
@@ -89,19 +110,21 @@ fun main() {
 
             val themeDefinition = when (theme) {
                 IntUiThemes.Light -> JewelTheme.lightThemeDefinition(
-                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),)
+                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
                 )
+
                 IntUiThemes.Dark -> JewelTheme.darkThemeDefinition(
-                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),)
+                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
                 )
+
                 IntUiThemes.System ->
                     if (isSystemInDarkMode) {
                         JewelTheme.darkThemeDefinition(
-                            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),)
+                            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
                         )
                     } else {
                         JewelTheme.lightThemeDefinition(
-                            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),)
+                            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
                         )
                     }
             }
@@ -144,10 +167,10 @@ fun main() {
                                 Row(
                                     modifier = Modifier
                                         .padding(
-                                            start =0.dp
+                                            start = 0.dp
                                         )
                                         .align(Alignment.Start)
-                                        .width(windowWidth - if (isMacOs) iconWidth*(iconsNumber+2).dp else (iconWidth * iconsNumber).dp)
+                                        .width(windowWidth - if (isMacOs) iconWidth * (iconsNumber + 2).dp else (iconWidth * iconsNumber).dp)
                                 ) {
                                     TabsView()
                                 }

@@ -1,11 +1,16 @@
 package org.jetbrains.jewel.window.utils
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
@@ -26,8 +31,9 @@ private fun TitleBarScope.CloseButton(
     onClick: () -> Unit,
     state: DecoratedWindowState,
     style: TitleBarStyle = JewelTheme.defaultTitleBarStyle,
+    iconHoveredEffect: Boolean,
 ) {
-    ControlButton(onClick, state, style.icons.closeButton, "Close", style, style.paneCloseButtonStyle)
+    ControlButton(onClick, state, style.icons.closeButton, "Close", style, style.paneCloseButtonStyle, iconHoveredEffect)
 }
 
 @Composable
@@ -38,13 +44,22 @@ private fun TitleBarScope.ControlButton(
     description: String,
     style: TitleBarStyle = JewelTheme.defaultTitleBarStyle,
     iconButtonStyle: IconButtonStyle = style.paneButtonStyle,
+    iconHoveredEffect: Boolean
 ) {
     IconButton(
         onClick,
         Modifier.align(Alignment.End).focusable(false).size(style.metrics.titlePaneButtonSize),
         style = iconButtonStyle,
     ) {
-        Icon(iconKey, description, hint = if (state.isActive) PainterHint else Inactive)
+        Icon(
+            iconKey,
+            description,
+            hint = if (state.isActive) PainterHint else Inactive,
+            modifier = if (iconHoveredEffect) Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(onClick = onClick) else Modifier,
+            )
+
     }
 }
 
@@ -57,18 +72,22 @@ internal fun TitleBarScope.WindowControlArea(
     window: ComposeWindow,
     state: DecoratedWindowState,
     style: TitleBarStyle = JewelTheme.defaultTitleBarStyle,
+    iconHoveredEffect: Boolean = false,
 ) {
-    CloseButton({ window.dispatchEvent(WindowEvent(window, WindowEvent.WINDOW_CLOSING)) }, state, style)
+    CloseButton({ window.dispatchEvent(WindowEvent(window, WindowEvent.WINDOW_CLOSING)) }, state, style, iconHoveredEffect)
 
     if (state.isMaximized) {
-        ControlButton({ window.extendedState = Frame.NORMAL }, state, style.icons.restoreButton, "Restore")
+        ControlButton({ window.extendedState = Frame.NORMAL }, state, style.icons.restoreButton, "Restore", iconHoveredEffect = iconHoveredEffect, style = style, iconButtonStyle = style.paneButtonStyle)
     } else {
         ControlButton(
             { window.extendedState = Frame.MAXIMIZED_BOTH },
             state,
             style.icons.maximizeButton,
             "Maximize",
+            iconHoveredEffect = iconHoveredEffect,
+            style = style,
+            iconButtonStyle = style.paneButtonStyle
         )
     }
-    ControlButton({ window.extendedState = Frame.ICONIFIED }, state, style.icons.minimizeButton, "Minimize")
+    ControlButton({ window.extendedState = Frame.ICONIFIED }, state, style.icons.minimizeButton, "Minimize", iconHoveredEffect = iconHoveredEffect, style = style, iconButtonStyle = style.paneButtonStyle)
 }

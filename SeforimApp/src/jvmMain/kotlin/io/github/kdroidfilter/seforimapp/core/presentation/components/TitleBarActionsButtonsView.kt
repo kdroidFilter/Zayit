@@ -10,7 +10,7 @@ import io.github.kdroidfilter.seforimapp.features.windows.settings.SettingsViewM
 import io.github.kdroidfilter.seforimapp.features.windows.settings.collectSettingsState
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.koin.compose.viewmodel.koinViewModel
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import seforimapp.seforimapp.generated.resources.dark_theme
 import seforimapp.seforimapp.generated.resources.find
 import seforimapp.seforimapp.generated.resources.find_tooltip
@@ -31,7 +31,7 @@ fun TitleBarActionsButtonsView() {
     val theme = themeViewModel.theme.collectAsState().value
 
     // Use ViewModel-driven settings window visibility to respect MVVM conventions
-    val settingsViewModel: SettingsViewModel = koinViewModel()
+    val settingsViewModel: SettingsViewModel = LocalAppGraph.current.settingsViewModel
     val settingsState = collectSettingsState(settingsViewModel)
 
     val iconDescription = when (theme) {

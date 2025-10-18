@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
-import org.koin.compose.viewmodel.koinViewModel
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.SplitDefaults
 import kotlin.math.roundToInt
 
@@ -31,8 +30,7 @@ import kotlin.math.roundToInt
  * `BookContentView`.
  */
 @Composable
-fun BookContentScreen() {
-    val viewModel: BookContentViewModel = koinViewModel()
+fun BookContentScreen(viewModel: BookContentViewModel) {
     val uiState by viewModel.uiState.collectAsState()
 
     BookContentView(

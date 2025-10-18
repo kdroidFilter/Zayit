@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -21,16 +22,16 @@ import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforim.utils.ObserveAsEvents
 
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentScreen
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Text
-import org.koin.compose.koinInject
-import org.koin.compose.viewmodel.koinViewModel
 import java.util.UUID
 
 @Composable
 fun TabsNavHost() {
-    val navigator = koinInject<Navigator>()
-    val tabsViewModel: TabsViewModel = koinViewModel()
+    val appGraph = LocalAppGraph.current
+    val navigator = appGraph.navigator
+    val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
     val navController = rememberNavController()
 
     val tabs by tabsViewModel.tabs.collectAsState()
@@ -116,7 +117,10 @@ fun TabsNavHost() {
             destination.lineId?.let { lineId ->
                 backStackEntry.savedStateHandle["lineId"] = lineId
             }
-            BookContentScreen()
+            val viewModel = remember(appGraph, destination) {
+                appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
+            }
+            BookContentScreen(viewModel)
         }
     }
 }

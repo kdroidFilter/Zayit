@@ -30,7 +30,10 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
-import io.github.kdroidfilter.seforimapp.framework.di.desktopModule
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import dev.zacsweers.metro.createGraph
+import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Bookmark
 import io.github.kdroidfilter.seforimapp.icons.Library
 import io.github.kdroidfilter.seforimapp.logger.SilenceLogs
@@ -51,7 +54,6 @@ import org.jetbrains.jewel.window.DecoratedWindow
 import org.jetbrains.jewel.window.TitleBar
 import org.jetbrains.jewel.window.newFullscreenControls
 import org.jetbrains.jewel.window.styling.TitleBarStyle
-import org.koin.compose.KoinApplication
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.app_name
 import seforimapp.seforimapp.generated.resources.notoserifhebrew
@@ -101,9 +103,13 @@ fun main() {
         }
 
         val isMacOs = getOperatingSystem() == OperatingSystem.MACOS
-        KoinApplication(application = {
-            modules(desktopModule)
-        }) {
+        // Create the application graph via Metro and expose via CompositionLocal
+        val appGraph = remember { createGraph<AppGraph>() }
+        // Initialize static delegates that need app-level instances
+        LaunchedEffect(Unit) {
+            AppSettings.initialize(appGraph.appSettings)
+        }
+        CompositionLocalProvider(LocalAppGraph provides appGraph) {
             val themeViewModel = ThemeViewModel
             val theme = themeViewModel.theme.collectAsState().value
             val isSystemInDarkMode = isSystemInDarkMode()

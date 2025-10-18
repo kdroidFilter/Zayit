@@ -50,7 +50,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
-import org.koin.compose.viewmodel.koinViewModel
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.add_tab
 import seforimapp.seforimapp.generated.resources.home
@@ -75,7 +75,7 @@ fun Modifier.verticalWheelToHorizontal(
 
 @Composable
 fun TabsView() {
-    val viewModel: TabsViewModel = koinViewModel()
+    val viewModel: TabsViewModel = LocalAppGraph.current.tabsViewModel
     val state = rememberTabsState(viewModel)
     DefaultTabShowcase(state = state, onEvents = viewModel::onEvent)
 }

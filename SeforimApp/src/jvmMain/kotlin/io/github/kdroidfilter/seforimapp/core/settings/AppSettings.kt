@@ -6,8 +6,6 @@ import com.russhwolf.settings.set
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 
 /**
  * Implementation of IAppSettings interface that manages application settings and preferences.
@@ -89,9 +87,9 @@ class AppSettingsImpl(private val settings: Settings) : IAppSettings {
  * Manages application settings and preferences that persist across app restarts.
  * Uses Multiplatform Settings library for cross-platform storage.
  * 
- * This object delegates to a Koin-managed implementation of IAppSettings.
+ * This object delegates to an application-provided implementation of IAppSettings.
  */
-object AppSettings : KoinComponent {
+object AppSettings {
     // Text size constants
     const val DEFAULT_TEXT_SIZE = 16f
     const val MIN_TEXT_SIZE = 8f
@@ -107,24 +105,30 @@ object AppSettings : KoinComponent {
     // Tab display constants
     const val MAX_TAB_TITLE_LENGTH = 20
     
-    // Get the implementation from Koin
-    private val impl: IAppSettings by inject()
+    // Backing implementation, initialized at app startup; falls back to a default if not set
+    @Volatile
+    private var impl: IAppSettings? = null
+
+    fun initialize(appSettings: IAppSettings) {
+        impl = appSettings
+    }
     
     // Delegate to the implementation
-    val textSizeFlow: StateFlow<Float> get() = impl.textSizeFlow
-    val lineHeightFlow: StateFlow<Float> get() = impl.lineHeightFlow
-    val closeBookTreeOnNewBookSelectedFlow: StateFlow<Boolean> get() = impl.closeBookTreeOnNewBookSelectedFlow
+    private fun requireImpl(): IAppSettings = impl ?: AppSettingsImpl(Settings()).also { impl = it }
+    val textSizeFlow: StateFlow<Float> get() = requireImpl().textSizeFlow
+    val lineHeightFlow: StateFlow<Float> get() = requireImpl().lineHeightFlow
+    val closeBookTreeOnNewBookSelectedFlow: StateFlow<Boolean> get() = requireImpl().closeBookTreeOnNewBookSelectedFlow
     
-    fun getTextSize(): Float = impl.getTextSize()
-    fun setTextSize(size: Float) = impl.setTextSize(size)
-    fun increaseTextSize(increment: Float = TEXT_SIZE_INCREMENT) = impl.increaseTextSize(increment)
-    fun decreaseTextSize(decrement: Float = TEXT_SIZE_INCREMENT) = impl.decreaseTextSize(decrement)
+    fun getTextSize(): Float = requireImpl().getTextSize()
+    fun setTextSize(size: Float) = requireImpl().setTextSize(size)
+    fun increaseTextSize(increment: Float = TEXT_SIZE_INCREMENT) = requireImpl().increaseTextSize(increment)
+    fun decreaseTextSize(decrement: Float = TEXT_SIZE_INCREMENT) = requireImpl().decreaseTextSize(decrement)
     
-    fun getLineHeight(): Float = impl.getLineHeight()
-    fun setLineHeight(height: Float) = impl.setLineHeight(height)
-    fun increaseLineHeight(increment: Float = LINE_HEIGHT_INCREMENT) = impl.increaseLineHeight(increment)
-    fun decreaseLineHeight(decrement: Float = LINE_HEIGHT_INCREMENT) = impl.decreaseLineHeight(decrement)
+    fun getLineHeight(): Float = requireImpl().getLineHeight()
+    fun setLineHeight(height: Float) = requireImpl().setLineHeight(height)
+    fun increaseLineHeight(increment: Float = LINE_HEIGHT_INCREMENT) = requireImpl().increaseLineHeight(increment)
+    fun decreaseLineHeight(decrement: Float = LINE_HEIGHT_INCREMENT) = requireImpl().decreaseLineHeight(decrement)
 
-    fun getCloseBookTreeOnNewBookSelected(): Boolean = impl.getCloseBookTreeOnNewBookSelected()
-    fun setCloseBookTreeOnNewBookSelected(value: Boolean) = impl.setCloseBookTreeOnNewBookSelected(value)
+    fun getCloseBookTreeOnNewBookSelected(): Boolean = requireImpl().getCloseBookTreeOnNewBookSelected()
+    fun setCloseBookTreeOnNewBookSelected(value: Boolean) = requireImpl().setCloseBookTreeOnNewBookSelected(value)
 }

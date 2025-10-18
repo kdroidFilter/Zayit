@@ -24,9 +24,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 
-/**
- * ViewModel simplifié pour l'écran de contenu du livre
- */
+/** ViewModel simplifié pour l'écran de contenu du livre */
 @OptIn(ExperimentalSplitPaneApi::class)
 class BookContentViewModel(
     savedStateHandle: SavedStateHandle,
@@ -107,9 +105,7 @@ class BookContentViewModel(
         initialize(savedStateHandle)
     }
 
-    /**
-     * Initialisation du ViewModel
-     */
+    /** Initialisation du ViewModel */
     private fun initialize(savedStateHandle: SavedStateHandle) {
         viewModelScope.launch {
             // Charger les catégories racine
@@ -144,9 +140,7 @@ class BookContentViewModel(
         }
     }
 
-    /**
-     * Gestion des événements
-     */
+    /** Gestion des événements */
     fun onEvent(event: BookContentEvent) {
         viewModelScope.launch {
             when (event) {
@@ -226,7 +220,11 @@ class BookContentViewModel(
                     commentariesUseCase.updateCommentatorsListScrollPosition(event.index, event.offset)
 
                 is BookContentEvent.CommentaryColumnScrolled ->
-                    commentariesUseCase.updateCommentaryColumnScrollPosition(event.commentatorId, event.index, event.offset)
+                    commentariesUseCase.updateCommentaryColumnScrollPosition(
+                        event.commentatorId,
+                        event.index,
+                        event.offset
+                    )
 
                 is BookContentEvent.SelectedCommentatorsChanged ->
                     commentariesUseCase.updateSelectedCommentators(event.lineId, event.selectedIds)
@@ -241,9 +239,7 @@ class BookContentViewModel(
         }
     }
 
-    /**
-     * Charge un livre par ID
-     */
+    /** Charge un livre par ID */
     private suspend fun loadBookById(bookId: Long, lineId: Long? = null) {
         stateManager.setLoading(true)
         try {
@@ -276,9 +272,7 @@ class BookContentViewModel(
         }
     }
 
-    /**
-     * Charge un livre
-     */
+    /** Charge un livre */
     private fun loadBook(book: Book) {
         val previousBook = stateManager.state.value.navigation.selectedBook
 
@@ -326,9 +320,7 @@ class BookContentViewModel(
         loadBookData(book)
     }
 
-    /**
-     * Charge les données du livre
-     */
+    /** Charge les données du livre */
     private fun loadBookData(
         book: Book,
         forceAnchorId: Long? = null
@@ -360,18 +352,14 @@ class BookContentViewModel(
         }
     }
 
-    /**
-     * Sélectionne une ligne
-     */
+    /** Sélectionne une ligne */
     private suspend fun selectLine(line: Line) {
         contentUseCase.selectLine(line)
         commentariesUseCase.reapplySelectedCommentators(line)
         commentariesUseCase.reapplySelectedLinkSources(line)
     }
 
-    /**
-     * Charge et sélectionne une ligne
-     */
+    /** Charge et sélectionne une ligne */
     private suspend fun loadAndSelectLine(lineId: Long) {
         val book = stateManager.state.value.navigation.selectedBook ?: return
 
@@ -386,9 +374,7 @@ class BookContentViewModel(
         }
     }
 
-    /**
-     * Ouvre un livre dans un nouvel onglet
-     */
+    /** Ouvre un livre dans un nouvel onglet */
     private suspend fun openBookInNewTab(book: Book) {
         val newTabId = java.util.UUID.randomUUID().toString()
 
@@ -403,14 +389,23 @@ class BookContentViewModel(
         )
     }
 
-    /**
-     * Ouvre une cible de commentaire
-     */
+    /** Ouvre une cible de commentaire */
     private suspend fun openCommentaryTarget(bookId: Long, lineId: Long) {
+
+        // Create a new tab and pre-initialize it to avoid initial flashing
+        val newTabId = java.util.UUID.randomUUID().toString()
+
+        // Preload the Book object so that the screen does not display the Home by default
+        repository.getBook(bookId)?.let { book ->
+            tabStateManager.saveState(newTabId, StateKeys.SELECTED_BOOK, book)
+        }
+        // Optional: indicate the initial anchor for a center scroll upon loading
+        tabStateManager.saveState(newTabId, StateKeys.CONTENT_ANCHOR_ID, lineId)
+
         navigator.navigate(
             TabsDestination.BookContent(
                 bookId = bookId,
-                tabId = java.util.UUID.randomUUID().toString(),
+                tabId = newTabId,
                 lineId = lineId
             )
         )
@@ -418,9 +413,7 @@ class BookContentViewModel(
 
 }
 
-/**
- * Extension pour copier l'état de navigation entre onglets
- */
+/** Extension pour copier l'état de navigation entre onglets */
 private fun BookContentStateManager.copyNavigationState(
     fromTabId: String,
     toTabId: String,

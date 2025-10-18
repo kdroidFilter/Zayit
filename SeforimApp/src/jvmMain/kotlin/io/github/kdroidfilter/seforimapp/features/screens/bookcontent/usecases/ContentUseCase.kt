@@ -176,7 +176,8 @@ class ContentUseCase(
                     )
                 )
             }
-            newPosition = 0.95f
+            // Fully expand the main content when comments are hidden
+            newPosition = 1f
             currentState.layout.contentSplitState.positionPercentage = newPosition
         } else {
             // Montrer
@@ -209,7 +210,8 @@ class ContentUseCase(
                     )
                 )
             }
-            newPosition = 0.95f
+            // Fully expand the main content when links pane is hidden
+            newPosition = 1f
             currentState.layout.targumSplitState.positionPercentage = newPosition
         } else {
             // Montrer: restaurer la dernière position enregistrée

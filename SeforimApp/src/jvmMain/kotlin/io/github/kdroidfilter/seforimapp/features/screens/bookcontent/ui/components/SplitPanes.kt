@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.ui.compon
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -26,12 +27,13 @@ fun EnhancedHorizontalSplitPane(
     secondContent: (@Composable BoxScope.() -> Unit)?,
     showSplitter: Boolean = true
 ) {
-    if (secondContent == null) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            content = firstContent
-        )
-        return
+    val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
+
+    // When the second pane is hidden, expand the first to 100% to avoid blank space
+    LaunchedEffect(secondContent == null) {
+        if (secondContent == null) {
+            splitPaneState.positionPercentage = 1f
+        }
     }
 
     HorizontalSplitPane(
@@ -44,13 +46,18 @@ fun EnhancedHorizontalSplitPane(
                 content = firstContent
             )
         }
-        second(secondMinSize.dp) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                content = secondContent
-            )
+        second(effectiveSecondMin.dp) {
+            if (secondContent != null) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    content = secondContent
+                )
+            } else {
+                // Keep the pane structure stable even when hidden
+                Box(modifier = Modifier.fillMaxSize())
+            }
         }
-        if (showSplitter) {
+        if (showSplitter && secondContent != null) {
             splitter {
                 visiblePart {
                     Divider(
@@ -85,12 +92,13 @@ fun EnhancedVerticalSplitPane(
     secondContent: (@Composable BoxScope.() -> Unit)?,
     showSplitter: Boolean = true
 ) {
-    if (secondContent == null) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            content = firstContent
-        )
-        return
+    val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
+
+    // When the second pane is hidden, expand the first to 100% to avoid blank space
+    LaunchedEffect(secondContent == null) {
+        if (secondContent == null) {
+            splitPaneState.positionPercentage = 1f
+        }
     }
 
     VerticalSplitPane(
@@ -103,13 +111,18 @@ fun EnhancedVerticalSplitPane(
                 content = firstContent
             )
         }
-        second(secondMinSize.dp) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                content = secondContent
-            )
+        second(effectiveSecondMin.dp) {
+            if (secondContent != null) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    content = secondContent
+                )
+            } else {
+                // Keep the pane structure stable even when hidden
+                Box(modifier = Modifier.fillMaxSize())
+            }
         }
-        if (showSplitter) {
+        if (showSplitter && secondContent != null) {
             splitter {
                 visiblePart {
                     Divider(

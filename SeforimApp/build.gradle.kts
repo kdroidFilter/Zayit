@@ -73,8 +73,9 @@ kotlin {
             implementation(project(":pagination"))
             implementation(project(":texteffects"))
 
-            // Paging
-            implementation(libs.paging.compose.common)
+            // Paging (AndroidX Paging 3)
+            implementation(libs.androidx.paging.common)
+            implementation(libs.androidx.paging.compose)
         }
 
         commonTest.dependencies {

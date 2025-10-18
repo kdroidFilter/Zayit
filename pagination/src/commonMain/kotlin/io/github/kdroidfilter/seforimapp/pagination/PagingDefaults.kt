@@ -1,6 +1,6 @@
 package io.github.kdroidfilter.seforimapp.pagination
 
-import app.cash.paging.PagingConfig
+import androidx.paging.PagingConfig
 
 /**
  * Centralized paging configuration for the Book Content feature.

@@ -26,7 +26,8 @@ kotlin {
             implementation("io.github.kdroidfilter.seforimlibrary:dao")
             implementation(compose.runtime)
             implementation(compose.foundation)
-            implementation(libs.paging.compose.common)
+            // AndroidX Paging 3 (common)
+            implementation(libs.androidx.paging.common)
             implementation(project(":logger"))
 
         }

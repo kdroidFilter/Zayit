@@ -2,8 +2,8 @@
 
 package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.usecases
 
-import app.cash.paging.Pager
-import app.cash.paging.PagingData
+import androidx.paging.Pager
+import androidx.paging.PagingData
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimapp.pagination.LinesPagingSource

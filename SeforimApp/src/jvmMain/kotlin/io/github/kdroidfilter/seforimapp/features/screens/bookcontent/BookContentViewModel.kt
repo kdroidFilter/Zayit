@@ -2,8 +2,8 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import app.cash.paging.PagingData
-import app.cash.paging.cachedIn
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import io.github.kdroidfilter.seforim.navigation.Navigator
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state.BookContentStateManager

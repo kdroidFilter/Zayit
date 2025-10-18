@@ -2,7 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.screens.bookcontent.state
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import app.cash.paging.PagingData
+import androidx.paging.PagingData
 import io.github.kdroidfilter.seforimlibrary.core.models.*
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.flow.Flow

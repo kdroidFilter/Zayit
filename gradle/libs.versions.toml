@@ -19,9 +19,9 @@ buildConfig = "5.6.7"
 materialKolor = "3.0.1"
 jewel = "0.29.0-252.24604"
 jna = "5.17.0"
-pagingComposeCommon = "3.3.0-alpha02-0.5.1"
+paging = "3.3.2"
 platformtools = "0.5.0"
-composenativetray = "0.8.5"
+composenativetray = "0.8.10"
 kotlinx-coroutines = "1.10.2"
 slf4j = "2.0.17"
 maven-publish = "0.34.0"
@@ -67,7 +67,8 @@ jewel-int-ui-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-dec
 jewel-int-ui-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
 jewel-ui = { module = "org.jetbrains.jewel:jewel-ui", version.ref = "jewel" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
-paging-compose-common = { module = "app.cash.paging:paging-compose-common", version.ref = "pagingComposeCommon" }
+androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "paging" }
+androidx-paging-compose = { module = "androidx.paging:paging-compose", version = "3.4.0-alpha04" }
 platformtools-core = { module = "io.github.kdroidfilter:platformtools.core", version.ref = "platformtools" }
 platformtools-darkmodedetector = { module = "io.github.kdroidfilter:platformtools.darkmodedetector", version.ref = "platformtools" }
 platformtools-rtlwindows = { module = "io.github.kdroidfilter:platformtools.rtlwindows", version.ref = "platformtools" }
@@ -95,3 +96,4 @@ buildConfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildConfig
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
 sqlDelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+caupain =  { id = "com.deezer.caupain", version = "1.6.1"}

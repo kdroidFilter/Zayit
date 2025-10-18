@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -105,21 +107,25 @@ fun BookContentView(
     // Optimize selected line ID lookup
     val selectedLineId = remember(selectedLine) { selectedLine?.id }
 
-    // Handle scrolling to selected line when timestamp changes
+    // Ensure the selected line is visible when explicitly requested (keyboard/nav)
+    // without forcing it to the very top of the viewport.
     LaunchedEffect(scrollToLineTimestamp, selectedLineId) {
         if (scrollToLineTimestamp == 0L || selectedLineId == null) return@LaunchedEffect
 
-        // Wait for initial loading to complete
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
             delay(16)
         }
 
-        // Find and scroll to the selected line using binary search if possible
         val snapshot = lazyPagingItems.itemSnapshotList
         val index = snapshot.indices.firstOrNull { snapshot[it]?.id == selectedLineId }
-
         if (index != null) {
-            listState.scrollToItem(index)
+            val first = listState.firstVisibleItemIndex
+            val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: first
+            if (index < first || index > last) {
+                // Scroll just enough so the item is not glued to the top
+                val targetOffsetPx = 32  // small top padding in px; minimal jump
+                listState.scrollToItem(index, targetOffsetPx)
+            }
         }
     }
 
@@ -301,7 +307,8 @@ fun BookContentView(
                         isSelected = selectedLineId == line.id,
                         baseTextSize = textSize,
                         lineHeight = lineHeight,
-                        onLineSelected = onLineSelected
+                        onLineSelected = onLineSelected,
+                        scrollToLineTimestamp = scrollToLineTimestamp
                     )
                 } else {
                     // Placeholder while loading
@@ -355,7 +362,8 @@ private fun LineItem(
     isSelected: Boolean,
     baseTextSize: Float = 16f,
     lineHeight: Float = 1.5f,
-    onLineSelected: (Line) -> Unit
+    onLineSelected: (Line) -> Unit,
+    scrollToLineTimestamp: Long
 ) {
     // Memoize the annotated string with proper keys
     val annotated = remember(line.id, line.content, baseTextSize) {
@@ -370,9 +378,22 @@ private fun LineItem(
     // Get theme color in composable context
     val borderColor = if (isSelected) JewelTheme.globalColors.borders.disabled else Color.Transparent
 
+    val bringRequester = remember { BringIntoViewRequester() }
+
+    // On navigation/explicit request, bring the selected line minimally into view
+    LaunchedEffect(isSelected, scrollToLineTimestamp) {
+        if (isSelected && scrollToLineTimestamp != 0L) {
+            try {
+                bringRequester.bringIntoView()
+            } catch (_: Throwable) { /* no-op: layout might not be ready yet */ }
+        }
+    }
+
     val textModifier = remember {
         Modifier.fillMaxWidth()
-    }.pointerInput(line) {
+    }
+        .bringIntoViewRequester(bringRequester)
+        .pointerInput(line) {
         detectTapGestures(onTap = { clickHandler() })
     }
 

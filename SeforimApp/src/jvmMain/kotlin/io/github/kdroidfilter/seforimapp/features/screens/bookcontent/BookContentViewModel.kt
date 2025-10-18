@@ -180,11 +180,21 @@ class BookContentViewModel(
                 is BookContentEvent.LoadAndSelectLine ->
                     loadAndSelectLine(event.lineId)
 
-                BookContentEvent.NavigateToPreviousLine ->
-                    contentUseCase.navigateToPreviousLine()
+                BookContentEvent.NavigateToPreviousLine -> {
+                    val line = contentUseCase.navigateToPreviousLine()
+                    if (line != null) {
+                        commentariesUseCase.reapplySelectedCommentators(line)
+                        commentariesUseCase.reapplySelectedLinkSources(line)
+                    }
+                }
 
-                BookContentEvent.NavigateToNextLine ->
-                    contentUseCase.navigateToNextLine()
+                BookContentEvent.NavigateToNextLine -> {
+                    val line = contentUseCase.navigateToNextLine()
+                    if (line != null) {
+                        commentariesUseCase.reapplySelectedCommentators(line)
+                        commentariesUseCase.reapplySelectedLinkSources(line)
+                    }
+                }
 
                 BookContentEvent.ToggleCommentaries ->
                     contentUseCase.toggleCommentaries()

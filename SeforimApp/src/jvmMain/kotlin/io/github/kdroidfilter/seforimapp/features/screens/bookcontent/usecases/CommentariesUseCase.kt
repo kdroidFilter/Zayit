@@ -23,6 +23,10 @@ class CommentariesUseCase(
     private val stateManager: BookContentStateManager,
     private val scope: CoroutineScope
 ) {
+
+    private companion object {
+        private const val MAX_COMMENTATORS = 4
+    }
     
     /**
      * Construit un Pager pour les commentaires d'une ligne
@@ -103,25 +107,27 @@ class CommentariesUseCase(
      * Met à jour les commentateurs sélectionnés pour une ligne
      */
     suspend fun updateSelectedCommentators(lineId: Long, selectedIds: Set<Long>) {
-        val currentContent = stateManager.state.first().content
-        val bookId = stateManager.state.first().navigation.selectedBook?.id ?: return
-        
-        // Mettre à jour par ligne
-        val byLine = currentContent.selectedCommentatorsByLine.toMutableMap()
-        if (selectedIds.isEmpty()) {
-            byLine.remove(lineId)
-        } else {
-            byLine[lineId] = selectedIds
+        val currentState = stateManager.state.first()
+        val currentContent = currentState.content
+        val bookId = currentState.navigation.selectedBook?.id ?: return
+
+        val prevLineSelected = currentContent.selectedCommentatorsByLine[lineId] ?: emptySet()
+        val oldSticky = currentContent.selectedCommentatorsByBook[bookId] ?: emptySet()
+
+        val additions = selectedIds.minus(prevLineSelected)
+        val removals = prevLineSelected.minus(selectedIds)
+
+        val newSticky = oldSticky
+            .plus(additions)
+            .minus(removals)
+
+        val byLine = currentContent.selectedCommentatorsByLine.toMutableMap().apply {
+            if (selectedIds.isEmpty()) remove(lineId) else this[lineId] = selectedIds
         }
-        
-        // Mettre à jour par livre
-        val byBook = currentContent.selectedCommentatorsByBook.toMutableMap()
-        if (selectedIds.isEmpty()) {
-            byBook.remove(bookId)
-        } else {
-            byBook[bookId] = selectedIds
+        val byBook = currentContent.selectedCommentatorsByBook.toMutableMap().apply {
+            if (newSticky.isEmpty()) remove(bookId) else this[bookId] = newSticky
         }
-        
+
         stateManager.updateContent {
             copy(
                 selectedCommentatorsByLine = byLine,
@@ -167,20 +173,34 @@ class CommentariesUseCase(
     suspend fun reapplySelectedCommentators(line: Line) {
         val currentState = stateManager.state.first()
         val bookId = currentState.navigation.selectedBook?.id ?: line.bookId
-        val remembered = currentState.content.selectedCommentatorsByBook[bookId] ?: emptySet()
-        
-        if (remembered.isEmpty()) return
-        
+        val sticky = currentState.content.selectedCommentatorsByBook[bookId] ?: emptySet()
+
+        if (sticky.isEmpty()) return
+
         try {
             val available = getAvailableCommentators(line.id)
-            val availableIds = available.values.toSet()
-            val intersection = remembered.intersect(availableIds)
-            
-            if (intersection.isNotEmpty()) {
-                updateSelectedCommentators(line.id, intersection)
+            if (available.isEmpty()) return
+
+            val desired = mutableListOf<Long>()
+            for ((_, id) in available) {
+                if (id in sticky) desired.add(id)
+                if (desired.size >= MAX_COMMENTATORS) break
             }
-        } catch (e: Exception) {
-            // Ignorer les erreurs silencieusement
+
+            if (desired.isNotEmpty()) {
+                updateSelectedCommentatorsForLine(line.id, desired.toSet())
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    suspend fun updateSelectedCommentatorsForLine(lineId: Long, selectedIds: Set<Long>) {
+        val currentState = stateManager.state.first()
+        val byLine = currentState.content.selectedCommentatorsByLine.toMutableMap().apply {
+            if (selectedIds.isEmpty()) remove(lineId) else this[lineId] = selectedIds
+        }
+        stateManager.updateContent {
+            copy(selectedCommentatorsByLine = byLine)
         }
     }
     

@@ -593,6 +593,8 @@ private fun rememberSelectedCommentators(
     val selectedCommentators = remember(availableCommentators) {
         mutableStateOf<Set<String>>(emptySet())
     }
+    // Only skip emissions when we programmatically change selection
+    val skipEmit = remember { mutableStateOf(false) }
 
     // Initialize selection with optimization
     LaunchedEffect(initiallySelectedIds, titleToIdMap) {
@@ -603,6 +605,7 @@ private fun rememberSelectedCommentators(
                 }
             }
             if (desiredNames != selectedCommentators.value) {
+                skipEmit.value = true
                 selectedCommentators.value = desiredNames
             }
         }
@@ -615,7 +618,11 @@ private fun rememberSelectedCommentators(
                 titleToIdMap[name]?.let { add(it) }
             }
         }
-        onSelectionChange(ids)
+        if (skipEmit.value) {
+            skipEmit.value = false
+        } else {
+            onSelectionChange(ids)
+        }
     }
 
     // Keep selection valid with optimization
@@ -626,6 +633,7 @@ private fun rememberSelectedCommentators(
     LaunchedEffect(availableSet) {
         val filtered = selectedCommentators.value.intersect(availableSet)
         if (filtered != selectedCommentators.value) {
+            skipEmit.value = true
             selectedCommentators.value = filtered
         }
     }

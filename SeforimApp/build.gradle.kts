@@ -12,6 +12,8 @@ plugins {
     alias(libs.plugins.hotReload)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.buildConfig)
+    // Metro DI codegen plugin
+    alias(libs.plugins.metro)
 }
 
 kotlin {
@@ -48,10 +50,8 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.json)
 
-            // DI
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
+            // DI - Metro
+            implementation(libs.metro.runtime)
 
             // Settings & platform utils
             implementation(libs.multiplatformSettings)

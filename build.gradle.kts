@@ -8,4 +8,5 @@ plugins {
     alias(libs.plugins.buildConfig).apply(false)
     alias(libs.plugins.maven.publish).apply(false)
     alias(libs.plugins.sqlDelight).apply(false)
+    alias(libs.plugins.metro).apply(false)
 }

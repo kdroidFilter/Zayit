@@ -121,8 +121,8 @@ NavHost(
 Use the `Navigator` to navigate, which will automatically create new tabs:
 
 ```kotlin
-// Inject the navigator
-val navigator = koinInject<Navigator>()
+// Access the navigator from the app graph
+val navigator = LocalAppGraph.current.navigator
 val scope = rememberCoroutineScope()
 
 // Navigation example

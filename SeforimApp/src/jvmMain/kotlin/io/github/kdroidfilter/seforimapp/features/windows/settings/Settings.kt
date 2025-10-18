@@ -39,7 +39,7 @@ import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.intui.window.styling.dark
 import org.jetbrains.jewel.intui.window.styling.lightWithLightHeader
 import org.jetbrains.jewel.window.styling.TitleBarStyle
-import org.koin.compose.viewmodel.koinViewModel
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
 import seforimapp.seforimapp.generated.resources.notoserifhebrew
@@ -47,7 +47,7 @@ import seforimapp.seforimapp.generated.resources.settings
 
 @Composable
 fun Settings(onClose: () -> Unit) {
-    val viewModel: SettingsViewModel = koinViewModel()
+    val viewModel: SettingsViewModel = LocalAppGraph.current.settingsViewModel
     val state = collectSettingsState(viewModel)
     SettingsView(state, onClose, onToggleCloseTree = { value ->
         viewModel.onEvent(SettingsEvents.SetCloseBookTreeOnNewBookSelected(value))

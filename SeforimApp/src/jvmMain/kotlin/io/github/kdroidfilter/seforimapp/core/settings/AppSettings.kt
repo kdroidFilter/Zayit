@@ -132,4 +132,13 @@ object AppSettings {
             _databasePathFlow.value = path
         }
     }
+
+    // Clears all persisted settings and resets in-memory flows to defaults
+    fun clearAll() {
+        settings.clear()
+        _textSizeFlow.value = DEFAULT_TEXT_SIZE
+        _lineHeightFlow.value = DEFAULT_LINE_HEIGHT
+        _closeTreeOnNewBookFlow.value = false
+        _databasePathFlow.value = null
+    }
 }

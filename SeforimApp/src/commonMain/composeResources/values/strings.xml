@@ -13,6 +13,8 @@
     <string name="info">מידע</string>
     <string name="info_tooltip">הצג מידע</string>
     <string name="settings">הגדרות</string>
+    <string name="settings_reset_app">איפוס האפליקציה</string>
+    <string name="settings_reset_done">האיפוס הושלם. הפעל מחדש כדי להתחיל מחדש.</string>
 
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>

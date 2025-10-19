@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.platformtools.appmanager.restartApplication
 
 class SettingsViewModel : ViewModel() {
 
@@ -23,6 +24,18 @@ class SettingsViewModel : ViewModel() {
             is SettingsEvents.SetCloseBookTreeOnNewBookSelected -> {
                 AppSettings.setCloseBookTreeOnNewBookSelected(events.value)
                 _state.value = _state.value.copy(closedAutomaticallyBookTreePaneOnNewBookSelected = events.value)
+            }
+            is SettingsEvents.ResetApp -> {
+                // Delete database file if exists, then clear all settings
+                runCatching { AppSettings.getDatabasePath() }
+                    .getOrNull()
+                    ?.let { path ->
+                        kotlin.runCatching { java.io.File(path).delete() }
+                    }
+                AppSettings.clearAll()
+                // Immediately restart the application after reset
+                restartApplication()
+                _state.value = _state.value.copy(resetDone = true)
             }
         }
     }

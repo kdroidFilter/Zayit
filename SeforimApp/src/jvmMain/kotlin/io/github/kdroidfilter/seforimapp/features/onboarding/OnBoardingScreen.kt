@@ -67,7 +67,7 @@ private fun OnBoardingView(
                     Text("$downloadedText / $it", modifier = Modifier.padding(top = 8.dp))
                     Text("מהירות: $speedText", modifier = Modifier.padding(top = 4.dp))
                     val etaSeconds = if (speedBps > 0L) {
-                        val remaining = (totalBytes!! - state.downloadedBytes).coerceAtLeast(0)
+                        val remaining = (totalBytes - state.downloadedBytes).coerceAtLeast(0)
                         ((remaining + speedBps - 1) / speedBps)
                     } else null
                     etaSeconds?.let { secs ->

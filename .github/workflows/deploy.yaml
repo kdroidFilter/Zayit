@@ -1,0 +1,100 @@
+name: Build and Release Compose Desktop App (Linux deb, Windows msi with JBR)
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      # 1) Checkout with tags and submodules
+      - name: Checkout source (with submodules)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # ensure tags are available
+          submodules: recursive   # pull submodules (including nested)
+
+      # 2) Set up JetBrains JDK (JBR) on both OSes
+      - name: Set up JetBrains JDK (JBR 21)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'jetbrains'
+          java-version: '21'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3) Configure Gradle (cache + wrapper)
+      - name: Set up Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: '8.14'
+
+      # 4) Build per-OS packages
+      - name: Build Linux .deb
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :composeApp:createReleaseDistributable :composeApp:packageReleaseDeb
+
+      - name: Build Windows .msi
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: .\gradlew.bat :composeApp:createReleaseDistributable :composeApp:packageReleaseMsi
+
+      # 5) Upload artifacts
+      - name: Upload Linux .deb
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: composeApp/build/compose/binaries/main-release/deb/*.deb
+          if-no-files-found: error
+
+      - name: Upload Windows .msi
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msi
+          path: composeApp/build/compose/binaries/main-release/msi/*.msi
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout (for tag/notes context)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 1) Download artifacts
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-deb
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-msi
+
+      # 2) Inspect
+      - name: List downloaded files
+        run: ls -R
+
+      # 3) Create GitHub Release with the packages
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            *.deb
+            *.msi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

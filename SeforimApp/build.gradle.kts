@@ -161,7 +161,7 @@ compose.desktop {
     application {
         mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
         nativeDistributions {
-            modules("java.sql", "jdk.unsupported", "jdk.security.auth")
+            modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Zayit"
             vendor = "KDroidFilter"

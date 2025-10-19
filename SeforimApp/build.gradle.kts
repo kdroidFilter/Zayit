@@ -57,6 +57,7 @@ kotlin {
 
             // Ktor
             implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.cio)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.client.logging)
             implementation(libs.ktor.client.serialization)
@@ -79,8 +80,10 @@ kotlin {
             implementation(libs.platformtools.appmanager)
             implementation(libs.platformtools.releasefetcher)
 
-            // UI & theme utils
-            implementation(libs.materialKolor)
+            //FileKit
+            implementation("io.github.vinceglb:filekit-core:0.12.0")
+            implementation("io.github.vinceglb:filekit-dialogs:0.12.0")
+            implementation("io.github.vinceglb:filekit-dialogs-compose:0.12.0")
 
             // Project / domain libs
             implementation("io.github.kdroidfilter.seforimlibrary:core")

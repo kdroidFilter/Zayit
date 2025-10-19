@@ -6,6 +6,7 @@ import com.russhwolf.settings.Settings
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
+import io.github.kdroidfilter.platformtools.releasefetcher.github.GitHubReleaseFetcher
 import io.github.kdroidfilter.seforim.navigation.DefaultNavigator
 import io.github.kdroidfilter.seforim.navigation.Navigator
 import io.github.kdroidfilter.seforim.tabs.TabStateManager
@@ -120,6 +121,6 @@ abstract class AppGraph {
     fun provideOnBoardingViewModel(settings: Settings): OnBoardingViewModel {
         // Ensure AppSettings uses the same Settings instance
         AppSettings.initialize(settings)
-        return OnBoardingViewModel()
+        return OnBoardingViewModel(AppSettings, GitHubReleaseFetcher("kdroidFilter", "SeforimLibrary"))
     }
 }

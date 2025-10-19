@@ -13,6 +13,10 @@
     <string name="info">מידע</string>
     <string name="info_tooltip">הצג מידע</string>
     <string name="settings">הגדרות</string>
+    <string name="settings_reset_app">איפוס האפליקציה</string>
+    <string name="settings_reset_done">האיפוס הושלם. הפעל מחדש כדי להתחיל מחדש.</string>
+    <string name="settings_db_path_label">נתיב מסד הנתונים:</string>
+    <string name="settings_db_path_not_set">לא הוגדר</string>
 
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>
@@ -140,4 +144,22 @@
     <string name="onboarding_ready">הכול מוכן!</string>
     <string name="onboarding_open_app">פתח את האפליקציה</string>
     <string name="onboarding_error_occurred">אירעה שגיאה</string>
+    <string name="onboarding_preparing_download">מכין הורדה...</string>
+    <string name="onboarding_choose_source">בחרו כיצד להגדיר את מסד הנתונים</string>
+    <string name="onboarding_download_db_button">הורדת מסד הנתונים</string>
+    <string name="onboarding_pick_zst_button">בחר קובץ ‎.zst מקומי</string>
+    <!-- Units -->
+    <string name="bytes_unit_b">ב׳</string>
+    <string name="bytes_unit_kb">ק״ב</string>
+    <string name="bytes_unit_mb">מ״ב</string>
+    <string name="bytes_unit_gb">ג״ב</string>
+    <string name="bytes_unit_tb">ט״ב</string>
+    <string name="bytes_per_second_pattern">%s/שנייה</string>
+    <!-- ETA units -->
+    <string name="eta_hours_unit_singular">שעה</string>
+    <string name="eta_hours_unit_plural">שעות</string>
+    <string name="eta_minutes_unit_singular">דקה</string>
+    <string name="eta_minutes_unit_plural">דקות</string>
+    <string name="eta_seconds_unit_singular">שנייה</string>
+    <string name="eta_seconds_unit_plural">שניות</string>
 </resources>

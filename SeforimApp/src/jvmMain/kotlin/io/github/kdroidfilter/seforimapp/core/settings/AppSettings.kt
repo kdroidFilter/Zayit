@@ -32,6 +32,7 @@ object AppSettings {
     private const val KEY_TEXT_SIZE = "text_size"
     private const val KEY_LINE_HEIGHT = "line_height"
     private const val KEY_CLOSE_TREE_ON_NEW_BOOK = "close_tree_on_new_book"
+    private const val KEY_DATABASE_PATH = "database_path"
 
     // Backing Settings storage (can be replaced at startup if needed)
     @Volatile
@@ -44,6 +45,7 @@ object AppSettings {
         _textSizeFlow.value = getTextSize()
         _lineHeightFlow.value = getLineHeight()
         _closeTreeOnNewBookFlow.value = getCloseBookTreeOnNewBookSelected()
+        _databasePathFlow.value = getDatabasePath()
     }
 
     // StateFlow to observe text size changes
@@ -57,6 +59,10 @@ object AppSettings {
     // StateFlow for auto-close book tree setting
     private val _closeTreeOnNewBookFlow = MutableStateFlow(getCloseBookTreeOnNewBookSelected())
     val closeBookTreeOnNewBookSelectedFlow: StateFlow<Boolean> = _closeTreeOnNewBookFlow.asStateFlow()
+
+    // StateFlow for database path (nullable)
+    private val _databasePathFlow = MutableStateFlow(getDatabasePath())
+    val databasePathFlow: StateFlow<String?> = _databasePathFlow.asStateFlow()
 
     fun getTextSize(): Float {
         return settings[KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE]
@@ -107,5 +113,32 @@ object AppSettings {
     fun setCloseBookTreeOnNewBookSelected(value: Boolean) {
         settings[KEY_CLOSE_TREE_ON_NEW_BOOK] = value
         _closeTreeOnNewBookFlow.value = value
+    }
+
+    // Database path settings
+    // Returns null if not configured or if stored as an empty string
+    fun getDatabasePath(): String? {
+        val value: String = settings[KEY_DATABASE_PATH, ""]
+        return value.ifBlank { null }
+    }
+
+    fun setDatabasePath(path: String?) {
+        if (path == null || path.isBlank()) {
+            // Clear by setting empty string
+            settings[KEY_DATABASE_PATH] = ""
+            _databasePathFlow.value = null
+        } else {
+            settings[KEY_DATABASE_PATH] = path
+            _databasePathFlow.value = path
+        }
+    }
+
+    // Clears all persisted settings and resets in-memory flows to defaults
+    fun clearAll() {
+        settings.clear()
+        _textSizeFlow.value = DEFAULT_TEXT_SIZE
+        _lineHeightFlow.value = DEFAULT_LINE_HEIGHT
+        _closeTreeOnNewBookFlow.value = false
+        _databasePathFlow.value = null
     }
 }

@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,7 +31,8 @@ import seforimapp.seforimapp.generated.resources.onboarding_error_occurred
 @Composable
 fun OnBoardingScreen() {
     val viewModel: OnBoardingViewModel = LocalAppGraph.current.onBoardingViewModel
-
+    val state by viewModel.state.collectAsState()
+    OnBoardingView(state, viewModel::onEvent)
 }
 
 @Composable

@@ -120,6 +120,6 @@ abstract class AppGraph {
     fun provideOnBoardingViewModel(settings: Settings): OnBoardingViewModel {
         // Ensure AppSettings uses the same Settings instance
         AppSettings.initialize(settings)
-        return OnBoardingViewModel()
+        return OnBoardingViewModel(AppSettings)
     }
 }

@@ -104,29 +104,23 @@ fun main() {
             val theme = themeViewModel.theme.collectAsState().value
             val isSystemInDarkMode = isSystemInDarkMode()
 
-            val themeDefinition = when (theme) {
-                IntUiThemes.Light -> JewelTheme.lightThemeDefinition(
-                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew))),
-                    disabledAppearanceValues = DisabledAppearanceValues.light()
+            val defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
+            val isDarkTheme = when (theme) {
+                IntUiThemes.Light -> false
+                IntUiThemes.Dark -> true
+                IntUiThemes.System -> isSystemInDarkMode
+            }
+            val disabledValues = if (isDarkTheme) DisabledAppearanceValues.dark() else DisabledAppearanceValues.light()
+            val themeDefinition = if (isDarkTheme) {
+                JewelTheme.darkThemeDefinition(
+                    defaultTextStyle = defaultTextStyle,
+                    disabledAppearanceValues = disabledValues
                 )
-
-                IntUiThemes.Dark -> JewelTheme.darkThemeDefinition(
-                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew))),
-                    disabledAppearanceValues = DisabledAppearanceValues.dark()
+            } else {
+                JewelTheme.lightThemeDefinition(
+                    defaultTextStyle = defaultTextStyle,
+                    disabledAppearanceValues = disabledValues
                 )
-
-                IntUiThemes.System ->
-                    if (isSystemInDarkMode) {
-                        JewelTheme.darkThemeDefinition(
-                            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew))),
-                            disabledAppearanceValues = DisabledAppearanceValues.dark()
-                        )
-                    } else {
-                        JewelTheme.lightThemeDefinition(
-                            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew))),
-                            disabledAppearanceValues = DisabledAppearanceValues.light()
-                        )
-                    }
             }
 
             IntUiTheme(

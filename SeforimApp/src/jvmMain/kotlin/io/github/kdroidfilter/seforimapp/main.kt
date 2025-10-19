@@ -26,12 +26,14 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingScreen
 import dev.zacsweers.metro.createGraph
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Bookmark
 import io.github.kdroidfilter.seforimapp.icons.Library
+import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -59,6 +61,7 @@ import seforimapp.seforimapp.generated.resources.zayit_transparent
 import java.awt.Dimension
 import java.awt.Window
 import java.util.*
+import java.io.File
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
@@ -77,7 +80,10 @@ fun main() {
         }
 
         val windowState = remember { getCenteredWindowState(1280, 720) }
+        val onboardingWindowState = remember { getCenteredWindowState(720, 420) }
         var isWindowVisible by remember { mutableStateOf(true) }
+        var dbReady by remember { mutableStateOf(false) }
+        var showOnboarding by remember { mutableStateOf(false) }
 
         SingleInstanceManager.configuration = SingleInstanceManager.Configuration(
             lockIdentifier = "io.github.kdroidfilter.seforimapp"
@@ -100,6 +106,20 @@ fun main() {
         LaunchedEffect(Unit) {
             AppSettings.initialize(appGraph.settings)
         }
+        // Initial DB readiness check and react to changes
+        LaunchedEffect(appGraph) {
+            // Initial probe
+            val ok = runCatching { getDatabasePath() }.isSuccess
+            dbReady = ok
+            showOnboarding = !ok
+
+            // Observe path updates to close onboarding when ready
+            AppSettings.databasePathFlow.collect { path ->
+                val ready = path?.let { File(it).exists() } == true
+                dbReady = ready
+                if (ready) showOnboarding = false
+            }
+        }
         CompositionLocalProvider(LocalAppGraph provides appGraph) {
             val themeDefinition = ThemeUtils.buildThemeDefinition()
 
@@ -110,6 +130,24 @@ fun main() {
                         titleBarStyle = ThemeUtils.pickTitleBarStyle(),
                     )
             ) {
+                if (showOnboarding) {
+                    DecoratedWindow(
+                        onCloseRequest = { showOnboarding = false },
+                        title = stringResource(Res.string.app_name),
+                        icon = painterResource(Res.drawable.zayit_transparent),
+                        state = onboardingWindowState,
+                        visible = true,
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier.trackActivation().fillMaxSize()
+                                    .background(JewelTheme.globalColors.panelBackground),
+                        ) {
+                            OnBoardingScreen()
+                        }
+                    }
+                }
+                if (!dbReady) return@IntUiTheme
                 DecoratedWindow(
                     onCloseRequest = { exitApplication() },
                     title = stringResource(Res.string.app_name),

@@ -7,6 +7,10 @@ data class OnBoardingState(
     val errorMessage: String? = null,
     val extractingInProgress: Boolean,
     val extractProgress: Float,
+    // Real-time download metrics
+    val downloadedBytes: Long = 0L,
+    val downloadTotalBytes: Long? = null,
+    val downloadSpeedBytesPerSec: Long = 0L,
 ) {
     companion object {
 
@@ -27,7 +31,10 @@ data class OnBoardingState(
             downloadProgress = 0.42f,
             errorMessage = null,
             extractingInProgress = false,
-            extractProgress = 0f
+            extractProgress = 0f,
+            downloadedBytes = 850L * 1024L * 1024L, // ~850 MB
+            downloadTotalBytes = 2L * 1024L * 1024L * 1024L, // 2 GB
+            downloadSpeedBytesPerSec = 12L * 1024L * 1024L // 12 MB/s
         )
 
         // Extraction is currently in progress after a completed download

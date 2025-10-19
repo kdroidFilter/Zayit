@@ -56,6 +56,23 @@ private fun OnBoardingView(state: OnBoardingState, onEvent: (OnBoardingEvents) -
                     progress = state.downloadProgress,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                 )
+                val downloadedText = formatBytes(state.downloadedBytes)
+                val totalBytes = state.downloadTotalBytes
+                val totalText = totalBytes?.let { formatBytes(it) }
+                val speedBps = state.downloadSpeedBytesPerSec
+                val speedText = formatBytesPerSec(speedBps)
+
+                totalText?.let {
+                    Text("$downloadedText / $it", modifier = Modifier.padding(top = 8.dp))
+                    Text("מהירות: $speedText", modifier = Modifier.padding(top = 4.dp))
+                    val etaSeconds = if (speedBps > 0L) {
+                        val remaining = (totalBytes!! - state.downloadedBytes).coerceAtLeast(0)
+                        ((remaining + speedBps - 1) / speedBps)
+                    } else null
+                    etaSeconds?.let { secs ->
+                        Text("זמן משוער: ${formatDuration(secs)}", modifier = Modifier.padding(top = 4.dp))
+                    }
+                }
             }
             state.extractingInProgress -> {
                 OnboardingText(stringResource(Res.string.onboarding_extracting_message))
@@ -71,7 +88,8 @@ private fun OnBoardingView(state: OnBoardingState, onEvent: (OnBoardingEvents) -
                 }
             }
             else -> {
-                // Idle or initial state; no UI content
+                // Idle or initial state; show a friendly initializing message instead of an empty screen
+                OnboardingText("מכין הורדה...")
             }
         }
 
@@ -82,6 +100,33 @@ private fun OnBoardingView(state: OnBoardingState, onEvent: (OnBoardingEvents) -
 @Composable
 private fun OnboardingText(text: String, color : Color = Color.Unspecified) {
     Text(text, modifier = Modifier.padding(bottom = 16.dp), color = color, fontSize = JewelTheme.typography.h1TextStyle.fontSize)
+}
+
+private fun formatBytes(bytes: Long): String {
+    val units = arrayOf("ב׳", "ק״ב", "מ״ב", "ג״ב", "ט״ב")
+    var value = bytes.toDouble()
+    var unitIndex = 0
+    while (value >= 1024 && unitIndex < units.lastIndex) {
+        value /= 1024
+        unitIndex++
+    }
+    return String.format(java.util.Locale.US, "%.2f %s", value, units[unitIndex])
+}
+
+private fun formatBytesPerSec(bps: Long): String {
+    return "${formatBytes(bps)}/שנייה"
+}
+
+private fun formatDuration(totalSeconds: Long): String {
+    val secs = totalSeconds.coerceAtLeast(0)
+    val hours = secs / 3600
+    val minutes = (secs % 3600) / 60
+    val seconds = secs % 60
+    return if (hours > 0) {
+        String.format(java.util.Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(java.util.Locale.US, "%d:%02d", minutes, seconds)
+    }
 }
 
 // Previews

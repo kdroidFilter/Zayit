@@ -19,7 +19,7 @@ materialKolor = "3.0.1"
 jewel = "0.31.0-252.27409"
 jna = "5.18.1"
 paging = "3.3.6"
-platformtools = "0.7.3"
+platformtools = "0.7.4"
 composenativetray = "1.0.4"
 kotlinx-coroutines = "1.10.2"
 slf4j = "2.0.17"
@@ -29,7 +29,7 @@ adaptiveNavigation = "1.1.2"
 navigationCompose = "2.9.1"
 sqliteDriver = "2.1.0"
 zstdJni = "1.5.7-5"
-metro = "0.6.6"
+metro = "0.7.0"
 
 [libraries]
 
@@ -39,6 +39,7 @@ androidx-uitest-junit4 = { module = "androidx.compose.ui:ui-test-junit4", versio
 jdbc-driver = { module = "app.cash.sqldelight:jdbc-driver", version.ref = "sqliteDriver" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-client-serialization = { module = "io.ktor:ktor-client-serialization", version.ref = "ktor" }

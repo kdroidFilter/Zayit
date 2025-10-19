@@ -28,6 +28,13 @@
  - Composables in `PascalCase`; prefer the existing pattern `SomethingView` for UI surfaces and `SomethingViewModel` for state.
  - Place shared logic in `commonMain`; platform code in `androidMain`/`jvmMain`. Avoid leaking platform types across source sets.
  - DI: use Metro graph (`AppGraph` with `@Provides`) and access via `LocalAppGraph` instead of singletons.
+
+## Comments & Localization
+- Comments must be written in English across all modules.
+- Never hardcode user‑visible text in source code.
+- Define all display strings in XML string resources, using Compose Multiplatform resources under `src/commonMain/composeResources/strings.xml` (and platform overrides as needed).
+- The required locale for user‑facing text is Hebrew (`he`). Provide Hebrew strings for all keys; use resource lookup in UI code.
+- Prefer clear, stable resource keys (e.g., `home_title`, `error_network_unavailable`).
  
 ## Testing
 - Frameworks: Kotlin Test; Compose UI test artifacts are available. Add tests next to code in `src/<target>Test/kotlin`.

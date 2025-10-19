@@ -34,6 +34,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Bookmark
 import io.github.kdroidfilter.seforimapp.icons.Library
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
+import io.github.vinceglb.filekit.FileKit
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -71,12 +72,14 @@ fun main() {
     //        SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)
     //    }
 
+    val appId  = "io.github.kdroidfilter.seforimapp"
     SingleInstanceManager.configuration = SingleInstanceManager.Configuration(
-        lockIdentifier = "io.github.kdroidfilter.seforimapp"
+        lockIdentifier = appId
     )
 
     Locale.setDefault(Locale.Builder().setLanguage("he").build())
     application {
+        FileKit.init(appId)
         val itemText = stringResource(Res.string.app_name)
         TrayApp(icon = Library, tooltip = "Seforim", menu = {
             Item(itemText, Bookmark) { exitApplication() }

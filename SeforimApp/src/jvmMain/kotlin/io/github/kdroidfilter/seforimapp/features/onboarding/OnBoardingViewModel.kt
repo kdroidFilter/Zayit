@@ -21,6 +21,10 @@ import java.io.FileOutputStream
 import java.io.FilterInputStream
 import com.github.luben.zstd.ZstdInputStream
 import io.github.kdroidfilter.seforimapp.logger.debugln
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.absolutePath
+import io.github.vinceglb.filekit.databasesDir
+import io.github.vinceglb.filekit.path
 
 class OnBoardingViewModel(
     private val settings: AppSettings,
@@ -144,8 +148,8 @@ class OnBoardingViewModel(
 
         debugln { asset.toString() }
         val downloadUrl = asset.browser_download_url
-        val homeDir = System.getProperty("user.home") ?: error("Cannot resolve user.home")
-        val dbDir = File(homeDir, "SeforimApp/Db").apply { mkdirs() }
+        val dbDirV = FileKit.databasesDir
+        val dbDir = File(dbDirV.path).apply { mkdirs() }
 
         val zstFile = File(dbDir, asset.name)
         val dbFile = File(dbDir, asset.name.removeSuffix(".zst").let { name -> if (name.endsWith(".db")) name else "$name.db" })

@@ -13,8 +13,7 @@ import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettingsImpl
-import io.github.kdroidfilter.seforimapp.core.settings.IAppSettings
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
@@ -34,7 +33,6 @@ abstract class AppGraph {
     abstract val tabTitleUpdateManager: TabTitleUpdateManager
     abstract val settings: Settings
     abstract val repository: SeforimRepository
-    abstract val appSettings: IAppSettings
     abstract val tabsViewModel: TabsViewModel
     abstract val settingsViewModel: SettingsViewModel
 
@@ -65,10 +63,6 @@ abstract class AppGraph {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideAppSettings(settings: Settings): IAppSettings = AppSettingsImpl(settings)
-
-    @Provides
-    @SingleIn(AppScope::class)
     fun provideTabsViewModel(
         navigator: Navigator,
         titleUpdateManager: TabTitleUpdateManager,
@@ -81,7 +75,11 @@ abstract class AppGraph {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideSettingsViewModel(appSettings: IAppSettings): SettingsViewModel = SettingsViewModel(appSettings)
+    fun provideSettingsViewModel(settings: Settings): SettingsViewModel {
+        // Ensure AppSettings uses the same Settings instance as provided by DI
+        AppSettings.initialize(settings)
+        return SettingsViewModel()
+    }
 
     @Provides
     fun provideBookContentViewModel(
@@ -90,15 +88,18 @@ abstract class AppGraph {
         repository: SeforimRepository,
         titleUpdateManager: TabTitleUpdateManager,
         navigator: Navigator,
-        appSettings: IAppSettings
-    ): BookContentViewModel = BookContentViewModel(
-        savedStateHandle = savedStateHandle,
-        tabStateManager = tabStateManager,
-        repository = repository,
-        titleUpdateManager = titleUpdateManager,
-        navigator = navigator,
-        appSettings = appSettings
-    )
+        settings: Settings
+    ): BookContentViewModel {
+        // Ensure AppSettings uses the same Settings instance
+        AppSettings.initialize(settings)
+        return BookContentViewModel(
+            savedStateHandle = savedStateHandle,
+            tabStateManager = tabStateManager,
+            repository = repository,
+            titleUpdateManager = titleUpdateManager,
+            navigator = navigator
+        )
+    }
 
     // Convenience factory to create a route-scoped BookContentViewModel from a NavBackStackEntry
     fun bookContentViewModel(savedStateHandle: SavedStateHandle): BookContentViewModel =
@@ -108,6 +109,6 @@ abstract class AppGraph {
             repository = repository,
             titleUpdateManager = tabTitleUpdateManager,
             navigator = navigator,
-            appSettings = appSettings
+            settings = settings
         )
 }

@@ -97,7 +97,7 @@ fun main() {
         val appGraph = remember { createGraph<AppGraph>() }
         // Initialize static delegates that need app-level instances
         LaunchedEffect(Unit) {
-            AppSettings.initialize(appGraph.appSettings)
+            AppSettings.initialize(appGraph.settings)
         }
         CompositionLocalProvider(LocalAppGraph provides appGraph) {
             val themeViewModel = ThemeViewModel

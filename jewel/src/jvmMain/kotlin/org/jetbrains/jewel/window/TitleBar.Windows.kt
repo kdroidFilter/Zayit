@@ -30,6 +30,8 @@ internal fun DecoratedWindowScope.TitleBarOnWindows(
     content: @Composable TitleBarScope.(DecoratedWindowState) -> Unit,
 ) {
     val titleBar = remember { JBR.getWindowDecorations().createCustomTitleBar() }
+
+
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
     TitleBarImpl(
@@ -37,15 +39,14 @@ internal fun DecoratedWindowScope.TitleBarOnWindows(
         gradientStartColor = gradientStartColor,
         style = style,
         applyTitleBar = { height, _ ->
+            titleBar.putProperty("controls.rtl", isRtl)
             titleBar.height = height.value
             titleBar.putProperty("controls.dark", style.colors.background.isDark())
-            if (isRtl) titleBar.putProperty("controls.visible", false)
             JBR.getWindowDecorations().setCustomTitleBar(window, titleBar)
             PaddingValues(start = titleBar.leftInset.dp, end = titleBar.rightInset.dp)
         },
         backgroundContent = { Spacer(modifier = modifier.fillMaxSize().customTitleBarMouseEventHandler(titleBar)) },
     ) { state ->
-        if (isRtl) WindowControlArea(window, state, style)
         content(state)
     }
 }

@@ -30,13 +30,8 @@ kotlin {
 
             // Apply the exclusions to all Jewel libraries
             api("org.jetbrains.jewel:jewel-ui:$jewelVersion", jewelExclusions)
-            api(
-                "org.jetbrains.jewel:jewel-decorated-window:$jewelVersion",
-                jewelExclusions,
-            )
-            api("org.jetbrains.jewel:jewel-foundation:$jewelVersion", jewelExclusions)
-            api("org.jetbrains.jewel:jewel-int-ui-standalone:$jewelVersion", jewelExclusions)
-            api("com.jetbrains.intellij.platform:icons:251.26927.53")
+            api("org.jetbrains.jewel:jewel-decorated-window:$jewelVersion", jewelExclusions,)
+            api("com.jetbrains.intellij.platform:icons:252.26830.102")
             api("org.jetbrains.runtime:jbr-api:1.9.0")
 
         }

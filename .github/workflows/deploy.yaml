@@ -38,12 +38,12 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           chmod +x ./gradlew
-          ./gradlew :composeApp:createReleaseDistributable :composeApp:packageReleaseDeb
+          ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseDeb
 
       - name: Build Windows .msi
         if: matrix.os == 'windows-latest'
         shell: pwsh
-        run: .\gradlew.bat :composeApp:createReleaseDistributable :composeApp:packageReleaseMsi
+        run: .\gradlew.bat :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseMsi
 
       # 5) Upload artifacts
       - name: Upload Linux .deb
@@ -51,7 +51,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-deb
-          path: composeApp/build/compose/binaries/main-release/deb/*.deb
+          path: SeforimApp/build/compose/binaries/main-release/deb/*.deb
           if-no-files-found: error
 
       - name: Upload Windows .msi
@@ -59,7 +59,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-msi
-          path: composeApp/build/compose/binaries/main-release/msi/*.msi
+          path: SeforimApp/build/compose/binaries/main-release/msi/*.msi
           if-no-files-found: error
 
   release:

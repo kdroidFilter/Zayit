@@ -15,6 +15,30 @@ plugins {
     alias(libs.plugins.metro)
 }
 
+val ref = System.getenv("GITHUB_REF") ?: ""
+val version = if (ref.startsWith("refs/tags/")) {
+    val tag = ref.removePrefix("refs/tags/")
+    if (tag.startsWith("v")) tag.substring(1) else tag
+} else "1.0.0"
+
+// Turn 0.x[.y] into 1.x[.y] for macOS (DMG/PKG require MAJOR > 0)
+fun macSafeVersion(ver: String): String {
+    // Strip prerelease/build metadata for packaging (e.g., 0.1.0-beta -> 0.1.0)
+    val core = ver.substringBefore('-').substringBefore('+')
+    val parts = core.split('.')
+
+    return if (parts.isNotEmpty() && parts[0] == "0") {
+        when (parts.size) {
+            1 -> "1.0"                 // "0"      -> "1.0"
+            2 -> "1.${parts[1]}"       // "0.1"    -> "1.1"
+            else -> "1.${parts[1]}.${parts[2]}" // "0.1.2" -> "1.1.2"
+        }
+    } else {
+        core // already >= 1.x or something else; leave as-is
+    }
+}
+
+
 kotlin {
 //    androidTarget {
 //        // https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-test.html
@@ -129,23 +153,25 @@ kotlin {
 
 compose.desktop {
     application {
-        mainClass = "MainKt"
+        mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
 
         nativeDistributions {
             modules("java.sql", "jdk.unsupported")
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "SeforimApp"
-            packageVersion = "1.0.0"
 
             linux {
                 iconFile.set(project.file("desktopAppIcons/LinuxIcon.png"))
+                packageVersion = version
             }
             windows {
                 iconFile.set(project.file("desktopAppIcons/WindowsIcon.ico"))
+                packageVersion = version
             }
             macOS {
                 iconFile.set(project.file("desktopAppIcons/MacosIcon.icns"))
                 bundleID = "io.github.kdroidfilter.seforimapp.desktopApp"
+                packageVersion = macSafeVersion(version)
             }
         }
     }

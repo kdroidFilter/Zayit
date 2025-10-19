@@ -134,4 +134,10 @@
 
     <!-- Settings -->
     <string name="close_book_tree_on_new_book">סגור אוטומטית את חלונית העץ בעת בחירת ספר חדש</string>
+    <!-- Onboarding -->
+    <string name="onboarding_downloading_message">אנא המתן בזמן שאנו מורידים את מסד הנתונים</string>
+    <string name="onboarding_extracting_message">אנא המתן בזמן שאנו מחלצים את מסד הנתונים</string>
+    <string name="onboarding_ready">הכול מוכן!</string>
+    <string name="onboarding_open_app">פתח את האפליקציה</string>
+    <string name="onboarding_error_occurred">אירעה שגיאה</string>
 </resources>

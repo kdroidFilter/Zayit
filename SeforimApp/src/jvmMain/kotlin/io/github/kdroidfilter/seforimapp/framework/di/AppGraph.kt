@@ -15,6 +15,7 @@ import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingViewModel
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import java.util.UUID
@@ -35,6 +36,8 @@ abstract class AppGraph {
     abstract val repository: SeforimRepository
     abstract val tabsViewModel: TabsViewModel
     abstract val settingsViewModel: SettingsViewModel
+
+    abstract val onBoardingViewModel: OnBoardingViewModel
 
     @Provides
     @SingleIn(AppScope::class)
@@ -111,4 +114,12 @@ abstract class AppGraph {
             navigator = navigator,
             settings = settings
         )
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideOnBoardingViewModel(settings: Settings): OnBoardingViewModel {
+        // Ensure AppSettings uses the same Settings instance
+        AppSettings.initialize(settings)
+        return OnBoardingViewModel()
+    }
 }

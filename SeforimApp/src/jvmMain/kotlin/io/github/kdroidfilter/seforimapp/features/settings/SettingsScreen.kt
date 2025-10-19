@@ -1,56 +1,41 @@
 package io.github.kdroidfilter.seforimapp.features.settings
 
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
-import io.github.kdroidfilter.platformtools.darkmodedetector.isSystemInDarkMode
 import io.github.kdroidfilter.platformtools.darkmodedetector.windows.setWindowsAdaptiveTitleBar
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
-import org.jetbrains.compose.resources.Font
-import org.jetbrains.compose.resources.stringResource
-
-
-import androidx.compose.foundation.layout.Row
-import androidx.compose.ui.Alignment
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils.buildThemeDefinition
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
-import org.jetbrains.jewel.intui.standalone.theme.darkThemeDefinition
 import org.jetbrains.jewel.intui.standalone.theme.default
-import org.jetbrains.jewel.intui.standalone.theme.lightThemeDefinition
-
-
-
+import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.ui.ComponentStyling
 import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.intui.window.decoratedWindow
-import org.jetbrains.jewel.intui.window.styling.dark
-import org.jetbrains.jewel.intui.window.styling.lightWithLightHeader
-import org.jetbrains.jewel.window.styling.TitleBarStyle
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
-import seforimapp.seforimapp.generated.resources.notoserifhebrew
 import seforimapp.seforimapp.generated.resources.settings
 
 @Composable
 fun Settings(onClose: () -> Unit) {
     val viewModel: SettingsViewModel = LocalAppGraph.current.settingsViewModel
-    val state = viewModel.state.collectAsState().value
+    val state by viewModel.state.collectAsState()
     SettingsView(state, onClose, onToggleCloseTree = { value ->
         viewModel.onEvent(SettingsEvents.SetCloseBookTreeOnNewBookSelected(value))
     })

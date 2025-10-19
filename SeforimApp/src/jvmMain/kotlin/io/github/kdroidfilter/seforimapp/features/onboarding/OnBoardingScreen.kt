@@ -14,6 +14,9 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatEta
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
+import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.path
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
@@ -92,8 +95,28 @@ private fun OnBoardingView(
                 }
             }
             else -> {
-                // Idle or initial state; show a friendly initializing message instead of an empty screen
-                OnboardingText(stringResource(Res.string.onboarding_preparing_download))
+                // Initial pre-screen: let the user choose how to set up the database
+                OnboardingText(stringResource(Res.string.onboarding_choose_source))
+
+                val pickZstLauncher = rememberFilePickerLauncher(
+                    type = FileKitType.File(extensions = listOf("zst"))
+                ) { file ->
+                    file?.path?.let { path ->
+                        onEvent(OnBoardingEvents.ImportFromZst(path))
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    DefaultButton(onClick = { onEvent(OnBoardingEvents.StartDownload) }) {
+                        Text(stringResource(Res.string.onboarding_download_db_button))
+                    }
+                    DefaultButton(onClick = { pickZstLauncher.launch() }) {
+                        Text(stringResource(Res.string.onboarding_pick_zst_button))
+                    }
+                }
             }
         }
 

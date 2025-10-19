@@ -38,19 +38,7 @@ class OnBoardingViewModel(
         return path != null && File(path).exists()
     }
 
-    init {
-        if (!isDatabaseAvailable()) {
-            viewModelScope.launch(Dispatchers.Default) {
-                runCatching { performSetup() }
-                    .onFailure { e ->
-                        _downloadingInProgress.value = false
-                        _extractingInProgress.value = false
-                        _downloadSpeedBytesPerSec.value = 0L
-                        _errorMessage.value = e.message ?: e.toString()
-                    }
-            }
-        }
-    }
+    
 
     private val _isDatabaseLoaded = MutableStateFlow(isDatabaseAvailable())
     val isDatabaseLoaded = _isDatabaseLoaded.asStateFlow()
@@ -126,6 +114,51 @@ class OnBoardingViewModel(
         when (event) {
             OnBoardingEvents.onFinish -> {
 
+            }
+            OnBoardingEvents.StartDownload -> {
+                if (_downloadingInProgress.value || _extractingInProgress.value || _isDatabaseLoaded.value) return
+                viewModelScope.launch(Dispatchers.Default) {
+                    runCatching { performSetup() }
+                        .onFailure { e ->
+                            _downloadingInProgress.value = false
+                            _extractingInProgress.value = false
+                            _downloadSpeedBytesPerSec.value = 0L
+                            _errorMessage.value = e.message ?: e.toString()
+                        }
+                }
+            }
+            is OnBoardingEvents.ImportFromZst -> {
+                if (_extractingInProgress.value || _isDatabaseLoaded.value) return
+                val sourcePath = event.path
+                viewModelScope.launch(Dispatchers.Default) {
+                    runCatching {
+                        _errorMessage.value = null
+                        _extractingInProgress.value = true
+                        _extractProgress.value = 0f
+
+                        val dbDirV = FileKit.databasesDir
+                        val dbDir = File(dbDirV.path).apply { mkdirs() }
+                        val sourceZst = File(sourcePath)
+                        require(sourceZst.exists()) { "Selected file not found" }
+                        val baseName = sourceZst.name.removeSuffix(".zst")
+                        val targetName = if (baseName.endsWith(".db")) baseName else "$baseName.db"
+                        val targetDb = File(dbDir, targetName)
+
+                        withContext(Dispatchers.IO) {
+                            extractZst(sourceZst, targetDb) { p ->
+                                _extractProgress.value = p.coerceIn(0f, 1f)
+                            }
+                        }
+                        _extractingInProgress.value = false
+                        _extractProgress.value = 1f
+
+                        settings.setDatabasePath(targetDb.absolutePath)
+                        _isDatabaseLoaded.value = true
+                    }.onFailure { e ->
+                        _extractingInProgress.value = false
+                        _errorMessage.value = e.message ?: e.toString()
+                    }
+                }
             }
         }
     }

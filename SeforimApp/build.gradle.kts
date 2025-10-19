@@ -158,11 +158,11 @@ kotlin {
 compose.desktop {
     application {
         mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
-
         nativeDistributions {
             modules("java.sql", "jdk.unsupported")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "SeforimApp"
+            packageName = "Zayit"
+            vendor = "KDroidFilter"
 
             linux {
                 iconFile.set(project.file("desktopAppIcons/LinuxIcon.png"))
@@ -171,6 +171,11 @@ compose.desktop {
             windows {
                 iconFile.set(project.file("desktopAppIcons/WindowsIcon.ico"))
                 packageVersion = version
+                dirChooser = true
+                menuGroup = "start-menu-group"
+                shortcut = true
+                upgradeUuid = "d9f21975-4359-4818-a623-6e9a3f0a07ca"
+                perUserInstall = true
             }
             macOS {
                 iconFile.set(project.file("desktopAppIcons/MacosIcon.icns"))

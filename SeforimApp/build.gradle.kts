@@ -154,7 +154,7 @@ compose.desktop {
 
 
 tasks.withType<ComposeHotRun>().configureEach {
-    mainClass.set("MainKt")
+    mainClass.set("io.github.kdroidfilter.seforimapp.MainKt")
 }
 
 buildConfig {

@@ -66,8 +66,10 @@ jewel-ui = { module = "org.jetbrains.jewel:jewel-ui", version.ref = "jewel" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "paging" }
 androidx-paging-compose = { module = "androidx.paging:paging-compose", version = "3.4.0-alpha04" }
+platformtools-appmanager = { module = "io.github.kdroidfilter:platformtools.appmanager", version.ref = "platformtools" }
 platformtools-core = { module = "io.github.kdroidfilter:platformtools.core", version.ref = "platformtools" }
 platformtools-darkmodedetector = { module = "io.github.kdroidfilter:platformtools.darkmodedetector", version.ref = "platformtools" }
+platformtools-releasefetcher = { module = "io.github.kdroidfilter:platformtools.releasefetcher", version.ref = "platformtools" }
 platformtools-rtlwindows = { module = "io.github.kdroidfilter:platformtools.rtlwindows", version.ref = "platformtools" }
 composenativetray = { module = "io.github.kdroidfilter:composenativetray", version.ref = "composenativetray" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }

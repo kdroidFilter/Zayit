@@ -77,6 +77,8 @@ kotlin {
             implementation(libs.multiplatformSettings)
             implementation(libs.platformtools.core)
             implementation(libs.platformtools.darkmodedetector)
+            implementation(libs.platformtools.appmanager)
+            implementation(libs.platformtools.releasefetcher)
 
             // UI & theme utils
             implementation(libs.materialKolor)

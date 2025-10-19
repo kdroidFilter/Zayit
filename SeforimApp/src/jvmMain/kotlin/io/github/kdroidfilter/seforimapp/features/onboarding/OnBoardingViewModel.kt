@@ -121,7 +121,7 @@ class OnBoardingViewModel(
     fun onEvent(event: OnBoardingEvents) {
         when (event) {
             OnBoardingEvents.onFinish -> {
-                // No-op for now
+
             }
         }
     }

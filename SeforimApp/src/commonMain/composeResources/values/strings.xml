@@ -140,4 +140,19 @@
     <string name="onboarding_ready">הכול מוכן!</string>
     <string name="onboarding_open_app">פתח את האפליקציה</string>
     <string name="onboarding_error_occurred">אירעה שגיאה</string>
+    <string name="onboarding_preparing_download">מכין הורדה...</string>
+    <!-- Units -->
+    <string name="bytes_unit_b">ב׳</string>
+    <string name="bytes_unit_kb">ק״ב</string>
+    <string name="bytes_unit_mb">מ״ב</string>
+    <string name="bytes_unit_gb">ג״ב</string>
+    <string name="bytes_unit_tb">ט״ב</string>
+    <string name="bytes_per_second_pattern">%s/שנייה</string>
+    <!-- ETA units -->
+    <string name="eta_hours_unit_singular">שעה</string>
+    <string name="eta_hours_unit_plural">שעות</string>
+    <string name="eta_minutes_unit_singular">דקה</string>
+    <string name="eta_minutes_unit_plural">דקות</string>
+    <string name="eta_seconds_unit_singular">שנייה</string>
+    <string name="eta_seconds_unit_plural">שניות</string>
 </resources>

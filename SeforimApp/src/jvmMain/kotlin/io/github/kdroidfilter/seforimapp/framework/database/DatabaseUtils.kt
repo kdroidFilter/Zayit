@@ -23,19 +23,3 @@ fun getDatabasePath(): String {
 
     return dbPath
 }
-
-/**
- * Creates and returns a SeforimRepository instance.
- */
-@Composable
-fun getRepository(): SeforimRepository {
-    val dbPath = getDatabasePath()
-    val driver: SqlDriver = remember(dbPath) {
-        // Use the SQLite driver for desktop
-        JdbcSqliteDriver("jdbc:sqlite:$dbPath")
-    }
-
-    return remember(driver) {
-        SeforimRepository(dbPath, driver)
-    }
-}

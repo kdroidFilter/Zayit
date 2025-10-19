@@ -66,28 +66,28 @@ import java.io.File
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
     setMacOsAdaptiveTitleBar()
-//    val enableLogs = System.getenv("ENABLE_LOGS")
-//    if (enableLogs == null) {
-//        SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)
-//    }
+    //    val enableLogs = System.getenv("ENABLE_LOGS")
+    //    if (enableLogs == null) {
+    //        SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)
+    //    }
+
+    SingleInstanceManager.configuration = SingleInstanceManager.Configuration(
+        lockIdentifier = "io.github.kdroidfilter.seforimapp"
+    )
+
     Locale.setDefault(Locale.Builder().setLanguage("he").build())
     application {
         val itemText = stringResource(Res.string.app_name)
         TrayApp(icon = Library, tooltip = "Seforim", menu = {
             Item(itemText, Bookmark) { exitApplication() }
         }) {
-
         }
 
         val windowState = remember { getCenteredWindowState(1280, 720) }
         val onboardingWindowState = remember { getCenteredWindowState(720, 420) }
         var isWindowVisible by remember { mutableStateOf(true) }
-        var dbReady by remember { mutableStateOf(false) }
-        var showOnboarding by remember { mutableStateOf(false) }
-
-        SingleInstanceManager.configuration = SingleInstanceManager.Configuration(
-            lockIdentifier = "io.github.kdroidfilter.seforimapp"
-        )
+        // Null = decision pending; true = show onboarding; false = show main app
+        var showOnboarding by remember { mutableStateOf<Boolean?>(null) }
 
         val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
             isWindowVisible = true
@@ -100,101 +100,110 @@ fun main() {
         }
 
         val isMacOs = getOperatingSystem() == OperatingSystem.MACOS
+
         // Create the application graph via Metro and expose via CompositionLocal
         val appGraph = remember { createGraph<AppGraph>() }
+
         // Initialize static delegates that need app-level instances
         LaunchedEffect(Unit) {
             AppSettings.initialize(appGraph.settings)
         }
-        // Initial DB readiness check and react to changes
-        LaunchedEffect(appGraph) {
-            // Initial probe
-            val ok = runCatching { getDatabasePath() }.isSuccess
-            dbReady = ok
-            showOnboarding = !ok
 
-            // Observe path updates to close onboarding when ready
-            AppSettings.databasePathFlow.collect { path ->
-                val ready = path?.let { File(it).exists() } == true
-                dbReady = ready
-                if (ready) showOnboarding = false
-            }
-        }
         CompositionLocalProvider(LocalAppGraph provides appGraph) {
             val themeDefinition = ThemeUtils.buildThemeDefinition()
 
             IntUiTheme(
                 theme = themeDefinition,
-                styling = ComponentStyling.default()
-                    .decoratedWindow(
-                        titleBarStyle = ThemeUtils.pickTitleBarStyle(),
-                    )
+                styling = ComponentStyling.default().decoratedWindow(
+                    titleBarStyle = ThemeUtils.pickTitleBarStyle(),
+                )
             ) {
-                if (showOnboarding) {
+                // Decide whether to show onboarding based on database availability
+                LaunchedEffect(Unit) {
+                    showOnboarding = try {
+                        // getDatabasePath() throws if not configured or file missing
+                        getDatabasePath()
+                        false
+                    } catch (_: Exception) {
+                        true
+                    }
+                }
+
+                if (showOnboarding == true) {
                     DecoratedWindow(
-                        onCloseRequest = { showOnboarding = false },
+                        onCloseRequest = {},
                         title = stringResource(Res.string.app_name),
                         icon = painterResource(Res.drawable.zayit_transparent),
                         state = onboardingWindowState,
                         visible = true,
                     ) {
                         Column(
-                            modifier =
-                                Modifier.trackActivation().fillMaxSize()
-                                    .background(JewelTheme.globalColors.panelBackground),
+                            modifier = Modifier
+                                .trackActivation()
+                                .fillMaxSize()
+                                .background(JewelTheme.globalColors.panelBackground),
                         ) {
-                            OnBoardingScreen()
+                            OnBoardingScreen(onFinish = {
+                                showOnboarding = false
+                                isWindowVisible = true
+                            })
                         }
                     }
-                }
-                if (!dbReady) return@IntUiTheme
-                DecoratedWindow(
-                    onCloseRequest = { exitApplication() },
-                    title = stringResource(Res.string.app_name),
-                    icon = painterResource(Res.drawable.zayit_transparent),
-                    state = windowState,
-                    visible = isWindowVisible,
-                    onKeyEvent = { keyEvent ->
-                        processKeyShortcuts(keyEvent = keyEvent, onNavigateTo = {
-                            //TODO
-                        })
-                    },
-                ) {
-                    window.minimumSize = Dimension(350, 600)
-                    TitleBar(modifier = Modifier.newFullscreenControls()) {
-                        BoxWithConstraints {
-                            val windowWidth = maxWidth
-                            val iconsNumber = 4
-                            val iconWidth = 40
-                            Row {
-                                Row(
-                                    modifier = Modifier
-                                        .padding(
-                                            start = 0.dp
-                                        )
-                                        .align(Alignment.Start)
-                                        .width(windowWidth - if (isMacOs) iconWidth * (iconsNumber + 2).dp else (iconWidth * iconsNumber).dp)
-                                ) {
-                                    TabsView()
+                } else if (showOnboarding == false) {
+                    DecoratedWindow(
+                        onCloseRequest = { exitApplication() },
+                        title = stringResource(Res.string.app_name),
+                        icon = painterResource(Res.drawable.zayit_transparent),
+                        state = windowState,
+                        visible = isWindowVisible,
+                        onKeyEvent = { keyEvent ->
+                            processKeyShortcuts(
+                                keyEvent = keyEvent,
+                                onNavigateTo = {
+                                    //TODO
                                 }
-                                Row(
-                                    modifier = Modifier.align(Alignment.End).fillMaxHeight(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    TitleBarActionsButtonsView()
+                            )
+                        },
+                    ) {
+                        window.minimumSize = Dimension(350, 600)
+                        TitleBar(modifier = Modifier.newFullscreenControls()) {
+                            BoxWithConstraints {
+                                val windowWidth = maxWidth
+                                val iconsNumber = 4
+                                val iconWidth = 40
+                                Row {
+                                    Row(
+                                        modifier = Modifier
+                                            .padding(start = 0.dp)
+                                            .align(Alignment.Start)
+                                            .width(
+                                                windowWidth - if (isMacOs) iconWidth * (iconsNumber + 2).dp else (iconWidth * iconsNumber).dp
+                                            )
+                                    ) {
+                                        TabsView()
+                                    }
+                                    Row(
+                                        modifier = Modifier
+                                            .align(Alignment.End)
+                                            .fillMaxHeight(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        TitleBarActionsButtonsView()
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    Column(
-                        modifier =
-                            Modifier.trackActivation().fillMaxSize()
+                        Column(
+                            modifier = Modifier
+                                .trackActivation()
+                                .fillMaxSize()
                                 .background(JewelTheme.globalColors.panelBackground),
-                    ) {
-                        TabsNavHost()
+                        ) {
+                            TabsNavHost()
+                        }
                     }
-                }
+                } // else (null) -> render nothing until decision made
             }
         }
     }

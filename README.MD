@@ -1,14 +1,14 @@
 # SeforimApp
 
-Kotlin Multiplatform application (Desktop + Android) built with JetBrains Compose Multiplatform, Jewel windowing, Metro DI, a RAM‑efficient tab navigation system, and AndroidX Paging. The app consumes the composite build SeforimLibrary (`core`, `dao`).
+Kotlin Multiplatform desktop application built with JetBrains Compose Multiplatform, Jewel windowing, Metro DI, a RAM‑efficient tab navigation system, and Paging. The app consumes the composite build SeforimLibrary (`core`, `dao`).
 
 ## Contents
 - Overview
 - Architecture
 - Requirements
 - Quick Start
-- Desktop and Android
-- Tests and Lint
+- Desktop
+- Tests
 - Project Structure
 - Contributing
 - Security
@@ -18,22 +18,23 @@ Kotlin Multiplatform application (Desktop + Android) built with JetBrains Compos
 - Compose Multiplatform UI with Jewel themes and native packaging (DMG/MSI/DEB).
 - RAM‑efficient tabbed navigation via `TabsNavHost` (see `TAB_SYSTEM_README.md`).
 - Dependency injection with Metro (`AppGraph` exposed through `LocalAppGraph`).
-- Data provided by `SeforimLibrary` (`core`, `dao`) with `androidx.paging`.
+- Data provided by `SeforimLibrary` (`core`, `dao`) with Paging.
 - Hot reload for a fast desktop development loop.
 
 ## Architecture
 - UI: Compose + Jewel; desktop entrypoint: `SeforimApp/src/jvmMain/kotlin/main.kt`.
 - DI: Metro graph via `createGraph<AppGraph>()`, accessed with `LocalAppGraph`.
 - Navigation: `TabsNavHost`; features live under `SeforimApp/src/jvmMain/kotlin/io/github/kdroidfilter/seforimapp/features`.
-- Data: `SeforimLibrary` (modules `core`, `dao`) + AndroidX Paging.
+- Data: `SeforimLibrary` (modules `core`, `dao`) + Paging.
 - Shared resources: `src/commonMain/composeResources` (strings, fonts, etc.).
 
 See `TAB_SYSTEM_README.md` for details on the memory‑friendly tab system and state restoration.
 
 ## Requirements
 - OS: macOS / Linux / Windows.
-- Java: JDK 17+ recommended. Gradle toolchains auto‑provision JBR; manual setup is usually unnecessary.
-- Android (optional): Android SDK. Set `sdk.dir` in `local.properties` at the project root.
+- Java: JetBrains Runtime 21 (JBR 21) is required to build and run this project.
+  - Gradle Toolchains will download JBR 21 automatically when you run `./gradlew`. If you use a locally installed JDK or an IDE, make sure it is JDK 21.
+  - Terminal: ensure `JAVA_HOME` points to a JDK 21. IntelliJ IDEA: set Gradle JDK to the bundled JBR 21.
 
 ## Quick Start
 Clone the repo and build:
@@ -63,16 +64,8 @@ Clone the repo and build:
 ./gradlew :SeforimApp:createDistributable
 ```
 
-## Android
-- Install on a device/emulator (debug):
 
-```bash
-./gradlew :SeforimApp:installDebug
-```
-
-- From Android Studio: open the project and run the imported Android configuration.
-
-## Tests and Lint
+## Tests
 - Run all tests:
 
 ```bash
@@ -85,11 +78,6 @@ Clone the repo and build:
 ./gradlew :SeforimApp:jvmTest
 ```
 
-- Lint the app module:
-
-```bash
-./gradlew :SeforimApp:lint
-```
 
 Example test scaffold: `SeforimApp/src/jvmTest/kotlin/io/github/kdroidfilter/seforimapp/SampleTest.kt`
 
@@ -104,20 +92,20 @@ class SampleTest {
 
 ## Project Structure
 - App module: `SeforimApp` (Kotlin Multiplatform)
-  - Source sets: `src/commonMain`, `src/jvmMain`, `src/androidMain`
+  - Source sets: `src/commonMain`, `src/jvmMain`
   - Shared resources: `src/commonMain/composeResources`
   - Desktop entry: `SeforimApp/src/jvmMain/kotlin/main.kt`
 - Composite build: `SeforimLibrary` (consumed via coordinates in the app)
   - Modules: `core` (domain), `dao` (persistence), `generator` (tools)
 - Local libraries (UI/Utils): `htmlparser`, `icons`, `logger`, `navigation`, `pagination`, `texteffects`, `jewel`
-- Tests: `src/<target>Test` (e.g., `commonTest`, `jvmTest`, `androidUnitTest`)
+- Tests: `src/<target>Test` (e.g., `commonTest`, `jvmTest`)
 
 ## Contributing
 - Conventional Commits: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`
   - Example: `feat(SeforimApp): add Paging3 for desktop`
-- Pull Requests: include a clear description, touched modules, linked issues, UI screenshots/GIFs, and local run steps (`:SeforimApp:run` or `installDebug`). Keep PRs focused and incremental.
+- Pull Requests: include a clear description, touched modules, linked issues, UI screenshots/GIFs, and local run steps (`:SeforimApp:run`). Keep PRs focused and incremental.
 - Style: Kotlin + Compose, 4‑space indentation, ~120‑char lines. Naming: classes/objects in PascalCase; functions/properties in camelCase; constants in UPPER_SNAKE_CASE. Composables follow the `SomethingView` and `SomethingViewModel` pattern.
-- Organization: put shared logic in `commonMain`; platform code in `androidMain` / `jvmMain`. Avoid leaking platform types across source sets.
+- Organization: put shared logic in `commonMain`; platform code in `jvmMain`. Avoid leaking platform types across source sets.
 - DI: use the Metro graph (`AppGraph` + `@Provides`) and access via `LocalAppGraph` instead of global singletons.
 
 ## Security
@@ -130,7 +118,7 @@ AGPL‑3.0. See `LICENSE` for details.
 ## Key Tools and Dependencies
 - JetBrains Compose Multiplatform, Jewel UI
 - Metro (DI), KotlinX (Coroutines, Serialization, DateTime)
-- AndroidX (Lifecycle, Navigation, Paging3)
+- Lifecycle, Navigation, Paging3
 - Ktor Client
 
 ---

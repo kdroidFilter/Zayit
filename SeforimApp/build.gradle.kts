@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose)
-    alias(libs.plugins.android.application)
+//    alias(libs.plugins.android.application)
     alias(libs.plugins.hotReload)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.buildConfig)
@@ -17,10 +17,10 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
-        // https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-test.html
-        instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
-    }
+//    androidTarget {
+//        // https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-test.html
+//        instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
+//    }
 
     jvm()
 
@@ -83,13 +83,13 @@ kotlin {
             @OptIn(ExperimentalComposeLibrary::class)
             implementation(compose.uiTest)
         }
-
-        androidMain.dependencies {
-            implementation(compose.uiTooling)
-            implementation(libs.androidx.activityCompose)
-            implementation(libs.kotlinx.coroutines.android)
-            implementation(libs.ktor.client.okhttp)
-        }
+//
+//        androidMain.dependencies {
+//            implementation(compose.uiTooling)
+//            implementation(libs.androidx.activityCompose)
+//            implementation(libs.kotlinx.coroutines.android)
+//            implementation(libs.ktor.client.okhttp)
+//        }
 
         jvmMain.dependencies {
             api(project(":jewel"))
@@ -110,26 +110,26 @@ kotlin {
     }
 }
 
-android {
-    namespace = "io.github.kdroidfilter.seforimapp"
-    compileSdk = 35
-
-    defaultConfig {
-        applicationId = "io.github.kdroidfilter.seforimapp.androidApp"
-        minSdk = 21
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-}
-
-// https://developer.android.com/develop/ui/compose/testing#setup
-dependencies {
-    androidTestImplementation(libs.androidx.uitest.junit4)
-    debugImplementation(libs.androidx.uitest.testManifest)
-}
+//android {
+//    namespace = "io.github.kdroidfilter.seforimapp"
+//    compileSdk = 35
+//
+//    defaultConfig {
+//        applicationId = "io.github.kdroidfilter.seforimapp.androidApp"
+//        minSdk = 21
+//        targetSdk = 35
+//        versionCode = 1
+//        versionName = "1.0.0"
+//
+//        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+//    }
+//}
+//
+//// https://developer.android.com/develop/ui/compose/testing#setup
+//dependencies {
+//    androidTestImplementation(libs.androidx.uitest.junit4)
+//    debugImplementation(libs.androidx.uitest.testManifest)
+//}
 
 compose.desktop {
     application {
@@ -155,10 +155,7 @@ compose.desktop {
     }
 }
 
-// https://github.com/JetBrains/compose-hot-reload
-composeCompiler {
-    featureFlags.add(ComposeFeatureFlag.OptimizeNonSkippingGroups)
-}
+
 
 tasks.withType<ComposeHotRun>().configureEach {
     mainClass.set("MainKt")

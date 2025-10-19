@@ -27,6 +27,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWind
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import dev.zacsweers.metro.createGraph
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Bookmark
@@ -66,7 +67,7 @@ fun main() {
 //    if (enableLogs == null) {
 //        SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)
 //    }
-    Locale.setDefault(Locale.Builder().setLanguage("he").setRegion("IL").build())
+    Locale.setDefault(Locale.Builder().setLanguage("he").build())
     application {
         val itemText = stringResource(Res.string.app_name)
         TrayApp(icon = Library, tooltip = "Seforim", menu = {
@@ -100,43 +101,13 @@ fun main() {
             AppSettings.initialize(appGraph.settings)
         }
         CompositionLocalProvider(LocalAppGraph provides appGraph) {
-            val themeViewModel = ThemeViewModel
-            val theme = themeViewModel.theme.collectAsState().value
-            val isSystemInDarkMode = isSystemInDarkMode()
-
-            val defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
-            val isDarkTheme = when (theme) {
-                IntUiThemes.Light -> false
-                IntUiThemes.Dark -> true
-                IntUiThemes.System -> isSystemInDarkMode
-            }
-            val disabledValues = if (isDarkTheme) DisabledAppearanceValues.dark() else DisabledAppearanceValues.light()
-            val themeDefinition = if (isDarkTheme) {
-                JewelTheme.darkThemeDefinition(
-                    defaultTextStyle = defaultTextStyle,
-                    disabledAppearanceValues = disabledValues
-                )
-            } else {
-                JewelTheme.lightThemeDefinition(
-                    defaultTextStyle = defaultTextStyle,
-                    disabledAppearanceValues = disabledValues
-                )
-            }
+            val themeDefinition = ThemeUtils.buildThemeDefinition()
 
             IntUiTheme(
                 theme = themeDefinition,
                 styling = ComponentStyling.default()
                     .decoratedWindow(
-                        titleBarStyle = when (theme) {
-                            IntUiThemes.Light -> TitleBarStyle.lightWithLightHeader()
-                            IntUiThemes.Dark -> TitleBarStyle.dark()
-                            IntUiThemes.System ->
-                                if (isSystemInDarkMode) {
-                                    TitleBarStyle.dark()
-                                } else {
-                                    TitleBarStyle.lightWithLightHeader()
-                                }
-                        },
+                        titleBarStyle = ThemeUtils.pickTitleBarStyle(),
                     )
             ) {
                 DecoratedWindow(

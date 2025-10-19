@@ -7,7 +7,6 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
 import io.github.kdroidfilter.seforimapp.features.settings.Settings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
-import io.github.kdroidfilter.seforimapp.features.settings.collectSettingsState
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -32,7 +31,7 @@ fun TitleBarActionsButtonsView() {
 
     // Use ViewModel-driven settings window visibility to respect MVVM conventions
     val settingsViewModel: SettingsViewModel = LocalAppGraph.current.settingsViewModel
-    val settingsState = collectSettingsState(settingsViewModel)
+    val settingsState = settingsViewModel.state.collectAsState().value
 
     val iconDescription = when (theme) {
         IntUiThemes.Light -> stringResource(Res.string.light_theme)

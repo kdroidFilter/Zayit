@@ -23,6 +23,8 @@ import org.jetbrains.compose.resources.stringResource
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils.buildThemeDefinition
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -48,7 +50,7 @@ import seforimapp.seforimapp.generated.resources.settings
 @Composable
 fun Settings(onClose: () -> Unit) {
     val viewModel: SettingsViewModel = LocalAppGraph.current.settingsViewModel
-    val state = collectSettingsState(viewModel)
+    val state = viewModel.state.collectAsState().value
     SettingsView(state, onClose, onToggleCloseTree = { value ->
         viewModel.onEvent(SettingsEvents.SetCloseBookTreeOnNewBookSelected(value))
     })
@@ -56,46 +58,13 @@ fun Settings(onClose: () -> Unit) {
 
 @Composable
 private fun SettingsView(state: SettingsState, onClose: () -> Unit, onToggleCloseTree: (Boolean) -> Unit) {
-    val themeViewModel = ThemeViewModel
-    val theme = themeViewModel.theme.collectAsState().value
-    val isSystemInDarkMode = isSystemInDarkMode()
-
-    val themeDefinition = when (theme) {
-        IntUiThemes.Light -> JewelTheme.lightThemeDefinition(
-            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
-        )
-
-        IntUiThemes.Dark -> JewelTheme.darkThemeDefinition(
-            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
-        )
-
-        IntUiThemes.System ->
-            if (isSystemInDarkMode) {
-                JewelTheme.darkThemeDefinition(
-                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
-                )
-            } else {
-                JewelTheme.lightThemeDefinition(
-                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
-                )
-            }
-    }
-
+    val themeDefinition = buildThemeDefinition()
 
     IntUiTheme(
         theme = themeDefinition,
         styling = ComponentStyling.default()
             .decoratedWindow(
-                titleBarStyle = when (theme) {
-                    IntUiThemes.Light -> TitleBarStyle.lightWithLightHeader()
-                    IntUiThemes.Dark -> TitleBarStyle.dark()
-                    IntUiThemes.System ->
-                        if (isSystemInDarkMode) {
-                            TitleBarStyle.dark()
-                        } else {
-                            TitleBarStyle.lightWithLightHeader()
-                        }
-                },
+                titleBarStyle = ThemeUtils.pickTitleBarStyle(),
             )
     ) {
         DialogWindow(

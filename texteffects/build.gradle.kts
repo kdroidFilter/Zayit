@@ -40,8 +40,14 @@ android {
 
     defaultConfig {
         minSdk = 21
-        targetSdk = 35
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+    // targetSdk is deprecated for library modules; configure test and lint target SDKs instead
+    testOptions {
+        targetSdk = 35
+    }
+    lint {
+        targetSdk = 35
     }
 }
 

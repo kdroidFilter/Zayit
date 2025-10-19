@@ -12,7 +12,6 @@ plugins {
     alias(libs.plugins.hotReload)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.buildConfig)
-    // Metro DI codegen plugin
     alias(libs.plugins.metro)
 }
 

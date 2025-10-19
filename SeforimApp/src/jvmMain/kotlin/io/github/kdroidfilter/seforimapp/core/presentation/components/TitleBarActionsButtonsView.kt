@@ -4,10 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
-import io.github.kdroidfilter.seforimapp.features.windows.settings.Settings
-import io.github.kdroidfilter.seforimapp.features.windows.settings.SettingsEvents
-import io.github.kdroidfilter.seforimapp.features.windows.settings.SettingsViewModel
-import io.github.kdroidfilter.seforimapp.features.windows.settings.collectSettingsState
+import io.github.kdroidfilter.seforimapp.features.settings.Settings
+import io.github.kdroidfilter.seforimapp.features.settings.SettingsEvents
+import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
+import io.github.kdroidfilter.seforimapp.features.settings.collectSettingsState
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph

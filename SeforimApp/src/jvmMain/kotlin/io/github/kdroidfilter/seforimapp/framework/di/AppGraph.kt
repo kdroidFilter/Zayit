@@ -15,8 +15,8 @@ import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettingsImpl
 import io.github.kdroidfilter.seforimapp.core.settings.IAppSettings
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentViewModel
-import io.github.kdroidfilter.seforimapp.features.windows.settings.SettingsViewModel
+import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
+import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import java.util.UUID
 

@@ -21,7 +21,7 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforim.utils.ObserveAsEvents
 
-import io.github.kdroidfilter.seforimapp.features.screens.bookcontent.BookContentScreen
+import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Text

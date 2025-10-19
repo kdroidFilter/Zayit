@@ -1,10 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -12,34 +8,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytesPerSec
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatEta
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.typography
-import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.onboarding_downloading_message
-import seforimapp.seforimapp.generated.resources.onboarding_extracting_message
-import seforimapp.seforimapp.generated.resources.onboarding_open_app
-import seforimapp.seforimapp.generated.resources.onboarding_ready
-import seforimapp.seforimapp.generated.resources.onboarding_error_occurred
-import seforimapp.seforimapp.generated.resources.onboarding_preparing_download
-import seforimapp.seforimapp.generated.resources.eta_hours_unit_plural
-import seforimapp.seforimapp.generated.resources.eta_hours_unit_singular
-import seforimapp.seforimapp.generated.resources.eta_minutes_unit_plural
-import seforimapp.seforimapp.generated.resources.eta_minutes_unit_singular
-import seforimapp.seforimapp.generated.resources.eta_seconds_unit_plural
-import seforimapp.seforimapp.generated.resources.eta_seconds_unit_singular
-import seforimapp.seforimapp.generated.resources.bytes_unit_b
-import seforimapp.seforimapp.generated.resources.bytes_unit_kb
-import seforimapp.seforimapp.generated.resources.bytes_unit_mb
-import seforimapp.seforimapp.generated.resources.bytes_unit_gb
-import seforimapp.seforimapp.generated.resources.bytes_unit_tb
-import seforimapp.seforimapp.generated.resources.bytes_per_second_pattern
+import seforimapp.seforimapp.generated.resources.*
 
 @Composable
 fun OnBoardingScreen(onFinish: () -> Unit = {}) {
@@ -125,69 +106,6 @@ private fun OnboardingText(text: String, color : Color = Color.Unspecified) {
     Text(text, modifier = Modifier.padding(bottom = 16.dp), color = color, fontSize = JewelTheme.typography.h1TextStyle.fontSize)
 }
 
-@Composable
-private fun formatBytes(bytes: Long): String {
-    val units = listOf(
-        stringResource(Res.string.bytes_unit_b),
-        stringResource(Res.string.bytes_unit_kb),
-        stringResource(Res.string.bytes_unit_mb),
-        stringResource(Res.string.bytes_unit_gb),
-        stringResource(Res.string.bytes_unit_tb),
-    )
-    var value = bytes.toDouble()
-    var unitIndex = 0
-    while (value >= 1024 && unitIndex < units.lastIndex) {
-        value /= 1024
-        unitIndex++
-    }
-    return String.format(java.util.Locale.US, "%.2f %s", value, units[unitIndex])
-}
-
-@Composable
-private fun formatBytesPerSec(bps: Long): String {
-    val bytesText = formatBytes(bps)
-    val perSecond = stringResource(Res.string.eta_seconds_unit_singular)
-    return "$bytesText/$perSecond"
-}
-
-@Composable
-private fun formatEta(totalSeconds: Long): String {
-    val secs = totalSeconds.coerceAtLeast(0)
-    val hours = secs / 3600
-    val minutes = (secs % 3600) / 60
-    val seconds = secs % 60
-
-    val parts = mutableListOf<String>()
-
-    if (hours > 0) {
-        val unit = if (hours == 1L) {
-            stringResource(Res.string.eta_hours_unit_singular)
-        } else {
-            stringResource(Res.string.eta_hours_unit_plural)
-        }
-        parts += String.format(java.util.Locale.US, "%d %s", hours, unit)
-    }
-
-    if (minutes > 0) {
-        val unit = if (minutes == 1L) {
-            stringResource(Res.string.eta_minutes_unit_singular)
-        } else {
-            stringResource(Res.string.eta_minutes_unit_plural)
-        }
-        parts += String.format(java.util.Locale.US, "%d %s", minutes, unit)
-    }
-
-    if (seconds > 0 || parts.isEmpty()) {
-        val unit = if (seconds == 1L) {
-            stringResource(Res.string.eta_seconds_unit_singular)
-        } else {
-            stringResource(Res.string.eta_seconds_unit_plural)
-        }
-        parts += String.format(java.util.Locale.US, "%d %s", seconds, unit)
-    }
-
-    return parts.joinToString(separator = " ")
-}
 
 // Previews
 @Preview(name = "Loaded", showBackground = true)

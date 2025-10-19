@@ -3,12 +3,9 @@ package io.github.kdroidfilter.seforimapp
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -35,6 +32,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Bookmark
 import io.github.kdroidfilter.seforimapp.icons.Library
 import org.jetbrains.compose.resources.Font
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -53,6 +51,7 @@ import org.jetbrains.jewel.window.styling.TitleBarStyle
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.app_name
 import seforimapp.seforimapp.generated.resources.notoserifhebrew
+import seforimapp.seforimapp.generated.resources.zayit_transparent
 import java.awt.Dimension
 import java.awt.Window
 import java.util.*
@@ -60,7 +59,6 @@ import java.util.*
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
     setMacOsAdaptiveTitleBar()
-
 //    val enableLogs = System.getenv("ENABLE_LOGS")
 //    if (enableLogs == null) {
 //        SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)
@@ -71,14 +69,7 @@ fun main() {
         TrayApp(icon = Library, tooltip = "Seforim", menu = {
             Item(itemText, Bookmark) { exitApplication() }
         }) {
-            MaterialTheme {
-                Box(modifier = Modifier
-                    .fillMaxSize()
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.background)) {
-                    Text("Hello World !")
-                }
-            }
+
         }
 
         val windowState = remember { getCenteredWindowState(1280, 720) }
@@ -150,7 +141,7 @@ fun main() {
                 DecoratedWindow(
                     onCloseRequest = { exitApplication() },
                     title = stringResource(Res.string.app_name),
-//            icon = painterResource(Res.drawable.icon),
+                    icon = painterResource(Res.drawable.zayit_transparent),
                     state = windowState,
                     visible = isWindowVisible,
                     onKeyEvent = { keyEvent ->

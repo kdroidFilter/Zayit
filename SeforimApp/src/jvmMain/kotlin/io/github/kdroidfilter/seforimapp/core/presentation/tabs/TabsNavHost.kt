@@ -1,31 +1,17 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import io.github.kdroidfilter.seforim.navigation.NavigationAction
-import io.github.kdroidfilter.seforim.navigation.Navigator
 import io.github.kdroidfilter.seforim.navigation.nonAnimatedComposable
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforim.utils.ObserveAsEvents
-
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import kotlinx.coroutines.launch
-import org.jetbrains.jewel.ui.component.Text
-import java.util.UUID
 
 @Composable
 fun TabsNavHost() {
@@ -68,41 +54,13 @@ fun TabsNavHost() {
         startDestination = navigator.startDestination,
         modifier = Modifier
     ) {
-        nonAnimatedComposable<TabsDestination.Home> { backStackEntry ->
-            val destination = backStackEntry.toRoute<TabsDestination.Home>()
-            // Pass the tabId to the savedStateHandle
-            backStackEntry.savedStateHandle["tabId"] = destination.tabId
-
-            Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                Button({
-                    scope.launch {
-                        navigator.navigate(TabsDestination.Search("Search Page", UUID.randomUUID().toString()))
-                    }
-                }) {
-                    Text("Click me")
-                }
-
-            }
-        }
 
         nonAnimatedComposable<TabsDestination.Search> { backStackEntry ->
             val destination = backStackEntry.toRoute<TabsDestination.Search>()
             // Pass the tabId to the savedStateHandle
             backStackEntry.savedStateHandle["tabId"] = destination.tabId
 
-            Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                Column {
-                    Text("Search Page: ${destination.searchQuery}")
-                    Text(selectedTabIndex.toString())
-                    Button({
-                        scope.launch {
-                            navigator.navigate(TabsDestination.BookContent(123, UUID.randomUUID().toString()))
-                        }
-                    }) {
-                        Text("Open Book Content")
-                    }
-                }
-            }
+            //TODO
         }
 
         nonAnimatedComposable<TabsDestination.BookContent> { backStackEntry ->

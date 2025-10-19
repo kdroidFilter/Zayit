@@ -90,9 +90,6 @@ fun main() {
             return@application
         }
 
-        val isMacOs = getOperatingSystem() == OperatingSystem.MACOS
-        val isWindows = getOperatingSystem() == OperatingSystem.WINDOWS
-
         // Create the application graph via Metro and expose via CompositionLocal
         val appGraph = remember { createGraph<AppGraph>() }
 
@@ -168,8 +165,12 @@ fun main() {
                                         modifier = Modifier
                                             .padding(start = 0.dp)
                                             .align(Alignment.Start)
-                                            .width(
-                                                windowWidth - if (isMacOs) iconWidth * (iconsNumber + 2).dp else if (isWindows)  iconWidth * (iconsNumber + 3.5).dp else (iconWidth * iconsNumber).dp
+                                            .width(windowWidth -
+                                                    when (getOperatingSystem()) {
+                                                        OperatingSystem.MACOS -> iconWidth * (iconsNumber + 2).dp
+                                                        OperatingSystem.WINDOWS -> iconWidth * (iconsNumber + 3.5).dp
+                                                        else -> (iconWidth * iconsNumber).dp
+                                                    }
                                             )
                                     ) {
                                         TabsView()

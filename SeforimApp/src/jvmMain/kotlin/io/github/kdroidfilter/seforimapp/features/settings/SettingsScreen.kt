@@ -36,6 +36,8 @@ import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
 import seforimapp.seforimapp.generated.resources.settings
 import seforimapp.seforimapp.generated.resources.settings_reset_app
 import seforimapp.seforimapp.generated.resources.settings_reset_done
+import seforimapp.seforimapp.generated.resources.settings_db_path_label
+import seforimapp.seforimapp.generated.resources.settings_db_path_not_set
 
 @Composable
 fun Settings(onClose: () -> Unit) {
@@ -73,6 +75,19 @@ private fun SettingsView(
                     Modifier.trackActivation().fillMaxSize()
                         .background(JewelTheme.globalColors.panelBackground),
             ) {
+                // Database path display
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(text = stringResource(Res.string.settings_db_path_label))
+                    Text(
+                        text = state.databasePath ?: stringResource(Res.string.settings_db_path_not_set)
+                    )
+                }
+
+                Divider(modifier = Modifier, orientation = Orientation.Horizontal)
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)

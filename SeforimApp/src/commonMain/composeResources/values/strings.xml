@@ -15,6 +15,8 @@
     <string name="settings">הגדרות</string>
     <string name="settings_reset_app">איפוס האפליקציה</string>
     <string name="settings_reset_done">האיפוס הושלם. הפעל מחדש כדי להתחיל מחדש.</string>
+    <string name="settings_db_path_label">נתיב מסד הנתונים:</string>
+    <string name="settings_db_path_not_set">לא הוגדר</string>
 
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>

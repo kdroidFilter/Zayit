@@ -35,10 +35,13 @@ import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.trackActivation
+import org.jetbrains.jewel.foundation.DisabledAppearanceValues
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
+import org.jetbrains.jewel.intui.standalone.theme.dark
 import org.jetbrains.jewel.intui.standalone.theme.darkThemeDefinition
 import org.jetbrains.jewel.intui.standalone.theme.default
+import org.jetbrains.jewel.intui.standalone.theme.light
 import org.jetbrains.jewel.intui.standalone.theme.lightThemeDefinition
 import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.intui.window.styling.dark
@@ -103,21 +106,25 @@ fun main() {
 
             val themeDefinition = when (theme) {
                 IntUiThemes.Light -> JewelTheme.lightThemeDefinition(
-                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
+                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew))),
+                    disabledAppearanceValues = DisabledAppearanceValues.light()
                 )
 
                 IntUiThemes.Dark -> JewelTheme.darkThemeDefinition(
-                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
+                    defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew))),
+                    disabledAppearanceValues = DisabledAppearanceValues.dark()
                 )
 
                 IntUiThemes.System ->
                     if (isSystemInDarkMode) {
                         JewelTheme.darkThemeDefinition(
-                            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
+                            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew))),
+                            disabledAppearanceValues = DisabledAppearanceValues.dark()
                         )
                     } else {
                         JewelTheme.lightThemeDefinition(
-                            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)))
+                            defaultTextStyle = TextStyle(fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew))),
+                            disabledAppearanceValues = DisabledAppearanceValues.light()
                         )
                     }
             }

@@ -49,9 +49,6 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.json)
 
-            // DI - Metro
-            implementation(libs.metro.runtime)
-
             // Settings & platform utils
             implementation(libs.multiplatformSettings)
             implementation(libs.platformtools.core)

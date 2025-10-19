@@ -39,11 +39,14 @@ import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.intui.standalone.theme.default
 import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.ui.ComponentStyling
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.window.DecoratedWindow
 import org.jetbrains.jewel.window.TitleBar
 import org.jetbrains.jewel.window.newFullscreenControls
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.app_name
+import seforimapp.seforimapp.generated.resources.onboarding_title_bar
 import seforimapp.seforimapp.generated.resources.zayit_transparent
 import java.awt.Dimension
 import java.awt.Window
@@ -120,12 +123,18 @@ fun main() {
 
                 if (showOnboarding == true) {
                     DecoratedWindow(
-                        onCloseRequest = {},
+                        onCloseRequest = {exitApplication()},
                         title = stringResource(Res.string.app_name),
                         icon = painterResource(Res.drawable.zayit_transparent),
                         state = onboardingWindowState,
                         visible = true,
                     ) {
+                        TitleBar(modifier = Modifier.newFullscreenControls()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(stringResource(Res.string.onboarding_title_bar))
+                            }
+
+                        }
                         Column(
                             modifier = Modifier
                                 .trackActivation()

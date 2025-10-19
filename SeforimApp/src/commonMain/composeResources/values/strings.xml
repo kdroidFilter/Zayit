@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ספורים</string>
+    <string name="app_name">זית</string>
 
     <!-- Title Bar Action Buttons View-->
     <string name="light_theme">ערכת נושא בהירה</string>
@@ -139,6 +139,7 @@
     <!-- Settings -->
     <string name="close_book_tree_on_new_book">סגור אוטומטית את חלונית העץ בעת בחירת ספר חדש</string>
     <!-- Onboarding -->
+    <string name="onboarding_title_bar">הגדרה ראשונית</string>
     <string name="onboarding_downloading_message">אנא המתן בזמן שאנו מורידים את מסד הנתונים</string>
     <string name="onboarding_extracting_message">אנא המתן בזמן שאנו מחלצים את מסד הנתונים</string>
     <string name="onboarding_ready">הכול מוכן!</string>

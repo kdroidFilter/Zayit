@@ -4,8 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.kdroidfilter.platformtools.releasefetcher.github.GitHubReleaseFetcher
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import io.github.kdroidfilter.seforimapp.network.HttpsConnectionFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,7 +21,6 @@ import java.io.FilterInputStream
 import com.github.luben.zstd.ZstdInputStream
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.vinceglb.filekit.FileKit
-import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
 
@@ -31,7 +29,6 @@ class OnBoardingViewModel(
     private val gitHubReleaseFetcher: GitHubReleaseFetcher
 ) : ViewModel() {
 
-    private val okHttp = OkHttpClient()
 
     private fun isDatabaseAvailable(): Boolean {
         val path = settings.getDatabasePath()
@@ -240,31 +237,36 @@ class OnBoardingViewModel(
         onBytes: (readSoFar: Long, totalBytes: Long?) -> Unit
     ) {
         withContext(Dispatchers.IO) {
-            val request = Request.Builder()
-                .url(url)
-                .addHeader("Accept", "application/octet-stream")
-                .addHeader("User-Agent", "SeforimApp/1.0 (+https://github.com/kdroidFilter/SeforimApp)")
-                .build()
-
-            okHttp.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) error("Download failed: ${response.code}")
-                val body = response.body
-                val length = body.contentLength().takeIf { it > 0 }
+            val connection = HttpsConnectionFactory.openConnection(url) {
+                setRequestProperty("Accept", "application/octet-stream")
+                setRequestProperty("User-Agent", "SeforimApp/1.0 (+https://github.com/kdroidFilter/SeforimApp)")
+                connectTimeout = 30_000
+                readTimeout = 60_000
+                instanceFollowRedirects = true
+            }
+            connection.connect()
+            val code = connection.responseCode
+            if (code !in 200..299) {
+                connection.disconnect()
+                error("Download failed: ${code}")
+            }
+            val totalLength = connection.contentLengthLong.takeIf { it > 0 }
+                ?: connection.getHeaderFieldLong("Content-Length", -1L).takeIf { it > 0 }
+            connection.inputStream.use { input ->
                 dest.outputStream().use { out ->
-                    body.byteStream().use { input ->
-                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                        var total = 0L
-                        while (true) {
-                            val read = input.read(buffer)
-                            if (read <= 0) break
-                            out.write(buffer, 0, read)
-                            total += read
-                            onBytes(total, length)
-                        }
-                        out.flush()
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    var total = 0L
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read <= 0) break
+                        out.write(buffer, 0, read)
+                        total += read
+                        onBytes(total, totalLength)
                     }
+                    out.flush()
                 }
             }
+            connection.disconnect()
         }
         // Final callback to ensure UI shows completed values
         onBytes(dest.length(), dest.length().takeIf { it > 0L })

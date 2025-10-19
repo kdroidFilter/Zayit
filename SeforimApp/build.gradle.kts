@@ -89,6 +89,7 @@ kotlin {
             implementation("io.github.kdroidfilter.seforimlibrary:core")
             implementation("io.github.kdroidfilter.seforimlibrary:dao")
 
+
             // Local projects
             implementation(project(":htmlparser"))
             implementation(project(":icons"))
@@ -96,6 +97,7 @@ kotlin {
             implementation(project(":navigation"))
             implementation(project(":pagination"))
             implementation(project(":texteffects"))
+            implementation(project(":network"))
 
             // Paging (AndroidX Paging 3)
             implementation(libs.androidx.paging.common)
@@ -159,7 +161,7 @@ compose.desktop {
     application {
         mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
         nativeDistributions {
-            modules("java.sql", "jdk.unsupported")
+            modules("java.sql", "jdk.unsupported", "jdk.security.auth")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Zayit"
             vendor = "KDroidFilter"
@@ -182,6 +184,12 @@ compose.desktop {
                 bundleID = "io.github.kdroidfilter.seforimapp.desktopApp"
                 packageVersion = macSafeVersion(version)
             }
+            buildTypes.release.proguard {
+                isEnabled = true
+                obfuscate.set(false)
+                optimize.set(true)
+                configurationFiles.from(project.file("proguard-rules.pro"))
+            }
         }
     }
 }
@@ -194,4 +202,11 @@ tasks.withType<ComposeHotRun>().configureEach {
 
 buildConfig {
     // https://github.com/gmazzo/gradle-buildconfig-plugin#usage-in-kts
+}
+
+tasks.withType<Jar> {
+    exclude("META-INF/*.SF")
+    exclude("META-INF/*.DSA")
+    exclude("META-INF/*.RSA")
+    exclude("META-INF/*.EC")
 }

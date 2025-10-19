@@ -19,6 +19,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewMod
 import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingViewModel
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
+import io.github.kdroidfilter.seforimapp.network.KtorConfig
 import java.util.UUID
 
 /**
@@ -121,6 +122,6 @@ abstract class AppGraph {
     fun provideOnBoardingViewModel(settings: Settings): OnBoardingViewModel {
         // Ensure AppSettings uses the same Settings instance
         AppSettings.initialize(settings)
-        return OnBoardingViewModel(AppSettings, GitHubReleaseFetcher("kdroidFilter", "SeforimLibrary"))
+        return OnBoardingViewModel(AppSettings, GitHubReleaseFetcher("kdroidFilter", "SeforimLibrary", KtorConfig.createHttpClient()))
     }
 }

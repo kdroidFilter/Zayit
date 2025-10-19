@@ -119,6 +119,9 @@
 
 -keep class com.jetbrains.JBR* { *; }
 -dontnote com.jetbrains.JBR*
+-keep class com.jetbrains.** { *; }
+-dontwarn com.jetbrains.**
+-dontnote com.jetbrains.**
 
 -keep class com.sun.jna** { *; }
 -dontnote com.sun.jna**

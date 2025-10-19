@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.application
+import com.jetbrains.WindowDecorations
 import com.kdroid.composetray.tray.api.ExperimentalTrayAppApi
 import com.kdroid.composetray.tray.api.TrayApp
 import com.kdroid.composetray.utils.SingleInstanceManager
@@ -56,6 +57,8 @@ fun main() {
     //        SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)
     //    }
 
+
+
     val appId  = "io.github.kdroidfilter.seforimapp"
     SingleInstanceManager.configuration = SingleInstanceManager.Configuration(
         lockIdentifier = appId
@@ -86,8 +89,6 @@ fun main() {
             exitApplication()
             return@application
         }
-
-        val isMacOs = getOperatingSystem() == OperatingSystem.MACOS
 
         // Create the application graph via Metro and expose via CompositionLocal
         val appGraph = remember { createGraph<AppGraph>() }
@@ -164,8 +165,12 @@ fun main() {
                                         modifier = Modifier
                                             .padding(start = 0.dp)
                                             .align(Alignment.Start)
-                                            .width(
-                                                windowWidth - if (isMacOs) iconWidth * (iconsNumber + 2).dp else (iconWidth * iconsNumber).dp
+                                            .width(windowWidth -
+                                                    when (getOperatingSystem()) {
+                                                        OperatingSystem.MACOS -> iconWidth * (iconsNumber + 2).dp
+                                                        OperatingSystem.WINDOWS -> iconWidth * (iconsNumber + 3.5).dp
+                                                        else -> (iconWidth * iconsNumber).dp
+                                                    }
                                             )
                                     ) {
                                         TabsView()

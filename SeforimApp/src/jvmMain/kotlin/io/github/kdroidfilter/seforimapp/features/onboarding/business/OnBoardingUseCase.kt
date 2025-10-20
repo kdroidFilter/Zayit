@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding
+package io.github.kdroidfilter.seforimapp.features.onboarding.business
 
 import com.github.luben.zstd.ZstdInputStream
 import io.github.kdroidfilter.platformtools.releasefetcher.github.GitHubReleaseFetcher
@@ -43,7 +43,8 @@ class OnBoardingUseCase(
         val dbDirV = FileKit.databasesDir
         val dbDir = File(dbDirV.path).apply { mkdirs() }
         val zstFile = File(dbDir, asset.name)
-        val dbFile = File(dbDir, asset.name.removeSuffix(".zst").let { name -> if (name.endsWith(".db")) name else "$name.db" })
+        val dbFile =
+            File(dbDir, asset.name.removeSuffix(".zst").let { name -> if (name.endsWith(".db")) name else "$name.db" })
 
         // 2) Download with progress and speed calculation
         var lastBytes = 0L

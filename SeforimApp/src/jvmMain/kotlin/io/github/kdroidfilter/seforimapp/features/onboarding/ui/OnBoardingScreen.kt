@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding
+package io.github.kdroidfilter.seforimapp.features.onboarding.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -9,7 +9,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.WindowScope
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytesPerSec
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatEta

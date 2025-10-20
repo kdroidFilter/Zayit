@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding
+package io.github.kdroidfilter.seforimapp.features.onboarding.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,16 +10,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.FilterInputStream
-import com.github.luben.zstd.ZstdInputStream
 import io.github.kdroidfilter.seforimapp.core.MainAppState
-import io.github.kdroidfilter.seforimapp.network.HttpsConnectionFactory
-import io.github.vinceglb.filekit.FileKit
-import io.github.vinceglb.filekit.path
+import io.github.kdroidfilter.seforimapp.features.onboarding.business.OnBoardingUseCase
 
 class OnBoardingViewModel(
     private val mainState : MainAppState,

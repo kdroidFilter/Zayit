@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding
+package io.github.kdroidfilter.seforimapp.features.onboarding.ui
 
 data class OnBoardingState(
     val isDatabaseLoaded: Boolean,

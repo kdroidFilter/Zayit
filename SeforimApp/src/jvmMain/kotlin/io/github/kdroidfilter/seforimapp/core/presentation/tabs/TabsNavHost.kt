@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
@@ -52,7 +53,7 @@ fun TabsNavHost() {
     NavHost(
         navController = navController,
         startDestination = navigator.startDestination,
-        modifier = Modifier
+        modifier = Modifier.fillMaxSize()
     ) {
 
         nonAnimatedComposable<TabsDestination.Search> { backStackEntry ->

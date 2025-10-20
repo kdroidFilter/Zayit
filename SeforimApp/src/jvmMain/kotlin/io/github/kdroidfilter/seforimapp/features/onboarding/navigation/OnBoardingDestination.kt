@@ -14,6 +14,9 @@ sealed interface OnBoardingDestination {
     data object InitScreen : OnBoardingDestination
 
     @Serializable
+    data object LicenceScreen : OnBoardingDestination
+
+    @Serializable
     data object DatabaseOnlineInstallerScreen : OnBoardingDestination
 
     @Serializable

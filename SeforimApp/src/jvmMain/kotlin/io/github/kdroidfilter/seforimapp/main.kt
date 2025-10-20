@@ -101,6 +101,7 @@ fun main() {
                         icon = painterResource(Res.drawable.zayit_transparent),
                         state = onboardingWindowState,
                         visible = true,
+                        resizable = false,
                     ) {
                         OnBoardingWindow()
                     }

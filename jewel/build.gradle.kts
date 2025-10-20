@@ -33,6 +33,8 @@ kotlin {
             api("org.jetbrains.jewel:jewel-decorated-window:$jewelVersion", jewelExclusions,)
             api("com.jetbrains.intellij.platform:icons:252.26830.102")
             api("org.jetbrains.runtime:jbr-api:1.9.0")
+            api("org.jetbrains.jewel:jewel-markdown-core:$jewelVersion", jewelExclusions)
+            api("org.jetbrains.jewel:jewel-markdown-extensions-autolink:$jewelVersion", jewelExclusions)
 
         }
 

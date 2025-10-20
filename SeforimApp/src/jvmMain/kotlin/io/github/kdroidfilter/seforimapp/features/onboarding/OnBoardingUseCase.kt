@@ -48,20 +48,20 @@ class OnBoardingUseCase(
         // 2) Download with progress and speed calculation
         var lastBytes = 0L
         var lastTimeNs = System.nanoTime()
+        var lastSpeed = 0L
         downloadFile(downloadUrl, zstFile) { read, total ->
             val now = System.nanoTime()
             val dt = now - lastTimeNs
-            var speed = 0L
             if (dt >= 200_000_000L) { // update speed ~5 times per second
                 val delta = read - lastBytes
                 if (delta >= 0) {
-                    speed = (delta.toDouble() * 1_000_000_000.0 / dt.toDouble()).toLong()
+                    lastSpeed = (delta.toDouble() * 1_000_000_000.0 / dt.toDouble()).toLong()
                     lastBytes = read
                     lastTimeNs = now
                 }
             }
             val progress = if (total != null && total > 0) (read.toDouble() / total.toDouble()).toFloat() else 0f
-            onDownloadProgress(read, total, progress.coerceIn(0f, 1f), speed)
+            onDownloadProgress(read, total, progress.coerceIn(0f, 1f), lastSpeed)
         }
         // Ensure final callback shows completion
         onDownloadProgress(zstFile.length(), zstFile.length().takeIf { it > 0L }, 1f, 0L)

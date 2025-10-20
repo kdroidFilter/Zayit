@@ -4,6 +4,8 @@ import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
+import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
@@ -82,6 +84,7 @@ object SessionManager {
         // Recreate tabs and selection via navigator/tabs VM
         val tabsVm: TabsViewModel = appGraph.tabsViewModel
         val navigator = appGraph.navigator
+        val titleUpdateManager: TabTitleUpdateManager = appGraph.tabTitleUpdateManager
 
         if (saved.tabs.isEmpty()) return
 
@@ -95,6 +98,15 @@ object SessionManager {
         // Open remaining tabs
         saved.tabs.drop(1).forEach { dest ->
             runBlocking { navigator.navigate(dest) }
+        }
+
+        // Update tab titles immediately based on restored state (e.g., Book.title),
+        // so users don't see raw IDs before the screen composes.
+        saved.tabs.forEach { dest ->
+            val tabId = dest.tabId
+            (decodedStates[tabId]?.get(StateKeys.SELECTED_BOOK) as? io.github.kdroidfilter.seforimlibrary.core.models.Book)?.let { book ->
+                titleUpdateManager.updateTabTitle(tabId, book.title, TabType.BOOK)
+            }
         }
 
         // Select saved index (bounds-safe)

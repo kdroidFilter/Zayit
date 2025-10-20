@@ -2,25 +2,20 @@ package io.github.kdroidfilter.seforimapp
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.application
-import com.jetbrains.WindowDecorations
 import com.kdroid.composetray.tray.api.ExperimentalTrayAppApi
 import com.kdroid.composetray.tray.api.TrayApp
 import com.kdroid.composetray.utils.SingleInstanceManager
 import dev.zacsweers.metro.createGraph
-import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.darkmodedetector.mac.setMacOsAdaptiveTitleBar
-import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
-import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionsButtonsView
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsNavHost
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsView
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
@@ -40,7 +35,6 @@ import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.intui.standalone.theme.default
 import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.ui.ComponentStyling
-import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.window.DecoratedWindow
 import org.jetbrains.jewel.window.TitleBar

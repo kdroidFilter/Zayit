@@ -158,6 +158,8 @@ fun main() {
                         },
                     ) {
                         window.minimumSize = Dimension(350, 600)
+                        window.toFront()
+                        window.requestFocus()
                         MainTitleBar()
                         TabsNavHost()
                     }

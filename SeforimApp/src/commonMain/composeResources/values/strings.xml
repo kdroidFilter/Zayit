@@ -142,6 +142,7 @@
 
     <!-- Onboarding -->
     <string name="onboarding_title_bar">מדריך ההגדרה של זית</string>
+    <string name="previous_button">קודם</string>
     <!-- Init-->
     <string name="onboarding_init_welcome_title">ברוכים הבאים לזית!</string>
     <string name="onboarding_init_welcome_subtitle">יישום חדש, מודרני ומהיר ללימוד התורה, שנבנה באהבה על ידי אברך ומפתח חרדי. זית שואפת לחולל מהפכה בלימוד טקסטים דיגיטליים באמצעות חוויה חלקה, אלגנטית וללא צורך בחיבור לאינטרנט.</string>

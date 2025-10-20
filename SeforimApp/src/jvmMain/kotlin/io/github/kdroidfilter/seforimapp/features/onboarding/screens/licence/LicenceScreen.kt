@@ -3,23 +3,17 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.screens.licence
 
 import androidx.compose.foundation.gestures.ScrollableState
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.Font
@@ -37,26 +31,22 @@ import org.jetbrains.jewel.intui.markdown.standalone.styling.light
 import org.jetbrains.jewel.markdown.MarkdownBlock
 import org.jetbrains.jewel.markdown.extensions.autolink.AutolinkProcessorExtension
 import org.jetbrains.jewel.markdown.processing.MarkdownProcessor
-import org.jetbrains.jewel.markdown.rendering.MarkdownBlockRenderer
 import org.jetbrains.jewel.markdown.rendering.InlinesStyling
+import org.jetbrains.jewel.markdown.rendering.MarkdownBlockRenderer
 import org.jetbrains.jewel.markdown.rendering.MarkdownStyling
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.typography
-import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.license_accept_checkbox
-import seforimapp.seforimapp.generated.resources.license_accept_cta
-import seforimapp.seforimapp.generated.resources.license_screen_title
-import seforimapp.seforimapp.generated.resources.notoserifhebrew
+import seforimapp.seforimapp.generated.resources.*
 import java.awt.Desktop.getDesktop
 import java.net.URI.create
 
 @Composable
 fun LicenceScreen(navController: NavController) {
-    LicenceView(onNext = { })
+    LicenceView(onNext = { }, onPrevious = { navController.navigateUp() })
 }
 
 @Composable
-private fun LicenceView(onNext : () -> Unit = {}) {
+private fun LicenceView(onNext : () -> Unit = {}, onPrevious : () -> Unit = {}) {
     var isChecked by remember { mutableStateOf(false) }
 
     val isDark = JewelTheme.isDark
@@ -107,8 +97,13 @@ private fun LicenceView(onNext : () -> Unit = {}) {
     OnBoardingScaffold(
         title = stringResource(Res.string.license_screen_title),
         bottomAction = {
-            DefaultButton(onClick = { /* TODO: handle accept */ }, enabled = isChecked) {
-                Text(text = stringResource(Res.string.license_accept_cta))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                OutlinedButton(onClick = { onPrevious() }) {
+                    Text(stringResource(Res.string.previous_button))
+                }
+                DefaultButton(onClick = { onNext() }, enabled = isChecked) {
+                    Text(text = stringResource(Res.string.license_accept_cta))
+                }
             }
         }
     ) {

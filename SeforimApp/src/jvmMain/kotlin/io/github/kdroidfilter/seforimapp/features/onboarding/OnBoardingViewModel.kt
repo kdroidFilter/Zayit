@@ -2,9 +2,6 @@ package io.github.kdroidfilter.seforimapp.features.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.platformtools.releasefetcher.github.GitHubReleaseFetcher
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.network.HttpsConnectionFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,20 +17,18 @@ import java.io.FileOutputStream
 import java.io.FilterInputStream
 import com.github.luben.zstd.ZstdInputStream
 import io.github.kdroidfilter.seforimapp.core.MainAppState
-import io.github.kdroidfilter.seforimapp.logger.debugln
+import io.github.kdroidfilter.seforimapp.network.HttpsConnectionFactory
 import io.github.vinceglb.filekit.FileKit
-import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
 
 class OnBoardingViewModel(
     private val mainState : MainAppState,
-    private val settings: AppSettings,
-    private val gitHubReleaseFetcher: GitHubReleaseFetcher,
+    private val useCase: OnBoardingUseCase,
 ) : ViewModel() {
 
 
     private fun isDatabaseAvailable(): Boolean {
-        val path = settings.getDatabasePath()
+        val path = useCase.getDatabasePath()
         return path != null && File(path).exists()
     }
 
@@ -133,23 +128,11 @@ class OnBoardingViewModel(
                         _extractingInProgress.value = true
                         _extractProgress.value = 0f
 
-                        val dbDirV = FileKit.databasesDir
-                        val dbDir = File(dbDirV.path).apply { mkdirs() }
-                        val sourceZst = File(sourcePath)
-                        require(sourceZst.exists()) { "Selected file not found" }
-                        val baseName = sourceZst.name.removeSuffix(".zst")
-                        val targetName = if (baseName.endsWith(".db")) baseName else "$baseName.db"
-                        val targetDb = File(dbDir, targetName)
-
-                        withContext(Dispatchers.IO) {
-                            extractZst(sourceZst, targetDb) { p ->
-                                _extractProgress.value = p.coerceIn(0f, 1f)
-                            }
+                        useCase.importFromZst(sourcePath) { p ->
+                            _extractProgress.value = p.coerceIn(0f, 1f)
                         }
                         _extractingInProgress.value = false
                         _extractProgress.value = 1f
-
-                        settings.setDatabasePath(targetDb.absolutePath)
                         _isDatabaseLoaded.value = true
                     }.onFailure { e ->
                         _extractingInProgress.value = false
@@ -168,67 +151,31 @@ class OnBoardingViewModel(
         _downloadedBytes.value = 0L
         _downloadTotalBytes.value = null
         _downloadSpeedBytesPerSec.value = 0L
+        _extractingInProgress.value = false
+        _extractProgress.value = 0f
 
-        // 1) Fetch latest release and find .zst asset
-        val latestRelease = withContext(Dispatchers.IO) { gitHubReleaseFetcher.getLatestRelease() }
-            ?: error("No release found")
-
-        val asset = latestRelease.assets.firstOrNull { it.name.endsWith(".zst", ignoreCase = true) }
-            ?: error("No .zst database asset found in latest release")
-
-        debugln { asset.toString() }
-        val downloadUrl = asset.browser_download_url
-        val dbDirV = FileKit.databasesDir
-        val dbDir = File(dbDirV.path).apply { mkdirs() }
-
-        val zstFile = File(dbDir, asset.name)
-        val dbFile = File(dbDir, asset.name.removeSuffix(".zst").let { name -> if (name.endsWith(".db")) name else "$name.db" })
-
-        // 2) Download with progress
-        var lastBytes = 0L
-        var lastTimeNs = System.nanoTime()
-        downloadFile(downloadUrl, zstFile) { read, total ->
-            _downloadedBytes.value = read
-            _downloadTotalBytes.value = total
-            val now = System.nanoTime()
-            val dt = now - lastTimeNs
-            if (dt >= 200_000_000L) { // update speed ~5 times per second
-                val delta = read - lastBytes
-                if (delta >= 0) {
-                    val bps = (delta.toDouble() * 1_000_000_000.0 / dt.toDouble()).toLong()
-                    _downloadSpeedBytesPerSec.value = bps
-                    lastBytes = read
-                    lastTimeNs = now
+        useCase.setupDatabase(
+            onDownloadProgress = { read, total, progress, speed ->
+                _downloadedBytes.value = read
+                _downloadTotalBytes.value = total
+                _downloadProgress.value = progress
+                _downloadSpeedBytesPerSec.value = speed
+                if (progress >= 1f) {
+                    _downloadingInProgress.value = false
+                    _downloadSpeedBytesPerSec.value = 0L
+                }
+            },
+            onExtractProgress = { p ->
+                if (!_extractingInProgress.value && p < 1f) {
+                    _extractingInProgress.value = true
+                }
+                _extractProgress.value = p
+                if (p >= 1f) {
+                    _extractingInProgress.value = false
+                    _isDatabaseLoaded.value = true
                 }
             }
-            if (total != null && total > 0) {
-                _downloadProgress.value = (read.toDouble() / total.toDouble()).toFloat().coerceIn(0f, 1f)
-            }
-        }
-        _downloadingInProgress.value = false
-        _downloadProgress.value = 1f
-        val finalSize = zstFile.length()
-        _downloadedBytes.value = finalSize
-        if (_downloadTotalBytes.value == null) {
-            _downloadTotalBytes.value = finalSize
-        }
-        _downloadSpeedBytesPerSec.value = 0L
-
-        // 3) Extract with progress using zstd-jni
-        _extractingInProgress.value = true
-        _extractProgress.value = 0f
-        withContext(Dispatchers.IO) {
-            extractZst(zstFile, dbFile) { p ->
-                _extractProgress.value = p.coerceIn(0f, 1f)
-            }
-        }
-        _extractingInProgress.value = false
-        _extractProgress.value = 1f
-
-        // 4) Clean up and persist path
-        runCatching { zstFile.delete() }
-        settings.setDatabasePath(dbFile.absolutePath)
-        _isDatabaseLoaded.value = true
+        )
     }
 
     private suspend fun downloadFile(

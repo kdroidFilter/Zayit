@@ -18,6 +18,7 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingUseCase
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.network.KtorConfig
@@ -123,14 +124,17 @@ abstract class AppGraph {
     fun provideOnBoardingViewModel(settings: Settings): OnBoardingViewModel {
         // Ensure AppSettings uses the same Settings instance
         AppSettings.initialize(settings)
-        return OnBoardingViewModel(
-            mainState = MainAppState,
+        val useCase = OnBoardingUseCase(
             settings = AppSettings,
             gitHubReleaseFetcher = GitHubReleaseFetcher(
                 owner = "kdroidFilter",
                 repo = "SeforimLibrary",
                 httpClient = KtorConfig.createHttpClient()
             )
+        )
+        return OnBoardingViewModel(
+            mainState = MainAppState,
+            useCase = useCase
         )
     }
 }

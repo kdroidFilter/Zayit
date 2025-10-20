@@ -38,6 +38,7 @@ import seforimapp.seforimapp.generated.resources.settings_reset_app
 import seforimapp.seforimapp.generated.resources.settings_reset_done
 import seforimapp.seforimapp.generated.resources.settings_db_path_label
 import seforimapp.seforimapp.generated.resources.settings_db_path_not_set
+import seforimapp.seforimapp.generated.resources.settings_persist_session
 
 @Composable
 fun Settings(onClose: () -> Unit) {
@@ -45,6 +46,8 @@ fun Settings(onClose: () -> Unit) {
     val state by viewModel.state.collectAsState()
     SettingsView(state, onClose, onToggleCloseTree = { value ->
         viewModel.onEvent(SettingsEvents.SetCloseBookTreeOnNewBookSelected(value))
+    }, onTogglePersistSession = { value ->
+        viewModel.onEvent(SettingsEvents.SetPersistSession(value))
     }, onReset = { viewModel.onEvent(SettingsEvents.ResetApp) })
 }
 
@@ -53,6 +56,7 @@ private fun SettingsView(
     state: SettingsState,
     onClose: () -> Unit,
     onToggleCloseTree: (Boolean) -> Unit,
+    onTogglePersistSession: (Boolean) -> Unit,
     onReset: () -> Unit
 ) {
     val themeDefinition = buildThemeDefinition()
@@ -98,6 +102,21 @@ private fun SettingsView(
                     )
                     Text(
                         text = stringResource(Res.string.close_book_tree_on_new_book),
+                    )
+                }
+
+                Divider(modifier = Modifier, orientation = Orientation.Horizontal)
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Checkbox(
+                        checked = state.persistSession,
+                        onCheckedChange = { onTogglePersistSession(it) }
+                    )
+                    Text(
+                        text = stringResource(Res.string.settings_persist_session),
                     )
                 }
 

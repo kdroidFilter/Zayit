@@ -33,6 +33,11 @@ object AppSettings {
     private const val KEY_LINE_HEIGHT = "line_height"
     private const val KEY_CLOSE_TREE_ON_NEW_BOOK = "close_tree_on_new_book"
     private const val KEY_DATABASE_PATH = "database_path"
+    private const val KEY_PERSIST_SESSION = "persist_session"
+    private const val KEY_SAVED_SESSION = "saved_session_json"
+    private const val KEY_SAVED_SESSION_PARTS_COUNT = "saved_session_parts_count"
+    private const val KEY_SAVED_SESSION_PART_PREFIX = "saved_session_part_"
+    private const val SESSION_CHUNK_SIZE = 4000
 
     // Backing Settings storage (can be replaced at startup if needed)
     @Volatile
@@ -46,6 +51,7 @@ object AppSettings {
         _lineHeightFlow.value = getLineHeight()
         _closeTreeOnNewBookFlow.value = getCloseBookTreeOnNewBookSelected()
         _databasePathFlow.value = getDatabasePath()
+        _persistSessionFlow.value = isPersistSessionEnabled()
     }
 
     // StateFlow to observe text size changes
@@ -63,6 +69,10 @@ object AppSettings {
     // StateFlow for database path (nullable)
     private val _databasePathFlow = MutableStateFlow(getDatabasePath())
     val databasePathFlow: StateFlow<String?> = _databasePathFlow.asStateFlow()
+
+    // StateFlow for session persistence setting
+    private val _persistSessionFlow = MutableStateFlow(isPersistSessionEnabled())
+    val persistSessionFlow: StateFlow<Boolean> = _persistSessionFlow.asStateFlow()
 
     fun getTextSize(): Float {
         return settings[KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE]
@@ -133,6 +143,67 @@ object AppSettings {
         }
     }
 
+    // Session persistence preference
+    fun isPersistSessionEnabled(): Boolean {
+        return settings[KEY_PERSIST_SESSION, false]
+    }
+
+    fun setPersistSessionEnabled(enabled: Boolean) {
+        settings[KEY_PERSIST_SESSION] = enabled
+        _persistSessionFlow.value = enabled
+        if (!enabled) {
+            // Clear any previously saved session when disabling persistence
+            setSavedSessionJson(null)
+        }
+    }
+
+    // Saved session blob (JSON)
+    fun getSavedSessionJson(): String? {
+        // Prefer chunked storage if present
+        val partsCount: Int = settings[KEY_SAVED_SESSION_PARTS_COUNT, 0]
+        if (partsCount > 0) {
+            val sb = StringBuilder(partsCount * SESSION_CHUNK_SIZE)
+            for (i in 0 until partsCount) {
+                val partKey = "$KEY_SAVED_SESSION_PART_PREFIX$i"
+                sb.append(settings[partKey, ""])
+            }
+            val result = sb.toString()
+            return result.ifBlank { null }
+        }
+        // Backward compatibility (single key)
+        val legacy: String = settings[KEY_SAVED_SESSION, ""]
+        return legacy.ifBlank { null }
+    }
+
+    fun setSavedSessionJson(json: String?) {
+        if (json.isNullOrBlank()) {
+            // Clear legacy and chunked storage
+            settings[KEY_SAVED_SESSION] = ""
+            val oldCount: Int = settings[KEY_SAVED_SESSION_PARTS_COUNT, 0]
+            if (oldCount > 0) {
+                for (i in 0 until oldCount) {
+                    val partKey = "$KEY_SAVED_SESSION_PART_PREFIX$i"
+                    settings[partKey] = ""
+                }
+                settings[KEY_SAVED_SESSION_PARTS_COUNT] = 0
+            }
+            return
+        }
+
+        // Write chunked to avoid JVM Preferences value-length limits
+        val totalLength = json.length
+        val parts = (totalLength + SESSION_CHUNK_SIZE - 1) / SESSION_CHUNK_SIZE
+        settings[KEY_SAVED_SESSION_PARTS_COUNT] = parts
+        for (i in 0 until parts) {
+            val start = i * SESSION_CHUNK_SIZE
+            val end = minOf(start + SESSION_CHUNK_SIZE, totalLength)
+            val partKey = "$KEY_SAVED_SESSION_PART_PREFIX$i"
+            settings[partKey] = json.substring(start, end)
+        }
+        // Clear legacy single key to avoid oversized writes
+        settings[KEY_SAVED_SESSION] = ""
+    }
+
     // Clears all persisted settings and resets in-memory flows to defaults
     fun clearAll() {
         settings.clear()
@@ -140,5 +211,6 @@ object AppSettings {
         _lineHeightFlow.value = DEFAULT_LINE_HEIGHT
         _closeTreeOnNewBookFlow.value = false
         _databasePathFlow.value = null
+        _persistSessionFlow.value = false
     }
 }

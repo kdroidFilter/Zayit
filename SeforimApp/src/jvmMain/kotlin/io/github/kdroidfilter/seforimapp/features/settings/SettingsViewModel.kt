@@ -15,6 +15,7 @@ class SettingsViewModel : ViewModel() {
     private val _state = MutableStateFlow(
         SettingsState(
             closedAutomaticallyBookTreePaneOnNewBookSelected = AppSettings.getCloseBookTreeOnNewBookSelected(),
+            persistSession = AppSettings.isPersistSessionEnabled(),
             databasePath = AppSettings.getDatabasePath()
         )
     )
@@ -36,6 +37,10 @@ class SettingsViewModel : ViewModel() {
             is SettingsEvents.SetCloseBookTreeOnNewBookSelected -> {
                 AppSettings.setCloseBookTreeOnNewBookSelected(events.value)
                 _state.value = _state.value.copy(closedAutomaticallyBookTreePaneOnNewBookSelected = events.value)
+            }
+            is SettingsEvents.SetPersistSession -> {
+                AppSettings.setPersistSessionEnabled(events.value)
+                _state.value = _state.value.copy(persistSession = events.value)
             }
             is SettingsEvents.ResetApp -> {
                 // Delete database file if exists, then clear all settings

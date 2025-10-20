@@ -139,8 +139,16 @@
 
     <!-- Settings -->
     <string name="close_book_tree_on_new_book">סגור אוטומטית את חלונית העץ בעת בחירת ספר חדש</string>
+
     <!-- Onboarding -->
+    <!-- Init-->
     <string name="onboarding_title_bar">הגדרה ראשונית</string>
+    <string name="onboarding_init_welcome_title">ברוכים הבאים לזית!</string>
+    <string name="onboarding_init_welcome_subtitle">יישום חדש, מודרני ומהיר ללימוד התורה, שנבנה באהבה על ידי אברך ומפתח חרדי. זית שואפת לחולל מהפכה בלימוד טקסטים דיגיטליים באמצעות חוויה חלקה, אלגנטית וללא צורך בחיבור לאינטרנט.</string>
+    <string name="onboarding_setup_guide">נלווה אתכם שלב אחר שלב כדי להגדיר את היישום כראוי.</string>
+    <string name="onboarding_init_start">התחל</string>
+
+    <!--Downloading-->
     <string name="onboarding_downloading_message">אנא המתן בזמן שאנו מורידים את מסד הנתונים</string>
     <string name="onboarding_extracting_message">אנא המתן בזמן שאנו מחלצים את מסד הנתונים</string>
     <string name="onboarding_ready">הכול מוכן!</string>

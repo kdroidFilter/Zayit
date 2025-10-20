@@ -10,9 +10,8 @@ enum class InstallType {
 
 @Serializable
 sealed interface OnBoardingDestination {
-
     @Serializable
-    data class InitScreen(val selection : InstallType) : OnBoardingDestination
+    data object InitScreen : OnBoardingDestination
 
     @Serializable
     data object DatabaseOnlineInstallerScreen : OnBoardingDestination

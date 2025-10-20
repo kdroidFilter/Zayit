@@ -35,7 +35,7 @@ kotlin {
             api("org.jetbrains.runtime:jbr-api:1.9.0")
             api("org.jetbrains.jewel:jewel-markdown-core:$jewelVersion", jewelExclusions)
             api("org.jetbrains.jewel:jewel-markdown-extensions-autolink:$jewelVersion", jewelExclusions)
-
+            api("org.jetbrains.jewel:jewel-markdown-int-ui-standalone-styling:$jewelVersion", jewelExclusions)
         }
 
     }

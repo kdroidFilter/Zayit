@@ -151,20 +151,8 @@
     <!-- Licence -->
     <!-- Intro / provenance -->
     <string name="license_screen_title">רישיון ותנאי שימוש</string>
-    <string name="license_intro">זית עושה שימוש במסד הנתונים של פרויקט</string>
-    <string name="license_otzaria_name">Otzaria Library</string>
-    <string name="license_converted_from">שהומר לפורמט SQL במאגר</string>
-    <string name="license_seforim_name">SeforimLibrary</string>
-    <!-- Sources and restrictions -->
-    <string name="license_sources_notice">הספרים הכלולים בזית עשויים להגיע ממקורות שונים, וחלקם כפופים לרישיונות המגבילים שימוש מסחרי, העתקה או הפצה.</string>
-    <!-- User responsibility -->
-    <string name="license_user_responsibility">המשתמש מחויב לבדוק את תנאי הרישיון של כל ספר לפני כל שימוש מסחרי או העתקה, ולפעול לפי התנאים שנקבעו על ידי בעלי הזכויות.</string>
-    <string name="license_disclaimer">זית ומפתחיה אינם נושאים באחריות לכל שימוש שאינו בהתאם לתנאי הרישיון.</string>
-    <!-- App license -->
-    <string name="license_app_free_notice">יישום זית עצמו חופשי וחינמי, מופץ תחת רישיון</string>
-    <string name="license_agpl_name">AGPL v3</string>
-    <!-- Encouragement -->
-    <string name="license_share_mitzvah">מותר ואף מצווה לשתף, להפיץ ולתרום לפיתוחו!</string>
+    <string name="license_accept_checkbox">אני מאשר את תנאי הרישיון</string>
+    <string name="license_accept_cta">המשך</string>
 
     <!--Downloading-->
     <string name="onboarding_downloading_message">אנא המתן בזמן שאנו מורידים את מסד הנתונים</string>

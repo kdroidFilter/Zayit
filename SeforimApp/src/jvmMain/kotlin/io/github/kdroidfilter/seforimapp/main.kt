@@ -21,6 +21,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWind
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingScreen
+import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -89,11 +90,8 @@ fun main() {
 
         // Create the application graph via Metro and expose via CompositionLocal
         val appGraph = remember { createGraph<AppGraph>() }
-
-        // Initialize static delegates that need app-level instances
-        LaunchedEffect(Unit) {
-            AppSettings.initialize(appGraph.settings)
-        }
+        // Ensure AppSettings uses the DI-provided Settings immediately
+        AppSettings.initialize(appGraph.settings)
 
         CompositionLocalProvider(LocalAppGraph provides appGraph) {
             val themeDefinition = ThemeUtils.buildThemeDefinition()
@@ -143,7 +141,11 @@ fun main() {
                     }
                 } else if (showOnboarding == false) {
                     DecoratedWindow(
-                        onCloseRequest = { exitApplication() },
+                        onCloseRequest = {
+                            // Persist session if enabled, then exit
+                            SessionManager.saveIfEnabled(appGraph)
+                            exitApplication()
+                        },
                         title = stringResource(Res.string.app_name),
                         icon = painterResource(Res.drawable.zayit_transparent),
                         state = windowState,
@@ -161,6 +163,14 @@ fun main() {
                         window.toFront()
                         window.requestFocus()
                         MainTitleBar()
+                        // Restore previously saved session once when main window becomes active
+                        var sessionRestored by remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) {
+                            if (!sessionRestored) {
+                                SessionManager.restoreIfEnabled(appGraph)
+                                sessionRestored = true
+                            }
+                        }
                         TabsNavHost()
                     }
                 } // else (null) -> render nothing until decision made

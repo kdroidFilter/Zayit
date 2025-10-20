@@ -61,4 +61,22 @@ class TabStateManager {
     fun clearAllState() {
         stateCache.clear()
     }
+
+    /**
+     * Returns a snapshot copy of the current in-memory state for all tabs.
+     */
+    fun snapshot(): Map<String, Map<String, Any>> {
+        return stateCache.mapValues { it.value.toMap() }
+    }
+
+    /**
+     * Restores the in-memory cache from a previously captured snapshot.
+     * Existing state is cleared before applying the snapshot.
+     */
+    fun restore(snapshot: Map<String, Map<String, Any>>) {
+        stateCache.clear()
+        snapshot.forEach { (tabId, map) ->
+            stateCache[tabId] = map.toMutableMap()
+        }
+    }
 }

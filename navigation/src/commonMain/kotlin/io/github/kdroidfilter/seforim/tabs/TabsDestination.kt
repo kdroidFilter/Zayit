@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforim.tabs
 
 import kotlinx.serialization.Serializable
 
+@Serializable
 sealed interface TabsDestination {
     val tabId: String
 

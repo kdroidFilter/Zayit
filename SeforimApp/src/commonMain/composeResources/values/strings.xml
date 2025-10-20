@@ -153,7 +153,7 @@
     <!-- Intro / provenance -->
     <string name="license_screen_title">רישיון ותנאי שימוש</string>
     <string name="license_accept_checkbox">אני מאשר את תנאי הרישיון</string>
-    <string name="license_accept_cta">המשך</string>
+    <string name="next_button">המשך</string>
 
     <!--Downloading-->
     <string name="onboarding_downloading_message">אנא המתן בזמן שאנו מורידים את מסד הנתונים</string>

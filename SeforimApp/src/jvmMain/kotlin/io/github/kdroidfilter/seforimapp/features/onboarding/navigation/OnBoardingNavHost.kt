@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import io.github.kdroidfilter.seforim.navigation.NavigationAnimations
 import io.github.kdroidfilter.seforimapp.features.onboarding.screens.init.InitScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.screens.licence.LicenceScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.screens.typeofinstall.TypeOfInstallationScreen
 
 @Composable
 fun OnBoardingNavHost(){
@@ -21,6 +22,7 @@ fun OnBoardingNavHost(){
     NavHost(modifier = Modifier.fillMaxSize().padding(16.dp), navController = navController, startDestination = OnBoardingDestination.InitScreen) {
         noAnimatedComposable<OnBoardingDestination.InitScreen> { InitScreen(navController) }
         noAnimatedComposable<OnBoardingDestination.LicenceScreen> { LicenceScreen(navController) }
+        noAnimatedComposable<OnBoardingDestination.TypeOfInstallationScreen> {TypeOfInstallationScreen(navController)}
     }
 
 }

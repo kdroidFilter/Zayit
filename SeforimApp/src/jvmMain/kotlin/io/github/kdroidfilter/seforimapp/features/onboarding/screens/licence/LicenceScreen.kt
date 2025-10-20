@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.Font
@@ -42,11 +43,13 @@ import java.net.URI.create
 
 @Composable
 fun LicenceScreen(navController: NavController) {
-    LicenceView(onNext = { }, onPrevious = { navController.navigateUp() })
+    LicenceView(
+        onNext = { navController.navigate(OnBoardingDestination.TypeOfInstallationScreen) },
+        onPrevious = { navController.navigateUp() })
 }
 
 @Composable
-private fun LicenceView(onNext : () -> Unit = {}, onPrevious : () -> Unit = {}) {
+private fun LicenceView(onNext: () -> Unit = {}, onPrevious: () -> Unit = {}) {
     var isChecked by remember { mutableStateOf(false) }
 
     val isDark = JewelTheme.isDark
@@ -102,7 +105,7 @@ private fun LicenceView(onNext : () -> Unit = {}, onPrevious : () -> Unit = {}) 
                     Text(stringResource(Res.string.previous_button))
                 }
                 DefaultButton(onClick = { onNext() }, enabled = isChecked) {
-                    Text(text = stringResource(Res.string.license_accept_cta))
+                    Text(text = stringResource(Res.string.next_button))
                 }
             }
         }

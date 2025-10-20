@@ -19,14 +19,16 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.FilterInputStream
 import com.github.luben.zstd.ZstdInputStream
+import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
 
 class OnBoardingViewModel(
+    private val mainState : MainAppState,
     private val settings: AppSettings,
-    private val gitHubReleaseFetcher: GitHubReleaseFetcher
+    private val gitHubReleaseFetcher: GitHubReleaseFetcher,
 ) : ViewModel() {
 
 
@@ -34,8 +36,6 @@ class OnBoardingViewModel(
         val path = settings.getDatabasePath()
         return path != null && File(path).exists()
     }
-
-    
 
     private val _isDatabaseLoaded = MutableStateFlow(isDatabaseAvailable())
     val isDatabaseLoaded = _isDatabaseLoaded.asStateFlow()
@@ -110,7 +110,7 @@ class OnBoardingViewModel(
     fun onEvent(event: OnBoardingEvents) {
         when (event) {
             OnBoardingEvents.onFinish -> {
-
+                mainState.setShowOnBoarding(false)
             }
             OnBoardingEvents.StartDownload -> {
                 if (_downloadingInProgress.value || _extractingInProgress.value || _isDatabaseLoaded.value) return

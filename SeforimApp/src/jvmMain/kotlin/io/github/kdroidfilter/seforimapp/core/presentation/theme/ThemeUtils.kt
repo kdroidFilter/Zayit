@@ -17,6 +17,7 @@ import org.jetbrains.jewel.window.styling.TitleBarStyle
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.notoserifhebrew
 import io.github.kdroidfilter.platformtools.darkmodedetector.isSystemInDarkMode
+import io.github.kdroidfilter.seforimapp.core.MainAppState
 
 /**
  * Utilities to build consistent Jewel theme definitions and related styling across the app.
@@ -39,7 +40,7 @@ object ThemeUtils {
      */
     @Composable
     fun buildThemeDefinition() = run {
-        val theme = ThemeViewModel.theme.collectAsState().value
+        val theme = MainAppState.theme.collectAsState().value
         val isDarkTheme = when (theme) {
             IntUiThemes.Light -> false
             IntUiThemes.Dark -> true
@@ -65,7 +66,7 @@ object ThemeUtils {
      */
     @Composable
     fun pickTitleBarStyle(): TitleBarStyle {
-        val theme = ThemeViewModel.theme.collectAsState().value
+        val theme = MainAppState.theme.collectAsState().value
         return when (theme) {
             IntUiThemes.Light -> TitleBarStyle.lightWithLightHeader()
             IntUiThemes.Dark -> TitleBarStyle.dark()

@@ -13,6 +13,7 @@ import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
@@ -122,6 +123,14 @@ abstract class AppGraph {
     fun provideOnBoardingViewModel(settings: Settings): OnBoardingViewModel {
         // Ensure AppSettings uses the same Settings instance
         AppSettings.initialize(settings)
-        return OnBoardingViewModel(AppSettings, GitHubReleaseFetcher("kdroidFilter", "SeforimLibrary", KtorConfig.createHttpClient()))
+        return OnBoardingViewModel(
+            mainState = MainAppState,
+            settings = AppSettings,
+            gitHubReleaseFetcher = GitHubReleaseFetcher(
+                owner = "kdroidFilter",
+                repo = "SeforimLibrary",
+                httpClient = KtorConfig.createHttpClient()
+            )
+        )
     }
 }

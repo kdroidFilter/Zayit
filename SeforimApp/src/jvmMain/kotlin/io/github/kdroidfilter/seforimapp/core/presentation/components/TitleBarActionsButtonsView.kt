@@ -3,7 +3,7 @@ package io.github.kdroidfilter.seforimapp.core.presentation.components
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeViewModel
+import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.features.settings.Settings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
@@ -26,7 +26,7 @@ import seforimapp.seforimapp.generated.resources.Res
 
 @Composable
 fun TitleBarActionsButtonsView() {
-    val themeViewModel = ThemeViewModel
+    val themeViewModel = MainAppState
     val theme = themeViewModel.theme.collectAsState().value
 
     // Use ViewModel-driven settings window visibility to respect MVVM conventions

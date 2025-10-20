@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -8,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.WindowScope
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytesPerSec
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatEta
@@ -18,25 +20,45 @@ import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.typography
+import org.jetbrains.jewel.window.DecoratedWindowScope
+import org.jetbrains.jewel.window.TitleBar
+import org.jetbrains.jewel.window.newFullscreenControls
 import seforimapp.seforimapp.generated.resources.*
 
 @Composable
-fun OnBoardingScreen(onFinish: () -> Unit = {}) {
+fun DecoratedWindowScope.OnBoardingWindow() {
+    TitleBar(modifier = Modifier.newFullscreenControls()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(Res.string.onboarding_title_bar))
+        }
+    }
+    Column(
+        modifier = Modifier
+            .trackActivation()
+            .fillMaxSize()
+            .background(JewelTheme.globalColors.panelBackground),
+    ) {
+        OnBoardingScreen()
+    }
+}
+
+@Composable
+fun OnBoardingScreen() {
     val viewModel: OnBoardingViewModel = LocalAppGraph.current.onBoardingViewModel
     val state by viewModel.state.collectAsState()
-    OnBoardingView(state, viewModel::onEvent, onFinish)
+    OnBoardingView(state, viewModel::onEvent)
 }
 
 @Composable
 private fun OnBoardingView(
     state: OnBoardingState,
     onEvent: (OnBoardingEvents) -> Unit,
-    onFinish: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -89,7 +111,6 @@ private fun OnBoardingView(
                 OnboardingText(stringResource(Res.string.onboarding_ready))
                 DefaultButton({
                     onEvent(OnBoardingEvents.onFinish)
-                    onFinish()
                 }) {
                     Text(stringResource(Res.string.onboarding_open_app))
                 }
@@ -121,7 +142,6 @@ private fun OnBoardingView(
         }
 
     }
-
 }
 
 @Composable
@@ -135,7 +155,7 @@ private fun OnboardingText(text: String, color : Color = Color.Unspecified) {
 @Composable
 private fun Preview_OnBoarding_Loaded() {
     PreviewContainer {
-        OnBoardingView(state = OnBoardingState.previewLoaded, onEvent = {}, onFinish = {})
+        OnBoardingView(state = OnBoardingState.previewLoaded, onEvent = {})
     }
 }
 
@@ -143,7 +163,7 @@ private fun Preview_OnBoarding_Loaded() {
 @Composable
 private fun Preview_OnBoarding_Downloading() {
     PreviewContainer {
-        OnBoardingView(state = OnBoardingState.previewDownloading, onEvent = {}, onFinish = {})
+        OnBoardingView(state = OnBoardingState.previewDownloading, onEvent = {})
     }
 }
 
@@ -151,7 +171,7 @@ private fun Preview_OnBoarding_Downloading() {
 @Composable
 private fun Preview_OnBoarding_Extracting() {
     PreviewContainer {
-        OnBoardingView(state = OnBoardingState.previewExtracting, onEvent = {}, onFinish = {})
+        OnBoardingView(state = OnBoardingState.previewExtracting, onEvent = {})
     }
 }
 
@@ -159,6 +179,6 @@ private fun Preview_OnBoarding_Extracting() {
 @Composable
 private fun Preview_OnBoarding_Error() {
     PreviewContainer {
-        OnBoardingView(state = OnBoardingState.previewError, onEvent = {}, onFinish = {})
+        OnBoardingView(state = OnBoardingState.previewError, onEvent = {})
     }
 }

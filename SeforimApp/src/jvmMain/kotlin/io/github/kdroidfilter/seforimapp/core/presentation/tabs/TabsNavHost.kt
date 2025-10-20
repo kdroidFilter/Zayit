@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -13,6 +14,8 @@ import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforim.utils.ObserveAsEvents
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import org.jetbrains.jewel.foundation.modifier.trackActivation
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 
 @Composable
 fun TabsNavHost() {
@@ -48,12 +51,11 @@ fun TabsNavHost() {
             navigator.setCanGoBack(navController.previousBackStackEntry != null)
         }
     }
-    val scope = rememberCoroutineScope()
 
     NavHost(
         navController = navController,
         startDestination = navigator.startDestination,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.trackActivation() .fillMaxSize().background(JewelTheme.globalColors.panelBackground),
     ) {
 
         nonAnimatedComposable<TabsDestination.Search> { backStackEntry ->

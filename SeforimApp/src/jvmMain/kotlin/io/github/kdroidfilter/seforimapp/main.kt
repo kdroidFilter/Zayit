@@ -17,6 +17,7 @@ import dev.zacsweers.metro.createGraph
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.darkmodedetector.mac.setMacOsAdaptiveTitleBar
 import io.github.kdroidfilter.platformtools.getOperatingSystem
+import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionsButtonsView
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsNavHost
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsView
@@ -61,8 +62,7 @@ fun main() {
     //    }
 
 
-
-    val appId  = "io.github.kdroidfilter.seforimapp"
+    val appId = "io.github.kdroidfilter.seforimapp"
     SingleInstanceManager.configuration = SingleInstanceManager.Configuration(
         lockIdentifier = appId
     )
@@ -123,7 +123,7 @@ fun main() {
 
                 if (showOnboarding == true) {
                     DecoratedWindow(
-                        onCloseRequest = {exitApplication()},
+                        onCloseRequest = { exitApplication() },
                         title = stringResource(Res.string.app_name),
                         icon = painterResource(Res.drawable.zayit_transparent),
                         state = onboardingWindowState,
@@ -164,46 +164,8 @@ fun main() {
                         },
                     ) {
                         window.minimumSize = Dimension(350, 600)
-                        TitleBar(modifier = Modifier.newFullscreenControls()) {
-                            BoxWithConstraints {
-                                val windowWidth = maxWidth
-                                val iconsNumber = 4
-                                val iconWidth = 40
-                                Row {
-                                    Row(
-                                        modifier = Modifier
-                                            .padding(start = 0.dp)
-                                            .align(Alignment.Start)
-                                            .width(windowWidth -
-                                                    when (getOperatingSystem()) {
-                                                        OperatingSystem.MACOS -> iconWidth * (iconsNumber + 2).dp
-                                                        OperatingSystem.WINDOWS -> iconWidth * (iconsNumber + 3.5).dp
-                                                        else -> (iconWidth * iconsNumber).dp
-                                                    }
-                                            )
-                                    ) {
-                                        TabsView()
-                                    }
-                                    Row(
-                                        modifier = Modifier
-                                            .align(Alignment.End)
-                                            .fillMaxHeight(),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        TitleBarActionsButtonsView()
-                                    }
-                                }
-                            }
-                        }
-
-                        Column(
-                            modifier = Modifier
-                                .trackActivation()
-                                .fillMaxSize()
-                                .background(JewelTheme.globalColors.panelBackground),
-                        ) {
-                            TabsNavHost()
-                        }
+                        MainTitleBar()
+                        TabsNavHost()
                     }
                 } // else (null) -> render nothing until decision made
             }

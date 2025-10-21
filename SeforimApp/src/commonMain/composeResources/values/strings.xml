@@ -215,4 +215,6 @@
     <string name="onboarding_region_title">הגדרת אזור</string>
     <string name="onboarding_region_country_label">בחרו מדינה</string>
     <string name="onboarding_region_city_label">בחרו עיר</string>
+    <string name="onboarding_region_description">היישום זקוק למידע על אזור מגוריכם כדי לספק תכנים מותאמים למיקומכם, כגון פרשת השבוע, זמני קריאת שמע ושאר זמני היום.</string>
+
 </resources>

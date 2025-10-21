@@ -35,7 +35,7 @@ fun OnBoardingNavHost(navController: NavHostController) {
         NavHost(
             modifier = Modifier.fillMaxSize().padding(16.dp),
             navController = navController,
-            startDestination = OnBoardingDestination.InitScreen
+            startDestination = OnBoardingDestination.RegionConfigScreen
         ) {
             noAnimatedComposable<OnBoardingDestination.InitScreen> {
                 InitScreen(navController)

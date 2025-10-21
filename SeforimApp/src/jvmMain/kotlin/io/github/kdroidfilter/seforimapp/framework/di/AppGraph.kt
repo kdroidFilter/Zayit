@@ -6,27 +6,24 @@ import com.russhwolf.settings.Settings
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
-import io.github.kdroidfilter.platformtools.releasefetcher.github.GitHubReleaseFetcher
 import io.github.kdroidfilter.seforim.navigation.DefaultNavigator
 import io.github.kdroidfilter.seforim.navigation.Navigator
 import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
-import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.business.DownloadUseCase
-import io.github.kdroidfilter.seforimapp.features.onboarding.business.ExtractUseCase
-import io.github.kdroidfilter.seforimapp.features.onboarding.business.OnboardingProcessRepository
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.download.DownloadViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.extract.ExtractViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.typeofinstall.TypeOfInstallationViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
+import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeOfInstallationViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.databaseFetcher
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
-import io.github.kdroidfilter.seforimapp.network.KtorConfig
 import java.util.UUID
 
 /**

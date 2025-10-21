@@ -1,9 +1,9 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding.ui.download
+package io.github.kdroidfilter.seforimapp.features.onboarding.download
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.seforimapp.features.onboarding.business.DownloadUseCase
-import io.github.kdroidfilter.seforimapp.features.onboarding.business.OnboardingProcessRepository
+import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

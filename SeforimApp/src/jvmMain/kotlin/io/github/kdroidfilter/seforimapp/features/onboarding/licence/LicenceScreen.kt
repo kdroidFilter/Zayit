@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalJewelApi::class)
 
-package io.github.kdroidfilter.seforimapp.features.onboarding.screens.licence
+package io.github.kdroidfilter.seforimapp.features.onboarding.licence
 
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.layout.*

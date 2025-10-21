@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding.business
+package io.github.kdroidfilter.seforimapp.features.onboarding.download
 
 import io.github.kdroidfilter.platformtools.releasefetcher.github.GitHubReleaseFetcher
 import io.github.kdroidfilter.seforimapp.network.HttpsConnectionFactory

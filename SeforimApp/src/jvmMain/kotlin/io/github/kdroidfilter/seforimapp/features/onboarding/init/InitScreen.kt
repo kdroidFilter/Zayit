@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding.screens.init
+package io.github.kdroidfilter.seforimapp.features.onboarding.init
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size

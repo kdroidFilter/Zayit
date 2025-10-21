@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding.business
+package io.github.kdroidfilter.seforimapp.features.onboarding.extract
 
 import com.github.luben.zstd.ZstdInputStream
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings

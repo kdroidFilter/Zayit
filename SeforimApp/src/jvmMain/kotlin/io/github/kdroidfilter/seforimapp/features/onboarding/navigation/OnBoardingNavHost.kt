@@ -16,12 +16,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import io.github.kdroidfilter.seforim.navigation.NavigationAnimations
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AnimatedHorizontalProgressBar
-import io.github.kdroidfilter.seforimapp.features.onboarding.screens.init.InitScreen
-import io.github.kdroidfilter.seforimapp.features.onboarding.screens.licence.LicenceScreen
-import io.github.kdroidfilter.seforimapp.features.onboarding.screens.typeofinstall.TypeOfInstallationScreen
-import io.github.kdroidfilter.seforimapp.features.onboarding.screens.download.DownloadScreen
-import io.github.kdroidfilter.seforimapp.features.onboarding.screens.extract.ExtractScreen
-import io.github.kdroidfilter.seforimapp.features.onboarding.screens.finish.FinishScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.init.InitScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.licence.LicenceScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeOfInstallationScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.finish.FinishScreen
 
 @Composable
 fun OnBoardingNavHost(navController: NavHostController) {

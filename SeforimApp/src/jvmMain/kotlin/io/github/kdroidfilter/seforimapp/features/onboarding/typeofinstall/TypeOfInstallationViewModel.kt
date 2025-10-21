@@ -1,7 +1,7 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding.ui.typeofinstall
+package io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall
 
 import androidx.lifecycle.ViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.business.OnboardingProcessRepository
+import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

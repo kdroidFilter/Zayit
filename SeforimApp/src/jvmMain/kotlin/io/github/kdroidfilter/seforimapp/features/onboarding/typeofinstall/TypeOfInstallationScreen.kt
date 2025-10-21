@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding.screens.typeofinstall
+package io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -14,10 +14,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.HardDriveU
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.typeofinstall.TypeOfInstallationEvents
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.typeofinstall.TypeOfInstallationViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforimapp.icons.Github
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview

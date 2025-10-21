@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding.screens.finish
+package io.github.kdroidfilter.seforimapp.features.onboarding.finish
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect

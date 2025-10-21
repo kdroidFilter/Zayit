@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding.ui.extract
+package io.github.kdroidfilter.seforimapp.features.onboarding.extract
 
 data class ExtractState(
     val inProgress: Boolean,

@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding.business
+package io.github.kdroidfilter.seforimapp.features.onboarding.data
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,4 +16,3 @@ class OnboardingProcessRepository {
         _pendingZstPath.value = path
     }
 }
-

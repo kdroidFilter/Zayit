@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.onboarding.ui.download
+package io.github.kdroidfilter.seforimapp.features.onboarding.download
 
 data class DownloadState(
     val inProgress: Boolean,

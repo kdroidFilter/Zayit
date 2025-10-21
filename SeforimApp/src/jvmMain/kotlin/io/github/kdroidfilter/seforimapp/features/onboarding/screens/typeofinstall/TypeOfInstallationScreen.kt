@@ -14,8 +14,8 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.HardDriveU
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.OnBoardingEvents
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.OnBoardingViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.ui.typeofinstall.TypeOfInstallationEvents
+import io.github.kdroidfilter.seforimapp.features.onboarding.ui.typeofinstall.TypeOfInstallationViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Github
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
@@ -45,13 +45,13 @@ fun TypeOfInstallationScreen(navController: NavController, progressBarState: Pro
     LaunchedEffect(Unit) {
         progressBarState.setProgress(0.2f)
     }
-    val viewModel: OnBoardingViewModel = LocalAppGraph.current.onBoardingViewModel
+    val viewModel: TypeOfInstallationViewModel = LocalAppGraph.current.typeOfInstallationViewModel
     val pickZstLauncher = rememberFilePickerLauncher(
         type = FileKitType.File(extensions = listOf("zst"))
     ) { file ->
         val path = file?.path
         if (path != null) {
-            viewModel.onEvent(OnBoardingEvents.ImportFromZst(path))
+            viewModel.onEvent(TypeOfInstallationEvents.OfflineFileChosen(path))
             progressBarState.setProgress(0.6f)
             navController.navigate(OnBoardingDestination.ExtractScreen)
         }

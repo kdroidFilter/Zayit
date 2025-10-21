@@ -16,7 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.OnBoardingViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.ui.extract.ExtractEvents
+import io.github.kdroidfilter.seforimapp.features.onboarding.ui.extract.ExtractViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.compose.resources.stringResource
@@ -31,15 +32,18 @@ fun ExtractScreen(
     navController: NavController,
     progressBarState: ProgressBarState = ProgressBarState
 ) {
-    val viewModel: OnBoardingViewModel = LocalAppGraph.current.onBoardingViewModel
+    val viewModel: ExtractViewModel = LocalAppGraph.current.extractViewModel
     val state by viewModel.state.collectAsState()
 
     LaunchedEffect(Unit) { progressBarState.setProgress(0.8f) }
 
+    // Kick off extraction if a pending path exists
+    LaunchedEffect(Unit) { viewModel.onEvent(ExtractEvents.StartIfPending) }
+
     // Navigate to finish when DB is ready
     var navigated by remember { mutableStateOf(false) }
-    LaunchedEffect(state.isDatabaseLoaded) {
-        if (!navigated && state.isDatabaseLoaded) {
+    LaunchedEffect(state.completed) {
+        if (!navigated && state.completed) {
             navigated = true
             progressBarState.setProgress(1f)
             navController.navigate(OnBoardingDestination.FinishScreen)
@@ -56,7 +60,7 @@ fun ExtractScreen(
             }
 
             HorizontalProgressBar(
-                progress = state.extractProgress,
+                progress = state.progress,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             )
         }

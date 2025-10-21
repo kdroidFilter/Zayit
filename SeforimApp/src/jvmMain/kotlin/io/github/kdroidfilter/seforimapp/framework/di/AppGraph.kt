@@ -17,8 +17,12 @@ import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.OnBoardingViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.business.OnBoardingUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.business.DownloadUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.business.ExtractUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.business.OnboardingProcessRepository
+import io.github.kdroidfilter.seforimapp.features.onboarding.ui.download.DownloadViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.ui.extract.ExtractViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.ui.typeofinstall.TypeOfInstallationViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.databaseFetcher
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
@@ -42,7 +46,9 @@ abstract class AppGraph {
     abstract val tabsViewModel: TabsViewModel
     abstract val settingsViewModel: SettingsViewModel
 
-    abstract val onBoardingViewModel: OnBoardingViewModel
+    abstract val typeOfInstallationViewModel: TypeOfInstallationViewModel
+    abstract val downloadViewModel: DownloadViewModel
+    abstract val extractViewModel: ExtractViewModel
 
     @Provides
     @SingleIn(AppScope::class)
@@ -122,16 +128,39 @@ abstract class AppGraph {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideOnBoardingViewModel(settings: Settings): OnBoardingViewModel {
+    fun provideOnboardingProcessRepository(): OnboardingProcessRepository = OnboardingProcessRepository()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideDownloadUseCase(): DownloadUseCase = DownloadUseCase(
+        gitHubReleaseFetcher = databaseFetcher
+    )
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideExtractUseCase(settings: Settings): ExtractUseCase {
         // Ensure AppSettings uses the same Settings instance
         AppSettings.initialize(settings)
-        val useCase = OnBoardingUseCase(
-            settings = AppSettings,
-            gitHubReleaseFetcher = databaseFetcher
-        )
-        return OnBoardingViewModel(
-            mainState = MainAppState,
-            useCase = useCase
-        )
+        return ExtractUseCase()
     }
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideTypeOfInstallationViewModel(
+        processRepository: OnboardingProcessRepository
+    ): TypeOfInstallationViewModel = TypeOfInstallationViewModel(processRepository)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideDownloadViewModel(
+        downloadUseCase: DownloadUseCase,
+        processRepository: OnboardingProcessRepository
+    ): DownloadViewModel = DownloadViewModel(downloadUseCase, processRepository)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideExtractViewModel(
+        extractUseCase: ExtractUseCase,
+        processRepository: OnboardingProcessRepository
+    ): ExtractViewModel = ExtractViewModel(extractUseCase, processRepository)
 }

@@ -19,8 +19,8 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytesPerS
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatEta
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.OnBoardingEvents
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.OnBoardingViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.ui.download.DownloadEvents
+import io.github.kdroidfilter.seforimapp.features.onboarding.ui.download.DownloadViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.compose.resources.stringResource
@@ -35,7 +35,7 @@ fun DownloadScreen(
     navController: NavController,
     progressBarState: ProgressBarState = ProgressBarState
 ) {
-    val viewModel: OnBoardingViewModel = LocalAppGraph.current.onBoardingViewModel
+    val viewModel: DownloadViewModel = LocalAppGraph.current.downloadViewModel
     val state by viewModel.state.collectAsState()
 
     // Update top progress indicator for this step
@@ -43,17 +43,17 @@ fun DownloadScreen(
 
     // Trigger download once when entering this screen
     var started by remember { mutableStateOf(false) }
-    LaunchedEffect(state.downloadingInProgress, state.extractingInProgress, state.isDatabaseLoaded) {
-        if (!started && !state.downloadingInProgress && !state.extractingInProgress && !state.isDatabaseLoaded) {
+    LaunchedEffect(state.inProgress, state.completed) {
+        if (!started && !state.inProgress && !state.completed) {
             started = true
-            viewModel.onEvent(OnBoardingEvents.StartDownload)
+            viewModel.onEvent(DownloadEvents.Start)
         }
     }
 
     // Navigate to extraction when it begins
     var navigated by remember { mutableStateOf(false) }
-    LaunchedEffect(state.extractingInProgress) {
-        if (!navigated && state.extractingInProgress) {
+    LaunchedEffect(state.completed) {
+        if (!navigated && state.completed) {
             navigated = true
             progressBarState.setProgress(0.6f)
             navController.navigate(OnBoardingDestination.ExtractScreen)
@@ -70,14 +70,14 @@ fun DownloadScreen(
             }
 
             HorizontalProgressBar(
-                progress = state.downloadProgress,
+                progress = state.progress,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             )
 
             val downloadedText = formatBytes(state.downloadedBytes)
-            val totalBytes = state.downloadTotalBytes
+            val totalBytes = state.totalBytes
             val totalText = totalBytes?.let { formatBytes(it) }
-            val speedBps = state.downloadSpeedBytesPerSec
+            val speedBps = state.speedBytesPerSec
             val speedText = formatBytesPerSec(speedBps)
 
             totalText?.let {

@@ -24,6 +24,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadSc
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.finish.FinishScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileScreen
 
 @Composable
 fun OnBoardingNavHost(navController: NavHostController) {
@@ -35,7 +36,7 @@ fun OnBoardingNavHost(navController: NavHostController) {
         NavHost(
             modifier = Modifier.fillMaxSize().padding(16.dp),
             navController = navController,
-            startDestination = OnBoardingDestination.RegionConfigScreen
+            startDestination = OnBoardingDestination.InitScreen
         ) {
             noAnimatedComposable<OnBoardingDestination.InitScreen> {
                 InitScreen(navController)
@@ -57,6 +58,9 @@ fun OnBoardingNavHost(navController: NavHostController) {
             }
             noAnimatedComposable<OnBoardingDestination.FinishScreen> {
                 FinishScreen()
+            }
+            noAnimatedComposable<OnBoardingDestination.UserProfilScreen> {
+                UserProfileScreen(navController)
             }
             noAnimatedComposable<OnBoardingDestination.RegionConfigScreen> {
                 RegionConfigScreen(navController)

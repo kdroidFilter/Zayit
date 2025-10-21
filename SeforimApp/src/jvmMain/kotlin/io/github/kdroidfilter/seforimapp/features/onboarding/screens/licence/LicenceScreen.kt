@@ -100,13 +100,8 @@ private fun LicenceView(onNext: () -> Unit = {}, onPrevious: () -> Unit = {}) {
     OnBoardingScaffold(
         title = stringResource(Res.string.license_screen_title),
         bottomAction = {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                OutlinedButton(onClick = { onPrevious() }) {
-                    Text(stringResource(Res.string.previous_button))
-                }
-                DefaultButton(onClick = { onNext() }, enabled = isChecked) {
-                    Text(text = stringResource(Res.string.next_button))
-                }
+            DefaultButton(onClick = { onNext() }, enabled = isChecked) {
+                Text(text = stringResource(Res.string.next_button))
             }
         }
     ) {

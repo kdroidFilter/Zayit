@@ -39,6 +39,9 @@ object AppSettings {
     private const val KEY_SAVED_SESSION_PART_PREFIX = "saved_session_part_"
     private const val SESSION_CHUNK_SIZE = 4000
 
+    // Onboarding state
+    private const val KEY_ONBOARDING_FINISHED = "onboarding_finished"
+
     // Region configuration keys
     private const val KEY_REGION_COUNTRY = "region_country"
     private const val KEY_REGION_CITY = "region_city"
@@ -201,6 +204,15 @@ object AppSettings {
 
     fun setRegionCity(value: String?) {
         settings[KEY_REGION_CITY] = value?.takeIf { it.isNotBlank() } ?: ""
+    }
+
+    // Onboarding finished flag
+    fun isOnboardingFinished(): Boolean {
+        return settings[KEY_ONBOARDING_FINISHED, false]
+    }
+
+    fun setOnboardingFinished(finished: Boolean) {
+        settings[KEY_ONBOARDING_FINISHED] = finished
     }
 
     // User profile accessors

@@ -17,6 +17,7 @@ import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
+import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
@@ -48,7 +49,15 @@ fun LicenceScreen(navController: NavController, progressBarState: ProgressBarSta
         progressBarState.setProgress(0.1f)
     }
     LicenceView(
-        onNext = { navController.navigate(OnBoardingDestination.AvailableDiskSpaceScreen) },
+        onNext = {
+            // If DB already configured and found, skip install flow and go to user info
+            val dbReady = runCatching { getDatabasePath() }.isSuccess
+            if (dbReady) {
+                navController.navigate(OnBoardingDestination.UserProfilScreen)
+            } else {
+                navController.navigate(OnBoardingDestination.AvailableDiskSpaceScreen)
+            }
+        },
         onPrevious = { navController.navigateUp() })
 }
 

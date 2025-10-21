@@ -37,7 +37,11 @@ fun FinishScreen(progressBarState: ProgressBarState = ProgressBarState) {
     OnBoardingScaffold(
         title = stringResource(Res.string.onboarding_ready),
         bottomAction = {
-            DefaultButton(onClick = { MainAppState.setShowOnBoarding(false) }) {
+            DefaultButton(onClick = {
+                // Persist that onboarding was completed and open the app
+                io.github.kdroidfilter.seforimapp.core.settings.AppSettings.setOnboardingFinished(true)
+                MainAppState.setShowOnBoarding(false)
+            }) {
                 Text(stringResource(Res.string.onboarding_open_app))
             }
         }

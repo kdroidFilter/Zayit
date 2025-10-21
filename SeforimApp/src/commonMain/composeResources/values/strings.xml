@@ -211,10 +211,24 @@
     <string name="eta_seconds_unit_singular">שנייה</string>
     <string name="eta_seconds_unit_plural">שניות</string>
 
+
+    <!-- User info configuration-->
+    <string name="onboarding_user_info_title">פרטים אישיים</string>
+    <string name="onboarding_user_info_description">המידע הזה לעולם אינו נשלח לשרת. הוא נועד רק כדי להתאים אישית את חוויית השימוש באפליקציה — למשל כדי להציג את שמכם על החידושים שלכם, או כדי להציע את נוסח ברכת המזון המתאים למסורתכם.</string>
+
+    <string name="onboarding_user_first_name_label">שם פרטי</string>
+    <string name="onboarding_user_last_name_label">שם משפחה</string>
+    <string name="onboarding_user_community_label">עדה</string>
+
+    <string name="onboarding_user_community_sepharade">עדות המזרח</string>
+    <string name="onboarding_user_community_ashkenaze">אשכנזי</string>
+    <string name="onboarding_user_community_sefard">ספרד</string>
+
     <!-- Region configuration -->
     <string name="onboarding_region_title">הגדרת אזור</string>
     <string name="onboarding_region_country_label">בחרו מדינה</string>
     <string name="onboarding_region_city_label">בחרו עיר</string>
     <string name="onboarding_region_description">היישום זקוק למידע על אזור מגוריכם כדי לספק תכנים מותאמים למיקומכם, כגון פרשת השבוע, זמני קריאת שמע ושאר זמני היום.</string>
+
 
 </resources>

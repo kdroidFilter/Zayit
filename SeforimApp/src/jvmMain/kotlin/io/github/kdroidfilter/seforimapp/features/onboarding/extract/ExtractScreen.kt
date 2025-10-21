@@ -50,8 +50,8 @@ fun ExtractScreen(
     LaunchedEffect(state.completed) {
         if (!navigated && state.completed) {
             navigated = true
-            // Continue to region configuration step
-            navController.navigate(OnBoardingDestination.RegionConfigScreen)
+            // Continue to user profile step (before region configuration)
+            navController.navigate(OnBoardingDestination.UserProfilScreen)
         }
     }
 

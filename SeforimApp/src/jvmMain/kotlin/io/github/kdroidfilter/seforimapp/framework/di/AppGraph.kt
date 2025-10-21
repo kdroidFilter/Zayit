@@ -20,6 +20,8 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractUseC
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeOfInstallationViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.databaseFetcher
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
@@ -46,6 +48,7 @@ abstract class AppGraph {
     abstract val typeOfInstallationViewModel: TypeOfInstallationViewModel
     abstract val downloadViewModel: DownloadViewModel
     abstract val extractViewModel: ExtractViewModel
+    abstract val availableDiskSpaceViewModel: AvailableDiskSpaceViewModel
 
     @Provides
     @SingleIn(AppScope::class)
@@ -133,6 +136,7 @@ abstract class AppGraph {
         gitHubReleaseFetcher = databaseFetcher
     )
 
+
     @Provides
     @SingleIn(AppScope::class)
     fun provideExtractUseCase(settings: Settings): ExtractUseCase {
@@ -142,7 +146,6 @@ abstract class AppGraph {
     }
 
     @Provides
-    @SingleIn(AppScope::class)
     fun provideTypeOfInstallationViewModel(
         processRepository: OnboardingProcessRepository
     ): TypeOfInstallationViewModel = TypeOfInstallationViewModel(processRepository)
@@ -160,4 +163,14 @@ abstract class AppGraph {
         extractUseCase: ExtractUseCase,
         processRepository: OnboardingProcessRepository
     ): ExtractViewModel = ExtractViewModel(extractUseCase, processRepository)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideAvailableDiskSpaceUseCase(): AvailableDiskSpaceUseCase = AvailableDiskSpaceUseCase()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideAvailableDiskSpaceViewModel(
+        useCase: AvailableDiskSpaceUseCase
+    ): AvailableDiskSpaceViewModel = AvailableDiskSpaceViewModel(useCase)
 }

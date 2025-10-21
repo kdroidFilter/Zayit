@@ -179,6 +179,12 @@
     <string name="onboarding_choose_source">בחרו כיצד להגדיר את מסד הנתונים</string>
     <string name="onboarding_download_db_button">הורדת מסד הנתונים</string>
     <string name="onboarding_pick_zst_button">בחר קובץ ‎.zst מקומי</string>
+    <!-- Disk space check -->
+    <string name="onboarding_disk_title">בדיקת שטח פנוי בדיסק</string>
+    <string name="onboarding_disk_space_sufficient">קיים מספיק שטח פנוי</string>
+    <string name="onboarding_disk_space_insufficient">אין מספיק שטח פנוי</string>
+    <string name="onboarding_disk_space_available">שטח פנוי: %1$s</string>
+    <string name="onboarding_disk_space_required">נדרש: %1$s</string>
     <!-- Units -->
     <string name="bytes_unit_b">ב׳</string>
     <string name="bytes_unit_kb">ק״ב</string>

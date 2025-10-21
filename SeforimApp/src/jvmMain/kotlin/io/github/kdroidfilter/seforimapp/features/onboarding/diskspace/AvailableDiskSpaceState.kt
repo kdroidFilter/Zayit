@@ -1,12 +1,10 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.diskspace
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class AvailableDiskSpaceState(
-    val hasEnoughSpace: Boolean,
-    val availableDiskSpace: Long,
-    val remainingDiskSpaceAfter15Gb: Long,
-) {
-    companion object {
-        val hasEnoughSpace = AvailableDiskSpaceState(true, 1000000000000, 1000000000000)
-        val noEnoughSpace = AvailableDiskSpaceState(false, 1000000, 100000)
-    }
-}
+    val hasEnoughSpace: Boolean = false,
+    val availableDiskSpace: Long = 0,
+    val remainingDiskSpaceAfter15Gb: Long = 0
+)

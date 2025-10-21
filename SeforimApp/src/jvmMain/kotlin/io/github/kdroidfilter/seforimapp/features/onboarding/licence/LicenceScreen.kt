@@ -48,7 +48,7 @@ fun LicenceScreen(navController: NavController, progressBarState: ProgressBarSta
         progressBarState.setProgress(0.1f)
     }
     LicenceView(
-        onNext = { navController.navigate(OnBoardingDestination.TypeOfInstallationScreen) },
+        onNext = { navController.navigate(OnBoardingDestination.AvailableDiskSpaceScreen) },
         onPrevious = { navController.navigateUp() })
 }
 

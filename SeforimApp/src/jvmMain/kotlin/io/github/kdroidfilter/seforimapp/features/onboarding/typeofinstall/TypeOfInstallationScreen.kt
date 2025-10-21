@@ -40,7 +40,7 @@ import seforimapp.seforimapp.generated.resources.installation_title
 @Composable
 fun TypeOfInstallationScreen(navController: NavController, progressBarState: ProgressBarState = ProgressBarState) {
     LaunchedEffect(Unit) {
-        progressBarState.setProgress(0.2f)
+        progressBarState.setProgress(0.3f)
     }
     val viewModel: TypeOfInstallationViewModel = LocalAppGraph.current.typeOfInstallationViewModel
     val pickZstLauncher = rememberFilePickerLauncher(

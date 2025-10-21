@@ -16,6 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import io.github.kdroidfilter.seforim.navigation.NavigationAnimations
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AnimatedHorizontalProgressBar
+import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.init.InitScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.licence.LicenceScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeOfInstallationScreen
@@ -35,12 +36,17 @@ fun OnBoardingNavHost(navController: NavHostController) {
             navController = navController,
             startDestination = OnBoardingDestination.InitScreen
         ) {
-            noAnimatedComposable<OnBoardingDestination.InitScreen> { InitScreen(navController) }
-            noAnimatedComposable<OnBoardingDestination.LicenceScreen> { LicenceScreen(navController) }
+            noAnimatedComposable<OnBoardingDestination.InitScreen> {
+                InitScreen(navController)
+            }
+            noAnimatedComposable<OnBoardingDestination.LicenceScreen> {
+                LicenceScreen(navController)
+            }
+            noAnimatedComposable<OnBoardingDestination.AvailableDiskSpaceScreen> {
+                AvailableDiskSpaceScreen(navController)
+            }
             noAnimatedComposable<OnBoardingDestination.TypeOfInstallationScreen> {
-                TypeOfInstallationScreen(
-                    navController
-                )
+                TypeOfInstallationScreen(navController)
             }
             noAnimatedComposable<OnBoardingDestination.DatabaseOnlineInstallerScreen> {
                 DownloadScreen(navController)

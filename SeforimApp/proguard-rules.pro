@@ -151,3 +151,13 @@
 # Keep Jewel painter classes to prevent ICCE with sealed interface PainterHint
 -keep class org.jetbrains.jewel.ui.painter.** { *; }
 -dontwarn org.jetbrains.jewel.ui.painter.**
+
+# --- Fix crash: org.nibor.autolink.LinkType not an enum (ProGuard altering enums) ---
+# Keep Autolink library and its enums intact so EnumSet.* works at runtime.
+-keep class org.nibor.autolink.** { *; }
+-keep enum org.nibor.autolink.** { *; }
+-dontwarn org.nibor.autolink.**
+
+# Keep CommonMark autolink extension classes used by Jewel Markdown
+-keep class org.commonmark.ext.autolink.** { *; }
+-dontwarn org.commonmark.ext.autolink.**

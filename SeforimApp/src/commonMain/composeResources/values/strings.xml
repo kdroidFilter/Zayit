@@ -175,10 +175,13 @@
     <string name="onboarding_ready">הכול מוכן!</string>
     <string name="onboarding_open_app">פתח את האפליקציה</string>
     <string name="onboarding_error_occurred">אירעה שגיאה</string>
+    <string name="onboarding_error_with_detail">אירעה שגיאה: %1$s</string>
     <string name="onboarding_preparing_download">מכין הורדה...</string>
     <string name="onboarding_choose_source">בחרו כיצד להגדיר את מסד הנתונים</string>
     <string name="onboarding_download_db_button">הורדת מסד הנתונים</string>
     <string name="onboarding_pick_zst_button">בחר קובץ ‎.zst מקומי</string>
+    <string name="onboarding_download_progress">%1$s / %2$s</string>
+    <string name="retry_button">נסה שוב</string>
     <!-- Disk space check -->
     <string name="onboarding_disk_title">בדיקת שטח פנוי בדיסק</string>
     <string name="onboarding_disk_space_sufficient">קיים מספיק שטח פנוי</string>

@@ -172,6 +172,10 @@
     <!--Downloading-->
     <string name="onboarding_downloading_message">אנא המתן בזמן שאנו מורידים את מסד הנתונים</string>
     <string name="onboarding_extracting_message">אנא המתן בזמן שאנו מחלצים את מסד הנתונים</string>
+
+    <string name="onboarding_extracting_did_you_know">הידעת? זית משתמשת באלגוריתם הדחיסה המתקדם ביותר — לא ZIP ולא RAR, אלא ZST ברמת הדחיסה הגבוהה ביותר! דחיסה מרבית ומהירות חילוץ מרבית!</string>
+
+
     <string name="onboarding_ready">הכול מוכן!</string>
     <string name="onboarding_open_app">פתח את האפליקציה</string>
     <string name="onboarding_error_occurred">אירעה שגיאה</string>

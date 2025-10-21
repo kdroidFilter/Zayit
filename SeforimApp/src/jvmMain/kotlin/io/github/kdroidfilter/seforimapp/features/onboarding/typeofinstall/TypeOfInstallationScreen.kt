@@ -9,13 +9,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import io.github.kdroidfilter.seforimapp.core.presentation.components.Download_for_offline
-import io.github.kdroidfilter.seforimapp.core.presentation.components.HardDriveUpload
+import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.icons.Unarchive
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
+import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.path
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -25,17 +28,7 @@ import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.typography
-import io.github.vinceglb.filekit.dialogs.FileKitType
-import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
-import io.github.vinceglb.filekit.path
-import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.installation_offline_button
-import seforimapp.seforimapp.generated.resources.installation_offline_desc
-import seforimapp.seforimapp.generated.resources.installation_offline_title
-import seforimapp.seforimapp.generated.resources.installation_online_button
-import seforimapp.seforimapp.generated.resources.installation_online_desc
-import seforimapp.seforimapp.generated.resources.installation_online_title
-import seforimapp.seforimapp.generated.resources.installation_title
+import seforimapp.seforimapp.generated.resources.*
 
 @Composable
 fun TypeOfInstallationScreen(navController: NavController, progressBarState: ProgressBarState = ProgressBarState) {
@@ -70,7 +63,7 @@ private fun TypeOfInstallationView(
             InstallationTypeColumn(
                 // Offline
                 title = stringResource(Res.string.installation_offline_title),
-                icon = HardDriveUpload,
+                icon = Unarchive,
                 description = stringResource(Res.string.installation_offline_desc),
                 buttonAction = { onOfflineInstallation() },
                 buttonText = stringResource(Res.string.installation_offline_button)

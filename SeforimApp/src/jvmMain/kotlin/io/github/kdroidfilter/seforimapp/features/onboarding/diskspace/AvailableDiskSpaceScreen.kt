@@ -55,6 +55,8 @@ import seforimapp.seforimapp.generated.resources.recheck_button
 import seforimapp.seforimapp.generated.resources.disk_pie_used
 import seforimapp.seforimapp.generated.resources.disk_pie_required
 import seforimapp.seforimapp.generated.resources.disk_pie_free_after
+import seforimapp.seforimapp.generated.resources.disk_pie_used_with_value
+import seforimapp.seforimapp.generated.resources.disk_pie_free_after_with_value
 
 @Composable
 fun AvailableDiskSpaceScreen(
@@ -103,19 +105,28 @@ fun AvailableDiskSpaceView(
                     values = slices,
                     modifier = Modifier.size(240.dp).weight(1f),
                     slice = { i: Int ->
-                        DefaultSlice(color = colors[i])
+                        val labelText = when (i) {
+                            0 -> stringResource(Res.string.disk_pie_used_with_value, formatBytes(used))
+                            1 -> stringResource(Res.string.disk_pie_required, formatBytes(requiredBytes))
+                            else -> stringResource(Res.string.disk_pie_free_after_with_value, formatBytes(freeAfter))
+                        }
+                        DefaultSlice(
+                            color = colors[i],
+                            hoverExpandFactor = 1.05f,
+                            hoverElement = { Text(labelText) }
+                        )
                     },
                     labelConnector = {}
                 )
 
                 // Simple legend with sizes
-                val usedLabel = stringResource(Res.string.disk_pie_used)
+                val usedLabel = stringResource(Res.string.disk_pie_used_with_value, formatBytes(used))
                 val reqLabel = stringResource(Res.string.disk_pie_required, formatBytes(requiredBytes))
-                val freeAfterLabel = stringResource(Res.string.disk_pie_free_after)
+                val freeAfterLabel = stringResource(Res.string.disk_pie_free_after_with_value, formatBytes(freeAfter))
                 Column(verticalArrangement = Arrangement.Center, modifier = Modifier.weight(1f).fillMaxSize()) {
-                    LegendItem(color = colors[0], text = "$usedLabel — ${formatBytes(used)}")
+                    LegendItem(color = colors[0], text = usedLabel)
                     LegendItem(color = colors[1], text = reqLabel)
-                    LegendItem(color = colors[2], text = "$freeAfterLabel — ${formatBytes(freeAfter)}")
+                    LegendItem(color = colors[2], text = freeAfterLabel)
                 }
             }
 

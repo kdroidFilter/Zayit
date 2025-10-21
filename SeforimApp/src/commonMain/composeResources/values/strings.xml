@@ -191,6 +191,8 @@
     <string name="disk_pie_used">שטח בשימוש</string>
     <string name="disk_pie_required">נדרש להתקנה: %1$s</string>
     <string name="disk_pie_free_after">פנוי לאחר ההתקנה</string>
+    <string name="disk_pie_used_with_value">שטח בשימוש: %1$s</string>
+    <string name="disk_pie_free_after_with_value">פנוי לאחר ההתקנה: %1$s</string>
     <!-- Units -->
     <string name="bytes_unit_b">ב׳</string>
     <string name="bytes_unit_kb">ק״ב</string>

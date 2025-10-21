@@ -185,6 +185,12 @@
     <string name="onboarding_disk_space_insufficient">אין מספיק שטח פנוי</string>
     <string name="onboarding_disk_space_available">שטח פנוי: %1$s</string>
     <string name="onboarding_disk_space_required">נדרש: %1$s</string>
+    <string name="onboarding_disk_success_continue">מצוין! ניתן להמשיך בהתקנה.</string>
+    <string name="onboarding_disk_error_free_up">אין מספיק מקום בדיסק. נא לפנות מקום ולאחר מכן ללחוץ על בדיקה מחדש.</string>
+    <string name="recheck_button">בדיקה מחדש</string>
+    <string name="disk_pie_used">שטח בשימוש</string>
+    <string name="disk_pie_required">נדרש להתקנה: %1$s</string>
+    <string name="disk_pie_free_after">פנוי לאחר ההתקנה</string>
     <!-- Units -->
     <string name="bytes_unit_b">ב׳</string>
     <string name="bytes_unit_kb">ק״ב</string>

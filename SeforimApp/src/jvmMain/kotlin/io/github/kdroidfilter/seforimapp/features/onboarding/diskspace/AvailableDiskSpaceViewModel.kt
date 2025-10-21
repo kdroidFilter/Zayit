@@ -18,6 +18,9 @@ class AvailableDiskSpaceViewModel(
     private var _availableDiskSpace = MutableStateFlow(useCase.getAvailableDiskSpace())
     val availableDiskSpace = _availableDiskSpace.asStateFlow()
 
+    private var _totalDiskSpace = MutableStateFlow(useCase.getTotalDiskSpace())
+    val totalDiskSpace = _totalDiskSpace.asStateFlow()
+
     private val _remainingDiskSpaceAfter15Gb = MutableStateFlow(useCase.getRemainingSpaceAfter15GB())
     var remainingDiskSpaceAfter15Gb = _remainingDiskSpaceAfter15Gb.asStateFlow()
 
@@ -25,12 +28,14 @@ class AvailableDiskSpaceViewModel(
     val state = combine(
         hasEnoughSpace,
         availableDiskSpace,
-        remainingDiskSpaceAfter15Gb
-    ) { hasEnough, available, remainingAfter ->
+        remainingDiskSpaceAfter15Gb,
+        totalDiskSpace
+    ) { hasEnough, available, remainingAfter, total ->
         AvailableDiskSpaceState(
             hasEnoughSpace = hasEnough,
             availableDiskSpace = available,
-            remainingDiskSpaceAfter15Gb = remainingAfter
+            remainingDiskSpaceAfter15Gb = remainingAfter,
+            totalDiskSpace = total
         )
     }.stateIn(
         scope = viewModelScope,
@@ -38,13 +43,15 @@ class AvailableDiskSpaceViewModel(
         initialValue = AvailableDiskSpaceState(
             hasEnoughSpace = _hasEnoughSpace.value,
             availableDiskSpace = _availableDiskSpace.value,
-            remainingDiskSpaceAfter15Gb = _remainingDiskSpaceAfter15Gb.value
+            remainingDiskSpaceAfter15Gb = _remainingDiskSpaceAfter15Gb.value,
+            totalDiskSpace = _totalDiskSpace.value
         )
     )
 
    private fun recheck() {
         _hasEnoughSpace.value = useCase.hasAtLeast15GBFree()
         _availableDiskSpace.value = useCase.getAvailableDiskSpace()
+        _totalDiskSpace.value = useCase.getTotalDiskSpace()
         _remainingDiskSpaceAfter15Gb.value = useCase.getRemainingSpaceAfter15GB()
     }
 
@@ -56,4 +63,3 @@ class AvailableDiskSpaceViewModel(
 
 
 }
-

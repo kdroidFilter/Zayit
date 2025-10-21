@@ -21,10 +21,27 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoa
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.DeviceSsd
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
+import io.github.koalaplot.core.pie.DefaultSlice
+import io.github.koalaplot.core.pie.PieChart
+import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
+import io.github.koalaplot.core.util.generateHueColorPalette
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.DefaultErrorBanner
+import org.jetbrains.jewel.ui.component.DefaultSuccessBanner
+import org.jetbrains.jewel.ui.theme.defaultBannerStyle
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.modifier.modifierLocalConsumer
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.next_button
 import seforimapp.seforimapp.generated.resources.onboarding_disk_space_available
@@ -32,6 +49,12 @@ import seforimapp.seforimapp.generated.resources.onboarding_disk_space_insuffici
 import seforimapp.seforimapp.generated.resources.onboarding_disk_space_required
 import seforimapp.seforimapp.generated.resources.onboarding_disk_space_sufficient
 import seforimapp.seforimapp.generated.resources.onboarding_disk_title
+import seforimapp.seforimapp.generated.resources.onboarding_disk_success_continue
+import seforimapp.seforimapp.generated.resources.onboarding_disk_error_free_up
+import seforimapp.seforimapp.generated.resources.recheck_button
+import seforimapp.seforimapp.generated.resources.disk_pie_used
+import seforimapp.seforimapp.generated.resources.disk_pie_required
+import seforimapp.seforimapp.generated.resources.disk_pie_free_after
 
 @Composable
 fun AvailableDiskSpaceScreen(
@@ -50,6 +73,7 @@ fun AvailableDiskSpaceScreen(
     )
 }
 
+@OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
 fun AvailableDiskSpaceView(
     state: AvailableDiskSpaceState,
@@ -63,22 +87,65 @@ fun AvailableDiskSpaceView(
         }
     }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(DeviceSsd, null, modifier = Modifier.size(72.dp))
-            Spacer(modifier = Modifier.height(16.dp))
+            // Pie chart: Used, Required (15GB), Free After Installation
+            val total = state.totalDiskSpace
+            val used = (total - state.availableDiskSpace).coerceAtLeast(0)
+            val freeAfter = (state.availableDiskSpace - requiredBytes).coerceAtLeast(0)
+            val slices = listOf(
+                used.toFloat(),
+                requiredBytes.toFloat(),
+                freeAfter.toFloat()
+            )
+            val colors = generateHueColorPalette(slices.size)
 
-            val progress = (state.availableDiskSpace.toFloat() / requiredBytes.toFloat())
-            AnimatedHorizontalProgressBar(value = progress)
-            Spacer(modifier = Modifier.height(8.dp))
+            Row(Modifier.weight(0.9f)) {
+                PieChart(
+                    values = slices,
+                    modifier = Modifier.size(240.dp).weight(1f),
+                    slice = { i: Int ->
+                        DefaultSlice(color = colors[i])
+                    },
+                    labelConnector = {}
+                )
 
-            if (state.hasEnoughSpace) {
-                Text(stringResource(Res.string.onboarding_disk_space_sufficient))
-            } else {
-                Text(stringResource(Res.string.onboarding_disk_space_insufficient))
+                // Simple legend with sizes
+                val usedLabel = stringResource(Res.string.disk_pie_used)
+                val reqLabel = stringResource(Res.string.disk_pie_required, formatBytes(requiredBytes))
+                val freeAfterLabel = stringResource(Res.string.disk_pie_free_after)
+                Column(verticalArrangement = Arrangement.Center, modifier = Modifier.weight(1f).fillMaxSize()) {
+                    LegendItem(color = colors[0], text = "$usedLabel — ${formatBytes(used)}")
+                    LegendItem(color = colors[1], text = reqLabel)
+                    LegendItem(color = colors[2], text = "$freeAfterLabel — ${formatBytes(freeAfter)}")
+                }
             }
 
-            Text(stringResource(Res.string.onboarding_disk_space_available, formatBytes(state.availableDiskSpace)))
-            Text(stringResource(Res.string.onboarding_disk_space_required, formatBytes(requiredBytes)))
+            Row(modifier = Modifier.weight(0.2f)) {
+                val recheckLabel = stringResource(Res.string.recheck_button)
+
+                if (state.hasEnoughSpace) {
+                    DefaultSuccessBanner(
+                        text = stringResource(Res.string.onboarding_disk_success_continue),
+                        style = JewelTheme.defaultBannerStyle.success
+                    )
+                } else {
+                    DefaultErrorBanner(
+                        text = stringResource(Res.string.onboarding_disk_error_free_up),
+                        style = JewelTheme.defaultBannerStyle.error,
+                        linkActions = {
+                            action(recheckLabel, onClick = { onEvent(AvailableDiskSpaceEvents.Refresh) })
+                        }
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun LegendItem(color: Color, text: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.size(12.dp).background(color))
+        Text(text)
     }
 }
 

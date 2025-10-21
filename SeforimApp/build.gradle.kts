@@ -105,6 +105,10 @@ kotlin {
 
             //Oshi
             implementation(libs.oshi.core)
+
+
+            implementation("io.github.koalaplot:koalaplot-core:0.9.1")
+
         }
 
         commonTest.dependencies {

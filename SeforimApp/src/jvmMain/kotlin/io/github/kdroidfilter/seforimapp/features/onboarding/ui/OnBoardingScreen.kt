@@ -6,6 +6,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -43,9 +46,12 @@ import seforimapp.seforimapp.generated.resources.*
 @Composable
 fun DecoratedWindowScope.OnBoardingWindow() {
     val navController = rememberNavController()
-    val backStackEntry by navController.currentBackStackEntryAsState()
-    val canNavigateBack = backStackEntry !=null
-
+    var canNavigateBack by remember { mutableStateOf(false) }
+    LaunchedEffect(navController) {
+        navController.currentBackStackEntryFlow.collect {
+            canNavigateBack = navController.previousBackStackEntry != null
+        }
+    }
     TitleBar(modifier = Modifier.newFullscreenControls()) {
         Row(
             modifier = Modifier.fillMaxWidth(1f),

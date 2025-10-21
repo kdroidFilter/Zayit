@@ -167,6 +167,7 @@ private fun LicenceView(onNext: () -> Unit = {}, onPrevious: () -> Unit = {}) {
                             horizontalArrangement = Arrangement.Center
                         ) {
                             Checkbox(checked = isChecked, onCheckedChange = { isChecked = it })
+                            Spacer(Modifier.width(2.dp))
                             Text(text = stringResource(Res.string.license_accept_checkbox))
                         }
                     }

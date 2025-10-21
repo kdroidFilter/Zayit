@@ -21,6 +21,8 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.navigation.compose.rememberNavController
+import io.github.kdroidfilter.platformtools.OperatingSystem
+import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingNavHost
 import io.github.kdroidfilter.seforimapp.icons.Install_desktop
@@ -81,7 +83,7 @@ fun ApplicationScope.OnBoardingWindow() {
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(0.58f)
+                    modifier = Modifier.fillMaxWidth(if(getOperatingSystem() == OperatingSystem.WINDOWS) 0.53f else 0.58f)
                 ) {
                     Icon(
                         Install_desktop,

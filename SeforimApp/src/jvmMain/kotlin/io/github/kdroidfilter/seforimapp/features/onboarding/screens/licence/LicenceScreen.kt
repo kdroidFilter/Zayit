@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
+import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.Font
@@ -42,7 +43,10 @@ import java.awt.Desktop.getDesktop
 import java.net.URI.create
 
 @Composable
-fun LicenceScreen(navController: NavController) {
+fun LicenceScreen(navController: NavController, progressBarState: ProgressBarState = ProgressBarState) {
+    LaunchedEffect(Unit) {
+        progressBarState.setProgress(0.1f)
+    }
     LicenceView(
         onNext = { navController.navigate(OnBoardingDestination.TypeOfInstallationScreen) },
         onPrevious = { navController.navigateUp() })

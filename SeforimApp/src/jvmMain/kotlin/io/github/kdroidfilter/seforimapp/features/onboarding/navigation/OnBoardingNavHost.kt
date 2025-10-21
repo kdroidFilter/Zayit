@@ -1,8 +1,12 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.navigation
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
@@ -10,19 +14,32 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import io.github.kdroidfilter.seforim.navigation.NavigationAnimations
+import io.github.kdroidfilter.seforimapp.core.presentation.components.AnimatedHorizontalProgressBar
 import io.github.kdroidfilter.seforimapp.features.onboarding.screens.init.InitScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.screens.licence.LicenceScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.screens.typeofinstall.TypeOfInstallationScreen
 
 @Composable
-fun OnBoardingNavHost(navController: NavHostController){
+fun OnBoardingNavHost(navController: NavHostController) {
+    Column(modifier = Modifier.fillMaxSize()) {
 
-    NavHost(modifier = Modifier.fillMaxSize().padding(16.dp), navController = navController, startDestination = OnBoardingDestination.InitScreen) {
-        noAnimatedComposable<OnBoardingDestination.InitScreen> { InitScreen(navController) }
-        noAnimatedComposable<OnBoardingDestination.LicenceScreen> { LicenceScreen(navController) }
-        noAnimatedComposable<OnBoardingDestination.TypeOfInstallationScreen> {TypeOfInstallationScreen(navController)}
+        val progressBarState = ProgressBarState
+        val progress by progressBarState.progress.collectAsState()
+        AnimatedHorizontalProgressBar(progress, Modifier.fillMaxWidth())
+        NavHost(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            navController = navController,
+            startDestination = OnBoardingDestination.InitScreen
+        ) {
+            noAnimatedComposable<OnBoardingDestination.InitScreen> { InitScreen(navController) }
+            noAnimatedComposable<OnBoardingDestination.LicenceScreen> { LicenceScreen(navController) }
+            noAnimatedComposable<OnBoardingDestination.TypeOfInstallationScreen> {
+                TypeOfInstallationScreen(
+                    navController
+                )
+            }
+        }
     }
 
 }

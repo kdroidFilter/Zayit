@@ -3,15 +3,20 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytesPerSec
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatEta
+import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingNavHost
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Install_desktop
@@ -26,6 +31,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.typography
@@ -36,10 +42,42 @@ import seforimapp.seforimapp.generated.resources.*
 
 @Composable
 fun DecoratedWindowScope.OnBoardingWindow() {
+    val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val canNavigateBack = backStackEntry !=null
+
     TitleBar(modifier = Modifier.newFullscreenControls()) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Install_desktop, contentDescription = null, tint = JewelTheme.globalColors.text.normal, modifier = Modifier.size(16.dp))
-            Text(stringResource(Res.string.onboarding_title_bar))
+        Row(
+            modifier = Modifier.fillMaxWidth(1f),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            if (canNavigateBack) {
+                IconButton(
+                    modifier = Modifier.padding(start = 8.dp).size(24.dp),
+                    onClick = {
+                        navController.navigateUp()
+                    }
+                ) {
+                    Icon(AllIconsKeys.Actions.Back, null, modifier = Modifier.rotate(180f))
+                }
+            } else {
+                Spacer(modifier = Modifier.size(24.dp))
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(0.58f)
+            ) {
+                Icon(
+                    Install_desktop,
+                    contentDescription = null,
+                    tint = JewelTheme.globalColors.text.normal,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(stringResource(Res.string.onboarding_title_bar))
+            }
+
         }
     }
     Column(
@@ -48,7 +86,7 @@ fun DecoratedWindowScope.OnBoardingWindow() {
             .fillMaxSize()
             .background(JewelTheme.globalColors.panelBackground),
     ) {
-        OnBoardingNavHost()
+        OnBoardingNavHost(navController = navController)
     }
 }
 
@@ -77,6 +115,7 @@ private fun OnBoardingView(
                 val message = detail?.let { "$generic: $it" } ?: generic
                 Text(message, color = JewelTheme.globalColors.text.error)
             }
+
             state.downloadingInProgress -> {
                 OnboardingText(stringResource(Res.string.onboarding_downloading_message))
                 HorizontalProgressBar(
@@ -104,6 +143,7 @@ private fun OnBoardingView(
                     }
                 }
             }
+
             state.extractingInProgress -> {
                 OnboardingText(stringResource(Res.string.onboarding_extracting_message))
                 HorizontalProgressBar(
@@ -111,6 +151,7 @@ private fun OnBoardingView(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                 )
             }
+
             state.isDatabaseLoaded -> {
                 OnboardingText(stringResource(Res.string.onboarding_ready))
                 DefaultButton({
@@ -119,6 +160,7 @@ private fun OnBoardingView(
                     Text(stringResource(Res.string.onboarding_open_app))
                 }
             }
+
             else -> {
                 // Initial pre-screen: let the user choose how to set up the database
                 OnboardingText(stringResource(Res.string.onboarding_choose_source))
@@ -149,8 +191,13 @@ private fun OnBoardingView(
 }
 
 @Composable
-private fun OnboardingText(text: String, color : Color = Color.Unspecified) {
-    Text(text, modifier = Modifier.padding(bottom = 16.dp), color = color, fontSize = JewelTheme.typography.h1TextStyle.fontSize)
+private fun OnboardingText(text: String, color: Color = Color.Unspecified) {
+    Text(
+        text,
+        modifier = Modifier.padding(bottom = 16.dp),
+        color = color,
+        fontSize = JewelTheme.typography.h1TextStyle.fontSize
+    )
 }
 
 

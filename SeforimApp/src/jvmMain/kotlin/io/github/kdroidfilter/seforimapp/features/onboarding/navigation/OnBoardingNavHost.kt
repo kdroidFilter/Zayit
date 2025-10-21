@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -16,8 +17,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.screens.licence.Lic
 import io.github.kdroidfilter.seforimapp.features.onboarding.screens.typeofinstall.TypeOfInstallationScreen
 
 @Composable
-fun OnBoardingNavHost(){
-    val navController = rememberNavController()
+fun OnBoardingNavHost(navController: NavHostController){
 
     NavHost(modifier = Modifier.fillMaxSize().padding(16.dp), navController = navController, startDestination = OnBoardingDestination.InitScreen) {
         noAnimatedComposable<OnBoardingDestination.InitScreen> { InitScreen(navController) }

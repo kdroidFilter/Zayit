@@ -109,6 +109,9 @@ kotlin {
 
             implementation(libs.koalaplot.core)
 
+            implementation("io.github.vinceglb:confettikit:0.6.0")
+
+
         }
 
         commonTest.dependencies {

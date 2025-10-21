@@ -177,7 +177,8 @@
 
 
     <string name="onboarding_ready">הכול מוכן!</string>
-    <string name="onboarding_open_app">פתח את האפליקציה</string>
+    <string name="onboarding_finish_ready_message">ברוכים הבאים לזית! אנו מאחלים לכם חוויית שימוש נעימה.</string>
+    <string name="onboarding_open_app">פתח את היישום</string>
     <string name="onboarding_error_occurred">אירעה שגיאה</string>
     <string name="onboarding_error_with_detail">אירעה שגיאה: %1$s</string>
     <string name="onboarding_preparing_download">מכין הורדה...</string>

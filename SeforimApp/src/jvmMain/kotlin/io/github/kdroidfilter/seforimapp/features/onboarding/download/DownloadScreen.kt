@@ -56,7 +56,7 @@ fun DownloadScreen(
 
     // While downloading, advance the main progress proportionally from Download -> Extract anchors
     LaunchedEffect(state.progress) {
-        val anchored = 0.3f + (0.8f - 0.3f) * state.progress.coerceIn(0f, 1f)
+        val anchored = 0.3f + (0.7f - 0.3f) * state.progress.coerceIn(0f, 1f)
         progressBarState.setProgress(anchored)
     }
 
@@ -75,7 +75,7 @@ fun DownloadScreen(
         if (!navigated && state.completed) {
             navigated = true
             // Snap to the start of the Extract step before navigating
-            progressBarState.setProgress(0.8f)
+            progressBarState.setProgress(0.7f)
             navController.navigate(OnBoardingDestination.ExtractScreen)
         }
     }

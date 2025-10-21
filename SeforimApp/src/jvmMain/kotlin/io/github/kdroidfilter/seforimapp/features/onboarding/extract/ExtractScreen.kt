@@ -31,11 +31,11 @@ fun ExtractScreen(
     val state by viewModel.state.collectAsState()
 
     // Anchor main progress at the start of the Extract step
-    LaunchedEffect(Unit) { progressBarState.setProgress(0.8f) }
+    LaunchedEffect(Unit) { progressBarState.setProgress(0.7f) }
 
     // While extracting, advance the main progress proportionally from Extract -> User profile anchors
     LaunchedEffect(state.progress) {
-        val anchored = 0.8f + (0.85f - 0.8f) * state.progress.coerceIn(0f, 1f)
+        val anchored = 0.7f + (0.85f - 0.7f) * state.progress.coerceIn(0f, 1f)
         progressBarState.setProgress(anchored)
     }
 

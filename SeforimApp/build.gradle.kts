@@ -107,7 +107,7 @@ kotlin {
             implementation(libs.oshi.core)
 
 
-            implementation("io.github.koalaplot:koalaplot-core:0.9.1")
+            implementation(libs.koalaplot.core)
 
         }
 

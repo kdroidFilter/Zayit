@@ -3,6 +3,7 @@
 filekitCore = "0.12.0"
 jsoup = "1.21.2"
 jvmNativeTrustedRoots = "1.1.7"
+koalaplotCore = "0.9.1"
 kotlin = "2.2.20"
 compose = "1.9.1"
 agp = "8.12.3"
@@ -46,6 +47,7 @@ jdbc-driver = { module = "app.cash.sqldelight:jdbc-driver", version.ref = "sqlit
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 jvm-native-trusted-roots = { module = "org.jetbrains.nativecerts:jvm-native-trusted-roots", version.ref = "jvmNativeTrustedRoots" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
+koalaplot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaplotCore" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }

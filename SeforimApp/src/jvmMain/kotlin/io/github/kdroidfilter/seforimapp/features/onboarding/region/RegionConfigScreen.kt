@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import io.github.kdroidfilter.seforimapp.core.presentation.components.PredictiveListComboBox
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
@@ -20,6 +21,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoa
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.DefaultButton
+import org.jetbrains.jewel.ui.component.EditableListComboBox
 import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.component.SpeedSearchArea
 import org.jetbrains.jewel.ui.component.Text
@@ -76,7 +78,7 @@ private fun RegionConfigView(
             // Country selector (Speed Search)
             Text(stringResource(Res.string.onboarding_region_country_label))
             SpeedSearchArea(Modifier.widthIn(max = 360.dp)) {
-                ListComboBox(
+                PredictiveListComboBox(
                     items = state.countries,
                     selectedIndex = state.selectedCountryIndex,
                     onSelectedItemChange = { index -> onEvent(RegionConfigEvents.SelectCountry(index)) },
@@ -89,7 +91,7 @@ private fun RegionConfigView(
             // City selector (enabled only after a country is selected)
             Text(stringResource(Res.string.onboarding_region_city_label))
             SpeedSearchArea(Modifier.widthIn(max = 360.dp)) {
-                ListComboBox(
+                PredictiveListComboBox(
                     items = state.cities,
                     selectedIndex = state.selectedCityIndex,
                     onSelectedItemChange = { index -> onEvent(RegionConfigEvents.SelectCity(index)) },

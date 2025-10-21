@@ -161,3 +161,12 @@
 # Keep CommonMark autolink extension classes used by Jewel Markdown
 -keep class org.commonmark.ext.autolink.** { *; }
 -dontwarn org.commonmark.ext.autolink.**
+
+# --- Fix crash: OSHI/JNA WMI enums being altered by ProGuard causing EnumMap NPE ---
+# OSHI uses many enums for WMI queries on Windows. If ProGuard/R8 optimizes or rewrites
+# these enums, java.util.EnumMap will see a non-enum key type and crash with
+# "Cannot read the array length because this.keyUniverse is null" at runtime.
+# Preserve OSHI classes and especially its enums intact.
+-keep class oshi.** { *; }
+-keep enum oshi.** { *; }
+-dontwarn oshi.**

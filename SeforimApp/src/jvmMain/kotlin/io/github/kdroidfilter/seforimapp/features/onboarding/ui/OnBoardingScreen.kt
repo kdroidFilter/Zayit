@@ -1,100 +1,30 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytesPerSec
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatEta
-import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
-import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingNavHost
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforimapp.icons.Install_desktop
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
-import org.jetbrains.compose.resources.stringResource
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
-import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.typography
-import org.jetbrains.jewel.window.DecoratedWindowScope
-import org.jetbrains.jewel.window.TitleBar
-import org.jetbrains.jewel.window.newFullscreenControls
 import seforimapp.seforimapp.generated.resources.*
 
-@Composable
-fun DecoratedWindowScope.OnBoardingWindow() {
-    val navController = rememberNavController()
-    var canNavigateBack by remember { mutableStateOf(false) }
-    LaunchedEffect(navController) {
-        navController.currentBackStackEntryFlow.collect {
-            canNavigateBack = navController.previousBackStackEntry != null
-        }
-    }
-    TitleBar(modifier = Modifier.newFullscreenControls()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(1f),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            if (canNavigateBack) {
-                IconButton(
-                    modifier = Modifier.padding(start = 8.dp).size(24.dp),
-                    onClick = {
-                        navController.navigateUp()
-                    }
-                ) {
-                    Icon(AllIconsKeys.Actions.Back, null, modifier = Modifier.rotate(180f))
-                }
-            } else {
-                Spacer(modifier = Modifier.size(24.dp))
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth(0.58f)
-            ) {
-                Icon(
-                    Install_desktop,
-                    contentDescription = null,
-                    tint = JewelTheme.globalColors.text.normal,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(stringResource(Res.string.onboarding_title_bar))
-            }
-
-        }
-    }
-    Column(
-        modifier = Modifier
-            .trackActivation()
-            .fillMaxSize()
-            .background(JewelTheme.globalColors.panelBackground),
-    ) {
-        OnBoardingNavHost(navController = navController)
-    }
-}
 
 @Composable
 fun OnBoardingScreen() {

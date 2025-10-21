@@ -14,7 +14,7 @@ import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.OnBoardingWindow
+import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -53,7 +53,6 @@ fun main() {
         FileKit.init(appId)
 
         val windowState = remember { getCenteredWindowState(1280, 720) }
-        val onboardingWindowState = remember { getCenteredWindowState(720, 420) }
         var isWindowVisible by remember { mutableStateOf(true) }
 
         val mainState = MainAppState
@@ -95,17 +94,7 @@ fun main() {
                 }
 
                 if (showOnboarding == true) {
-                    DecoratedWindow(
-                        onCloseRequest = { exitApplication() },
-                        title = stringResource(Res.string.app_name),
-                        icon = painterResource(Res.drawable.zayit_transparent),
-                        state = onboardingWindowState,
-                        visible = true,
-                        resizable = false,
-                    ) {
-                        OnBoardingWindow()
-                    }
-
+                    OnBoardingWindow()
                 } else if (showOnboarding == false) {
                     DecoratedWindow(
                         onCloseRequest = {

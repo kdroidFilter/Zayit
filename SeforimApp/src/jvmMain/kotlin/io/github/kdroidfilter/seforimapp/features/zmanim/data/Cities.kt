@@ -5,7 +5,7 @@ data class Place(val lat: Double, val lng: Double, val elevation: Double)
 
 /** Countries → Cities → Place */
 val worldPlaces: Map<String, Map<String, Place>> = mapOf(
-    "ישראל" to mapOf(
+    "ארץ ישראל" to mapOf(
         "אופקים" to Place(31.3111, 34.6214, 140.0),
         "אילת" to Place(29.5581, 34.9482, 12.0),
         "אריאל" to Place(32.1069, 35.1897, 650.0),

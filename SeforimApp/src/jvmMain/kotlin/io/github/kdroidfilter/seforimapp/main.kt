@@ -119,8 +119,6 @@ fun main() {
                         },
                     ) {
                         window.minimumSize = Dimension(350, 600)
-                        window.toFront()
-                        window.requestFocus()
                         MainTitleBar()
                         // Restore previously saved session once when main window becomes active
                         var sessionRestored by remember { mutableStateOf(false) }

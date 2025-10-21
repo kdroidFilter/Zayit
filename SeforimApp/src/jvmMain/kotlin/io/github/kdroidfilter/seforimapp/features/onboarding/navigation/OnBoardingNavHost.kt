@@ -19,6 +19,9 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.AnimatedHo
 import io.github.kdroidfilter.seforimapp.features.onboarding.screens.init.InitScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.screens.licence.LicenceScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.screens.typeofinstall.TypeOfInstallationScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.screens.download.DownloadScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.screens.extract.ExtractScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.screens.finish.FinishScreen
 
 @Composable
 fun OnBoardingNavHost(navController: NavHostController) {
@@ -38,6 +41,15 @@ fun OnBoardingNavHost(navController: NavHostController) {
                 TypeOfInstallationScreen(
                     navController
                 )
+            }
+            noAnimatedComposable<OnBoardingDestination.DatabaseOnlineInstallerScreen> {
+                DownloadScreen(navController)
+            }
+            noAnimatedComposable<OnBoardingDestination.ExtractScreen> {
+                ExtractScreen(navController)
+            }
+            noAnimatedComposable<OnBoardingDestination.FinishScreen> {
+                FinishScreen()
             }
         }
     }

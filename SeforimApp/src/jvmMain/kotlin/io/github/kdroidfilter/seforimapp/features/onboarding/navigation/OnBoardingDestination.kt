@@ -26,6 +26,9 @@ sealed interface OnBoardingDestination {
     data object DatabaseOfflineInstallerScreen : OnBoardingDestination
 
     @Serializable
+    data object ExtractScreen : OnBoardingDestination
+
+    @Serializable
     data object UserProfilScreen : OnBoardingDestination
 
     @Serializable

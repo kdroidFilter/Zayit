@@ -14,6 +14,9 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.HardDriveU
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
+import io.github.kdroidfilter.seforimapp.features.onboarding.ui.OnBoardingEvents
+import io.github.kdroidfilter.seforimapp.features.onboarding.ui.OnBoardingViewModel
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Github
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
@@ -25,6 +28,9 @@ import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.typography
+import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.path
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.installation_offline_button
 import seforimapp.seforimapp.generated.resources.installation_offline_desc
@@ -39,9 +45,20 @@ fun TypeOfInstallationScreen(navController: NavController, progressBarState: Pro
     LaunchedEffect(Unit) {
         progressBarState.setProgress(0.2f)
     }
+    val viewModel: OnBoardingViewModel = LocalAppGraph.current.onBoardingViewModel
+    val pickZstLauncher = rememberFilePickerLauncher(
+        type = FileKitType.File(extensions = listOf("zst"))
+    ) { file ->
+        val path = file?.path
+        if (path != null) {
+            viewModel.onEvent(OnBoardingEvents.ImportFromZst(path))
+            progressBarState.setProgress(0.6f)
+            navController.navigate(OnBoardingDestination.ExtractScreen)
+        }
+    }
     TypeOfInstallationView(
         onOnlineInstallation = { navController.navigate(OnBoardingDestination.DatabaseOnlineInstallerScreen) },
-        onOfflineInstallation = { navController.navigate(OnBoardingDestination.DatabaseOfflineInstallerScreen) }
+        onOfflineInstallation = { pickZstLauncher.launch() }
     )
 }
 

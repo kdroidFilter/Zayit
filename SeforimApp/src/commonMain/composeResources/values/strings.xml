@@ -155,6 +155,20 @@
     <string name="license_accept_checkbox">אני מאשר את תנאי הרישיון</string>
     <string name="next_button">המשך</string>
 
+    <!-- Installation chooser -->
+    <string name="installation_title">בחרו את סוג ההתקנה</string>
+    <!-- Online -->
+    <string name="installation_online_title">התקנה מקוונת</string>
+    <string name="installation_online_desc">נדרש חיבור לאינטרנט להורדת מסד הנתונים הדחוס (2 ג"ב). בסיום ההורדה הקובץ ייפרק ויותקן מקומית במחשב. משך הפעולה תלוי במהירות ההורדה והאחסון.</string>
+    <string name="installation_online_button">התחלת התקנה מקוונת</string>
+    <!-- Offline -->
+    <string name="installation_offline_title">התקנה לא-מקוונת</string>
+    <string name="installation_offline_desc">עליכם לבחור קובץ מסד נתונים מוכן שהורד מראש מעמוד ההפצות האחרון. הורידו את הקובץ עם הסיומת .zst מעמוד ההפצה, ולאחר מכן בחרו אותו כאן להמשך ההתקנה.</string>
+    <string name="installation_offline_button">התחלת התקנה לא-מקוונת</string>
+    <!-- Releases info (לשימוש היכן שתרצה; ה-URL עצמו יישום אצלך בקוד) -->
+    <string name="installation_releases_hint">עמוד ההפצות האחרון</string>
+    <string name="installation_releases_source">ניתן להוריד מ:</string>
+
     <!--Downloading-->
     <string name="onboarding_downloading_message">אנא המתן בזמן שאנו מורידים את מסד הנתונים</string>
     <string name="onboarding_extracting_message">אנא המתן בזמן שאנו מחלצים את מסד הנתונים</string>

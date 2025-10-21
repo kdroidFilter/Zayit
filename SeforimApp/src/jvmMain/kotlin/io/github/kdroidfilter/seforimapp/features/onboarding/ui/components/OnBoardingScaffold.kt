@@ -20,7 +20,7 @@ import org.jetbrains.jewel.ui.typography
 @Composable
 fun OnBoardingScaffold(
     title: String,
-    bottomAction: @Composable () -> Unit = {},
+    bottomAction: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     Box(
@@ -31,7 +31,7 @@ fun OnBoardingScaffold(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 66.dp),
+                .padding(bottom = if (bottomAction != null) 66.dp else 0.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
@@ -53,7 +53,7 @@ fun OnBoardingScaffold(
                 }
             }
         }
-
+        if (bottomAction == null) return@Box
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)

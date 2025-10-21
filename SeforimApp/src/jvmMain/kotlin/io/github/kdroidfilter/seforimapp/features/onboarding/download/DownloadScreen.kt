@@ -44,8 +44,14 @@ fun DownloadScreen(
     val viewModel: DownloadViewModel = LocalAppGraph.current.downloadViewModel
     val state by viewModel.state.collectAsState()
 
-    // Update top progress indicator for this step
+    // Update top progress indicator baseline for this step
     LaunchedEffect(Unit) { progressBarState.setProgress(0.4f) }
+
+    // While downloading, advance the main progress proportionally from Download -> Extract anchors
+    LaunchedEffect(state.progress) {
+        val anchored = 0.4f + (0.8f - 0.4f) * state.progress.coerceIn(0f, 1f)
+        progressBarState.setProgress(anchored)
+    }
 
     // Trigger download once when entering this screen
     var started by remember { mutableStateOf(false) }
@@ -61,7 +67,8 @@ fun DownloadScreen(
     LaunchedEffect(state.completed) {
         if (!navigated && state.completed) {
             navigated = true
-            progressBarState.setProgress(0.6f)
+            // Snap to the start of the Extract step before navigating
+            progressBarState.setProgress(0.8f)
             navController.navigate(OnBoardingDestination.ExtractScreen)
         }
     }

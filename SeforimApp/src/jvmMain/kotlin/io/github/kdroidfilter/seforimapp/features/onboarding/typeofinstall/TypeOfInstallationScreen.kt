@@ -49,7 +49,8 @@ fun TypeOfInstallationScreen(navController: NavController, progressBarState: Pro
         val path = file?.path
         if (path != null) {
             viewModel.onEvent(TypeOfInstallationEvents.OfflineFileChosen(path))
-            progressBarState.setProgress(0.6f)
+            // Jump to the start of the Extract step when selecting an offline archive
+            progressBarState.setProgress(0.8f)
             navController.navigate(OnBoardingDestination.ExtractScreen)
         }
     }

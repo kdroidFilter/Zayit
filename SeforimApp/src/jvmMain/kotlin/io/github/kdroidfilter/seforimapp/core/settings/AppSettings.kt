@@ -39,6 +39,10 @@ object AppSettings {
     private const val KEY_SAVED_SESSION_PART_PREFIX = "saved_session_part_"
     private const val SESSION_CHUNK_SIZE = 4000
 
+    // Region configuration keys
+    private const val KEY_REGION_COUNTRY = "region_country"
+    private const val KEY_REGION_CITY = "region_city"
+
     // Backing Settings storage (can be replaced at startup if needed)
     @Volatile
     private var settings: Settings = Settings()
@@ -173,6 +177,25 @@ object AppSettings {
         // Backward compatibility (single key)
         val legacy: String = settings[KEY_SAVED_SESSION, ""]
         return legacy.ifBlank { null }
+    }
+
+    // Region configuration accessors
+    fun getRegionCountry(): String? {
+        val value: String = settings[KEY_REGION_COUNTRY, ""]
+        return value.ifBlank { null }
+    }
+
+    fun setRegionCountry(value: String?) {
+        settings[KEY_REGION_COUNTRY] = value?.takeIf { it.isNotBlank() } ?: ""
+    }
+
+    fun getRegionCity(): String? {
+        val value: String = settings[KEY_REGION_CITY, ""]
+        return value.ifBlank { null }
+    }
+
+    fun setRegionCity(value: String?) {
+        settings[KEY_REGION_CITY] = value?.takeIf { it.isNotBlank() } ?: ""
     }
 
     fun setSavedSessionJson(json: String?) {

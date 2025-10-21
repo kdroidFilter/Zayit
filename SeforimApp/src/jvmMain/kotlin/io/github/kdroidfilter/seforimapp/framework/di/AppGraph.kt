@@ -26,6 +26,8 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeO
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.databaseFetcher
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
+import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigViewModel
 import java.util.UUID
 
 /**
@@ -49,6 +51,7 @@ abstract class AppGraph {
     abstract val downloadViewModel: DownloadViewModel
     abstract val extractViewModel: ExtractViewModel
     abstract val availableDiskSpaceViewModel: AvailableDiskSpaceViewModel
+    abstract val regionConfigViewModel: RegionConfigViewModel
 
     @Provides
     @SingleIn(AppScope::class)
@@ -173,4 +176,14 @@ abstract class AppGraph {
     fun provideAvailableDiskSpaceViewModel(
         useCase: AvailableDiskSpaceUseCase
     ): AvailableDiskSpaceViewModel = AvailableDiskSpaceViewModel(useCase)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideRegionConfigUseCase(): RegionConfigUseCase = RegionConfigUseCase()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideRegionConfigViewModel(
+        useCase: RegionConfigUseCase
+    ): RegionConfigViewModel = RegionConfigViewModel(useCase)
 }

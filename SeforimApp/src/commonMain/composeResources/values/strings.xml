@@ -210,4 +210,9 @@
     <string name="eta_minutes_unit_plural">דקות</string>
     <string name="eta_seconds_unit_singular">שנייה</string>
     <string name="eta_seconds_unit_plural">שניות</string>
+
+    <!-- Region configuration -->
+    <string name="onboarding_region_title">הגדרת אזור</string>
+    <string name="onboarding_region_country_label">בחרו מדינה</string>
+    <string name="onboarding_region_city_label">בחרו עיר</string>
 </resources>

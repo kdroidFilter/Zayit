@@ -50,8 +50,8 @@ fun ExtractScreen(
     LaunchedEffect(state.completed) {
         if (!navigated && state.completed) {
             navigated = true
-            progressBarState.setProgress(1f)
-            navController.navigate(OnBoardingDestination.FinishScreen)
+            // Continue to region configuration step
+            navController.navigate(OnBoardingDestination.RegionConfigScreen)
         }
     }
 

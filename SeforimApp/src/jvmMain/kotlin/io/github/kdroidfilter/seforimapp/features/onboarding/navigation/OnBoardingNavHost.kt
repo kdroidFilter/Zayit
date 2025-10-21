@@ -23,6 +23,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeO
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.finish.FinishScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigScreen
 
 @Composable
 fun OnBoardingNavHost(navController: NavHostController) {
@@ -56,6 +57,9 @@ fun OnBoardingNavHost(navController: NavHostController) {
             }
             noAnimatedComposable<OnBoardingDestination.FinishScreen> {
                 FinishScreen()
+            }
+            noAnimatedComposable<OnBoardingDestination.RegionConfigScreen> {
+                RegionConfigScreen(navController)
             }
         }
     }

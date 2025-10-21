@@ -20,6 +20,7 @@ buildConfig = "5.7.0"
 materialKolor = "3.0.1"
 jewel = "0.31.0-252.27409"
 jna = "5.18.1"
+oshiCore = "6.9.1"
 paging = "3.3.6"
 platformtools = "0.7.4"
 composenativetray = "1.0.4"
@@ -73,6 +74,7 @@ jewel-ui = { module = "org.jetbrains.jewel:jewel-ui", version.ref = "jewel" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "paging" }
 androidx-paging-compose = { module = "androidx.paging:paging-compose", version = "3.4.0-alpha04" }
+oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshiCore" }
 platformtools-appmanager = { module = "io.github.kdroidfilter:platformtools.appmanager", version.ref = "platformtools" }
 platformtools-core = { module = "io.github.kdroidfilter:platformtools.core", version.ref = "platformtools" }
 platformtools-darkmodedetector = { module = "io.github.kdroidfilter:platformtools.darkmodedetector", version.ref = "platformtools" }

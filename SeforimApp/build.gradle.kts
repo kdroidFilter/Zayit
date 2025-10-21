@@ -102,6 +102,9 @@ kotlin {
             // Paging (AndroidX Paging 3)
             implementation(libs.androidx.paging.common)
             implementation(libs.androidx.paging.compose)
+
+            //Oshi
+            implementation(libs.oshi.core)
         }
 
         commonTest.dependencies {

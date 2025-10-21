@@ -3,12 +3,6 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.navigation
 import kotlinx.serialization.Serializable
 
 @Serializable
-enum class InstallType {
-    ONLINE,
-    OFFLINE
-}
-
-@Serializable
 sealed interface OnBoardingDestination {
     @Serializable
     data object InitScreen : OnBoardingDestination
@@ -17,13 +11,13 @@ sealed interface OnBoardingDestination {
     data object LicenceScreen : OnBoardingDestination
 
     @Serializable
+    data object AvailableDiskSpaceScreen : OnBoardingDestination
+
+    @Serializable
     data object TypeOfInstallationScreen : OnBoardingDestination
 
     @Serializable
     data object DatabaseOnlineInstallerScreen : OnBoardingDestination
-
-    @Serializable
-    data object DatabaseOfflineInstallerScreen : OnBoardingDestination
 
     @Serializable
     data object ExtractScreen : OnBoardingDestination

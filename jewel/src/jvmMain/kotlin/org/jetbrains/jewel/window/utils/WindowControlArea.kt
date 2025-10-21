@@ -76,18 +76,21 @@ internal fun TitleBarScope.WindowControlArea(
 ) {
     CloseButton({ window.dispatchEvent(WindowEvent(window, WindowEvent.WINDOW_CLOSING)) }, state, style, iconHoveredEffect)
 
-    if (state.isMaximized) {
-        ControlButton({ window.extendedState = Frame.NORMAL }, state, style.icons.restoreButton, "Restore", iconHoveredEffect = iconHoveredEffect, style = style, iconButtonStyle = style.paneButtonStyle)
-    } else {
-        ControlButton(
-            { window.extendedState = Frame.MAXIMIZED_BOTH },
-            state,
-            style.icons.maximizeButton,
-            "Maximize",
-            iconHoveredEffect = iconHoveredEffect,
-            style = style,
-            iconButtonStyle = style.paneButtonStyle
-        )
+    // Show maximize/restore button only if window is resizable
+    if (window.isResizable) {
+        if (state.isMaximized) {
+            ControlButton({ window.extendedState = Frame.NORMAL }, state, style.icons.restoreButton, "Restore", iconHoveredEffect = iconHoveredEffect, style = style, iconButtonStyle = style.paneButtonStyle)
+        } else {
+            ControlButton(
+                { window.extendedState = Frame.MAXIMIZED_BOTH },
+                state,
+                style.icons.maximizeButton,
+                "Maximize",
+                iconHoveredEffect = iconHoveredEffect,
+                style = style,
+                iconButtonStyle = style.paneButtonStyle
+            )
+        }
     }
     ControlButton({ window.extendedState = Frame.ICONIFIED }, state, style.icons.minimizeButton, "Minimize", iconHoveredEffect = iconHoveredEffect, style = style, iconButtonStyle = style.paneButtonStyle)
 }

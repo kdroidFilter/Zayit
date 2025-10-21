@@ -39,6 +39,18 @@ object AppSettings {
     private const val KEY_SAVED_SESSION_PART_PREFIX = "saved_session_part_"
     private const val SESSION_CHUNK_SIZE = 4000
 
+    // Onboarding state
+    private const val KEY_ONBOARDING_FINISHED = "onboarding_finished"
+
+    // Region configuration keys
+    private const val KEY_REGION_COUNTRY = "region_country"
+    private const val KEY_REGION_CITY = "region_city"
+
+    // User profile keys
+    private const val KEY_USER_FIRST_NAME = "user_first_name"
+    private const val KEY_USER_LAST_NAME = "user_last_name"
+    private const val KEY_USER_COMMUNITY = "user_community" // stores a stable code (e.g., "SEPHARADE")
+
     // Backing Settings storage (can be replaced at startup if needed)
     @Volatile
     private var settings: Settings = Settings()
@@ -173,6 +185,63 @@ object AppSettings {
         // Backward compatibility (single key)
         val legacy: String = settings[KEY_SAVED_SESSION, ""]
         return legacy.ifBlank { null }
+    }
+
+    // Region configuration accessors
+    fun getRegionCountry(): String? {
+        val value: String = settings[KEY_REGION_COUNTRY, ""]
+        return value.ifBlank { null }
+    }
+
+    fun setRegionCountry(value: String?) {
+        settings[KEY_REGION_COUNTRY] = value?.takeIf { it.isNotBlank() } ?: ""
+    }
+
+    fun getRegionCity(): String? {
+        val value: String = settings[KEY_REGION_CITY, ""]
+        return value.ifBlank { null }
+    }
+
+    fun setRegionCity(value: String?) {
+        settings[KEY_REGION_CITY] = value?.takeIf { it.isNotBlank() } ?: ""
+    }
+
+    // Onboarding finished flag
+    fun isOnboardingFinished(): Boolean {
+        return settings[KEY_ONBOARDING_FINISHED, false]
+    }
+
+    fun setOnboardingFinished(finished: Boolean) {
+        settings[KEY_ONBOARDING_FINISHED] = finished
+    }
+
+    // User profile accessors
+    fun getUserFirstName(): String? {
+        val value: String = settings[KEY_USER_FIRST_NAME, ""]
+        return value.ifBlank { null }
+    }
+
+    fun setUserFirstName(value: String?) {
+        settings[KEY_USER_FIRST_NAME] = value?.takeIf { it.isNotBlank() } ?: ""
+    }
+
+    fun getUserLastName(): String? {
+        val value: String = settings[KEY_USER_LAST_NAME, ""]
+        return value.ifBlank { null }
+    }
+
+    fun setUserLastName(value: String?) {
+        settings[KEY_USER_LAST_NAME] = value?.takeIf { it.isNotBlank() } ?: ""
+    }
+
+    // Community is stored as a stable code (enum name), not a localized label
+    fun getUserCommunityCode(): String? {
+        val value: String = settings[KEY_USER_COMMUNITY, ""]
+        return value.ifBlank { null }
+    }
+
+    fun setUserCommunityCode(value: String?) {
+        settings[KEY_USER_COMMUNITY] = value?.takeIf { it.isNotBlank() } ?: ""
     }
 
     fun setSavedSessionJson(json: String?) {

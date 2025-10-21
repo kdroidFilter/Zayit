@@ -102,6 +102,16 @@ kotlin {
             // Paging (AndroidX Paging 3)
             implementation(libs.androidx.paging.common)
             implementation(libs.androidx.paging.compose)
+
+            //Oshi
+            implementation(libs.oshi.core)
+
+
+            implementation(libs.koalaplot.core)
+
+            implementation("io.github.vinceglb:confettikit:0.6.0")
+
+
         }
 
         commonTest.dependencies {

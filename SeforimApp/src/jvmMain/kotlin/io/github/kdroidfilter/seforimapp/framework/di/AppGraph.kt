@@ -6,23 +6,30 @@ import com.russhwolf.settings.Settings
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
-import io.github.kdroidfilter.platformtools.releasefetcher.github.GitHubReleaseFetcher
 import io.github.kdroidfilter.seforim.navigation.DefaultNavigator
 import io.github.kdroidfilter.seforim.navigation.Navigator
 import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
-import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.OnBoardingViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.business.OnBoardingUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
+import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeOfInstallationViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.databaseFetcher
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
-import io.github.kdroidfilter.seforimapp.network.KtorConfig
+import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileViewModel
 import java.util.UUID
 
 /**
@@ -42,7 +49,12 @@ abstract class AppGraph {
     abstract val tabsViewModel: TabsViewModel
     abstract val settingsViewModel: SettingsViewModel
 
-    abstract val onBoardingViewModel: OnBoardingViewModel
+    abstract val typeOfInstallationViewModel: TypeOfInstallationViewModel
+    abstract val downloadViewModel: DownloadViewModel
+    abstract val extractViewModel: ExtractViewModel
+    abstract val availableDiskSpaceViewModel: AvailableDiskSpaceViewModel
+    abstract val regionConfigViewModel: RegionConfigViewModel
+    abstract val userProfileViewModel: UserProfileViewModel
 
     @Provides
     @SingleIn(AppScope::class)
@@ -122,16 +134,69 @@ abstract class AppGraph {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideOnBoardingViewModel(settings: Settings): OnBoardingViewModel {
+    fun provideOnboardingProcessRepository(): OnboardingProcessRepository = OnboardingProcessRepository()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideDownloadUseCase(): DownloadUseCase = DownloadUseCase(
+        gitHubReleaseFetcher = databaseFetcher
+    )
+
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideExtractUseCase(settings: Settings): ExtractUseCase {
         // Ensure AppSettings uses the same Settings instance
         AppSettings.initialize(settings)
-        val useCase = OnBoardingUseCase(
-            settings = AppSettings,
-            gitHubReleaseFetcher = databaseFetcher
-        )
-        return OnBoardingViewModel(
-            mainState = MainAppState,
-            useCase = useCase
-        )
+        return ExtractUseCase()
     }
+
+    @Provides
+    fun provideTypeOfInstallationViewModel(
+        processRepository: OnboardingProcessRepository
+    ): TypeOfInstallationViewModel = TypeOfInstallationViewModel(processRepository)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideDownloadViewModel(
+        downloadUseCase: DownloadUseCase,
+        processRepository: OnboardingProcessRepository
+    ): DownloadViewModel = DownloadViewModel(downloadUseCase, processRepository)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideExtractViewModel(
+        extractUseCase: ExtractUseCase,
+        processRepository: OnboardingProcessRepository
+    ): ExtractViewModel = ExtractViewModel(extractUseCase, processRepository)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideAvailableDiskSpaceUseCase(): AvailableDiskSpaceUseCase = AvailableDiskSpaceUseCase()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideAvailableDiskSpaceViewModel(
+        useCase: AvailableDiskSpaceUseCase
+    ): AvailableDiskSpaceViewModel = AvailableDiskSpaceViewModel(useCase)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideRegionConfigUseCase(): RegionConfigUseCase = RegionConfigUseCase()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideRegionConfigViewModel(
+        useCase: RegionConfigUseCase
+    ): RegionConfigViewModel = RegionConfigViewModel(useCase)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideUserProfileUseCase(): UserProfileUseCase = UserProfileUseCase()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideUserProfileViewModel(
+        useCase: UserProfileUseCase
+    ): UserProfileViewModel = UserProfileViewModel(useCase)
 }

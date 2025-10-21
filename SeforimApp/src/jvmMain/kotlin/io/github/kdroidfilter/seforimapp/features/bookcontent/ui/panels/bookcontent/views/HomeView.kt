@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentUiState
 import io.github.kdroidfilter.seforimapp.icons.*
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
@@ -76,7 +77,10 @@ fun HomeView(
             ) {
                 item {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        WelcomeUser(username = "אליהו")
+                        val firstName = AppSettings.getUserFirstName().orEmpty()
+                        val lastName = AppSettings.getUserLastName().orEmpty()
+                        val displayName = "$firstName $lastName".trim()
+                        WelcomeUser(username = displayName)
                     }
                 }
                 item {
@@ -114,7 +118,11 @@ fun HomeView(
 
 @Composable
 private fun WelcomeUser(username: String) {
-    Text("שלום $username !", textAlign = TextAlign.Center, fontSize = 36.sp)
+    Text(
+        stringResource(Res.string.home_welcome_user, username),
+        textAlign = TextAlign.Center,
+        fontSize = 36.sp
+    )
 }
 
 /**

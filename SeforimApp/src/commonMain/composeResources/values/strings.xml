@@ -139,17 +139,69 @@
 
     <!-- Settings -->
     <string name="close_book_tree_on_new_book">סגור אוטומטית את חלונית העץ בעת בחירת ספר חדש</string>
+
     <!-- Onboarding -->
-    <string name="onboarding_title_bar">הגדרה ראשונית</string>
+    <string name="onboarding_title_bar">מדריך ההגדרה של זית</string>
+    <string name="previous_button">קודם</string>
+    <!-- Init-->
+    <string name="onboarding_init_welcome_title">ברוכים הבאים לזית!</string>
+    <string name="onboarding_init_welcome_subtitle">יישום חדש, מודרני ומהיר ללימוד התורה, שנבנה באהבה על ידי אברך ומפתח חרדי. זית שואפת לחולל מהפכה בלימוד טקסטים דיגיטליים באמצעות חוויה חלקה, אלגנטית וללא צורך בחיבור לאינטרנט.</string>
+    <string name="onboarding_setup_guide">נלווה אתכם שלב אחר שלב כדי להגדיר את היישום כראוי.</string>
+    <string name="onboarding_init_start">התחל</string>
+
+    <!-- Licence -->
+    <!-- Intro / provenance -->
+    <string name="license_screen_title">רישיון ותנאי שימוש</string>
+    <string name="license_accept_checkbox">אני מאשר את תנאי הרישיון ושימוש</string>
+    <string name="next_button">המשך</string>
+
+    <!-- Installation chooser -->
+    <string name="installation_title">בחרו את סוג ההתקנה</string>
+    <!-- Online -->
+    <string name="installation_online_title">התקנה מקוונת</string>
+    <string name="installation_online_desc">נדרש חיבור לאינטרנט להורדת מסד הנתונים הדחוס (2 ג"ב). בסיום ההורדה הקובץ ייפרק ויותקן מקומית במחשב. משך הפעולה תלוי במהירות ההורדה והאחסון.</string>
+    <string name="installation_online_button">התחלת התקנה מקוונת</string>
+    <!-- Offline -->
+    <string name="installation_offline_title">התקנה לא-מקוונת</string>
+    <string name="installation_offline_desc">עליכם לבחור קובץ מסד נתונים מוכן שהורד מראש מעמוד ההפצות האחרון. הורידו את הקובץ עם הסיומת .zst מעמוד ההפצה, ולאחר מכן בחרו אותו כאן להמשך ההתקנה.</string>
+    <string name="installation_offline_button">התחלת התקנה לא-מקוונת</string>
+    <!-- Releases info (לשימוש היכן שתרצה; ה-URL עצמו יישום אצלך בקוד) -->
+    <string name="installation_releases_hint">עמוד ההפצות האחרון</string>
+    <string name="installation_releases_source">ניתן להוריד מ:</string>
+
+    <!--Downloading-->
     <string name="onboarding_downloading_message">אנא המתן בזמן שאנו מורידים את מסד הנתונים</string>
     <string name="onboarding_extracting_message">אנא המתן בזמן שאנו מחלצים את מסד הנתונים</string>
+
+    <string name="onboarding_extracting_did_you_know">הידעת? זית משתמשת באלגוריתם הדחיסה המתקדם ביותר — לא ZIP ולא RAR, אלא ZST ברמת הדחיסה הגבוהה ביותר! דחיסה מרבית ומהירות חילוץ מרבית!</string>
+
+
     <string name="onboarding_ready">הכול מוכן!</string>
-    <string name="onboarding_open_app">פתח את האפליקציה</string>
+    <string name="onboarding_finish_ready_message">ברוכים הבאים לזית! אנו מאחלים לכם חוויית שימוש נעימה.</string>
+    <string name="onboarding_open_app">פתח את היישום</string>
     <string name="onboarding_error_occurred">אירעה שגיאה</string>
+    <string name="onboarding_error_with_detail">אירעה שגיאה: %1$s</string>
+    <string name="home_welcome_user">שלום %1$s !</string>
     <string name="onboarding_preparing_download">מכין הורדה...</string>
     <string name="onboarding_choose_source">בחרו כיצד להגדיר את מסד הנתונים</string>
     <string name="onboarding_download_db_button">הורדת מסד הנתונים</string>
     <string name="onboarding_pick_zst_button">בחר קובץ ‎.zst מקומי</string>
+    <string name="onboarding_download_progress">%1$s / %2$s</string>
+    <string name="retry_button">נסה שוב</string>
+    <!-- Disk space check -->
+    <string name="onboarding_disk_title">בדיקת שטח פנוי בדיסק</string>
+    <string name="onboarding_disk_space_sufficient">קיים מספיק שטח פנוי</string>
+    <string name="onboarding_disk_space_insufficient">אין מספיק שטח פנוי</string>
+    <string name="onboarding_disk_space_available">שטח פנוי: %1$s</string>
+    <string name="onboarding_disk_space_required">נדרש: %1$s</string>
+    <string name="onboarding_disk_success_continue">מצוין! ניתן להמשיך בהתקנה.</string>
+    <string name="onboarding_disk_error_free_up">אין מספיק מקום בדיסק. נא לפנות מקום ולאחר מכן ללחוץ על בדיקה מחדש.</string>
+    <string name="recheck_button">בדיקה מחדש</string>
+    <string name="disk_pie_used">שטח בשימוש</string>
+    <string name="disk_pie_required">נדרש להתקנה: %1$s</string>
+    <string name="disk_pie_free_after">פנוי לאחר ההתקנה</string>
+    <string name="disk_pie_used_with_value">שטח בשימוש: %1$s</string>
+    <string name="disk_pie_free_after_with_value">פנוי לאחר ההתקנה: %1$s</string>
     <!-- Units -->
     <string name="bytes_unit_b">ב׳</string>
     <string name="bytes_unit_kb">ק״ב</string>
@@ -164,4 +216,25 @@
     <string name="eta_minutes_unit_plural">דקות</string>
     <string name="eta_seconds_unit_singular">שנייה</string>
     <string name="eta_seconds_unit_plural">שניות</string>
+
+
+    <!-- User info configuration-->
+    <string name="onboarding_user_info_title">פרטים אישיים</string>
+    <string name="onboarding_user_info_description">המידע הזה לעולם אינו נשלח לשרת. הוא נועד רק כדי להתאים אישית את חוויית השימוש באפליקציה — למשל כדי להציג את שמכם על החידושים שלכם, או כדי להציע את נוסח ברכת המזון המתאים למסורתכם.</string>
+
+    <string name="onboarding_user_first_name_label">שם פרטי</string>
+    <string name="onboarding_user_last_name_label">שם משפחה</string>
+    <string name="onboarding_user_community_label">עדה</string>
+
+    <string name="onboarding_user_community_sepharade">עדות המזרח</string>
+    <string name="onboarding_user_community_ashkenaze">אשכנזי</string>
+    <string name="onboarding_user_community_sefard">ספרד</string>
+
+    <!-- Region configuration -->
+    <string name="onboarding_region_title">הגדרת אזור</string>
+    <string name="onboarding_region_country_label">בחרו מדינה</string>
+    <string name="onboarding_region_city_label">בחרו עיר</string>
+    <string name="onboarding_region_description">היישום זקוק למידע על אזור מגוריכם כדי לספק תכנים מותאמים למיקומכם, כגון פרשת השבוע, זמני קריאת שמע ושאר זמני היום.</string>
+
+
 </resources>

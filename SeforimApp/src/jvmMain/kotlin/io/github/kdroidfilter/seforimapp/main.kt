@@ -14,7 +14,7 @@ import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.features.onboarding.ui.OnBoardingWindow
+import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -53,7 +53,6 @@ fun main() {
         FileKit.init(appId)
 
         val windowState = remember { getCenteredWindowState(1280, 720) }
-        val onboardingWindowState = remember { getCenteredWindowState(720, 420) }
         var isWindowVisible by remember { mutableStateOf(true) }
 
         val mainState = MainAppState
@@ -83,28 +82,22 @@ fun main() {
                     titleBarStyle = ThemeUtils.pickTitleBarStyle(),
                 )
             ) {
-                // Decide whether to show onboarding based on database availability
+                // Decide whether to show onboarding based on database availability and completion flag
                 LaunchedEffect(Unit) {
                     try {
                         // getDatabasePath() throws if not configured or file missing
                         getDatabasePath()
-                        mainState.setShowOnBoarding(false)
+                        // If DB exists, show onboarding only if not finished yet
+                        val finished = AppSettings.isOnboardingFinished()
+                        mainState.setShowOnBoarding(!finished)
                     } catch (_: Exception) {
+                        // If DB is missing/unconfigured, show onboarding
                         mainState.setShowOnBoarding(true)
                     }
                 }
 
                 if (showOnboarding == true) {
-                    DecoratedWindow(
-                        onCloseRequest = { exitApplication() },
-                        title = stringResource(Res.string.app_name),
-                        icon = painterResource(Res.drawable.zayit_transparent),
-                        state = onboardingWindowState,
-                        visible = true,
-                    ) {
-                        OnBoardingWindow()
-                    }
-
+                    OnBoardingWindow()
                 } else if (showOnboarding == false) {
                     DecoratedWindow(
                         onCloseRequest = {

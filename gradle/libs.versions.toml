@@ -3,6 +3,7 @@
 filekitCore = "0.12.0"
 jsoup = "1.21.2"
 jvmNativeTrustedRoots = "1.1.7"
+koalaplotCore = "0.9.1"
 kotlin = "2.2.20"
 compose = "1.9.1"
 agp = "8.12.3"
@@ -20,6 +21,7 @@ buildConfig = "5.7.0"
 materialKolor = "3.0.1"
 jewel = "0.31.0-252.27409"
 jna = "5.18.1"
+oshiCore = "6.9.1"
 paging = "3.3.6"
 platformtools = "0.7.4"
 composenativetray = "1.0.4"
@@ -45,6 +47,7 @@ jdbc-driver = { module = "app.cash.sqldelight:jdbc-driver", version.ref = "sqlit
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 jvm-native-trusted-roots = { module = "org.jetbrains.nativecerts:jvm-native-trusted-roots", version.ref = "jvmNativeTrustedRoots" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
+koalaplot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaplotCore" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
@@ -73,6 +76,7 @@ jewel-ui = { module = "org.jetbrains.jewel:jewel-ui", version.ref = "jewel" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "paging" }
 androidx-paging-compose = { module = "androidx.paging:paging-compose", version = "3.4.0-alpha04" }
+oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshiCore" }
 platformtools-appmanager = { module = "io.github.kdroidfilter:platformtools.appmanager", version.ref = "platformtools" }
 platformtools-core = { module = "io.github.kdroidfilter:platformtools.core", version.ref = "platformtools" }
 platformtools-darkmodedetector = { module = "io.github.kdroidfilter:platformtools.darkmodedetector", version.ref = "platformtools" }

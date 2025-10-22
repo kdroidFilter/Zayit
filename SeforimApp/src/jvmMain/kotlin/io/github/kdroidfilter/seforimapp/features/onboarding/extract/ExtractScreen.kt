@@ -47,9 +47,9 @@ fun ExtractScreen(
     LaunchedEffect(state.completed) {
         if (!navigated && state.completed) {
             navigated = true
-            // Continue to user profile step and clear previous steps to disable back navigation
+            // Continue to user profile step and remove Extract from back stack to disable back navigation
             navController.navigate(OnBoardingDestination.UserProfilScreen) {
-                popUpTo<OnBoardingDestination.InitScreen> { inclusive = true }
+                popUpTo<OnBoardingDestination.ExtractScreen> { inclusive = true }
             }
         }
     }

@@ -44,7 +44,7 @@ fun TypeOfInstallationScreen(navController: NavController, progressBarState: Pro
             viewModel.onEvent(TypeOfInstallationEvents.OfflineFileChosen(path))
             // Jump to the start of the Extract step when selecting an offline archive
             progressBarState.setProgress(0.8f)
-            // Move forward and clear previous onboarding steps so back is disabled
+            // Move forward and clear all previous onboarding steps so back is disabled
             navController.navigate(OnBoardingDestination.ExtractScreen) {
                 popUpTo<OnBoardingDestination.InitScreen> { inclusive = true }
             }
@@ -52,7 +52,7 @@ fun TypeOfInstallationScreen(navController: NavController, progressBarState: Pro
     }
     TypeOfInstallationView(
         onOnlineInstallation = {
-            // Move forward and clear previous onboarding steps so back is disabled
+            // Move forward and clear all previous onboarding steps so back is disabled
             navController.navigate(OnBoardingDestination.DatabaseOnlineInstallerScreen) {
                 popUpTo<OnBoardingDestination.InitScreen> { inclusive = true }
             }

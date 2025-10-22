@@ -2,9 +2,9 @@ package io.github.kdroidfilter.seforimapp.features.onboarding
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,8 +21,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.navigation.compose.rememberNavController
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingNavHost
 import io.github.kdroidfilter.seforimapp.icons.Install_desktop
@@ -63,27 +61,25 @@ fun ApplicationScope.OnBoardingWindow() {
             }
         }
         TitleBar(modifier = Modifier.newFullscreenControls()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(1f),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
+            // Keep the back button pinned to the start and
+            // center the title (icon + text) regardless of OS/window controls.
+            Box(modifier = Modifier.fillMaxWidth()) {
                 if (canNavigateBack) {
                     IconButton(
-                        modifier = Modifier.padding(start = 8.dp).size(24.dp),
-                        onClick = {
-                            navController.navigateUp()
-                        }
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(start = 8.dp)
+                            .size(24.dp),
+                        onClick = { navController.navigateUp() }
                     ) {
                         Icon(AllIconsKeys.Actions.Back, null, modifier = Modifier.rotate(180f))
                     }
-                } else {
-                    Spacer(modifier = Modifier.size(24.dp))
                 }
+
                 Row(
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(if(getOperatingSystem() == OperatingSystem.WINDOWS) 0.53f else 0.58f)
+                    modifier = Modifier.align(Alignment.Center),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
                         Install_desktop,
@@ -93,7 +89,6 @@ fun ApplicationScope.OnBoardingWindow() {
                     )
                     Text(stringResource(Res.string.onboarding_title_bar))
                 }
-
             }
         }
         Column(

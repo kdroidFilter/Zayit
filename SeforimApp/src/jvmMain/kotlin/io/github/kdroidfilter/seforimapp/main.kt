@@ -27,6 +27,7 @@ import org.jetbrains.jewel.intui.standalone.theme.default
 import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.ui.ComponentStyling
 import org.jetbrains.jewel.window.DecoratedWindow
+import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.app_name
 import seforimapp.seforimapp.generated.resources.zayit_transparent
@@ -106,7 +107,7 @@ fun main() {
                             exitApplication()
                         },
                         title = stringResource(Res.string.app_name),
-                        icon = painterResource(Res.drawable.zayit_transparent),
+                        icon = painterResource(Res.drawable.AppIcon),
                         state = windowState,
                         visible = isWindowVisible,
                         onKeyEvent = { keyEvent ->

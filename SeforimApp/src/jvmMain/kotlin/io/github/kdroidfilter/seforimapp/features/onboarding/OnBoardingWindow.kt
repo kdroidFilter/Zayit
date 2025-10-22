@@ -38,6 +38,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.window.DecoratedWindow
 import org.jetbrains.jewel.window.TitleBar
 import org.jetbrains.jewel.window.newFullscreenControls
+import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.app_name
 import seforimapp.seforimapp.generated.resources.onboarding_title_bar
@@ -49,7 +50,7 @@ fun ApplicationScope.OnBoardingWindow() {
     DecoratedWindow(
         onCloseRequest = { exitApplication() },
         title = stringResource(Res.string.app_name),
-        icon = painterResource(Res.drawable.zayit_transparent),
+        icon = painterResource(Res.drawable.AppIcon),
         state = onboardingWindowState,
         visible = true,
         resizable = false,

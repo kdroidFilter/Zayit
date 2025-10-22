@@ -179,7 +179,7 @@ compose.desktop {
 
             modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "Zayit"
+            packageName = "זית"
             vendor = "KDroidFilter"
 
             linux {

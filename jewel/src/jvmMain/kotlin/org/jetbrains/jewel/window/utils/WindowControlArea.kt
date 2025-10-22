@@ -1,14 +1,22 @@
 package org.jetbrains.jewel.window.utils
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -36,6 +44,7 @@ private fun TitleBarScope.CloseButton(
     ControlButton(onClick, state, style.icons.closeButton, "Close", style, style.paneCloseButtonStyle, iconHoveredEffect)
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun TitleBarScope.ControlButton(
     onClick: () -> Unit,
@@ -51,13 +60,30 @@ private fun TitleBarScope.ControlButton(
         Modifier.align(Alignment.End).focusable(false).size(style.metrics.titlePaneButtonSize),
         style = iconButtonStyle,
     ) {
+        var hovered by remember { mutableStateOf(false) }
+
+        val hoverModifier =
+            if (iconHoveredEffect && state.isActive) {
+                Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .drawWithContent {
+                        drawContent()
+                        if (hovered) {
+                            // Lighten only the icon by overlaying a subtle white tint
+                            drawRect(Color.White.copy(alpha = 0.02f), blendMode = BlendMode.SrcOver)
+                        }
+                    }
+                    .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Enter) { hovered = true }
+                    .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Exit) { hovered = false }
+            } else {
+                Modifier
+            }
+
         Icon(
             iconKey,
             description,
             hint = if (state.isActive) PainterHint else Inactive,
-            modifier = if (iconHoveredEffect) Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .clickable(onClick = onClick) else Modifier,
+            modifier = hoverModifier,
             )
 
     }

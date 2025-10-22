@@ -54,7 +54,6 @@ fun ApplicationScope.OnBoardingWindow() {
         visible = true,
         resizable = false,
     ) {
-        val isLinux = getOperatingSystem() == OperatingSystem.LINUX
         val isMac = getOperatingSystem() == OperatingSystem.MACOS
         val isWindows = getOperatingSystem() == OperatingSystem.WINDOWS
         val navController = rememberNavController()

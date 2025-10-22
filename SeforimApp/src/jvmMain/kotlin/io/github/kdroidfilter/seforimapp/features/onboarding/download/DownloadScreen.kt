@@ -76,7 +76,10 @@ fun DownloadScreen(
             navigated = true
             // Snap to the start of the Extract step before navigating
             progressBarState.setProgress(0.7f)
-            navController.navigate(OnBoardingDestination.ExtractScreen)
+            // Move forward and remove Download from back stack so back is disabled
+            navController.navigate(OnBoardingDestination.ExtractScreen) {
+                popUpTo<OnBoardingDestination.DatabaseOnlineInstallerScreen> { inclusive = true }
+            }
         }
     }
 

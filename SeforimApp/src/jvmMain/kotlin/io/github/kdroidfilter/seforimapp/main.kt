@@ -2,8 +2,12 @@ package io.github.kdroidfilter.seforimapp
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.*
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPlacement
+import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberWindowState
 import com.kdroid.composetray.tray.api.ExperimentalTrayAppApi
 import com.kdroid.composetray.utils.SingleInstanceManager
 import dev.zacsweers.metro.createGraph
@@ -33,6 +37,7 @@ import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.app_name
 import seforimapp.seforimapp.generated.resources.zayit_transparent
 import java.awt.Dimension
+import java.awt.Toolkit
 import java.awt.Window
 import java.util.*
 
@@ -54,12 +59,18 @@ fun main() {
     application {
         FileKit.init(appId)
 
-        val windowState = remember { getCenteredWindowState(1280, 720) }
+        val screenSize = Toolkit.getDefaultToolkit().screenSize
+        val windowX = (screenSize.width) / 2
+        val windowY = (screenSize.height) / 2
+        val windowState = rememberWindowState(
+            position = WindowPosition(windowX.dp, windowY.dp),
+            size = DpSize(screenSize.width.dp, screenSize.height.dp),
+        )
 
         var isWindowVisible by remember { mutableStateOf(true) }
 
         val mainState = MainAppState
-        val showOnboarding : Boolean? = mainState.showOnBoarding.collectAsState().value
+        val showOnboarding: Boolean? = mainState.showOnBoarding.collectAsState().value
 
         val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
             isWindowVisible = true
@@ -80,8 +91,7 @@ fun main() {
             val themeDefinition = ThemeUtils.buildThemeDefinition()
 
             IntUiTheme(
-                theme = themeDefinition,
-                styling = ComponentStyling.default().decoratedWindow(
+                theme = themeDefinition, styling = ComponentStyling.default().decoratedWindow(
                     titleBarStyle = ThemeUtils.pickTitleBarStyle(),
                 )
             ) {
@@ -114,11 +124,9 @@ fun main() {
                         visible = isWindowVisible,
                         onKeyEvent = { keyEvent ->
                             processKeyShortcuts(
-                                keyEvent = keyEvent,
-                                onNavigateTo = {
+                                keyEvent = keyEvent, onNavigateTo = {
                                     //TODO
-                                }
-                            )
+                                })
                         },
                     ) {
 

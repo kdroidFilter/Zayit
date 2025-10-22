@@ -34,7 +34,7 @@ adaptiveNavigation = "1.1.2"
 navigationCompose = "2.9.1"
 sqliteDriver = "2.1.0"
 zstdJni = "1.5.7-5"
-metro = "0.7.0"
+metro = "0.7.2"
 
 [libraries]
 
@@ -113,4 +113,4 @@ sqlDelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 caupain =  { id = "com.deezer.caupain", version = "1.6.1"}
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
-linux-deps = { id = "io.github.kdroidfilter.compose.linux.packagedeps", version = "0.2.2"}
+linux-deps = { id = "io.github.kdroidfilter.compose.linux.packagedeps", version = "0.2.3"}

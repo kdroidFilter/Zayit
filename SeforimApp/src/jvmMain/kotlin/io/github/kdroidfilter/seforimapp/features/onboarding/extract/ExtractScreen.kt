@@ -47,8 +47,10 @@ fun ExtractScreen(
     LaunchedEffect(state.completed) {
         if (!navigated && state.completed) {
             navigated = true
-            // Continue to user profile step (before region configuration)
-            navController.navigate(OnBoardingDestination.UserProfilScreen)
+            // Continue to user profile step and clear previous steps to disable back navigation
+            navController.navigate(OnBoardingDestination.UserProfilScreen) {
+                popUpTo<OnBoardingDestination.InitScreen> { inclusive = true }
+            }
         }
     }
 

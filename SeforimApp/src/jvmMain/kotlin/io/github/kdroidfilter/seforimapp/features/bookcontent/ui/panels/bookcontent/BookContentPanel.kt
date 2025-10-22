@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedVerticalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.*
@@ -24,7 +24,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 fun BookContentPanel(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -103,7 +103,7 @@ fun BookContentPanel(
 
 @Composable
 private fun CommentsPane(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
 ) {
     LineCommentsView(
@@ -114,7 +114,7 @@ private fun CommentsPane(
 
 @Composable
 private fun TargumPane(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
 ) {
     LineTargumView(
@@ -125,7 +125,7 @@ private fun TargumPane(
 
 @Composable
 private fun BreadcrumbSection(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     verticalPadding: Dp,
     modifier: Modifier = Modifier

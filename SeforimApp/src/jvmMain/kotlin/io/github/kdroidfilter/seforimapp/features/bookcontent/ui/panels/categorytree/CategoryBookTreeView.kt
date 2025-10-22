@@ -21,7 +21,7 @@ import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.text.font.FontWeight.Companion.Normal
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ChevronIcon
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationState
 import io.github.kdroidfilter.seforimapp.icons.Book_2
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -46,7 +46,7 @@ private data class TreeItem(
 @OptIn(FlowPreview::class)
 @Composable
 fun CategoryBookTreeView(
-    navigationState: NavigationUiState,
+    navigationState: NavigationState,
     onCategoryClick: (Category) -> Unit,
     onBookClick: (Book) -> Unit,
     onScroll: (Int, Int) -> Unit,

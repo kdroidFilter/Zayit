@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcon
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.icons.*
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
@@ -55,13 +56,13 @@ data class SearchFilterCard(
 @OptIn(ExperimentalJewelApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun HomeView(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
     VerticallyScrollableContainer(
-        scrollState = listState as ScrollState,
+        scrollState = listState as ScrollableState,
     ) {
         Box(
             modifier = modifier.padding(16.dp).fillMaxSize(), contentAlignment = Alignment.Center
@@ -203,182 +204,6 @@ private fun SearchLevelsPanel(modifier: Modifier = Modifier) {
     )
 }
 
-
-///**
-// * Expandable section to search by category and optionally by book.
-// * Mirrors the original behavior and emits CategorySelected events on selection changes.
-// */
-//@Composable
-//private fun CategoryAndBookPicker(
-//    uiState: BookContentUiState,
-//    onEvent: (BookContentEvent) -> Unit,
-//    modifier: Modifier = Modifier
-//) {
-//    var isExpanded by remember { mutableStateOf(false) }
-//    val interactionSource = remember { MutableInteractionSource() }
-//
-//    GroupHeader(
-//        text = stringResource(Res.string.search_by_category_or_book),
-//        modifier =
-//        modifier
-//            .clickable(indication = null, interactionSource = interactionSource) {
-//                isExpanded = !isExpanded
-//            }
-//            .hoverable(interactionSource)
-//            .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))),
-//        startComponent = {
-//            if (isExpanded) {
-//                Icon(AllIconsKeys.General.ChevronDown, "Chevron")
-//            } else {
-//                Icon(AllIconsKeys.General.ChevronLeft, "Chevron")
-//            }
-//        },
-//    )
-//
-//    if (!isExpanded) return
-//
-//    // Cascading combo boxes for categories and books from the library database
-//    val navigation = uiState.navigation
-//
-//    // Selected category indices per level; changing a level clears deeper selections
-//    val selectedCategoryIndices = remember { mutableStateListOf<Int>() }
-//    var selectedBookIndex by remember { mutableIntStateOf(-1) }
-//
-//    // Reset selection path if root categories list changes (e.g., after loading)
-//    LaunchedEffect(navigation.rootCategories) {
-//        selectedCategoryIndices.clear()
-//        selectedBookIndex = -1
-//    }
-//
-//    // Build levels of categories based on current selection path
-//    val categoryLevels = remember(
-//        navigation.rootCategories,
-//        navigation.categoryChildren,
-//        selectedCategoryIndices.toList()
-//    ) {
-//        buildList {
-//            var currentLevel: List<Category> = navigation.rootCategories
-//            add(currentLevel)
-//            var depth = 0
-//            while (depth < selectedCategoryIndices.size) {
-//                val idx = selectedCategoryIndices[depth]
-//                if (idx !in currentLevel.indices) break
-//                val selectedCat = currentLevel[idx]
-//                val children = navigation.categoryChildren[selectedCat.id] ?: emptyList()
-//                if (children.isEmpty()) break
-//                add(children)
-//                currentLevel = children
-//                depth++
-//            }
-//        }
-//    }
-//
-//    FlowRow(
-//        modifier = Modifier.fillMaxWidth(),
-//        horizontalArrangement = Arrangement.spacedBy(8.dp),
-//        verticalArrangement = Arrangement.spacedBy(8.dp)
-//    ) {
-//        // Render a ListComboBox for each category level
-//        categoryLevels.forEachIndexed { level, items ->
-//            val selIndex = selectedCategoryIndices.getOrNull(level) ?: -1
-//            // Jewel's ListComboBox doesn't support -1 when the list is non-empty; coerce to 0 safely
-//            val safeSelIndex = if (items.isNotEmpty() && selIndex !in items.indices) 0 else selIndex
-//            ListComboBox(
-//                items = items,
-//                selectedIndex = safeSelIndex,
-//                modifier = Modifier.widthIn(max = 260.dp),
-//                onSelectedItemChange = { newIndex ->
-//                    // Ensure list has positions up to this level
-//                    while (selectedCategoryIndices.size <= level) selectedCategoryIndices.add(-1)
-//                    // Update this level
-//                    selectedCategoryIndices[level] = newIndex
-//                    // Trim deeper levels
-//                    while (selectedCategoryIndices.size > level + 1) selectedCategoryIndices.removeLast()
-//                    // Reset book selection when category changes
-//                    selectedBookIndex = -1
-//                    // Fire event with the newly selected category if valid
-//                    if (newIndex in items.indices) {
-//                        val cat = items[newIndex]
-//                        onEvent(
-//                            BookContentEvent.CategorySelected(
-//                                cat
-//                            )
-//                        )
-//                    }
-//                },
-//                itemKeys = { _, item -> item.id },
-//                itemContent = { item, isSelected, isActive ->
-//                    SimpleListItem(
-//                        text = item.title,
-//                        selected = isSelected,
-//                        active = isActive,
-//                        iconContentDescription = item.title,
-//                        icon = AllIconsKeys.Nodes.Folder,
-//                        colorFilter = null,
-//                    )
-//                },
-//            )
-//        }
-//
-//        // Optional: books combobox for the deepest selected category
-//        val deepestCategory: Category? = run {
-//            if (categoryLevels.isEmpty()) null else {
-//                var cat: Category? = null
-//                var items = categoryLevels.first()
-//                var level = 0
-//                while (level < selectedCategoryIndices.size) {
-//                    val idx = selectedCategoryIndices[level]
-//                    if (idx !in items.indices) break
-//                    cat = items[idx]
-//                    val children = navigation.categoryChildren[cat.id] ?: emptyList()
-//                    if (children.isEmpty()) break
-//                    items = children
-//                    level++
-//                }
-//                cat
-//            }
-//        }
-//
-//        val booksInDeepest = remember(navigation.booksInCategory, deepestCategory) {
-//            navigation.booksInCategory
-//                .filter { it.categoryId == deepestCategory?.id }
-//                .sortedBy { it.title }
-//        }
-//
-//        if (deepestCategory != null && booksInDeepest.isNotEmpty()) {
-//            // Coerce invalid selection to 0 to avoid ListComboBox index errors
-//            val safeBookIndex = if (selectedBookIndex !in booksInDeepest.indices) 0 else selectedBookIndex
-//            ListComboBox(
-//                items = booksInDeepest,
-//                selectedIndex = safeBookIndex,
-//                modifier = Modifier.widthIn(max = 320.dp),
-//                onSelectedItemChange = { newIndex ->
-//                    selectedBookIndex = newIndex
-//                    if (newIndex in booksInDeepest.indices) {
-//                        val book = booksInDeepest[newIndex]
-//                        println("${book.id} selected")
-//                    }
-//                },
-//                itemKeys = { _, item -> item.id },
-//                itemContent = { item, _, _ ->
-//                    Row(
-//                        modifier = Modifier.fillMaxWidth(),
-//                        verticalAlignment = Alignment.CenterVertically,
-//                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-//                    ) {
-//                        Icon(
-//                            imageVector = Book_2,
-//                            contentDescription = null,
-//                            tint = JewelTheme.contentColor,
-//                            modifier = Modifier.size(18.dp).padding(start = 4.dp)
-//                        )
-//                        Text(text = item.title)
-//                    }
-//                },
-//            )
-//        }
-//    }
-//}
 
 @Composable
 private fun ReferenceByCategorySection(modifier: Modifier = Modifier) {
@@ -616,7 +441,7 @@ private fun SearchLevelCard(
 fun HomeViewPreview() {
     PreviewContainer {
         HomeView(
-            uiState = BookContentUiState(),
+            uiState = BookContentState(),
             onEvent = {},
             modifier = Modifier
         )

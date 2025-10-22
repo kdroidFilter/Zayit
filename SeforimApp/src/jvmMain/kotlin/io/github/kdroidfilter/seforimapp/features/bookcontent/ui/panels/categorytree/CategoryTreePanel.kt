@@ -11,7 +11,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.Text
@@ -22,7 +22,7 @@ import seforimapp.seforimapp.generated.resources.book_list
 
 @Composable
 fun CategoryTreePanel(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {

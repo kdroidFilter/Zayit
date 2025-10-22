@@ -12,7 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -113,7 +113,7 @@ fun BreadcrumbView(
  */
 @Composable
 fun BreadcrumbView(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {

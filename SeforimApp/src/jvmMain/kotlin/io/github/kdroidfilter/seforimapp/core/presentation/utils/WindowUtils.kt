@@ -28,6 +28,7 @@ fun getCenteredWindowState(width: Int, height: Int): WindowState {
     )
 }
 
+
 fun processKeyShortcuts(keyEvent: KeyEvent, onNavigateTo: (String) -> Unit): Boolean {
     // Only process key down events
     if (keyEvent.type != KeyEventType.KeyDown) return false

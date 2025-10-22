@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.navigation.compose.rememberNavController
@@ -55,6 +56,15 @@ fun ApplicationScope.OnBoardingWindow() {
         visible = true,
         resizable = false,
     ) {
+        /**
+         * A hack to work around the window flashing its background color when closed
+         * (https://youtrack.jetbrains.com/issue/CMP-5651).
+         */
+        val background = JewelTheme.globalColors.panelBackground
+        LaunchedEffect(window, background) {
+            window.background = java.awt.Color(background.toArgb())
+        }
+
         val isMac = getOperatingSystem() == OperatingSystem.MACOS
         val isWindows = getOperatingSystem() == OperatingSystem.WINDOWS
         val navController = rememberNavController()

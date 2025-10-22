@@ -56,9 +56,6 @@ fun main() {
 
         val windowState = remember { getCenteredWindowState(1280, 720) }
 
-        LaunchedEffect(Unit) {
-            windowState.placement = WindowPlacement.Maximized
-        }
         var isWindowVisible by remember { mutableStateOf(true) }
 
         val mainState = MainAppState

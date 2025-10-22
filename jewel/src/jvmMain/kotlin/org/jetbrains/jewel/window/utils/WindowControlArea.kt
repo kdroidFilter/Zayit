@@ -118,5 +118,13 @@ internal fun TitleBarScope.WindowControlArea(
             )
         }
     }
-    ControlButton({ window.extendedState = Frame.ICONIFIED }, state, style.icons.minimizeButton, "Minimize", iconHoveredEffect = iconHoveredEffect, style = style, iconButtonStyle = style.paneButtonStyle)
+    ControlButton(
+        { window.extendedState = window.extendedState or Frame.ICONIFIED },
+        state,
+        style.icons.minimizeButton,
+        "Minimize",
+        iconHoveredEffect = iconHoveredEffect,
+        style = style,
+        iconButtonStyle = style.paneButtonStyle
+    )
 }

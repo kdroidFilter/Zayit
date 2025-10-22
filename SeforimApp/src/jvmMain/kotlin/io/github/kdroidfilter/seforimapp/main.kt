@@ -21,6 +21,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.vinceglb.filekit.FileKit
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -33,6 +34,8 @@ import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.app_name
 import seforimapp.seforimapp.generated.resources.zayit_transparent
 import java.awt.Dimension
+import java.awt.Frame
+import java.awt.Toolkit
 import java.awt.Window
 import java.util.*
 
@@ -56,10 +59,7 @@ fun main() {
 
         val windowState = remember { getCenteredWindowState(1280, 720) }
 
-        LaunchedEffect(Unit) {
-            windowState.placement = WindowPlacement.Maximized
-        }
-        var isWindowVisible by remember { mutableStateOf(true) }
+        var isWindowVisible by remember { mutableStateOf(false) }
 
         val mainState = MainAppState
         val showOnboarding : Boolean? = mainState.showOnBoarding.collectAsState().value
@@ -126,6 +126,27 @@ fun main() {
                     ) {
 
                         window.minimumSize = Dimension(350, 600)
+
+                        // Do the “pre-show maximize” exactly once
+                        LaunchedEffect(Unit) {
+                            (window as? Frame)?.let { frame ->
+                                // Preserve any existing extendedState flags
+                                frame.extendedState = frame.extendedState or Frame.MAXIMIZED_BOTH
+                            }
+
+                            // 2) (Optional) Nudge size to screen bounds for WMs that ignore extendedState until shown
+                            //    This prevents a 1-frame normal-size paint on some DEs.
+                            val screen = Toolkit.getDefaultToolkit().screenSize
+                            window.size = screen
+                            window.setLocation(0, 0)
+
+                            // 3) Also keep Compose state consistent
+                            windowState.placement = WindowPlacement.Maximized
+
+                            // 4) Now it’s safe to show the window — no visual jump
+                            isWindowVisible = true
+                        }
+
                         MainTitleBar()
                         // Restore previously saved session once when main window becomes active
                         var sessionRestored by remember { mutableStateOf(false) }

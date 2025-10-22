@@ -114,7 +114,12 @@ class BookContentViewModel(
             val restoredBook = stateManager.state.value.navigation.selectedBook
             if (restoredBook != null) {
                 debugln { "Restoring book ${restoredBook.id}" }
-                loadBookData(restoredBook)
+                val requestedLineId = savedStateHandle.get<Long>(StateKeys.LINE_ID)
+                if (requestedLineId != null) {
+                    loadBookById(restoredBook.id, requestedLineId)
+                } else {
+                    loadBookData(restoredBook)
+                }
 
                 // Restaurer la ligne sélectionnée
                 stateManager.state.value.content.selectedLine?.let { line ->
@@ -338,8 +343,8 @@ class BookContentViewModel(
             stateManager.setLoading(true)
             try {
                 val state = stateManager.state.value
-                val shouldUseAnchor = state.content.anchorId != -1L &&
-                        state.content.scrollIndex > 50 // INITIAL_LOAD_SIZE
+                // Always prefer an explicit anchor when present (e.g., opening from a commentary link)
+                val shouldUseAnchor = state.content.anchorId != -1L
 
                 val initialLineId = when {
                     forceAnchorId != null -> forceAnchorId

@@ -172,6 +172,11 @@ compose.desktop {
     application {
         mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
         nativeDistributions {
+            // Package-time resources root; include files under OS-specific subfolders (common, macos, windows, linux)
+            appResourcesRootDir.set(layout.projectDirectory.dir("src/jvmMain/assets"))
+            // Show splash image from the packaged resources directory
+            jvmArgs += listOf("-splash:\$APPDIR/resources/splash.png")
+
             modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Zayit"

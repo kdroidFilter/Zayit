@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categor
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -113,7 +114,7 @@ fun CategoryBookTreeView(
      * -------------------------------------------------------------------- */
     Box(modifier = modifier.fillMaxSize().padding(bottom = 8.dp)) {
         VerticallyScrollableContainer(
-            scrollState = listState,
+            scrollState = listState as ScrollableState,
         ) {
             LazyColumn(
                 state = listState,

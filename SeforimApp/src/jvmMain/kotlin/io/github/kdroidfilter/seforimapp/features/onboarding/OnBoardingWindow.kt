@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.ApplicationScope
 import androidx.navigation.compose.rememberNavController
 import io.github.kdroidfilter.platformtools.OperatingSystem
@@ -37,7 +36,6 @@ import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.window.DecoratedWindow
-import org.jetbrains.jewel.window.DecoratedWindowScope
 import org.jetbrains.jewel.window.TitleBar
 import org.jetbrains.jewel.window.newFullscreenControls
 import seforimapp.seforimapp.generated.resources.Res
@@ -56,7 +54,9 @@ fun ApplicationScope.OnBoardingWindow() {
         visible = true,
         resizable = false,
     ) {
-        val isMacOs = getOperatingSystem() == OperatingSystem.MACOS
+        val isLinux = getOperatingSystem() == OperatingSystem.LINUX
+        val isMac = getOperatingSystem() == OperatingSystem.MACOS
+        val isWindows = getOperatingSystem() == OperatingSystem.WINDOWS
         val navController = rememberNavController()
         var canNavigateBack by remember { mutableStateOf(false) }
         LaunchedEffect(navController) {
@@ -67,7 +67,7 @@ fun ApplicationScope.OnBoardingWindow() {
         TitleBar(modifier = Modifier.newFullscreenControls()) {
             // Keep the back button pinned to the start and
             // center the title (icon + text) regardless of OS/window controls.
-            Box(modifier = Modifier.fillMaxWidth(if (isMacOs) 0.9f else 1f)) {
+            Box(modifier = Modifier.fillMaxWidth(if (isMac) 0.9f else 1f).padding(start = if (isWindows) 70.dp else 0.dp)) {
                 if (canNavigateBack) {
                     IconButton(
                         modifier = Modifier
@@ -80,15 +80,7 @@ fun ApplicationScope.OnBoardingWindow() {
                     }
                 }
 
-                // Apply an OS-aware horizontal offset so the center is visually centered
-                val iconSlot = 40.dp // approximate width of a native control/icon slot
-                val osShift = when (getOperatingSystem()) {
-                    OperatingSystem.MACOS ->iconSlot
-                    OperatingSystem.WINDOWS -> iconSlot * -1.5f // 3 controls on right → shift left by half cluster
-                    else -> iconSlot
-                }
-
-                val centerOffset = osShift
+                val centerOffset = 40.dp
 
                 Row(
                     modifier = Modifier

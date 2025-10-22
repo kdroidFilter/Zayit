@@ -1,11 +1,20 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import com.dokar.sonner.ToastType
 import com.dokar.sonner.Toaster
+import com.dokar.sonner.ToastWidthPolicy
 import com.dokar.sonner.rememberToasterState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EndVerticalBar
@@ -135,8 +144,25 @@ fun BookContentView(
         EndVerticalBar(uiState = uiState, onEvent = onEvent)
     }
 
-    // Render toaster overlay
-    Toaster(state = toaster, darkTheme = JewelTheme.isDark)
+    // Render toaster overlay themed like Jewel
+    Toaster(
+        state = toaster,
+        darkTheme = JewelTheme.isDark,
+        alignment = Alignment.BottomEnd,
+        expanded = true,
+        showCloseButton = true,
+        contentPadding = { PaddingValues(horizontal = 12.dp, vertical = 10.dp) },
+        containerPadding = PaddingValues(all = 16.dp),
+        widthPolicy = { ToastWidthPolicy(max = 420.dp) },
+        elevation = 6.dp,
+        shadowAmbientColor = Color.Black.copy(alpha = 0.18f),
+        shadowSpotColor = Color.Black.copy(alpha = 0.24f),
+        contentColor = { JewelTheme.globalColors.text.normal },
+        border = { BorderStroke(1.dp, JewelTheme.globalColors.borders.disabled) },
+        background = { SolidColor(JewelTheme.globalColors.panelBackground) },
+        shape = { RectangleShape },
+        offset = IntOffset(0, 0)
+    )
 
     // React to state mutations to show a toast (no callbacks)
     val maxLimitMsg = stringResource(Res.string.max_commentators_limit)

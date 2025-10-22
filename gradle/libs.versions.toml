@@ -1,5 +1,6 @@
 [versions]
 
+composeSonner = "0.4.0"
 confettikit = "0.6.0"
 filekitCore = "0.12.0"
 jsoup = "1.21.2"
@@ -41,6 +42,7 @@ metro = "0.7.2"
 androidx-activityCompose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
 androidx-uitest-testManifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "androidx-uiTest" }
 androidx-uitest-junit4 = { module = "androidx.compose.ui:ui-test-junit4", version.ref = "androidx-uiTest" }
+compose-sonner = { module = "io.github.brdominguez:compose-sonner", version.ref = "composeSonner" }
 confettikit = { module = "io.github.vinceglb:confettikit", version.ref = "confettikit" }
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekitCore" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekitCore" }

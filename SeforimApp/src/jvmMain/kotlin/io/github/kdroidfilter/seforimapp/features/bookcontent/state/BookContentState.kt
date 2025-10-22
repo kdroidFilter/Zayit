@@ -143,9 +143,3 @@ data class PreviousPositions(
     val content: Float = 0.7f,
     val links: Float = 0.8f
 )
-
-// Typealiases to keep old UI names working without refactor
-
-typealias BookContentUiState = BookContentState
-
-typealias NavigationUiState = NavigationState

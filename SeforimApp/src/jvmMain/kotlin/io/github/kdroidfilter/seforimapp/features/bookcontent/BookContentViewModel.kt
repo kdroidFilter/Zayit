@@ -7,7 +7,7 @@ import androidx.paging.cachedIn
 import io.github.kdroidfilter.seforim.navigation.Navigator
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.Providers
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.CommentariesUseCase
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.ContentUseCase
@@ -57,7 +57,7 @@ class BookContentViewModel(
         .cachedIn(viewModelScope)
 
     // État UI unifié (state is already UI-ready; just inject providers and compute per-line selections)
-    val uiState: StateFlow<BookContentUiState> = stateManager.state
+    val uiState: StateFlow<BookContentState> = stateManager.state
         .map { state ->
             val lineId = state.content.selectedLine?.id
             val selectedCommentators = lineId?.let { state.content.selectedCommentatorsByLine[it] } ?: emptySet()

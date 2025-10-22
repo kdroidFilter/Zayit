@@ -28,7 +28,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
@@ -165,7 +165,7 @@ fun LineTargumView(
 @Stable
 @Composable
 fun LineTargumView(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
 ) {
     val providers = uiState.providers ?: return

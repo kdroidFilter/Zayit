@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ChevronIcon
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.VisibleTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.LineTocMapping
@@ -112,7 +112,7 @@ fun BookTocView(
 @OptIn(FlowPreview::class)
 @Composable
 fun BookTocView(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {

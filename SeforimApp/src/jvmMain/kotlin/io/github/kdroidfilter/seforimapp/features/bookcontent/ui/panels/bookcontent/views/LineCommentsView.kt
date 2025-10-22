@@ -2,7 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcon
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -27,7 +27,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -53,7 +53,7 @@ private const val SCROLL_DEBOUNCE_MS = 100L
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 fun LineCommentsView(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
 ) {
     val contentState = uiState.content
@@ -104,7 +104,7 @@ fun LineCommentsView(
 @Composable
 private fun CommentariesContent(
     selectedLine: Line,
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
     onShowWarning: () -> Unit
@@ -203,7 +203,7 @@ private fun CommentatorsList(
 
         Row(modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
             VerticallyScrollableContainer(
-                scrollState = listState as ScrollState,
+                scrollState = listState as ScrollableState,
             ) {
                 LazyColumn(
                     state = listState,
@@ -239,7 +239,7 @@ private fun CommentariesDisplay(
     selectedCommentators: List<String>,
     titleToIdMap: Map<String, Long>,
     selectedLine: Line,
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes
 ) {
@@ -298,7 +298,7 @@ private fun CommentariesDisplay(
 @Composable
 private fun CommentariesLayout(
     layoutConfig: CommentariesLayoutConfig,
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit
 ) {
     CommentatorsGridView(layoutConfig, uiState, onEvent)
@@ -307,7 +307,7 @@ private fun CommentariesLayout(
 @Composable
 private fun CommentatorsGridView(
     config: CommentariesLayoutConfig,
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
 ) {
     // Cache the calculation of lines
@@ -379,7 +379,7 @@ private fun CommentaryListView(
     commentatorId: Long,
     isPrimary: Boolean,
     config: CommentariesLayoutConfig,
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     initialIndex: Int,
     initialOffset: Int,
     onScroll: (Int, Int) -> Unit,

@@ -10,7 +10,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.Text
@@ -20,7 +20,7 @@ import seforimapp.seforimapp.generated.resources.table_of_contents
 
 @Composable
 fun BookTocPanel(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -59,4 +59,3 @@ fun BookTocPanel(
         }
     }
 }
-

@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EndVerticalBar
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.StartVerticalBar
@@ -48,7 +48,7 @@ fun BookContentScreen(viewModel: BookContentViewModel) {
 @OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class)
 @Composable
 fun BookContentView(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit
 ) {
     // Configuration of split panes to monitor

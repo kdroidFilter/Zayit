@@ -8,7 +8,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLa
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.icons.Align_end
 import io.github.kdroidfilter.seforimapp.icons.Align_horizontal_right
 import io.github.kdroidfilter.seforimapp.icons.Bookmark
@@ -25,7 +25,7 @@ import seforimapp.seforimapp.generated.resources.*
 
 @Composable
 fun StartVerticalBar(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit
 ) {
     VerticalLateralBar(
@@ -79,7 +79,7 @@ fun StartVerticalBar(
 
 @Composable
 fun EndVerticalBar(
-    uiState: BookContentUiState,
+    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit
 ) {
     // Collect current text size from settings

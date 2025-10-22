@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.*
+import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
 import com.kdroid.composetray.tray.api.ExperimentalTrayAppApi
 import com.kdroid.composetray.utils.SingleInstanceManager
@@ -54,6 +55,10 @@ fun main() {
         FileKit.init(appId)
 
         val windowState = remember { getCenteredWindowState(1280, 720) }
+
+        LaunchedEffect(Unit) {
+            windowState.placement = WindowPlacement.Maximized
+        }
         var isWindowVisible by remember { mutableStateOf(true) }
 
         val mainState = MainAppState
@@ -119,6 +124,7 @@ fun main() {
                             )
                         },
                     ) {
+
                         window.minimumSize = Dimension(350, 600)
                         MainTitleBar()
                         // Restore previously saved session once when main window becomes active

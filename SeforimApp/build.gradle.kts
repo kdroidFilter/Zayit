@@ -179,16 +179,17 @@ compose.desktop {
 
             modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "זית"
             vendor = "KDroidFilter"
 
             linux {
+                packageName = "zayit"
                 iconFile.set(project.file("desktopAppIcons/LinuxIcon.png"))
                 packageVersion = version
             }
             windows {
                 iconFile.set(project.file("desktopAppIcons/WindowsIcon.ico"))
                 packageVersion = version
+                packageName = "זית"
                 dirChooser = true
                 menuGroup = "start-menu-group"
                 shortcut = true
@@ -199,6 +200,7 @@ compose.desktop {
                 iconFile.set(project.file("desktopAppIcons/MacosIcon.icns"))
                 bundleID = "io.github.kdroidfilter.seforimapp.desktopApp"
                 packageVersion = macSafeVersion(version)
+                packageName = "זית"
             }
             buildTypes.release.proguard {
                 isEnabled = true

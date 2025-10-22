@@ -13,6 +13,7 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.buildConfig)
     alias(libs.plugins.metro)
+    alias(libs.plugins.linux.deps)
 }
 
 val ref = System.getenv("GITHUB_REF") ?: ""
@@ -109,7 +110,7 @@ kotlin {
 
             implementation(libs.koalaplot.core)
 
-            implementation("io.github.vinceglb:confettikit:0.6.0")
+            implementation(libs.confettikit)
 
 
         }
@@ -204,7 +205,13 @@ compose.desktop {
     }
 }
 
+linuxDebConfig {
+    // set StartupWMClass to fix dock/taskbar icon
+    startupWMClass.set("io.github.kdroidfilter.seforimapp.MainKt")
 
+    //for Ubuntu 24 t64 dependencies compatibility with older OSes, see below Under Known jpackage issue: Ubuntu t64 transition
+    enableT64AlternativeDeps.set(true)
+}
 
 tasks.withType<ComposeHotRun>().configureEach {
     mainClass.set("io.github.kdroidfilter.seforimapp.MainKt")

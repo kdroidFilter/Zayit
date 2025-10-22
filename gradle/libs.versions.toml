@@ -1,5 +1,6 @@
 [versions]
 
+confettikit = "0.6.0"
 filekitCore = "0.12.0"
 jsoup = "1.21.2"
 jvmNativeTrustedRoots = "1.1.7"
@@ -40,6 +41,7 @@ metro = "0.7.0"
 androidx-activityCompose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
 androidx-uitest-testManifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "androidx-uiTest" }
 androidx-uitest-junit4 = { module = "androidx.compose.ui:ui-test-junit4", version.ref = "androidx-uiTest" }
+confettikit = { module = "io.github.vinceglb:confettikit", version.ref = "confettikit" }
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekitCore" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekitCore" }
 filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekitCore" }
@@ -111,3 +113,4 @@ sqlDelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 caupain =  { id = "com.deezer.caupain", version = "1.6.1"}
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
+linux-deps = { id = "io.github.kdroidfilter.compose.linux.packagedeps", version = "0.2.2"}

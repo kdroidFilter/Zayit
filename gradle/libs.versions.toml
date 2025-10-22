@@ -113,4 +113,4 @@ sqlDelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 caupain =  { id = "com.deezer.caupain", version = "1.6.1"}
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
-linux-deps = { id = "io.github.kdroidfilter.compose.linux.packagedeps", version = "0.2.3"}
+linux-deps = { id = "io.github.kdroidfilter.compose.linux.packagedeps", version = "0.2.4"}

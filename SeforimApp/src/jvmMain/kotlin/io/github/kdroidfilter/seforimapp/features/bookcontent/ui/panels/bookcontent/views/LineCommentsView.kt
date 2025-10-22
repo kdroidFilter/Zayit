@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcon
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -202,7 +203,7 @@ private fun CommentatorsList(
 
         Row(modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
             VerticallyScrollableContainer(
-                scrollState = listState,
+                scrollState = listState as ScrollState,
             ) {
                 LazyColumn(
                     state = listState,

@@ -61,7 +61,7 @@ fun HomeView(
 ) {
     val listState = rememberLazyListState()
     VerticallyScrollableContainer(
-        scrollState = listState,
+        scrollState = listState as ScrollState,
     ) {
         Box(
             modifier = modifier.padding(16.dp).fillMaxSize(), contentAlignment = Alignment.Center

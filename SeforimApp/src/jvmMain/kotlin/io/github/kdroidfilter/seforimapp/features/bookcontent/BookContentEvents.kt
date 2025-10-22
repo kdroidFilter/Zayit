@@ -46,6 +46,7 @@ sealed interface BookContentEvent {
     data class CommentaryColumnScrolled(val commentatorId: Long, val index: Int, val offset: Int) : BookContentEvent
     data class OpenCommentaryTarget(val bookId: Long, val lineId: Long?) : BookContentEvent
     data class SelectedCommentatorsChanged(val lineId: Long, val selectedIds: Set<Long>) : BookContentEvent
+    data object CommentatorsSelectionLimitExceeded : BookContentEvent
     // Targum events
     data class SelectedTargumSourcesChanged(val lineId: Long, val selectedIds: Set<Long>) : BookContentEvent
 

@@ -22,7 +22,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
-import io.github.kdroidfilter.seforimapp.core.presentation.components.WarningBanner
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -31,14 +30,10 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.commentaries
-import seforimapp.seforimapp.generated.resources.max_commentators_limit
 
 @Composable
 fun PaneHeader(
     label: String,
-    warningMsg: String? = null,
-    showWarning: Boolean? = null,
-    onCloseWarning: (() -> Unit)? = null,
     interactionSource: MutableInteractionSource? = null,
     onHide: () -> Unit
 ) {
@@ -58,21 +53,12 @@ fun PaneHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = label,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                 )
-                if (warningMsg != null && showWarning != null && onCloseWarning != null && showWarning) {
-                    WarningBanner(
-                        message = warningMsg,
-                        onClose = onCloseWarning,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
             }
 
             AnimatedVisibility(
@@ -101,8 +87,6 @@ fun PaneHeaderPreview() {
     PreviewContainer {
         PaneHeader(
             label = stringResource(Res.string.commentaries),
-            warningMsg = stringResource(Res.string.max_commentators_limit),
-            showWarning = false,
             onHide = {}
         )
     }
@@ -114,9 +98,6 @@ fun PaneHeaderWithWarningPreview() {
     PreviewContainer {
         PaneHeader(
             label = stringResource(Res.string.commentaries),
-            warningMsg = stringResource(Res.string.max_commentators_limit),
-            showWarning = true,
-            onCloseWarning = {},
             onHide = {}
         )
     }

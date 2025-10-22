@@ -33,7 +33,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.Pane
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.debounce
 import org.jetbrains.compose.resources.Font
@@ -47,7 +46,6 @@ import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import seforimapp.seforimapp.generated.resources.*
 
 private const val MAX_COMMENTATORS = 4
-private const val WARNING_DISPLAY_TIME = 5000L
 private const val SCROLL_DEBOUNCE_MS = 100L
 
 @OptIn(ExperimentalSplitPaneApi::class)
@@ -62,26 +60,12 @@ fun LineCommentsView(
     // Animation settings with stable memorization
     val textSizes = rememberAnimatedTextSettings()
 
-    // Warning state
-    var showMaxCommentatorsWarning by remember { mutableStateOf(false) }
-    LaunchedEffect(showMaxCommentatorsWarning) {
-        if (showMaxCommentatorsWarning) {
-            delay(WARNING_DISPLAY_TIME)
-            showMaxCommentatorsWarning = false
-        }
-    }
-
     val paneInteractionSource = remember { MutableInteractionSource() }
 
     Column(modifier = Modifier.fillMaxSize().hoverable(paneInteractionSource)) {
         // Header
         PaneHeader(
             label = stringResource(Res.string.commentaries),
-            warningMsg = stringResource(Res.string.max_commentators_limit),
-            showWarning = showMaxCommentatorsWarning,
-            onCloseWarning = {
-                showMaxCommentatorsWarning = false
-            },
             interactionSource = paneInteractionSource,
             onHide = { onEvent(BookContentEvent.ToggleCommentaries) }
         )
@@ -93,7 +77,7 @@ fun LineCommentsView(
                     uiState = uiState,
                     onEvent = onEvent,
                     textSizes = textSizes,
-                    onShowWarning = { showMaxCommentatorsWarning = true }
+                    onShowMaxLimit = { onEvent(BookContentEvent.CommentatorsSelectionLimitExceeded) }
                 )
             }
         }
@@ -107,7 +91,7 @@ private fun CommentariesContent(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
-    onShowWarning: () -> Unit
+    onShowMaxLimit: () -> Unit
 ) {
     val providers = uiState.providers ?: return
     val contentState = uiState.content
@@ -154,7 +138,7 @@ private fun CommentariesContent(
                 },
                 onSelectionChange = { name, checked ->
                     if (checked && selectedCommentators.value.size >= MAX_COMMENTATORS) {
-                        onShowWarning()
+                        onShowMaxLimit()
                     } else {
                         selectedCommentators.value = if (checked) {
                             selectedCommentators.value + name

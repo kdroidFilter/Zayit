@@ -56,7 +56,7 @@ fun ApplicationScope.OnBoardingWindow() {
         visible = true,
         resizable = false,
     ) {
-
+        val isMacOs = getOperatingSystem() == OperatingSystem.MACOS
         val navController = rememberNavController()
         var canNavigateBack by remember { mutableStateOf(false) }
         LaunchedEffect(navController) {
@@ -67,7 +67,7 @@ fun ApplicationScope.OnBoardingWindow() {
         TitleBar(modifier = Modifier.newFullscreenControls()) {
             // Keep the back button pinned to the start and
             // center the title (icon + text) regardless of OS/window controls.
-            Box(modifier = Modifier.fillMaxWidth()) {
+            Box(modifier = Modifier.fillMaxWidth(if (isMacOs) 0.9f else 1f)) {
                 if (canNavigateBack) {
                     IconButton(
                         modifier = Modifier
@@ -83,13 +83,12 @@ fun ApplicationScope.OnBoardingWindow() {
                 // Apply an OS-aware horizontal offset so the center is visually centered
                 val iconSlot = 40.dp // approximate width of a native control/icon slot
                 val osShift = when (getOperatingSystem()) {
-                    OperatingSystem.MACOS -> iconSlot * 1.5f  // 3 controls on left → shift right by half cluster
+                    OperatingSystem.MACOS ->iconSlot
                     OperatingSystem.WINDOWS -> iconSlot * -1.5f // 3 controls on right → shift left by half cluster
-                    else -> 40.dp
+                    else -> iconSlot
                 }
-                // Slight extra nudge when back button is visible on macOS (left-weighted)
-                val backShift = if (getOperatingSystem() == OperatingSystem.MACOS && canNavigateBack) 8.dp else 0.dp
-                val centerOffset = osShift + backShift
+
+                val centerOffset = osShift
 
                 Row(
                     modifier = Modifier

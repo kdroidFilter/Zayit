@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.onboarding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,8 +20,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.ApplicationScope
 import androidx.navigation.compose.rememberNavController
+import io.github.kdroidfilter.platformtools.OperatingSystem
+import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingNavHost
 import io.github.kdroidfilter.seforimapp.icons.Install_desktop
@@ -76,8 +80,21 @@ fun ApplicationScope.OnBoardingWindow() {
                     }
                 }
 
+                // Apply an OS-aware horizontal offset so the center is visually centered
+                val iconSlot = 40.dp // approximate width of a native control/icon slot
+                val osShift = when (getOperatingSystem()) {
+                    OperatingSystem.MACOS -> iconSlot * 1.5f  // 3 controls on left → shift right by half cluster
+                    OperatingSystem.WINDOWS -> iconSlot * -1.5f // 3 controls on right → shift left by half cluster
+                    else -> 40.dp
+                }
+                // Slight extra nudge when back button is visible on macOS (left-weighted)
+                val backShift = if (getOperatingSystem() == OperatingSystem.MACOS && canNavigateBack) 8.dp else 0.dp
+                val centerOffset = osShift + backShift
+
                 Row(
-                    modifier = Modifier.align(Alignment.Center),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .offset(x = centerOffset),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {

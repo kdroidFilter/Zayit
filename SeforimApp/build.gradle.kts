@@ -112,7 +112,7 @@ kotlin {
 
             implementation(libs.confettikit)
 
-
+            implementation("io.github.brdominguez:compose-sonner:0.4.0")
         }
 
         commonTest.dependencies {

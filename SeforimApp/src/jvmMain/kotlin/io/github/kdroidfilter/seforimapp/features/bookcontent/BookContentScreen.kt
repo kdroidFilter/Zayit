@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.dokar.sonner.ToastType
+import com.dokar.sonner.Toaster
+import com.dokar.sonner.rememberToasterState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EndVerticalBar
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
@@ -20,6 +23,10 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults
 import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.max_commentators_limit
 
 /**
  * Composable function to display the book content screen.
@@ -51,6 +58,8 @@ fun BookContentView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit
 ) {
+    // Toaster for transient messages (e.g., selection limits)
+    val toaster = rememberToasterState()
     // Configuration of split panes to monitor
     val splitPaneConfigs = listOf(
         SplitPaneConfig(
@@ -124,6 +133,21 @@ fun BookContentView(
         )
 
         EndVerticalBar(uiState = uiState, onEvent = onEvent)
+    }
+
+    // Render toaster overlay
+    Toaster(state = toaster, darkTheme = JewelTheme.isDark)
+
+    // React to state mutations to show a toast (no callbacks)
+    val maxLimitMsg = stringResource(Res.string.max_commentators_limit)
+    LaunchedEffect(uiState.content.maxCommentatorsLimitSignal) {
+        if (uiState.content.maxCommentatorsLimitSignal > 0L) {
+            toaster.show(
+                message = maxLimitMsg,
+                type = ToastType.Warning,
+
+            )
+        }
     }
 }
 

@@ -121,7 +121,10 @@ data class ContentState(
 
     // Scrolling behavior control
     val shouldScrollToLine: Boolean = false,
-    val scrollToLineTimestamp: Long = 0L
+    val scrollToLineTimestamp: Long = 0L,
+
+    // Transient UI signals (not persisted)
+    val maxCommentatorsLimitSignal: Long = 0L
 )
 
 /**

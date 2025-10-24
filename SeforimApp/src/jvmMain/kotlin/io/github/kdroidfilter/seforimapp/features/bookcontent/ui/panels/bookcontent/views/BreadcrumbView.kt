@@ -46,9 +46,6 @@ fun BreadcrumbView(
     onCategoryClick: (Category) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Precompute TOC lookup by id
-    val tocById = remember(tocEntries) { tocEntries.associateBy { it.id } }
-
     // Build the breadcrumb path from the category root through book to the owning TOC hierarchy
     val breadcrumbPath = remember(
         book,
@@ -65,9 +62,11 @@ fun BreadcrumbView(
         result += buildCategoryPath(book.categoryId, rootCategories, categoryChildren)
         result += BreadcrumbItem.BookItem(book)
 
-        // Append the TOC path computed by use case
+        // Append the TOC path computed by use case, deduplicating consecutive identical names anywhere
         if (tocPath.isNotEmpty()) {
-            result += tocPath.map { BreadcrumbItem.TocItem(it) }
+            // If first TOC equals book title, drop it to avoid duplication with the book item
+            val adjustedToc = if (tocPath.first().text == book.title) tocPath.drop(1) else tocPath
+            result += adjustedToc.map { BreadcrumbItem.TocItem(it) }
         }
 
         result
@@ -223,4 +222,3 @@ sealed class BreadcrumbItem {
     class TocItem(val tocEntry: TocEntry) : BreadcrumbItem()
 }
 
-// Old recursive TOC lookups removed; we now use line→TOC mapping

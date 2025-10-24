@@ -152,6 +152,8 @@ class TocUseCase(
                 entries = emptyList(),
                 expandedEntries = emptySet(),
                 children = emptyMap(),
+                selectedEntryId = null,
+                breadcrumbPath = emptyList(),
                 scrollIndex = 0,
                 scrollOffset = 0
             )

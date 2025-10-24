@@ -4,6 +4,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.pagination.CommentsForLineOrTocPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.LineCommentsPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.LineTargumPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.PagingDefaults
@@ -36,11 +37,11 @@ class CommentariesUseCase(
         commentatorId: Long? = null
     ): Flow<PagingData<CommentaryWithText>> {
         val ids = commentatorId?.let { setOf(it) } ?: emptySet()
-        
+
         return Pager(
             config = PagingDefaults.COMMENTS.config(placeholders = false),
             pagingSourceFactory = {
-                LineCommentsPagingSource(repository, lineId, ids)
+                CommentsForLineOrTocPagingSource(repository, lineId, ids)
             }
         ).flow.cachedIn(scope)
     }
@@ -67,7 +68,11 @@ class CommentariesUseCase(
      */
     suspend fun getAvailableCommentators(lineId: Long): Map<String, Long> {
         return try {
-            val commentaries = repository.getCommentariesForLines(listOf(lineId))
+            val headingToc = repository.getHeadingTocEntryByLineId(lineId)
+            val baseIds = if (headingToc != null) {
+                repository.getLineIdsForTocEntry(headingToc.id).filter { it != lineId }
+            } else listOf(lineId)
+            val commentaries = repository.getCommentariesForLines(baseIds)
                 .filter { it.link.connectionType == ConnectionType.COMMENTARY }
             
             // Utiliser LinkedHashMap pour préserver l'ordre

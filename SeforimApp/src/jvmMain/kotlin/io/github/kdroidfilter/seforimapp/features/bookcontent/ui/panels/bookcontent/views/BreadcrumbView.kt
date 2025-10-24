@@ -5,11 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -17,7 +13,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -44,29 +39,21 @@ fun BreadcrumbView(
     selectedLine: Line?,
     tocEntries: List<TocEntry>,
     tocChildren: Map<Long, List<TocEntry>>,
+    tocPath: List<TocEntry>,
     rootCategories: List<Category>,
     categoryChildren: Map<Long, List<Category>>,
     onTocEntryClick: (TocEntry) -> Unit,
     onCategoryClick: (Category) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val appGraph = LocalAppGraph.current
-    val repository = appGraph.repository
-
     // Precompute TOC lookup by id
     val tocById = remember(tocEntries) { tocEntries.associateBy { it.id } }
-
-    // Resolve the owning TOC entry for the current selected line via mapping table
-    var owningToc by remember(selectedLine?.id) { mutableStateOf<TocEntry?>(null) }
-    LaunchedEffect(selectedLine?.id) {
-        owningToc = selectedLine?.let { repository.getTocEntryForLine(it.id) }
-    }
 
     // Build the breadcrumb path from the category root through book to the owning TOC hierarchy
     val breadcrumbPath = remember(
         book,
         selectedLine?.id,
-        owningToc,
+        tocPath,
         tocEntries,
         tocChildren,
         rootCategories,
@@ -78,16 +65,9 @@ fun BreadcrumbView(
         result += buildCategoryPath(book.categoryId, rootCategories, categoryChildren)
         result += BreadcrumbItem.BookItem(book)
 
-        // If we have an owning TOC, climb to root using parentId links and tocById
-        val own = owningToc
-        if (own != null) {
-            val chain = mutableListOf<TocEntry>()
-            var current: TocEntry? = own
-            while (current != null) {
-                chain.add(0, current)
-                current = current.parentId?.let { pid -> tocById[pid] }
-            }
-            result += chain.map { BreadcrumbItem.TocItem(it) }
+        // Append the TOC path computed by use case
+        if (tocPath.isNotEmpty()) {
+            result += tocPath.map { BreadcrumbItem.TocItem(it) }
         }
 
         result
@@ -166,6 +146,7 @@ fun BreadcrumbView(
         selectedLine = uiState.content.selectedLine,
         tocEntries = uiState.toc.entries,
         tocChildren = uiState.toc.children,
+        tocPath = uiState.toc.breadcrumbPath,
         rootCategories = uiState.navigation.rootCategories,
         categoryChildren = uiState.navigation.categoryChildren,
         onTocEntryClick = { entry ->

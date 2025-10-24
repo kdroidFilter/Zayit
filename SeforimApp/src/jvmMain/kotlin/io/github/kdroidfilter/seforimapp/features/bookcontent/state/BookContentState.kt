@@ -70,6 +70,8 @@ data class TocState(
     val entries: List<TocEntry> = emptyList(),
     val expandedEntries: Set<Long> = emptySet(),
     val children: Map<Long, List<TocEntry>> = emptyMap(),
+    val selectedEntryId: Long? = null,
+    val breadcrumbPath: List<TocEntry> = emptyList(),
 
     // UI
     val isVisible: Boolean = false,

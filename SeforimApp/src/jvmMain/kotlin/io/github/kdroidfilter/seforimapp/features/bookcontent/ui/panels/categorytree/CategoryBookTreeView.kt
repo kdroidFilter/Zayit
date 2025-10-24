@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.text.font.FontWeight.Companion.Normal
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ChevronIcon
+import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableRow
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationState
 import io.github.kdroidfilter.seforimapp.icons.Book_2
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -233,21 +234,7 @@ private fun BookItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
-            .pointerHoverIcon(PointerIcon.Hand)
-            .clip(RoundedCornerShape(4.dp))
-            .background(if (isSelected) JewelTheme.iconButtonStyle.colors.backgroundFocused else Color.Transparent)
-            .padding(vertical = 4.dp, horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
+    SelectableRow(isSelected = isSelected, onClick = onClick) {
         Icon(
            imageVector = Book_2,
             contentDescription = null,

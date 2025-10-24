@@ -46,6 +46,16 @@ class ContentUseCase(
         stateManager.updateContent {
             copy(selectedLine = line)
         }
+
+        // Update selected TOC entry for highlighting in TOC
+        val tocId = try { repository.getTocEntryIdForLine(line.id) } catch (_: Exception) { null }
+        val tocPath = if (tocId != null) buildTocPathToRoot(tocId) else emptyList()
+        stateManager.updateToc(save = false) {
+            copy(
+                selectedEntryId = tocId,
+                breadcrumbPath = tocPath
+            )
+        }
     }
     
     /**
@@ -65,9 +75,35 @@ class ContentUseCase(
                     scrollToLineTimestamp = System.currentTimeMillis()
                 )
             }
+
+            // Update selected TOC entry for highlighting and breadcrumb path
+            val tocId = try { repository.getTocEntryIdForLine(line.id) } catch (_: Exception) { null }
+            val tocPath = if (tocId != null) buildTocPathToRoot(tocId) else emptyList()
+            stateManager.updateToc(save = false) {
+                copy(
+                    selectedEntryId = tocId,
+                    breadcrumbPath = tocPath
+                )
+            }
         }
         
         return line
+    }
+
+    private suspend fun buildTocPathToRoot(startId: Long): List<io.github.kdroidfilter.seforimlibrary.core.models.TocEntry> {
+        val path = mutableListOf<io.github.kdroidfilter.seforimlibrary.core.models.TocEntry>()
+        var currentId: Long? = startId
+        var safety = 0
+        while (currentId != null && safety++ < 200) {
+            val entry = repository.getTocEntry(currentId)
+            if (entry != null) {
+                path.add(0, entry)
+                currentId = entry.parentId
+            } else {
+                break
+            }
+        }
+        return path
     }
     
     /**

@@ -40,7 +40,6 @@ import org.jetbrains.jewel.window.DecoratedWindowScope
 import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.app_name
-import seforimapp.seforimapp.generated.resources.mac_window_preview
 import java.awt.Dimension
 import java.awt.Window
 import java.util.*

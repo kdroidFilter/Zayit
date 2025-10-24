@@ -13,7 +13,9 @@ import androidx.compose.ui.window.rememberWindowState
 import com.kdroid.composetray.tray.api.ExperimentalTrayAppApi
 import com.kdroid.composetray.utils.SingleInstanceManager
 import dev.zacsweers.metro.createGraph
+import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.darkmodedetector.mac.setMacOsAdaptiveTitleBar
+import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsNavHost
@@ -38,6 +40,7 @@ import org.jetbrains.jewel.window.DecoratedWindowScope
 import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.app_name
+import seforimapp.seforimapp.generated.resources.mac_window_preview
 import java.awt.Dimension
 import java.awt.Window
 import java.util.*
@@ -117,7 +120,7 @@ fun main() {
                             exitApplication()
                         },
                         title = stringResource(Res.string.app_name),
-                        icon = painterResource(Res.drawable.AppIcon),
+                        icon = if (getOperatingSystem() == OperatingSystem.MACOS) null else painterResource(  Res.drawable.AppIcon),
                         state = windowState,
                         visible = isWindowVisible,
                         onKeyEvent = { keyEvent ->

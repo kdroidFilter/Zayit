@@ -13,7 +13,9 @@ import androidx.compose.ui.window.rememberWindowState
 import com.kdroid.composetray.tray.api.ExperimentalTrayAppApi
 import com.kdroid.composetray.utils.SingleInstanceManager
 import dev.zacsweers.metro.createGraph
+import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.darkmodedetector.mac.setMacOsAdaptiveTitleBar
+import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsNavHost
@@ -117,7 +119,7 @@ fun main() {
                             exitApplication()
                         },
                         title = stringResource(Res.string.app_name),
-                        icon = painterResource(Res.drawable.AppIcon),
+                        icon = if (getOperatingSystem() == OperatingSystem.MACOS) null else painterResource(  Res.drawable.AppIcon),
                         state = windowState,
                         visible = isWindowVisible,
                         onKeyEvent = { keyEvent ->

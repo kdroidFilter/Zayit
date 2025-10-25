@@ -4,6 +4,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.pagination.CommentsForLineOrTocPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.LineCommentsPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.LineTargumPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.PagingDefaults
@@ -36,11 +37,11 @@ class CommentariesUseCase(
         commentatorId: Long? = null
     ): Flow<PagingData<CommentaryWithText>> {
         val ids = commentatorId?.let { setOf(it) } ?: emptySet()
-        
+
         return Pager(
             config = PagingDefaults.COMMENTS.config(placeholders = false),
             pagingSourceFactory = {
-                LineCommentsPagingSource(repository, lineId, ids)
+                CommentsForLineOrTocPagingSource(repository, lineId, ids)
             }
         ).flow.cachedIn(scope)
     }
@@ -67,20 +68,39 @@ class CommentariesUseCase(
      */
     suspend fun getAvailableCommentators(lineId: Long): Map<String, Long> {
         return try {
-            val commentaries = repository.getCommentariesForLines(listOf(lineId))
+            val headingToc = repository.getHeadingTocEntryByLineId(lineId)
+            val baseIds = if (headingToc != null) {
+                repository.getLineIdsForTocEntry(headingToc.id).filter { it != lineId }
+            } else listOf(lineId)
+
+            val commentaries = repository.getCommentariesForLines(baseIds)
                 .filter { it.link.connectionType == ConnectionType.COMMENTARY }
-            
-            // Utiliser LinkedHashMap pour préserver l'ordre
+
+            val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
+
+            // Map display name -> bookId with sanitization, preserving order
             val map = LinkedHashMap<String, Long>()
             commentaries.forEach { commentary ->
-                if (!map.containsKey(commentary.targetBookTitle)) {
-                    map[commentary.targetBookTitle] = commentary.link.targetBookId
+                val raw = commentary.targetBookTitle
+                val display = sanitizeCommentatorName(raw, currentBookTitle)
+                if (!map.containsKey(display)) {
+                    map[display] = commentary.link.targetBookId
                 }
             }
             map
         } catch (e: Exception) {
             emptyMap()
         }
+    }
+
+    private fun sanitizeCommentatorName(raw: String, currentBookTitle: String): String {
+        if (currentBookTitle.isBlank()) return raw
+        val t = currentBookTitle.trim()
+        // Remove suffix variants like " על ספר <title>" or " על <title>"
+        return raw
+            .replace(" על ספר $t", "")
+            .replace(" על $t", "")
+            .trim()
     }
     
     /**
@@ -90,11 +110,15 @@ class CommentariesUseCase(
         return try {
             val links = repository.getCommentariesForLines(listOf(lineId))
                 .filter { it.link.connectionType == ConnectionType.TARGUM }
-            
+
+            val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
+
             val map = LinkedHashMap<String, Long>()
             links.forEach { link ->
-                if (!map.containsKey(link.targetBookTitle)) {
-                    map[link.targetBookTitle] = link.link.targetBookId
+                val raw = link.targetBookTitle
+                val display = sanitizeCommentatorName(raw, currentBookTitle)
+                if (!map.containsKey(display)) {
+                    map[display] = link.link.targetBookId
                 }
             }
             map

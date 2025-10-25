@@ -152,7 +152,7 @@ fun BookContentView(
         expanded = true,
         showCloseButton = true,
         contentPadding = { PaddingValues(horizontal = 12.dp, vertical = 10.dp) },
-        containerPadding = PaddingValues(all = 16.dp),
+        containerPadding = PaddingValues(horizontal = 64.dp, vertical = 40.dp),
         widthPolicy = { ToastWidthPolicy(max = 420.dp) },
         elevation = 6.dp,
         shadowAmbientColor = Color.Black.copy(alpha = 0.18f),

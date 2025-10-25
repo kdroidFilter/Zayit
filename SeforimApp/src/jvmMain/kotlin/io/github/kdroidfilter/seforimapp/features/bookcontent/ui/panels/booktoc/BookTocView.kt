@@ -12,14 +12,19 @@ import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontWeight.Companion.Bold
+import androidx.compose.ui.text.font.FontWeight.Companion.Normal
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ChevronIcon
+import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableRow
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.VisibleTocEntry
+// Repository access removed from the view to respect architecture (use state only)
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.LineTocMapping
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
@@ -56,6 +61,7 @@ fun BookTocView(
     onScroll: (Int, Int) -> Unit,
     lines: List<Line> = emptyList(),
     lineTocMappings: List<LineTocMapping> = emptyList(),
+    selectedTocEntryId: Long? = null,
     modifier: Modifier = Modifier
 ) {
     val visibleEntries = remember(tocEntries, expandedEntries, tocChildren, lines, lineTocMappings) {
@@ -100,6 +106,7 @@ fun BookTocView(
                 ) { visibleEntry ->
                     TocEntryItem(
                         visibleEntry = visibleEntry,
+                        selectedTocEntryId = selectedTocEntryId,
                         onEntryClick = onEntryClick,
                         onEntryExpand = onEntryExpand
                     )
@@ -153,6 +160,7 @@ fun BookTocView(
         onScroll = { index, offset ->
             onEvent(BookContentEvent.TocScrolled(index, offset))
         },
+        selectedTocEntryId = uiState.toc.selectedEntryId,
         modifier = modifier
     )
 }
@@ -189,31 +197,28 @@ private fun buildVisibleTocEntries(
 @Composable
 private fun TocEntryItem(
     visibleEntry: VisibleTocEntry,
+    selectedTocEntryId: Long?,
     onEntryClick: (TocEntry) -> Unit,
     onEntryExpand: (TocEntry) -> Unit
 ) {
     val isLastChild = visibleEntry.isLastChild
+    val isSelected = selectedTocEntryId != null && visibleEntry.entry.id == selectedTocEntryId
 
-    Row(
+    SelectableRow(
         modifier = Modifier
-            .fillMaxWidth()
-            .pointerHoverIcon(PointerIcon.Hand)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-            ) {
-                if (visibleEntry.hasChildren) {
-                    onEntryExpand(visibleEntry.entry)
-                } else {
-                    onEntryClick(visibleEntry.entry)
-                }
-            }
             .padding(
                 start = (visibleEntry.level * 16).dp,
                 top = 4.dp,
                 bottom = if (isLastChild) 8.dp else 4.dp
             ),
-        verticalAlignment = Alignment.CenterVertically
+        isSelected = isSelected,
+        onClick = {
+            if (visibleEntry.hasChildren) {
+                onEntryExpand(visibleEntry.entry)
+            } else {
+                onEntryClick(visibleEntry.entry)
+            }
+        }
     ) {
         if (visibleEntry.hasChildren) {
             ChevronIcon(
@@ -228,7 +233,7 @@ private fun TocEntryItem(
 
         Text(
             text = visibleEntry.entry.text,
-            fontWeight = FontWeight.Normal
+            fontWeight = if (isSelected) Bold else Normal,
         )
     }
 }

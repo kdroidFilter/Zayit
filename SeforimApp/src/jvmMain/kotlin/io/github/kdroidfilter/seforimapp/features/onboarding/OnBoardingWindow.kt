@@ -51,7 +51,7 @@ fun ApplicationScope.OnBoardingWindow() {
     DecoratedWindow(
         onCloseRequest = { exitApplication() },
         title = stringResource(Res.string.app_name),
-        icon = painterResource(Res.drawable.AppIcon),
+        icon = if (getOperatingSystem() == OperatingSystem.MACOS) null else painterResource(  Res.drawable.AppIcon),
         state = onboardingWindowState,
         visible = true,
         resizable = false,

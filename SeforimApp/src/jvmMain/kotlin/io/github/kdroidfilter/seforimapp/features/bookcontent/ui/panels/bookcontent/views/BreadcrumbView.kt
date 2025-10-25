@@ -39,15 +39,37 @@ fun BreadcrumbView(
     selectedLine: Line?,
     tocEntries: List<TocEntry>,
     tocChildren: Map<Long, List<TocEntry>>,
+    tocPath: List<TocEntry>,
     rootCategories: List<Category>,
     categoryChildren: Map<Long, List<Category>>,
     onTocEntryClick: (TocEntry) -> Unit,
     onCategoryClick: (Category) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Build the breadcrumb path from the category root to the selected line
-    val breadcrumbPath = remember(book, selectedLine, tocEntries, tocChildren, rootCategories, categoryChildren) {
-        buildBreadcrumbPath(book, selectedLine, tocEntries, tocChildren, rootCategories, categoryChildren)
+    // Build the breadcrumb path from the category root through book to the owning TOC hierarchy
+    val breadcrumbPath = remember(
+        book,
+        selectedLine?.id,
+        tocPath,
+        tocEntries,
+        tocChildren,
+        rootCategories,
+        categoryChildren
+    ) {
+        val result = mutableListOf<BreadcrumbItem>()
+
+        // Categories path then book
+        result += buildCategoryPath(book.categoryId, rootCategories, categoryChildren)
+        result += BreadcrumbItem.BookItem(book)
+
+        // Append the TOC path computed by use case, deduplicating consecutive identical names anywhere
+        if (tocPath.isNotEmpty()) {
+            // If first TOC equals book title, drop it to avoid duplication with the book item
+            val adjustedToc = if (tocPath.first().text == book.title) tocPath.drop(1) else tocPath
+            result += adjustedToc.map { BreadcrumbItem.TocItem(it) }
+        }
+
+        result
     }
     Row(
         modifier = modifier,
@@ -123,6 +145,7 @@ fun BreadcrumbView(
         selectedLine = uiState.content.selectedLine,
         tocEntries = uiState.toc.entries,
         tocChildren = uiState.toc.children,
+        tocPath = uiState.toc.breadcrumbPath,
         rootCategories = uiState.navigation.rootCategories,
         categoryChildren = uiState.navigation.categoryChildren,
         onTocEntryClick = { entry ->
@@ -137,51 +160,7 @@ fun BreadcrumbView(
     )
 }
 
-private fun buildBreadcrumbPath(
-    book: Book,
-    selectedLine: Line?,
-    tocEntries: List<TocEntry>,
-    tocChildren: Map<Long, List<TocEntry>>,
-    rootCategories: List<Category>,
-    categoryChildren: Map<Long, List<Category>>
-): List<BreadcrumbItem> {
-    val result = mutableListOf<BreadcrumbItem>()
-    
-    // First, build the category path
-    val categoryPath = buildCategoryPath(book.categoryId, rootCategories, categoryChildren)
-    result.addAll(categoryPath)
-    
-    // Add the book
-    result.add(BreadcrumbItem.BookItem(book))
-    
-    // If no line is selected, return just the categories and book
-    if (selectedLine == null) {
-        return result
-    }
-    
-    // Find the TOC entry associated with the selected line
-    val lineEntry = findTocEntryForLine(selectedLine.id, tocEntries, tocChildren)
-        ?: return result
-    
-    // Build the path from the line entry to the root of the TOC
-    val tocPath = mutableListOf<TocEntry>()
-    var currentEntry: TocEntry? = lineEntry
-    
-    // Add entries from the line to the root (excluding the root)
-    while (currentEntry != null) {
-        tocPath.add(0, currentEntry)
-        currentEntry = if (currentEntry.parentId != null) {
-            findTocEntryById(currentEntry.parentId, tocEntries, tocChildren)
-        } else {
-            null
-        }
-    }
-    
-    // Add TOC entries to the result
-    result.addAll(tocPath.map { BreadcrumbItem.TocItem(it) })
-    
-    return result
-}
+// Old recursive breadcrumb builder removed in favor of repository-backed mapping
 
 /**
  * Builds a path of categories from the root to the specified category.
@@ -243,57 +222,3 @@ sealed class BreadcrumbItem {
     class TocItem(val tocEntry: TocEntry) : BreadcrumbItem()
 }
 
-/**
- * Finds a TOC entry by its ID.
- */
-private fun findTocEntryById(
-    id: Long?,
-    tocEntries: List<TocEntry>,
-    tocChildren: Map<Long, List<TocEntry>>
-): TocEntry? {
-    if (id == null) return null
-    
-    // Check root entries
-    tocEntries.find { it.id == id }?.let { return it }
-    
-    // Check all children
-    for ((_, children) in tocChildren) {
-        children.find { it.id == id }?.let { return it }
-    }
-    
-    return null
-}
-
-/**
- * Finds the TOC entry associated with a line by recursively searching through all TOC entries.
- */
-private fun findTocEntryForLine(
-    lineId: Long,
-    tocEntries: List<TocEntry>,
-    tocChildren: Map<Long, List<TocEntry>>
-): TocEntry? {
-    // Check root entries first
-    tocEntries.find { it.lineId == lineId }?.let { return it }
-    
-    // Recursively search through all entries
-    fun searchInChildren(entries: List<TocEntry>): TocEntry? {
-        // Check if any entry in this level matches
-        entries.find { it.lineId == lineId }?.let { return it }
-        
-        // Check children of each entry
-        for (entry in entries) {
-            val children = tocChildren[entry.id] ?: continue
-            
-            // First check if any direct child matches
-            children.find { it.lineId == lineId }?.let { return it }
-            
-            // Then recursively search in their children
-            searchInChildren(children)?.let { return it }
-        }
-        
-        return null
-    }
-    
-    // Start recursive search from root entries
-    return searchInChildren(tocEntries)
-}

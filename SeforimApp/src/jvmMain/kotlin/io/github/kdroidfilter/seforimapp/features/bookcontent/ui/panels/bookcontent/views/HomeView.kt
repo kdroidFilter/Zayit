@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +37,12 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
+import kotlinx.coroutines.launch
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.skiko.Cursor
 import seforimapp.seforimapp.generated.resources.*
@@ -65,49 +72,78 @@ fun HomeView(
         scrollState = listState as ScrollableState,
     ) {
         Box(
-            modifier = modifier.padding(16.dp).fillMaxSize(), contentAlignment = Alignment.Center
+            modifier = modifier.padding(16.dp).fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
             // Keep state outside LazyColumn so it persists across item recompositions
+            val appGraph = io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph.current
+            val scope = rememberCoroutineScope()
+            val tabStateManager = appGraph.tabStateManager
+            val tabsViewModel = appGraph.tabsViewModel
             val searchState = remember { TextFieldState() }
             var selectedFilter by remember { mutableStateOf(SearchFilter.TEXT) }
+            // Hoisted search level selection (default to middle level)
+            var selectedLevelIndex by remember { mutableIntStateOf(2) }
+            val nearLevels = listOf(1, 3, 5, 10, 20)
+            fun launchSearch() {
+                val query = searchState.text.toString().trim()
+                if (query.isBlank() || selectedFilter != SearchFilter.TEXT) return
+                // Get current tab id
+                val currentTabs = tabsViewModel.tabs.value
+                val currentIndex = tabsViewModel.selectedTabIndex.value
+                val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: return
+                // Persist search params for this tab to restore state
+                tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.QUERY, query)
+                tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.NEAR, nearLevels[selectedLevelIndex])
+                // Replace current tab destination to Search (no new tab)
+                tabsViewModel.replaceCurrentTabDestination(
+                    io.github.kdroidfilter.seforim.tabs.TabsDestination.Search(query, currentTabId)
+                )
+            }
 
-            LazyColumn(
-                state = listState,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.width(600.dp)
-            ) {
-                item {
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        val firstName = AppSettings.getUserFirstName().orEmpty()
-                        val lastName = AppSettings.getUserLastName().orEmpty()
-                        val displayName = "$firstName $lastName".trim()
-                        WelcomeUser(username = displayName)
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.width(600.dp)
+                ) {
+                    item {
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            val firstName = AppSettings.getUserFirstName().orEmpty()
+                            val lastName = AppSettings.getUserLastName().orEmpty()
+                            val displayName = "$firstName $lastName".trim()
+                            WelcomeUser(username = displayName)
+                        }
                     }
-                }
-                item {
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        LogoImage()
+                    item {
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            LogoImage()
+                        }
                     }
-                }
-                item {
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        SearchBar(
-                            state = searchState,
-                            selectedFilter = selectedFilter,
-                            onFilterChange = { selectedFilter = it }
-                        )
+                    item {
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            SearchBar(
+                                state = searchState,
+                                selectedFilter = selectedFilter,
+                                onFilterChange = { selectedFilter = it },
+                                onSubmit = { launchSearch() }
+                            )
+                        }
                     }
-                }
-                item {
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Column(
-                            modifier = Modifier.height(250.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            if (selectedFilter == SearchFilter.TEXT) {
-                                SearchLevelsPanel()
-                                ReferenceByCategorySection(modifier)
+                    item {
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Column(
+                                modifier = Modifier.height(250.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                if (selectedFilter == SearchFilter.TEXT) {
+                                    SearchLevelsPanel(
+                                        selectedIndex = selectedLevelIndex,
+                                        onSelectedIndexChange = { selectedLevelIndex = it }
+                                    )
+                                    ReferenceByCategorySection(modifier)
+                                }
                             }
                         }
                     }
@@ -143,7 +179,11 @@ private fun LogoImage(modifier: Modifier = Modifier) {
  * Encapsulates its own local selection state.
  */
 @Composable
-private fun SearchLevelsPanel(modifier: Modifier = Modifier) {
+private fun SearchLevelsPanel(
+    modifier: Modifier = Modifier,
+    selectedIndex: Int,
+    onSelectedIndexChange: (Int) -> Unit
+) {
     val filterCards: List<SearchFilterCard> = listOf(
         SearchFilterCard(
             Target,
@@ -178,9 +218,10 @@ private fun SearchLevelsPanel(modifier: Modifier = Modifier) {
     )
 
     // Synchronize cards with slider position
-    var sliderPosition by remember { mutableFloatStateOf(0f) }
+    var sliderPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
+    LaunchedEffect(selectedIndex) { sliderPosition = selectedIndex.toFloat() }
     val maxIndex = (filterCards.size - 1).coerceAtLeast(0)
-    val selectedIndex = sliderPosition.coerceIn(0f, maxIndex.toFloat()).toInt()
+    val coercedSelected = sliderPosition.coerceIn(0f, maxIndex.toFloat()).toInt()
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -189,15 +230,21 @@ private fun SearchLevelsPanel(modifier: Modifier = Modifier) {
         filterCards.forEachIndexed { index, filterCard ->
             SearchLevelCard(
                 data = filterCard,
-                selected = index == selectedIndex,
-                onClick = { sliderPosition = index.toFloat() }
+                selected = index == coercedSelected,
+                onClick = {
+                    sliderPosition = index.toFloat()
+                    onSelectedIndexChange(index)
+                }
             )
         }
     }
 
     Slider(
         value = sliderPosition,
-        onValueChange = { newValue -> sliderPosition = newValue },
+        onValueChange = { newValue ->
+            sliderPosition = newValue
+            onSelectedIndexChange(newValue.coerceIn(0f, maxIndex.toFloat()).toInt())
+        },
         valueRange = 0f..maxIndex.toFloat(),
         steps = (filterCards.size - 2).coerceAtLeast(0),
         modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
@@ -246,7 +293,8 @@ private fun SearchBar(
     selectedFilter: SearchFilter,
     onFilterChange: (SearchFilter) -> Unit,
     modifier: Modifier = Modifier,
-    showToggle: Boolean = true
+    showToggle: Boolean = true,
+    onSubmit: () -> Unit = {}
 ) {
     // Hints from string resources
     val referenceHints = listOf(
@@ -276,7 +324,14 @@ private fun SearchBar(
 
     TextField(
         state = state,
-        modifier = modifier.width(600.dp).height(40.dp),
+        modifier = modifier
+            .width(600.dp)
+            .height(40.dp)
+            .onPreviewKeyEvent { ev ->
+                if ((ev.key == Key.Enter || ev.key == Key.NumPadEnter) && ev.type == KeyEventType.KeyUp) {
+                    onSubmit(); true
+                } else false
+            },
         placeholder = {
             key(filterVersion) {
                 TypewriterPlaceholder(

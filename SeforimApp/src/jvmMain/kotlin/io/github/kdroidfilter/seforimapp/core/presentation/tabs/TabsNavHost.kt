@@ -35,6 +35,14 @@ fun TabsNavHost() {
         }
     }
 
+    // Also react when the tab list changes (e.g., destination replaced in-place)
+    LaunchedEffect(tabs) {
+        if (tabs.isNotEmpty() && selectedTabIndex < tabs.size) {
+            val currentTab = tabs[selectedTabIndex]
+            navController.navigate(currentTab.destination)
+        }
+    }
+
     ObserveAsEvents(flow = navigator.navigationActions) { action ->
         when (action) {
             is NavigationAction.Navigate -> {
@@ -60,10 +68,14 @@ fun TabsNavHost() {
 
         nonAnimatedComposable<TabsDestination.Search> { backStackEntry ->
             val destination = backStackEntry.toRoute<TabsDestination.Search>()
-            // Pass the tabId to the savedStateHandle
+            // Pass the tabId and initial query to the savedStateHandle
             backStackEntry.savedStateHandle["tabId"] = destination.tabId
+            backStackEntry.savedStateHandle["searchQuery"] = destination.searchQuery
 
-            //TODO
+            val viewModel = remember(appGraph, destination) {
+                appGraph.searchResultViewModel(backStackEntry.savedStateHandle)
+            }
+            io.github.kdroidfilter.seforimapp.features.search.SearchResultScreen(viewModel)
         }
 
         nonAnimatedComposable<TabsDestination.BookContent> { backStackEntry ->

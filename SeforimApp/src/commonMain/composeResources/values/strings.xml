@@ -236,5 +236,11 @@
     <string name="onboarding_region_city_label">בחרו עיר</string>
     <string name="onboarding_region_description">היישום זקוק למידע על אזור מגוריכם כדי לספק תכנים מותאמים למיקומכם, כגון פרשת השבוע, זמני קריאת שמע ושאר זמני היום.</string>
 
+    <!-- Search results screen -->
+    <string name="search_results_for">תוצאות עבור "%1$s"</string>
+    <string name="search_near_label">קרבה: NEAR/%1$d</string>
+    <string name="search_no_results">לא נמצאו תוצאות</string>
+    <string name="search_searching">מחפש...</string>
+
 
 </resources>

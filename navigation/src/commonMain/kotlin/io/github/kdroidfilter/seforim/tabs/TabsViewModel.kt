@@ -142,6 +142,37 @@ class TabsViewModel(
         System.gc()
     }
 
+    /**
+     * Replaces the destination of the currently selected tab, preserving the tabId.
+     * Does not create a new tab. Updates the tab title accordingly.
+     */
+    fun replaceCurrentTabDestination(destination: TabsDestination) {
+        val index = _selectedTabIndex.value
+        val currentTabs = _tabs.value
+        if (index !in 0..currentTabs.lastIndex) return
+
+        val current = currentTabs[index]
+        val newDestination = when (destination) {
+            is TabsDestination.Home -> TabsDestination.Home(tabId = current.destination.tabId)
+            is TabsDestination.Search -> TabsDestination.Search(
+                searchQuery = destination.searchQuery,
+                tabId = current.destination.tabId
+            )
+            is TabsDestination.BookContent -> TabsDestination.BookContent(
+                bookId = destination.bookId,
+                tabId = current.destination.tabId,
+                lineId = destination.lineId
+            )
+        }
+
+        val updated = current.copy(
+            title = getTabTitle(newDestination),
+            destination = newDestination
+        )
+        _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
+        // Encourage GC after destination swap
+        System.gc()
+    }
     private fun getTabTitle(destination: TabsDestination): String {
         return when (destination) {
             is TabsDestination.Home -> "Home"

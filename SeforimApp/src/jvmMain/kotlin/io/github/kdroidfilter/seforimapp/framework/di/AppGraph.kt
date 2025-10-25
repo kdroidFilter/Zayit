@@ -30,6 +30,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfig
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileViewModel
+import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import java.util.UUID
 
 /**
@@ -131,6 +132,31 @@ abstract class AppGraph {
             navigator = navigator,
             settings = settings
         )
+
+    // Convenience factory to create a route-scoped SearchResultViewModel
+    fun searchResultViewModel(savedStateHandle: SavedStateHandle): SearchResultViewModel =
+        provideSearchResultViewModel(
+            savedStateHandle = savedStateHandle,
+            tabStateManager = tabStateManager,
+            repository = repository,
+            navigator = navigator,
+            titleUpdateManager = tabTitleUpdateManager
+        )
+
+    @Provides
+    fun provideSearchResultViewModel(
+        savedStateHandle: SavedStateHandle,
+        tabStateManager: TabStateManager,
+        repository: SeforimRepository,
+        navigator: Navigator,
+        titleUpdateManager: TabTitleUpdateManager
+    ): SearchResultViewModel = SearchResultViewModel(
+        savedStateHandle = savedStateHandle,
+        stateManager = tabStateManager,
+        repository = repository,
+        navigator = navigator,
+        titleUpdateManager = titleUpdateManager
+    )
 
     @Provides
     @SingleIn(AppScope::class)

@@ -81,6 +81,7 @@ fun HomeView(
             val tabStateManager = appGraph.tabStateManager
             val tabsViewModel = appGraph.tabsViewModel
             val searchState = remember { TextFieldState() }
+            val referenceSearchState = remember { TextFieldState() }
             var selectedFilter by remember { mutableStateOf(SearchFilter.TEXT) }
             // Hoisted search level selection (default to middle level)
             var selectedLevelIndex by remember { mutableIntStateOf(2) }
@@ -92,21 +93,42 @@ fun HomeView(
                 val currentTabs = tabsViewModel.tabs.value
                 val currentIndex = tabsViewModel.selectedTabIndex.value
                 val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: return
-                // Persist search params for this tab to restore state
-                tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.QUERY, query)
-                tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.NEAR, nearLevels[selectedLevelIndex])
-                // Replace current tab destination to Search (no new tab)
-                tabsViewModel.replaceCurrentTabDestination(
-                    io.github.kdroidfilter.seforim.tabs.TabsDestination.Search(query, currentTabId)
-                )
+                val repository = appGraph.repository
+                scope.launch {
+                    // Clear previous filters
+                    tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_CATEGORY_ID, 0L)
+                    tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_BOOK_ID, 0L)
+
+                    val ref = referenceSearchState.text.toString().trim()
+                    if (ref.isNotEmpty()) {
+                        // Try category first (priority), with relaxed matching
+                        val cat = repository.findCategoryByTitlePreferExact(ref)
+                        if (cat != null) {
+                            tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_CATEGORY_ID, cat.id)
+                        } else {
+                            // Try book exact match
+                            val book = repository.findBookByTitlePreferExact(ref)
+                            if (book != null) {
+                                tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_BOOK_ID, book.id)
+                            }
+                        }
+                    }
+
+                    // Persist search params for this tab to restore state
+                    tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.QUERY, query)
+                    tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.NEAR, nearLevels[selectedLevelIndex])
+                    // Replace current tab destination to Search (no new tab)
+                    tabsViewModel.replaceCurrentTabDestination(
+                        io.github.kdroidfilter.seforim.tabs.TabsDestination.Search(query, currentTabId)
+                    )
+                }
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                LazyColumn(
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.width(600.dp)
-                ) {
+            LazyColumn(
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.width(600.dp)
+            ) {
                     item {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             val firstName = AppSettings.getUserFirstName().orEmpty()
@@ -138,19 +160,18 @@ fun HomeView(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
                                 if (selectedFilter == SearchFilter.TEXT) {
-                                    SearchLevelsPanel(
-                                        selectedIndex = selectedLevelIndex,
-                                        onSelectedIndexChange = { selectedLevelIndex = it }
-                                    )
-                                    ReferenceByCategorySection(modifier)
-                                }
+                                SearchLevelsPanel(
+                                    selectedIndex = selectedLevelIndex,
+                                    onSelectedIndexChange = { selectedLevelIndex = it }
+                                )
+                                ReferenceByCategorySection(modifier, state = referenceSearchState)
                             }
                         }
                     }
-                }
             }
         }
     }
+}
 }
 
 @Composable
@@ -253,7 +274,7 @@ private fun SearchLevelsPanel(
 
 
 @Composable
-private fun ReferenceByCategorySection(modifier: Modifier = Modifier) {
+private fun ReferenceByCategorySection(modifier: Modifier = Modifier, state: TextFieldState? = null) {
     var isExpanded by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -277,9 +298,9 @@ private fun ReferenceByCategorySection(modifier: Modifier = Modifier) {
 
     if (!isExpanded) return
 
-    val referenceSearchState = remember { TextFieldState() }
+    val refState = state ?: remember { TextFieldState() }
     SearchBar(
-        state = referenceSearchState,
+        state = refState,
         selectedFilter = SearchFilter.REFERENCE,
         onFilterChange = {},
         showToggle = false,

@@ -25,6 +25,7 @@ import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.search_near_label
 import seforimapp.seforimapp.generated.resources.search_no_results
 import seforimapp.seforimapp.generated.resources.search_results_for
+import seforimapp.seforimapp.generated.resources.search_scope
 import seforimapp.seforimapp.generated.resources.search_searching
 
 @Composable
@@ -39,6 +40,20 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
         )
 
         Spacer(Modifier.height(8.dp))
+
+        // Scope breadcrumb if filtered to a book or category
+        if (state.scopeBook != null || state.scopeCategoryPath.isNotEmpty()) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                val pieces = buildList {
+                    addAll(state.scopeCategoryPath.map { it.title })
+                    state.scopeBook?.let { add(it.title) }
+                }
+                pieces.forEachIndexed { index, piece ->
+                    if (index > 0) Text(text = " > ", color = JewelTheme.globalColors.text.disabled)
+                    Text(text = piece)
+                }
+            }
+        }
 
         // Near level info
         Text(
@@ -67,9 +82,10 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        val hideBookTitle = state.scopeBook != null || state.scopeCategoryPath.isNotEmpty()
                         items(state.results) { result ->
                             ResultRow(
-                                title = result.bookTitle,
+                                title = if (hideBookTitle) null else result.bookTitle,
                                 lineIndex = result.lineIndex + 1,
                                 snippet = result.snippet,
                                 onClick = { viewModel.openResult(result) }
@@ -84,7 +100,7 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
 
 @Composable
 private fun ResultRow(
-    title: String,
+    title: String?,
     lineIndex: Int,
     snippet: String,
     onClick: () -> Unit
@@ -99,8 +115,10 @@ private fun ResultRow(
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, color = JewelTheme.globalColors.text.normal)
-                Spacer(Modifier.height(4.dp))
+                if (title != null) {
+                    Text(text = title, color = JewelTheme.globalColors.text.normal)
+                    Spacer(Modifier.height(4.dp))
+                }
                 val annotated: AnnotatedString = buildAnnotatedFromHtml(snippet, baseTextSize = 13f)
                 Text(text = annotated)
             }

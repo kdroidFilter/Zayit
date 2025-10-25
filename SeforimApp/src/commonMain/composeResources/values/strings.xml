@@ -241,6 +241,7 @@
     <string name="search_near_label">קרבה: NEAR/%1$d</string>
     <string name="search_no_results">לא נמצאו תוצאות</string>
     <string name="search_searching">מחפש...</string>
+    <string name="search_scope">בתוך:</string>
 
 
 </resources>

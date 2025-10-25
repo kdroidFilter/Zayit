@@ -6,5 +6,6 @@ package io.github.kdroidfilter.seforimapp.features.search
 object SearchStateKeys {
     const val QUERY = "search.query"
     const val NEAR = "search.near"
+    const val FILTER_CATEGORY_ID = "search.filter.categoryId"
+    const val FILTER_BOOK_ID = "search.filter.bookId"
 }
-

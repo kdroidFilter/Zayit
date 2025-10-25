@@ -10,6 +10,8 @@ import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
+import io.github.kdroidfilter.seforimlibrary.core.models.Category
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +22,9 @@ data class SearchUiState(
     val query: String = "",
     val near: Int = 5,
     val isLoading: Boolean = false,
-    val results: List<SearchResult> = emptyList()
+    val results: List<SearchResult> = emptyList(),
+    val scopeCategoryPath: List<Category> = emptyList(),
+    val scopeBook: Book? = null
 )
 
 class SearchResultViewModel(
@@ -65,12 +69,60 @@ class SearchResultViewModel(
             stateManager.saveState(tabId, SearchStateKeys.QUERY, q)
             try {
                 val fts = buildNearQuery(q, _uiState.value.near)
-                val results = repository.searchWithOperators(fts, limit = 200)
-                _uiState.value = _uiState.value.copy(results = results)
+
+                val filterCategoryId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_CATEGORY_ID)
+                val filterBookId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)
+
+                val results = when {
+                    filterBookId != null && filterBookId > 0 ->
+                        repository.searchInBookWithOperators(filterBookId, fts, limit = 200)
+                    else -> repository.searchWithOperators(fts, limit = 200)
+                }
+
+                val finalResults = if (filterCategoryId != null && filterCategoryId > 0) {
+                    val allowed = collectBookIdsUnderCategory(filterCategoryId)
+                    results.filter { it.bookId in allowed }
+                } else results
+
+                val scopePath = when {
+                    filterCategoryId != null && filterCategoryId > 0 -> buildCategoryPath(filterCategoryId)
+                    else -> emptyList()
+                }
+                val scopeBook = when {
+                    filterBookId != null && filterBookId > 0 -> repository.getBook(filterBookId)
+                    else -> null
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    results = finalResults,
+                    scopeCategoryPath = scopePath,
+                    scopeBook = scopeBook
+                )
             } finally {
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
+    }
+
+    private suspend fun collectBookIdsUnderCategory(categoryId: Long): Set<Long> {
+        val result = mutableSetOf<Long>()
+        suspend fun dfs(catId: Long) {
+            repository.getBooksByCategory(catId).forEach { result += it.id }
+            repository.getCategoryChildren(catId).forEach { child -> dfs(child.id) }
+        }
+        dfs(categoryId)
+        return result
+    }
+
+    private suspend fun buildCategoryPath(categoryId: Long): List<Category> {
+        val path = mutableListOf<Category>()
+        var currentId: Long? = categoryId
+        while (currentId != null) {
+            val cat = repository.getCategory(currentId) ?: break
+            path += cat
+            currentId = cat.parentId
+        }
+        return path.asReversed()
     }
 
     fun openResult(result: SearchResult) {

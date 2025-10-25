@@ -3,22 +3,30 @@ package io.github.kdroidfilter.seforimapp.features.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogWindow
-import androidx.compose.ui.window.rememberDialogState
-import io.github.kdroidfilter.platformtools.darkmodedetector.windows.setWindowsAdaptiveTitleBar
+import io.github.kdroidfilter.platformtools.OperatingSystem
+import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils.buildThemeDefinition
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -31,7 +39,13 @@ import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.window.DecoratedWindow
+import org.jetbrains.jewel.window.TitleBar
+import org.jetbrains.jewel.window.newFullscreenControls
 import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
 import seforimapp.seforimapp.generated.resources.settings
 import seforimapp.seforimapp.generated.resources.settings_reset_app
@@ -68,12 +82,47 @@ private fun SettingsView(
                 titleBarStyle = ThemeUtils.pickTitleBarStyle(),
             )
     ) {
-        DialogWindow(
+        val settingsWindowState = remember { getCenteredWindowState(800, 600) }
+        DecoratedWindow(
             onCloseRequest = onClose,
-            state = rememberDialogState(size = DpSize(800.dp, 600.dp)),
             title = stringResource(Res.string.settings),
+            icon = painterResource(Res.drawable.AppIcon),
+            state = settingsWindowState,
+            visible = true,
+            resizable = false,
         ) {
-            window.setWindowsAdaptiveTitleBar()
+            val background = JewelTheme.globalColors.panelBackground
+            LaunchedEffect(window, background) {
+                window.background = java.awt.Color(background.toArgb())
+            }
+
+            val isMac = getOperatingSystem() == OperatingSystem.MACOS
+            val isWindows = getOperatingSystem() == OperatingSystem.WINDOWS
+            TitleBar(modifier = Modifier.newFullscreenControls()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(if (isMac) 0.9f else 1f)
+                        .padding(start = if (isWindows) 70.dp else 0.dp)
+                ) {
+                    val centerOffset = 40.dp
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .offset(x = centerOffset),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            AllIconsKeys.General.Settings,
+                            contentDescription = null,
+                            tint = JewelTheme.globalColors.text.normal,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(stringResource(Res.string.settings))
+                    }
+                }
+            }
+
             Column(
                 modifier =
                     Modifier.trackActivation().fillMaxSize()

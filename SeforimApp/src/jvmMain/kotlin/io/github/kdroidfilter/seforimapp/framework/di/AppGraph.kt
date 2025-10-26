@@ -173,11 +173,13 @@ abstract class AppGraph {
     fun provideSearchHomeViewModel(
         tabsViewModel: TabsViewModel,
         tabStateManager: TabStateManager,
-        repository: SeforimRepository
+        repository: SeforimRepository,
+        settings: Settings
     ): SearchHomeViewModel = SearchHomeViewModel(
         tabsViewModel = tabsViewModel,
         stateManager = tabStateManager,
-        repository = repository
+        repository = repository,
+        settings = settings
     )
 
     // Convenience accessor to get a fresh instance for Composables
@@ -185,7 +187,8 @@ abstract class AppGraph {
         provideSearchHomeViewModel(
             tabsViewModel = tabsViewModel,
             tabStateManager = tabStateManager,
-            repository = repository
+            repository = repository,
+            settings = settings
         )
 
     @Provides

@@ -13,6 +13,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,7 +32,8 @@ data class SearchUiState(
     val scrollOffset: Int = 0,
     val anchorId: Long = -1L,
     val anchorIndex: Int = 0,
-    val scrollToAnchorTimestamp: Long = 0L
+    val scrollToAnchorTimestamp: Long = 0L,
+    val textSize: Float = AppSettings.DEFAULT_TEXT_SIZE
 )
 
 class SearchResultViewModel(
@@ -65,13 +67,21 @@ class SearchResultViewModel(
             scrollIndex = initialScrollIndex,
             scrollOffset = initialScrollOffset,
             anchorId = initialAnchorId,
-            anchorIndex = initialAnchorIndex
+            anchorIndex = initialAnchorIndex,
+            textSize = AppSettings.getTextSize()
         )
 
         // Update tab title to the query (TabsViewModel also handles initial title)
         if (initialQuery.isNotBlank()) {
             titleUpdateManager.updateTabTitle(tabId, initialQuery, TabType.SEARCH)
             executeSearch()
+        }
+
+        // Observe user text size setting and reflect into UI state
+        viewModelScope.launch {
+            AppSettings.textSizeFlow.collect { size ->
+                _uiState.value = _uiState.value.copy(textSize = size)
+            }
         }
     }
 

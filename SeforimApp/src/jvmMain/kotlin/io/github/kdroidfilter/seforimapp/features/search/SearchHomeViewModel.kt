@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import com.russhwolf.settings.Settings
+import com.russhwolf.settings.get
 
 data class CategorySuggestionDto(val category: Category, val path: List<String>)
 data class BookSuggestionDto(val book: Book, val path: List<String>)
@@ -32,7 +34,8 @@ data class SearchHomeUiState(
 class SearchHomeViewModel(
     private val tabsViewModel: TabsViewModel,
     private val stateManager: TabStateManager,
-    private val repository: SeforimRepository
+    private val repository: SeforimRepository,
+    private val settings: Settings
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SearchHomeUiState())
@@ -43,10 +46,10 @@ class SearchHomeViewModel(
     private val NEAR_LEVELS = listOf(1, 3, 5, 10, 20)
 
     init {
-        // Build display name from settings (moved from UI)
+        // Build display name from injected Settings
         runCatching {
-            val firstName = io.github.kdroidfilter.seforimapp.core.settings.AppSettings.getUserFirstName().orEmpty()
-            val lastName = io.github.kdroidfilter.seforimapp.core.settings.AppSettings.getUserLastName().orEmpty()
+            val firstName: String = settings["user_first_name", ""]
+            val lastName: String = settings["user_last_name", ""]
             val displayName = "$firstName $lastName".trim()
             _uiState.value = _uiState.value.copy(userDisplayName = displayName)
         }

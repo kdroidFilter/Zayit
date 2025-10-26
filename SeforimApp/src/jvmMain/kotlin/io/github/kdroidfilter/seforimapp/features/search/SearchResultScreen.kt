@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -40,6 +41,7 @@ import seforimapp.seforimapp.generated.resources.search_searching
 fun SearchResultScreen(viewModel: SearchResultViewModel) {
     val state = viewModel.uiState.collectAsState().value
     val listState = rememberLazyListState()
+    val textSize = state.textSize
 
     // Persist scroll/anchor as the user scrolls (disabled while loading)
     LaunchedEffect(listState) {
@@ -84,8 +86,8 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
                     state.scopeBook?.let { add(it.title) }
                 }
                 pieces.forEachIndexed { index, piece ->
-                    if (index > 0) Text(text = stringResource(Res.string.breadcrumb_separator), color = JewelTheme.globalColors.text.disabled)
-                    Text(text = piece)
+                    if (index > 0) Text(text = stringResource(Res.string.breadcrumb_separator), color = JewelTheme.globalColors.text.disabled, fontSize = textSize.sp)
+                    Text(text = piece, fontSize = textSize.sp)
                 }
             }
         }
@@ -94,7 +96,8 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
         Text(
             text = stringResource(Res.string.search_near_label, state.near),
             color = JewelTheme.globalColors.text.info,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 8.dp),
+            fontSize = textSize.sp
         )
 
         // Results list
@@ -107,13 +110,13 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
             when {
                 state.isLoading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(stringResource(Res.string.search_searching))
+                        Text(stringResource(Res.string.search_searching), fontSize = textSize.sp)
                     }
                 }
 
                 state.results.isEmpty() -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = stringResource(Res.string.search_no_results))
+                        Text(text = stringResource(Res.string.search_no_results), fontSize = textSize.sp)
                     }
                 }
 
@@ -127,6 +130,7 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
                                 title = null,
                                 badgeText = result.bookTitle,
                                 snippet = result.snippet,
+                                textSize = textSize,
                                 onClick = { viewModel.openResult(result) })
                         }
                     }
@@ -138,7 +142,7 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
 
 @Composable
 private fun ResultRow(
-    title: String?, badgeText: String, snippet: String, onClick: () -> Unit
+    title: String?, badgeText: String, snippet: String, textSize: Float, onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color.Transparent)
@@ -148,11 +152,11 @@ private fun ResultRow(
         Row(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
                 if (title != null) {
-                    Text(text = title, color = JewelTheme.globalColors.text.normal)
+                    Text(text = title, color = JewelTheme.globalColors.text.normal, fontSize = textSize.sp)
                     Spacer(Modifier.height(4.dp))
                 }
-                val annotated: AnnotatedString = buildAnnotatedFromHtml(snippet, baseTextSize = 13f)
-                Text(text = annotated)
+                val annotated: AnnotatedString = buildAnnotatedFromHtml(snippet, baseTextSize = textSize)
+                Text(text = annotated, fontSize = textSize.sp)
             }
             Spacer(Modifier.width(8.dp))
             Box(
@@ -160,9 +164,7 @@ private fun ResultRow(
                     .background(JewelTheme.globalColors.panelBackground)
                     .border(1.dp, JewelTheme.globalColors.borders.disabled, RoundedCornerShape(6.dp))
             ) {
-                Text(
-                    text = badgeText, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
+                Text(text = badgeText, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = textSize.sp)
             }
         }
     }

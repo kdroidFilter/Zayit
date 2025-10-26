@@ -246,6 +246,7 @@
     <string name="chevron_icon_description">חץ</string>
     <string name="search_icon_description">חיפוש</string>
     <string name="search_load_more">טען תוצאות נוספות</string>
+    <string name="search_result_count">נמצאו %1$d תוצאות</string>
 
 
 </resources>

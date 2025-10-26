@@ -44,6 +44,7 @@ import seforimapp.seforimapp.generated.resources.search_results_for
 import seforimapp.seforimapp.generated.resources.search_scope
 import seforimapp.seforimapp.generated.resources.search_searching
 import seforimapp.seforimapp.generated.resources.search_load_more
+import seforimapp.seforimapp.generated.resources.search_result_count
 
 @Composable
 fun SearchResultScreen(viewModel: SearchResultViewModel) {
@@ -108,13 +109,22 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
             }
         }
 
-        // Near level info
-        Text(
-            text = stringResource(Res.string.search_near_label, state.near),
-            color = JewelTheme.globalColors.text.info,
-            modifier = Modifier.padding(bottom = 8.dp),
-            fontSize = commentSize.sp
-        )
+        // Near level + dynamic results count
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(Res.string.search_near_label, state.near),
+                color = JewelTheme.globalColors.text.info,
+                modifier = Modifier.padding(bottom = 8.dp),
+                fontSize = commentSize.sp
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = stringResource(Res.string.search_result_count, state.results.size),
+                color = JewelTheme.globalColors.text.normal,
+                modifier = Modifier.padding(bottom = 8.dp),
+                fontSize = commentSize.sp
+            )
+        }
 
         // Results list
         Box(

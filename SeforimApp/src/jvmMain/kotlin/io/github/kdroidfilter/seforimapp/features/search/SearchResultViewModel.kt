@@ -7,6 +7,7 @@ import io.github.kdroidfilter.seforim.tabs.TabAwareViewModel
 import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
+import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
@@ -44,7 +45,8 @@ class SearchResultViewModel(
     private val repository: SeforimRepository,
     private val navigator: Navigator,
     private val titleUpdateManager: TabTitleUpdateManager,
-    private val cache: io.github.kdroidfilter.seforimapp.features.search.SearchResultsCache
+    private val cache: io.github.kdroidfilter.seforimapp.features.search.SearchResultsCache,
+    private val tabsViewModel: TabsViewModel
 ) : TabAwareViewModel(
     tabId = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: "",
     stateManager = stateManager
@@ -91,6 +93,18 @@ class SearchResultViewModel(
                 _uiState.value = _uiState.value.copy(textSize = size)
             }
         }
+
+        // Cancel ongoing search when tab is not selected
+        viewModelScope.launch {
+            tabsViewModel.selectedTabIndex.collect { idx ->
+                val tabs = tabsViewModel.tabs.value
+                val selectedTabId = tabs.getOrNull(idx)?.destination?.tabId
+                if (selectedTabId != tabId) {
+                    currentJob?.cancel()
+                    _uiState.value = _uiState.value.copy(isLoading = false, isLoadingMore = false)
+                }
+            }
+        }
     }
 
     fun setNear(near: Int) {
@@ -101,7 +115,8 @@ class SearchResultViewModel(
     fun executeSearch() {
         val q = _uiState.value.query.trim()
         if (q.isBlank()) return
-        viewModelScope.launch {
+        currentJob?.cancel()
+        currentJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, results = emptyList(), hasMore = false)
             stateManager.saveState(tabId, SearchStateKeys.QUERY, q)
             try {
@@ -224,7 +239,8 @@ class SearchResultViewModel(
         val key = currentKey ?: return
         // guard against concurrent loads
         if (_uiState.value.isLoading || _uiState.value.isLoadingMore) return
-        viewModelScope.launch {
+        currentJob?.cancel()
+        currentJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoadingMore = true)
             try {
                 val BATCH = 20
@@ -381,3 +397,5 @@ class SearchResultViewModel(
         return term.replace('"', ' ').trim()
     }
 }
+    // Track cancellable job for ongoing fetch
+    private var currentJob: kotlinx.coroutines.Job? = null

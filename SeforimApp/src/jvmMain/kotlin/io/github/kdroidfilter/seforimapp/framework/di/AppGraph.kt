@@ -144,7 +144,8 @@ abstract class AppGraph {
             repository = repository,
             navigator = navigator,
             titleUpdateManager = tabTitleUpdateManager,
-            cache = searchResultsCache
+            cache = searchResultsCache,
+            tabsViewModel = tabsViewModel
         )
 
     @Provides
@@ -154,14 +155,16 @@ abstract class AppGraph {
         repository: SeforimRepository,
         navigator: Navigator,
         titleUpdateManager: TabTitleUpdateManager,
-        cache: SearchResultsCache
+        cache: SearchResultsCache,
+        tabsViewModel: TabsViewModel
     ): SearchResultViewModel = SearchResultViewModel(
         savedStateHandle = savedStateHandle,
         stateManager = tabStateManager,
         repository = repository,
         navigator = navigator,
         titleUpdateManager = titleUpdateManager,
-        cache = cache
+        cache = cache,
+        tabsViewModel = tabsViewModel
     )
 
     @Provides

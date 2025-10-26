@@ -82,13 +82,10 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Hide the book title only when the scope is a single book.
-                        // When the scope is a category, keep the book title to disambiguate results.
-                        val hideBookTitle = state.scopeBook != null && state.scopeCategoryPath.isEmpty()
                         items(state.results) { result ->
                             ResultRow(
-                                title = if (hideBookTitle) null else result.bookTitle,
-                                lineIndex = result.lineIndex + 1,
+                                title = null,
+                                badgeText = result.bookTitle,
                                 snippet = result.snippet,
                                 onClick = { viewModel.openResult(result) }
                             )
@@ -103,7 +100,7 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
 @Composable
 private fun ResultRow(
     title: String?,
-    lineIndex: Int,
+    badgeText: String,
     snippet: String,
     onClick: () -> Unit
 ) {
@@ -132,7 +129,7 @@ private fun ResultRow(
                     .border(1.dp, JewelTheme.globalColors.borders.disabled, RoundedCornerShape(6.dp))
             ) {
                 Text(
-                    text = lineIndex.toString(),
+                    text = badgeText,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }

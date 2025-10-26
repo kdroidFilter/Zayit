@@ -11,13 +11,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.TextStyle
@@ -27,37 +26,26 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.*
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
-import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.collect
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.type
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.skiko.Cursor
 import seforimapp.seforimapp.generated.resources.*
+import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 
-// Enum pour les filtres
-enum class SearchFilter() {
-    REFERENCE,
-    TEXT
-}
+// SearchFilter moved to features.search.SearchFilter per architecture guidelines.
 
 // Suggestion models for the scope picker
 private data class CategorySuggestion(val category: Category, val path: List<String>)
@@ -86,97 +74,21 @@ fun HomeView(
             contentAlignment = Alignment.Center
         ) {
             // Keep state outside LazyColumn so it persists across item recompositions
-            val appGraph = io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph.current
+            val appGraph = LocalAppGraph.current
+            val searchVm = remember { appGraph.searchHomeViewModel() }
+            val searchUi = searchVm.uiState.collectAsState().value
             val scope = rememberCoroutineScope()
-            val tabStateManager = appGraph.tabStateManager
-            val tabsViewModel = appGraph.tabsViewModel
             val searchState = remember { TextFieldState() }
             val referenceSearchState = remember { TextFieldState() }
-            var scopeSelectedCategory by remember { mutableStateOf<io.github.kdroidfilter.seforimlibrary.core.models.Category?>(null) }
-            var scopeSelectedBook by remember { mutableStateOf<BookModel?>(null) }
-            var categorySuggestions by remember { mutableStateOf<List<CategorySuggestion>>(emptyList()) }
-            var bookSuggestions by remember { mutableStateOf<List<BookSuggestion>>(emptyList()) }
-            var showSuggestions by remember { mutableStateOf(false) }
+            // Forward reference input changes to the ViewModel (VM handles debouncing and suggestions)
             LaunchedEffect(Unit) {
                 snapshotFlow { referenceSearchState.text.toString() }
-                    .debounce(200)
-                    .distinctUntilChanged()
-                    .collect { qRaw ->
-                        val q = qRaw.trim()
-                        if (q.isBlank()) {
-                            categorySuggestions = emptyList()
-                            bookSuggestions = emptyList()
-                            showSuggestions = false
-                        } else {
-                            val pattern = "%$q%"
-                            val repo = appGraph.repository
-                            suspend fun buildCategoryPathTitles(catId: Long): List<String> {
-                                val path = mutableListOf<String>()
-                                var currentId: Long? = catId
-                                val safety = 64
-                                var guard = 0
-                                while (currentId != null && guard++ < safety) {
-                                    val c = repo.getCategory(currentId) ?: break
-                                    path += c.title
-                                    currentId = c.parentId
-                                }
-                                return path.asReversed()
-                            }
-                            val catsRaw = repo
-                                .findCategoriesByTitleLike(pattern, limit = 12)
-                                .filter { it.title.isNotBlank() }
-                                .distinctBy { it.id }
-                            val cats = catsRaw.map { cat ->
-                                val path = buildCategoryPathTitles(cat.id)
-                                CategorySuggestion(cat, path.ifEmpty { listOf(cat.title) })
-                            }
-                            val booksRaw = repo
-                                .findBooksByTitleLike(pattern, limit = 12)
-                                .filter { it.title.isNotBlank() }
-                                .distinctBy { it.id }
-                            val books = booksRaw.map { book ->
-                                val catPath = buildCategoryPathTitles(book.categoryId)
-                                BookSuggestion(book, catPath + book.title)
-                            }
-                            categorySuggestions = cats
-                            bookSuggestions = books
-                            showSuggestions = cats.isNotEmpty() || books.isNotEmpty()
-                        }
-                    }
+                    .collect { qRaw -> searchVm.onReferenceQueryChanged(qRaw) }
             }
-            var selectedFilter by remember { mutableStateOf(SearchFilter.TEXT) }
-            // Hoisted search level selection (default to middle level)
-            var selectedLevelIndex by remember { mutableIntStateOf(2) }
-            val nearLevels = listOf(1, 3, 5, 10, 20)
             fun launchSearch() {
                 val query = searchState.text.toString().trim()
-                if (query.isBlank() || selectedFilter != SearchFilter.TEXT) return
-                // Get current tab id
-                val currentTabs = tabsViewModel.tabs.value
-                val currentIndex = tabsViewModel.selectedTabIndex.value
-                val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: return
-                val repository = appGraph.repository
-                scope.launch {
-                    // Clear previous filters
-                    tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_CATEGORY_ID, 0L)
-                    tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_BOOK_ID, 0L)
-
-                    // Apply selected scope only (no longer auto-picking the first match)
-                    scopeSelectedCategory?.let { cat ->
-                        tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_CATEGORY_ID, cat.id)
-                    }
-                    scopeSelectedBook?.let { book ->
-                        tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_BOOK_ID, book.id)
-                    }
-
-                    // Persist search params for this tab to restore state
-                    tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.QUERY, query)
-                    tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.NEAR, nearLevels[selectedLevelIndex])
-                    // Replace current tab destination to Search (no new tab)
-                    tabsViewModel.replaceCurrentTabDestination(
-                        io.github.kdroidfilter.seforim.tabs.TabsDestination.Search(query, currentTabId)
-                    )
-                }
+                if (query.isBlank() || searchUi.selectedFilter != SearchFilter.TEXT) return
+                scope.launch { searchVm.submitSearch(query) }
             }
 
             LazyColumn(
@@ -186,10 +98,7 @@ fun HomeView(
             ) {
                     item {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            val firstName = AppSettings.getUserFirstName().orEmpty()
-                            val lastName = AppSettings.getUserLastName().orEmpty()
-                            val displayName = "$firstName $lastName".trim()
-                            WelcomeUser(username = displayName)
+                            WelcomeUser(username = searchUi.userDisplayName)
                         }
                     }
                     item {
@@ -201,8 +110,8 @@ fun HomeView(
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             SearchBar(
                                 state = searchState,
-                                selectedFilter = selectedFilter,
-                                onFilterChange = { selectedFilter = it },
+                                selectedFilter = searchUi.selectedFilter,
+                                onFilterChange = { searchVm.onFilterChange(it) },
                                 onSubmit = { launchSearch() }
                             )
                         }
@@ -214,30 +123,26 @@ fun HomeView(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                if (selectedFilter == SearchFilter.TEXT) {
+                                if (searchUi.selectedFilter == SearchFilter.TEXT) {
                                 SearchLevelsPanel(
-                                    selectedIndex = selectedLevelIndex,
-                                    onSelectedIndexChange = { selectedLevelIndex = it }
+                                    selectedIndex = searchUi.selectedLevelIndex,
+                                    onSelectedIndexChange = { searchVm.onLevelIndexChange(it) }
                                 )
                                 ReferenceByCategorySection(
                                     modifier,
                                     state = referenceSearchState,
-                                    suggestionsVisible = showSuggestions,
-                                    categorySuggestions = categorySuggestions,
-                                    bookSuggestions = bookSuggestions,
+                                    suggestionsVisible = searchUi.suggestionsVisible,
+                                    categorySuggestions = searchUi.categorySuggestions.map { cs -> CategorySuggestion(cs.category, cs.path) },
+                                    bookSuggestions = searchUi.bookSuggestions.map { bs -> BookSuggestion(bs.book, bs.path) },
                                     
                                     onSubmit = { launchSearch() },
                                     onPickCategory = { picked ->
-                                        scopeSelectedBook = null
-                                        scopeSelectedCategory = picked.category
+                                        searchVm.onPickCategory(picked.category)
                                         referenceSearchState.edit { replace(0, length, picked.category.title) }
-                                        showSuggestions = false
                                     },
                                     onPickBook = { picked ->
-                                        scopeSelectedCategory = null
-                                        scopeSelectedBook = picked.book
+                                        searchVm.onPickBook(picked.book)
                                         referenceSearchState.edit { replace(0, length, picked.book.title) }
-                                        showSuggestions = false
                                     }
                                 )
                             }
@@ -306,7 +211,7 @@ private fun SearchLevelsPanel(
             Res.string.search_level_4_explanation
         ),
         SearchFilterCard(
-            io.github.kdroidfilter.seforimapp.icons.Book,
+            Book,
             Res.string.search_level_5_value,
             Res.string.search_level_5_description,
             Res.string.search_level_5_explanation
@@ -373,9 +278,9 @@ private fun ReferenceByCategorySection(
                 .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))),
         startComponent = {
             if (isExpanded) {
-                Icon(AllIconsKeys.General.ChevronDown, "Chevron")
+                Icon(AllIconsKeys.General.ChevronDown, stringResource(Res.string.chevron_icon_description))
             } else {
-                Icon(AllIconsKeys.General.ChevronLeft, "Chevron")
+                Icon(AllIconsKeys.General.ChevronLeft, stringResource(Res.string.chevron_icon_description))
             }
         },
     )
@@ -451,40 +356,10 @@ private fun SuggestionRow(parts: List<String>, onClick: () -> Unit) {
             .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         parts.forEachIndexed { index, text ->
-            if (index > 0) Text(" > ", color = JewelTheme.globalColors.text.disabled)
+            if (index > 0) Text(stringResource(Res.string.breadcrumb_separator), color = JewelTheme.globalColors.text.disabled)
             Text(text, color = JewelTheme.globalColors.text.normal)
         }
     }
-}
-
-private fun computeCategoryPathTitles(
-    categoryId: Long,
-    rootCategories: List<io.github.kdroidfilter.seforimlibrary.core.models.Category>,
-    categoryChildren: Map<Long, List<io.github.kdroidfilter.seforimlibrary.core.models.Category>>
-): List<String> {
-    fun findPath(current: io.github.kdroidfilter.seforimlibrary.core.models.Category, targetId: Long): List<io.github.kdroidfilter.seforimlibrary.core.models.Category> {
-        if (current.id == targetId) return listOf(current)
-        val children = categoryChildren[current.id] ?: return emptyList()
-        for (child in children) {
-            val path = findPath(child, targetId)
-            if (path.isNotEmpty()) return listOf(current) + path
-        }
-        return emptyList()
-    }
-    rootCategories.forEach { root ->
-        val path = findPath(root, categoryId)
-        if (path.isNotEmpty()) return path.map { it.title }
-    }
-    return emptyList()
-}
-
-private fun computeBookPathTitles(
-    book: io.github.kdroidfilter.seforimlibrary.core.models.Book,
-    rootCategories: List<io.github.kdroidfilter.seforimlibrary.core.models.Category>,
-    categoryChildren: Map<Long, List<io.github.kdroidfilter.seforimlibrary.core.models.Category>>
-): List<String> {
-    val catPath = computeCategoryPathTitles(book.categoryId, rootCategories, categoryChildren)
-    return catPath + book.title
 }
 
 @Composable
@@ -553,7 +428,16 @@ private fun SearchBar(
                 onFilterChange = onFilterChange
             )
         }) else null,
-        textStyle = TextStyle(fontSize = 13.sp)
+        leadingIcon = {
+            IconButton({onSubmit()}) {
+                Icon(
+                    key = AllIconsKeys.Actions.Find,
+                    contentDescription = stringResource(Res.string.search_icon_description),
+                    modifier = Modifier.size(16.dp).pointerHoverIcon(PointerIcon.Hand),
+                )
+            }
+        },
+        textStyle = TextStyle(fontSize = 13.sp),
     )
 }
 

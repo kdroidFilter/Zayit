@@ -22,6 +22,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.breadcrumb_separator
 import seforimapp.seforimapp.generated.resources.search_near_label
 import seforimapp.seforimapp.generated.resources.search_no_results
 import seforimapp.seforimapp.generated.resources.search_results_for
@@ -32,7 +33,7 @@ import seforimapp.seforimapp.generated.resources.search_searching
 fun SearchResultScreen(viewModel: SearchResultViewModel) {
     val state = viewModel.uiState.collectAsState().value
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         // Header
         GroupHeader(
             text = stringResource(Res.string.search_results_for, state.query),
@@ -49,7 +50,7 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
                     state.scopeBook?.let { add(it.title) }
                 }
                 pieces.forEachIndexed { index, piece ->
-                    if (index > 0) Text(text = " > ", color = JewelTheme.globalColors.text.disabled)
+                    if (index > 0) Text(text = stringResource(Res.string.breadcrumb_separator), color = JewelTheme.globalColors.text.disabled)
                     Text(text = piece)
                 }
             }
@@ -63,7 +64,12 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
         )
 
         // Results list
-        Box(modifier = Modifier.fillMaxSize().background(JewelTheme.globalColors.panelBackground)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 32.dp)
+                .background(JewelTheme.globalColors.panelBackground)
+        ) {
             when {
                 state.isLoading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -79,16 +85,14 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
 
                 else -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(state.results) { result ->
                             ResultRow(
                                 title = null,
                                 badgeText = result.bookTitle,
                                 snippet = result.snippet,
-                                onClick = { viewModel.openResult(result) }
-                            )
+                                onClick = { viewModel.openResult(result) })
                         }
                     }
                 }
@@ -99,18 +103,12 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
 
 @Composable
 private fun ResultRow(
-    title: String?,
-    badgeText: String,
-    snippet: String,
-    onClick: () -> Unit
+    title: String?, badgeText: String, snippet: String, onClick: () -> Unit
 ) {
     Box(
-        modifier = Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.Transparent)
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color.Transparent)
             .border(1.dp, JewelTheme.globalColors.borders.disabled, RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(12.dp)
+            .clickable(onClick = onClick).padding(12.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
@@ -123,14 +121,12 @@ private fun ResultRow(
             }
             Spacer(Modifier.width(8.dp))
             Box(
-                modifier = Modifier.align(Alignment.Top)
-                    .clip(RoundedCornerShape(6.dp))
+                modifier = Modifier.align(Alignment.Top).clip(RoundedCornerShape(6.dp))
                     .background(JewelTheme.globalColors.panelBackground)
                     .border(1.dp, JewelTheme.globalColors.borders.disabled, RoundedCornerShape(6.dp))
             ) {
                 Text(
-                    text = badgeText,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    text = badgeText, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
         }

@@ -31,6 +31,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfig
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import java.util.UUID
 
 /**
@@ -157,6 +158,26 @@ abstract class AppGraph {
         navigator = navigator,
         titleUpdateManager = titleUpdateManager
     )
+
+    // Home search ViewModel (no SavedStateHandle; uses current tab from TabsViewModel)
+    @Provides
+    fun provideSearchHomeViewModel(
+        tabsViewModel: TabsViewModel,
+        tabStateManager: TabStateManager,
+        repository: SeforimRepository
+    ): SearchHomeViewModel = SearchHomeViewModel(
+        tabsViewModel = tabsViewModel,
+        stateManager = tabStateManager,
+        repository = repository
+    )
+
+    // Convenience accessor to get a fresh instance for Composables
+    fun searchHomeViewModel(): SearchHomeViewModel =
+        provideSearchHomeViewModel(
+            tabsViewModel = tabsViewModel,
+            tabStateManager = tabStateManager,
+            repository = repository
+        )
 
     @Provides
     @SingleIn(AppScope::class)

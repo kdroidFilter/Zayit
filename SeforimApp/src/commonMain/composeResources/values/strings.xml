@@ -242,6 +242,9 @@
     <string name="search_no_results">לא נמצאו תוצאות</string>
     <string name="search_searching">מחפש...</string>
     <string name="search_scope">בתוך:</string>
+    <string name="breadcrumb_separator"> &gt; </string>
+    <string name="chevron_icon_description">חץ</string>
+    <string name="search_icon_description">חיפוש</string>
 
 
 </resources>

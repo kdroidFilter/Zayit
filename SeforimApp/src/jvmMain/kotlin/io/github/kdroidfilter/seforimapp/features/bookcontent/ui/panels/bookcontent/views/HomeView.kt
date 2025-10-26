@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +39,9 @@ import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.collect
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -82,6 +86,29 @@ fun HomeView(
             val tabsViewModel = appGraph.tabsViewModel
             val searchState = remember { TextFieldState() }
             val referenceSearchState = remember { TextFieldState() }
+            var scopeSelectedCategory by remember { mutableStateOf<io.github.kdroidfilter.seforimlibrary.core.models.Category?>(null) }
+            var scopeSelectedBook by remember { mutableStateOf<io.github.kdroidfilter.seforimlibrary.core.models.Book?>(null) }
+            var categorySuggestions by remember { mutableStateOf<List<io.github.kdroidfilter.seforimlibrary.core.models.Category>>(emptyList()) }
+            var bookSuggestions by remember { mutableStateOf<List<io.github.kdroidfilter.seforimlibrary.core.models.Book>>(emptyList()) }
+            var showSuggestions by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                snapshotFlow { referenceSearchState.text.toString() }
+                    .debounce(200)
+                    .distinctUntilChanged()
+                    .collect { qRaw ->
+                        val q = qRaw.trim()
+                        if (q.isBlank()) {
+                            categorySuggestions = emptyList()
+                            bookSuggestions = emptyList()
+                            showSuggestions = false
+                        } else {
+                            val pattern = "%$q%"
+                            categorySuggestions = appGraph.repository.findCategoriesByTitleLike(pattern, limit = 12)
+                            bookSuggestions = appGraph.repository.findBooksByTitleLike(pattern, limit = 12)
+                            showSuggestions = categorySuggestions.isNotEmpty() || bookSuggestions.isNotEmpty()
+                        }
+                    }
+            }
             var selectedFilter by remember { mutableStateOf(SearchFilter.TEXT) }
             // Hoisted search level selection (default to middle level)
             var selectedLevelIndex by remember { mutableIntStateOf(2) }
@@ -99,19 +126,12 @@ fun HomeView(
                     tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_CATEGORY_ID, 0L)
                     tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_BOOK_ID, 0L)
 
-                    val ref = referenceSearchState.text.toString().trim()
-                    if (ref.isNotEmpty()) {
-                        // Try category first (priority), with relaxed matching
-                        val cat = repository.findCategoryByTitlePreferExact(ref)
-                        if (cat != null) {
-                            tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_CATEGORY_ID, cat.id)
-                        } else {
-                            // Try book exact match
-                            val book = repository.findBookByTitlePreferExact(ref)
-                            if (book != null) {
-                                tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_BOOK_ID, book.id)
-                            }
-                        }
+                    // Apply selected scope only (no longer auto-picking the first match)
+                    scopeSelectedCategory?.let { cat ->
+                        tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_CATEGORY_ID, cat.id)
+                    }
+                    scopeSelectedBook?.let { book ->
+                        tabStateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys.FILTER_BOOK_ID, book.id)
                     }
 
                     // Persist search params for this tab to restore state
@@ -155,7 +175,7 @@ fun HomeView(
                     item {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             Column(
-                                modifier = Modifier.height(250.dp),
+                                modifier = Modifier.heightIn(min = 250.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
@@ -164,7 +184,28 @@ fun HomeView(
                                     selectedIndex = selectedLevelIndex,
                                     onSelectedIndexChange = { selectedLevelIndex = it }
                                 )
-                                ReferenceByCategorySection(modifier, state = referenceSearchState)
+                                ReferenceByCategorySection(
+                                    modifier,
+                                    state = referenceSearchState,
+                                    suggestionsVisible = showSuggestions,
+                                    categorySuggestions = categorySuggestions,
+                                    bookSuggestions = bookSuggestions,
+                                    categoryPathProvider = { cat -> computeCategoryPathTitles(cat.id, uiState.navigation.rootCategories, uiState.navigation.categoryChildren) },
+                                    bookPathProvider = { book -> computeBookPathTitles(book, uiState.navigation.rootCategories, uiState.navigation.categoryChildren) },
+                                    onSubmit = { launchSearch() },
+                                    onPickCategory = { picked ->
+                                        scopeSelectedBook = null
+                                        scopeSelectedCategory = picked
+                                        referenceSearchState.edit { replace(0, length, picked.title) }
+                                        showSuggestions = false
+                                    },
+                                    onPickBook = { picked ->
+                                        scopeSelectedCategory = null
+                                        scopeSelectedBook = picked
+                                        referenceSearchState.edit { replace(0, length, picked.title) }
+                                        showSuggestions = false
+                                    }
+                                )
                             }
                         }
                     }
@@ -274,7 +315,18 @@ private fun SearchLevelsPanel(
 
 
 @Composable
-private fun ReferenceByCategorySection(modifier: Modifier = Modifier, state: TextFieldState? = null) {
+private fun ReferenceByCategorySection(
+    modifier: Modifier = Modifier,
+    state: TextFieldState? = null,
+    suggestionsVisible: Boolean = false,
+    categorySuggestions: List<io.github.kdroidfilter.seforimlibrary.core.models.Category> = emptyList(),
+    bookSuggestions: List<io.github.kdroidfilter.seforimlibrary.core.models.Book> = emptyList(),
+    categoryPathProvider: (io.github.kdroidfilter.seforimlibrary.core.models.Category) -> List<String> = { listOf(it.title) },
+    bookPathProvider: (io.github.kdroidfilter.seforimlibrary.core.models.Book) -> List<String> = { listOf(it.title) },
+    onSubmit: () -> Unit = {},
+    onPickCategory: (io.github.kdroidfilter.seforimlibrary.core.models.Category) -> Unit = {},
+    onPickBook: (io.github.kdroidfilter.seforimlibrary.core.models.Book) -> Unit = {}
+) {
     var isExpanded by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -299,13 +351,112 @@ private fun ReferenceByCategorySection(modifier: Modifier = Modifier, state: Tex
     if (!isExpanded) return
 
     val refState = state ?: remember { TextFieldState() }
-    SearchBar(
-        state = refState,
-        selectedFilter = SearchFilter.REFERENCE,
-        onFilterChange = {},
-        showToggle = false,
-        modifier = Modifier.fillMaxWidth(1f)
-    )
+    Column(Modifier.fillMaxWidth()) {
+        SearchBar(
+            state = refState,
+            selectedFilter = SearchFilter.REFERENCE,
+            onFilterChange = {},
+            showToggle = false,
+            modifier = Modifier.fillMaxWidth(1f),
+            onSubmit = onSubmit
+        )
+        if (suggestionsVisible && (categorySuggestions.isNotEmpty() || bookSuggestions.isNotEmpty())) {
+            Spacer(Modifier.height(8.dp))
+            SuggestionsPanel(
+                categorySuggestions = categorySuggestions,
+                bookSuggestions = bookSuggestions,
+                categoryPathProvider = categoryPathProvider,
+                bookPathProvider = bookPathProvider,
+                onPickCategory = onPickCategory,
+                onPickBook = onPickBook
+            )
+        }
+    }
+}
+
+@Composable
+private fun SuggestionsPanel(
+    categorySuggestions: List<io.github.kdroidfilter.seforimlibrary.core.models.Category>,
+    bookSuggestions: List<io.github.kdroidfilter.seforimlibrary.core.models.Book>,
+    categoryPathProvider: (io.github.kdroidfilter.seforimlibrary.core.models.Category) -> List<String>,
+    bookPathProvider: (io.github.kdroidfilter.seforimlibrary.core.models.Book) -> List<String>,
+    onPickCategory: (io.github.kdroidfilter.seforimlibrary.core.models.Category) -> Unit,
+    onPickBook: (io.github.kdroidfilter.seforimlibrary.core.models.Book) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(8.dp))
+            .background(JewelTheme.globalColors.panelBackground)
+            .heightIn(max = 320.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        // Categories first
+        categorySuggestions.forEach { cat ->
+            SuggestionRow(
+                parts = remember(cat) { categoryPathProvider(cat) },
+                onClick = { onPickCategory(cat) }
+            )
+        }
+        // Then books
+        bookSuggestions.forEach { book ->
+            SuggestionRow(
+                parts = remember(book) { bookPathProvider(book) },
+                onClick = { onPickBook(book) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SuggestionRow(parts: List<String>, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(onClick = onClick)
+            .pointerHoverIcon(PointerIcon.Hand)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+    ) {
+        parts.forEachIndexed { index, text ->
+            if (index > 0) Text(" > ")
+            Text(text)
+        }
+    }
+}
+
+private fun computeCategoryPathTitles(
+    categoryId: Long,
+    rootCategories: List<io.github.kdroidfilter.seforimlibrary.core.models.Category>,
+    categoryChildren: Map<Long, List<io.github.kdroidfilter.seforimlibrary.core.models.Category>>
+): List<String> {
+    fun findPath(current: io.github.kdroidfilter.seforimlibrary.core.models.Category, targetId: Long): List<io.github.kdroidfilter.seforimlibrary.core.models.Category> {
+        if (current.id == targetId) return listOf(current)
+        val children = categoryChildren[current.id] ?: return emptyList()
+        for (child in children) {
+            val path = findPath(child, targetId)
+            if (path.isNotEmpty()) return listOf(current) + path
+        }
+        return emptyList()
+    }
+    rootCategories.forEach { root ->
+        val path = findPath(root, categoryId)
+        if (path.isNotEmpty()) return path.map { it.title }
+    }
+    return emptyList()
+}
+
+private fun computeBookPathTitles(
+    book: io.github.kdroidfilter.seforimlibrary.core.models.Book,
+    rootCategories: List<io.github.kdroidfilter.seforimlibrary.core.models.Category>,
+    categoryChildren: Map<Long, List<io.github.kdroidfilter.seforimlibrary.core.models.Category>>
+): List<String> {
+    val catPath = computeCategoryPathTitles(book.categoryId, rootCategories, categoryChildren)
+    return catPath + book.title
 }
 
 @Composable

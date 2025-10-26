@@ -245,6 +245,7 @@
     <string name="breadcrumb_separator"> &gt; </string>
     <string name="chevron_icon_description">חץ</string>
     <string name="search_icon_description">חיפוש</string>
+    <string name="search_load_more">טען תוצאות נוספות</string>
 
 
 </resources>

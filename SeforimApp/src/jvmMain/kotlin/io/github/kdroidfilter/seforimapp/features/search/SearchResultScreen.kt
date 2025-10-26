@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -28,6 +30,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.DefaultButton
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.collect
@@ -40,12 +43,19 @@ import seforimapp.seforimapp.generated.resources.search_no_results
 import seforimapp.seforimapp.generated.resources.search_results_for
 import seforimapp.seforimapp.generated.resources.search_scope
 import seforimapp.seforimapp.generated.resources.search_searching
+import seforimapp.seforimapp.generated.resources.search_load_more
 
 @Composable
 fun SearchResultScreen(viewModel: SearchResultViewModel) {
     val state = viewModel.uiState.collectAsState().value
     val listState = rememberLazyListState()
-    val textSize = state.textSize
+    // Match commentaries size (BookContent uses ~0.875x of main text)
+    val baseSize = state.textSize
+    val commentSize by animateFloatAsState(
+        targetValue = baseSize * 0.875f,
+        animationSpec = tween(durationMillis = 200),
+        label = "searchCommentTextSizeAnim"
+    )
 
     // Persist scroll/anchor as the user scrolls (disabled while loading)
     LaunchedEffect(listState) {
@@ -92,8 +102,8 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
                     state.scopeBook?.let { add(it.title) }
                 }
                 pieces.forEachIndexed { index, piece ->
-                    if (index > 0) Text(text = stringResource(Res.string.breadcrumb_separator), color = JewelTheme.globalColors.text.disabled, fontSize = textSize.sp)
-                    Text(text = piece, fontSize = textSize.sp)
+                    if (index > 0) Text(text = stringResource(Res.string.breadcrumb_separator), color = JewelTheme.globalColors.text.disabled, fontSize = commentSize.sp)
+                    Text(text = piece, fontSize = commentSize.sp)
                 }
             }
         }
@@ -103,7 +113,7 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
             text = stringResource(Res.string.search_near_label, state.near),
             color = JewelTheme.globalColors.text.info,
             modifier = Modifier.padding(bottom = 8.dp),
-            fontSize = textSize.sp
+            fontSize = commentSize.sp
         )
 
         // Results list
@@ -116,11 +126,11 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
             if (state.results.isEmpty()) {
                 if (state.isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(stringResource(Res.string.search_searching), fontSize = textSize.sp)
+                        Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
                     }
                 } else {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = stringResource(Res.string.search_no_results), fontSize = textSize.sp)
+                        Text(text = stringResource(Res.string.search_no_results), fontSize = commentSize.sp)
                     }
                 }
             } else {
@@ -133,13 +143,29 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
                             title = null,
                             badgeText = result.bookTitle,
                             snippet = result.snippet,
-                            textSize = textSize,
+                            textSize = commentSize,
                             onClick = { viewModel.openResult(result) })
                     }
                     if (state.isLoading) {
                         item {
                             Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                                Text(stringResource(Res.string.search_searching), fontSize = textSize.sp)
+                                Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
+                            }
+                        }
+                    }
+                    if (state.hasMore && !state.isLoading && !state.isLoadingMore) {
+                        item {
+                            Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                                DefaultButton(onClick = { viewModel.loadMore() }) {
+                                    Text(stringResource(Res.string.search_load_more), fontSize = commentSize.sp)
+                                }
+                            }
+                        }
+                    }
+                    if (state.isLoadingMore) {
+                        item {
+                            Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                                Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
                             }
                         }
                     }

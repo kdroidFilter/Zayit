@@ -33,7 +33,9 @@ data class SearchUiState(
     val anchorId: Long = -1L,
     val anchorIndex: Int = 0,
     val scrollToAnchorTimestamp: Long = 0L,
-    val textSize: Float = AppSettings.DEFAULT_TEXT_SIZE
+    val textSize: Float = AppSettings.DEFAULT_TEXT_SIZE,
+    val hasMore: Boolean = false,
+    val isLoadingMore: Boolean = false
 )
 
 class SearchResultViewModel(
@@ -51,6 +53,12 @@ class SearchResultViewModel(
 
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
+
+    // Pagination cursors/state
+    private var currentKey: io.github.kdroidfilter.seforimapp.features.search.SearchParamsKey? = null
+    private var nextOffset: Int = 0 // for global/book
+    private var allowedBooks: List<Long> = emptyList()
+    private val perBookOffset: MutableMap<Long, Int> = mutableMapOf()
 
     init {
         val initialQuery = savedStateHandle.get<String>("searchQuery")
@@ -94,7 +102,7 @@ class SearchResultViewModel(
         val q = _uiState.value.query.trim()
         if (q.isBlank()) return
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, results = emptyList())
+            _uiState.value = _uiState.value.copy(isLoading = true, results = emptyList(), hasMore = false)
             stateManager.saveState(tabId, SearchStateKeys.QUERY, q)
             try {
                 val near = _uiState.value.near
@@ -107,6 +115,10 @@ class SearchResultViewModel(
                     filterCategoryId = filterCategoryId,
                     filterBookId = filterBookId
                 )
+                currentKey = key
+                nextOffset = 0
+                allowedBooks = emptyList()
+                perBookOffset.clear()
 
                 // If we have a full cached list, load it immediately.
                 cache.get(key)?.let { cached ->
@@ -123,6 +135,7 @@ class SearchResultViewModel(
                         scopeCategoryPath = scopePath,
                         scopeBook = scopeBook,
                         isLoading = false,
+                        hasMore = true, // cached implies prior full fetch; allow loading more
                         scrollToAnchorTimestamp = System.currentTimeMillis()
                     )
                     return@launch
@@ -163,6 +176,7 @@ class SearchResultViewModel(
                             offset += page.size
                             emitUpdate()
                         }
+                        nextOffset = offset
                     }
                     filterCategoryId != null && filterCategoryId > 0 -> {
                         val allowed = collectBookIdsUnderCategory(filterCategoryId).toList()
@@ -173,9 +187,11 @@ class SearchResultViewModel(
                             val page = repository.searchInBookWithOperators(book, fts, limit = minOf(BATCH, remaining), offset = 0)
                             if (page.isNotEmpty()) {
                                 acc += page
+                                perBookOffset[book] = page.size
                                 emitUpdate()
                             }
                         }
+                        allowedBooks = allowed
                     }
                     else -> {
                         var offset = 0
@@ -187,14 +203,111 @@ class SearchResultViewModel(
                             offset += page.size
                             emitUpdate()
                         }
+                        nextOffset = offset
                     }
                 }
 
                 // Cache final results
                 cache.put(key, acc.toList())
 
+                // Determine if more results likely exist: only if we reached MAX_TOTAL
+                val hasMore = acc.size >= MAX_TOTAL
+                _uiState.value = _uiState.value.copy(hasMore = hasMore)
+
             } finally {
                 _uiState.value = _uiState.value.copy(isLoading = false)
+            }
+        }
+    }
+
+    fun loadMore() {
+        val key = currentKey ?: return
+        // guard against concurrent loads
+        if (_uiState.value.isLoading || _uiState.value.isLoadingMore) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingMore = true)
+            try {
+                val BATCH = 20
+                val ADDITIONAL = 200
+                val acc = _uiState.value.results.toMutableList()
+                val fts = buildNearQuery(_uiState.value.query.trim(), _uiState.value.near)
+
+                var added = 0
+                val filterCategoryId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_CATEGORY_ID)
+                val filterBookId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)
+
+                suspend fun emitUpdate() {
+                    _uiState.value = _uiState.value.copy(
+                        results = acc.toList(),
+                        scrollToAnchorTimestamp = System.currentTimeMillis()
+                    )
+                }
+
+                when {
+                    filterBookId != null && filterBookId > 0 -> {
+                        var offset = nextOffset
+                        while (added < ADDITIONAL) {
+                            val remaining = ADDITIONAL - added
+                            val page = repository.searchInBookWithOperators(filterBookId, fts, limit = minOf(BATCH, remaining), offset = offset)
+                            if (page.isEmpty()) break
+                            acc += page
+                            offset += page.size
+                            added += page.size
+                            emitUpdate()
+                        }
+                        nextOffset = offset
+                    }
+                    filterCategoryId != null && filterCategoryId > 0 -> {
+                        if (allowedBooks.isEmpty()) {
+                            allowedBooks = collectBookIdsUnderCategory(filterCategoryId).toList()
+                        }
+                        if (perBookOffset.isEmpty()) {
+                            allowedBooks.forEach { perBookOffset[it] = 0 }
+                        }
+                        // Round-robin over books
+                        var progressed: Boolean
+                        do {
+                            progressed = false
+                            for (book in allowedBooks) {
+                                if (added >= ADDITIONAL) break
+                                val offset = perBookOffset[book] ?: 0
+                                val remaining = ADDITIONAL - added
+                                val page = repository.searchInBookWithOperators(book, fts, limit = minOf(BATCH, remaining), offset = offset)
+                                if (page.isNotEmpty()) {
+                                    acc += page
+                                    perBookOffset[book] = offset + page.size
+                                    added += page.size
+                                    progressed = true
+                                    emitUpdate()
+                                }
+                            }
+                        } while (progressed && added < ADDITIONAL)
+                    }
+                    else -> {
+                        var offset = nextOffset
+                        while (added < ADDITIONAL) {
+                            val remaining = ADDITIONAL - added
+                            val page = repository.searchWithOperators(fts, limit = minOf(BATCH, remaining), offset = offset)
+                            if (page.isEmpty()) break
+                            acc += page
+                            offset += page.size
+                            added += page.size
+                            emitUpdate()
+                        }
+                        nextOffset = offset
+                    }
+                }
+
+                // Update cache with expanded list
+                cache.put(key, acc.toList())
+                // Update hasMore: only if we fully added 200 more
+                val hasMore = added >= ADDITIONAL
+                _uiState.value = _uiState.value.copy(
+                    results = acc.toList(),
+                    hasMore = hasMore
+                )
+            } finally {
+                _uiState.value = _uiState.value.copy(isLoadingMore = false)
             }
         }
     }

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 data class SearchUiState(
     val query: String = "",
@@ -38,7 +39,8 @@ class SearchResultViewModel(
     private val stateManager: TabStateManager,
     private val repository: SeforimRepository,
     private val navigator: Navigator,
-    private val titleUpdateManager: TabTitleUpdateManager
+    private val titleUpdateManager: TabTitleUpdateManager,
+    private val cache: io.github.kdroidfilter.seforimapp.features.search.SearchResultsCache
 ) : TabAwareViewModel(
     tabId = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: "",
     stateManager = stateManager
@@ -85,26 +87,37 @@ class SearchResultViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true)
             stateManager.saveState(tabId, SearchStateKeys.QUERY, q)
             try {
-                val fts = buildNearQuery(q, _uiState.value.near)
-
+                val near = _uiState.value.near
                 val filterCategoryId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_CATEGORY_ID)
                 val filterBookId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)
 
-                val results = when {
-                    filterBookId != null && filterBookId > 0 ->
-                        repository.searchInBookWithOperators(filterBookId, fts, limit = 200)
-                    filterCategoryId != null && filterCategoryId > 0 -> {
-                        // Include all descendant categories by aggregating per-book searches,
-                        // to avoid any mismatch with global FTS filtering.
-                        val allowed = collectBookIdsUnderCategory(filterCategoryId)
-                        val perBook = allowed.take(200) // safety cap
-                            .map { id -> repository.searchInBookWithOperators(id, fts, limit = 200) }
-                        perBook.flatten()
-                    }
-                    else -> repository.searchWithOperators(fts, limit = 200)
-                }
+                val key = io.github.kdroidfilter.seforimapp.features.search.SearchParamsKey(
+                    query = q,
+                    near = near,
+                    filterCategoryId = filterCategoryId,
+                    filterBookId = filterBookId
+                )
 
-                val finalResults = results
+                val cached = cache.get(key)
+                val results = if (cached != null) {
+                    cached
+                } else {
+                    val fts = buildNearQuery(q, near)
+                    val res = when {
+                        filterBookId != null && filterBookId > 0 ->
+                            repository.searchInBookWithOperators(filterBookId, fts, limit = 200)
+                        filterCategoryId != null && filterCategoryId > 0 -> {
+                            val allowed = collectBookIdsUnderCategory(filterCategoryId)
+                            val perBook = allowed.take(200).map { id ->
+                                repository.searchInBookWithOperators(id, fts, limit = 200)
+                            }
+                            perBook.flatten()
+                        }
+                        else -> repository.searchWithOperators(fts, limit = 200)
+                    }
+                    cache.put(key, res)
+                    res
+                }
 
                 val scopePath = when {
                     filterCategoryId != null && filterCategoryId > 0 -> buildCategoryPath(filterCategoryId)
@@ -116,10 +129,9 @@ class SearchResultViewModel(
                 }
 
                 _uiState.value = _uiState.value.copy(
-                    results = finalResults,
+                    results = results,
                     scopeCategoryPath = scopePath,
                     scopeBook = scopeBook,
-                    // Trigger UI to restore scroll/anchor after results arrive
                     scrollToAnchorTimestamp = System.currentTimeMillis()
                 )
             } finally {
@@ -167,7 +179,7 @@ class SearchResultViewModel(
     fun openResult(result: SearchResult) {
         viewModelScope.launch {
             // Pre-initialize new BookContent tab with selected book and anchor to reduce flicker
-            val newTabId = java.util.UUID.randomUUID().toString()
+            val newTabId = UUID.randomUUID().toString()
             repository.getBook(result.bookId)?.let { book ->
                 stateManager.saveState(newTabId, StateKeys.SELECTED_BOOK, book)
             }

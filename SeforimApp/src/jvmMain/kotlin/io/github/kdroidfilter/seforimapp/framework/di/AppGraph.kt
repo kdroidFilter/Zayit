@@ -32,6 +32,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserPro
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
+import io.github.kdroidfilter.seforimapp.features.search.SearchResultsCache
 import java.util.UUID
 
 /**
@@ -50,6 +51,7 @@ abstract class AppGraph {
     abstract val repository: SeforimRepository
     abstract val tabsViewModel: TabsViewModel
     abstract val settingsViewModel: SettingsViewModel
+    abstract val searchResultsCache: SearchResultsCache
 
     abstract val typeOfInstallationViewModel: TypeOfInstallationViewModel
     abstract val downloadViewModel: DownloadViewModel
@@ -141,7 +143,8 @@ abstract class AppGraph {
             tabStateManager = tabStateManager,
             repository = repository,
             navigator = navigator,
-            titleUpdateManager = tabTitleUpdateManager
+            titleUpdateManager = tabTitleUpdateManager,
+            cache = searchResultsCache
         )
 
     @Provides
@@ -150,14 +153,20 @@ abstract class AppGraph {
         tabStateManager: TabStateManager,
         repository: SeforimRepository,
         navigator: Navigator,
-        titleUpdateManager: TabTitleUpdateManager
+        titleUpdateManager: TabTitleUpdateManager,
+        cache: SearchResultsCache
     ): SearchResultViewModel = SearchResultViewModel(
         savedStateHandle = savedStateHandle,
         stateManager = tabStateManager,
         repository = repository,
         navigator = navigator,
-        titleUpdateManager = titleUpdateManager
+        titleUpdateManager = titleUpdateManager,
+        cache = cache
     )
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideSearchResultsCache(): SearchResultsCache = SearchResultsCache(maxSize = 64)
 
     // Home search ViewModel (no SavedStateHandle; uses current tab from TabsViewModel)
     @Provides

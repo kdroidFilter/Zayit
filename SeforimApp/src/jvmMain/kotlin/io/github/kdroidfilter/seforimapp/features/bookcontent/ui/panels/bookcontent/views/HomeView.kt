@@ -96,45 +96,51 @@ fun HomeView(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.width(600.dp)
             ) {
-                    item {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            WelcomeUser(username = searchUi.userDisplayName)
-                        }
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        WelcomeUser(username = searchUi.userDisplayName)
                     }
-                    item {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            LogoImage()
-                        }
+                }
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        LogoImage()
                     }
-                    item {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            SearchBar(
-                                state = searchState,
-                                selectedFilter = searchUi.selectedFilter,
-                                onFilterChange = { searchVm.onFilterChange(it) },
-                                onSubmit = { launchSearch() }
-                            )
-                        }
+                }
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        SearchBar(
+                            state = searchState,
+                            selectedFilter = searchUi.selectedFilter,
+                            onFilterChange = { searchVm.onFilterChange(it) },
+                            onSubmit = { launchSearch() }
+                        )
                     }
-                    item {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            Column(
-                                modifier = Modifier.heightIn(min = 250.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                if (searchUi.selectedFilter == SearchFilter.TEXT) {
-                                SearchLevelsPanel(
-                                    selectedIndex = searchUi.selectedLevelIndex,
-                                    onSelectedIndexChange = { searchVm.onLevelIndexChange(it) }
-                                )
+                }
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Column(
+                            modifier = Modifier.heightIn(min = 250.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            if (searchUi.selectedFilter == SearchFilter.TEXT) {
                                 ReferenceByCategorySection(
                                     modifier,
                                     state = referenceSearchState,
                                     suggestionsVisible = searchUi.suggestionsVisible,
-                                    categorySuggestions = searchUi.categorySuggestions.map { cs -> CategorySuggestion(cs.category, cs.path) },
-                                    bookSuggestions = searchUi.bookSuggestions.map { bs -> BookSuggestion(bs.book, bs.path) },
-                                    
+                                    categorySuggestions = searchUi.categorySuggestions.map { cs ->
+                                        CategorySuggestion(
+                                            cs.category,
+                                            cs.path
+                                        )
+                                    },
+                                    bookSuggestions = searchUi.bookSuggestions.map { bs ->
+                                        BookSuggestion(
+                                            bs.book,
+                                            bs.path
+                                        )
+                                    },
+
                                     onSubmit = { launchSearch() },
                                     onPickCategory = { picked ->
                                         searchVm.onPickCategory(picked.category)
@@ -145,13 +151,17 @@ fun HomeView(
                                         referenceSearchState.edit { replace(0, length, picked.book.title) }
                                     }
                                 )
+                                SearchLevelsPanel(
+                                    selectedIndex = searchUi.selectedLevelIndex,
+                                    onSelectedIndexChange = { searchVm.onLevelIndexChange(it) }
+                                )
                             }
                         }
                     }
+                }
             }
         }
     }
-}
 }
 
 @Composable
@@ -163,9 +173,7 @@ private fun WelcomeUser(username: String) {
     )
 }
 
-/**
- * App logo shown on the Home screen.
- */
+/** App logo shown on the Home screen. */
 @Composable
 private fun LogoImage(modifier: Modifier = Modifier) {
     Image(
@@ -176,8 +184,8 @@ private fun LogoImage(modifier: Modifier = Modifier) {
 }
 
 /**
- * Panel showing the 5 text-search levels as selectable cards synchronized with a slider.
- * Encapsulates its own local selection state.
+ * Panel showing the 5 text-search levels as selectable cards synchronized
+ * with a slider. Encapsulates its own local selection state.
  */
 @Composable
 private fun SearchLevelsPanel(
@@ -294,6 +302,7 @@ private fun ReferenceByCategorySection(
             selectedFilter = SearchFilter.REFERENCE,
             onFilterChange = {},
             showToggle = false,
+            showIcon = false,
             modifier = Modifier.fillMaxWidth(1f),
             onSubmit = onSubmit
         )
@@ -356,7 +365,10 @@ private fun SuggestionRow(parts: List<String>, onClick: () -> Unit) {
             .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         parts.forEachIndexed { index, text ->
-            if (index > 0) Text(stringResource(Res.string.breadcrumb_separator), color = JewelTheme.globalColors.text.disabled)
+            if (index > 0) Text(
+                stringResource(Res.string.breadcrumb_separator),
+                color = JewelTheme.globalColors.text.disabled
+            )
             Text(text, color = JewelTheme.globalColors.text.normal)
         }
     }
@@ -369,6 +381,7 @@ private fun SearchBar(
     onFilterChange: (SearchFilter) -> Unit,
     modifier: Modifier = Modifier,
     showToggle: Boolean = true,
+    showIcon: Boolean = true,
     onSubmit: () -> Unit = {}
 ) {
     // Hints from string resources
@@ -429,7 +442,8 @@ private fun SearchBar(
             )
         }) else null,
         leadingIcon = {
-            IconButton({onSubmit()}) {
+            if (!showIcon) return@TextField
+            IconButton({ onSubmit() }) {
                 Icon(
                     key = AllIconsKeys.Actions.Find,
                     contentDescription = stringResource(Res.string.search_icon_description),

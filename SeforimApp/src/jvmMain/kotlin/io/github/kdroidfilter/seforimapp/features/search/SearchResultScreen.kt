@@ -10,6 +10,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -55,16 +59,18 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
             }
     }
 
-    // Restore scroll/anchor when results arrive or when signaled by timestamp
-    LaunchedEffect(state.scrollToAnchorTimestamp, state.results, state.isLoading) {
-        if (!state.isLoading && state.results.isNotEmpty()) {
+    // Restore scroll/anchor as soon as the anchor is available (even while loading)
+    var hasRestored by remember { mutableStateOf(false) }
+    LaunchedEffect(state.scrollToAnchorTimestamp, state.results) {
+        if (!hasRestored && state.results.isNotEmpty()) {
             val anchorIdx = if (state.anchorId > 0) {
                 state.results.indexOfFirst { it.lineId == state.anchorId }.takeIf { it >= 0 }
             } else null
             val targetIndex = anchorIdx ?: state.scrollIndex
-            val targetOffset = if (anchorIdx != null) state.scrollOffset else state.scrollOffset
+            val targetOffset = state.scrollOffset
             if (targetIndex >= 0) {
                 listState.scrollToItem(targetIndex, targetOffset)
+                hasRestored = true
             }
         }
     }
@@ -107,31 +113,34 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
                 .padding(horizontal = 32.dp)
                 .background(JewelTheme.globalColors.panelBackground)
         ) {
-            when {
-                state.isLoading -> {
+            if (state.results.isEmpty()) {
+                if (state.isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(stringResource(Res.string.search_searching), fontSize = textSize.sp)
                     }
-                }
-
-                state.results.isEmpty() -> {
+                } else {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(text = stringResource(Res.string.search_no_results), fontSize = textSize.sp)
                     }
                 }
-
-                else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(state.results) { result ->
-                            ResultRow(
-                                title = null,
-                                badgeText = result.bookTitle,
-                                snippet = result.snippet,
-                                textSize = textSize,
-                                onClick = { viewModel.openResult(result) })
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(state.results) { result ->
+                        ResultRow(
+                            title = null,
+                            badgeText = result.bookTitle,
+                            snippet = result.snippet,
+                            textSize = textSize,
+                            onClick = { viewModel.openResult(result) })
+                    }
+                    if (state.isLoading) {
+                        item {
+                            Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                                Text(stringResource(Res.string.search_searching), fontSize = textSize.sp)
+                            }
                         }
                     }
                 }

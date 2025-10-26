@@ -94,7 +94,7 @@ class SearchResultViewModel(
         val q = _uiState.value.query.trim()
         if (q.isBlank()) return
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, results = emptyList())
             stateManager.saveState(tabId, SearchStateKeys.QUERY, q)
             try {
                 val near = _uiState.value.near
@@ -108,27 +108,32 @@ class SearchResultViewModel(
                     filterBookId = filterBookId
                 )
 
-                val cached = cache.get(key)
-                val results = if (cached != null) {
-                    cached
-                } else {
-                    val fts = buildNearQuery(q, near)
-                    val res = when {
-                        filterBookId != null && filterBookId > 0 ->
-                            repository.searchInBookWithOperators(filterBookId, fts, limit = 200)
-                        filterCategoryId != null && filterCategoryId > 0 -> {
-                            val allowed = collectBookIdsUnderCategory(filterCategoryId)
-                            val perBook = allowed.take(200).map { id ->
-                                repository.searchInBookWithOperators(id, fts, limit = 200)
-                            }
-                            perBook.flatten()
-                        }
-                        else -> repository.searchWithOperators(fts, limit = 200)
+                // If we have a full cached list, load it immediately.
+                cache.get(key)?.let { cached ->
+                    val scopePath = when {
+                        filterCategoryId != null && filterCategoryId > 0 -> buildCategoryPath(filterCategoryId)
+                        else -> emptyList()
                     }
-                    cache.put(key, res)
-                    res
+                    val scopeBook = when {
+                        filterBookId != null && filterBookId > 0 -> repository.getBook(filterBookId)
+                        else -> null
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        results = cached,
+                        scopeCategoryPath = scopePath,
+                        scopeBook = scopeBook,
+                        isLoading = false,
+                        scrollToAnchorTimestamp = System.currentTimeMillis()
+                    )
+                    return@launch
                 }
 
+                val fts = buildNearQuery(q, near)
+                val acc = mutableListOf<SearchResult>()
+                val BATCH = 20
+                val MAX_TOTAL = 200
+
+                // Populate scope meta once
                 val scopePath = when {
                     filterCategoryId != null && filterCategoryId > 0 -> buildCategoryPath(filterCategoryId)
                     else -> emptyList()
@@ -138,12 +143,56 @@ class SearchResultViewModel(
                     else -> null
                 }
 
-                _uiState.value = _uiState.value.copy(
-                    results = results,
-                    scopeCategoryPath = scopePath,
-                    scopeBook = scopeBook,
-                    scrollToAnchorTimestamp = System.currentTimeMillis()
-                )
+                suspend fun emitUpdate() {
+                    _uiState.value = _uiState.value.copy(
+                        results = acc.toList(),
+                        scopeCategoryPath = scopePath,
+                        scopeBook = scopeBook,
+                        // signal UI to try restoration (e.g., if anchor just became available)
+                        scrollToAnchorTimestamp = System.currentTimeMillis()
+                    )
+                }
+
+                when {
+                    filterBookId != null && filterBookId > 0 -> {
+                        var offset = 0
+                        while (acc.size < MAX_TOTAL) {
+                            val page = repository.searchInBookWithOperators(filterBookId, fts, limit = BATCH, offset = offset)
+                            if (page.isEmpty()) break
+                            acc += page
+                            offset += page.size
+                            emitUpdate()
+                        }
+                    }
+                    filterCategoryId != null && filterCategoryId > 0 -> {
+                        val allowed = collectBookIdsUnderCategory(filterCategoryId).toList()
+                        // One pass: fetch first page per book, append progressively
+                        for (book in allowed) {
+                            if (acc.size >= MAX_TOTAL) break
+                            val remaining = MAX_TOTAL - acc.size
+                            val page = repository.searchInBookWithOperators(book, fts, limit = minOf(BATCH, remaining), offset = 0)
+                            if (page.isNotEmpty()) {
+                                acc += page
+                                emitUpdate()
+                            }
+                        }
+                    }
+                    else -> {
+                        var offset = 0
+                        while (acc.size < MAX_TOTAL) {
+                            val remaining = MAX_TOTAL - acc.size
+                            val page = repository.searchWithOperators(fts, limit = minOf(BATCH, remaining), offset = offset)
+                            if (page.isEmpty()) break
+                            acc += page
+                            offset += page.size
+                            emitUpdate()
+                        }
+                    }
+                }
+
+                // Cache final results
+                cache.put(key, acc.toList())
+
             } finally {
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }

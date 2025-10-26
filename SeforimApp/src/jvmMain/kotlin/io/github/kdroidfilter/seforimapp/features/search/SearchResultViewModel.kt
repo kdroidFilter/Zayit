@@ -24,7 +24,13 @@ data class SearchUiState(
     val isLoading: Boolean = false,
     val results: List<SearchResult> = emptyList(),
     val scopeCategoryPath: List<Category> = emptyList(),
-    val scopeBook: Book? = null
+    val scopeBook: Book? = null,
+    // Scroll/anchor persistence
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0,
+    val anchorId: Long = -1L,
+    val anchorIndex: Int = 0,
+    val scrollToAnchorTimestamp: Long = 0L
 )
 
 class SearchResultViewModel(
@@ -47,7 +53,18 @@ class SearchResultViewModel(
             ?: stateManager.getState<String>(tabId, SearchStateKeys.QUERY)
             ?: ""
         val initialNear = stateManager.getState<Int>(tabId, SearchStateKeys.NEAR) ?: 5
-        _uiState.value = _uiState.value.copy(query = initialQuery, near = initialNear)
+        val initialScrollIndex = stateManager.getState<Int>(tabId, SearchStateKeys.SCROLL_INDEX) ?: 0
+        val initialScrollOffset = stateManager.getState<Int>(tabId, SearchStateKeys.SCROLL_OFFSET) ?: 0
+        val initialAnchorId = stateManager.getState<Long>(tabId, SearchStateKeys.ANCHOR_ID) ?: -1L
+        val initialAnchorIndex = stateManager.getState<Int>(tabId, SearchStateKeys.ANCHOR_INDEX) ?: 0
+        _uiState.value = _uiState.value.copy(
+            query = initialQuery,
+            near = initialNear,
+            scrollIndex = initialScrollIndex,
+            scrollOffset = initialScrollOffset,
+            anchorId = initialAnchorId,
+            anchorIndex = initialAnchorIndex
+        )
 
         // Update tab title to the query (TabsViewModel also handles initial title)
         if (initialQuery.isNotBlank()) {
@@ -101,12 +118,29 @@ class SearchResultViewModel(
                 _uiState.value = _uiState.value.copy(
                     results = finalResults,
                     scopeCategoryPath = scopePath,
-                    scopeBook = scopeBook
+                    scopeBook = scopeBook,
+                    // Trigger UI to restore scroll/anchor after results arrive
+                    scrollToAnchorTimestamp = System.currentTimeMillis()
                 )
             } finally {
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
+    }
+
+    fun onScroll(anchorId: Long, anchorIndex: Int, index: Int, offset: Int) {
+        // Save to TabStateManager for persistence
+        stateManager.saveState(tabId, SearchStateKeys.SCROLL_INDEX, index)
+        stateManager.saveState(tabId, SearchStateKeys.SCROLL_OFFSET, offset)
+        stateManager.saveState(tabId, SearchStateKeys.ANCHOR_ID, anchorId)
+        stateManager.saveState(tabId, SearchStateKeys.ANCHOR_INDEX, anchorIndex)
+
+        _uiState.value = _uiState.value.copy(
+            scrollIndex = index,
+            scrollOffset = offset,
+            anchorId = anchorId,
+            anchorIndex = anchorIndex
+        )
     }
 
     private suspend fun collectBookIdsUnderCategory(categoryId: Long): Set<Long> {

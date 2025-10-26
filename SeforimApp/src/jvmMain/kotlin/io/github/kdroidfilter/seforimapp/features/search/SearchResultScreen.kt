@@ -200,8 +200,8 @@ private fun ResultRow(
                     Text(text = title, color = JewelTheme.globalColors.text.normal, fontSize = textSize.sp)
                     Spacer(Modifier.height(4.dp))
                 }
-                val annotated: AnnotatedString = buildAnnotatedFromHtml(snippet, baseTextSize = textSize)
-                Text(text = annotated, fontSize = textSize.sp)
+                val annotated: AnnotatedString = buildAnnotatedFromHtml(snippet, baseTextSize = 13f)
+                Text(text = annotated)
             }
             Spacer(Modifier.width(8.dp))
             Box(

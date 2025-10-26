@@ -145,23 +145,15 @@ class SearchResultViewModel(
                 }
             }
             filterCategoryId != null && filterCategoryId > 0 -> {
-                if (allowedBooks.isEmpty()) allowedBooks = collectBookIdsUnderCategory(filterCategoryId).toList()
-                if (perBookOffset.isEmpty()) allowedBooks.forEach { perBookOffset[it] = 0 }
-                var progressed: Boolean
-                do {
-                    progressed = false
-                    for (book in allowedBooks) {
-                        if (acc.size >= MAX_TOTAL) break
-                        val offset = perBookOffset[book] ?: 0
-                        val page = repository.searchInBookWithOperators(book, fts, limit = BATCH, offset = offset)
-                        if (page.isNotEmpty()) {
-                            acc += page
-                            perBookOffset[book] = offset + page.size
-                            progressed = true
-                            emitUpdate()
-                        }
-                    }
-                } while (progressed && acc.size < MAX_TOTAL)
+                var offset = nextOffset
+                while (acc.size < MAX_TOTAL) {
+                    val page = repository.searchInCategoryWithOperators(filterCategoryId, fts, limit = BATCH, offset = offset)
+                    if (page.isEmpty()) break
+                    acc += page
+                    offset += page.size
+                    nextOffset = offset
+                    emitUpdate()
+                }
             }
             else -> {
                 var offset = nextOffset
@@ -291,19 +283,18 @@ class SearchResultViewModel(
                         nextOffset = offset
                     }
                     filterCategoryId != null && filterCategoryId > 0 -> {
-                        val allowed = collectBookIdsUnderCategory(filterCategoryId).toList()
-                        // One pass: fetch first page per book, append progressively
-                        for (book in allowed) {
-                            if (acc.size >= MAX_TOTAL) break
+                        var offset = 0
+                        while (acc.size < MAX_TOTAL) {
                             val remaining = MAX_TOTAL - acc.size
-                            val page = repository.searchInBookWithOperators(book, fts, limit = minOf(BATCH, remaining), offset = 0)
-                            if (page.isNotEmpty()) {
-                                acc += page
-                                perBookOffset[book] = page.size
-                                emitUpdate()
-                            }
+                            val page = repository.searchInCategoryWithOperators(filterCategoryId, fts, limit = minOf(BATCH, remaining), offset = offset)
+                            if (page.isEmpty()) break
+                            acc += page
+                            offset += page.size
+                            emitUpdate()
                         }
-                        allowedBooks = allowed
+                        nextOffset = offset
+                        allowedBooks = emptyList()
+                        perBookOffset.clear()
                     }
                     else -> {
                         var offset = 0
@@ -385,30 +376,19 @@ class SearchResultViewModel(
                         nextOffset = offset
                     }
                     filterCategoryId != null && filterCategoryId > 0 -> {
-                        if (allowedBooks.isEmpty()) {
-                            allowedBooks = collectBookIdsUnderCategory(filterCategoryId).toList()
+                        var offset = nextOffset
+                        while (added < ADDITIONAL) {
+                            val remaining = ADDITIONAL - added
+                            val page = repository.searchInCategoryWithOperators(filterCategoryId, fts, limit = minOf(BATCH, remaining), offset = offset)
+                            if (page.isEmpty()) break
+                            acc += page
+                            offset += page.size
+                            added += page.size
+                            emitUpdate()
                         }
-                        if (perBookOffset.isEmpty()) {
-                            allowedBooks.forEach { perBookOffset[it] = 0 }
-                        }
-                        // Round-robin over books
-                        var progressed: Boolean
-                        do {
-                            progressed = false
-                            for (book in allowedBooks) {
-                                if (added >= ADDITIONAL) break
-                                val offset = perBookOffset[book] ?: 0
-                                val remaining = ADDITIONAL - added
-                                val page = repository.searchInBookWithOperators(book, fts, limit = minOf(BATCH, remaining), offset = offset)
-                                if (page.isNotEmpty()) {
-                                    acc += page
-                                    perBookOffset[book] = offset + page.size
-                                    added += page.size
-                                    progressed = true
-                                    emitUpdate()
-                                }
-                            }
-                        } while (progressed && added < ADDITIONAL)
+                        nextOffset = offset
+                        allowedBooks = emptyList()
+                        perBookOffset.clear()
                     }
                     else -> {
                         var offset = nextOffset

@@ -45,7 +45,7 @@ class SearchResultViewModel(
     private val repository: SeforimRepository,
     private val navigator: Navigator,
     private val titleUpdateManager: TabTitleUpdateManager,
-    private val cache: io.github.kdroidfilter.seforimapp.features.search.SearchResultsCache,
+    private val cache: SearchResultsCache,
     private val tabsViewModel: TabsViewModel
 ) : TabAwareViewModel(
     tabId = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: "",
@@ -55,9 +55,10 @@ class SearchResultViewModel(
 
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
+    private var currentJob: kotlinx.coroutines.Job? = null
 
     // Pagination cursors/state
-    private var currentKey: io.github.kdroidfilter.seforimapp.features.search.SearchParamsKey? = null
+    private var currentKey: SearchParamsKey? = null
     private var nextOffset: Int = 0 // for global/book
     private var allowedBooks: List<Long> = emptyList()
     private val perBookOffset: MutableMap<Long, Int> = mutableMapOf()
@@ -107,6 +108,86 @@ class SearchResultViewModel(
         }
     }
 
+    private suspend fun continueInitialFetchFromCached() {
+        val key = currentKey ?: return
+        val BATCH = 20
+        val MAX_TOTAL = 200
+        val filterCategoryId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_CATEGORY_ID)
+        val filterBookId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)
+        val fts = buildNearQuery(_uiState.value.query.trim(), _uiState.value.near)
+        val acc = _uiState.value.results.toMutableList()
+
+        suspend fun emitUpdate() {
+            _uiState.value = _uiState.value.copy(
+                results = acc.toList(),
+                scrollToAnchorTimestamp = System.currentTimeMillis()
+            )
+            cache.put(key, SearchCacheEntry(
+                results = acc.toList(),
+                nextOffset = nextOffset,
+                allowedBooks = allowedBooks,
+                perBookOffset = perBookOffset.toMap(),
+                hasMore = true
+            )
+            )
+        }
+
+        when {
+            filterBookId != null && filterBookId > 0 -> {
+                var offset = nextOffset
+                while (acc.size < MAX_TOTAL) {
+                    val page = repository.searchInBookWithOperators(filterBookId, fts, limit = BATCH, offset = offset)
+                    if (page.isEmpty()) break
+                    acc += page
+                    offset += page.size
+                    nextOffset = offset
+                    emitUpdate()
+                }
+            }
+            filterCategoryId != null && filterCategoryId > 0 -> {
+                if (allowedBooks.isEmpty()) allowedBooks = collectBookIdsUnderCategory(filterCategoryId).toList()
+                if (perBookOffset.isEmpty()) allowedBooks.forEach { perBookOffset[it] = 0 }
+                var progressed: Boolean
+                do {
+                    progressed = false
+                    for (book in allowedBooks) {
+                        if (acc.size >= MAX_TOTAL) break
+                        val offset = perBookOffset[book] ?: 0
+                        val page = repository.searchInBookWithOperators(book, fts, limit = BATCH, offset = offset)
+                        if (page.isNotEmpty()) {
+                            acc += page
+                            perBookOffset[book] = offset + page.size
+                            progressed = true
+                            emitUpdate()
+                        }
+                    }
+                } while (progressed && acc.size < MAX_TOTAL)
+            }
+            else -> {
+                var offset = nextOffset
+                while (acc.size < MAX_TOTAL) {
+                    val page = repository.searchWithOperators(fts, limit = BATCH, offset = offset)
+                    if (page.isEmpty()) break
+                    acc += page
+                    offset += page.size
+                    nextOffset = offset
+                    emitUpdate()
+                }
+            }
+        }
+
+        val hasMore = acc.size >= MAX_TOTAL
+        _uiState.value = _uiState.value.copy(hasMore = hasMore, isLoading = false)
+        cache.put(key, SearchCacheEntry(
+            results = acc.toList(),
+            nextOffset = nextOffset,
+            allowedBooks = allowedBooks,
+            perBookOffset = perBookOffset.toMap(),
+            hasMore = hasMore
+        )
+        )
+    }
+
     fun setNear(near: Int) {
         _uiState.value = _uiState.value.copy(near = near)
         stateManager.saveState(tabId, SearchStateKeys.NEAR, near)
@@ -124,7 +205,7 @@ class SearchResultViewModel(
                 val filterCategoryId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_CATEGORY_ID)
                 val filterBookId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)
 
-                val key = io.github.kdroidfilter.seforimapp.features.search.SearchParamsKey(
+                val key = SearchParamsKey(
                     query = q,
                     near = near,
                     filterCategoryId = filterCategoryId,
@@ -135,8 +216,13 @@ class SearchResultViewModel(
                 allowedBooks = emptyList()
                 perBookOffset.clear()
 
-                // If we have a full cached list, load it immediately.
-                cache.get(key)?.let { cached ->
+                // If we have cached partial/full results, resume from there
+                cache.get(key)?.let { entry ->
+                    currentKey = key
+                    nextOffset = entry.nextOffset
+                    allowedBooks = entry.allowedBooks
+                    perBookOffset.clear(); perBookOffset.putAll(entry.perBookOffset)
+
                     val scopePath = when {
                         filterCategoryId != null && filterCategoryId > 0 -> buildCategoryPath(filterCategoryId)
                         else -> emptyList()
@@ -146,13 +232,16 @@ class SearchResultViewModel(
                         else -> null
                     }
                     _uiState.value = _uiState.value.copy(
-                        results = cached,
+                        results = entry.results,
                         scopeCategoryPath = scopePath,
                         scopeBook = scopeBook,
-                        isLoading = false,
-                        hasMore = true, // cached implies prior full fetch; allow loading more
+                        isLoading = entry.hasMore,
+                        hasMore = entry.hasMore,
                         scrollToAnchorTimestamp = System.currentTimeMillis()
                     )
+                    if (entry.hasMore) {
+                        continueInitialFetchFromCached()
+                    }
                     return@launch
                 }
 
@@ -178,6 +267,14 @@ class SearchResultViewModel(
                         scopeBook = scopeBook,
                         // signal UI to try restoration (e.g., if anchor just became available)
                         scrollToAnchorTimestamp = System.currentTimeMillis()
+                    )
+                    cache.put(key, SearchCacheEntry(
+                        results = acc.toList(),
+                        nextOffset = nextOffset,
+                        allowedBooks = allowedBooks,
+                        perBookOffset = perBookOffset.toMap(),
+                        hasMore = true
+                    )
                     )
                 }
 
@@ -222,11 +319,17 @@ class SearchResultViewModel(
                     }
                 }
 
-                // Cache final results
-                cache.put(key, acc.toList())
-
                 // Determine if more results likely exist: only if we reached MAX_TOTAL
                 val hasMore = acc.size >= MAX_TOTAL
+                // Cache final results
+                cache.put(key, SearchCacheEntry(
+                    results = acc.toList(),
+                    nextOffset = nextOffset,
+                    allowedBooks = allowedBooks,
+                    perBookOffset = perBookOffset.toMap(),
+                    hasMore = hasMore
+                )
+                )
                 _uiState.value = _uiState.value.copy(hasMore = hasMore)
 
             } finally {
@@ -256,6 +359,14 @@ class SearchResultViewModel(
                     _uiState.value = _uiState.value.copy(
                         results = acc.toList(),
                         scrollToAnchorTimestamp = System.currentTimeMillis()
+                    )
+                    cache.put(key, SearchCacheEntry(
+                        results = acc.toList(),
+                        nextOffset = nextOffset,
+                        allowedBooks = allowedBooks,
+                        perBookOffset = perBookOffset.toMap(),
+                        hasMore = true
+                    )
                     )
                 }
 
@@ -315,7 +426,14 @@ class SearchResultViewModel(
                 }
 
                 // Update cache with expanded list
-                cache.put(key, acc.toList())
+                cache.put(key, SearchCacheEntry(
+                    results = acc.toList(),
+                    nextOffset = nextOffset,
+                    allowedBooks = allowedBooks,
+                    perBookOffset = perBookOffset.toMap(),
+                    hasMore = added >= ADDITIONAL
+                )
+                )
                 // Update hasMore: only if we fully added 200 more
                 val hasMore = added >= ADDITIONAL
                 _uiState.value = _uiState.value.copy(
@@ -397,5 +515,3 @@ class SearchResultViewModel(
         return term.replace('"', ' ').trim()
     }
 }
-    // Track cancellable job for ongoing fetch
-    private var currentJob: kotlinx.coroutines.Job? = null

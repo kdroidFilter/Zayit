@@ -32,6 +32,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentS
 import io.github.kdroidfilter.seforimapp.icons.*
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
+import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
+import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -56,6 +58,10 @@ enum class SearchFilter() {
     REFERENCE,
     TEXT
 }
+
+// Suggestion models for the scope picker
+private data class CategorySuggestion(val category: Category, val path: List<String>)
+private data class BookSuggestion(val book: BookModel, val path: List<String>)
 
 data class SearchFilterCard(
     val icons: ImageVector,
@@ -87,9 +93,9 @@ fun HomeView(
             val searchState = remember { TextFieldState() }
             val referenceSearchState = remember { TextFieldState() }
             var scopeSelectedCategory by remember { mutableStateOf<io.github.kdroidfilter.seforimlibrary.core.models.Category?>(null) }
-            var scopeSelectedBook by remember { mutableStateOf<io.github.kdroidfilter.seforimlibrary.core.models.Book?>(null) }
-            var categorySuggestions by remember { mutableStateOf<List<io.github.kdroidfilter.seforimlibrary.core.models.Category>>(emptyList()) }
-            var bookSuggestions by remember { mutableStateOf<List<io.github.kdroidfilter.seforimlibrary.core.models.Book>>(emptyList()) }
+            var scopeSelectedBook by remember { mutableStateOf<BookModel?>(null) }
+            var categorySuggestions by remember { mutableStateOf<List<CategorySuggestion>>(emptyList()) }
+            var bookSuggestions by remember { mutableStateOf<List<BookSuggestion>>(emptyList()) }
             var showSuggestions by remember { mutableStateOf(false) }
             LaunchedEffect(Unit) {
                 snapshotFlow { referenceSearchState.text.toString() }
@@ -103,9 +109,38 @@ fun HomeView(
                             showSuggestions = false
                         } else {
                             val pattern = "%$q%"
-                            categorySuggestions = appGraph.repository.findCategoriesByTitleLike(pattern, limit = 12)
-                            bookSuggestions = appGraph.repository.findBooksByTitleLike(pattern, limit = 12)
-                            showSuggestions = categorySuggestions.isNotEmpty() || bookSuggestions.isNotEmpty()
+                            val repo = appGraph.repository
+                            suspend fun buildCategoryPathTitles(catId: Long): List<String> {
+                                val path = mutableListOf<String>()
+                                var currentId: Long? = catId
+                                val safety = 64
+                                var guard = 0
+                                while (currentId != null && guard++ < safety) {
+                                    val c = repo.getCategory(currentId) ?: break
+                                    path += c.title
+                                    currentId = c.parentId
+                                }
+                                return path.asReversed()
+                            }
+                            val catsRaw = repo
+                                .findCategoriesByTitleLike(pattern, limit = 12)
+                                .filter { it.title.isNotBlank() }
+                                .distinctBy { it.id }
+                            val cats = catsRaw.map { cat ->
+                                val path = buildCategoryPathTitles(cat.id)
+                                CategorySuggestion(cat, path.ifEmpty { listOf(cat.title) })
+                            }
+                            val booksRaw = repo
+                                .findBooksByTitleLike(pattern, limit = 12)
+                                .filter { it.title.isNotBlank() }
+                                .distinctBy { it.id }
+                            val books = booksRaw.map { book ->
+                                val catPath = buildCategoryPathTitles(book.categoryId)
+                                BookSuggestion(book, catPath + book.title)
+                            }
+                            categorySuggestions = cats
+                            bookSuggestions = books
+                            showSuggestions = cats.isNotEmpty() || books.isNotEmpty()
                         }
                     }
             }
@@ -190,19 +225,18 @@ fun HomeView(
                                     suggestionsVisible = showSuggestions,
                                     categorySuggestions = categorySuggestions,
                                     bookSuggestions = bookSuggestions,
-                                    categoryPathProvider = { cat -> computeCategoryPathTitles(cat.id, uiState.navigation.rootCategories, uiState.navigation.categoryChildren) },
-                                    bookPathProvider = { book -> computeBookPathTitles(book, uiState.navigation.rootCategories, uiState.navigation.categoryChildren) },
+                                    
                                     onSubmit = { launchSearch() },
                                     onPickCategory = { picked ->
                                         scopeSelectedBook = null
-                                        scopeSelectedCategory = picked
-                                        referenceSearchState.edit { replace(0, length, picked.title) }
+                                        scopeSelectedCategory = picked.category
+                                        referenceSearchState.edit { replace(0, length, picked.category.title) }
                                         showSuggestions = false
                                     },
                                     onPickBook = { picked ->
                                         scopeSelectedCategory = null
-                                        scopeSelectedBook = picked
-                                        referenceSearchState.edit { replace(0, length, picked.title) }
+                                        scopeSelectedBook = picked.book
+                                        referenceSearchState.edit { replace(0, length, picked.book.title) }
                                         showSuggestions = false
                                     }
                                 )
@@ -272,7 +306,7 @@ private fun SearchLevelsPanel(
             Res.string.search_level_4_explanation
         ),
         SearchFilterCard(
-            Book,
+            io.github.kdroidfilter.seforimapp.icons.Book,
             Res.string.search_level_5_value,
             Res.string.search_level_5_description,
             Res.string.search_level_5_explanation
@@ -319,13 +353,11 @@ private fun ReferenceByCategorySection(
     modifier: Modifier = Modifier,
     state: TextFieldState? = null,
     suggestionsVisible: Boolean = false,
-    categorySuggestions: List<io.github.kdroidfilter.seforimlibrary.core.models.Category> = emptyList(),
-    bookSuggestions: List<io.github.kdroidfilter.seforimlibrary.core.models.Book> = emptyList(),
-    categoryPathProvider: (io.github.kdroidfilter.seforimlibrary.core.models.Category) -> List<String> = { listOf(it.title) },
-    bookPathProvider: (io.github.kdroidfilter.seforimlibrary.core.models.Book) -> List<String> = { listOf(it.title) },
+    categorySuggestions: List<CategorySuggestion> = emptyList(),
+    bookSuggestions: List<BookSuggestion> = emptyList(),
     onSubmit: () -> Unit = {},
-    onPickCategory: (io.github.kdroidfilter.seforimlibrary.core.models.Category) -> Unit = {},
-    onPickBook: (io.github.kdroidfilter.seforimlibrary.core.models.Book) -> Unit = {}
+    onPickCategory: (CategorySuggestion) -> Unit = {},
+    onPickBook: (BookSuggestion) -> Unit = {}
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
@@ -365,8 +397,6 @@ private fun ReferenceByCategorySection(
             SuggestionsPanel(
                 categorySuggestions = categorySuggestions,
                 bookSuggestions = bookSuggestions,
-                categoryPathProvider = categoryPathProvider,
-                bookPathProvider = bookPathProvider,
                 onPickCategory = onPickCategory,
                 onPickBook = onPickBook
             )
@@ -376,12 +406,10 @@ private fun ReferenceByCategorySection(
 
 @Composable
 private fun SuggestionsPanel(
-    categorySuggestions: List<io.github.kdroidfilter.seforimlibrary.core.models.Category>,
-    bookSuggestions: List<io.github.kdroidfilter.seforimlibrary.core.models.Book>,
-    categoryPathProvider: (io.github.kdroidfilter.seforimlibrary.core.models.Category) -> List<String>,
-    bookPathProvider: (io.github.kdroidfilter.seforimlibrary.core.models.Book) -> List<String>,
-    onPickCategory: (io.github.kdroidfilter.seforimlibrary.core.models.Category) -> Unit,
-    onPickBook: (io.github.kdroidfilter.seforimlibrary.core.models.Book) -> Unit
+    categorySuggestions: List<CategorySuggestion>,
+    bookSuggestions: List<BookSuggestion>,
+    onPickCategory: (CategorySuggestion) -> Unit,
+    onPickBook: (BookSuggestion) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -397,14 +425,14 @@ private fun SuggestionsPanel(
         // Categories first
         categorySuggestions.forEach { cat ->
             SuggestionRow(
-                parts = remember(cat) { categoryPathProvider(cat) },
+                parts = cat.path,
                 onClick = { onPickCategory(cat) }
             )
         }
         // Then books
         bookSuggestions.forEach { book ->
             SuggestionRow(
-                parts = remember(book) { bookPathProvider(book) },
+                parts = book.path,
                 onClick = { onPickBook(book) }
             )
         }
@@ -423,8 +451,8 @@ private fun SuggestionRow(parts: List<String>, onClick: () -> Unit) {
             .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         parts.forEachIndexed { index, text ->
-            if (index > 0) Text(" > ")
-            Text(text)
+            if (index > 0) Text(" > ", color = JewelTheme.globalColors.text.disabled)
+            Text(text, color = JewelTheme.globalColors.text.normal)
         }
     }
 }

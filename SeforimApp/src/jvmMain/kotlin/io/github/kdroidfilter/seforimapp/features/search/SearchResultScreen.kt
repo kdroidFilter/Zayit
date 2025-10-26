@@ -82,7 +82,9 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        val hideBookTitle = state.scopeBook != null || state.scopeCategoryPath.isNotEmpty()
+                        // Hide the book title only when the scope is a single book.
+                        // When the scope is a category, keep the book title to disambiguate results.
+                        val hideBookTitle = state.scopeBook != null && state.scopeCategoryPath.isEmpty()
                         items(state.results) { result ->
                             ResultRow(
                                 title = if (hideBookTitle) null else result.bookTitle,

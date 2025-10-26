@@ -76,13 +76,18 @@ class SearchResultViewModel(
                 val results = when {
                     filterBookId != null && filterBookId > 0 ->
                         repository.searchInBookWithOperators(filterBookId, fts, limit = 200)
+                    filterCategoryId != null && filterCategoryId > 0 -> {
+                        // Include all descendant categories by aggregating per-book searches,
+                        // to avoid any mismatch with global FTS filtering.
+                        val allowed = collectBookIdsUnderCategory(filterCategoryId)
+                        val perBook = allowed.take(200) // safety cap
+                            .map { id -> repository.searchInBookWithOperators(id, fts, limit = 200) }
+                        perBook.flatten()
+                    }
                     else -> repository.searchWithOperators(fts, limit = 200)
                 }
 
-                val finalResults = if (filterCategoryId != null && filterCategoryId > 0) {
-                    val allowed = collectBookIdsUnderCategory(filterCategoryId)
-                    results.filter { it.bookId in allowed }
-                } else results
+                val finalResults = results
 
                 val scopePath = when {
                     filterCategoryId != null && filterCategoryId > 0 -> buildCategoryPath(filterCategoryId)

@@ -377,7 +377,7 @@ private fun LineItem(
     }
 
     // Get theme color in composable context
-    val borderColor = if (isSelected) JewelTheme.globalColors.borders.disabled else Color.Transparent
+    val borderColor = if (isSelected) JewelTheme.globalColors.outlines.focused else Color.Transparent
 
     val bringRequester = remember { BringIntoViewRequester() }
 

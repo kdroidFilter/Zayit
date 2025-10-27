@@ -8,6 +8,10 @@ import io.github.kdroidfilter.seforimapp.features.settings.Settings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforim.tabs.TabsDestination
+import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforim.tabs.TabStateManager
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.*
@@ -20,6 +24,9 @@ fun TitleBarActionsButtonsView() {
     // Use ViewModel-driven settings window visibility to respect MVVM conventions
     val settingsViewModel: SettingsViewModel = LocalAppGraph.current.settingsViewModel
     val settingsState = settingsViewModel.state.collectAsState().value
+
+    // Access app graph outside of callbacks to avoid reading CompositionLocals in non-composable contexts
+    val appGraph = LocalAppGraph.current
 
     val iconDescription = when (theme) {
         IntUiThemes.Light -> stringResource(Res.string.light_theme)
@@ -37,7 +44,23 @@ fun TitleBarActionsButtonsView() {
         contentDescription = stringResource(Res.string.home),
         onClick = {
             // Replace current tab destination with Home, preserving tabId
+            val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
+            val tabStateManager: TabStateManager = appGraph.tabStateManager
 
+            val tabs = tabsViewModel.tabs.value
+            val selectedIndex = tabsViewModel.selectedTabIndex.value
+            val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
+
+            if (currentTabId != null) {
+                // Clear book-specific persisted state so the Home view renders
+                tabStateManager.removeState(currentTabId, StateKeys.SELECTED_BOOK)
+                tabStateManager.removeState(currentTabId, StateKeys.SELECTED_LINE)
+                tabStateManager.removeState(currentTabId, StateKeys.CONTENT_ANCHOR_ID)
+                tabStateManager.removeState(currentTabId, StateKeys.CONTENT_ANCHOR_INDEX)
+
+                // Swap current tab to Home destination
+                tabsViewModel.replaceCurrentTabDestination(TabsDestination.Home(currentTabId))
+            }
         },
         tooltipText = stringResource(Res.string.home_tooltip),
     )

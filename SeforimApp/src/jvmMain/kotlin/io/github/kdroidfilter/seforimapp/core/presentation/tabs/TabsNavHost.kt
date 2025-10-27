@@ -72,6 +72,19 @@ fun TabsNavHost() {
         modifier = Modifier.trackActivation() .fillMaxSize().background(JewelTheme.globalColors.panelBackground),
     ) {
 
+        // Home destination renders the BookContent screen shell.
+        // Since no book is selected in state, the shell displays HomeView.
+        nonAnimatedComposable<TabsDestination.Home> { backStackEntry ->
+            val destination = backStackEntry.toRoute<TabsDestination.Home>()
+            // Pass the tabId to the savedStateHandle
+            backStackEntry.savedStateHandle["tabId"] = destination.tabId
+
+            val viewModel = remember(appGraph, destination) {
+                appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
+            }
+            BookContentScreen(viewModel)
+        }
+
         nonAnimatedComposable<TabsDestination.Search> { backStackEntry ->
             val destination = backStackEntry.toRoute<TabsDestination.Search>()
             // Pass the tabId and initial query to the savedStateHandle

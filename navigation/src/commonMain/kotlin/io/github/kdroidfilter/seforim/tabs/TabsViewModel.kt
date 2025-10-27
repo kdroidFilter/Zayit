@@ -175,7 +175,8 @@ class TabsViewModel(
     }
     private fun getTabTitle(destination: TabsDestination): String {
         return when (destination) {
-            is TabsDestination.Home -> "Home"
+            // For Home, return empty so UI can localize via resources
+            is TabsDestination.Home -> ""
             is TabsDestination.Search -> destination.searchQuery
             is TabsDestination.BookContent -> if (destination.bookId > 0) "${destination.bookId}" else ""
         }

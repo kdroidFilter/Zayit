@@ -2,27 +2,15 @@ package io.github.kdroidfilter.seforimapp.core.presentation.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.MainAppState
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.features.settings.Settings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import seforimapp.seforimapp.generated.resources.dark_theme
-import seforimapp.seforimapp.generated.resources.find
-import seforimapp.seforimapp.generated.resources.find_tooltip
-import seforimapp.seforimapp.generated.resources.info
-import seforimapp.seforimapp.generated.resources.info_tooltip
-import seforimapp.seforimapp.generated.resources.light_theme
-import seforimapp.seforimapp.generated.resources.settings
-import seforimapp.seforimapp.generated.resources.settings_tooltip
-import seforimapp.seforimapp.generated.resources.switch_to_dark_theme
-import seforimapp.seforimapp.generated.resources.switch_to_light_theme
-import seforimapp.seforimapp.generated.resources.switch_to_system_theme
-import seforimapp.seforimapp.generated.resources.system_theme
-import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.*
 
 @Composable
 fun TitleBarActionsButtonsView() {
@@ -43,13 +31,15 @@ fun TitleBarActionsButtonsView() {
         IntUiThemes.Dark -> stringResource(Res.string.switch_to_system_theme)
         IntUiThemes.System -> stringResource(Res.string.switch_to_light_theme)
     }
+
     TitleBarActionButton(
-        key = AllIconsKeys.Actions.Find,
-        contentDescription = stringResource(Res.string.find),
+        key = AllIconsKeys.Nodes.HomeFolder,
+        contentDescription = stringResource(Res.string.home),
         onClick = {
-            //TODO
+            // Replace current tab destination with Home, preserving tabId
+
         },
-        tooltipText = stringResource(Res.string.find_tooltip),
+        tooltipText = stringResource(Res.string.home_tooltip),
     )
     TitleBarActionButton(
         key = when (theme) {

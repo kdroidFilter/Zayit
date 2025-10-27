@@ -88,7 +88,11 @@ fun MyApplication() {
 
 ### 4. Set Up Navigation Routes
 
-Define your navigation routes in the `TabsNavHost`:
+Define your navigation routes in the `TabsNavHost`.
+
+In this project, the Home route reuses the BookContent shell. When no book is
+selected in the tab state, the shell renders the HomeView. This ensures a
+consistent layout whether you’re on Home, Search results, or a specific book.
 
 ```kotlin
 NavHost(
@@ -96,21 +100,23 @@ NavHost(
     startDestination = navigator.startDestination,
     modifier = Modifier
 ) {
+    // Home – BookContent shell without a selected book shows HomeView
     nonAnimatedComposable<TabsDestination.Home> { backStackEntry ->
         val destination = backStackEntry.toRoute<TabsDestination.Home>()
-        // Pass the tabId to the savedStateHandle
         backStackEntry.savedStateHandle["tabId"] = destination.tabId
-        
-        HomeScreen()
+
+        val viewModel = remember(appGraph, destination) {
+            appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
+        }
+        BookContentScreen(viewModel)
     }
-    
+
     nonAnimatedComposable<TabsDestination.MyCustomScreen> { backStackEntry ->
         val destination = backStackEntry.toRoute<TabsDestination.MyCustomScreen>()
-        // Pass the tabId to the savedStateHandle
+        // Pass the tabId and any other parameters
         backStackEntry.savedStateHandle["tabId"] = destination.tabId
-        // Pass any other parameters
         backStackEntry.savedStateHandle["parameter"] = destination.parameter
-        
+
         MyCustomScreen()
     }
 }
@@ -133,6 +139,20 @@ Button(onClick = {
 }) {
     Text("Open new tab")
 }
+```
+
+Sometimes you want to REPLACE the current tab’s destination instead of opening
+another tab (e.g., replace current content with Home or Search). Use
+`TabsViewModel.replaceCurrentTabDestination(...)` for that:
+
+```kotlin
+// Replace the current tab content with Home (preserve the same tabId)
+val tabsVm = LocalAppGraph.current.tabsViewModel
+val currentTabs = tabsVm.tabs.value
+val currentIndex = tabsVm.selectedTabIndex.value
+val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: return
+
+tabsVm.replaceCurrentTabDestination(TabsDestination.Home(currentTabId))
 ```
 
 ## Best Practices
@@ -170,6 +190,39 @@ saveState("allItems", completeListOfItems)  // Bad: saves entire list
 ```
 
 5. **Handle tab lifecycle properly** - Remember that your ViewModel's `onCleared()` method will be called when switching tabs, but the state will be preserved by the `TabStateManager`.
+
+6. **Localize Home titles in the UI** - The `TabsViewModel` may return an empty
+   string for the Home tab title so the UI can localize the label via
+   resources (e.g., using `title.ifEmpty { stringResource(Res.string.home) }`).
+   This keeps titles correctly translated (in this app: דף הבית).
+
+7. **Prefer partial state clearing over full wipes** - When switching an
+   existing tab back to Home, clear only the keys that drive the content
+   (e.g., the selected book) instead of wiping the whole tab state. The
+   `TabStateManager` exposes `removeState(tabId, key)` for this.
+
+   Example when handling a Home button click:
+
+   ```kotlin
+   val appGraph = LocalAppGraph.current
+   val tabsViewModel = appGraph.tabsViewModel
+   val tabStateManager = appGraph.tabStateManager
+
+   val tabs = tabsViewModel.tabs.value
+   val selectedIndex = tabsViewModel.selectedTabIndex.value
+   val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
+
+   if (currentTabId != null) {
+       // Clear book-specific state so the BookContent shell shows Home
+       tabStateManager.removeState(currentTabId, StateKeys.SELECTED_BOOK)
+       tabStateManager.removeState(currentTabId, StateKeys.SELECTED_LINE)
+       tabStateManager.removeState(currentTabId, StateKeys.CONTENT_ANCHOR_ID)
+       tabStateManager.removeState(currentTabId, StateKeys.CONTENT_ANCHOR_INDEX)
+
+       // Replace destination in-place, no new tab created
+       tabsViewModel.replaceCurrentTabDestination(TabsDestination.Home(currentTabId))
+   }
+   ```
 
 ## Example Implementation
 

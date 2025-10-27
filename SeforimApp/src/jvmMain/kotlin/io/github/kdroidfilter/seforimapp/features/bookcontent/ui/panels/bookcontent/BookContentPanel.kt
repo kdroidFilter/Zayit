@@ -64,6 +64,8 @@ fun BookContentPanel(
                             scrollToLineTimestamp = uiState.content.scrollToLineTimestamp,
                             anchorId = uiState.content.anchorId,
                             anchorIndex = uiState.content.anchorIndex,
+                            topAnchorLineId = uiState.content.topAnchorLineId,
+                            topAnchorTimestamp = uiState.content.topAnchorRequestTimestamp,
                             onScroll = { anchorId, anchorIndex, scrollIndex, scrollOffset ->
                                 onEvent(
                                     BookContentEvent.ContentScrolled(

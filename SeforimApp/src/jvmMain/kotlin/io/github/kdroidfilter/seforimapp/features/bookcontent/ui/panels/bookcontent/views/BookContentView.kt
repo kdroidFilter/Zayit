@@ -44,6 +44,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
@@ -66,6 +70,8 @@ fun BookContentView(
     scrollToLineTimestamp: Long = 0,
     anchorId: Long = -1L,
     anchorIndex: Int = 0,
+    topAnchorLineId: Long = -1L,
+    topAnchorTimestamp: Long = 0L,
     onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> }
 ) {
     // Collect paging data
@@ -109,8 +115,12 @@ fun BookContentView(
 
     // Ensure the selected line is visible when explicitly requested (keyboard/nav)
     // without forcing it to the very top of the viewport.
-    LaunchedEffect(scrollToLineTimestamp, selectedLineId) {
+    LaunchedEffect(scrollToLineTimestamp, selectedLineId, topAnchorTimestamp, topAnchorLineId) {
         if (scrollToLineTimestamp == 0L || selectedLineId == null) return@LaunchedEffect
+
+        // Skip minimal bring-into-view when a top-anchoring request is active for this selection
+        val isTopAnchorRequest = (topAnchorTimestamp == scrollToLineTimestamp && topAnchorLineId == selectedLineId)
+        if (isTopAnchorRequest) return@LaunchedEffect
 
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
             delay(16)
@@ -129,89 +139,78 @@ fun BookContentView(
         }
     }
 
-    // Improved restoration algorithm for pagination
-    LaunchedEffect(lazyPagingItems.loadState.refresh, anchorId) {
-        // Only restore if we haven't already and we have items and an anchor
-        if (!hasRestored && anchorId != -1L && anchorId != restoredAnchorId) {
+    // Robust top-anchored restoration for TOC-driven selection.
+    // Trigger on every new anchorId. This ensures repeated TOC clicks always re-align at the top.
+    LaunchedEffect(topAnchorTimestamp, topAnchorLineId) {
+        if (topAnchorTimestamp == 0L || topAnchorLineId == -1L) return@LaunchedEffect
 
-            // Wait for the initial page load to complete
-            if (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-                // Wait for loading to finish
-                while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-                    delay(16)
-                }
+        // Reset restoration guard for this top-anchor event
+        hasRestored = false
+
+        // Wait for any ongoing refresh to complete
+        while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
+            delay(16)
+        }
+
+        // Helper to locate the target index in the current snapshot
+        fun currentTargetIndex(): Int? {
+            val snapshot = lazyPagingItems.itemSnapshotList
+            return snapshot.indices.firstOrNull { snapshot[it]?.id == topAnchorLineId }
+        }
+
+        var targetIndex = currentTargetIndex()
+        if (targetIndex == null) {
+            debugln { "Top-anchor target $topAnchorLineId not yet in snapshot; waiting" }
+            withTimeoutOrNull(1500L) {
+                snapshotFlow { lazyPagingItems.itemSnapshotList.items }
+                    .map { items -> items.indices.firstOrNull { items[it]?.id == topAnchorLineId } }
+                    .filterNotNull()
+                    .first().also { idx -> targetIndex = idx }
             }
+        }
 
-            // Now check if we have items
-            if (lazyPagingItems.itemCount > 0) {
-                // Find the anchor line in the current page
-                val snapshot = lazyPagingItems.itemSnapshotList
-                val anchorLineIndex = snapshot.indices.firstOrNull { snapshot[it]?.id == anchorId }
-
-                if (anchorLineIndex != null) {
-                    debugln { "Found anchor at index $anchorLineIndex, scrolling with offset $scrollOffset" }
-
-                    // Scroll directly to the anchor with the saved offset
-                    listState.scrollToItem(anchorLineIndex, scrollOffset)
-                    hasRestored = true
-                    restoredAnchorId = anchorId
-                } else {
-                    debugln { "Anchor line $anchorId not found in current page" }
-
-                    // Fallback strategy when anchor is not in current page:
-                    // 1) Try selected line if present in snapshot
-                    // 2) Otherwise, fall back to saved anchorIndex/scrollIndex within bounds
-                    val selectedIndex = if (selectedLineId != null) {
-                        snapshot.indices.firstOrNull { snapshot[it]?.id == selectedLineId }
-                    } else null
-
-                    if (selectedIndex != null) {
-                        debugln { "Fallback to selected line at index $selectedIndex" }
-                        listState.scrollToItem(selectedIndex)
-                        hasRestored = true
-                    } else {
-                        val itemCount = lazyPagingItems.itemCount
-                        if (itemCount > 0) {
-                            // Prefer anchorIndex if it’s in range; otherwise use scrollIndex; clamp to [0, itemCount-1]
-                            val indexByAnchor = anchorIndex.takeIf { it in 0 until itemCount }
-                            val indexByScroll = scrollIndex.takeIf { it in 0 until itemCount }
-                            val targetIndex = (indexByAnchor ?: indexByScroll ?: (itemCount - 1).coerceAtLeast(0))
-                            val targetOffset = if (targetIndex == scrollIndex) scrollOffset.coerceAtLeast(0) else 0
-                            debugln { "Fallback to index-based restore: index=$targetIndex, offset=$targetOffset (anchor missing)" }
-                            listState.scrollToItem(targetIndex, targetOffset)
-                            hasRestored = true
-                        }
-                    }
-                }
-            }
+        targetIndex?.let { idx ->
+            debugln { "Top-anchoring to index $idx for line $topAnchorLineId" }
+            listState.scrollToItem(idx, 0)
+            restoredAnchorId = topAnchorLineId
+            hasRestored = true
         }
     }
 
-    // Fallback restoration when no anchor is available: use saved scrollIndex/scrollOffset
-    LaunchedEffect(lazyPagingItems.loadState.refresh, scrollIndex, scrollOffset, anchorId) {
-        // Only attempt if we haven't restored yet, there is no anchor, and we actually have a non-zero saved position
-        if (!hasRestored && anchorId == -1L && (scrollIndex > 0 || scrollOffset > 0)) {
-            // Even if a preservedListState is provided, actively restore the position when we have saved scroll values
+    // Initial restoration from saved state (TabSystem): prefer saved anchor, otherwise saved index/offset.
+    // Runs once per book unless a top-anchor request has been issued (which handles itself).
+    LaunchedEffect(book.id, topAnchorTimestamp) {
+        if (topAnchorTimestamp != 0L) return@LaunchedEffect
+        if (hasRestored) return@LaunchedEffect
 
-            // Wait for the initial page load to complete
-            if (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-                while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-                    delay(16)
-                }
+        // Wait for initial page load to complete
+        while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
+            delay(16)
+        }
+
+        if (lazyPagingItems.itemCount <= 0) return@LaunchedEffect
+
+        // Try saved anchor if available
+        if (anchorId != -1L) {
+            val snapshot = lazyPagingItems.itemSnapshotList
+            val idx = snapshot.indices.firstOrNull { snapshot[it]?.id == anchorId }
+            if (idx != null) {
+                debugln { "Restoring by saved anchor: idx=$idx, offset=$scrollOffset" }
+                listState.scrollToItem(idx, scrollOffset.coerceAtLeast(0))
+                hasRestored = true
+                restoredAnchorId = anchorId
+                return@LaunchedEffect
             }
+        }
 
-            // Now, if we have items, try to scroll to the saved index/offset
-            if (lazyPagingItems.itemCount > 0) {
-                val itemCount = lazyPagingItems.itemCount
-                val targetIndex = scrollIndex.coerceIn(0, maxOf(0, itemCount - 1))
-                val targetOffset = scrollOffset.coerceAtLeast(0)
-
-                if (targetIndex != 0 || targetOffset != 0) {
-                    debugln { "Restoring scroll by index/offset: index=$targetIndex, offset=$targetOffset (no anchor)" }
-                    listState.scrollToItem(targetIndex, targetOffset)
-                    hasRestored = true
-                }
-            }
+        // Fallback to index/offset when no anchor or anchor not in snapshot
+        if (scrollIndex > 0 || scrollOffset > 0) {
+            val itemCount = lazyPagingItems.itemCount
+            val targetIndex = scrollIndex.coerceIn(0, maxOf(0, itemCount - 1))
+            val targetOffset = scrollOffset.coerceAtLeast(0)
+            debugln { "Restoring by index/offset: index=$targetIndex, offset=$targetOffset" }
+            listState.scrollToItem(targetIndex, targetOffset)
+            hasRestored = true
         }
     }
 

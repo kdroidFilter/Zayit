@@ -60,6 +60,7 @@ class SearchHomeViewModel(
                 .distinctUntilChanged()
                 .collect { qRaw ->
                     val q = qRaw.trim()
+                    val qNorm = sanitizeHebrewForAcronym(q)
                     if (q.isBlank()) {
                         _uiState.value = _uiState.value.copy(
                             categorySuggestions = emptyList(),
@@ -77,15 +78,32 @@ class SearchHomeViewModel(
                             val path = buildCategoryPathTitles(cat.id)
                             CategorySuggestionDto(cat, path.ifEmpty { listOf(cat.title) })
                         }
-                        // Books
-                        val booksRaw = repository
-                            .findBooksByTitleLike(pattern, limit = 12)
-                            .filter { it.title.isNotBlank() }
-                            .distinctBy { it.id }
-                        val bookSuggestions = booksRaw.map { book ->
+                        // Books via FTS5 on titles + acronyms
+                        val tokens = qNorm.split("\\s+".toRegex()).filter { it.isNotBlank() }
+                        val ftsQuery = if (tokens.isEmpty()) "" else tokens.joinToString(" ") { it + "*" }
+                        val ftsBooks = if (ftsQuery.isNotBlank()) repository.searchBooksByTitleFts(ftsQuery, limit = 50) else emptyList()
+
+                        val bookItems = ftsBooks.map { book ->
                             val catPath = buildCategoryPathTitles(book.categoryId)
-                            BookSuggestionDto(book, catPath + book.title)
+                            val depth = repository.getCategoryDepth(book.categoryId)
+                            BookSuggestionDto(book, catPath + book.title) to depth
                         }
+
+                        fun titleRank(title: String): Int = when {
+                            title.equals(q, ignoreCase = true) -> 0
+                            title.startsWith(q, ignoreCase = true) -> 1
+                            title.contains(q, ignoreCase = true) -> 2
+                            else -> 3
+                        }
+
+                        // Prioritize: 1) shallower hierarchy, 2) real title match
+                        val bookSuggestions = bookItems
+                            .sortedWith(
+                                compareBy<Pair<BookSuggestionDto, Int>> { it.second }
+                                    .thenBy { titleRank(it.first.book.title) }
+                            )
+                            .map { it.first }
+                            .take(12)
                         _uiState.value = _uiState.value.copy(
                             categorySuggestions = catSuggestions,
                             bookSuggestions = bookSuggestions,
@@ -163,5 +181,23 @@ class SearchHomeViewModel(
             currentId = c.parentId
         }
         return path.asReversed()
+    }
+
+    // Sanitization aligned with the generator’s acronym normalization, but minimal and local to app
+    private fun sanitizeHebrewForAcronym(input: String): String {
+        if (input.isBlank()) return ""
+        var s = input.trim()
+        // Remove Hebrew diacritics: teamim U+0591–U+05AF
+        s = s.replace("[\u0591-\u05AF]".toRegex(), "")
+        // Remove nikud signs (set incl. meteg U+05BD and QAMATZ QATAN U+05C7)
+        val nikud = "[\u05B0\u05B1\u05B2\u05B3\u05B4\u05B5\u05B6\u05B7\u05B8\u05B9\u05BB\u05BC\u05BD\u05C1\u05C2\u05C7]".toRegex()
+        s = s.replace(nikud, "")
+        // Replace maqaf (U+05BE) with space
+        s = s.replace('\u05BE', ' ')
+        // Remove gershayim (U+05F4) and geresh (U+05F3)
+        s = s.replace("\u05F4", "").replace("\u05F3", "")
+        // Collapse whitespace
+        s = s.replace("\\s+".toRegex(), " ").trim()
+        return s
     }
 }

@@ -13,8 +13,8 @@ import androidx.compose.ui.unit.dp
 fun homeTabs(tint: Color): ImageVector {
     return ImageVector.Builder(
         name = "Home_Tabs",
-        defaultWidth = 20.dp,
-        defaultHeight = 20.dp,
+        defaultWidth = 16.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 24f,
         viewportHeight = 24f,
         tintColor = tint,

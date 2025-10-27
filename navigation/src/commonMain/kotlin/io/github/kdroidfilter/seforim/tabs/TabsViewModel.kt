@@ -126,7 +126,7 @@ class TabsViewModel(
     private fun addTabWithDestination(destination: TabsDestination) {
         // Preserve the provided tabId to allow callers to pre-initialize tab state (e.g., via TabStateManager).
         val newDestination = when (destination) {
-            is TabsDestination.Home -> TabsDestination.Home(destination.tabId)
+            is TabsDestination.Home -> TabsDestination.Home(destination.tabId, destination.version)
             is TabsDestination.Search -> TabsDestination.Search(destination.searchQuery, destination.tabId)
             is TabsDestination.BookContent -> TabsDestination.BookContent(destination.bookId, destination.tabId, destination.lineId)
         }
@@ -153,7 +153,10 @@ class TabsViewModel(
 
         val current = currentTabs[index]
         val newDestination = when (destination) {
-            is TabsDestination.Home -> TabsDestination.Home(tabId = current.destination.tabId)
+            is TabsDestination.Home -> TabsDestination.Home(
+                tabId = current.destination.tabId,
+                version = System.currentTimeMillis()
+            )
             is TabsDestination.Search -> TabsDestination.Search(
                 searchQuery = destination.searchQuery,
                 tabId = current.destination.tabId
@@ -171,6 +174,48 @@ class TabsViewModel(
         )
         _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
         // Encourage GC after destination swap
+        System.gc()
+    }
+
+    /**
+     * Replaces the currently selected tab with a fresh tabId, similar to opening
+     * a brand-new tab but keeping the same visual slot. Clears the previous tabId
+     * state to avoid leaking state into the new content.
+     */
+    fun replaceCurrentTabWithNewTabId(destination: TabsDestination) {
+        val index = _selectedTabIndex.value
+        val currentTabs = _tabs.value
+        if (index !in 0..currentTabs.lastIndex) return
+
+        val current = currentTabs[index]
+        val oldTabId = current.destination.tabId
+        val newTabId = UUID.randomUUID().toString()
+
+        val newDestination = when (destination) {
+            is TabsDestination.Home -> TabsDestination.Home(
+                tabId = newTabId,
+                version = System.currentTimeMillis()
+            )
+            is TabsDestination.Search -> TabsDestination.Search(
+                searchQuery = destination.searchQuery,
+                tabId = newTabId
+            )
+            is TabsDestination.BookContent -> TabsDestination.BookContent(
+                bookId = destination.bookId,
+                tabId = newTabId,
+                lineId = destination.lineId
+            )
+        }
+
+        // Clear all state for the old tabId to free memory and avoid state bleed
+        stateManager.clearTabState(oldTabId)
+
+        val updated = current.copy(
+            title = getTabTitle(newDestination),
+            destination = newDestination
+        )
+        _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
+        // Trigger GC when resetting a tab with a new id
         System.gc()
     }
     private fun getTabTitle(destination: TabsDestination): String {

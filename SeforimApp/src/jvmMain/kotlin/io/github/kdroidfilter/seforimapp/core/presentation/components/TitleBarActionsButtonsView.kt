@@ -52,14 +52,8 @@ fun TitleBarActionsButtonsView() {
             val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
 
             if (currentTabId != null) {
-                // Clear book-specific persisted state so the Home view renders
-                tabStateManager.removeState(currentTabId, StateKeys.SELECTED_BOOK)
-                tabStateManager.removeState(currentTabId, StateKeys.SELECTED_LINE)
-                tabStateManager.removeState(currentTabId, StateKeys.CONTENT_ANCHOR_ID)
-                tabStateManager.removeState(currentTabId, StateKeys.CONTENT_ANCHOR_INDEX)
-
-                // Swap current tab to Home destination
-                tabsViewModel.replaceCurrentTabDestination(TabsDestination.Home(currentTabId))
+                // Replace current tab with a fresh tabId, like opening a new tab in place
+                tabsViewModel.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
             }
         },
         tooltipText = stringResource(Res.string.home_tooltip),

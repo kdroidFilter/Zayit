@@ -8,7 +8,8 @@ sealed interface TabsDestination {
 
     @Serializable
     data class Home(
-        override val tabId: String
+        override val tabId: String,
+        val version: Long = 0L
     ) : TabsDestination
 
     @Serializable

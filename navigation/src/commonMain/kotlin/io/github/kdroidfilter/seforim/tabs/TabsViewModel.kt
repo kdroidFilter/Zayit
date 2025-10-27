@@ -63,9 +63,21 @@ class TabsViewModel(
 
     private fun closeTab(index: Int) {
         val currentTabs = _tabs.value
-        if (currentTabs.size <= 1) return // Ne pas fermer le dernier onglet
 
         if (index < 0 || index >= currentTabs.size) return // Index invalide
+
+        // If it's the last remaining tab, reset it to a fresh one instead of removing it
+        if (currentTabs.size == 1) {
+            // Replace the current (and only) tab with a brand‑new tabId and default destination
+            // This clears the previous tab state and avoids leaving the UI without any tab
+            replaceCurrentTabWithNewTabId(
+                TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())
+            )
+            _selectedTabIndex.value = 0
+            // Encourage memory reclamation after resetting the tab
+            System.gc()
+            return
+        }
 
         // Capture tabId to clear any per-tab cached state
         val tabIdToClose = currentTabs[index].destination.tabId

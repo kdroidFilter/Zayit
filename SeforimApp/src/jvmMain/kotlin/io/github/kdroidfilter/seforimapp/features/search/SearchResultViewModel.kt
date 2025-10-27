@@ -481,6 +481,34 @@ class SearchResultViewModel(
         }
     }
 
+    /**
+     * Opens a search result either in the current tab (default) or a new tab when requested.
+     * - Current tab: pre-save selected book and anchor on this tabId, then replace destination.
+     * - New tab: keep existing behavior (pre-init and navigate to new tab).
+     */
+    fun openResult(result: SearchResult, openInNewTab: Boolean) {
+        if (openInNewTab) {
+            openResult(result)
+            return
+        }
+        viewModelScope.launch {
+            // Prepare current tab for BookContent with anchor to avoid flicker
+            repository.getBook(result.bookId)?.let { book ->
+                stateManager.saveState(tabId, StateKeys.SELECTED_BOOK, book)
+            }
+            stateManager.saveState(tabId, StateKeys.CONTENT_ANCHOR_ID, result.lineId)
+
+            // Swap current tab destination to BookContent while preserving tabId
+            tabsViewModel.replaceCurrentTabDestination(
+                TabsDestination.BookContent(
+                    bookId = result.bookId,
+                    tabId = tabId,
+                    lineId = result.lineId
+                )
+            )
+        }
+    }
+
     private fun buildNearQuery(raw: String, near: Int): String {
         // Split on whitespace and drop empty tokens
         val tokens = raw.trim().split("\\s+".toRegex()).filter { it.isNotBlank() }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -22,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
@@ -32,7 +32,6 @@ import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.DefaultButton
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import androidx.compose.runtime.snapshotFlow
@@ -41,13 +40,116 @@ import seforimapp.seforimapp.generated.resources.breadcrumb_separator
 import seforimapp.seforimapp.generated.resources.search_near_label
 import seforimapp.seforimapp.generated.resources.search_no_results
 import seforimapp.seforimapp.generated.resources.search_results_for
-import seforimapp.seforimapp.generated.resources.search_scope
 import seforimapp.seforimapp.generated.resources.search_searching
 import seforimapp.seforimapp.generated.resources.search_load_more
 import seforimapp.seforimapp.generated.resources.search_result_count
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.StartVerticalBar
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EndVerticalBar
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree.CategoryTreePanel
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.BookTocPanel
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.map
+import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
+import org.jetbrains.compose.splitpane.SplitPaneState
 
 @Composable
 fun SearchResultScreen(viewModel: SearchResultViewModel) {
+    // Content-only variant (no shell); useful for previews or nested usage
+    SearchResultContent(viewModel = viewModel)
+}
+
+@OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class)
+@Composable
+fun SearchResultInBookShell(
+    bookUiState: BookContentState,
+    onEvent: (BookContentEvent) -> Unit,
+    viewModel: SearchResultViewModel
+) {
+    // Observe split panes and persist positions similar to BookContentView
+    val splitPaneConfigs = listOf(
+        SplitPaneConfig(
+            splitState = bookUiState.layout.mainSplitState,
+            isVisible = bookUiState.navigation.isVisible,
+            positionFilter = { it > 0 }
+        ),
+        SplitPaneConfig(
+            splitState = bookUiState.layout.tocSplitState,
+            isVisible = bookUiState.toc.isVisible,
+            positionFilter = { it > 0 }
+        )
+    )
+
+    splitPaneConfigs.forEach { config ->
+        LaunchedEffect(config.splitState, config.isVisible) {
+            if (config.isVisible) {
+                snapshotFlow { config.splitState.positionPercentage }
+                    .map { ((it * 100).toInt() / 100f) }
+                    .distinctUntilChanged()
+                    .debounce(300)
+                    .filter(config.positionFilter)
+                    .collect { onEvent(BookContentEvent.SaveState) }
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { onEvent(BookContentEvent.SaveState) }
+    }
+    Row(modifier = Modifier.fillMaxSize()) {
+        StartVerticalBar(uiState = bookUiState, onEvent = onEvent)
+
+        EnhancedHorizontalSplitPane(
+            splitPaneState = bookUiState.layout.mainSplitState,
+            modifier = Modifier.weight(1f),
+            firstMinSize = if (bookUiState.navigation.isVisible) io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults.MIN_MAIN else 0f,
+            firstContent = {
+                if (bookUiState.navigation.isVisible) {
+                    CategoryTreePanel(uiState = bookUiState, onEvent = onEvent)
+                }
+            },
+            secondContent = {
+                EnhancedHorizontalSplitPane(
+                    splitPaneState = bookUiState.layout.tocSplitState,
+                    firstMinSize = if (bookUiState.toc.isVisible) io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults.MIN_TOC else 0f,
+                    firstContent = {
+                        if (bookUiState.toc.isVisible) {
+                            BookTocPanel(uiState = bookUiState, onEvent = onEvent)
+                        }
+                    },
+                    secondContent = {
+                        // If a book is selected, render the book content; otherwise show search results
+                        if (bookUiState.navigation.selectedBook == null) {
+                            SearchResultContent(viewModel = viewModel)
+                        } else {
+                            BookContentPanel(uiState = bookUiState, onEvent = onEvent)
+                        }
+                    },
+                    showSplitter = bookUiState.toc.isVisible
+                )
+            },
+            showSplitter = bookUiState.navigation.isVisible
+        )
+
+        EndVerticalBar(uiState = bookUiState, onEvent = onEvent)
+    }
+}
+
+private data class SplitPaneConfig @OptIn(ExperimentalSplitPaneApi::class) constructor(
+    val splitState: SplitPaneState,
+    val isVisible: Boolean,
+    val positionFilter: (Float) -> Boolean
+)
+
+@Composable
+private fun SearchResultContent(viewModel: SearchResultViewModel) {
     val state = viewModel.uiState.collectAsState().value
     val listState = rememberLazyListState()
     // Match commentaries size (BookContent uses ~0.875x of main text)
@@ -149,12 +251,18 @@ fun SearchResultScreen(viewModel: SearchResultViewModel) {
                     modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(state.results) { result ->
+                        val windowInfo = LocalWindowInfo.current
                         ResultRow(
                             title = null,
                             badgeText = result.bookTitle,
                             snippet = result.snippet,
                             textSize = commentSize,
-                            onClick = { viewModel.openResult(result) })
+                            onClick = {
+                                val mods = windowInfo.keyboardModifiers
+                                val openInNewTab = mods.isCtrlPressed || mods.isMetaPressed
+                                viewModel.openResult(result, openInNewTab)
+                            }
+                        )
                     }
                     if (state.isLoading) {
                         item {

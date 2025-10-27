@@ -28,18 +28,24 @@ fun TabsNavHost() {
     val selectedTabIndex by tabsViewModel.selectedTabIndex.collectAsState()
 
     // Observer les changements d'onglets et naviguer vers la destination
+    var lastNavigatedDestination by remember { mutableStateOf<io.github.kdroidfilter.seforim.tabs.TabsDestination?>(null) }
     LaunchedEffect(selectedTabIndex) {
         if (tabs.isNotEmpty() && selectedTabIndex < tabs.size) {
             val currentTab = tabs[selectedTabIndex]
             navController.navigate(currentTab.destination)
+            lastNavigatedDestination = currentTab.destination
         }
     }
 
     // Also react when the tab list changes (e.g., destination replaced in-place)
-    LaunchedEffect(tabs) {
+    // Avoid re-navigating when only metadata like the tab title changes
+    LaunchedEffect(tabs, selectedTabIndex) {
         if (tabs.isNotEmpty() && selectedTabIndex < tabs.size) {
-            val currentTab = tabs[selectedTabIndex]
-            navController.navigate(currentTab.destination)
+            val currentDest = tabs[selectedTabIndex].destination
+            if (currentDest != lastNavigatedDestination) {
+                navController.navigate(currentDest)
+                lastNavigatedDestination = currentDest
+            }
         }
     }
 
@@ -75,7 +81,16 @@ fun TabsNavHost() {
             val viewModel = remember(appGraph, destination) {
                 appGraph.searchResultViewModel(backStackEntry.savedStateHandle)
             }
-            io.github.kdroidfilter.seforimapp.features.search.SearchResultScreen(viewModel)
+            // Reuse the BookContent shell so Search renders inside the same panes
+            val bookVm = remember(appGraph, destination) {
+                appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
+            }
+            val bcUiState by bookVm.uiState.collectAsState()
+            io.github.kdroidfilter.seforimapp.features.search.SearchResultInBookShell(
+                bookUiState = bcUiState,
+                onEvent = bookVm::onEvent,
+                viewModel = viewModel
+            )
         }
 
         nonAnimatedComposable<TabsDestination.BookContent> { backStackEntry ->

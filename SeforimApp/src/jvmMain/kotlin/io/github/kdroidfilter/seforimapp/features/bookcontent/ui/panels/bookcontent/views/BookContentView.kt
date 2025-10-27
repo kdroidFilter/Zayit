@@ -319,11 +319,13 @@ fun BookContentView(
             // Show loading indicators
             lazyPagingItems.apply {
                 when {
-                    loadState.refresh is LoadState.Loading -> {
+                    // Avoid flicker: only show full loader on refresh if we have no items yet
+                    loadState.refresh is LoadState.Loading && itemCount == 0 -> {
                         item(contentType = "loading") {
                             LoadingIndicator()
                         }
                     }
+                    // Keep small loader for pagination append
                     loadState.append is LoadState.Loading -> {
                         item(contentType = "loading") {
                             LoadingIndicator(isSmall = true)

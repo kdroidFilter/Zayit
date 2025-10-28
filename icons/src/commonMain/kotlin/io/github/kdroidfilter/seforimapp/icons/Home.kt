@@ -15,34 +15,35 @@ fun homeTabs(tint: Color): ImageVector {
         name = "Home_Tabs",
         defaultWidth = 16.dp,
         defaultHeight = 16.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
+        viewportWidth = 16f,
+        viewportHeight = 16f,
         tintColor = tint,
     ).apply {
         path(
-            stroke = SolidColor(Color(0xFF000000)),
-            strokeLineWidth = 1.5f,
+            stroke = SolidColor(Color(0xFF6C707E)),
+            strokeLineWidth = 1f,
             strokeLineCap = StrokeCap.Round,
             strokeLineJoin = StrokeJoin.Round
         ) {
-            moveTo(2.25f, 12f)
-            lineTo(11.2045f, 3.04549f)
-            curveTo(11.6438f, 2.60615f, 12.3562f, 2.60615f, 12.7955f, 3.04549f)
-            lineTo(21.75f, 12f)
-            moveTo(4.5f, 9.75f)
-            verticalLineTo(19.875f)
-            curveTo(4.5f, 20.4963f, 5.00368f, 21f, 5.625f, 21f)
-            horizontalLineTo(9.75f)
-            verticalLineTo(16.125f)
-            curveTo(9.75f, 15.5037f, 10.2537f, 15f, 10.875f, 15f)
-            horizontalLineTo(13.125f)
-            curveTo(13.7463f, 15f, 14.25f, 15.5037f, 14.25f, 16.125f)
-            verticalLineTo(21f)
-            horizontalLineTo(18.375f)
-            curveTo(18.9963f, 21f, 19.5f, 20.4963f, 19.5f, 19.875f)
-            verticalLineTo(9.75f)
-            moveTo(8.25f, 21f)
-            horizontalLineTo(16.5f)
+            moveTo(8.332f, 2.632f)
+            lineTo(13.332f, 7.075f)
+            curveTo(13.439f, 7.17f, 13.5f, 7.306f, 13.5f, 7.449f)
+            verticalLineTo(13f)
+            curveTo(13.5f, 13.276f, 13.276f, 13.5f, 13f, 13.5f)
+            horizontalLineTo(10f)
+            curveTo(9.724f, 13.5f, 9.5f, 13.276f, 9.5f, 13f)
+            verticalLineTo(11f)
+            curveTo(9.5f, 10.172f, 8.828f, 9.5f, 8f, 9.5f)
+            curveTo(7.172f, 9.5f, 6.5f, 10.172f, 6.5f, 11f)
+            verticalLineTo(13f)
+            curveTo(6.5f, 13.276f, 6.276f, 13.5f, 6f, 13.5f)
+            horizontalLineTo(3f)
+            curveTo(2.724f, 13.5f, 2.5f, 13.276f, 2.5f, 13f)
+            verticalLineTo(7.449f)
+            curveTo(2.5f, 7.306f, 2.561f, 7.17f, 2.668f, 7.075f)
+            lineTo(7.668f, 2.632f)
+            curveTo(7.857f, 2.464f, 8.143f, 2.464f, 8.332f, 2.632f)
+            close()
         }
     }.build()
 }

@@ -63,6 +63,11 @@ class SearchResultViewModel(
     private var allowedBooks: List<Long> = emptyList()
     private val perBookOffset: MutableMap<Long, Int> = mutableMapOf()
 
+    // Caches to speed up breadcrumb building for search results
+    private val bookCache: MutableMap<Long, Book> = mutableMapOf()
+    private val categoryPathCache: MutableMap<Long, List<Category>> = mutableMapOf()
+    private val tocPathCache: MutableMap<Long, List<io.github.kdroidfilter.seforimlibrary.core.models.TocEntry>> = mutableMapOf()
+
     init {
         val initialQuery = savedStateHandle.get<String>("searchQuery")
             ?: stateManager.getState<String>(tabId, SearchStateKeys.QUERY)
@@ -518,6 +523,57 @@ class SearchResultViewModel(
             currentId = cat.parentId
         }
         return path.asReversed()
+    }
+
+    /**
+     * Compute breadcrumb pieces for a given search result: category path, book, and TOC path to the line.
+     * Returns a list of display strings in order. Uses lightweight caches to avoid repeated lookups.
+     */
+    suspend fun getBreadcrumbPiecesFor(result: SearchResult): List<String> {
+        val pieces = mutableListOf<String>()
+
+        // Resolve book (cached)
+        val book = bookCache[result.bookId] ?: repository.getBook(result.bookId)?.also {
+            bookCache[result.bookId] = it
+        } ?: return listOf() // If no book, nothing to show
+
+        // Category path for the book (cached by categoryId)
+        val categories = categoryPathCache[book.categoryId] ?: buildCategoryPath(book.categoryId).also {
+            categoryPathCache[book.categoryId] = it
+        }
+        pieces += categories.map { it.title }
+
+        // Book title
+        pieces += book.title
+
+        // TOC path to the line (cached by lineId)
+        val tocEntries = tocPathCache[result.lineId] ?: run {
+            val tocId = runCatching { repository.getTocEntryIdForLine(result.lineId) }.getOrNull()
+            if (tocId != null) {
+                val path = mutableListOf<io.github.kdroidfilter.seforimlibrary.core.models.TocEntry>()
+                var current: Long? = tocId
+                var guard = 0
+                while (current != null && guard++ < 200) {
+                    val entry = repository.getTocEntry(current)
+                    if (entry != null) {
+                        path.add(0, entry)
+                        current = entry.parentId
+                    } else break
+                }
+                path
+            } else emptyList()
+        }.also { path ->
+            // Cache by lineId for future calls
+            tocPathCache[result.lineId] = path
+        }
+
+        if (tocEntries.isNotEmpty()) {
+            // Drop first TOC if it equals book title to avoid duplication
+            val adjusted = if (tocEntries.first().text == book.title) tocEntries.drop(1) else tocEntries
+            pieces += adjusted.map { it.text }
+        }
+
+        return pieces
     }
 
     fun openResult(result: SearchResult) {

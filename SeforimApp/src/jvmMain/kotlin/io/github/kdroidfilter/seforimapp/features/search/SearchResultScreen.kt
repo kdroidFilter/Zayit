@@ -257,6 +257,9 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                             badgeText = result.bookTitle,
                             snippet = result.snippet,
                             textSize = commentSize,
+                            bottomContent = {
+                                ResultBreadcrumb(viewModel = viewModel, result = result, textSize = commentSize)
+                            },
                             onClick = {
                                 val mods = windowInfo.keyboardModifiers
                                 val openInNewTab = mods.isCtrlPressed || mods.isMetaPressed
@@ -295,7 +298,12 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
 
 @Composable
 private fun ResultRow(
-    title: String?, badgeText: String, snippet: String, textSize: Float, onClick: () -> Unit
+    title: String?,
+    badgeText: String,
+    snippet: String,
+    textSize: Float,
+    bottomContent: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color.Transparent)
@@ -310,6 +318,10 @@ private fun ResultRow(
                 }
                 val annotated: AnnotatedString = buildAnnotatedFromHtml(snippet, textSize)
                 Text(text = annotated)
+                if (bottomContent != null) {
+                    Spacer(Modifier.height(4.dp))
+                    bottomContent()
+                }
             }
             Spacer(Modifier.width(8.dp))
             Box(
@@ -319,6 +331,29 @@ private fun ResultRow(
             ) {
                 Text(text = badgeText, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = textSize.sp)
             }
+        }
+    }
+}
+
+@Composable
+private fun ResultBreadcrumb(
+    viewModel: SearchResultViewModel,
+    result: io.github.kdroidfilter.seforimlibrary.core.models.SearchResult,
+    textSize: Float
+) {
+    val piecesState = androidx.compose.runtime.produceState(initialValue = emptyList<String>(), result.bookId, result.lineId) {
+        value = kotlin.runCatching { viewModel.getBreadcrumbPiecesFor(result) }.getOrDefault(emptyList())
+    }
+    val pieces = piecesState.value
+    if (pieces.isEmpty()) return
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        pieces.forEachIndexed { index, piece ->
+            if (index > 0) Text(
+                text = stringResource(Res.string.breadcrumb_separator),
+                color = JewelTheme.globalColors.text.disabled,
+                fontSize = textSize.sp
+            )
+            Text(text = piece, color = JewelTheme.globalColors.text.normal, fontSize = textSize.sp)
         }
     }
 }

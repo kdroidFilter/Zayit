@@ -33,7 +33,7 @@ import seforimapp.seforimapp.generated.resources.settings_reset_done
 
 @Composable
 fun GeneralSettingsScreen() {
-    val viewModel: GeneralSettingsViewModel = LocalAppGraph.current.generalSettingsViewModel()
+    val viewModel: GeneralSettingsViewModel = LocalAppGraph.current.generalSettingsViewModel
     val state by viewModel.state.collectAsState()
     GeneralSettingsView(state = state, onEvent = viewModel::onEvent)
 }

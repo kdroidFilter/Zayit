@@ -29,7 +29,7 @@ import seforimapp.seforimapp.generated.resources.settings_font_targum_label
 
 @Composable
 fun FontsSettingsScreen() {
-    val viewModel: FontsSettingsViewModel = LocalAppGraph.current.fontsSettingsViewModel()
+    val viewModel: FontsSettingsViewModel = LocalAppGraph.current.fontsSettingsViewModel
     val state by viewModel.state.collectAsState()
     FontsSettingsView(state = state, onEvent = viewModel::onEvent)
 }

@@ -90,7 +90,7 @@ fun HomeView(
         ) {
             // Keep state outside LazyColumn so it persists across item recompositions
             val appGraph = LocalAppGraph.current
-            val searchVm = remember { appGraph.searchHomeViewModel() }
+            val searchVm = remember { appGraph.searchHomeViewModel }
             val searchUi = searchVm.uiState.collectAsState().value
             val scope = rememberCoroutineScope()
             val searchState = remember { TextFieldState() }

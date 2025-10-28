@@ -19,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.tween
@@ -59,6 +61,8 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 
 @Composable
 fun SearchResultScreen(viewModel: SearchResultViewModel) {
@@ -152,10 +156,24 @@ private data class SplitPaneConfig @OptIn(ExperimentalSplitPaneApi::class) const
 private fun SearchResultContent(viewModel: SearchResultViewModel) {
     val state = viewModel.uiState.collectAsState().value
     val listState = rememberLazyListState()
-    // Match commentaries size (BookContent uses ~0.875x of main text)
-    val baseSize = state.textSize
+    // Match BookContent main text font settings
+    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val mainTextSize by animateFloatAsState(
+        targetValue = rawTextSize,
+        animationSpec = tween(durationMillis = 200),
+        label = "searchMainTextSizeAnim"
+    )
+    val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
+    val mainLineHeight by animateFloatAsState(
+        targetValue = rawLineHeight,
+        animationSpec = tween(durationMillis = 200),
+        label = "searchLineHeightAnim"
+    )
+    val bookFontCode by AppSettings.bookFontCodeFlow.collectAsState()
+    val hebrewFontFamily: FontFamily = FontCatalog.familyFor(bookFontCode)
+    // Auxiliary size for small labels
     val commentSize by animateFloatAsState(
-        targetValue = baseSize * 0.875f,
+        targetValue = mainTextSize * 0.875f,
         animationSpec = tween(durationMillis = 200),
         label = "searchCommentTextSizeAnim"
     )
@@ -256,9 +274,17 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                             title = null,
                             badgeText = result.bookTitle,
                             snippet = result.snippet,
-                            textSize = commentSize,
+                            textSize = mainTextSize,
+                            lineHeight = mainLineHeight,
+                            fontFamily = hebrewFontFamily,
                             bottomContent = {
-                                ResultBreadcrumb(viewModel = viewModel, result = result, textSize = commentSize)
+                                ResultBreadcrumb(
+                                    viewModel = viewModel,
+                                    result = result,
+                                    textSize = mainTextSize,
+                                    lineHeight = mainLineHeight,
+                                    fontFamily = hebrewFontFamily
+                                )
                             },
                             onClick = {
                                 val mods = windowInfo.keyboardModifiers
@@ -302,6 +328,8 @@ private fun ResultRow(
     badgeText: String,
     snippet: String,
     textSize: Float,
+    lineHeight: Float,
+    fontFamily: FontFamily,
     bottomContent: (@Composable () -> Unit)? = null,
     onClick: () -> Unit
 ) {
@@ -313,11 +341,22 @@ private fun ResultRow(
         Row(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
                 if (title != null) {
-                    Text(text = title, color = JewelTheme.globalColors.text.normal, fontSize = textSize.sp)
+                    Text(
+                        text = title,
+                        color = JewelTheme.globalColors.text.normal,
+                        fontSize = textSize.sp,
+                        fontFamily = fontFamily,
+                        lineHeight = (textSize * lineHeight).sp
+                    )
                     Spacer(Modifier.height(4.dp))
                 }
                 val annotated: AnnotatedString = buildAnnotatedFromHtml(snippet, textSize)
-                Text(text = annotated)
+                Text(
+                    text = annotated,
+                    fontFamily = fontFamily,
+                    lineHeight = (textSize * lineHeight).sp,
+                    textAlign = TextAlign.Justify
+                )
                 if (bottomContent != null) {
                     Spacer(Modifier.height(4.dp))
                     bottomContent()
@@ -329,7 +368,13 @@ private fun ResultRow(
                     .background(JewelTheme.globalColors.panelBackground)
                     .border(1.dp, JewelTheme.globalColors.borders.disabled, RoundedCornerShape(6.dp))
             ) {
-                Text(text = badgeText, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = textSize.sp)
+                Text(
+                    text = badgeText,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    fontSize = textSize.sp,
+                    fontFamily = fontFamily,
+                    lineHeight = (textSize * lineHeight).sp
+                )
             }
         }
     }
@@ -339,7 +384,9 @@ private fun ResultRow(
 private fun ResultBreadcrumb(
     viewModel: SearchResultViewModel,
     result: io.github.kdroidfilter.seforimlibrary.core.models.SearchResult,
-    textSize: Float
+    textSize: Float,
+    lineHeight: Float,
+    fontFamily: FontFamily
 ) {
     val piecesState = androidx.compose.runtime.produceState(initialValue = emptyList<String>(), result.bookId, result.lineId) {
         value = kotlin.runCatching { viewModel.getBreadcrumbPiecesFor(result) }.getOrDefault(emptyList())
@@ -351,9 +398,17 @@ private fun ResultBreadcrumb(
             if (index > 0) Text(
                 text = stringResource(Res.string.breadcrumb_separator),
                 color = JewelTheme.globalColors.text.disabled,
-                fontSize = textSize.sp
+                fontSize = textSize.sp,
+                fontFamily = fontFamily,
+                lineHeight = (textSize * lineHeight).sp
             )
-            Text(text = piece, color = JewelTheme.globalColors.text.normal, fontSize = textSize.sp)
+            Text(
+                text = piece,
+                color = JewelTheme.globalColors.text.normal,
+                fontSize = textSize.sp,
+                fontFamily = fontFamily,
+                lineHeight = (textSize * lineHeight).sp
+            )
         }
     }
 }

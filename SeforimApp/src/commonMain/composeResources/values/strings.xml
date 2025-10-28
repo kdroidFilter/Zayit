@@ -38,6 +38,10 @@
 
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>
+    <string name="settings_category_general">כללי</string>
+    <string name="settings_category_profile">פרופיל</string>
+    <string name="settings_category_region">אזור</string>
+    <string name="settings_category_fonts">גופנים</string>
     <string name="add_tab">הוסף לשונית</string>
     <string name="home">דף הבית</string>
 
@@ -205,6 +209,7 @@
     <string name="onboarding_pick_zst_button">בחר קובץ ‎.zst מקומי</string>
     <string name="onboarding_download_progress">%1$s / %2$s</string>
     <string name="retry_button">נסה שוב</string>
+    <string name="save_button">שמור</string>
     <!-- Disk space check -->
     <string name="onboarding_disk_title">בדיקת שטח פנוי בדיסק</string>
     <string name="onboarding_disk_space_sufficient">קיים מספיק שטח פנוי</string>

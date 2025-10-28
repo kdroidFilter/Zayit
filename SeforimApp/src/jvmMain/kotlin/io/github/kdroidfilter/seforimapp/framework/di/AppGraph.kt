@@ -59,6 +59,7 @@ abstract class AppGraph {
     abstract val availableDiskSpaceViewModel: AvailableDiskSpaceViewModel
     abstract val regionConfigViewModel: RegionConfigViewModel
     abstract val userProfileViewModel: UserProfileViewModel
+    // Settings categories ViewModels (provided via helper functions)
 
     @Provides
     @SingleIn(AppScope::class)
@@ -193,6 +194,22 @@ abstract class AppGraph {
             repository = repository,
             settings = settings
         )
+
+    // Settings: General
+    @Provides
+    fun provideGeneralSettingsViewModel(): io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsViewModel =
+        io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsViewModel()
+
+    fun generalSettingsViewModel(): io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsViewModel =
+        provideGeneralSettingsViewModel()
+
+    // Settings: Fonts
+    @Provides
+    fun provideFontsSettingsViewModel(): io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsViewModel =
+        io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsViewModel()
+
+    fun fontsSettingsViewModel(): io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsViewModel =
+        provideFontsSettingsViewModel()
 
     @Provides
     @SingleIn(AppScope::class)

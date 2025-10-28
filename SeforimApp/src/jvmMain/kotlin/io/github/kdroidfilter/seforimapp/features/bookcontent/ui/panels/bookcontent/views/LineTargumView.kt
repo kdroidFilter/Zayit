@@ -40,6 +40,7 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.*
+import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -67,6 +68,10 @@ fun LineTargumView(
         animationSpec = tween(durationMillis = 300),
         label = "linkLineHeightAnim"
     )
+
+    // Selected font for targumim
+    val targumFontCode by AppSettings.targumFontCodeFlow.collectAsState()
+    val targumFontFamily = FontCatalog.familyFor(targumFontCode)
 
     val paneInteractionSource = remember { MutableInteractionSource() }
 
@@ -147,7 +152,8 @@ fun LineTargumView(
                                             onScroll = onScroll,
                                             onLinkClick = onLinkClick,
                                             commentTextSize = commentTextSize,
-                                            lineHeight = lineHeight
+                                            lineHeight = lineHeight,
+                                            fontFamily = targumFontFamily
                                         )
 
                                         Spacer(modifier = Modifier.height(8.dp))
@@ -238,7 +244,8 @@ private fun PagedLinksList(
     onScroll: (Int, Int) -> Unit,
     onLinkClick: (CommentaryWithText) -> Unit,
     commentTextSize: Float,
-    lineHeight: Float
+    lineHeight: Float,
+    fontFamily: FontFamily,
 ) {
     val pagerFlow: Flow<PagingData<CommentaryWithText>> = remember(lineId, sourceBookId) {
         buildLinksPagerFor(lineId, sourceBookId).distinctUntilChanged()
@@ -271,6 +278,7 @@ private fun PagedLinksList(
                         item = item,
                         commentTextSize = commentTextSize,
                         lineHeight = lineHeight,
+                        fontFamily = fontFamily,
                         onLinkClick = onLinkClick
                     )
                 }
@@ -299,6 +307,7 @@ private fun LinkItem(
     item: CommentaryWithText,
     commentTextSize: Float,
     lineHeight: Float,
+    fontFamily: FontFamily,
     onLinkClick: (CommentaryWithText) -> Unit
 ) {
     // Optimisation : mémorisation du callback pour éviter recréation
@@ -320,8 +329,6 @@ private fun LinkItem(
                 commentTextSize
             )
         }
-
-        val fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew))
 
         Text(
             text = annotated,

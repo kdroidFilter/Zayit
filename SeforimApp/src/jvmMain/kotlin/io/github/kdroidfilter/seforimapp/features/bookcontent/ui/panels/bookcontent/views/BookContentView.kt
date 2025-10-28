@@ -35,6 +35,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -103,6 +104,10 @@ fun BookContentView(
         animationSpec = tween(durationMillis = 300),
         label = "lineHeightAnimation"
     )
+
+    // Selected font for main book content
+    val bookFontCode by AppSettings.bookFontCodeFlow.collectAsState()
+    val hebrewFontFamily = FontCatalog.familyFor(bookFontCode)
 
     // Track restoration state per book
     var hasRestored by remember(book.id) { mutableStateOf(false) }
@@ -306,6 +311,7 @@ fun BookContentView(
                         isSelected = selectedLineId == line.id,
                         baseTextSize = textSize,
                         lineHeight = lineHeight,
+                        fontFamily = hebrewFontFamily,
                         onLineSelected = onLineSelected,
                         scrollToLineTimestamp = scrollToLineTimestamp
                     )
@@ -363,6 +369,7 @@ private fun LineItem(
     isSelected: Boolean,
     baseTextSize: Float = 16f,
     lineHeight: Float = 1.5f,
+    fontFamily: FontFamily,
     onLineSelected: (Line) -> Unit,
     scrollToLineTimestamp: Long
 ) {
@@ -398,15 +405,6 @@ private fun LineItem(
         detectTapGestures(onTap = { clickHandler() })
     }
 
-    val hebrewFontFamily =
-        FontFamily(
-            Font(
-                resource = Res.font.notoserifhebrew,
-                weight = FontWeight.Normal
-            )
-        )
-
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -428,7 +426,7 @@ private fun LineItem(
             Text(
                 text = annotated,
                 textAlign = TextAlign.Justify,
-                fontFamily = hebrewFontFamily,
+                fontFamily = fontFamily,
                 lineHeight = (baseTextSize * lineHeight).sp,
                 modifier = textModifier
             )

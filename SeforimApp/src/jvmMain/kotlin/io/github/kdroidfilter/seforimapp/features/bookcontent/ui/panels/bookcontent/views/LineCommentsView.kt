@@ -43,6 +43,7 @@ import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import seforimapp.seforimapp.generated.resources.*
 
 private const val MAX_COMMENTATORS = 4
@@ -240,13 +241,17 @@ private fun CommentariesDisplay(
     val windowInfo = LocalWindowInfo.current
 
     // Memorizes the configuration to avoid recreating it
+    val commentaryFontCode by AppSettings.commentaryFontCodeFlow.collectAsState()
+    val commentaryFontFamily = FontCatalog.familyFor(commentaryFontCode)
+
     val layoutConfig = remember(
         selectedCommentators,
         titleToIdMap,
         selectedLine.id,
         contentState.commentariesScrollIndex,
         contentState.commentariesScrollOffset,
-        textSizes
+        textSizes,
+        commentaryFontFamily
     ) {
         CommentariesLayoutConfig(
             selectedCommentators = selectedCommentators,
@@ -268,7 +273,8 @@ private fun CommentariesDisplay(
                     )
                 }
             },
-            textSizes = textSizes
+            textSizes = textSizes,
+            fontFamily = commentaryFontFamily
         )
     }
 
@@ -415,6 +421,7 @@ private fun CommentaryListView(
                     CommentaryItem(
                         commentary = commentary,
                         textSizes = config.textSizes,
+                        fontFamily = config.fontFamily,
                         onClick = { config.onCommentClick(commentary) }
                     )
                 }
@@ -436,6 +443,7 @@ private fun CommentaryListView(
 private fun CommentaryItem(
     commentary: CommentaryWithText,
     textSizes: AnimatedTextSizes,
+    fontFamily: FontFamily,
     onClick: () -> Unit
 ) {
     // Memorizes the pointerInput to avoid recreating it
@@ -458,8 +466,6 @@ private fun CommentaryItem(
                 textSizes.commentTextSize
             )
         }
-
-        val fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew))
 
         Text(
             text = annotated,
@@ -641,5 +647,6 @@ private data class CommentariesLayoutConfig(
     val scrollOffset: Int,
     val onScroll: (Int, Int) -> Unit,
     val onCommentClick: (CommentaryWithText) -> Unit,
-    val textSizes: AnimatedTextSizes
+    val textSizes: AnimatedTextSizes,
+    val fontFamily: FontFamily,
 )

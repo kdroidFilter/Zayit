@@ -21,6 +21,20 @@
     <string name="settings_db_path_label">נתיב מסד הנתונים:</string>
     <string name="settings_db_path_not_set">לא הוגדר</string>
     <string name="settings_persist_session">שמור מצב בין הפעלות</string>
+    <string name="settings_font_book_label">גופן לטקסט הספר</string>
+    <string name="settings_font_commentary_label">גופן לפירושים</string>
+    <string name="settings_font_targum_label">גופן לתרגומים</string>
+    <!-- Font names -->
+    <string name="font_noto_serif_hebrew">Noto Serif Hebrew</string>
+    <string name="font_noto_rashi_hebrew">Noto Rashi Hebrew</string>
+    <string name="font_frank_ruhl_libre">Frank Ruhl Libre</string>
+    <string name="font_miriam_libre">Miriam Libre</string>
+    <string name="font_open_sans">Open Sans</string>
+    <string name="font_open_sans_italic">Open Sans Italic</string>
+    <string name="font_cardo">Cardo</string>
+    <string name="font_tinos">Tinos</string>
+    <string name="font_libertinus_serif">Libertinus Serif</string>
+    <string name="font_bona_nova_sc">Bona Nova SC</string>
 
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>

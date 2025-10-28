@@ -34,6 +34,9 @@ object AppSettings {
     private const val KEY_CLOSE_TREE_ON_NEW_BOOK = "close_tree_on_new_book"
     private const val KEY_DATABASE_PATH = "database_path"
     private const val KEY_PERSIST_SESSION = "persist_session"
+    private const val KEY_FONT_BOOK = "font_book"
+    private const val KEY_FONT_COMMENTARY = "font_commentary"
+    private const val KEY_FONT_TARGUM = "font_targum"
     private const val KEY_SAVED_SESSION = "saved_session_json"
     private const val KEY_SAVED_SESSION_PARTS_COUNT = "saved_session_parts_count"
     private const val KEY_SAVED_SESSION_PART_PREFIX = "saved_session_part_"
@@ -64,6 +67,9 @@ object AppSettings {
         _closeTreeOnNewBookFlow.value = getCloseBookTreeOnNewBookSelected()
         _databasePathFlow.value = getDatabasePath()
         _persistSessionFlow.value = isPersistSessionEnabled()
+        _bookFontCodeFlow.value = getBookFontCode()
+        _commentaryFontCodeFlow.value = getCommentaryFontCode()
+        _targumFontCodeFlow.value = getTargumFontCode()
     }
 
     // StateFlow to observe text size changes
@@ -85,6 +91,16 @@ object AppSettings {
     // StateFlow for session persistence setting
     private val _persistSessionFlow = MutableStateFlow(isPersistSessionEnabled())
     val persistSessionFlow: StateFlow<Boolean> = _persistSessionFlow.asStateFlow()
+
+    // Font preference flows
+    private val _bookFontCodeFlow = MutableStateFlow(getBookFontCode())
+    val bookFontCodeFlow: StateFlow<String> = _bookFontCodeFlow.asStateFlow()
+
+    private val _commentaryFontCodeFlow = MutableStateFlow(getCommentaryFontCode())
+    val commentaryFontCodeFlow: StateFlow<String> = _commentaryFontCodeFlow.asStateFlow()
+
+    private val _targumFontCodeFlow = MutableStateFlow(getTargumFontCode())
+    val targumFontCodeFlow: StateFlow<String> = _targumFontCodeFlow.asStateFlow()
 
     fun getTextSize(): Float {
         return settings[KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE]
@@ -126,6 +142,34 @@ object AppSettings {
         val currentHeight = getLineHeight()
         val newHeight = (currentHeight - decrement).coerceAtLeast(MIN_LINE_HEIGHT)
         setLineHeight(newHeight)
+    }
+
+    // Font settings (persist codes for cross-platform stability)
+    fun getBookFontCode(): String {
+        return settings[KEY_FONT_BOOK, "notoserifhebrew"]
+    }
+
+    fun setBookFontCode(code: String) {
+        settings[KEY_FONT_BOOK] = code
+        _bookFontCodeFlow.value = code
+    }
+
+    fun getCommentaryFontCode(): String {
+        return settings[KEY_FONT_COMMENTARY, "notorashihebrew"]
+    }
+
+    fun setCommentaryFontCode(code: String) {
+        settings[KEY_FONT_COMMENTARY] = code
+        _commentaryFontCodeFlow.value = code
+    }
+
+    fun getTargumFontCode(): String {
+        return settings[KEY_FONT_TARGUM, "notorashihebrew"]
+    }
+
+    fun setTargumFontCode(code: String) {
+        settings[KEY_FONT_TARGUM] = code
+        _targumFontCodeFlow.value = code
     }
 
     fun getCloseBookTreeOnNewBookSelected(): Boolean {
@@ -281,5 +325,8 @@ object AppSettings {
         _closeTreeOnNewBookFlow.value = false
         _databasePathFlow.value = null
         _persistSessionFlow.value = false
+        _bookFontCodeFlow.value = "notoserifhebrew"
+        _commentaryFontCodeFlow.value = "notorashihebrew"
+        _targumFontCodeFlow.value = "notorashihebrew"
     }
 }

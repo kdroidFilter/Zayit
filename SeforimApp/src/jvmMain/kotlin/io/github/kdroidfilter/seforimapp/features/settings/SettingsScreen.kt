@@ -63,11 +63,16 @@ import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalo
 fun Settings(onClose: () -> Unit) {
     val viewModel: SettingsViewModel = LocalAppGraph.current.settingsViewModel
     val state by viewModel.state.collectAsState()
-    SettingsView(state, onClose, onToggleCloseTree = { value ->
-        viewModel.onEvent(SettingsEvents.SetCloseBookTreeOnNewBookSelected(value))
-    }, onTogglePersistSession = { value ->
-        viewModel.onEvent(SettingsEvents.SetPersistSession(value))
-    }, onSelectBookFont = { code -> viewModel.onEvent(SettingsEvents.SetBookFont(code)) },
+    SettingsView(
+        state,
+        onClose,
+        onToggleCloseTree = { value ->
+            viewModel.onEvent(SettingsEvents.SetCloseBookTreeOnNewBookSelected(value))
+        },
+        onTogglePersistSession = { value ->
+            viewModel.onEvent(SettingsEvents.SetPersistSession(value))
+        },
+        onSelectBookFont = { code -> viewModel.onEvent(SettingsEvents.SetBookFont(code)) },
         onSelectCommentaryFont = { code -> viewModel.onEvent(SettingsEvents.SetCommentaryFont(code)) },
         onSelectTargumFont = { code -> viewModel.onEvent(SettingsEvents.SetTargumFont(code)) },
         onReset = { viewModel.onEvent(SettingsEvents.ResetApp) })
@@ -87,9 +92,7 @@ private fun SettingsView(
     val themeDefinition = buildThemeDefinition()
 
     IntUiTheme(
-        theme = themeDefinition,
-        styling = ComponentStyling.default()
-            .decoratedWindow(
+        theme = themeDefinition, styling = ComponentStyling.default().decoratedWindow(
                 titleBarStyle = ThemeUtils.pickTitleBarStyle(),
             )
     ) {
@@ -111,15 +114,12 @@ private fun SettingsView(
             val isWindows = getOperatingSystem() == OperatingSystem.WINDOWS
             TitleBar(modifier = Modifier.newFullscreenControls()) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth(if (isMac) 0.9f else 1f)
+                    modifier = Modifier.fillMaxWidth(if (isMac) 0.9f else 1f)
                         .padding(start = if (isWindows) 70.dp else 0.dp)
                 ) {
                     val centerOffset = 40.dp
                     Row(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .offset(x = centerOffset),
+                        modifier = Modifier.align(Alignment.Center).offset(x = centerOffset),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -135,20 +135,22 @@ private fun SettingsView(
             }
 
             Column(
-                modifier =
-                    Modifier.trackActivation().fillMaxSize()
-                        .background(JewelTheme.globalColors.panelBackground),
+                modifier = Modifier
+                    .trackActivation()
+                    .fillMaxSize()
+                    .background(JewelTheme.globalColors.panelBackground)
+                    .padding(16.dp),
             ) {
                 // Font selectors
                 val options = remember { FontCatalog.options }
                 val optionLabels = options.map { stringResource(it.label) }
 
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(text = stringResource(Res.string.settings_font_book_label))
-                    val selectedIndex = options.indexOfFirst { it.code == state.bookFontCode }.let { if (it >= 0) it else 0 }
+                    val selectedIndex =
+                        options.indexOfFirst { it.code == state.bookFontCode }.let { if (it >= 0) it else 0 }
                     ListComboBox(
                         items = optionLabels,
                         selectedIndex = selectedIndex,
@@ -158,11 +160,11 @@ private fun SettingsView(
                 }
 
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(text = stringResource(Res.string.settings_font_commentary_label))
-                    val selectedIndex = options.indexOfFirst { it.code == state.commentaryFontCode }.let { if (it >= 0) it else 0 }
+                    val selectedIndex =
+                        options.indexOfFirst { it.code == state.commentaryFontCode }.let { if (it >= 0) it else 0 }
                     ListComboBox(
                         items = optionLabels,
                         selectedIndex = selectedIndex,
@@ -172,11 +174,11 @@ private fun SettingsView(
                 }
 
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(text = stringResource(Res.string.settings_font_targum_label))
-                    val selectedIndex = options.indexOfFirst { it.code == state.targumFontCode }.let { if (it >= 0) it else 0 }
+                    val selectedIndex =
+                        options.indexOfFirst { it.code == state.targumFontCode }.let { if (it >= 0) it else 0 }
                     ListComboBox(
                         items = optionLabels,
                         selectedIndex = selectedIndex,
@@ -189,8 +191,7 @@ private fun SettingsView(
 
                 // Database path display
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(text = stringResource(Res.string.settings_db_path_label))
                     Text(
@@ -201,13 +202,11 @@ private fun SettingsView(
                 Divider(modifier = Modifier, orientation = Orientation.Horizontal)
 
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Checkbox(
                         checked = state.closedAutomaticallyBookTreePaneOnNewBookSelected,
-                        onCheckedChange = { onToggleCloseTree(it) }
-                    )
+                        onCheckedChange = { onToggleCloseTree(it) })
                     Text(
                         text = stringResource(Res.string.close_book_tree_on_new_book),
                     )
@@ -216,13 +215,10 @@ private fun SettingsView(
                 Divider(modifier = Modifier, orientation = Orientation.Horizontal)
 
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Checkbox(
-                        checked = state.persistSession,
-                        onCheckedChange = { onTogglePersistSession(it) }
-                    )
+                        checked = state.persistSession, onCheckedChange = { onTogglePersistSession(it) })
                     Text(
                         text = stringResource(Res.string.settings_persist_session),
                     )
@@ -231,8 +227,7 @@ private fun SettingsView(
                 Divider(modifier = Modifier, orientation = Orientation.Horizontal)
 
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     DefaultButton(onClick = onReset) {
                         Text(text = stringResource(Res.string.settings_reset_app))

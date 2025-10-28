@@ -20,7 +20,7 @@ val ref = System.getenv("GITHUB_REF") ?: ""
 val version = if (ref.startsWith("refs/tags/")) {
     val tag = ref.removePrefix("refs/tags/")
     if (tag.startsWith("v")) tag.substring(1) else tag
-} else "0.2.3"
+} else "0.3.0"
 
 // Turn 0.x[.y] into 1.x[.y] for macOS (DMG/PKG require MAJOR > 0)
 fun macSafeVersion(ver: String): String {

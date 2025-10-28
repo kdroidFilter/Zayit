@@ -8,6 +8,7 @@ import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
+import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +20,7 @@ import com.russhwolf.settings.get
 
 data class CategorySuggestionDto(val category: Category, val path: List<String>)
 data class BookSuggestionDto(val book: Book, val path: List<String>)
+data class TocSuggestionDto(val toc: TocEntry, val path: List<String>)
 
 data class SearchHomeUiState(
     val selectedFilter: SearchFilter = SearchFilter.TEXT,
@@ -26,8 +28,11 @@ data class SearchHomeUiState(
     val suggestionsVisible: Boolean = false,
     val categorySuggestions: List<CategorySuggestionDto> = emptyList(),
     val bookSuggestions: List<BookSuggestionDto> = emptyList(),
+    val tocSuggestionsVisible: Boolean = false,
+    val tocSuggestions: List<TocSuggestionDto> = emptyList(),
     val selectedScopeCategory: Category? = null,
     val selectedScopeBook: Book? = null,
+    val selectedScopeToc: TocEntry? = null,
     val userDisplayName: String = ""
 )
 
@@ -42,6 +47,7 @@ class SearchHomeViewModel(
     val uiState: StateFlow<SearchHomeUiState> = _uiState.asStateFlow()
 
     private val referenceQuery = MutableStateFlow("")
+    private val tocQuery = MutableStateFlow("")
 
     private val NEAR_LEVELS = listOf(1, 3, 5, 10, 20)
 
@@ -112,17 +118,64 @@ class SearchHomeViewModel(
                     }
                 }
         }
+
+        // Debounced suggestions for TOC query (only when a book is selected)
+        viewModelScope.launch {
+            tocQuery
+                .debounce(200)
+                .distinctUntilChanged()
+                .collect { qRaw ->
+                    val q = qRaw.trim()
+                    val book = _uiState.value.selectedScopeBook
+                    if (q.isBlank() || book == null) {
+                        _uiState.value = _uiState.value.copy(
+                            tocSuggestions = emptyList(),
+                            tocSuggestionsVisible = false
+                        )
+                    } else {
+                        val allToc = repository.getBookToc(book.id)
+                        val matches = allToc
+                            .filter { it.text.isNotBlank() && it.text.contains(q, ignoreCase = true) }
+                            .take(30)
+                        val suggestions = matches.map { toc ->
+                            val path = buildTocPathTitles(toc)
+                            TocSuggestionDto(toc, path)
+                        }
+                        _uiState.value = _uiState.value.copy(
+                            tocSuggestions = suggestions,
+                            tocSuggestionsVisible = suggestions.isNotEmpty()
+                        )
+                    }
+                }
+        }
     }
 
     fun onReferenceQueryChanged(query: String) {
         referenceQuery.value = query
+        if (query.isBlank()) {
+            _uiState.value = _uiState.value.copy(
+                selectedScopeCategory = null,
+                selectedScopeBook = null,
+                selectedScopeToc = null,
+            )
+        }
+    }
+
+    fun onTocQueryChanged(query: String) {
+        tocQuery.value = query
+        if (query.isBlank()) {
+            _uiState.value = _uiState.value.copy(selectedScopeToc = null)
+        }
     }
 
     fun onPickCategory(category: Category) {
         _uiState.value = _uiState.value.copy(
             selectedScopeCategory = category,
             selectedScopeBook = null,
-            suggestionsVisible = false
+            selectedScopeToc = null,
+            suggestionsVisible = false,
+            tocSuggestionsVisible = false,
+            tocSuggestions = emptyList()
         )
     }
 
@@ -130,7 +183,17 @@ class SearchHomeViewModel(
         _uiState.value = _uiState.value.copy(
             selectedScopeCategory = null,
             selectedScopeBook = book,
-            suggestionsVisible = false
+            selectedScopeToc = null,
+            suggestionsVisible = false,
+            tocSuggestionsVisible = false,
+            tocSuggestions = emptyList()
+        )
+    }
+
+    fun onPickToc(toc: TocEntry) {
+        _uiState.value = _uiState.value.copy(
+            selectedScopeToc = toc,
+            tocSuggestionsVisible = false
         )
     }
 
@@ -151,6 +214,7 @@ class SearchHomeViewModel(
         // Clear previous filters
         stateManager.saveState(currentTabId, SearchStateKeys.FILTER_CATEGORY_ID, 0L)
         stateManager.saveState(currentTabId, SearchStateKeys.FILTER_BOOK_ID, 0L)
+        stateManager.saveState(currentTabId, SearchStateKeys.FILTER_TOC_ID, 0L)
 
         // Apply selected scope only
         _uiState.value.selectedScopeCategory?.let { cat ->
@@ -158,6 +222,11 @@ class SearchHomeViewModel(
         }
         _uiState.value.selectedScopeBook?.let { book ->
             stateManager.saveState(currentTabId, SearchStateKeys.FILTER_BOOK_ID, book.id)
+        }
+        _uiState.value.selectedScopeToc?.let { toc ->
+            // Ensure book filter matches toc's book as well
+            stateManager.saveState(currentTabId, SearchStateKeys.FILTER_BOOK_ID, toc.bookId)
+            stateManager.saveState(currentTabId, SearchStateKeys.FILTER_TOC_ID, toc.id)
         }
 
         // Persist search params for this tab to restore state
@@ -199,5 +268,46 @@ class SearchHomeViewModel(
         // Collapse whitespace
         s = s.replace("\\s+".toRegex(), " ").trim()
         return s
+    }
+
+    private suspend fun buildTocPathTitles(entry: TocEntry): List<String> {
+        val bookTitle = runCatching { repository.getBook(entry.bookId)?.title }.getOrNull()
+        val tocTitles = mutableListOf<String>()
+        var current: TocEntry? = entry
+        val safety = 128
+        var guard = 0
+        while (current != null && guard++ < safety) {
+            tocTitles += current.text
+            current = current.parentId?.let { pid -> runCatching { repository.getTocEntry(pid) }.getOrNull() }
+        }
+        val path = tocTitles.asReversed()
+        val combined = if (bookTitle != null) listOf(bookTitle) + path else path
+        return dedupAdjacent(combined)
+    }
+
+    private fun dedupAdjacent(parts: List<String>): List<String> {
+        if (parts.isEmpty()) return parts
+        fun extends(prev: String, next: String): Boolean {
+            val a = prev.trim()
+            val b = next.trim()
+            if (b.length <= a.length) return false
+            if (!b.startsWith(a)) return false
+            val ch = b[a.length]
+            return ch == ',' || ch == ' ' || ch == ':' || ch == '-' || ch == '—'
+        }
+        val out = ArrayList<String>(parts.size)
+        for (p in parts) {
+            if (out.isEmpty()) {
+                out += p
+            } else {
+                val last = out.last()
+                when {
+                    p == last -> { /* skip */ }
+                    extends(last, p) -> out[out.lastIndex] = p
+                    else -> out += p
+                }
+            }
+        }
+        return out
     }
 }

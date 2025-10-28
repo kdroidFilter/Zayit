@@ -39,6 +39,7 @@ import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.window.DecoratedWindow
@@ -53,6 +54,10 @@ import seforimapp.seforimapp.generated.resources.settings_reset_done
 import seforimapp.seforimapp.generated.resources.settings_db_path_label
 import seforimapp.seforimapp.generated.resources.settings_db_path_not_set
 import seforimapp.seforimapp.generated.resources.settings_persist_session
+import seforimapp.seforimapp.generated.resources.settings_font_book_label
+import seforimapp.seforimapp.generated.resources.settings_font_commentary_label
+import seforimapp.seforimapp.generated.resources.settings_font_targum_label
+import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 
 @Composable
 fun Settings(onClose: () -> Unit) {
@@ -62,7 +67,10 @@ fun Settings(onClose: () -> Unit) {
         viewModel.onEvent(SettingsEvents.SetCloseBookTreeOnNewBookSelected(value))
     }, onTogglePersistSession = { value ->
         viewModel.onEvent(SettingsEvents.SetPersistSession(value))
-    }, onReset = { viewModel.onEvent(SettingsEvents.ResetApp) })
+    }, onSelectBookFont = { code -> viewModel.onEvent(SettingsEvents.SetBookFont(code)) },
+        onSelectCommentaryFont = { code -> viewModel.onEvent(SettingsEvents.SetCommentaryFont(code)) },
+        onSelectTargumFont = { code -> viewModel.onEvent(SettingsEvents.SetTargumFont(code)) },
+        onReset = { viewModel.onEvent(SettingsEvents.ResetApp) })
 }
 
 @Composable
@@ -71,6 +79,9 @@ private fun SettingsView(
     onClose: () -> Unit,
     onToggleCloseTree: (Boolean) -> Unit,
     onTogglePersistSession: (Boolean) -> Unit,
+    onSelectBookFont: (String) -> Unit,
+    onSelectCommentaryFont: (String) -> Unit,
+    onSelectTargumFont: (String) -> Unit,
     onReset: () -> Unit
 ) {
     val themeDefinition = buildThemeDefinition()
@@ -128,6 +139,54 @@ private fun SettingsView(
                     Modifier.trackActivation().fillMaxSize()
                         .background(JewelTheme.globalColors.panelBackground),
             ) {
+                // Font selectors
+                val options = remember { FontCatalog.options }
+                val optionLabels = options.map { stringResource(it.label) }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(text = stringResource(Res.string.settings_font_book_label))
+                    val selectedIndex = options.indexOfFirst { it.code == state.bookFontCode }.let { if (it >= 0) it else 0 }
+                    ListComboBox(
+                        items = optionLabels,
+                        selectedIndex = selectedIndex,
+                        onSelectedItemChange = { idx -> onSelectBookFont(options[idx].code) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(text = stringResource(Res.string.settings_font_commentary_label))
+                    val selectedIndex = options.indexOfFirst { it.code == state.commentaryFontCode }.let { if (it >= 0) it else 0 }
+                    ListComboBox(
+                        items = optionLabels,
+                        selectedIndex = selectedIndex,
+                        onSelectedItemChange = { idx -> onSelectCommentaryFont(options[idx].code) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(text = stringResource(Res.string.settings_font_targum_label))
+                    val selectedIndex = options.indexOfFirst { it.code == state.targumFontCode }.let { if (it >= 0) it else 0 }
+                    ListComboBox(
+                        items = optionLabels,
+                        selectedIndex = selectedIndex,
+                        onSelectedItemChange = { idx -> onSelectTargumFont(options[idx].code) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Divider(modifier = Modifier, orientation = Orientation.Horizontal)
+
                 // Database path display
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

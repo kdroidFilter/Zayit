@@ -6,4 +6,7 @@ data class SettingsState(
     val isVisible: Boolean = false,
     val resetDone: Boolean = false,
     val databasePath: String? = null,
+    val bookFontCode: String = "notoserifhebrew",
+    val commentaryFontCode: String = "notorashihebrew",
+    val targumFontCode: String = "notorashihebrew",
 )

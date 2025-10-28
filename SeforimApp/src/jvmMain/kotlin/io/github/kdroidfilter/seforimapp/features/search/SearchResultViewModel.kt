@@ -114,6 +114,7 @@ class SearchResultViewModel(
         val MAX_TOTAL = 200
         val filterCategoryId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_CATEGORY_ID)
         val filterBookId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)
+        val filterTocId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_TOC_ID)
         val fts = buildNearQuery(_uiState.value.query.trim(), _uiState.value.near)
         val acc = _uiState.value.results.toMutableList()
 
@@ -133,6 +134,23 @@ class SearchResultViewModel(
         }
 
         when {
+            filterTocId != null && filterTocId > 0 -> {
+                val toc = repository.getTocEntry(filterTocId)
+                if (toc != null) {
+                    val allowedLineIds = collectLineIdsForTocSubtree(toc.id)
+                    val bookId = toc.bookId
+                    var offset = nextOffset
+                    while (acc.size < MAX_TOTAL) {
+                        val page = repository.searchInBookWithOperators(bookId, fts, limit = BATCH, offset = offset)
+                        if (page.isEmpty()) break
+                        val filtered = page.filter { it.lineId in allowedLineIds }
+                        acc += filtered
+                        offset += page.size
+                        nextOffset = offset
+                        emitUpdate()
+                    }
+                }
+            }
             filterBookId != null && filterBookId > 0 -> {
                 var offset = nextOffset
                 while (acc.size < MAX_TOTAL) {
@@ -196,12 +214,14 @@ class SearchResultViewModel(
                 val near = _uiState.value.near
                 val filterCategoryId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_CATEGORY_ID)
                 val filterBookId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)
+                val filterTocId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_TOC_ID)
 
                 val key = SearchParamsKey(
                     query = q,
                     near = near,
                     filterCategoryId = filterCategoryId,
-                    filterBookId = filterBookId
+                    filterBookId = filterBookId,
+                    filterTocId = filterTocId
                 )
                 currentKey = key
                 nextOffset = 0
@@ -271,6 +291,24 @@ class SearchResultViewModel(
                 }
 
                 when {
+                    filterTocId != null && filterTocId > 0 -> {
+                        val toc = repository.getTocEntry(filterTocId)
+                        if (toc != null) {
+                            val allowedLineIds = collectLineIdsForTocSubtree(toc.id)
+                            val bookId = toc.bookId
+                            var offset = 0
+                            while (acc.size < MAX_TOTAL) {
+                                val remaining = MAX_TOTAL - acc.size
+                                val page = repository.searchInBookWithOperators(bookId, fts, limit = minOf(BATCH, remaining), offset = offset)
+                                if (page.isEmpty()) break
+                                val filtered = page.filter { it.lineId in allowedLineIds }
+                                acc += filtered
+                                offset += page.size
+                                emitUpdate()
+                            }
+                            nextOffset = offset
+                        }
+                    }
                     filterBookId != null && filterBookId > 0 -> {
                         var offset = 0
                         while (acc.size < MAX_TOTAL) {
@@ -345,6 +383,7 @@ class SearchResultViewModel(
                 var added = 0
                 val filterCategoryId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_CATEGORY_ID)
                 val filterBookId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)
+                val filterTocId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_TOC_ID)
 
                 suspend fun emitUpdate() {
                     _uiState.value = _uiState.value.copy(
@@ -362,6 +401,25 @@ class SearchResultViewModel(
                 }
 
                 when {
+                    filterTocId != null && filterTocId > 0 -> {
+                        val toc = repository.getTocEntry(filterTocId)
+                        if (toc != null) {
+                            val allowedLineIds = collectLineIdsForTocSubtree(toc.id)
+                            val bookId = toc.bookId
+                            var offset = nextOffset
+                            while (added < ADDITIONAL) {
+                                val remaining = ADDITIONAL - added
+                                val page = repository.searchInBookWithOperators(bookId, fts, limit = minOf(BATCH, remaining), offset = offset)
+                                if (page.isEmpty()) break
+                                val filtered = page.filter { it.lineId in allowedLineIds }
+                                acc += filtered
+                                offset += page.size
+                                added += filtered.size
+                                emitUpdate()
+                            }
+                            nextOffset = offset
+                        }
+                    }
                     filterBookId != null && filterBookId > 0 -> {
                         var offset = nextOffset
                         while (added < ADDITIONAL) {
@@ -521,5 +579,16 @@ class SearchResultViewModel(
 
     private fun sanitize(term: String): String {
         return term.replace('"', ' ').trim()
+    }
+
+    private suspend fun collectLineIdsForTocSubtree(tocId: Long): Set<Long> {
+        val result = mutableSetOf<Long>()
+        suspend fun dfs(id: Long) {
+            runCatching { repository.getLineIdsForTocEntry(id) }.getOrNull()?.let { result += it }
+            val children = runCatching { repository.getTocChildren(id) }.getOrNull().orEmpty()
+            for (child in children) dfs(child.id)
+        }
+        dfs(tocId)
+        return result
     }
 }

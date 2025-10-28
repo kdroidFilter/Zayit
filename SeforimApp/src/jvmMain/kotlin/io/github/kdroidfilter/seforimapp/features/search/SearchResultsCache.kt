@@ -6,7 +6,8 @@ data class SearchParamsKey(
     val query: String,
     val near: Int,
     val filterCategoryId: Long?,
-    val filterBookId: Long?
+    val filterBookId: Long?,
+    val filterTocId: Long?
 )
 
 /**

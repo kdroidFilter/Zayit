@@ -85,8 +85,8 @@ class SearchHomeViewModel(
                             CategorySuggestionDto(cat, path.ifEmpty { listOf(cat.title) })
                         }
                         // Books via FTS5 on titles + acronyms
-                        val tokens = qNorm.split("\\s+".toRegex()).filter { it.isNotBlank() }
-                        val ftsQuery = if (tokens.isEmpty()) "" else tokens.joinToString(" ") { it + "*" }
+                        val tokens = qNorm.split("\\s+".toRegex()).map { it.trim() }.filter { it.isNotEmpty() }
+                        val ftsQuery = toFtsPrefixQuery(tokens)
                         val ftsBooks = if (ftsQuery.isNotBlank()) repository.searchBooksByTitleFts(ftsQuery, limit = 50) else emptyList()
 
                         val bookItems = ftsBooks.map { book ->
@@ -268,6 +268,20 @@ class SearchHomeViewModel(
         // Collapse whitespace
         s = s.replace("\\s+".toRegex(), " ").trim()
         return s
+    }
+
+    // Build an FTS5 MATCH string with prefix search, quoting tokens safely and
+    // dropping punctuation-only tokens to avoid syntax errors (e.g., near ">").
+    private fun toFtsPrefixQuery(tokens: List<String>): String {
+        fun hasWordChar(s: String): Boolean = s.any { it.isLetterOrDigit() }
+        return tokens
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && hasWordChar(it) }
+            .joinToString(" ") { token ->
+                val base = token.trim().trimEnd('*')
+                val escaped = base.replace("\"", "\"\"")
+                "\"$escaped\"*"
+            }
     }
 
     private suspend fun buildTocPathTitles(entry: TocEntry): List<String> {

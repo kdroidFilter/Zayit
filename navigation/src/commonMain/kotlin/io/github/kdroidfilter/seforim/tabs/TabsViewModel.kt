@@ -127,7 +127,8 @@ class TabsViewModel(
         val newTab = TabItem(
             id = _nextTabId++,
             title = getTabTitle(destination),
-            destination = destination
+            destination = destination,
+            tabType = TabType.SEARCH
         )
         _tabs.value = _tabs.value + newTab
         _selectedTabIndex.value = _tabs.value.lastIndex
@@ -146,7 +147,12 @@ class TabsViewModel(
         val newTab = TabItem(
             id = _nextTabId++,
             title = getTabTitle(newDestination),
-            destination = newDestination
+            destination = newDestination,
+            tabType = when (newDestination) {
+                is TabsDestination.Home -> TabType.SEARCH
+                is TabsDestination.Search -> TabType.SEARCH
+                is TabsDestination.BookContent -> if (newDestination.bookId > 0) TabType.BOOK else TabType.SEARCH
+            }
         )
         _tabs.value = _tabs.value + newTab
         _selectedTabIndex.value = _tabs.value.lastIndex
@@ -182,7 +188,12 @@ class TabsViewModel(
 
         val updated = current.copy(
             title = getTabTitle(newDestination),
-            destination = newDestination
+            destination = newDestination,
+            tabType = when (newDestination) {
+                is TabsDestination.Home -> TabType.SEARCH
+                is TabsDestination.Search -> TabType.SEARCH
+                is TabsDestination.BookContent -> if (newDestination.bookId > 0) TabType.BOOK else TabType.SEARCH
+            }
         )
         _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
         // Encourage GC after destination swap
@@ -224,7 +235,12 @@ class TabsViewModel(
 
         val updated = current.copy(
             title = getTabTitle(newDestination),
-            destination = newDestination
+            destination = newDestination,
+            tabType = when (newDestination) {
+                is TabsDestination.Home -> TabType.SEARCH
+                is TabsDestination.Search -> TabType.SEARCH
+                is TabsDestination.BookContent -> if (newDestination.bookId > 0) TabType.BOOK else TabType.SEARCH
+            }
         )
         _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
         // Trigger GC when resetting a tab with a new id

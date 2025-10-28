@@ -50,14 +50,14 @@ import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.settings
 
 @Composable
-fun Settings(onClose: () -> Unit) {
-    SettingsView(
+fun SettingsWindow(onClose: () -> Unit) {
+    SettingsWindowView(
         onClose = onClose,
     )
 }
 
 @Composable
-private fun SettingsView(
+private fun SettingsWindowView(
     onClose: () -> Unit,
 
 ) {

@@ -4,9 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
-import io.github.kdroidfilter.seforimapp.features.settings.Settings
-import io.github.kdroidfilter.seforimapp.features.settings.SettingsEvents
-import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
+import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
+import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
+import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
@@ -22,7 +22,7 @@ fun TitleBarActionsButtonsView() {
     val theme = themeViewModel.theme.collectAsState().value
 
     // Use ViewModel-driven settings window visibility to respect MVVM conventions
-    val settingsViewModel: SettingsViewModel = LocalAppGraph.current.settingsViewModel
+    val settingsViewModel: SettingsWindowViewModel = LocalAppGraph.current.settingsWindowViewModel
     val settingsState = settingsViewModel.state.collectAsState().value
 
     // Access app graph outside of callbacks to avoid reading CompositionLocals in non-composable contexts
@@ -88,12 +88,12 @@ fun TitleBarActionsButtonsView() {
         key = AllIconsKeys.General.Settings,
         contentDescription = stringResource(Res.string.settings),
         onClick = {
-            settingsViewModel.onEvent(SettingsEvents.onOpen)
+            settingsViewModel.onEvent(SettingsWindowEvents.onOpen)
         },
         tooltipText = stringResource(Res.string.settings_tooltip),
     )
 
     if (settingsState.isVisible) {
-        Settings(onClose = { settingsViewModel.onEvent(SettingsEvents.onClose) })
+        SettingsWindow(onClose = { settingsViewModel.onEvent(SettingsWindowEvents.onClose) })
     }
 }

@@ -24,7 +24,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.Available
 import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeOfInstallationViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.databaseFetcher
-import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
+import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigViewModel
@@ -50,7 +50,7 @@ abstract class AppGraph {
     abstract val settings: Settings
     abstract val repository: SeforimRepository
     abstract val tabsViewModel: TabsViewModel
-    abstract val settingsViewModel: SettingsViewModel
+    abstract val settingsWindowViewModel: SettingsWindowViewModel
     abstract val searchResultsCache: SearchResultsCache
 
     abstract val typeOfInstallationViewModel: TypeOfInstallationViewModel
@@ -100,10 +100,10 @@ abstract class AppGraph {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideSettingsViewModel(settings: Settings): SettingsViewModel {
+    fun provideSettingsWindowViewModel(settings: Settings): SettingsWindowViewModel {
         // Ensure AppSettings uses the same Settings instance as provided by DI
         AppSettings.initialize(settings)
-        return SettingsViewModel()
+        return SettingsWindowViewModel()
     }
 
     @Provides

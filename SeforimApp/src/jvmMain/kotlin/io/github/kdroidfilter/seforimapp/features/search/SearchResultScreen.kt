@@ -33,6 +33,8 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.DefaultButton
+import org.jetbrains.jewel.ui.component.IconActionButton
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
@@ -63,6 +65,7 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
+ 
 
 @Composable
 fun SearchResultScreen(viewModel: SearchResultViewModel) {
@@ -116,7 +119,7 @@ fun SearchResultInBookShell(
             firstMinSize = if (bookUiState.navigation.isVisible) io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults.MIN_MAIN else 0f,
             firstContent = {
                 if (bookUiState.navigation.isVisible) {
-                    CategoryTreePanel(uiState = bookUiState, onEvent = onEvent)
+                    CategoryTreePanel(uiState = bookUiState, onEvent = onEvent, searchViewModel = viewModel)
                 }
             },
             secondContent = {
@@ -125,7 +128,7 @@ fun SearchResultInBookShell(
                     firstMinSize = if (bookUiState.toc.isVisible) io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults.MIN_TOC else 0f,
                     firstContent = {
                         if (bookUiState.toc.isVisible) {
-                            BookTocPanel(uiState = bookUiState, onEvent = onEvent)
+                            BookTocPanel(uiState = bookUiState, onEvent = onEvent, searchViewModel = viewModel)
                         }
                     },
                     secondContent = {
@@ -229,8 +232,12 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
             }
         }
 
-        // Near level + dynamic results count
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Near level + dynamic results count (filtered list)
+        val visibleResultsState = androidx.compose.runtime.produceState(initialValue = emptyList<io.github.kdroidfilter.seforimlibrary.core.models.SearchResult>(), state.results, state.scopeBook, state.scopeCategoryPath) {
+            value = kotlin.runCatching { viewModel.getVisibleResults() }.getOrDefault(state.results)
+        }
+        val visibleResults = visibleResultsState.value
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = stringResource(Res.string.search_near_label, state.near),
                 color = JewelTheme.globalColors.text.info,
@@ -239,11 +246,19 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
             )
             Spacer(Modifier.width(12.dp))
             Text(
-                text = stringResource(Res.string.search_result_count, state.results.size),
+                text = stringResource(Res.string.search_result_count, visibleResults.size),
                 color = JewelTheme.globalColors.text.normal,
                 modifier = Modifier.padding(bottom = 8.dp),
                 fontSize = commentSize.sp
             )
+            Spacer(Modifier.weight(1f))
+            if (state.isLoading || state.isLoadingMore) {
+                IconActionButton(
+                    key = AllIconsKeys.Windows.Close,
+                    onClick = { viewModel.cancelSearch() },
+                    contentDescription = "Cancel search"
+                )
+            }
         }
 
         // Results list
@@ -253,7 +268,7 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                 .padding(horizontal = 32.dp)
                 .background(JewelTheme.globalColors.panelBackground)
         ) {
-            if (state.results.isEmpty()) {
+            if (visibleResults.isEmpty()) {
                 if (state.isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
@@ -268,7 +283,7 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                     state = listState,
                     modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(state.results) { result ->
+                    items(visibleResults) { result ->
                         val windowInfo = LocalWindowInfo.current
                         ResultRow(
                             title = null,
@@ -379,6 +394,7 @@ private fun ResultRow(
         }
     }
 }
+
 
 @Composable
 private fun ResultBreadcrumb(

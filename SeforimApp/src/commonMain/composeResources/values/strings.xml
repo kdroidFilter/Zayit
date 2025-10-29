@@ -269,6 +269,7 @@
     <string name="search_icon_description">חיפוש</string>
     <string name="search_load_more">טען תוצאות נוספות</string>
     <string name="search_result_count">נמצאו %1$d תוצאות</string>
+    <string name="search_stop">בטל חיפוש</string>
 
     <!-- Reference open action -->
     <string name="open_book">פתח ספר</string>

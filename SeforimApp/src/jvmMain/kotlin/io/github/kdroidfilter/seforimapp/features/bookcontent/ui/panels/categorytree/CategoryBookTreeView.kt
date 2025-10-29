@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -51,7 +52,14 @@ fun CategoryBookTreeView(
     onCategoryClick: (Category) -> Unit,
     onBookClick: (Book) -> Unit,
     onScroll: (Int, Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Optional search integration: counts + selection override
+    categoryCounts: Map<Long, Int> = emptyMap(),
+    bookCounts: Map<Long, Int> = emptyMap(),
+    selectedCategoryIdOverride: Long? = null,
+    selectedBookIdOverride: Long? = null,
+    showCounts: Boolean = false,
+    booksForCategoryOverride: Map<Long, List<Book>> = emptyMap()
 ) {
     /* ---------------------------------------------------------------------
      * Build the flat hierarchical list to display.
@@ -62,7 +70,14 @@ fun CategoryBookTreeView(
         navigationState.categoryChildren,
         navigationState.booksInCategory,
         navigationState.selectedCategory,
-        navigationState.selectedBook
+        navigationState.selectedBook,
+        // Rebuild when search-related inputs change
+        showCounts,
+        categoryCounts,
+        bookCounts,
+        selectedCategoryIdOverride,
+        selectedBookIdOverride,
+        booksForCategoryOverride
     ) {
         buildTreeItems(
             rootCategories = navigationState.rootCategories,
@@ -72,7 +87,13 @@ fun CategoryBookTreeView(
             selectedCategory = navigationState.selectedCategory,
             selectedBook = navigationState.selectedBook,
             onCategoryClick = onCategoryClick,
-            onBookClick = onBookClick
+            onBookClick = onBookClick,
+            categoryCounts = categoryCounts,
+            bookCounts = bookCounts,
+            selectedCategoryIdOverride = selectedCategoryIdOverride,
+            selectedBookIdOverride = selectedBookIdOverride,
+            showCounts = showCounts,
+            booksForCategoryOverride = booksForCategoryOverride
         )
     }
 
@@ -145,9 +166,17 @@ private fun buildTreeItems(
     selectedCategory: Category?,
     selectedBook: Book?,
     onCategoryClick: (Category) -> Unit,
-    onBookClick: (Book) -> Unit
+    onBookClick: (Book) -> Unit,
+    categoryCounts: Map<Long, Int>,
+    bookCounts: Map<Long, Int>,
+    selectedCategoryIdOverride: Long?,
+    selectedBookIdOverride: Long?,
+    showCounts: Boolean,
+    booksForCategoryOverride: Map<Long, List<Book>>
 ): List<TreeItem> = buildList {
     fun addCategory(category: Category, level: Int) {
+        // In search mode (showCounts == true), only render categories with results
+        if (showCounts && (categoryCounts[category.id] ?: 0) <= 0) return
         add(
             TreeItem(
                 id = "category_${category.id}",
@@ -156,8 +185,11 @@ private fun buildTreeItems(
                     CategoryItem(
                         category = category,
                         isExpanded = expandedCategories.contains(category.id),
-                        isSelected = selectedCategory?.id == category.id,
-                        onClick = { onCategoryClick(category) }
+                        isSelected = selectedCategoryIdOverride?.let { it == category.id }
+                            ?: (selectedCategory?.id == category.id),
+                        onClick = { onCategoryClick(category) },
+                        count = categoryCounts[category.id] ?: 0,
+                        showCount = showCounts
                     )
                 }
             )
@@ -165,9 +197,16 @@ private fun buildTreeItems(
 
         if (expandedCategories.contains(category.id)) {
             // Books in this category
-            booksInCategory
-                .filter { it.categoryId == category.id }
+            val booksSeq: Sequence<Book> = if (showCounts) {
+                booksForCategoryOverride[category.id].orEmpty().asSequence()
+            } else {
+                booksInCategory.asSequence().filter { it.categoryId == category.id }
+            }
+            booksSeq
+                .distinctBy { it.id }
                 .forEach { book ->
+                    // In search mode, skip books with zero results
+                    if (showCounts && (bookCounts[book.id] ?: 0) <= 0) return@forEach
                     add(
                         TreeItem(
                             id = "book_${book.id}",
@@ -175,8 +214,11 @@ private fun buildTreeItems(
                             content = {
                                 BookItem(
                                     book = book,
-                                    isSelected = selectedBook?.id == book.id,
-                                    onClick = { onBookClick(book) }
+                                    isSelected = selectedBookIdOverride?.let { it == book.id }
+                                        ?: (selectedBook?.id == book.id),
+                                    onClick = { onBookClick(book) },
+                                    count = bookCounts[book.id] ?: 0,
+                                    showCount = showCounts
                                 )
                             }
                         )
@@ -200,7 +242,9 @@ private fun CategoryItem(
     category: Category,
     isExpanded: Boolean,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    count: Int,
+    showCount: Boolean
 ) {
     Row(
         modifier = Modifier
@@ -225,6 +269,8 @@ private fun CategoryItem(
             contentDescription = null,
         )
         Text(text = category.title)
+        Spacer(Modifier.weight(1f))
+        if (showCount && count > 0) CountBadge(count)
     }
 }
 
@@ -232,15 +278,38 @@ private fun CategoryItem(
 private fun BookItem(
     book: Book,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    count: Int,
+    showCount: Boolean
 ) {
     SelectableRow(isSelected = isSelected, onClick = onClick) {
-        Icon(
-           imageVector = Book_2,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = if (isSelected) JewelTheme.globalColors.text.selected else JewelTheme.globalColors.text.normal.copy(alpha = 0.7f)
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Icon(
+                   imageVector = Book_2,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = if (isSelected) JewelTheme.globalColors.text.selected else JewelTheme.globalColors.text.normal.copy(alpha = 0.7f)
+                )
+                Text(text = book.title, fontWeight = if (isSelected) Bold else Normal)
+            }
+            if (showCount && count > 0) CountBadge(count)
+        }
+    }
+}
+
+@Composable
+private fun CountBadge(count: Int) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(JewelTheme.globalColors.panelBackground)
+            .border(1.dp, JewelTheme.globalColors.borders.disabled, RoundedCornerShape(6.dp))
+    ) {
+        Text(
+            text = count.toString(),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            color = JewelTheme.globalColors.text.disabled
         )
-        Text(text = book.title, fontWeight = if (isSelected) Bold else Normal)
     }
 }

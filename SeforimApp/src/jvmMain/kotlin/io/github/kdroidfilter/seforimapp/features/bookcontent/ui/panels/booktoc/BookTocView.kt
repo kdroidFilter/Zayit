@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.text.font.FontWeight.Companion.Normal
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ChevronIcon
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableRow
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -62,10 +63,16 @@ fun BookTocView(
     lines: List<Line> = emptyList(),
     lineTocMappings: List<LineTocMapping> = emptyList(),
     selectedTocEntryId: Long? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Search integration
+    showCounts: Boolean = false,
+    onlyWithResults: Boolean = false,
+    tocCounts: Map<Long, Int> = emptyMap(),
+    selectedTocOverride: Long? = null,
+    onTocFilter: ((TocEntry) -> Unit)? = null
 ) {
-    val visibleEntries = remember(tocEntries, expandedEntries, tocChildren, lines, lineTocMappings) {
-        buildVisibleTocEntries(tocEntries, expandedEntries, tocChildren)
+    val visibleEntries = remember(tocEntries, expandedEntries, tocChildren, lines, lineTocMappings, showCounts, onlyWithResults, tocCounts) {
+        buildVisibleTocEntries(tocEntries, expandedEntries, tocChildren, onlyWithResults, tocCounts)
     }
 
     val listState = rememberLazyListState(
@@ -106,9 +113,13 @@ fun BookTocView(
                 ) { visibleEntry ->
                     TocEntryItem(
                         visibleEntry = visibleEntry,
-                        selectedTocEntryId = selectedTocEntryId,
-                        onEntryClick = onEntryClick,
-                        onEntryExpand = onEntryExpand
+                        selectedTocEntryId = selectedTocOverride ?: selectedTocEntryId,
+                        onEntryClick = { entry ->
+                            if (onTocFilter != null) onTocFilter(entry) else onEntryClick(entry)
+                        },
+                        onEntryExpand = onEntryExpand,
+                        showCount = showCounts,
+                        count = tocCounts[visibleEntry.entry.id] ?: 0
                     )
                 }
             }
@@ -121,7 +132,12 @@ fun BookTocView(
 fun BookTocView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showCounts: Boolean = false,
+    onlyWithResults: Boolean = false,
+    selectedTocOverride: Long? = null,
+    tocCounts: Map<Long, Int> = emptyMap(),
+    onTocFilter: ((TocEntry) -> Unit)? = null
 ) {
     val rootEntries = uiState.toc.children[-1L] ?: uiState.toc.entries
     var displayEntries by remember(uiState.toc.entries, uiState.toc.children, uiState.navigation.selectedBook?.id) {
@@ -150,8 +166,10 @@ fun BookTocView(
         scrollIndex = uiState.toc.scrollIndex,
         scrollOffset = uiState.toc.scrollOffset,
         onEntryClick = { entry ->
-            entry.lineId?.let { lineId ->
-                onEvent(BookContentEvent.LoadAndSelectLine(lineId))
+            if (onTocFilter != null) {
+                onTocFilter(entry)
+            } else {
+                entry.lineId?.let { lineId -> onEvent(BookContentEvent.LoadAndSelectLine(lineId)) }
             }
         },
         onEntryExpand = { entry ->
@@ -161,7 +179,12 @@ fun BookTocView(
             onEvent(BookContentEvent.TocScrolled(index, offset))
         },
         selectedTocEntryId = uiState.toc.selectedEntryId,
-        modifier = modifier
+        modifier = modifier,
+        showCounts = showCounts,
+        onlyWithResults = onlyWithResults,
+        tocCounts = tocCounts,
+        selectedTocOverride = selectedTocOverride,
+        onTocFilter = onTocFilter
     )
 }
 
@@ -169,11 +192,18 @@ private fun buildVisibleTocEntries(
     entries: List<TocEntry>,
     expandedEntries: Set<Long>,
     tocChildren: Map<Long, List<TocEntry>>,
+    onlyWithResults: Boolean,
+    tocCounts: Map<Long, Int>
 ): List<VisibleTocEntry> {
     val result = mutableListOf<VisibleTocEntry>()
 
     fun addEntries(currentEntries: List<TocEntry>, level: Int) {
         currentEntries.forEach { entry ->
+            val count = tocCounts[entry.id] ?: 0
+            if (onlyWithResults && count <= 0) {
+                // Skip entries without results when filtering is enabled
+                return@forEach
+            }
             result += VisibleTocEntry(
                 entry = entry,
                 level = level,
@@ -199,7 +229,9 @@ private fun TocEntryItem(
     visibleEntry: VisibleTocEntry,
     selectedTocEntryId: Long?,
     onEntryClick: (TocEntry) -> Unit,
-    onEntryExpand: (TocEntry) -> Unit
+    onEntryExpand: (TocEntry) -> Unit,
+    showCount: Boolean = false,
+    count: Int = 0
 ) {
     val isLastChild = visibleEntry.isLastChild
     val isSelected = selectedTocEntryId != null && visibleEntry.entry.id == selectedTocEntryId
@@ -231,9 +263,26 @@ private fun TocEntryItem(
             Spacer(modifier = Modifier.width(24.dp))
         }
 
-        Text(
-            text = visibleEntry.entry.text,
-            fontWeight = if (isSelected) Bold else Normal,
-        )
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = visibleEntry.entry.text,
+                fontWeight = if (isSelected) Bold else Normal,
+                modifier = Modifier.weight(1f)
+            )
+            if (showCount && count > 0) {
+                CountBadge(count)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CountBadge(count: Int) {
+    Box(
+        modifier = Modifier
+            .padding(start = 8.dp)
+            .height(18.dp)
+    ) {
+        Text(text = count.toString(), color = JewelTheme.globalColors.text.disabled, fontSize = 12.sp)
     }
 }

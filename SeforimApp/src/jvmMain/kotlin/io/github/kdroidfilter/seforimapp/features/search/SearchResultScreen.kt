@@ -35,6 +35,10 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import androidx.compose.foundation.gestures.ScrollableState
+import io.github.kdroidfilter.seforimapp.core.presentation.components.AnimatedHorizontalProgressBar
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
@@ -233,10 +237,7 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
         }
 
         // Near level + dynamic results count (filtered list)
-        val visibleResultsState = androidx.compose.runtime.produceState(initialValue = emptyList<io.github.kdroidfilter.seforimlibrary.core.models.SearchResult>(), state.results, state.scopeBook, state.scopeCategoryPath) {
-            value = kotlin.runCatching { viewModel.getVisibleResults() }.getOrDefault(state.results)
-        }
-        val visibleResults = visibleResultsState.value
+        val visibleResults = viewModel.visibleResultsFlow.collectAsState().value
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = stringResource(Res.string.search_near_label, state.near),
@@ -261,6 +262,20 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
             }
         }
 
+        if (state.isLoading || state.isLoadingMore) {
+            Spacer(Modifier.height(6.dp))
+            val total = state.progressTotal
+            if (total != null && total > 0L) {
+                val fraction = (state.progressCurrent.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+                AnimatedHorizontalProgressBar(value = fraction, modifier = Modifier.fillMaxWidth())
+            } else {
+                // Fallback indeterminate indicator when total is unknown (e.g., TOC scope)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+        }
+
         // Results list
         Box(
             modifier = Modifier
@@ -279,55 +294,58 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                     }
                 }
             } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(visibleResults) { result ->
-                        val windowInfo = LocalWindowInfo.current
-                        ResultRow(
-                            title = null,
-                            badgeText = result.bookTitle,
-                            snippet = result.snippet,
-                            textSize = mainTextSize,
-                            lineHeight = mainLineHeight,
-                            fontFamily = hebrewFontFamily,
-                            bottomContent = {
-                                ResultBreadcrumb(
-                                    viewModel = viewModel,
-                                    result = result,
-                                    textSize = mainTextSize,
-                                    lineHeight = mainLineHeight,
-                                    fontFamily = hebrewFontFamily
-                                )
-                            },
-                            onClick = {
-                                val mods = windowInfo.keyboardModifiers
-                                val openInNewTab = mods.isCtrlPressed || mods.isMetaPressed
-                                viewModel.openResult(result, openInNewTab)
-                            }
-                        )
-                    }
-                    if (state.isLoading) {
-                        item {
-                            Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                                Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
-                            }
+                VerticallyScrollableContainer(scrollState = listState as ScrollableState) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize().padding(end = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(visibleResults) { result ->
+                            val windowInfo = LocalWindowInfo.current
+                            ResultRow(
+                                title = null,
+                                badgeText = result.bookTitle,
+                                snippet = result.snippet,
+                                textSize = mainTextSize,
+                                lineHeight = mainLineHeight,
+                                fontFamily = hebrewFontFamily,
+                                bottomContent = {
+                                    ResultBreadcrumb(
+                                        viewModel = viewModel,
+                                        result = result,
+                                        textSize = mainTextSize,
+                                        lineHeight = mainLineHeight,
+                                        fontFamily = hebrewFontFamily
+                                    )
+                                },
+                                onClick = {
+                                    val mods = windowInfo.keyboardModifiers
+                                    val openInNewTab = mods.isCtrlPressed || mods.isMetaPressed
+                                    viewModel.openResult(result, openInNewTab)
+                                }
+                            )
                         }
-                    }
-                    if (state.hasMore && !state.isLoading && !state.isLoadingMore) {
-                        item {
-                            Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                                DefaultButton(onClick = { viewModel.loadMore() }) {
-                                    Text(stringResource(Res.string.search_load_more), fontSize = commentSize.sp)
+                        if (state.isLoading) {
+                            item {
+                                Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                                    Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
                                 }
                             }
                         }
-                    }
-                    if (state.isLoadingMore) {
-                        item {
-                            Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                                Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
+                        if (state.hasMore && !state.isLoading && !state.isLoadingMore) {
+                            item {
+                                Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                                    DefaultButton(onClick = { viewModel.loadMore() }) {
+                                        Text(stringResource(Res.string.search_load_more), fontSize = commentSize.sp)
+                                    }
+                                }
+                            }
+                        }
+                        if (state.isLoadingMore) {
+                            item {
+                                Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                                    Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
+                                }
                             }
                         }
                     }

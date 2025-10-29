@@ -182,11 +182,16 @@ private fun buildTreeItems(
                 id = "category_${category.id}",
                 level = level,
                 content = {
+                    // In search mode (showCounts == true), highlight category only when the category filter is active
+                    // If a book filter is active (selectedBookIdOverride != null), do not highlight parent category
                     CategoryItem(
                         category = category,
                         isExpanded = expandedCategories.contains(category.id),
-                        isSelected = selectedCategoryIdOverride?.let { it == category.id }
-                            ?: (selectedCategory?.id == category.id),
+                        isSelected = if (showCounts) {
+                            selectedBookIdOverride == null && (selectedCategoryIdOverride?.let { it == category.id } == true)
+                        } else {
+                            selectedCategory?.id == category.id
+                        },
                         onClick = { onCategoryClick(category) },
                         count = categoryCounts[category.id] ?: 0,
                         showCount = showCounts
@@ -253,6 +258,12 @@ private fun CategoryItem(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onClick
+            )
+            .clip(RoundedCornerShape(4.dp))
+            .background(
+                if (showCount && isSelected) // highlight only in search mode (showCount signifies search mode here)
+                    JewelTheme.iconButtonStyle.colors.backgroundFocused
+                else Color.Transparent
             )
             .padding(vertical = 4.dp)
             .pointerHoverIcon(PointerIcon.Hand),

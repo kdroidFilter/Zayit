@@ -47,21 +47,12 @@ fun CategoryTreePanel(
 
             val windowInfo = LocalWindowInfo.current
 
-            // If a searchViewModel is provided, derive counts maps and selection overrides
+            // If a searchViewModel is provided, derive counts maps and selection overrides using flows
             val searchUi = searchViewModel?.uiState?.collectAsState()?.value
-            // Build counts maps via produceState calling buildSearchResultTree()
-            val treeState = if (searchViewModel != null) {
-                produceState(initialValue = emptyList<io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory>(), searchUi?.results, searchUi?.query) {
-                    value = kotlin.runCatching { searchViewModel.buildSearchResultTree() }.getOrDefault(emptyList())
-                }
-            } else null
-
-            val categoryCounts: Map<Long, Int> = treeState?.value
-                ?.let { flattenCategoryCounts(it) } ?: emptyMap()
-            val bookCounts: Map<Long, Int> = treeState?.value
-                ?.let { flattenBookCounts(it) } ?: emptyMap()
-            val booksForCategoryOverride: Map<Long, List<io.github.kdroidfilter.seforimlibrary.core.models.Book>> = treeState?.value
-                ?.let { buildBooksForCategoryMap(it) } ?: emptyMap()
+            val categoryAgg = searchViewModel?.categoryAggFlow?.collectAsState()?.value
+            val categoryCounts: Map<Long, Int> = categoryAgg?.categoryCounts ?: emptyMap()
+            val bookCounts: Map<Long, Int> = categoryAgg?.bookCounts ?: emptyMap()
+            val booksForCategoryOverride: Map<Long, List<io.github.kdroidfilter.seforimlibrary.core.models.Book>> = categoryAgg?.booksForCategory ?: emptyMap()
             val selectedCategoryIdOverride = searchUi?.scopeCategoryPath?.lastOrNull()?.id
             val selectedBookIdOverride = searchUi?.scopeBook?.id
 
@@ -122,37 +113,4 @@ private fun SearchField(
     )
 }
 
-private fun flattenCategoryCounts(nodes: List<io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory>): Map<Long, Int> {
-    val map = mutableMapOf<Long, Int>()
-    fun dfs(n: io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory) {
-        map[n.category.id] = n.count
-        n.children.forEach { dfs(it) }
-    }
-    nodes.forEach { dfs(it) }
-    return map
-}
-
-private fun flattenBookCounts(nodes: List<io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory>): Map<Long, Int> {
-    val map = mutableMapOf<Long, Int>()
-    fun dfs(n: io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory) {
-        n.books.forEach { map[it.book.id] = it.count }
-        n.children.forEach { dfs(it) }
-    }
-    nodes.forEach { dfs(it) }
-    return map
-}
-
-private fun buildBooksForCategoryMap(
-    nodes: List<io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory>
-): Map<Long, List<io.github.kdroidfilter.seforimlibrary.core.models.Book>> {
-    val map = mutableMapOf<Long, MutableSet<io.github.kdroidfilter.seforimlibrary.core.models.Book>>()
-    fun dfs(n: io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory) {
-        if (n.books.isNotEmpty()) {
-            val set = map.getOrPut(n.category.id) { mutableSetOf() }
-            n.books.forEach { set += it.book }
-        }
-        n.children.forEach { dfs(it) }
-    }
-    nodes.forEach { dfs(it) }
-    return map.mapValues { it.value.toList() }
-}
+// No local flatten helpers needed; we consume aggregated counts directly from ViewModel flows

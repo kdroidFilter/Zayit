@@ -270,5 +270,8 @@
     <string name="search_load_more">טען תוצאות נוספות</string>
     <string name="search_result_count">נמצאו %1$d תוצאות</string>
 
+    <!-- Reference open action -->
+    <string name="open_book">פתח ספר</string>
+
 
 </resources>

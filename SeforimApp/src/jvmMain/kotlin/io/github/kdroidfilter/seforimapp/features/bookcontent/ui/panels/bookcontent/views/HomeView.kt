@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalJewelApi::class)
+
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
 
 import androidx.compose.animation.animateColorAsState
@@ -75,6 +77,14 @@ data class SearchFilterCard(
 
 @OptIn(ExperimentalJewelApi::class, ExperimentalLayoutApi::class)
 @Composable
+/**
+ * Home screen for the Book Content feature.
+ *
+ * Renders the welcome header, the main search bar with a mode toggle (Text vs Reference),
+ * and the Category/Book/TOC scope picker. State is sourced from the SearchHomeViewModel
+ * through the Metro DI graph and kept outside of the LazyColumn to avoid losing focus or
+ * field contents during recomposition.
+ */
 fun HomeView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
@@ -111,6 +121,9 @@ fun HomeView(
                 val query = searchState.text.toString().trim()
                 if (query.isBlank() || searchUi.selectedFilter != SearchFilter.TEXT) return
                 scope.launch { searchVm.submitSearch(query) }
+            }
+            fun openReference() {
+                scope.launch { searchVm.openSelectedReferenceInCurrentTab() }
             }
 
             // Main search field focus handled inside SearchBar via autoFocus
@@ -151,56 +164,78 @@ fun HomeView(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            if (searchUi.selectedFilter == SearchFilter.TEXT) {
-                                val breadcrumbSeparator = stringResource(Res.string.breadcrumb_separator)
-                                ReferenceByCategorySection(
-                                    modifier,
-                                    state = referenceSearchState,
-                                    tocState = tocSearchState,
-                                    isExpanded = scopeExpanded,
-                                    onExpandedChange = { scopeExpanded = it },
-                                    suggestionsVisible = searchUi.suggestionsVisible,
-                                    categorySuggestions = searchUi.categorySuggestions.map { cs ->
-                                        CategorySuggestion(
-                                            cs.category,
-                                            cs.path
-                                        )
-                                    },
-                                    bookSuggestions = searchUi.bookSuggestions.map { bs ->
-                                        BookSuggestion(
-                                            bs.book,
-                                            bs.path
-                                        )
-                                    },
-                                    selectedBook = searchUi.selectedScopeBook,
-                                    tocSuggestionsVisible = searchUi.tocSuggestionsVisible,
-                                    tocSuggestions = searchUi.tocSuggestions.map { ts ->
-                                        TocSuggestion(ts.toc, ts.path)
-                                    },
+                            // DRY: Compute shared mappings + handlers once for both modes.
+                            // The UI below uses these in a single ReferenceByCategorySection call
+                            // and then renders a mode-specific footer (levels slider or open button).
+                            val breadcrumbSeparator = stringResource(Res.string.breadcrumb_separator)
+                            val mappedCategorySuggestions = searchUi.categorySuggestions.map { cs ->
+                                CategorySuggestion(cs.category, cs.path)
+                            }
+                            val mappedBookSuggestions = searchUi.bookSuggestions.map { bs ->
+                                BookSuggestion(bs.book, bs.path)
+                            }
+                            val mappedTocSuggestions = searchUi.tocSuggestions.map { ts ->
+                                TocSuggestion(ts.toc, ts.path)
+                            }
 
-                                    onSubmit = { launchSearch() },
-                                    onPickCategory = { picked ->
-                                        searchVm.onPickCategory(picked.category)
-                                        val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparator)
-                                        referenceSearchState.edit { replace(0, length, full) }
-                                    },
-                                    onPickBook = { picked ->
-                                        searchVm.onPickBook(picked.book)
-                                        val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparator)
-                                        referenceSearchState.edit { replace(0, length, full) }
-                                    },
-                                    onPickToc = { picked ->
-                                        searchVm.onPickToc(picked.toc)
-                                        val dedup = dedupAdjacent(picked.path)
-                                        val stripped = stripBookPrefixFromTocPath(searchUi.selectedScopeBook, dedup)
-                                        val display = stripped.joinToString(breadcrumbSeparator)
-                                        tocSearchState.edit { replace(0, length, display) }
-                                    }
-                                )
+                            val isReferenceMode = searchUi.selectedFilter == SearchFilter.REFERENCE
+                            // Pick submit action based on the active search mode.
+                            val onSubmitAction: () -> Unit = if (isReferenceMode) {
+                                { openReference() }
+                            } else {
+                                { launchSearch() }
+                            }
+                            // In reference mode, selecting a suggestion should commit immediately.
+                            val afterPickSubmit = isReferenceMode
+
+                            ReferenceByCategorySection(
+                                modifier,
+                                state = referenceSearchState,
+                                tocState = tocSearchState,
+                                isExpanded = scopeExpanded,
+                                onExpandedChange = { scopeExpanded = it },
+                                suggestionsVisible = searchUi.suggestionsVisible,
+                                categorySuggestions = mappedCategorySuggestions,
+                                bookSuggestions = mappedBookSuggestions,
+                                selectedBook = searchUi.selectedScopeBook,
+                                tocSuggestionsVisible = searchUi.tocSuggestionsVisible,
+                                tocSuggestions = mappedTocSuggestions,
+                                onSubmit = onSubmitAction,
+                                submitAfterPick = afterPickSubmit,
+                                onPickCategory = { picked ->
+                                    searchVm.onPickCategory(picked.category)
+                                    val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparator)
+                                    referenceSearchState.edit { replace(0, length, full) }
+                                },
+                                onPickBook = { picked ->
+                                    searchVm.onPickBook(picked.book)
+                                    val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparator)
+                                    referenceSearchState.edit { replace(0, length, full) }
+                                },
+                                onPickToc = { picked ->
+                                    searchVm.onPickToc(picked.toc)
+                                    val dedup = dedupAdjacent(picked.path)
+                                    val stripped = stripBookPrefixFromTocPath(searchUi.selectedScopeBook, dedup)
+                                    val display = stripped.joinToString(breadcrumbSeparator)
+                                    tocSearchState.edit { replace(0, length, display) }
+                                }
+                            )
+
+                            if (!isReferenceMode) {
                                 SearchLevelsPanel(
                                     selectedIndex = searchUi.selectedLevelIndex,
                                     onSelectedIndexChange = { searchVm.onLevelIndexChange(it) }
                                 )
+                            } else {
+                                val canOpen = searchUi.selectedScopeBook != null || searchUi.selectedScopeToc != null
+                                Row(
+                                    horizontalArrangement = Arrangement.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    DefaultButton(onClick = { openReference() }, enabled = canOpen) {
+                                        Text(stringResource(Res.string.open_book))
+                                    }
+                                }
                             }
                         }
                     }
@@ -234,6 +269,10 @@ private fun LogoImage(modifier: Modifier = Modifier) {
  * with a slider. Encapsulates its own local selection state.
  */
 @Composable
+/**
+ * Displays the five text-search levels as selectable cards synchronized with
+ * a slider. The slider and cards mirror the same selection index.
+ */
 private fun SearchLevelsPanel(
     modifier: Modifier = Modifier,
     selectedIndex: Int,
@@ -308,6 +347,15 @@ private fun SearchLevelsPanel(
 
 
 @Composable
+/**
+ * Category/Book/TOC scope picker with predictive suggestions.
+ *
+ * Left field: Categories and Books. Right field: TOC of the selected book.
+ * Both inputs support keyboard navigation (↑/↓/Enter) and mouse selection.
+ *
+ * The caller controls suggestion visibility and supplies current suggestions.
+ * When [submitAfterPick] is true (reference mode), selecting a suggestion triggers [onSubmit].
+ */
 private fun ReferenceByCategorySection(
     modifier: Modifier = Modifier,
     state: TextFieldState? = null,
@@ -321,6 +369,7 @@ private fun ReferenceByCategorySection(
     tocSuggestionsVisible: Boolean = false,
     tocSuggestions: List<TocSuggestion> = emptyList(),
     onSubmit: () -> Unit = {},
+    submitAfterPick: Boolean = false,
     onPickCategory: (CategorySuggestion) -> Unit = {},
     onPickBook: (BookSuggestion) -> Unit = {},
     onPickToc: (TocSuggestion) -> Unit = {}
@@ -389,10 +438,14 @@ private fun ReferenceByCategorySection(
                             if (leftFocusedIndex < leftCategoriesCount) {
                                 val picked = categorySuggestions[leftFocusedIndex]
                                 onPickCategory(picked)
+                                if (submitAfterPick) onSubmit()
                             } else {
                                 val idx = leftFocusedIndex - leftCategoriesCount
                                 val picked = bookSuggestions.getOrNull(idx)
-                                if (picked != null) onPickBook(picked)
+                                if (picked != null) {
+                                    onPickBook(picked)
+                                    if (submitAfterPick) onSubmit()
+                                }
                             }
                         } else {
                             onSubmit()
@@ -444,6 +497,7 @@ private fun ReferenceByCategorySection(
                     onEnterPress = {
                         if (rightFocusedIndex in tocSuggestions.indices) {
                             onPickToc(tocSuggestions[rightFocusedIndex])
+                            if (submitAfterPick) onSubmit()
                         } else {
                             onSubmit()
                         }
@@ -472,6 +526,10 @@ private fun ReferenceByCategorySection(
 }
 
 @Composable
+/**
+ * Renders the suggestion list for categories and books, keeping the currently
+ * focused row in view as the user navigates with the keyboard.
+ */
 private fun SuggestionsPanel(
     categorySuggestions: List<CategorySuggestion>,
     bookSuggestions: List<BookSuggestion>,
@@ -538,6 +596,10 @@ private fun SuggestionsPanel(
 }
 
 @Composable
+/**
+ * Renders the TOC suggestion list for the currently selected book, stripping the
+ * duplicated book prefix from breadcrumb paths for compact display.
+ */
 private fun TocSuggestionsPanel(
     tocSuggestions: List<TocSuggestion>,
     onPickToc: (TocSuggestion) -> Unit,
@@ -587,6 +649,11 @@ private fun TocSuggestionsPanel(
     }
 }
 
+/**
+ * Collapses adjacent breadcrumb segments when the next segment strictly extends
+ * the previous by a common separator (comma/space/colon/dash). This keeps
+ * suggestions concise while preserving the most specific path.
+ */
 private fun dedupAdjacent(parts: List<String>): List<String> {
     if (parts.isEmpty()) return parts
     fun extends(prev: String, next: String): Boolean {
@@ -618,6 +685,10 @@ private fun dedupAdjacent(parts: List<String>): List<String> {
     return out
 }
 
+/**
+ * Strips the selected book's title if it redundantly appears as the first
+ * breadcrumb in a TOC path, handling common punctuation right after the title.
+ */
 private fun stripBookPrefixFromTocPath(selectedBook: BookModel?, parts: List<String>): List<String> {
     if (selectedBook == null || parts.isEmpty()) return parts
     val bookTitle = selectedBook.title.trim()

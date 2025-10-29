@@ -400,6 +400,7 @@ private fun ResultBreadcrumb(
                 color = JewelTheme.globalColors.text.disabled,
                 fontSize = textSize.sp,
                 fontFamily = fontFamily,
+                maxLines = 1,
                 lineHeight = (textSize * lineHeight).sp
             )
             Text(
@@ -407,6 +408,7 @@ private fun ResultBreadcrumb(
                 color = JewelTheme.globalColors.text.normal,
                 fontSize = textSize.sp,
                 fontFamily = fontFamily,
+                maxLines = 1,
                 lineHeight = (textSize * lineHeight).sp
             )
         }

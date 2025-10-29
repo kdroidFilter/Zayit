@@ -239,6 +239,41 @@ class SearchHomeViewModel(
         )
     }
 
+    /**
+     * Opens the selected reference (book/TOC) in the current tab.
+     * - If a TOC entry is selected, tries to open at its first line.
+     * - Otherwise opens the selected book at its beginning.
+     */
+    suspend fun openSelectedReferenceInCurrentTab() {
+        val currentTabs = tabsViewModel.tabs.value
+        val currentIndex = tabsViewModel.selectedTabIndex.value
+        val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: return
+
+        val selectedToc = _uiState.value.selectedScopeToc
+        val selectedBook = _uiState.value.selectedScopeBook
+
+        // Resolve book and optional line anchor
+        val book = when {
+            selectedBook != null -> selectedBook
+            selectedToc != null -> runCatching { repository.getBook(selectedToc.bookId) }.getOrNull()
+            else -> null
+        } ?: return
+
+        val anchorLineId: Long? = when (selectedToc) {
+            null -> null
+            else -> runCatching { repository.getLineIdsForTocEntry(selectedToc.id).firstOrNull() }.getOrNull()
+        }
+
+        // Pre-initialize minimal state so the BookContent shell does not flash Home
+        stateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys.SELECTED_BOOK, book)
+        anchorLineId?.let { stateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys.CONTENT_ANCHOR_ID, it) }
+
+        // Replace destination in-place to open the book
+        tabsViewModel.replaceCurrentTabDestination(
+            TabsDestination.BookContent(bookId = book.id, tabId = currentTabId, lineId = anchorLineId)
+        )
+    }
+
     private suspend fun buildCategoryPathTitles(catId: Long): List<String> {
         val path = mutableListOf<String>()
         var currentId: Long? = catId

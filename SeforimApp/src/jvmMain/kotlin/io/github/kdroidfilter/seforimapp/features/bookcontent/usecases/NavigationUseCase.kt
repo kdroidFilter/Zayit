@@ -27,25 +27,44 @@ class NavigationUseCase(
             copy(rootCategories = rootCategories)
         }
         
-        // Si des catégories étaient déjà expandées, recharger leurs livres
+        // Si des catégories étaient déjà expandées, recharger leur sous-arbre minimal
+        // (enfants directs + livres) afin que la vue arborescente puisse s’afficher immédiatement
+        // au retour d’onglet/restauration de session.
         val expandedCategories = stateManager.state.first().navigation.expandedCategories
         if (expandedCategories.isNotEmpty()) {
             val booksToLoad = mutableSetOf<Book>()
-            
-            expandedCategories.forEach { categoryId ->
-                try {
-                    val books = repository.getBooksByCategory(categoryId)
-                    if (books.isNotEmpty()) {
-                        booksToLoad.addAll(books)
+            val childrenMap = mutableMapOf<Long, List<Category>>()
+
+            suspend fun restoreExpandedSubtree(categoryId: Long, guard: Int = 0) {
+                if (guard > 512) return // sécurité contre les cycles
+                // Livres dans la catégorie
+                runCatching { repository.getBooksByCategory(categoryId) }
+                    .onSuccess { if (it.isNotEmpty()) booksToLoad.addAll(it) }
+                // Enfants directs
+                val children = runCatching { repository.getCategoryChildren(categoryId) }
+                    .getOrElse { emptyList() }
+                if (children.isNotEmpty()) {
+                    childrenMap[categoryId] = children
+                }
+                // Si un enfant est également marqué comme expanded, restaurer récursivement
+                children.forEach { child ->
+                    if (expandedCategories.contains(child.id)) {
+                        restoreExpandedSubtree(child.id, guard + 1)
                     }
-                } catch (e: Exception) {
-                    // Ignorer les erreurs pour les catégories individuelles
                 }
             }
-            
-            if (booksToLoad.isNotEmpty()) {
+
+            // Restaurer pour chaque catégorie marquée expanded
+            expandedCategories.forEach { categoryId ->
+                runCatching { restoreExpandedSubtree(categoryId) }
+            }
+
+            if (booksToLoad.isNotEmpty() || childrenMap.isNotEmpty()) {
                 stateManager.updateNavigation {
-                    copy(booksInCategory = booksInCategory + booksToLoad)
+                    copy(
+                        booksInCategory = booksInCategory + booksToLoad,
+                        categoryChildren = categoryChildren + childrenMap
+                    )
                 }
             }
         }

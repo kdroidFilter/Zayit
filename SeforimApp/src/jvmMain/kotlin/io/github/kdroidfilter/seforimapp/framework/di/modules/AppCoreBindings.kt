@@ -12,7 +12,6 @@ import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
-import io.github.kdroidfilter.seforimapp.features.search.SearchResultsCache
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
@@ -65,9 +64,6 @@ object AppCoreBindings {
         stateManager = stateManager
     )
 
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideSearchResultsCache(): SearchResultsCache = SearchResultsCache(maxSize = 64)
 
     @Provides
     @SingleIn(AppScope::class)

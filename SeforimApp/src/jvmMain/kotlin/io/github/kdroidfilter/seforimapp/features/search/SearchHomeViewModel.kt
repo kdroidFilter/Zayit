@@ -216,22 +216,44 @@ class SearchHomeViewModel(
         stateManager.saveState(currentTabId, SearchStateKeys.FILTER_BOOK_ID, 0L)
         stateManager.saveState(currentTabId, SearchStateKeys.FILTER_TOC_ID, 0L)
 
-        // Apply selected scope only
+        // Apply selected scope only (view filters) and persist dataset scope for fetch
+        var datasetScope = "global"
         _uiState.value.selectedScopeCategory?.let { cat ->
             stateManager.saveState(currentTabId, SearchStateKeys.FILTER_CATEGORY_ID, cat.id)
+            stateManager.saveState(currentTabId, SearchStateKeys.DATASET_SCOPE, "category")
+            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_CATEGORY_ID, cat.id)
+            datasetScope = "category"
         }
         _uiState.value.selectedScopeBook?.let { book ->
             stateManager.saveState(currentTabId, SearchStateKeys.FILTER_BOOK_ID, book.id)
+            stateManager.saveState(currentTabId, SearchStateKeys.DATASET_SCOPE, "book")
+            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_BOOK_ID, book.id)
+            datasetScope = "book"
         }
         _uiState.value.selectedScopeToc?.let { toc ->
             // Ensure book filter matches toc's book as well
             stateManager.saveState(currentTabId, SearchStateKeys.FILTER_BOOK_ID, toc.bookId)
             stateManager.saveState(currentTabId, SearchStateKeys.FILTER_TOC_ID, toc.id)
+            stateManager.saveState(currentTabId, SearchStateKeys.DATASET_SCOPE, "toc")
+            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_BOOK_ID, toc.bookId)
+            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_TOC_ID, toc.id)
+            datasetScope = "toc"
+        }
+        if (datasetScope == "global") {
+            // clear any previous fetch-scope remnants
+            stateManager.saveState(currentTabId, SearchStateKeys.DATASET_SCOPE, "global")
+            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_CATEGORY_ID, 0L)
+            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_BOOK_ID, 0L)
+            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_TOC_ID, 0L)
         }
 
         // Persist search params for this tab to restore state
         stateManager.saveState(currentTabId, SearchStateKeys.QUERY, query)
         stateManager.saveState(currentTabId, SearchStateKeys.NEAR, NEAR_LEVELS[_uiState.value.selectedLevelIndex])
+
+        // Clear any previous cached search snapshot for this tab to avoid
+        // reusing stale results when a new search is submitted.
+        SearchTabCache.clear(currentTabId)
 
         // Replace current tab destination to Search (no new tab)
         tabsViewModel.replaceCurrentTabDestination(

@@ -17,7 +17,6 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeO
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
-import io.github.kdroidfilter.seforimapp.features.search.SearchResultsCache
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 
@@ -38,7 +37,6 @@ abstract class AppGraph {
     abstract val settingsWindowViewModel: SettingsWindowViewModel
     abstract val generalSettingsViewModel: io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsViewModel
     abstract val fontsSettingsViewModel: io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsViewModel
-    abstract val searchResultsCache: SearchResultsCache
     abstract val searchHomeViewModel: SearchHomeViewModel
 
     abstract val typeOfInstallationViewModel: TypeOfInstallationViewModel
@@ -83,7 +81,6 @@ abstract class AppGraph {
             repository = repository,
             navigator = navigator,
             titleUpdateManager = tabTitleUpdateManager,
-            cache = searchResultsCache,
             tabsViewModel = tabsViewModel
         )
 
@@ -94,7 +91,6 @@ abstract class AppGraph {
         repository: SeforimRepository,
         navigator: Navigator,
         titleUpdateManager: TabTitleUpdateManager,
-        cache: SearchResultsCache,
         tabsViewModel: TabsViewModel
     ): SearchResultViewModel = SearchResultViewModel(
         savedStateHandle = savedStateHandle,
@@ -102,7 +98,6 @@ abstract class AppGraph {
         repository = repository,
         navigator = navigator,
         titleUpdateManager = titleUpdateManager,
-        cache = cache,
         tabsViewModel = tabsViewModel
     )
 

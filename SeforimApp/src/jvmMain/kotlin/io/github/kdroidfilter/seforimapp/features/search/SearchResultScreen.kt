@@ -136,11 +136,12 @@ fun SearchResultInBookShell(
                         }
                     },
                     secondContent = {
-                        // If a book is selected, render the book content; otherwise show search results
-                        if (bookUiState.navigation.selectedBook == null) {
-                            SearchResultContent(viewModel = viewModel)
-                        } else {
+                        // Prefer book content only when providers are ready; otherwise keep search visible
+                        val showBookContent = bookUiState.navigation.selectedBook != null && bookUiState.providers != null
+                        if (showBookContent) {
                             BookContentPanel(uiState = bookUiState, onEvent = onEvent)
+                        } else {
+                            SearchResultContent(viewModel = viewModel)
                         }
                     },
                     showSplitter = bookUiState.toc.isVisible

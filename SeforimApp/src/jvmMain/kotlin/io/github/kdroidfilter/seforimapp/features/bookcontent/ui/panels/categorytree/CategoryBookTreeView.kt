@@ -175,8 +175,11 @@ private fun buildTreeItems(
     booksForCategoryOverride: Map<Long, List<Book>>
 ): List<TreeItem> = buildList {
     fun addCategory(category: Category, level: Int) {
-        // In search mode (showCounts == true), only render categories with results
-        if (showCounts && (categoryCounts[category.id] ?: 0) <= 0) return
+        // In search mode, only render categories that contain results
+        if (showCounts) {
+            val catCount = categoryCounts[category.id] ?: 0
+            if (catCount <= 0) return
+        }
         add(
             TreeItem(
                 id = "category_${category.id}",

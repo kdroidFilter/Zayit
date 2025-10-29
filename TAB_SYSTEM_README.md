@@ -253,6 +253,27 @@ class BookContentViewModel(
         saveState("showBookTree", newValue)
     }
 }
-```
+   ```
+
+## Search Tab: Full In‑Memory Restoration
+
+To restore the Search results tab instantly (scroll, filters, category path, TOC counts)
+without re‑running the database query when the tab is re‑activated, the app uses a
+lightweight, per‑tab in‑memory cache:
+
+- Implementation: `io.github.kdroidfilter.seforimapp.features.search.SearchTabCache`
+- Scope: keyed by `tabId`, lives for the duration of the app process
+- Contents: the current `List<SearchResult>` only (aggregates are rebuilt quickly from it)
+- Persistence: not serialized; if the process restarts, a fresh search is executed
+
+Lifecycle integration:
+- When the `SearchResultViewModel` is cleared (tab deactivated), it saves a snapshot to
+  `SearchTabCache` so reopening the tab restores all results and scroll immediately.
+- When a new search is submitted on the same tab, the cache entry is cleared to avoid
+  stale results.
+- When a tab is closed, the cache entry for that `tabId` is cleared as part of tab cleanup.
+
+This approach keeps the TabStateManager payloads small (no large lists serialized) while
+still delivering full UX restoration for Search.
 
 This system allows you to have many open tabs without overloading memory, as only the active tab is actually loaded, while the state of others is preserved in a lightweight manner.

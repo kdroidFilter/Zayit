@@ -48,41 +48,59 @@ fun BookTocPanel(
                 // Prefer search scope book when in search mode
                 searchViewModel != null && searchUi?.scopeBook != null -> {
                     Box(modifier = Modifier.fillMaxHeight()) {
-                        // Build counts and TOC structure for the scoped book
-                        val tocCountsState = androidx.compose.runtime.produceState(
-                            initialValue = emptyMap<Long, Int>(),
-                            searchUi.results, searchUi.scopeBook?.id
-                        ) {
-                            value = kotlin.runCatching { searchViewModel.computeTocCountsForSelectedBook() }.getOrDefault(emptyMap())
-                        }
-                        val tocTreeState = androidx.compose.runtime.produceState<io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.TocTree>(
-                            initialValue = io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.TocTree(emptyList(), emptyMap()),
-                            searchUi.scopeBook?.id
-                        ) {
-                            value = kotlin.runCatching { searchViewModel.getTocStructureForScopeBook() ?: io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.TocTree(emptyList(), emptyMap()) }.getOrDefault(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.TocTree(emptyList(), emptyMap()))
-                        }
-                        // Keep local expansion state in search mode and auto-expand nodes with results
-                        var expanded by remember(tocTreeState.value) { mutableStateOf<Set<Long>>(emptySet()) }
-                        var expandedInitialized by remember(tocTreeState.value, tocCountsState.value) { mutableStateOf(false) }
-                        LaunchedEffect(tocTreeState.value, tocCountsState.value) {
-                            if (!expandedInitialized) {
-                                val idsWithChildren = tocTreeState.value.children.keys
+                        // Use fast StateFlows provided by the ViewModel (restored from snapshot)
+                        val tocCountsState = searchViewModel.tocCountsFlow.collectAsState()
+                        val tocTreeState = searchViewModel.tocTreeFlow.collectAsState()
+                        // Persist expansion state via BookContentState (no local-only state)
+                        val expanded: Set<Long> = uiState.toc.expandedEntries
+                        // On first display, auto-expand nodes that contain results
+                        var autoExpanded by remember(searchUi.scopeBook?.id, tocCountsState.value, tocTreeState.value) { mutableStateOf(false) }
+                        LaunchedEffect(searchUi.scopeBook?.id, tocCountsState.value, tocTreeState.value) {
+                            if (!autoExpanded) {
+                                // Expand ancestors that have children and results
+                                val idsWithChildren = tocTreeState.value?.children?.keys ?: emptySet()
                                 val withResults = tocCountsState.value.keys
-                                expanded = withResults.intersect(idsWithChildren).toSet()
-                                expandedInitialized = true
+                                val targetToExpand = withResults.intersect(idsWithChildren) - expanded
+                                if (targetToExpand.isNotEmpty()) {
+                                    // Helper to find TocEntry by id in the current tree
+                                    fun findEntryById(id: Long): io.github.kdroidfilter.seforimlibrary.core.models.TocEntry? {
+                                        val tree = tocTreeState.value
+                                        if (tree == null) return null
+                                        if (tree.rootEntries.any { it.id == id }) {
+                                            return tree.rootEntries.first { it.id == id }
+                                        }
+                                        // BFS over children map
+                                        val queue = ArrayDeque<Long>()
+                                        queue.addAll(tree.children.keys)
+                                        while (queue.isNotEmpty()) {
+                                            val pid = queue.removeFirst()
+                                            val children = tree.children[pid].orEmpty()
+                                            for (child in children) {
+                                                if (child.id == id) return child
+                                            }
+                                            // continue traversal
+                                            tree.children[pid]?.forEach { c ->
+                                                if (tree.children.containsKey(c.id)) queue.addLast(c.id)
+                                            }
+                                        }
+                                        return null
+                                    }
+                                    targetToExpand.forEach { id ->
+                                        findEntryById(id)?.let { entry -> onEvent(io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent.TocEntryExpanded(entry)) }
+                                    }
+                                }
+                                autoExpanded = true
                             }
                         }
 
                         BookTocView(
-                            tocEntries = tocTreeState.value.rootEntries,
+                            tocEntries = tocTreeState.value?.rootEntries ?: emptyList(),
                             expandedEntries = expanded,
-                            tocChildren = tocTreeState.value.children,
+                            tocChildren = tocTreeState.value?.children ?: emptyMap(),
                             scrollIndex = uiState.toc.scrollIndex,
                             scrollOffset = uiState.toc.scrollOffset,
                             onEntryClick = { entry -> searchViewModel.filterByTocId(entry.id) },
-                            onEntryExpand = { entry ->
-                                expanded = if (expanded.contains(entry.id)) expanded - entry.id else expanded + entry.id
-                            },
+                            onEntryExpand = { entry -> onEvent(io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent.TocEntryExpanded(entry)) },
                             onScroll = { index, offset -> onEvent(BookContentEvent.TocScrolled(index, offset)) },
                             selectedTocEntryId = searchUi.scopeTocId,
                             modifier = Modifier.fillMaxHeight(),

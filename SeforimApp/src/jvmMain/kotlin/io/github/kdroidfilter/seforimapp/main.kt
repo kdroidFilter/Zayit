@@ -3,10 +3,12 @@ package io.github.kdroidfilter.seforimapp
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.awt.AwtWindow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
@@ -41,6 +43,7 @@ import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.app_name
 import java.awt.Dimension
+import java.awt.Toolkit
 import java.awt.Window
 import java.util.*
 
@@ -62,9 +65,11 @@ fun main() {
     application {
         FileKit.init(appId)
 
+        val screen = Toolkit.getDefaultToolkit().screenSize
         val windowState = rememberWindowState(
             position = WindowPosition.Aligned(Alignment.Center),
-            size = DpSize(1280.dp, 720.dp)
+            placement = WindowPlacement.Maximized,
+            size = DpSize(screen.width.dp, screen.height.dp)
         )
 
         var isWindowVisible by remember { mutableStateOf(true) }

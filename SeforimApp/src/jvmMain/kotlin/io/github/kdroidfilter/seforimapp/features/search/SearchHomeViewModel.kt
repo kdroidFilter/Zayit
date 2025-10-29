@@ -49,7 +49,7 @@ class SearchHomeViewModel(
     private val referenceQuery = MutableStateFlow("")
     private val tocQuery = MutableStateFlow("")
 
-    private val NEAR_LEVELS = listOf(1, 3, 5, 10, 20)
+    private val NEAR_LEVELS = listOf(0, 3, 5, 10, 20)
 
     init {
         // Build display name from injected Settings

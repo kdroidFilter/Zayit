@@ -13,7 +13,8 @@ import androidx.compose.ui.unit.sp
  */
 fun buildAnnotatedFromHtml(
     html: String,
-    baseTextSize: Float
+    baseTextSize: Float,
+    boldScale: Float = 1f
 ): AnnotatedString {
     val parsedElements = HtmlParser().parse(html)
 
@@ -26,7 +27,8 @@ fun buildAnnotatedFromHtml(
         baseTextSize,           // h5
         baseTextSize            // h6
     )
-    val defaultSize = baseTextSize.sp
+    val defaultSize = baseTextSize
+    val effectiveBoldScale = if (boldScale < 1f) 1f else boldScale
 
     return buildAnnotatedString {
         parsedElements.forEach { e ->
@@ -49,11 +51,16 @@ fun buildAnnotatedFromHtml(
             }
 
             // Optimized font size calculation
-            val fontSize = when {
+            val baseSize = when {
                 e.headerLevel != null && e.headerLevel in 1..6 -> {
-                    headerSizes[e.headerLevel - 1].sp
+                    headerSizes[e.headerLevel - 1]
                 }
                 else -> defaultSize
+            }
+            val fontSize = if (!e.isHeader && e.isBold) {
+                (baseSize * effectiveBoldScale).sp
+            } else {
+                baseSize.sp
             }
             addStyle(SpanStyle(fontSize = fontSize), start, end)
         }

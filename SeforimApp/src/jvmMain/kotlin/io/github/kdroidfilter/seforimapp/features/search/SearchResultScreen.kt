@@ -383,7 +383,7 @@ private fun ResultRow(
                     )
                     Spacer(Modifier.height(4.dp))
                 }
-                val annotated: AnnotatedString = buildAnnotatedFromHtml(snippet, textSize)
+                val annotated: AnnotatedString = buildAnnotatedFromHtml(snippet, textSize, boldScale = 1.1f)
                 Text(
                     text = annotated,
                     fontFamily = fontFamily,

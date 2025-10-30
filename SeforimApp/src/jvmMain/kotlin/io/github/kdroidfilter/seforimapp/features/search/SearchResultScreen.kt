@@ -321,7 +321,8 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                                 },
                                 onClick = {
                                     val mods = windowInfo.keyboardModifiers
-                                    val openInNewTab = mods.isCtrlPressed || mods.isMetaPressed
+                                    // Inverted behavior: Ctrl/Meta = same tab, otherwise new tab
+                                    val openInNewTab = !(mods.isCtrlPressed || mods.isMetaPressed)
                                     viewModel.openResult(result, openInNewTab)
                                 }
                             )

@@ -77,7 +77,7 @@ class SearchResultViewModel(
     private companion object {
         private const val WARMUP_LIMIT = 500
         private const val WARMUP_BATCH_SIZE = 20
-        private const val STEADY_BATCH_SIZE = 1000
+        private const val STEADY_BATCH_SIZE = 100
     }
 
     private fun batchSizeFor(currentCount: Int): Int =

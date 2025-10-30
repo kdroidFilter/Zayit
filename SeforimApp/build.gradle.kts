@@ -143,6 +143,10 @@ kotlin {
             implementation(libs.sqlite.driver)
             implementation(libs.zstd.jni)
             implementation(libs.ktor.client.okhttp)
+            implementation("org.apache.lucene:lucene-core:10.3.1")
+            implementation("org.apache.lucene:lucene-analysis-common:10.3.1")
+            implementation("org.apache.lucene:lucene-queryparser:10.3.1")
+            implementation("org.apache.lucene:lucene-highlighter:10.3.1")
         }
     }
 }
@@ -175,7 +179,11 @@ compose.desktop {
             // Package-time resources root; include files under OS-specific subfolders (common, macos, windows, linux)
             appResourcesRootDir.set(layout.projectDirectory.dir("src/jvmMain/assets"))
             // Show splash image from the packaged resources directory
-            jvmArgs += listOf("-splash:\$APPDIR/resources/splash.png")
+            jvmArgs += listOf(
+                "-splash:\$APPDIR/resources/splash.png",
+                "--enable-native-access=ALL-UNNAMED",
+                "--add-modules=jdk.incubator.vector"
+            )
 
             modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb)

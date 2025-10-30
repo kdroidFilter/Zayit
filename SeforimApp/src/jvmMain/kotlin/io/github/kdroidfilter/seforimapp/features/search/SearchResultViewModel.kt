@@ -17,6 +17,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,6 +60,7 @@ class SearchResultViewModel(
     savedStateHandle: SavedStateHandle,
     private val stateManager: TabStateManager,
     private val repository: SeforimRepository,
+    private val lucene: LuceneSearchService,
     private val titleUpdateManager: TabTitleUpdateManager,
     private val tabsViewModel: TabsViewModel
 ) : TabAwareViewModel(
@@ -367,14 +369,8 @@ class SearchResultViewModel(
                 )
                 currentKey = key
 
-                val fts = buildNearQuery(q, near)
-                // Initialize progress total when determinable
-                val initialProgressTotal: Long? = when {
-                    fetchTocId != null && fetchTocId > 0 -> null // expensive to count over subtree; show indeterminate
-                    fetchBookId != null && fetchBookId > 0 -> runCatching { repository.countSearchResultsInBook(fts, fetchBookId) }.getOrNull()
-                    fetchCategoryId != null && fetchCategoryId > 0 -> runCatching { repository.countSearchResultsInCategory(fts, fetchCategoryId) }.getOrNull()
-                    else -> runCatching { repository.countSearchResults(fts) }.getOrNull()
-                }
+                // Lucene: we don't pre-count; keep indeterminate until results stream
+                val initialProgressTotal: Long? = null
                 _uiState.value = _uiState.value.copy(progressTotal = initialProgressTotal, progressCurrent = 0)
                 val acc = mutableListOf<SearchResult>()
 
@@ -432,24 +428,44 @@ class SearchResultViewModel(
                         val bookId = toc.bookId
                         var offset = 0
                         while (true) {
-                                val currentBatch = batchSizeFor(acc.size)
-                                val page = repository.searchInBookWithOperators(bookId, fts, limit = currentBatch, offset = offset)
-                                if (page.isEmpty()) break
-                                val filtered = page.filter { it.lineId in allowedLineIds }
-                                acc += filtered
-                                updateAggregatesForPage(filtered)
-                                uiState.value.scopeBook?.id?.let { updateTocCountsForPage(filtered, it) }
-                                offset += page.size
-                                maybeEmitUpdate()
+                            val currentBatch = batchSizeFor(acc.size)
+                            val hits = lucene.searchInBook(q, near, bookId, limit = currentBatch, offset = offset)
+                            if (hits.isEmpty()) break
+                            val page = hits.map {
+                                SearchResult(
+                                    bookId = it.bookId,
+                                    bookTitle = it.bookTitle,
+                                    lineId = it.lineId,
+                                    lineIndex = it.lineIndex,
+                                    snippet = it.snippet,
+                                    rank = it.score.toDouble()
+                                )
                             }
+                            val filtered = page.filter { it.lineId in allowedLineIds }
+                            acc += filtered
+                            updateAggregatesForPage(filtered)
+                            uiState.value.scopeBook?.id?.let { updateTocCountsForPage(filtered, it) }
+                            offset += page.size
+                            maybeEmitUpdate()
+                        }
                         }
                     }
                     fetchBookId != null && fetchBookId > 0 -> {
                         var offset = 0
                         while (true) {
                             val currentBatch = batchSizeFor(acc.size)
-                            val page = repository.searchInBookWithOperators(fetchBookId, fts, limit = currentBatch, offset = offset)
-                            if (page.isEmpty()) break
+                            val hits = lucene.searchInBook(q, near, fetchBookId, limit = currentBatch, offset = offset)
+                            if (hits.isEmpty()) break
+                            val page = hits.map {
+                                SearchResult(
+                                    bookId = it.bookId,
+                                    bookTitle = it.bookTitle,
+                                    lineId = it.lineId,
+                                    lineIndex = it.lineIndex,
+                                    snippet = it.snippet,
+                                    rank = it.score.toDouble()
+                                )
+                            }
                             acc += page
                             updateAggregatesForPage(page)
                             uiState.value.scopeBook?.id?.let { updateTocCountsForPage(page, it) }
@@ -461,8 +477,18 @@ class SearchResultViewModel(
                         var offset = 0
                         while (true) {
                             val currentBatch = batchSizeFor(acc.size)
-                            val page = repository.searchInCategoryWithOperators(fetchCategoryId, fts, limit = currentBatch, offset = offset)
-                            if (page.isEmpty()) break
+                            val hits = lucene.searchInCategory(q, near, fetchCategoryId, limit = currentBatch, offset = offset)
+                            if (hits.isEmpty()) break
+                            val page = hits.map {
+                                SearchResult(
+                                    bookId = it.bookId,
+                                    bookTitle = it.bookTitle,
+                                    lineId = it.lineId,
+                                    lineIndex = it.lineIndex,
+                                    snippet = it.snippet,
+                                    rank = it.score.toDouble()
+                                )
+                            }
                             acc += page
                             updateAggregatesForPage(page)
                             uiState.value.scopeBook?.id?.let { updateTocCountsForPage(page, it) }
@@ -474,8 +500,18 @@ class SearchResultViewModel(
                         var offset = 0
                         while (true) {
                             val currentBatch = batchSizeFor(acc.size)
-                            val page = repository.searchWithOperators(fts, limit = currentBatch, offset = offset)
-                            if (page.isEmpty()) break
+                            val hits = lucene.searchAllText(q, near, limit = currentBatch, offset = offset)
+                            if (hits.isEmpty()) break
+                            val page = hits.map {
+                                SearchResult(
+                                    bookId = it.bookId,
+                                    bookTitle = it.bookTitle,
+                                    lineId = it.lineId,
+                                    lineIndex = it.lineIndex,
+                                    snippet = it.snippet,
+                                    rank = it.score.toDouble()
+                                )
+                            }
                             acc += page
                             updateAggregatesForPage(page)
                             uiState.value.scopeBook?.id?.let { updateTocCountsForPage(page, it) }

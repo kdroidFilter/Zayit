@@ -15,6 +15,9 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
+import java.nio.file.Paths
 import java.util.UUID
 
 @ContributesTo(AppScope::class)
@@ -47,6 +50,22 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
+    fun provideLuceneSearchService(): LuceneSearchService {
+        val dbPath = getDatabasePath()
+        val indexPath = if (dbPath.endsWith(".db")) "$dbPath.lucene" else "$dbPath.luceneindex"
+        return LuceneSearchService(Paths.get(indexPath))
+    }
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideLuceneLookupSearchService(): LuceneLookupSearchService {
+        val dbPath = getDatabasePath()
+        val indexPath = if (dbPath.endsWith(".db")) "$dbPath.lookup.lucene" else "$dbPath.lookupindex"
+        return LuceneLookupSearchService(Paths.get(indexPath))
+    }
+
+    @Provides
+    @SingleIn(AppScope::class)
     fun provideTabsViewModel(
         titleUpdateManager: TabTitleUpdateManager,
         stateManager: TabStateManager
@@ -66,11 +85,13 @@ object AppCoreBindings {
         tabsViewModel: TabsViewModel,
         stateManager: TabStateManager,
         repository: SeforimRepository,
+        lucene: LuceneSearchService,
         settings: Settings
     ): SearchHomeViewModel = SearchHomeViewModel(
         tabsViewModel = tabsViewModel,
         stateManager = stateManager,
         repository = repository,
+        lucene = lucene,
         settings = settings
     )
 }

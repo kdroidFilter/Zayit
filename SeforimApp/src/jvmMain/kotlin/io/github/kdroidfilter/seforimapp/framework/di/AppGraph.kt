@@ -19,6 +19,7 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
 
 /**
  * Metro DI graph: provider functions annotated with @Provides.
@@ -34,6 +35,7 @@ abstract class AppGraph {
     abstract val tabNavControllerRegistry: TabNavControllerRegistry
     abstract val settings: Settings
     abstract val repository: SeforimRepository
+    abstract val luceneSearchService: LuceneSearchService
     abstract val tabsViewModel: TabsViewModel
     abstract val settingsWindowViewModel: SettingsWindowViewModel
     abstract val generalSettingsViewModel: io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsViewModel
@@ -80,6 +82,7 @@ abstract class AppGraph {
             savedStateHandle = savedStateHandle,
             tabStateManager = tabStateManager,
             repository = repository,
+            lucene = luceneSearchService,
             titleUpdateManager = tabTitleUpdateManager,
             tabsViewModel = tabsViewModel
         )
@@ -89,12 +92,14 @@ abstract class AppGraph {
         savedStateHandle: SavedStateHandle,
         tabStateManager: TabStateManager,
         repository: SeforimRepository,
+        lucene: LuceneSearchService,
         titleUpdateManager: TabTitleUpdateManager,
         tabsViewModel: TabsViewModel
     ): SearchResultViewModel = SearchResultViewModel(
         savedStateHandle = savedStateHandle,
         stateManager = tabStateManager,
         repository = repository,
+        lucene = lucene,
         titleUpdateManager = titleUpdateManager,
         tabsViewModel = tabsViewModel
     )

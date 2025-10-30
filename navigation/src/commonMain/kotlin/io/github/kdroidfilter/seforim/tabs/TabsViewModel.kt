@@ -68,8 +68,6 @@ class TabsViewModel(
                 TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())
             )
             _selectedTabIndex.value = 0
-            // Encourage memory reclamation after resetting the tab
-            System.gc()
             return
         }
 
@@ -103,16 +101,12 @@ class TabsViewModel(
 
         _selectedTabIndex.value = newSelectedIndex
 
-        // Encourage memory reclamation after closing a tab
-        System.gc()
     }
 
     private fun selectTab(index: Int) {
         val currentTabs = _tabs.value
         if (index in 0..currentTabs.lastIndex && index != _selectedTabIndex.value) {
             _selectedTabIndex.value = index
-            // Trigger GC when switching tabs
-            System.gc()
         }
     }
 
@@ -150,8 +144,6 @@ class TabsViewModel(
         )
         _tabs.value = _tabs.value + newTab
         _selectedTabIndex.value = _tabs.value.lastIndex
-        // Trigger GC when a new tab is opened
-        System.gc()
     }
 
     /**
@@ -198,8 +190,6 @@ class TabsViewModel(
             }
         )
         _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
-        // Encourage GC after destination swap
-        System.gc()
     }
 
     /**
@@ -245,8 +235,6 @@ class TabsViewModel(
             }
         )
         _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
-        // Trigger GC when resetting a tab with a new id
-        System.gc()
     }
     private fun getTabTitle(destination: TabsDestination): String {
         return when (destination) {

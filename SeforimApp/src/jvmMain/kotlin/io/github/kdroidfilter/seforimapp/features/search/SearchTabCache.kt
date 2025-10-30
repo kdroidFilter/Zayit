@@ -9,6 +9,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
  * Keeps results and precomputed aggregates to avoid expensive recomputation on restore.
  */
 object SearchTabCache {
+    private const val MAX_TABS = 8
     data class CategoryAggSnapshot(
         val categoryCounts: Map<Long, Int>,
         val bookCounts: Map<Long, Int>,
@@ -27,7 +28,11 @@ object SearchTabCache {
         val tocTree: TocTreeSnapshot?
     )
 
-    private val cache = mutableMapOf<String, Snapshot>()
+    private val cache = object : LinkedHashMap<String, Snapshot>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Snapshot>?): Boolean {
+            return size > MAX_TABS
+        }
+    }
 
     fun put(tabId: String, snapshot: Snapshot) {
         cache[tabId] = snapshot

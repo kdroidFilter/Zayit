@@ -3,6 +3,7 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.state
 
 import io.github.kdroidfilter.seforim.tabs.TabStateManager
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -172,7 +173,10 @@ class BookContentStateManager(
         
         // Navigation
         saveState(StateKeys.EXPANDED_CATEGORIES, currentState.navigation.expandedCategories)
-        saveState(StateKeys.CATEGORY_CHILDREN, currentState.navigation.categoryChildren)
+        if (!AppSettings.isRamSaverEnabled()) {
+            // Heavy map: skip in RAM saver mode
+            saveState(StateKeys.CATEGORY_CHILDREN, currentState.navigation.categoryChildren)
+        }
         saveState(StateKeys.BOOKS_IN_CATEGORY, currentState.navigation.booksInCategory)
         currentState.navigation.selectedCategory?.let { saveState(StateKeys.SELECTED_CATEGORY, it) }
         currentState.navigation.selectedBook?.let { saveState(StateKeys.SELECTED_BOOK, it) }
@@ -183,7 +187,10 @@ class BookContentStateManager(
         
         // TOC
         saveState(StateKeys.EXPANDED_TOC_ENTRIES, currentState.toc.expandedEntries)
-        saveState(StateKeys.TOC_CHILDREN, currentState.toc.children)
+        if (!AppSettings.isRamSaverEnabled()) {
+            // Heavy map: skip in RAM saver mode
+            saveState(StateKeys.TOC_CHILDREN, currentState.toc.children)
+        }
         saveState(StateKeys.SHOW_TOC, currentState.toc.isVisible)
         saveState(StateKeys.TOC_SCROLL_INDEX, currentState.toc.scrollIndex)
         saveState(StateKeys.TOC_SCROLL_OFFSET, currentState.toc.scrollOffset)

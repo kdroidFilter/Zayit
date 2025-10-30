@@ -6,8 +6,7 @@ import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
-import io.github.kdroidfilter.seforim.navigation.DefaultNavigator
-import io.github.kdroidfilter.seforim.navigation.Navigator
+import io.github.kdroidfilter.seforim.navigation.TabNavControllerRegistry
 import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
@@ -24,17 +23,11 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideNavigator(): Navigator =
-        DefaultNavigator(
-            startDestination = TabsDestination.BookContent(
-                bookId = -1,
-                tabId = UUID.randomUUID().toString()
-            )
-        )
+    fun provideTabStateManager(): TabStateManager = TabStateManager()
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideTabStateManager(): TabStateManager = TabStateManager()
+    fun provideTabNavControllerRegistry(): TabNavControllerRegistry = TabNavControllerRegistry()
 
     @Provides
     @SingleIn(AppScope::class)
@@ -55,13 +48,15 @@ object AppCoreBindings {
     @Provides
     @SingleIn(AppScope::class)
     fun provideTabsViewModel(
-        navigator: Navigator,
         titleUpdateManager: TabTitleUpdateManager,
         stateManager: TabStateManager
     ): TabsViewModel = TabsViewModel(
-        navigator = navigator,
         titleUpdateManager = titleUpdateManager,
-        stateManager = stateManager
+        stateManager = stateManager,
+        startDestination = TabsDestination.BookContent(
+            bookId = -1,
+            tabId = UUID.randomUUID().toString()
+        )
     )
 
 

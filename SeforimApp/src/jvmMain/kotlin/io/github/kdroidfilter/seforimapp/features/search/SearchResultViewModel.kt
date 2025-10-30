@@ -4,7 +4,6 @@ package io.github.kdroidfilter.seforimapp.features.search
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.seforim.navigation.Navigator
 import io.github.kdroidfilter.seforim.tabs.TabAwareViewModel
 import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabType
@@ -60,7 +59,6 @@ class SearchResultViewModel(
     savedStateHandle: SavedStateHandle,
     private val stateManager: TabStateManager,
     private val repository: SeforimRepository,
-    private val navigator: Navigator,
     private val titleUpdateManager: TabTitleUpdateManager,
     private val tabsViewModel: TabsViewModel
 ) : TabAwareViewModel(
@@ -869,7 +867,7 @@ class SearchResultViewModel(
             }
             stateManager.saveState(newTabId, StateKeys.CONTENT_ANCHOR_ID, result.lineId)
 
-            navigator.navigate(
+            tabsViewModel.openTab(
                 TabsDestination.BookContent(
                     bookId = result.bookId,
                     tabId = newTabId,

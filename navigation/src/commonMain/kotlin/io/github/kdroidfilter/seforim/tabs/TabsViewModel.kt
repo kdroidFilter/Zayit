@@ -3,7 +3,6 @@ package io.github.kdroidfilter.seforim.tabs
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.seforim.navigation.Navigator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -19,32 +18,27 @@ data class TabItem(
 )
 
 class TabsViewModel(
-    private val navigator: Navigator,
     private val titleUpdateManager: TabTitleUpdateManager,
-    private val stateManager: TabStateManager
+    private val stateManager: TabStateManager,
+    startDestination: TabsDestination
 ) : ViewModel() {
 
     private var _nextTabId = 2 // Commence à 2 car on a déjà un onglet par défaut
-    private val _tabs = MutableStateFlow(listOf(
-        TabItem(
-            id = 1,
-            title = getTabTitle(navigator.startDestination),
-            destination = navigator.startDestination
+    private val _tabs = MutableStateFlow(
+        listOf(
+            TabItem(
+                id = 1,
+                title = getTabTitle(startDestination),
+                destination = startDestination
+            )
         )
-    ))
+    )
     val tabs = _tabs.asStateFlow()
 
     private val _selectedTabIndex = MutableStateFlow(0)
     val selectedTabIndex = _selectedTabIndex.asStateFlow()
 
     init {
-        // Écouter les requêtes de navigation
-        viewModelScope.launch {
-            navigator.navigationRequests.collect { destination ->
-                addTabWithDestination(destination)
-            }
-        }
-        
         // Écouter les mises à jour de titre
         viewModelScope.launch {
             titleUpdateManager.titleUpdates.collect { update ->
@@ -156,8 +150,16 @@ class TabsViewModel(
         )
         _tabs.value = _tabs.value + newTab
         _selectedTabIndex.value = _tabs.value.lastIndex
-        // Trigger GC when a new tab is opened via navigation
+        // Trigger GC when a new tab is opened
         System.gc()
+    }
+
+    /**
+     * Public API to open a new tab with the given destination.
+     * Keeps the provided tabId, selects the new tab.
+     */
+    fun openTab(destination: TabsDestination) {
+        addTabWithDestination(destination)
     }
 
     /**

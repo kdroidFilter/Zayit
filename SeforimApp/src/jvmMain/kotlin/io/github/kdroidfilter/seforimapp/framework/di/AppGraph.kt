@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.russhwolf.settings.Settings
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Provides
-import io.github.kdroidfilter.seforim.navigation.Navigator
+import io.github.kdroidfilter.seforim.navigation.TabNavControllerRegistry
 import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
@@ -28,9 +28,10 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 abstract class AppGraph {
 
     // Expose strongly-typed graph entries as abstract vals for generated implementation
-    abstract val navigator: Navigator
+    // Removed Navigator; use TabsViewModel + TabNavControllerRegistry
     abstract val tabStateManager: TabStateManager
     abstract val tabTitleUpdateManager: TabTitleUpdateManager
+    abstract val tabNavControllerRegistry: TabNavControllerRegistry
     abstract val settings: Settings
     abstract val repository: SeforimRepository
     abstract val tabsViewModel: TabsViewModel
@@ -52,14 +53,14 @@ abstract class AppGraph {
         tabStateManager: TabStateManager,
         repository: SeforimRepository,
         titleUpdateManager: TabTitleUpdateManager,
-        navigator: Navigator,
+        tabsViewModel: TabsViewModel,
         settings: Settings
     ): BookContentViewModel = BookContentViewModel(
         savedStateHandle = savedStateHandle,
         tabStateManager = tabStateManager,
         repository = repository,
         titleUpdateManager = titleUpdateManager,
-        navigator = navigator
+        tabsViewModel = tabsViewModel
     )
 
     // Convenience factory to create a route-scoped BookContentViewModel from a NavBackStackEntry
@@ -69,7 +70,7 @@ abstract class AppGraph {
             tabStateManager = tabStateManager,
             repository = repository,
             titleUpdateManager = tabTitleUpdateManager,
-            navigator = navigator,
+            tabsViewModel = tabsViewModel,
             settings = settings
         )
 
@@ -79,7 +80,6 @@ abstract class AppGraph {
             savedStateHandle = savedStateHandle,
             tabStateManager = tabStateManager,
             repository = repository,
-            navigator = navigator,
             titleUpdateManager = tabTitleUpdateManager,
             tabsViewModel = tabsViewModel
         )
@@ -89,14 +89,12 @@ abstract class AppGraph {
         savedStateHandle: SavedStateHandle,
         tabStateManager: TabStateManager,
         repository: SeforimRepository,
-        navigator: Navigator,
         titleUpdateManager: TabTitleUpdateManager,
         tabsViewModel: TabsViewModel
     ): SearchResultViewModel = SearchResultViewModel(
         savedStateHandle = savedStateHandle,
         stateManager = tabStateManager,
         repository = repository,
-        navigator = navigator,
         titleUpdateManager = titleUpdateManager,
         tabsViewModel = tabsViewModel
     )

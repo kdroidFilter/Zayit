@@ -4,7 +4,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
-import io.github.kdroidfilter.seforim.navigation.Navigator
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -31,7 +30,7 @@ class BookContentViewModel(
     private val tabStateManager: TabStateManager,
     private val repository: SeforimRepository,
     private val titleUpdateManager: TabTitleUpdateManager,
-    private val navigator: Navigator
+    private val tabsViewModel: TabsViewModel
 ) : TabAwareViewModel(
     tabId = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: "",
     stateManager = tabStateManager
@@ -400,7 +399,7 @@ class BookContentViewModel(
         // Copier l'état de navigation vers le nouvel onglet
         stateManager.copyNavigationState(currentTabId, newTabId, tabStateManager)
 
-        navigator.navigate(
+        tabsViewModel.openTab(
             TabsDestination.BookContent(
                 bookId = book.id,
                 tabId = newTabId
@@ -421,7 +420,7 @@ class BookContentViewModel(
         // Optional: indicate the initial anchor for a center scroll upon loading
         tabStateManager.saveState(newTabId, StateKeys.CONTENT_ANCHOR_ID, lineId)
 
-        navigator.navigate(
+        tabsViewModel.openTab(
             TabsDestination.BookContent(
                 bookId = bookId,
                 tabId = newTabId,

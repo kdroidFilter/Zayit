@@ -101,7 +101,7 @@ Search results, or a specific book.
 ```kotlin
 NavHost(
     navController = navController,
-    startDestination = navigator.startDestination,
+    startDestination = tabItem.destination,
     modifier = Modifier
 ) {
     // Home – BookContent shell without a selected book shows HomeView
@@ -126,23 +126,21 @@ NavHost(
 }
 ```
 
-### 5. Navigate Between Screens
+### 5. Open Tabs / Navigate
 
-Use the `Navigator` to navigate, which will automatically create new tabs:
+Use `TabsViewModel.openTab(...)` to open a new tab with a destination:
 
 ```kotlin
-// Access the navigator from the app graph
-val navigator = LocalAppGraph.current.navigator
+// Access the tabs VM from the app graph
+val tabsVm = LocalAppGraph.current.tabsViewModel
 val scope = rememberCoroutineScope()
 
-// Navigation example
+// Open a new tab
 Button(onClick = {
     scope.launch {
-        navigator.navigate(TabsDestination.MyCustomScreen("parameter", UUID.randomUUID().toString()))
+        tabsVm.openTab(TabsDestination.MyCustomScreen("parameter", UUID.randomUUID().toString()))
     }
-}) {
-    Text("Open new tab")
-}
+}) { Text("Open new tab") }
 ```
 
 Sometimes you want to REPLACE the current tab’s destination instead of opening
@@ -182,7 +180,7 @@ private val _myState = MutableStateFlow(getState<String>("myState") ?: "default 
 3. **Use unique IDs** - Make sure each tab has a unique ID (UUID) to avoid conflicts:
 
 ```kotlin
-navigator.navigate(TabsDestination.MyScreen(UUID.randomUUID().toString()))
+LocalAppGraph.current.tabsViewModel.openTab(TabsDestination.MyScreen(UUID.randomUUID().toString()))
 ```
 
 4. **Limit the size of saved states** - Only save what's necessary to restore the user experience:

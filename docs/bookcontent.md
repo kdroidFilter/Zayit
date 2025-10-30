@@ -37,7 +37,7 @@ Ce guide explique l’architecture, les règles et les bonnes pratiques pour uti
 
 ### ViewModel orchestrateur
 - `BookContentViewModel` injecte:
-  - `SeforimRepository` (données), `Navigator` (navigation), `TabStateManager` et `TabTitleUpdateManager` (système d’onglets).
+  - `SeforimRepository` (données), `TabStateManager`, `TabTitleUpdateManager` et `TabsViewModel` (onglets).
 - Instancie 4 UseCases: Navigation, Toc, Contenu, Commentaires.
 - Expose `uiState: StateFlow<BookContentState>` enrichi de `Providers` (flows/fonctions pour la UI), pour éviter tout couplage direct de la UI au ViewModel.
 
@@ -78,7 +78,7 @@ Ce guide explique l’architecture, les règles et les bonnes pratiques pour uti
 
 ### Intégration onglets + DI
 - `TabsNavHost` passe `tabId`, `bookId`, `lineId` à `SavedStateHandle` de la destination.
-- `AppGraph` (Metro DI) fournit `Navigator`, `TabStateManager`, `SeforimRepository`, `BookContentViewModel`, etc.
+- `AppGraph` (Metro DI) fournit `TabStateManager`, `TabsViewModel`, `SeforimRepository`, `BookContentViewModel`, etc.
 
 ## Flux de données
 
@@ -167,7 +167,7 @@ class SampleTest {
 
 ## Exemples fréquents
 
-- Ouvrir un livre dans un nouvel onglet: l’UI envoie `BookContentEvent.BookSelectedInNewTab`; le ViewModel copie l’état de navigation vers un nouveau `tabId`, puis `navigator.navigate(TabsDestination.BookContent(...))`.
+- Ouvrir un livre dans un nouvel onglet: l’UI envoie `BookContentEvent.BookSelectedInNewTab`; le ViewModel copie l’état de navigation vers un nouveau `tabId`, puis `tabsViewModel.openTab(TabsDestination.BookContent(...))`.
 - Sauvegarde de position de split: tout déplacement visible déclenche `BookContentEvent.SaveState` (debounce) et `BookContentStateManager.saveAllStates()` enregistre `positionPercentage` des splits.
 
 ## Points d’attention
@@ -180,4 +180,3 @@ class SampleTest {
 ---
 
 Besoin d’aide pour ajouter un nouvel événement de bout en bout (événement → UseCase → UI) ou pour écrire un test sur un UseCase précis (ex: restauration anchor/scroll) ? Ouvrez une issue/PR et mentionnez ce guide.
-

@@ -83,21 +83,20 @@ object SessionManager {
 
         // Recreate tabs and selection via navigator/tabs VM
         val tabsVm: TabsViewModel = appGraph.tabsViewModel
-        val navigator = appGraph.navigator
         val titleUpdateManager: TabTitleUpdateManager = appGraph.tabTitleUpdateManager
 
         if (saved.tabs.isEmpty()) return
 
         runBlocking {
             // Open first tab then close default initial one
-            navigator.navigate(saved.tabs.first())
+            tabsVm.openTab(saved.tabs.first())
         }
         // Close the initial default tab at index 0
         tabsVm.onEvent(TabsEvents.onClose(0))
 
         // Open remaining tabs
         saved.tabs.drop(1).forEach { dest ->
-            runBlocking { navigator.navigate(dest) }
+            runBlocking { tabsVm.openTab(dest) }
         }
 
         // Update tab titles immediately based on restored state (e.g., Book.title),

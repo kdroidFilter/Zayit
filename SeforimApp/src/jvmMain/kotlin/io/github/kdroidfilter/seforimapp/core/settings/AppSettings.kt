@@ -42,6 +42,9 @@ object AppSettings {
     private const val KEY_SAVED_SESSION_PART_PREFIX = "saved_session_part_"
     private const val SESSION_CHUNK_SIZE = 4000
 
+    // Performance / Memory
+    private const val KEY_RAM_SAVER_ENABLED = "ram_saver_enabled"
+
     // Onboarding state
     private const val KEY_ONBOARDING_FINISHED = "onboarding_finished"
 
@@ -70,6 +73,7 @@ object AppSettings {
         _bookFontCodeFlow.value = getBookFontCode()
         _commentaryFontCodeFlow.value = getCommentaryFontCode()
         _targumFontCodeFlow.value = getTargumFontCode()
+        _ramSaverEnabledFlow.value = isRamSaverEnabled()
     }
 
     // StateFlow to observe text size changes
@@ -91,6 +95,10 @@ object AppSettings {
     // StateFlow for session persistence setting
     private val _persistSessionFlow = MutableStateFlow(isPersistSessionEnabled())
     val persistSessionFlow: StateFlow<Boolean> = _persistSessionFlow.asStateFlow()
+
+    // StateFlow for RAM saver (memory-optimized tabs). Disabled by default
+    private val _ramSaverEnabledFlow = MutableStateFlow(isRamSaverEnabled())
+    val ramSaverEnabledFlow: StateFlow<Boolean> = _ramSaverEnabledFlow.asStateFlow()
 
     // Font preference flows
     private val _bookFontCodeFlow = MutableStateFlow(getBookFontCode())
@@ -213,6 +221,16 @@ object AppSettings {
         }
     }
 
+    // RAM saver setting
+    fun isRamSaverEnabled(): Boolean {
+        return settings[KEY_RAM_SAVER_ENABLED, false]
+    }
+
+    fun setRamSaverEnabled(enabled: Boolean) {
+        settings[KEY_RAM_SAVER_ENABLED] = enabled
+        _ramSaverEnabledFlow.value = enabled
+    }
+
     // Saved session blob (JSON)
     fun getSavedSessionJson(): String? {
         // Prefer chunked storage if present
@@ -328,5 +346,6 @@ object AppSettings {
         _bookFontCodeFlow.value = "notoserifhebrew"
         _commentaryFontCodeFlow.value = "notorashihebrew"
         _targumFontCodeFlow.value = "notorashihebrew"
+        _ramSaverEnabledFlow.value = false
     }
 }

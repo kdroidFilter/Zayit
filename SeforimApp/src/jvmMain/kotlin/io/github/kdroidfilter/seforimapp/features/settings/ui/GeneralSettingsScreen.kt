@@ -28,6 +28,7 @@ import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
 import seforimapp.seforimapp.generated.resources.settings_db_path_label
 import seforimapp.seforimapp.generated.resources.settings_db_path_not_set
 import seforimapp.seforimapp.generated.resources.settings_persist_session
+import seforimapp.seforimapp.generated.resources.settings_ram_saver
 import seforimapp.seforimapp.generated.resources.settings_reset_app
 import seforimapp.seforimapp.generated.resources.settings_reset_done
 
@@ -70,6 +71,16 @@ private fun GeneralSettingsView(
                 onCheckedChange = { onEvent(GeneralSettingsEvents.SetPersistSession(it)) }
             )
             Text(text = stringResource(Res.string.settings_persist_session))
+        }
+
+        Divider(orientation = Orientation.Horizontal)
+
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Checkbox(
+                checked = state.ramSaver,
+                onCheckedChange = { onEvent(GeneralSettingsEvents.SetRamSaver(it)) }
+            )
+            Text(text = stringResource(Res.string.settings_ram_saver))
         }
 
         Divider(orientation = Orientation.Horizontal)

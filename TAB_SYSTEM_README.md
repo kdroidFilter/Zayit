@@ -28,6 +28,11 @@ The tab system consists of several key components working together:
 - This approach is intentionally simpler and more maintainable than the previous
   RAM‑optimized system. It may keep more UI in memory if many tabs are open.
 
+Tip: you can enable a RAM saver mode in settings (`AppSettings.setRamSaverEnabled(true)`),
+which switches to a single‑NavHost strategy like the old system: only the selected
+tab is kept active, and switching tabs navigates the single controller. This saves
+memory at the cost of re‑creating UI when switching.
+
 ## How to Use It
 
 ### 1. Define Your Destinations

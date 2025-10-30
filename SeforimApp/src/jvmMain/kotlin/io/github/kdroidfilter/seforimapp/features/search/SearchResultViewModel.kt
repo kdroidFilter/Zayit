@@ -289,35 +289,38 @@ class SearchResultViewModel(
             }
         }
 
-        // Pause/resume when switching tabs; cancel when tab is closed
+        // On tab switch: only interrupt search when RAM saver is enabled; always cancel on tab close
         viewModelScope.launch {
             // Observe currently selected tab to pause/resume
             tabsViewModel.selectedTabIndex.collect { idx ->
                 val tabs = tabsViewModel.tabs.value
                 val selectedTabId = tabs.getOrNull(idx)?.destination?.tabId
                 if (selectedTabId != tabId) {
-                    // Pause current search
-                    if (_uiState.value.isLoading || _uiState.value.isLoadingMore) {
-                        wasPausedByTabSwitch = true
-                        currentJob?.cancel()
-                        _uiState.value = _uiState.value.copy(isLoading = false, isLoadingMore = false)
+                    val ramSaver = AppSettings.isRamSaverEnabled()
+                    if (ramSaver) {
+                        // Pause current search when RAM saver is active
+                        if (_uiState.value.isLoading || _uiState.value.isLoadingMore) {
+                            wasPausedByTabSwitch = true
+                            currentJob?.cancel()
+                            _uiState.value = _uiState.value.copy(isLoading = false, isLoadingMore = false)
+                        }
+                        // Save a fresh snapshot for instant restoration
+                        val catAgg = _categoryAgg.value
+                        val treeSnap = _tocTree.value?.let { t ->
+                            SearchTabCache.TocTreeSnapshot(t.rootEntries, t.children)
+                        }
+                        val snapshot = SearchTabCache.Snapshot(
+                            results = _uiState.value.results,
+                            categoryAgg = SearchTabCache.CategoryAggSnapshot(
+                                categoryCounts = catAgg.categoryCounts,
+                                bookCounts = catAgg.bookCounts,
+                                booksForCategory = catAgg.booksForCategory
+                            ),
+                            tocCounts = _tocCounts.value,
+                            tocTree = treeSnap
+                        )
+                        SearchTabCache.put(tabId, snapshot)
                     }
-                    // Save a fresh snapshot of current results and aggregates for instant restoration
-                    val catAgg = _categoryAgg.value
-                    val treeSnap = _tocTree.value?.let { t ->
-                        SearchTabCache.TocTreeSnapshot(t.rootEntries, t.children)
-                    }
-                    val snapshot = SearchTabCache.Snapshot(
-                        results = _uiState.value.results,
-                        categoryAgg = SearchTabCache.CategoryAggSnapshot(
-                            categoryCounts = catAgg.categoryCounts,
-                            bookCounts = catAgg.bookCounts,
-                            booksForCategory = catAgg.booksForCategory
-                        ),
-                        tocCounts = _tocCounts.value,
-                        tocTree = treeSnap
-                    )
-                    SearchTabCache.put(tabId, snapshot)
                 } else {
                     // Do not auto-resume search on tab reselect. Keep current results/snapshot only.
                     wasPausedByTabSwitch = false

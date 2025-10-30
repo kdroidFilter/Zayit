@@ -14,15 +14,17 @@ class GeneralSettingsViewModel : ViewModel() {
     private val dbPath = MutableStateFlow(AppSettings.getDatabasePath())
     private val closeTree = MutableStateFlow(AppSettings.getCloseBookTreeOnNewBookSelected())
     private val persist = MutableStateFlow(AppSettings.isPersistSessionEnabled())
+    private val ramSaver = MutableStateFlow(AppSettings.isRamSaverEnabled())
     private val resetDone = MutableStateFlow(false)
 
     val state = combine(
-        dbPath, closeTree, persist, resetDone
-    ) { path, c, p, r ->
+        dbPath, closeTree, persist, ramSaver, resetDone
+    ) { path, c, p, ram, r ->
         GeneralSettingsState(
             databasePath = path,
             closeTreeOnNewBook = c,
             persistSession = p,
+            ramSaver = ram,
             resetDone = r
         )
     }.stateIn(
@@ -32,6 +34,7 @@ class GeneralSettingsViewModel : ViewModel() {
             databasePath = dbPath.value,
             closeTreeOnNewBook = closeTree.value,
             persistSession = persist.value,
+            ramSaver = ramSaver.value,
             resetDone = resetDone.value,
         )
     )
@@ -46,6 +49,10 @@ class GeneralSettingsViewModel : ViewModel() {
                 AppSettings.setPersistSessionEnabled(event.value)
                 persist.value = event.value
             }
+            is GeneralSettingsEvents.SetRamSaver -> {
+                AppSettings.setRamSaverEnabled(event.value)
+                ramSaver.value = event.value
+            }
             is GeneralSettingsEvents.ResetApp -> {
                 runCatching { AppSettings.getDatabasePath() }
                     .getOrNull()
@@ -57,4 +64,3 @@ class GeneralSettingsViewModel : ViewModel() {
         }
     }
 }
-

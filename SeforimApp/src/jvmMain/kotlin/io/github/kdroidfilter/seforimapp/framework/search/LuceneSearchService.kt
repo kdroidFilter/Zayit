@@ -212,11 +212,33 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val origEnd = mapToOrigIndex(mapToOrig, plainEnd).coerceAtMost(raw.length)
 
         val base = raw.substring(origStart, origEnd)
+        // Compute basePlain and its map to baseOriginal-local indices
+        val basePlain = plain.substring(plainStart, plainEnd)
+        val baseMap: IntArray = IntArray(plainEnd - plainStart) { idx ->
+            (mapToOrig[plainStart + idx] - origStart).coerceIn(0, base.length.coerceAtLeast(1) - 1)
+        }
 
-        // naive highlight with both variants (strip trailing '$') on the visible snippet only
+        // Build highlight intervals in original snippet coordinates using diacritic-agnostic matching
         val pool = (highlightTerms + highlightTerms.map { it.trimEnd('$') }).distinct().filter { it.isNotBlank() }
-        var out = base
-        pool.forEach { t -> if (t.isNotEmpty()) out = out.replace(t, "<b>$t</b>") }
+        val intervals = mutableListOf<IntRange>()
+        val basePlainLower = basePlain.lowercase()
+        for (term in pool) {
+            if (term.isEmpty()) continue
+            val t = term.lowercase()
+            var from = 0
+            while (from <= basePlainLower.length - t.length && t.isNotEmpty()) {
+                val idx = basePlainLower.indexOf(t, startIndex = from)
+                if (idx == -1) break
+                val startOrig = mapToOrigIndex(baseMap, idx)
+                val endOrig = mapToOrigIndex(baseMap, (idx + t.length - 1)) + 1
+                if (startOrig in 0 until endOrig && endOrig <= base.length) {
+                    intervals += (startOrig until endOrig)
+                }
+                from = idx + t.length
+            }
+        }
+        val merged = mergeIntervals(intervals.sortedBy { it.first })
+        var out = insertBoldTags(base, merged)
         if (origStart > 0) out = "...$out"
         if (origEnd < raw.length) out = "$out..."
         return out
@@ -248,6 +270,38 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         }
         val arr = IntArray(map.size) { map[it] }
         return out.toString() to arr
+    }
+
+    private fun mergeIntervals(ranges: List<IntRange>): List<IntRange> {
+        if (ranges.isEmpty()) return ranges
+        val out = mutableListOf<IntRange>()
+        var cur = ranges[0]
+        for (i in 1 until ranges.size) {
+            val r = ranges[i]
+            if (r.first <= cur.last + 1) {
+                cur = cur.first .. maxOf(cur.last, r.last)
+            } else {
+                out += cur
+                cur = r
+            }
+        }
+        out += cur
+        return out
+    }
+
+    private fun insertBoldTags(text: String, intervals: List<IntRange>): String {
+        if (intervals.isEmpty()) return text
+        val sb = StringBuilder(text)
+        // Insert from end to start to keep indices valid
+        for (r in intervals.asReversed()) {
+            val start = r.first.coerceIn(0, sb.length)
+            val end = (r.last + 1).coerceIn(0, sb.length)
+            if (end > start) {
+                sb.insert(end, "</b>")
+                sb.insert(start, "<b>")
+            }
+        }
+        return sb.toString()
     }
 
     // --- Helpers ---

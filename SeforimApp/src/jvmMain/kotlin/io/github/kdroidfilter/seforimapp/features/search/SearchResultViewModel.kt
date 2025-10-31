@@ -474,26 +474,32 @@ class SearchResultViewModel(
                         }
                     }
                     fetchCategoryId != null && fetchCategoryId > 0 -> {
-                        var offset = 0
-                        while (true) {
-                            val currentBatch = batchSizeFor(acc.size)
-                            val hits = lucene.searchInCategory(q, near, fetchCategoryId, limit = currentBatch, offset = offset)
-                            if (hits.isEmpty()) break
-                            val page = hits.map {
-                                SearchResult(
-                                    bookId = it.bookId,
-                                    bookTitle = it.bookTitle,
-                                    lineId = it.lineId,
-                                    lineIndex = it.lineIndex,
-                                    snippet = it.snippet,
-                                    rank = it.score.toDouble()
-                                )
+                        // Expand to all books under the category tree
+                        val bookIdsUnder = collectBookIdsUnderCategory(fetchCategoryId)
+                        if (bookIdsUnder.isEmpty()) {
+                            // Nothing to search in
+                        } else {
+                            var offset = 0
+                            while (true) {
+                                val currentBatch = batchSizeFor(acc.size)
+                                val hits = lucene.searchInBooks(q, near, bookIdsUnder, limit = currentBatch, offset = offset)
+                                if (hits.isEmpty()) break
+                                val page = hits.map {
+                                    SearchResult(
+                                        bookId = it.bookId,
+                                        bookTitle = it.bookTitle,
+                                        lineId = it.lineId,
+                                        lineIndex = it.lineIndex,
+                                        snippet = it.snippet,
+                                        rank = it.score.toDouble()
+                                    )
+                                }
+                                acc += page
+                                updateAggregatesForPage(page)
+                                uiState.value.scopeBook?.id?.let { updateTocCountsForPage(page, it) }
+                                offset += page.size
+                                maybeEmitUpdate()
                             }
-                            acc += page
-                            updateAggregatesForPage(page)
-                            uiState.value.scopeBook?.id?.let { updateTocCountsForPage(page, it) }
-                            offset += page.size
-                            maybeEmitUpdate()
                         }
                     }
                     else -> {

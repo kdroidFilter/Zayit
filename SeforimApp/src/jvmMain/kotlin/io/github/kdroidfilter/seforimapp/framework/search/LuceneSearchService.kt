@@ -115,6 +115,9 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     fun searchInCategory(rawQuery: String, near: Int, categoryId: Long, limit: Int, offset: Int = 0): List<LineHit> =
         doSearch(rawQuery, near, limit, offset, bookFilter = null, categoryFilter = categoryId)
 
+    fun searchInBooks(rawQuery: String, near: Int, bookIds: Collection<Long>, limit: Int, offset: Int = 0): List<LineHit> =
+        doSearchInBooks(rawQuery, near, limit, offset, bookIds)
+
     private fun doSearch(
         rawQuery: String,
         near: Int,
@@ -168,7 +171,62 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
                 )
             }
         }
-    } 
+    }
+
+    private fun doSearchInBooks(
+        rawQuery: String,
+        near: Int,
+        limit: Int,
+        offset: Int,
+        bookIds: Collection<Long>
+    ): List<LineHit> {
+        val norm = normalizeHebrew(rawQuery)
+        if (norm.isBlank()) return emptyList()
+
+        val analyzerForQuery = if (near == 0) {
+            if (hebDict != null) log.debug("Using HebrewExactAnalyzer (near=0)") else log.debug("HebMorph unavailable; using StandardAnalyzer (near=0)")
+            hebrewExactAnalyzer
+        } else {
+            if (hebDict != null) log.debug("Using HebrewQueryAnalyzer (near={})", near) else log.debug("HebMorph unavailable; using StandardAnalyzer (near={})", near)
+            hebrewQueryAnalyzer
+        }
+        val q = QueryBuilder(analyzerForQuery).createPhraseQuery("text", norm, near)
+            ?: return emptyList()
+        val highlightTerms = analyzeToTerms(analyzerForQuery, norm) ?: emptyList()
+        val anchorTerms = buildAnchorTerms(norm, highlightTerms)
+
+        val bookIdInts = bookIds.asSequence().map { it.toInt() }.toList().toIntArray()
+        if (bookIdInts.isEmpty()) return emptyList()
+
+        return withSearcher { searcher ->
+            val b = BooleanQuery.Builder()
+            b.add(TermQuery(Term("type", "line")), BooleanClause.Occur.FILTER)
+            b.add(IntPoint.newSetQuery("book_id", *bookIdInts), BooleanClause.Occur.FILTER)
+            b.add(q, BooleanClause.Occur.MUST)
+            val query = b.build()
+
+            val top = searcher.search(query, offset + limit)
+            val stored: StoredFields = searcher.storedFields()
+            val hits = top.scoreDocs.drop(offset)
+            hits.map { sd ->
+                val doc = stored.document(sd.doc)
+                val bid = doc.getField("book_id").numericValue().toLong()
+                val btitle = doc.getField("book_title").stringValue()
+                val lid = doc.getField("line_id").numericValue().toLong()
+                val lidx = doc.getField("line_index").numericValue().toInt()
+                val raw = doc.getField("text_raw")?.stringValue() ?: ""
+                val snippet = buildSnippet(raw, anchorTerms, highlightTerms)
+                LineHit(
+                    bookId = bid,
+                    bookTitle = btitle ?: "",
+                    lineId = lid,
+                    lineIndex = lidx,
+                    snippet = snippet,
+                    score = sd.score
+                )
+            }
+        }
+    }
 
     private fun analyzeToTerms(analyzer: Analyzer, text: String): List<String>? = try {
         val out = mutableListOf<String>()

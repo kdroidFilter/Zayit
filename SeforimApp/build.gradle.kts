@@ -147,6 +147,8 @@ kotlin {
             implementation("org.apache.lucene:lucene-analysis-common:10.3.1")
             implementation("org.apache.lucene:lucene-queryparser:10.3.1")
             implementation("org.apache.lucene:lucene-highlighter:10.3.1")
+            // HebMorph Lucene module (provided via included build substitution)
+            implementation("com.code972.hebmorph:hebmorph-lucene:10.3.1")
         }
     }
 }

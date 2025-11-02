@@ -170,3 +170,57 @@
 -keep class oshi.** { *; }
 -keep enum oshi.** { *; }
 -dontwarn oshi.**
+
+
+# --- Fix crash: Lucene MMapDirectory provider removed by R8/ProGuard in release builds ---
+# Lucene's MMapDirectory reflectively loads MemorySegmentIndexInputProvider (Class.forName).
+# When code shrinking is enabled, that provider (and related classes) can be removed
+# because there are no direct references. Keep Lucene store classes to prevent
+# LinkageError/ClassNotFoundException at runtime.
+-keep class org.apache.lucene.store.MemorySegmentIndexInputProvider { *; }
+-keep class org.apache.lucene.store.MMapDirectory { *; }
+-keep class org.apache.lucene.store.** { *; }
+-dontwarn org.apache.lucene.**
+
+
+# --- Fix crash: Lucene Hebrew analyzer attributes and filters removed in release builds ---
+# The Hebrew analyzer uses Lucene's Attribute framework and classes are looked up
+# reflectively (e.g., HebrewTokenTypeAttributeImpl). R8/ProGuard may strip them in
+# release builds causing IllegalArgumentException/ClassNotFoundException at runtime.
+-keep class org.apache.lucene.analysis.hebrew.HebrewTokenTypeAttribute { *; }
+-keep class org.apache.lucene.analysis.hebrew.HebrewTokenTypeAttributeImpl { *; }
+# Keep the entire Hebrew analyzer package to cover tokenizers/filters loaded reflectively
+-keep class org.apache.lucene.analysis.hebrew.** { *; }
+# Also keep generic Analyzer factories which may be discovered via SPI or reflection
+-keep class org.apache.lucene.analysis.util.*Factory { *; }
+
+
+
+# --- Fix crash: Lucene Codec SPI providers removed in release builds ---
+# Lucene discovers Codec implementations via Java ServiceLoader/NamedSPILoader.
+# When shrinking is enabled, concrete codec implementations (e.g., Lucene103Codec)
+# can be removed because they are not directly referenced in code, causing:
+# ServiceConfigurationError: org.apache.lucene.codecs.Codec: Provider ... not found
+# Keep all codec implementations and explicitly the versioned default codec.
+-keep class org.apache.lucene.codecs.Codec { *; }
+-keep class org.apache.lucene.codecs.** { *; }
+-keep class * extends org.apache.lucene.codecs.Codec { *; }
+-keep class org.apache.lucene.codecs.lucene103.Lucene103Codec { *; }
+# If using a different Lucene version, also keep the corresponding codec package/class
+# e.g., lucene90.Lucene90Codec, lucene100.Lucene100Codec, lucene101.Lucene101Codec, etc.
+# -keep class org.apache.lucene.codecs.lucene90.Lucene90Codec { *; }
+# -keep class org.apache.lucene.codecs.lucene100.Lucene100Codec { *; }
+# -keep class org.apache.lucene.codecs.lucene101.Lucene101Codec { *; }
+
+
+
+# -----------------------------------------------------------------------------
+# Completely disable shrinking/obfuscation for ALL Lucene classes (user request)
+# Rationale: Lucene uses SPI/ServiceLoader (e.g., Codecs, Analyzers), reflection,
+# and versioned packages. To avoid release-only crashes, keep everything under
+# the Lucene namespace intact.
+# -----------------------------------------------------------------------------
+-keep class org.apache.lucene.** { *; }
+-keep interface org.apache.lucene.** { *; }
+# Already present above, but keep it close to these rules for clarity:
+-dontwarn org.apache.lucene.**

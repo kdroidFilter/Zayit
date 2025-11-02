@@ -80,8 +80,13 @@ class LuceneLookupSearchService(indexDir: Path, private val analyzer: Analyzer =
         s = s.replace("[\u05B0\u05B1\u05B2\u05B3\u05B4\u05B5\u05B6\u05B7\u05B8\u05B9\u05BB\u05BC\u05BD\u05C1\u05C2\u05C7]".toRegex(), "")
         s = s.replace('\u05BE', ' ')
         s = s.replace("\u05F4", "").replace("\u05F3", "")
+        // Normalize final letters to base forms to align with index-time char filter
+        s = s.replace('\u05DA', '\u05DB') // ך -> כ
+            .replace('\u05DD', '\u05DE') // ם -> מ
+            .replace('\u05DF', '\u05E0') // ן -> נ
+            .replace('\u05E3', '\u05E4') // ף -> פ
+            .replace('\u05E5', '\u05E6') // ץ -> צ
         s = s.replace("\\s+".toRegex(), " ").trim()
         return s
     }
 }
-

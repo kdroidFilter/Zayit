@@ -34,6 +34,8 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import java.util.UUID
+import org.jsoup.Jsoup
+import org.jsoup.safety.Safelist
 
 data class SearchUiState(
     val query: String = "",
@@ -97,6 +99,8 @@ class SearchResultViewModel(
     private val bookCache: MutableMap<Long, Book> = mutableMapOf()
     private val categoryPathCache: MutableMap<Long, List<Category>> = mutableMapOf()
     private val tocPathCache: MutableMap<Long, List<TocEntry>> = mutableMapOf()
+    private val depthByBookId: MutableMap<Long, Int> = mutableMapOf()
+    private val exactRawMatchByLineId: MutableMap<Long, Boolean> = mutableMapOf()
 
     // Data structures for results tree
     data class SearchTreeBook(val book: Book, val count: Int)
@@ -408,8 +412,13 @@ class SearchResultViewModel(
                     val now = System.nanoTime()
                     val sizeDelta = acc.size - lastEmittedSize
                     if (force || sizeDelta >= EMIT_RESULTS_STEP || (now - lastEmitNanos) >= EMIT_MIN_INTERVAL_NS) {
+                        // Sort by rank desc, then exact raw match, then category depth asc
+                        val sorted = acc.sortedWith(compareByDescending<SearchResult> { it.rank }
+                            .thenByDescending { exactRawMatchByLineId[it.lineId] == true }
+                            .thenBy { depthByBookId[it.bookId] ?: Int.MAX_VALUE }
+                            .thenBy { it.lineIndex })
                         _uiState.value = _uiState.value.copy(
-                            results = acc.toList(),
+                            results = sorted,
                             scrollToAnchorTimestamp = System.currentTimeMillis(),
                             progressCurrent = acc.size
                         )
@@ -431,16 +440,10 @@ class SearchResultViewModel(
                             val currentBatch = batchSizeFor(acc.size)
                             val hits = lucene.searchInBook(q, near, bookId, limit = currentBatch, offset = offset)
                             if (hits.isEmpty()) break
-                            val page = hits.map {
-                                SearchResult(
-                                    bookId = it.bookId,
-                                    bookTitle = it.bookTitle,
-                                    lineId = it.lineId,
-                                    lineIndex = it.lineIndex,
-                                    snippet = it.snippet,
-                                    rank = it.score.toDouble()
-                                )
-                            }
+                            // Build results with snippet text fetched from the SQLite DB.
+                            // We do not store raw text in the Lucene index (HebMorph build),
+                            // so we must read the original line HTML from the repository.
+                            val page = toResultsWithDbSnippets(hits, q, near)
                             val filtered = page.filter { it.lineId in allowedLineIds }
                             acc += filtered
                             updateAggregatesForPage(filtered)
@@ -456,16 +459,7 @@ class SearchResultViewModel(
                             val currentBatch = batchSizeFor(acc.size)
                             val hits = lucene.searchInBook(q, near, fetchBookId, limit = currentBatch, offset = offset)
                             if (hits.isEmpty()) break
-                            val page = hits.map {
-                                SearchResult(
-                                    bookId = it.bookId,
-                                    bookTitle = it.bookTitle,
-                                    lineId = it.lineId,
-                                    lineIndex = it.lineIndex,
-                                    snippet = it.snippet,
-                                    rank = it.score.toDouble()
-                                )
-                            }
+                            val page = toResultsWithDbSnippets(hits, q, near)
                             acc += page
                             updateAggregatesForPage(page)
                             uiState.value.scopeBook?.id?.let { updateTocCountsForPage(page, it) }
@@ -484,16 +478,7 @@ class SearchResultViewModel(
                                 val currentBatch = batchSizeFor(acc.size)
                                 val hits = lucene.searchInBooks(q, near, bookIdsUnder, limit = currentBatch, offset = offset)
                                 if (hits.isEmpty()) break
-                                val page = hits.map {
-                                    SearchResult(
-                                        bookId = it.bookId,
-                                        bookTitle = it.bookTitle,
-                                        lineId = it.lineId,
-                                        lineIndex = it.lineIndex,
-                                        snippet = it.snippet,
-                                        rank = it.score.toDouble()
-                                    )
-                                }
+                                val page = toResultsWithDbSnippets(hits, q, near)
                                 acc += page
                                 updateAggregatesForPage(page)
                                 uiState.value.scopeBook?.id?.let { updateTocCountsForPage(page, it) }
@@ -508,16 +493,7 @@ class SearchResultViewModel(
                             val currentBatch = batchSizeFor(acc.size)
                             val hits = lucene.searchAllText(q, near, limit = currentBatch, offset = offset)
                             if (hits.isEmpty()) break
-                            val page = hits.map {
-                                SearchResult(
-                                    bookId = it.bookId,
-                                    bookTitle = it.bookTitle,
-                                    lineId = it.lineId,
-                                    lineIndex = it.lineIndex,
-                                    snippet = it.snippet,
-                                    rank = it.score.toDouble()
-                                )
-                            }
+                            val page = toResultsWithDbSnippets(hits, q, near)
                             acc += page
                             updateAggregatesForPage(page)
                             uiState.value.scopeBook?.id?.let { updateTocCountsForPage(page, it) }
@@ -977,6 +953,45 @@ class SearchResultViewModel(
 
     private fun sanitize(term: String): String {
         return term.replace('"', ' ').trim()
+    }
+
+    /**
+     * Convert Lucene hits to SearchResult items, fetching the snippet text from the DB.
+     * We do not store raw text in the Lucene index built with HebMorph, so for display
+     * we read the original HTML line content from SQLite via the repository.
+     */
+    private suspend fun toResultsWithDbSnippets(
+        hits: List<io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService.LineHit>,
+        rawQuery: String,
+        near: Int
+    ): List<SearchResult> {
+        val out = ArrayList<SearchResult>(hits.size)
+        for (hit in hits) {
+            val raw = runCatching { repository.getLine(hit.lineId)?.content }.getOrNull() ?: ""
+            val snippet = runCatching { lucene.buildSnippetFromRaw(raw, rawQuery, near) }.getOrDefault(raw)
+            // Cache category depth for tiebreaks (favor shallower books)
+            if (depthByBookId[hit.bookId] == null) {
+                val catId = runCatching { repository.getBook(hit.bookId)?.categoryId }.getOrNull()
+                if (catId != null) {
+                    val depth = runCatching { repository.getCategoryDepth(catId) }.getOrDefault(Int.MAX_VALUE)
+                    depthByBookId[hit.bookId] = depth
+                }
+            }
+            // Cache exact raw match (favor lines that contain the raw query exactly, no normalization)
+            val rawClean = Jsoup.clean(raw, Safelist.none())
+            val isExact = rawQuery.trim().let { q -> q.isNotEmpty() && rawClean.contains(q) }
+            exactRawMatchByLineId[hit.lineId] = isExact
+            val scoreBoost = if (isExact) 1e-3 else 0.0
+            out += SearchResult(
+                bookId = hit.bookId,
+                bookTitle = hit.bookTitle,
+                lineId = hit.lineId,
+                lineIndex = hit.lineIndex,
+                snippet = snippet,
+                rank = hit.score.toDouble() + scoreBoost
+            )
+        }
+        return out
     }
 
     private suspend fun collectLineIdsForTocSubtree(tocId: Long, bookId: Long): Set<Long> {

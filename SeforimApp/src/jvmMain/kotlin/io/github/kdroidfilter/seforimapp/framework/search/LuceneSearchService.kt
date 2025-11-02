@@ -12,11 +12,9 @@ import org.apache.lucene.util.QueryBuilder
 import org.apache.lucene.store.FSDirectory
 import org.apache.lucene.document.IntPoint
 import java.nio.file.Path
-import com.code972.hebmorph.hspell.HSpellDictionaryLoader
-import com.code972.hebmorph.datastructures.DictHebMorph
 import org.slf4j.LoggerFactory
-import org.apache.lucene.analysis.hebrew.HebrewExactAnalyzer
-import org.apache.lucene.analysis.hebrew.HebrewQueryAnalyzer
+import org.jsoup.Jsoup
+import org.jsoup.safety.Safelist
 
 /**
  * Minimal Lucene search service for JVM runtime.
@@ -27,26 +25,22 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     private val dir = FSDirectory.open(indexDir)
     private val log = LoggerFactory.getLogger(LuceneSearchService::class.java)
 
-    // HebMorph analyzers (lazily initialized). Fallback to StandardAnalyzer if dictionary cannot be loaded.
-    private val hebDict: DictHebMorph? by lazy {
+    // HebMorph exact analyzer for high-precision queries
+    private val hebDict: com.code972.hebmorph.datastructures.DictHebMorph? by lazy {
         val path = resolveHSpellPath()
         if (path == null) {
-            log.warn("HebMorph hspell path not found; using StandardAnalyzer")
+            log.warn("HebMorph hspell path not found; defaulting to StandardAnalyzer")
             null
         } else {
-            try {
+            runCatching {
                 log.info("Loading HebMorph dictionary from: {}", path)
-                val d = HSpellDictionaryLoader().loadDictionaryFromPath(path)
-                log.info("HebMorph dictionary loaded successfully")
-                d
-            } catch (e: Exception) {
-                log.error("Failed to load HebMorph dictionary from {}", path, e)
-                null
-            }
+                com.code972.hebmorph.hspell.HSpellDictionaryLoader().loadDictionaryFromPath(path)
+            }.onFailure { e -> log.error("Failed loading HebMorph dictionary", e) }.getOrNull()
         }
     }
-    private val hebrewQueryAnalyzer: Analyzer by lazy { hebDict?.let { HebrewQueryAnalyzer(it) } ?: analyzer }
-    private val hebrewExactAnalyzer: Analyzer by lazy { hebDict?.let { HebrewExactAnalyzer(it) } ?: analyzer }
+    private val hebrewExactAnalyzer: Analyzer by lazy {
+        hebDict?.let { org.apache.lucene.analysis.hebrew.HebrewExactAnalyzer(it) } ?: StandardAnalyzer()
+    }
 
     private inline fun <T> withSearcher(block: (IndexSearcher) -> T): T {
         DirectoryReader.open(dir).use { reader ->
@@ -118,6 +112,22 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     fun searchInBooks(rawQuery: String, near: Int, bookIds: Collection<Long>, limit: Int, offset: Int = 0): List<LineHit> =
         doSearchInBooks(rawQuery, near, limit, offset, bookIds)
 
+    // --- Snippet building (public) ---
+
+    /**
+     * Build an HTML snippet from raw line text by highlighting query terms.
+     * Uses StandardAnalyzer tokens only.
+     */
+    fun buildSnippetFromRaw(raw: String, rawQuery: String, near: Int): String {
+        val norm = normalizeHebrew(rawQuery)
+        if (norm.isBlank()) return Jsoup.clean(raw, Safelist.none())
+        val rawClean = Jsoup.clean(raw, Safelist.none())
+        val analyzed = (analyzeToTerms(hebrewExactAnalyzer, norm) ?: emptyList())
+        val highlightTerms = filterTermsForHighlight(analyzed)
+        val anchorTerms = buildAnchorTerms(norm, highlightTerms)
+        return buildSnippet(rawClean, anchorTerms, highlightTerms)
+    }
+
     private fun doSearch(
         rawQuery: String,
         near: Int,
@@ -129,24 +139,18 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val norm = normalizeHebrew(rawQuery)
         if (norm.isBlank()) return emptyList()
 
-        val analyzerForQuery = if (near == 0) {
-            if (hebDict != null) log.debug("Using HebrewExactAnalyzer (near=0)") else log.debug("HebMorph unavailable; using StandardAnalyzer (near=0)")
-            hebrewExactAnalyzer
-        } else {
-            if (hebDict != null) log.debug("Using HebrewQueryAnalyzer (near={})", near) else log.debug("HebMorph unavailable; using StandardAnalyzer (near={})", near)
-            hebrewQueryAnalyzer
-        }
-        val q = QueryBuilder(analyzerForQuery).createPhraseQuery("text", norm, near)
-            ?: return emptyList()
-        val highlightTerms = analyzeToTerms(analyzerForQuery, norm) ?: emptyList()
+        val analyzedTerms = (analyzeToTerms(hebrewExactAnalyzer, norm) ?: emptyList())
+        val highlightTerms = analyzedTerms
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
+
+        val rankedQuery = buildExactHebMorphQuery(norm)
 
         return withSearcher { searcher ->
             val b = BooleanQuery.Builder()
             b.add(TermQuery(Term("type", "line")), BooleanClause.Occur.FILTER)
             if (bookFilter != null) b.add(IntPoint.newExactQuery("book_id", bookFilter.toInt()), BooleanClause.Occur.FILTER)
             if (categoryFilter != null) b.add(IntPoint.newExactQuery("category_id", categoryFilter.toInt()), BooleanClause.Occur.FILTER)
-            b.add(q, BooleanClause.Occur.MUST)
+            b.add(rankedQuery, BooleanClause.Occur.MUST)
             val query = b.build()
 
             // Apply offset by fetching up to offset+limit and then subList
@@ -183,17 +187,10 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val norm = normalizeHebrew(rawQuery)
         if (norm.isBlank()) return emptyList()
 
-        val analyzerForQuery = if (near == 0) {
-            if (hebDict != null) log.debug("Using HebrewExactAnalyzer (near=0)") else log.debug("HebMorph unavailable; using StandardAnalyzer (near=0)")
-            hebrewExactAnalyzer
-        } else {
-            if (hebDict != null) log.debug("Using HebrewQueryAnalyzer (near={})", near) else log.debug("HebMorph unavailable; using StandardAnalyzer (near={})", near)
-            hebrewQueryAnalyzer
-        }
-        val q = QueryBuilder(analyzerForQuery).createPhraseQuery("text", norm, near)
-            ?: return emptyList()
-        val highlightTerms = analyzeToTerms(analyzerForQuery, norm) ?: emptyList()
+        val analyzedTerms = (analyzeToTerms(hebrewExactAnalyzer, norm) ?: emptyList())
+        val highlightTerms = analyzedTerms
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
+        val rankedQuery = buildExactHebMorphQuery(norm)
 
         val bookIdInts = bookIds.asSequence().map { it.toInt() }.toList().toIntArray()
         if (bookIdInts.isEmpty()) return emptyList()
@@ -202,7 +199,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             val b = BooleanQuery.Builder()
             b.add(TermQuery(Term("type", "line")), BooleanClause.Occur.FILTER)
             b.add(IntPoint.newSetQuery("book_id", *bookIdInts), BooleanClause.Occur.FILTER)
-            b.add(q, BooleanClause.Occur.MUST)
+            b.add(rankedQuery, BooleanClause.Occur.MUST)
             val query = b.build()
 
             val top = searcher.search(query, offset + limit)
@@ -241,20 +238,69 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         out
     } catch (_: Exception) { null }
 
-    private fun buildAnchorTerms(normQuery: String, analyzedTerms: List<String>): List<String> {
-        val qTokens = normQuery.split("\\s+".toRegex()).mapNotNull { t ->
-            val s = t.trim(); if (s.isEmpty()) null else s
-        }
-        val analyzedStripped = analyzedTerms.map { it.trimEnd('$') }
-        return (qTokens + analyzedStripped).filter { it.isNotBlank() }.distinct()
+    private fun buildExactHebMorphQuery(norm: String): Query {
+        // Use HebMorph exact analyzer and match only the HebMorph field (text_he) with slop 0
+        val qb = QueryBuilder(hebrewExactAnalyzer)
+        return qb.createPhraseQuery("text_he", norm, 0) ?: BooleanQuery.Builder().build()
     }
 
-    private fun buildSnippet(raw: String, anchorTerms: List<String>, highlightTerms: List<String>, context: Int = 120): String {
+    private fun resolveHSpellPath(): String? {
+        System.getProperty("hebmorph.hspell.path")?.let { if (it.isNotBlank()) return it }
+        System.getenv("HEBMORPH_HSPELL_PATH")?.let { if (it.isNotBlank()) return it }
+        // Attempt to find next to the index directory
+        runCatching { indexRoot.parent?.resolve("hspell-data-files")?.toFile() }
+            .getOrNull()?.let { if (it.exists() && it.isDirectory) return it.absolutePath }
+        val candidates = listOf(
+            "SeforimLibrary/HebMorph/hspell-data-files",
+            "HebMorph/hspell-data-files",
+            "hspell-data-files",
+            "../hspell-data-files",
+            "../../hspell-data-files"
+        )
+        for (c in candidates) {
+            val f = java.io.File(c)
+            if (f.exists() && f.isDirectory) return f.absolutePath
+        }
+        return null
+    }
+
+    private fun buildAnchorTerms(normQuery: String, analyzedTerms: List<String>): List<String> {
+        val qTokens = normQuery.split("\\s+".toRegex())
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+        val combined = (qTokens + analyzedTerms.map { it.trimEnd('$') })
+        val filtered = filterTermsForHighlight(combined)
+        if (filtered.isNotEmpty()) return filtered
+        val qFiltered = filterTermsForHighlight(qTokens)
+        return if (qFiltered.isNotEmpty()) qFiltered else qTokens
+    }
+
+    private fun filterTermsForHighlight(terms: List<String>): List<String> {
+        if (terms.isEmpty()) return emptyList()
+        val hebrewSingleLetters = setOf("ד", "ה", "ו", "ב", "ל", "מ", "כ", "ש")
+        fun useful(t: String): Boolean {
+            val s = t.trim()
+            if (s.isEmpty()) return false
+            // Drop single-letter clitics and one-char tokens to avoid noisy bold letters
+            if (s.length < 2) return false
+            // Must contain at least one letter or digit
+            if (s.none { it.isLetterOrDigit() }) return false
+            if (s in hebrewSingleLetters) return false
+            return true
+        }
+        return terms
+            .map { it.trim() }
+            .filter { useful(it) }
+            .distinct()
+            .sortedByDescending { it.length }
+    }
+
+    private fun buildSnippet(raw: String, anchorTerms: List<String>, highlightTerms: List<String>, context: Int = 220): String {
         if (raw.isEmpty()) return ""
         // Strip diacritics (nikud + teamim) to align matching with normalized tokens, and keep a mapping to original indices
         val (plain, mapToOrig) = stripDiacriticsWithMap(raw)
         val hasDiacritics = plain.length != raw.length
-        val effContext = if (hasDiacritics) maxOf(context, 260) else context
+        val effContext = if (hasDiacritics) maxOf(context, 360) else context
 
         // Find first anchor term found in the plain text
         val plainIdx = anchorTerms.asSequence().mapNotNull { t ->
@@ -374,28 +420,16 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         s = s.replace('\u05BE', ' ')
         // Remove gershayim/geresh
         s = s.replace("\u05F4", "").replace("\u05F3", "")
+        // Normalize final letters to base forms to align with index-time char filter
+        s = s.replace('\u05DA', '\u05DB') // ך -> כ
+            .replace('\u05DD', '\u05DE') // ם -> מ
+            .replace('\u05DF', '\u05E0') // ן -> נ
+            .replace('\u05E3', '\u05E4') // ף -> פ
+            .replace('\u05E5', '\u05E6') // ץ -> צ
         // Collapse whitespace
         s = s.replace("\\s+".toRegex(), " ").trim()
         return s
     }
 
-    private fun resolveHSpellPath(): String? {
-        System.getProperty("hebmorph.hspell.path")?.let { if (it.isNotBlank()) return it }
-        System.getenv("HEBMORPH_HSPELL_PATH")?.let { if (it.isNotBlank()) return it }
-        // Same directory as the DB (sibling to the index directory)
-        runCatching { indexRoot.parent?.resolve("hspell-data-files")?.toFile() }
-            .getOrNull()?.let { if (it.exists() && it.isDirectory) return it.absolutePath }
-        val candidates = listOf(
-            "SeforimLibrary/HebMorph/hspell-data-files",
-            "HebMorph/hspell-data-files",
-            "hspell-data-files",
-            "../hspell-data-files",
-            "../../hspell-data-files"
-        )
-        for (c in candidates) {
-            val f = java.io.File(c)
-            if (f.exists() && f.isDirectory) return f.absolutePath
-        }
-        return null
-    }
+    // No HebMorph dictionary is needed when using StandardAnalyzer only.
 }

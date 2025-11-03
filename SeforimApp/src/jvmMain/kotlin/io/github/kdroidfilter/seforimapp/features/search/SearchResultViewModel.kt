@@ -349,6 +349,20 @@ class SearchResultViewModel(
         stateManager.saveState(tabId, SearchStateKeys.NEAR, near)
     }
 
+    /**
+     * Update the search query in UI state and persist it for this tab.
+     * Does not trigger a search by itself; callers should invoke [executeSearch].
+     */
+    fun setQuery(query: String) {
+        val q = query.trim()
+        _uiState.value = _uiState.value.copy(query = q)
+        stateManager.saveState(tabId, SearchStateKeys.QUERY, q)
+        if (q.isNotEmpty()) {
+            // Keep the tab title synced with the current query
+            titleUpdateManager.updateTabTitle(tabId, q, TabType.SEARCH)
+        }
+    }
+
     fun executeSearch() {
         val q = _uiState.value.query.trim()
         if (q.isBlank()) return

@@ -271,6 +271,7 @@
     <string name="search_load_more">טען תוצאות נוספות</string>
     <string name="search_result_count">נמצאו %1$d תוצאות</string>
     <string name="search_stop">בטל חיפוש</string>
+    <string name="search_near_selector_label">קרבה</string>
 
     <!-- Reference open action -->
     <string name="open_book">פתח ספר</string>

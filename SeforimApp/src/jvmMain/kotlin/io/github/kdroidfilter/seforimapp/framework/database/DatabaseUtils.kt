@@ -25,4 +25,4 @@ import java.io.File
 //}
 
 
-fun getDatabasePath() = "/home/elie-gambache/IdeaProjects/SeforimApp/SeforimLibrary/generator/build/seforim.db"
+fun getDatabasePath() = "/Users/eliegambache/Downloads/seforim.db"

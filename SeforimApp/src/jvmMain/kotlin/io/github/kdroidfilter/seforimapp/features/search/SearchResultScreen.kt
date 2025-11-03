@@ -34,6 +34,8 @@ import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.IconActionButton
+import org.jetbrains.jewel.ui.component.TextField
+import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import androidx.compose.foundation.gestures.ScrollableState
@@ -51,6 +53,9 @@ import seforimapp.seforimapp.generated.resources.search_results_for
 import seforimapp.seforimapp.generated.resources.search_searching
 import seforimapp.seforimapp.generated.resources.search_load_more
 import seforimapp.seforimapp.generated.resources.search_result_count
+import seforimapp.seforimapp.generated.resources.search_placeholder
+import seforimapp.seforimapp.generated.resources.search_near_selector_label
+import seforimapp.seforimapp.generated.resources.search_icon_description
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.StartVerticalBar
@@ -69,12 +74,103 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
+import androidx.compose.foundation.text.input.TextFieldState
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.*
+import seforimapp.seforimapp.generated.resources.search_level_1_value
+import seforimapp.seforimapp.generated.resources.search_level_2_value
+import seforimapp.seforimapp.generated.resources.search_level_3_value
+import seforimapp.seforimapp.generated.resources.search_level_4_value
+import seforimapp.seforimapp.generated.resources.search_level_5_value
  
 
 @Composable
 fun SearchResultScreen(viewModel: SearchResultViewModel) {
     // Content-only variant (no shell); useful for previews or nested usage
     SearchResultContent(viewModel = viewModel)
+}
+
+@Composable
+private fun SearchToolbar(
+    initialQuery: String,
+    near: Int,
+    onSubmit: (query: String, near: Int) -> Unit,
+    onNearChange: (Int) -> Unit,
+) {
+    var currentNear by remember { mutableStateOf(near) }
+    LaunchedEffect(near) { currentNear = near }
+
+    val searchState = remember { TextFieldState() }
+    // Keep the field in sync with initial/current query
+    LaunchedEffect(initialQuery) {
+        val text = searchState.text.toString()
+        if (text != initialQuery) {
+            searchState.edit { replace(0, length, initialQuery) }
+        }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Query field
+        TextField(
+            state = searchState,
+            modifier = Modifier
+                .weight(1f)
+                .height(36.dp)
+                .onPreviewKeyEvent { ev ->
+                    if ((ev.key == androidx.compose.ui.input.key.Key.Enter || ev.key == androidx.compose.ui.input.key.Key.NumPadEnter) && ev.type == androidx.compose.ui.input.key.KeyEventType.KeyUp) {
+                        val q = searchState.text.toString()
+                        onSubmit(q, currentNear)
+                        true
+                    } else false
+                },
+            placeholder = { Text(stringResource(Res.string.search_placeholder)) },
+            leadingIcon = {
+                IconButton(onClick = {
+                    val q = searchState.text.toString()
+                    onSubmit(q, currentNear)
+                }) {
+                    Icon(
+                        key = AllIconsKeys.Actions.Find,
+                        contentDescription = stringResource(Res.string.search_icon_description)
+                    )
+                }
+            },
+            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
+        )
+
+        // NEAR selector
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(text = stringResource(Res.string.search_near_selector_label), fontSize = 13.sp)
+            // Mirror HomeView's semantic levels → NEAR values mapping
+            val nearValues = remember { listOf(0, 3, 5, 10, 20) }
+            val labels = listOf(
+                stringResource(Res.string.search_level_1_value),
+                stringResource(Res.string.search_level_2_value),
+                stringResource(Res.string.search_level_3_value),
+                stringResource(Res.string.search_level_4_value),
+                stringResource(Res.string.search_level_5_value),
+            )
+            val selectedIndex = nearValues.indexOf(currentNear).let { if (it >= 0) it else 2 }
+            ListComboBox(
+                items = labels,
+                selectedIndex = selectedIndex,
+                modifier = Modifier.width(160.dp),
+                onSelectedItemChange = { idx ->
+                    val newNear = nearValues.getOrNull(idx) ?: return@ListComboBox
+                    if (newNear != currentNear) {
+                        currentNear = newNear
+                        onNearChange(newNear)
+                    }
+                }
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class)
@@ -215,6 +311,22 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        // Top persistent search toolbar
+        SearchToolbar(
+            initialQuery = state.query,
+            near = state.near,
+            onSubmit = { query, nearValue ->
+                viewModel.setQuery(query)
+                viewModel.setNear(nearValue)
+                viewModel.executeSearch()
+            },
+            onNearChange = { newNear ->
+                // Only update NEAR; wait for Enter/click to run search
+                viewModel.setNear(newNear)
+            }
+        )
+
+        Spacer(Modifier.height(12.dp))
         // Header
         GroupHeader(
             text = stringResource(Res.string.search_results_for, state.query),

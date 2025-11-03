@@ -8,19 +8,24 @@ import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
  * Lightweight in-memory cache to fully restore a Search tab without re-running the query.
  * Keeps results and precomputed aggregates to avoid expensive recomputation on restore.
  */
+import kotlinx.serialization.Serializable
+
 object SearchTabCache {
     private const val MAX_TABS = 8
+    @Serializable
     data class CategoryAggSnapshot(
         val categoryCounts: Map<Long, Int>,
         val bookCounts: Map<Long, Int>,
         val booksForCategory: Map<Long, List<Book>>
     )
 
+    @Serializable
     data class TocTreeSnapshot(
         val rootEntries: List<TocEntry>,
         val children: Map<Long, List<TocEntry>>
     )
 
+    @Serializable
     data class Snapshot(
         val results: List<SearchResult>,
         val categoryAgg: CategoryAggSnapshot,

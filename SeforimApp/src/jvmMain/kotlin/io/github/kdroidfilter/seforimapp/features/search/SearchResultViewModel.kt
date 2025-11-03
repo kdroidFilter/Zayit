@@ -257,7 +257,8 @@ class SearchResultViewModel(
         }
 
         // Try to restore a full snapshot for this tab without redoing the search.
-        val cached = SearchTabCache.get(tabId)
+        // Try memory cache first, then persistent cache on disk
+        val cached = SearchTabCache.get(tabId) ?: SearchTabPersistentCache.load(tabId)?.also { SearchTabCache.put(tabId, it) }
         if (cached != null) {
             // Adopt cached results and aggregates; keep filters and scroll from state manager
             _uiState.value = _uiState.value.copy(
@@ -325,7 +326,9 @@ class SearchResultViewModel(
                             _uiState.value = _uiState.value.copy(isLoading = false, isLoadingMore = false)
                         }
                         // Save a fresh snapshot (cropped) for instant restoration
-                        SearchTabCache.put(tabId, buildSnapshot(_uiState.value.results))
+                        val snap = buildSnapshot(_uiState.value.results)
+                        SearchTabCache.put(tabId, snap)
+                        SearchTabPersistentCache.save(tabId, snap)
                     }
                 } else {
                     // Do not auto-resume search on tab reselect. Keep current results/snapshot only.
@@ -342,6 +345,7 @@ class SearchResultViewModel(
                     // Tab was closed; stop work and clear any cached snapshot to free memory
                     cancelSearch()
                     SearchTabCache.clear(tabId)
+                    SearchTabPersistentCache.clear(tabId)
                 }
             }
         }
@@ -387,6 +391,7 @@ class SearchResultViewModel(
         )
         // Drop any cached snapshot for this tab to avoid restoring stale results
         SearchTabCache.clear(tabId)
+        SearchTabPersistentCache.clear(tabId)
         currentJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
             _uiState.value = _uiState.value.copy(isLoading = true, results = emptyList(), hasMore = false, progressCurrent = 0, progressTotal = null)
             // Reset aggregates and counts for a clean run
@@ -550,6 +555,12 @@ class SearchResultViewModel(
                 val hasMore = false
                 maybeEmitUpdate(force = true)
                 _uiState.value = _uiState.value.copy(hasMore = hasMore, progressCurrent = acc.size)
+                // Persist a snapshot of the full results so cold-boot restore is instant
+                runCatching {
+                    val snap = buildSnapshot(_uiState.value.results)
+                    SearchTabCache.put(tabId, snap)
+                    SearchTabPersistentCache.save(tabId, snap)
+                }
 
             } finally {
                 _uiState.value = _uiState.value.copy(isLoading = false)
@@ -572,9 +583,12 @@ class SearchResultViewModel(
             tabsViewModel.tabs.value.any { it.destination.tabId == tabId }
         }.getOrDefault(false)
         if (stillExists) {
-            SearchTabCache.put(tabId, buildSnapshot(uiState.value.results))
+            val snap = buildSnapshot(uiState.value.results)
+            SearchTabCache.put(tabId, snap)
+            SearchTabPersistentCache.save(tabId, snap)
         } else {
             SearchTabCache.clear(tabId)
+            SearchTabPersistentCache.clear(tabId)
         }
         cancelSearch()
     }

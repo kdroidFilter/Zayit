@@ -255,6 +255,7 @@ class SearchHomeViewModel(
         // Clear any previous cached search snapshot for this tab to avoid
         // reusing stale results when a new search is submitted.
         SearchTabCache.clear(currentTabId)
+        SearchTabPersistentCache.clear(currentTabId)
 
         // Also reset persisted scroll/anchor so the SearchResult screen starts at the top
         stateManager.saveState(currentTabId, SearchStateKeys.SCROLL_INDEX, 0)

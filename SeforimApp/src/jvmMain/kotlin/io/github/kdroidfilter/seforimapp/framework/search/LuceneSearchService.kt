@@ -259,12 +259,26 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     private fun buildExpandedQuery(norm: String, near: Int): Query {
         val base = buildHebrewStdQuery(norm, near)
         val ngram = buildNgram4Query(norm)
-        return if (ngram != null) {
-            BooleanQuery.Builder().apply {
-                add(base, BooleanClause.Occur.SHOULD)
-                add(ngram, BooleanClause.Occur.SHOULD)
-            }.build()
-        } else base
+        val fuzzy = buildFuzzyQuery(norm, near)
+        val builder = BooleanQuery.Builder()
+        builder.add(base, BooleanClause.Occur.SHOULD)
+        if (ngram != null) builder.add(ngram, BooleanClause.Occur.SHOULD)
+        if (fuzzy != null) builder.add(fuzzy, BooleanClause.Occur.SHOULD)
+        return builder.build()
+    }
+
+    private fun buildFuzzyQuery(norm: String, near: Int): Query? {
+        // Allow fuzzy (edit distance 1) only when overall query length >= 4 and near != 0
+        if (near == 0) return null
+        if (norm.length < 4) return null
+        val tokens = analyzeToTerms(stdAnalyzer, norm)?.filter { it.length >= 4 } ?: emptyList()
+        if (tokens.isEmpty()) return null
+        val b = BooleanQuery.Builder()
+        for (t in tokens.distinct()) {
+            // Add per-token fuzzy match on the main text field; require all tokens (MUST)
+            b.add(FuzzyQuery(Term("text", t), 1), BooleanClause.Occur.MUST)
+        }
+        return b.build()
     }
 
     // Use only StandardAnalyzer + optional 4-gram

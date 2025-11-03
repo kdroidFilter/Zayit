@@ -34,9 +34,16 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.iconButtonStyle
-
+import androidx.compose.ui.zIndex
+// animation imports are at top; remove stray duplicates at file end if any
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 
 @Stable
 private data class TreeItem(
@@ -136,7 +143,7 @@ fun CategoryBookTreeView(
      * -------------------------------------------------------------------- */
     Box(modifier = modifier.fillMaxSize().padding(bottom = 8.dp)) {
         VerticallyScrollableContainer(
-            scrollState = listState,
+            scrollState = listState as ScrollableState,
         ) {
             LazyColumn(
                 state = listState,
@@ -165,6 +172,7 @@ fun SearchResultCategoryTreeView(
 ) {
     // Collect search UI to drive selection overrides and recompute triggers
     val searchUi = searchViewModel.uiState.collectAsState().value
+    val isFiltering by searchViewModel.isFilteringFlow.collectAsState()
 
     // Build a self-contained tree from current results (independent of navigation state's children)
     val searchTree by produceState(initialValue = emptyList<io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory>(), searchUi.results) {
@@ -241,12 +249,31 @@ fun SearchResultCategoryTreeView(
         }
     }
 
-    VerticallyScrollableContainer(scrollState = listState) {
-        LazyColumn(state = listState, modifier = modifier.fillMaxSize()) {
-            items(items) { node ->
-                Box(modifier = Modifier.fillMaxWidth().padding(start = (node.level * 12).dp)) {
-                    node.content()
+    Box(modifier = modifier.fillMaxSize()) {
+        VerticallyScrollableContainer(scrollState = listState as ScrollableState) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                items(items) { node ->
+                    Box(modifier = Modifier.fillMaxWidth().padding(start = (node.level * 12).dp)) {
+                        node.content()
+                    }
                 }
+            }
+        }
+
+        // Loader overlay while applying filters, with fast fade
+        androidx.compose.animation.AnimatedVisibility(
+            visible = isFiltering,
+            enter = fadeIn(tween(durationMillis = 120, easing = LinearEasing)),
+            exit = fadeOut(tween(durationMillis = 120, easing = LinearEasing))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.4f))
+                    .zIndex(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
             }
         }
     }

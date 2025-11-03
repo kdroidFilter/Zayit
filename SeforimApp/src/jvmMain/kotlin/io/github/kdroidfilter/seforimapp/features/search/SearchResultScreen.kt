@@ -27,6 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
@@ -78,6 +81,7 @@ import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.key
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -270,6 +274,7 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
     val listState = rememberLazyListState()
     val findQuery by AppSettings.findQueryFlow.collectAsState()
     val visibleResults by viewModel.visibleResultsFlow.collectAsState()
+    val isFiltering by viewModel.isFilteringFlow.collectAsState()
     val scope = rememberCoroutineScope()
     // Match BookContent main text font settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -501,6 +506,23 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                                 }
                             }
                         }
+                    }
+                }
+
+                // Loader overlay while applying filters (category/book/TOC) with quick fade
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isFiltering,
+                    enter = fadeIn(tween(durationMillis = 120, easing = LinearEasing)),
+                    exit = fadeOut(tween(durationMillis = 120, easing = LinearEasing))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.4f))
+                            .zIndex(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
                     }
                 }
             }

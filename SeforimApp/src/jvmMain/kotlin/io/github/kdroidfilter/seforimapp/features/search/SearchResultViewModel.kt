@@ -22,6 +22,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -186,6 +189,25 @@ class SearchResultViewModel(
             }
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Emits true whenever a filter key changes (category/book/toc), and becomes false
+    // after the next visibleResultsFlow emission reflecting that change.
+    private val filterKeyFlow = combine(scopeBookIdFlow, scopeCatIdFlow, scopeTocIdFlow) { bookId, catId, tocId ->
+        Triple(bookId, catId, tocId)
+    }.distinctUntilChanged()
+
+    val isFilteringFlow: StateFlow<Boolean> =
+        filterKeyFlow
+            .drop(1) // ignore initial state on first subscription
+            .flatMapLatest {
+                kotlinx.coroutines.flow.flow {
+                    emit(true)
+                    // Wait for the next recomputation of visible results
+                    visibleResultsFlow.drop(1).first()
+                    emit(false)
+                }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     // Category and TOC aggregates are updated incrementally from fetch loops
     val categoryAggFlow: StateFlow<CategoryAgg> = _categoryAgg.asStateFlow()

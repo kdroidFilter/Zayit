@@ -29,6 +29,7 @@ import androidx.compose.ui.input.pointer.isTertiary
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforim.tabs.TabType
@@ -53,6 +54,7 @@ import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.add_tab
+import seforimapp.seforimapp.generated.resources.close_tab
 import seforimapp.seforimapp.generated.resources.home
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -118,25 +120,19 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                         }
 
                         val isTruncated = tabItem.title.length > AppSettings.MAX_TAB_TITLE_LENGTH
-                        val truncatedTitle = if (isTruncated) {
-                            tabItem.title.take(AppSettings.MAX_TAB_TITLE_LENGTH) + "..."
-                        } else {
-                            tabItem.title.ifEmpty { stringResource(Res.string.home) }
-                        }
+                        val label = tabItem.title.ifEmpty { stringResource(Res.string.home) }
 
                         if (isTruncated) {
-                            Tooltip({
-                                Text(tabItem.title)
-                            }) {
-                                SimpleTabContent(
-                                    label = truncatedTitle,
+                            Tooltip({ Text(tabItem.title) }) {
+                                SingleLineTabContent(
+                                    label = label,
                                     state = tabState,
                                     icon = icon,
                                 )
                             }
                         } else {
-                            SimpleTabContent(
-                                label = truncatedTitle,
+                            SingleLineTabContent(
+                                label = label,
                                 state = tabState,
                                 icon = icon,
                             )
@@ -170,25 +166,19 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                         }
 
                         val isTruncated = tabItem.title.length > AppSettings.MAX_TAB_TITLE_LENGTH
-                        val truncatedTitle = if (isTruncated) {
-                            tabItem.title.take(AppSettings.MAX_TAB_TITLE_LENGTH) + "..."
-                        } else {
-                            tabItem.title.ifEmpty { stringResource(Res.string.home) }
-                        }
+                        val label = tabItem.title.ifEmpty { stringResource(Res.string.home) }
 
                         if (isTruncated) {
-                            Tooltip({
-                                Text(tabItem.title)
-                            }) {
-                                SimpleTabContent(
-                                    label = truncatedTitle,
+                            Tooltip({ Text(tabItem.title) }) {
+                                SingleLineTabContent(
+                                    label = label,
                                     state = tabState,
                                     icon = icon,
                                 )
                             }
                         } else {
-                            SimpleTabContent(
-                                label = truncatedTitle,
+                            SingleLineTabContent(
+                                label = label,
                                 state = tabState,
                                 icon = icon,
                             )
@@ -370,6 +360,7 @@ private fun RtlAwareTab(
         Row(
             modifier
                 .height(tabStyle.metrics.tabHeight)
+                .width(AppSettings.TAB_FIXED_WIDTH_DP.dp)
                 .background(backgroundColor)
                 .selectable(
                     onClick = tabData.onClick,
@@ -399,48 +390,44 @@ private fun RtlAwareTab(
             horizontalArrangement = Arrangement.spacedBy(tabStyle.metrics.closeContentGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Tab content
-            tabData.content(TabContentScopeContainer(), tabState)
+            // Build content/close order to keep close at the trailing edge
+            val showCloseIcon = tabData.closable
 
-            // Close button logic (same as Jewel's TabImpl)
-            val showCloseIcon = when (tabData) {
-                is TabData.Default -> tabData.closable
-                is TabData.Editor -> tabData.closable && (tabState.isHovered || tabState.isSelected)
-            }
-
-            if (showCloseIcon) {
-                val closeActionInteractionSource = remember { MutableInteractionSource() }
-                LaunchedEffect(closeActionInteractionSource) {
-                    closeActionInteractionSource.interactions.collect { interaction ->
-                        when (interaction) {
-                            is PressInteraction.Press -> closeButtonState = closeButtonState.copy(pressed = true)
-                            is PressInteraction.Cancel,
-                            is PressInteraction.Release -> {
-                                closeButtonState = closeButtonState.copy(pressed = false)
+            val closeIconComposable: @Composable () -> Unit = {
+                if (showCloseIcon) {
+                    val closeActionInteractionSource = remember { MutableInteractionSource() }
+                    LaunchedEffect(closeActionInteractionSource) {
+                        closeActionInteractionSource.interactions.collect { interaction ->
+                            when (interaction) {
+                                is PressInteraction.Press -> closeButtonState = closeButtonState.copy(pressed = true)
+                                is PressInteraction.Cancel,
+                                is PressInteraction.Release -> closeButtonState = closeButtonState.copy(pressed = false)
+                                is HoverInteraction.Enter -> closeButtonState = closeButtonState.copy(hovered = true)
+                                is HoverInteraction.Exit -> closeButtonState = closeButtonState.copy(hovered = false)
                             }
-
-                            is HoverInteraction.Enter -> closeButtonState = closeButtonState.copy(hovered = true)
-                            is HoverInteraction.Exit -> closeButtonState = closeButtonState.copy(hovered = false)
                         }
                     }
-                }
 
-                Icon(
-                    key = tabStyle.icons.close,
-                    modifier = Modifier
-                        .clickable(
-                            interactionSource = closeActionInteractionSource,
-                            indication = null,
-                            onClick = tabData.onClose,
-                            role = Role.Button,
-                        )
-                        .size(16.dp),
-                    contentDescription = "Close tab",
-                    hint = Stateful(closeButtonState),
-                )
-            } else if (tabData.closable) {
-                Spacer(Modifier.size(16.dp))
+                    Icon(
+                        key = tabStyle.icons.close,
+                        modifier = Modifier
+                            .clickable(
+                                interactionSource = closeActionInteractionSource,
+                                indication = null,
+                                onClick = tabData.onClose,
+                                role = Role.Button,
+                            )
+                            .size(16.dp),
+                        contentDescription = stringResource(Res.string.close_tab),
+                        hint = Stateful(closeButtonState),
+                    )
+                }
             }
+
+            Box(Modifier.weight(1f)) {
+                tabData.content(TabContentScopeContainer(), tabState)
+            }
+            closeIconComposable()
         }
     }
 }
@@ -450,4 +437,33 @@ private class TabContentScopeContainer : TabContentScope {
     @Composable
     override fun Modifier.tabContentAlpha(state: TabState): Modifier =
         alpha(JewelTheme.defaultTabStyle.contentAlpha.contentFor(state).value)
+}
+
+@Composable
+private fun SingleLineTabContent(
+    label: String,
+    state: TabState,
+    icon: Painter?,
+    modifier: Modifier = Modifier
+) {
+    val contentAlpha = JewelTheme.defaultTabStyle.contentAlpha.contentFor(state).value
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (icon != null) {
+            Image(
+                painter = icon,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp).alpha(contentAlpha)
+            )
+        }
+        Text(
+            label,
+            modifier = Modifier.alpha(contentAlpha),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }

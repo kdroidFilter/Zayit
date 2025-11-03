@@ -46,6 +46,7 @@
     <string name="settings_category_fonts">גופנים</string>
     <string name="add_tab">הוסף לשונית</string>
     <string name="home">דף הבית</string>
+    <string name="close_tab">סגור לשונית</string>
 
     <!-- Book Content Screen - Start Vertical Bar -->
     <string name="navigation">ניווט</string>

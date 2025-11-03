@@ -120,8 +120,10 @@ class BookContentViewModel(
                     loadBookData(restoredBook)
                 }
 
-                // Restaurer la ligne sélectionnée
+                // Restaurer la ligne sélectionnée et recalculer le TOC/breadcrumb
                 stateManager.state.value.content.selectedLine?.let { line ->
+                    // Also rebuild TOC selection + breadcrumb from the restored line
+                    contentUseCase.selectLine(line)
                     commentariesUseCase.reapplySelectedCommentators(line)
                     commentariesUseCase.reapplySelectedLinkSources(line)
                 }
@@ -132,13 +134,22 @@ class BookContentViewModel(
                 }
             }
 
-            // Observer le livre sélectionné pour mettre à jour le titre
+            // Observer le livre sélectionné et le TOC courant pour mettre à jour le titre
             stateManager.state
-                .map { it.navigation.selectedBook }
-                .filterNotNull()
+                .map { state ->
+                    val bookTitle = state.navigation.selectedBook?.title.orEmpty()
+                    val tocLabel = state.toc.breadcrumbPath.lastOrNull()?.text?.takeIf { it.isNotBlank() }
+                    val combined = if (bookTitle.isNotBlank() && tocLabel != null) {
+                        "$bookTitle - $tocLabel"
+                    } else {
+                        bookTitle
+                    }
+                    combined
+                }
+                .filter { it.isNotEmpty() }
                 .distinctUntilChanged()
-                .collect { book ->
-                    titleUpdateManager.updateTabTitle(currentTabId, book.title, TabType.BOOK)
+                .collect { combined ->
+                    titleUpdateManager.updateTabTitle(currentTabId, combined, TabType.BOOK)
                 }
         }
     }

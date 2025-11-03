@@ -27,6 +27,8 @@ object AppSettings {
 
     // Tab display constants
     const val MAX_TAB_TITLE_LENGTH = 20
+    // Fixed width for tabs in dp units (applied in UI)
+    const val TAB_FIXED_WIDTH_DP = 180
 
     // Settings keys
     private const val KEY_TEXT_SIZE = "text_size"

@@ -49,9 +49,3 @@ include(":logger")
 include(":texteffects")
 include(":network")
 includeBuild("SeforimLibrary")
-// Make HebMorph available to the whole workspace (used by SeforimApp at runtime)
-includeBuild("SeforimLibrary/HebMorph/java") {
-    dependencySubstitution {
-        substitute(module("com.code972.hebmorph:hebmorph-lucene")).using(project(":"))
-    }
-}

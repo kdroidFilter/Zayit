@@ -441,8 +441,8 @@ class SearchResultViewModel(
                             val hits = lucene.searchInBook(q, near, bookId, limit = currentBatch, offset = offset)
                             if (hits.isEmpty()) break
                             // Build results with snippet text fetched from the SQLite DB.
-                            // We do not store raw text in the Lucene index (HebMorph build),
-                            // so we must read the original line HTML from the repository.
+                            // We do not store raw text in the Lucene index, so for display
+                            // we read the original line HTML from the repository.
                             val page = toResultsWithDbSnippets(hits, q, near)
                             val filtered = page.filter { it.lineId in allowedLineIds }
                             acc += filtered
@@ -956,9 +956,9 @@ class SearchResultViewModel(
     }
 
     /**
-     * Convert Lucene hits to SearchResult items, fetching the snippet text from the DB.
-     * We do not store raw text in the Lucene index built with HebMorph, so for display
-     * we read the original HTML line content from SQLite via the repository.
+     * Convert Lucene hits to SearchResult items, fetching snippet text from the DB.
+     * We do not store raw line text in the Lucene index, so for display we read
+     * the original HTML line content from SQLite via the repository.
      */
     private suspend fun toResultsWithDbSnippets(
         hits: List<io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService.LineHit>,

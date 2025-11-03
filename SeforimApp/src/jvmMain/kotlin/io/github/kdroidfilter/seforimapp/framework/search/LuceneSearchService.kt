@@ -25,19 +25,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     private val dir = FSDirectory.open(indexDir)
     private val log = LoggerFactory.getLogger(LuceneSearchService::class.java)
 
-    // HebMorph dictionary (query-time only)
-    private val hebDict: com.code972.hebmorph.datastructures.DictHebMorph? by lazy {
-        val path = resolveHSpellPath()
-        if (path == null) {
-            log.warn("HebMorph hspell path not found; defaulting to StandardAnalyzer")
-            null
-        } else {
-            runCatching {
-                log.info("Loading HebMorph dictionary from: {}", path)
-                com.code972.hebmorph.hspell.HSpellDictionaryLoader().loadDictionaryFromPath(path)
-            }.onFailure { e -> log.error("Failed loading HebMorph dictionary", e) }.getOrNull()
-        }
-    }
+
     private val stdAnalyzer: Analyzer by lazy { StandardAnalyzer() }
 
     private inline fun <T> withSearcher(block: (IndexSearcher) -> T): T {
@@ -114,7 +102,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
 
     /**
      * Build an HTML snippet from raw line text by highlighting query terms.
-     * Uses HebMorph query-time tokens (fallback to Standard when HebMorph is unavailable).
+     * Uses StandardAnalyzer tokens; highlight is diacritic-agnostic and sofit-normalized.
      */
     fun buildSnippetFromRaw(raw: String, rawQuery: String, near: Int): String {
         val norm = normalizeHebrew(rawQuery)
@@ -279,27 +267,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         } else base
     }
 
-    // No HebMorph query branch; use only StandardAnalyzer + optional 4-gram
-
-    private fun resolveHSpellPath(): String? {
-        System.getProperty("hebmorph.hspell.path")?.let { if (it.isNotBlank()) return it }
-        System.getenv("HEBMORPH_HSPELL_PATH")?.let { if (it.isNotBlank()) return it }
-        // Attempt to find next to the index directory
-        runCatching { indexRoot.parent?.resolve("hspell-data-files")?.toFile() }
-            .getOrNull()?.let { if (it.exists() && it.isDirectory) return it.absolutePath }
-        val candidates = listOf(
-            "SeforimLibrary/HebMorph/hspell-data-files",
-            "HebMorph/hspell-data-files",
-            "hspell-data-files",
-            "../hspell-data-files",
-            "../../hspell-data-files"
-        )
-        for (c in candidates) {
-            val f = java.io.File(c)
-            if (f.exists() && f.isDirectory) return f.absolutePath
-        }
-        return null
-    }
+    // Use only StandardAnalyzer + optional 4-gram
 
     private fun buildAnchorTerms(normQuery: String, analyzedTerms: List<String>): List<String> {
         val qTokens = normQuery.split("\\s+".toRegex())
@@ -338,10 +306,12 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val (plain, mapToOrig) = stripDiacriticsWithMap(raw)
         val hasDiacritics = plain.length != raw.length
         val effContext = if (hasDiacritics) maxOf(context, 360) else context
+        // For matching only, normalize final letters in the plain text to base forms
+        val plainSearch = replaceFinalsWithBase(plain)
 
         // Find first anchor term found in the plain text
         val plainIdx = anchorTerms.asSequence().mapNotNull { t ->
-            val i = plain.indexOf(t)
+            val i = plainSearch.indexOf(t)
             if (i >= 0) i else null
         }.firstOrNull() ?: 0
 
@@ -355,6 +325,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val base = raw.substring(origStart, origEnd)
         // Compute basePlain and its map to baseOriginal-local indices
         val basePlain = plain.substring(plainStart, plainEnd)
+        val basePlainSearch = replaceFinalsWithBase(basePlain)
         val baseMap: IntArray = IntArray(plainEnd - plainStart) { idx ->
             (mapToOrig[plainStart + idx] - origStart).coerceIn(0, base.length.coerceAtLeast(1) - 1)
         }
@@ -362,7 +333,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         // Build highlight intervals in original snippet coordinates using diacritic-agnostic matching
         val pool = (highlightTerms + highlightTerms.map { it.trimEnd('$') }).distinct().filter { it.isNotBlank() }
         val intervals = mutableListOf<IntRange>()
-        val basePlainLower = basePlain.lowercase()
+        val basePlainLower = basePlainSearch.lowercase()
         for (term in pool) {
             if (term.isEmpty()) continue
             val t = term.lowercase()
@@ -457,10 +428,19 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         s = s.replace('\u05BE', ' ')
         // Remove gershayim/geresh
         s = s.replace("\u05F4", "").replace("\u05F3", "")
+        // Normalize Hebrew final letters (sofit) to base forms
+        s = replaceFinalsWithBase(s)
         // Collapse whitespace
         s = s.replace("\\s+".toRegex(), " ").trim()
         return s
     }
 
-    // No HebMorph dictionary is needed when using StandardAnalyzer only.
+    private fun replaceFinalsWithBase(text: String): String = text
+        .replace('\u05DA', '\u05DB') // ך -> כ
+        .replace('\u05DD', '\u05DE') // ם -> מ
+        .replace('\u05DF', '\u05E0') // ן -> נ
+        .replace('\u05E3', '\u05E4') // ף -> פ
+        .replace('\u05E5', '\u05E6') // ץ -> צ
+
+    // StandardAnalyzer only
 }

@@ -183,15 +183,7 @@
 -dontwarn org.apache.lucene.**
 
 
-# --- Fix crash: Lucene Hebrew analyzer attributes and filters removed in release builds ---
-# The Hebrew analyzer uses Lucene's Attribute framework and classes are looked up
-# reflectively (e.g., HebrewTokenTypeAttributeImpl). R8/ProGuard may strip them in
-# release builds causing IllegalArgumentException/ClassNotFoundException at runtime.
--keep class org.apache.lucene.analysis.hebrew.HebrewTokenTypeAttribute { *; }
--keep class org.apache.lucene.analysis.hebrew.HebrewTokenTypeAttributeImpl { *; }
-# Keep the entire Hebrew analyzer package to cover tokenizers/filters loaded reflectively
--keep class org.apache.lucene.analysis.hebrew.** { *; }
-# Also keep generic Analyzer factories which may be discovered via SPI or reflection
+# Lucene analyzer factories discovered via SPI or reflection
 -keep class org.apache.lucene.analysis.util.*Factory { *; }
 
 

@@ -57,6 +57,8 @@ import seforimapp.seforimapp.generated.resources.add_tab
 import seforimapp.seforimapp.generated.resources.close_tab
 import seforimapp.seforimapp.generated.resources.home
 import seforimapp.seforimapp.generated.resources.search_results_tab_title
+import seforimapp.seforimapp.generated.resources.app_name
+import seforimapp.seforimapp.generated.resources.home_tab_with_app
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -120,10 +122,12 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                             }
                         }
 
-                        val baseLabel = tabItem.title.ifEmpty { stringResource(Res.string.home) }
-                        val label = if (tabItem.tabType == TabType.SEARCH && tabItem.title.isNotEmpty()) {
-                            stringResource(Res.string.search_results_tab_title, tabItem.title)
-                        } else baseLabel
+                        val appTitle = stringResource(Res.string.app_name)
+                        val label = when {
+                            tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
+                            tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
+                            else -> tabItem.title
+                        }
                         val isTruncated = label.length > AppSettings.MAX_TAB_TITLE_LENGTH
 
                         if (isTruncated) {
@@ -169,10 +173,12 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                             }
                         }
 
-                        val baseLabel = tabItem.title.ifEmpty { stringResource(Res.string.home) }
-                        val label = if (tabItem.tabType == TabType.SEARCH && tabItem.title.isNotEmpty()) {
-                            stringResource(Res.string.search_results_tab_title, tabItem.title)
-                        } else baseLabel
+                        val appTitle = stringResource(Res.string.app_name)
+                        val label = when {
+                            tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
+                            tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
+                            else -> tabItem.title
+                        }
                         val isTruncated = label.length > AppSettings.MAX_TAB_TITLE_LENGTH
 
                         if (isTruncated) {

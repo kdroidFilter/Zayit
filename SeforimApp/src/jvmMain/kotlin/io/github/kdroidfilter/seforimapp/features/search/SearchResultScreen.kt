@@ -39,7 +39,7 @@ import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import androidx.compose.foundation.gestures.ScrollableState
-import io.github.kdroidfilter.seforimapp.core.presentation.components.AnimatedHorizontalProgressBar
+// removed: AnimatedHorizontalProgressBar (classic separator instead)
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import androidx.compose.runtime.snapshotFlow
@@ -72,6 +72,7 @@ import org.jetbrains.compose.splitpane.SplitPaneState
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.key
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
@@ -337,7 +338,7 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
         }
     }
 
-    val keyHandler = remember { { _: androidx.compose.ui.input.key.KeyEvent -> false } }
+    val keyHandler = remember { { _: KeyEvent -> false } }
 
     Box(modifier = Modifier.fillMaxSize().onPreviewKeyEvent(keyHandler)) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -357,7 +358,7 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
         )
 
         Spacer(Modifier.height(12.dp))
-        // Header row: results count + inline progress/separator + optional cancel
+        // Header row: results count + classic separator + optional cancel
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -367,20 +368,15 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                 modifier = Modifier.padding(end = 12.dp)
             )
 
-            // Inline thin progress bar acts as a separator and stays full when finished
-            val loading = state.isLoading || state.isLoadingMore
-            val total = state.progressTotal
-            val progress = when {
-                loading && total != null && total > 0L -> (state.progressCurrent.toFloat() / total.toFloat()).coerceIn(0f, 1f)
-                loading -> 0.33f // unknown total: show partial bar as activity indicator
-                else -> 1f
-            }
-            AnimatedHorizontalProgressBar(
-                value = progress,
-                modifier = Modifier.weight(1f).height(3.dp)
+            // Classic thin separator line
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp)
+                    .background(JewelTheme.globalColors.borders.disabled)
             )
 
-            if (loading) {
+            if (state.isLoading || state.isLoadingMore) {
                 Spacer(Modifier.width(8.dp))
                 IconActionButton(
                     key = AllIconsKeys.Windows.Close,

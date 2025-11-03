@@ -216,3 +216,13 @@
 -keep interface org.apache.lucene.** { *; }
 # Already present above, but keep it close to these rules for clarity:
 -dontwarn org.apache.lucene.**
+
+
+# --- Fix crash: Jsoup Entities$EscapeMode is not an enum (ProGuard altering enums) ---
+# Jsoup's cleaner and output settings rely on enums (e.g., Entities$EscapeMode) resolved
+# at runtime via Enum.valueOf. If R8/ProGuard rewrites or unboxes these enums, it will crash
+# with: IllegalArgumentException: org.jsoup.nodes.Entities$EscapeMode is not an enum class
+# Keep Jsoup classes and especially its enums intact.
+-keep class org.jsoup.** { *; }
+-keep enum org.jsoup.** { *; }
+-dontwarn org.jsoup.**

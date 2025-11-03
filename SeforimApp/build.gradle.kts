@@ -187,7 +187,7 @@ compose.desktop {
                 "--add-modules=jdk.incubator.vector"
             )
 
-            modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility")
+            modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility", "jdk.incubator.vector")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb)
             vendor = "KDroidFilter"
 

@@ -361,24 +361,55 @@ class BookContentViewModel(
                 // Always prefer an explicit anchor when present (e.g., opening from a commentary link)
                 val shouldUseAnchor = state.content.anchorId != -1L
 
-                val initialLineId = when {
+                // Resolve initial line anchor if any, otherwise fall back to the first TOC's first line
+                // so that opening a book from the category tree selects the first meaningful section.
+                val resolvedInitialLineId: Long? = when {
                     forceAnchorId != null -> forceAnchorId
                     shouldUseAnchor -> state.content.anchorId
                     state.content.selectedLine != null -> state.content.selectedLine?.id
-                    else -> null
+                    else -> {
+                        // Compute from TOC: take the first root TOC entry (or its first leaf) and
+                        // select its first associated line. Fallback to the very first line of the book.
+                        runCatching {
+                            val root = repository.getBookRootToc(book.id)
+                            val first = root.firstOrNull()
+                            val targetEntryId = if (first == null) null else findFirstLeafTocId(first)
+                                ?: first?.id
+                            val fromToc = targetEntryId?.let { id ->
+                                repository.getLineIdsForTocEntry(id).firstOrNull()
+                            }
+                            fromToc ?: repository.getLineByIndex(book.id, 0)?.id
+                        }.getOrNull()
+                    }
                 }
 
-                debugln { "Loading book data - initialLineId: $initialLineId" }
+                debugln { "Loading book data - initialLineId: $resolvedInitialLineId" }
 
-                // Créer le nouveau pager pour les lignes
-                _linesPagingData.value = contentUseCase.buildLinesPager(book.id, initialLineId)
+                // Build pager centered on the resolved initial line when available
+                _linesPagingData.value = contentUseCase.buildLinesPager(book.id, resolvedInitialLineId)
 
-                // Charger le TOC
+                // Load TOC after pager creation
                 tocUseCase.loadRootToc(book.id)
+
+                // If we computed an initial line (i.e., opened from the category tree with no prior anchor),
+                // select it to update TOC selection and breadcrumbs, and request a top-anchor alignment.
+                if (resolvedInitialLineId != null && !shouldUseAnchor && forceAnchorId == null && state.content.selectedLine == null) {
+                    loadAndSelectLine(resolvedInitialLineId)
+                }
             } finally {
                 stateManager.setLoading(false)
             }
         }
+    }
+
+    /**
+     * Finds the first leaf TOC entry under the given entry, depth-first.
+     */
+    private suspend fun findFirstLeafTocId(entry: io.github.kdroidfilter.seforimlibrary.core.models.TocEntry): Long? {
+        if (!entry.hasChildren) return entry.id
+        val children = runCatching { repository.getTocChildren(entry.id) }.getOrDefault(emptyList())
+        val firstChild = children.firstOrNull() ?: return entry.id
+        return findFirstLeafTocId(firstChild)
     }
 
     /** Sélectionne une ligne */

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -15,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,6 +29,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.isShiftPressed
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -45,6 +51,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.breadcrumb_separator
 import seforimapp.seforimapp.generated.resources.search_near_label
@@ -79,6 +87,10 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.*
+import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
+import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
+import kotlinx.coroutines.launch
+import androidx.compose.ui.zIndex
 import seforimapp.seforimapp.generated.resources.search_level_1_value
 import seforimapp.seforimapp.generated.resources.search_level_2_value
 import seforimapp.seforimapp.generated.resources.search_level_3_value
@@ -260,6 +272,9 @@ private data class SplitPaneConfig @OptIn(ExperimentalSplitPaneApi::class) const
 private fun SearchResultContent(viewModel: SearchResultViewModel) {
     val state = viewModel.uiState.collectAsState().value
     val listState = rememberLazyListState()
+    val findQuery by AppSettings.findQueryFlow.collectAsState()
+    val visibleResults by viewModel.visibleResultsFlow.collectAsState()
+    val scope = rememberCoroutineScope()
     // Match BookContent main text font settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val mainTextSize by animateFloatAsState(
@@ -310,6 +325,39 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
         }
     }
 
+    // Find-in-page state (global open state)
+    val showFind by AppSettings.findBarOpenFlow.collectAsState()
+    val findState = remember { TextFieldState() }
+    var currentHitIndex by remember { mutableStateOf(-1) }
+    var currentMatchStart by remember { mutableStateOf(-1) }
+
+    fun recomputeMatches(query: String) { /* removed: counter not needed */ }
+
+    fun navigateTo(next: Boolean) {
+        val q = findState.text.toString()
+        if (q.length < 2) return
+        val vis = visibleResults
+        if (vis.isEmpty()) return
+        val size = vis.size
+        var i = if (currentHitIndex in 0 until size) currentHitIndex else listState.firstVisibleItemIndex
+        val step = if (next) 1 else -1
+        var guard = 0
+        while (guard++ < size) {
+            i = (i + step + size) % size
+            val text = buildAnnotatedFromHtml(vis[i].snippet, state.textSize).text
+            val start = text.indexOf(q, ignoreCase = true)
+            if (start >= 0) {
+                currentHitIndex = i
+                currentMatchStart = start
+                scope.launch { listState.scrollToItem(i, 24) }
+                break
+            }
+        }
+    }
+
+    val keyHandler = remember { { _: androidx.compose.ui.input.key.KeyEvent -> false } }
+
+    Box(modifier = Modifier.fillMaxSize().onPreviewKeyEvent(keyHandler)) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         // Top persistent search toolbar
         SearchToolbar(
@@ -413,7 +461,7 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                         modifier = Modifier.fillMaxSize().padding(end = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(visibleResults) { result ->
+                        itemsIndexed(items = visibleResults, key = { _, it -> it.lineId }) { idx, result ->
                             val windowInfo = LocalWindowInfo.current
                             ResultRow(
                                 title = null,
@@ -422,6 +470,8 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                                 textSize = mainTextSize,
                                 lineHeight = mainLineHeight,
                                 fontFamily = hebrewFontFamily,
+                                findQuery = findQuery,
+                                currentMatchStart = if (idx == currentHitIndex) currentMatchStart else null,
                                 bottomContent = {
                                     ResultBreadcrumb(
                                         viewModel = viewModel,
@@ -467,6 +517,23 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
             }
         }
     }
+
+        // Find bar overlay
+        if (showFind) {
+            LaunchedEffect(findState.text, showFind) {
+                val q = findState.text.toString()
+                AppSettings.setFindQuery(if (showFind && q.length >= 2) q else "")
+            }
+            Box(modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).zIndex(2f)) {
+                FindInPageBar(
+                    state = findState,
+                    onEnterNext = { navigateTo(true) },
+                    onEnterPrev = { navigateTo(false) },
+                    onClose = { AppSettings.closeFindBar(); AppSettings.setFindQuery("") }
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -477,6 +544,8 @@ private fun ResultRow(
     textSize: Float,
     lineHeight: Float,
     fontFamily: FontFamily,
+    findQuery: String?,
+    currentMatchStart: Int? = null,
     bottomContent: (@Composable () -> Unit)? = null,
     onClick: () -> Unit
 ) {
@@ -497,9 +566,21 @@ private fun ResultRow(
                     )
                     Spacer(Modifier.height(4.dp))
                 }
-                val annotated: AnnotatedString = buildAnnotatedFromHtml(snippet, textSize, boldScale = 1.1f)
+                val annotated: AnnotatedString = remember(snippet, textSize) { buildAnnotatedFromHtml(snippet, textSize, boldScale = 1.1f) }
+                val baseHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.22f)
+                val currentHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.42f)
+                val display = remember(annotated, findQuery, currentMatchStart, baseHl, currentHl) {
+                    io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
+                        annotated = annotated,
+                        query = findQuery,
+                        currentStart = currentMatchStart?.takeIf { it >= 0 },
+                        currentLength = findQuery?.length,
+                        baseColor = baseHl,
+                        currentColor = currentHl
+                    )
+                }
                 Text(
-                    text = annotated,
+                    text = display,
                     fontFamily = fontFamily,
                     lineHeight = (textSize * lineHeight).sp,
                     textAlign = TextAlign.Justify

@@ -4,12 +4,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.*
@@ -18,13 +20,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -49,12 +56,26 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
+import org.jetbrains.jewel.ui.component.TextField as JewelTextField
+import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.notoserifhebrew
+import seforimapp.seforimapp.generated.resources.search_in_page
+import seforimapp.seforimapp.generated.resources.chevron_icon_description
+import seforimapp.seforimapp.generated.resources.search_result_count
+import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -264,40 +285,68 @@ fun BookContentView(
             }
     }
 
-    // Memoize key event handler to avoid recreation
-    val keyEventHandler = remember(onEvent) {
-        { keyEvent: androidx.compose.ui.input.key.KeyEvent ->
-            debugln { "[BookContentView] Key event: key=${keyEvent.key}, type=${keyEvent.type}" }
+    // Find-in-page UI state
+    val showFind by AppSettings.findBarOpenFlow.collectAsState()
+    val findState = remember { TextFieldState() }
+    var currentHitLineIndex by remember { mutableIntStateOf(-1) }
+    var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
+    var currentMatchStart by remember { mutableIntStateOf(-1) }
 
-            if (keyEvent.type != KeyEventType.KeyDown) {
-                false
-            } else {
-                when (keyEvent.key) {
-                    Key.DirectionUp -> {
-                        debugln { "[BookContentView] Up arrow key pressed, navigating to previous line" }
-                        onEvent(BookContentEvent.NavigateToPreviousLine)
-                        true
-                    }
-                    Key.DirectionDown -> {
-                        debugln { "[BookContentView] Down arrow key pressed, navigating to next line" }
-                        onEvent(BookContentEvent.NavigateToNextLine)
-                        true
-                    }
-                    else -> false
+    // Helper: recompute total matches across loaded snapshot (approximate)
+    fun recomputeMatchesCount(query: String) { /* removed: no counter needed */ }
+
+    // Navigate to next/previous line containing the query (wrap-around)
+    val scope = rememberCoroutineScope()
+    fun navigateToMatch(next: Boolean) {
+        val query = findState.text.toString()
+        if (query.length < 2) return
+        val snapshot = lazyPagingItems.itemSnapshotList
+        if (snapshot.size == 0) return
+        val startIndex = if (currentHitLineIndex in snapshot.indices) currentHitLineIndex else listState.firstVisibleItemIndex
+        val step = if (next) 1 else -1
+        var i = startIndex
+        var guard = 0
+        val size = snapshot.size
+        while (guard++ < size) {
+            i = (i + step + size) % size
+            val line = snapshot[i] ?: continue
+            val text = buildAnnotatedFromHtml(line.content, textSize).text
+            val start = text.indexOf(query, ignoreCase = true)
+            if (start >= 0) {
+                currentHitLineIndex = i
+                currentMatchLineId = line.id
+                currentMatchStart = start
+                // Bring line into view (slight offset)
+                scope.launch {
+                    listState.scrollToItem(i, 32)
                 }
+                break
             }
         }
     }
 
-    SelectionContainer(
-        modifier = modifier
-            .fillMaxSize()
-            .onKeyEvent(keyEventHandler)
-    ) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize()
-        ) {
+    // Global preview handler: ensures Ctrl/Cmd+F opens find bar regardless of focus
+    val previewKeyHandler = remember(onEvent) {
+        { keyEvent: androidx.compose.ui.input.key.KeyEvent ->
+            // Ctrl/Cmd+F handled globally at window level; do not intercept here
+            if (keyEvent.type == KeyEventType.KeyDown) {
+                when (keyEvent.key) {
+                    Key.DirectionUp -> { onEvent(BookContentEvent.NavigateToPreviousLine); true }
+                    Key.DirectionDown -> { onEvent(BookContentEvent.NavigateToNextLine); true }
+                    Key.Escape -> { if (showFind) { AppSettings.closeFindBar(); true } else false }
+                    else -> false
+                }
+            } else false
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize().onPreviewKeyEvent(previewKeyHandler)) {
+        // Content with text selection
+        SelectionContainer(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize()
+            ) {
             items(
                 count = lazyPagingItems.itemCount,
                 key = lazyPagingItems.itemKey { it.id },
@@ -313,7 +362,9 @@ fun BookContentView(
                         lineHeight = lineHeight,
                         fontFamily = hebrewFontFamily,
                         onLineSelected = onLineSelected,
-                        scrollToLineTimestamp = scrollToLineTimestamp
+                        scrollToLineTimestamp = scrollToLineTimestamp,
+                        highlightQuery = findState.text.toString().takeIf { showFind },
+                        currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null
                     )
                 } else {
                     // Placeholder while loading
@@ -350,6 +401,29 @@ fun BookContentView(
                     }
                 }
             }
+            }
+        }
+
+        // Find-in-page bar overlay (top-start) using shared component
+        if (showFind) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp)
+                    .zIndex(2f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FindInPageBar(
+                    state = findState,
+                    onEnterNext = { navigateToMatch(true) },
+                    onEnterPrev = { navigateToMatch(false) },
+                    onClose = { AppSettings.closeFindBar(); AppSettings.setFindQuery("") }
+                )
+                LaunchedEffect(findState.text, showFind) {
+                    val q = findState.text.toString()
+                    AppSettings.setFindQuery(if (showFind && q.length >= 2) q else "")
+                }
+            }
         }
     }
 }
@@ -371,11 +445,25 @@ private fun LineItem(
     lineHeight: Float = 1.5f,
     fontFamily: FontFamily,
     onLineSelected: (Line) -> Unit,
-    scrollToLineTimestamp: Long
+    scrollToLineTimestamp: Long,
+    highlightQuery: String? = null,
+    currentMatchStart: Int? = null
 ) {
     // Memoize the annotated string with proper keys
-    val annotated = remember(line.id, line.content, baseTextSize) {
-        buildAnnotatedFromHtml(line.content, baseTextSize)
+    val annotated = remember(line.id, line.content, baseTextSize) { buildAnnotatedFromHtml(line.content, baseTextSize) }
+
+    // Build highlighted text when a query is active (>= 2 chars)
+    val baseHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.22f)
+    val currentHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.42f)
+    val displayText: AnnotatedString = remember(annotated, highlightQuery, currentMatchStart, baseHl, currentHl) {
+        io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
+            annotated = annotated,
+            query = highlightQuery,
+            currentStart = currentMatchStart?.takeIf { it >= 0 },
+            currentLength = highlightQuery?.length,
+            baseColor = baseHl,
+            currentColor = currentHl
+        )
     }
 
     // Memoize click handler to avoid recreation
@@ -424,7 +512,7 @@ private fun LineItem(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = annotated,
+                text = displayText,
                 textAlign = TextAlign.Justify,
                 fontFamily = fontFamily,
                 lineHeight = (baseTextSize * lineHeight).sp,

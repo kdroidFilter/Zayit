@@ -40,6 +40,11 @@ fun processKeyShortcuts(keyEvent: KeyEvent, onNavigateTo: (String) -> Unit): Boo
     val isCtrlOrCmdPressed = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
     if (isCtrlOrCmdPressed) {
         when (keyEvent.key) {
+            Key.F -> {
+                // Toggle global Find-in-page bar regardless of current focus
+                if (AppSettings.findBarOpenFlow.value) AppSettings.closeFindBar() else AppSettings.openFindBar()
+                return true
+            }
             Key.Plus, Key.NumPadAdd -> {
                 debugln { "[DEBUG_LOG] Detected Plus or NumPadAdd key, increasing text size" }
                 AppSettings.increaseTextSize()

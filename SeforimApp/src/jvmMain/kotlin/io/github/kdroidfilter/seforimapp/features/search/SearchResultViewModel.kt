@@ -33,6 +33,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
@@ -202,6 +204,7 @@ class SearchResultViewModel(
     private var cachedCountsBookId: Long? = null
     private var lineIdToTocId: Map<Long, Long> = emptyMap()
     private var tocParentById: Map<Long, Long?> = emptyMap()
+    private val countsMutex = Mutex()
 
     init {
         val initialQuery = savedStateHandle.get<String>("searchQuery")
@@ -1043,21 +1046,23 @@ class SearchResultViewModel(
     }
 
     private suspend fun updateAggregatesForPage(page: List<SearchResult>) {
-        for (res in page) {
-            val book = bookCache[res.bookId] ?: repository.getBook(res.bookId)?.also { bookCache[res.bookId] = it } ?: continue
-            bookCountsAcc[book.id] = (bookCountsAcc[book.id] ?: 0) + 1
-            val path = categoryPathCache[book.categoryId] ?: buildCategoryPath(book.categoryId).also { categoryPathCache[book.categoryId] = it }
-            for (cat in path) {
-                categoryCountsAcc[cat.id] = (categoryCountsAcc[cat.id] ?: 0) + 1
+        countsMutex.withLock {
+            for (res in page) {
+                val book = bookCache[res.bookId] ?: repository.getBook(res.bookId)?.also { bookCache[res.bookId] = it } ?: continue
+                bookCountsAcc[book.id] = (bookCountsAcc[book.id] ?: 0) + 1
+                val path = categoryPathCache[book.categoryId] ?: buildCategoryPath(book.categoryId).also { categoryPathCache[book.categoryId] = it }
+                for (cat in path) {
+                    categoryCountsAcc[cat.id] = (categoryCountsAcc[cat.id] ?: 0) + 1
+                }
+                val set = booksForCategoryAcc.getOrPut(book.categoryId) { mutableSetOf() }
+                set += book
             }
-            val set = booksForCategoryAcc.getOrPut(book.categoryId) { mutableSetOf() }
-            set += book
+            _categoryAgg.value = CategoryAgg(
+                categoryCounts = categoryCountsAcc.toMap(),
+                bookCounts = bookCountsAcc.toMap(),
+                booksForCategory = booksForCategoryAcc.mapValues { it.value.toList() }
+            )
         }
-        _categoryAgg.value = CategoryAgg(
-            categoryCounts = categoryCountsAcc.toMap(),
-            bookCounts = bookCountsAcc.toMap(),
-            booksForCategory = booksForCategoryAcc.mapValues { it.value.toList() }
-        )
     }
 
     private suspend fun updateTocCountsForPage(page: List<SearchResult>, scopeBookId: Long) {
@@ -1065,20 +1070,24 @@ class SearchResultViewModel(
         if (subset.isEmpty()) return
         // Ensure caches match the scoped book
         ensureTocCountingCaches(scopeBookId)
-        for (res in subset) {
-            val tocId = lineIdToTocId[res.lineId] ?: continue
-            var current: Long? = tocId
-            var guard = 0
-            while (current != null && guard++ < 500) {
-                tocCountsAcc[current] = (tocCountsAcc[current] ?: 0) + 1
-                current = tocParentById[current]
+        countsMutex.withLock {
+            for (res in subset) {
+                val tocId = lineIdToTocId[res.lineId] ?: continue
+                var current: Long? = tocId
+                var guard = 0
+                while (current != null && guard++ < 500) {
+                    tocCountsAcc[current] = (tocCountsAcc[current] ?: 0) + 1
+                    current = tocParentById[current]
+                }
             }
+            _tocCounts.value = tocCountsAcc.toMap()
         }
-        _tocCounts.value = tocCountsAcc.toMap()
     }
 
     private suspend fun recomputeTocCountsForBook(bookId: Long, results: List<SearchResult>) {
-        tocCountsAcc.clear()
+        countsMutex.withLock {
+            tocCountsAcc.clear()
+        }
         updateTocCountsForPage(results, bookId)
     }
 
@@ -1118,9 +1127,11 @@ class SearchResultViewModel(
 
     private suspend fun rebuildAggregatesFromResults(results: List<SearchResult>) {
         // Rebuild category/book aggregates
-        categoryCountsAcc.clear()
-        bookCountsAcc.clear()
-        booksForCategoryAcc.clear()
+        countsMutex.withLock {
+            categoryCountsAcc.clear()
+            bookCountsAcc.clear()
+            booksForCategoryAcc.clear()
+        }
         updateAggregatesForPage(results)
         // Rebuild TOC aggregates only if a book scope is selected
         uiState.value.scopeBook?.id?.let { recomputeTocCountsForBook(it, results) }

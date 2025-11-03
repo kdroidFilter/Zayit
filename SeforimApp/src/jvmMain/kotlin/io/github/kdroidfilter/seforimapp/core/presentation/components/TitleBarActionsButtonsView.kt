@@ -2,16 +2,16 @@ package io.github.kdroidfilter.seforimapp.core.presentation.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import io.github.kdroidfilter.seforim.tabs.TabStateManager
+import io.github.kdroidfilter.seforim.tabs.TabsDestination
+import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforim.tabs.TabsViewModel
-import io.github.kdroidfilter.seforim.tabs.TabStateManager
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.*
@@ -59,6 +59,17 @@ fun TitleBarActionsButtonsView() {
         tooltipText = stringResource(Res.string.home_tooltip),
     )
     TitleBarActionButton(
+        key = AllIconsKeys.Actions.Find,
+        contentDescription = stringResource(Res.string.find),
+        onClick = {
+            // Toggle the global Find-in-Page bar regardless of current focus
+            val isOpen = AppSettings.findBarOpenFlow.value
+            if (isOpen) AppSettings.closeFindBar()
+            else AppSettings.openFindBar()
+        },
+        tooltipText = stringResource(Res.string.find_tooltip),
+    )
+    TitleBarActionButton(
         key = when (theme) {
             IntUiThemes.Light -> AllIconsKeys.MeetNewUi.LightTheme
             IntUiThemes.Dark -> AllIconsKeys.MeetNewUi.DarkTheme
@@ -75,14 +86,6 @@ fun TitleBarActionsButtonsView() {
             )
         },
         tooltipText = iconToolTipText,
-    )
-    TitleBarActionButton(
-        key = AllIconsKeys.General.ShowInfos,
-        contentDescription = stringResource(Res.string.info),
-        onClick = {
-            //TODO
-        },
-        tooltipText = stringResource(Res.string.info_tooltip),
     )
     TitleBarActionButton(
         key = AllIconsKeys.General.Settings,

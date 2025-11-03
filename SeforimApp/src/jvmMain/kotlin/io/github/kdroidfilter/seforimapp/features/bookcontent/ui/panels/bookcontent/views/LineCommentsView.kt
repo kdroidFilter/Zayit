@@ -18,6 +18,7 @@ import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -467,8 +468,14 @@ private fun CommentaryItem(
             )
         }
 
+        // Highlight occurrences from global find-in-page query
+        val findQuery by AppSettings.findQueryFlow.collectAsState()
+        val display: AnnotatedString = remember(annotated, findQuery) {
+            io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated(annotated, findQuery)
+        }
+
         Text(
-            text = annotated,
+            text = display,
             textAlign = TextAlign.Justify,
             fontFamily = fontFamily,
             lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp

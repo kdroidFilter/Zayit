@@ -110,6 +110,18 @@ object AppSettings {
     private val _targumFontCodeFlow = MutableStateFlow(getTargumFontCode())
     val targumFontCodeFlow: StateFlow<String> = _targumFontCodeFlow.asStateFlow()
 
+    // Find-in-page transient query (not persisted)
+    private val _findQueryFlow = MutableStateFlow("")
+    val findQueryFlow: StateFlow<String> = _findQueryFlow.asStateFlow()
+    fun setFindQuery(q: String) { _findQueryFlow.value = q }
+
+    // Find-in-page open state (global toggle, not persisted)
+    private val _findBarOpenFlow = MutableStateFlow(false)
+    val findBarOpenFlow: StateFlow<Boolean> = _findBarOpenFlow.asStateFlow()
+    fun openFindBar() { _findBarOpenFlow.value = true }
+    fun closeFindBar() { _findBarOpenFlow.value = false }
+    fun toggleFindBar() { _findBarOpenFlow.value = !_findBarOpenFlow.value }
+
     fun getTextSize(): Float {
         return settings[KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE]
     }

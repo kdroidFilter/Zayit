@@ -432,7 +432,6 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 32.dp)
                     .background(JewelTheme.globalColors.panelBackground)
             ) {
                 if (visibleResults.isEmpty()) {
@@ -452,7 +451,9 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                     ) {
                         LazyColumn(
                             state = listState,
-                            modifier = Modifier.fillMaxSize().padding(end = 16.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 32.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             itemsIndexed(items = visibleResults, key = { _, it -> it.lineId }) { idx, result ->

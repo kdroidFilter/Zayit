@@ -130,13 +130,27 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
 
         val rankedQuery = buildExpandedQuery(norm, near)
+        // Enforce that all analyzed tokens from the query are present in a matching document
+        // (AND semantics). Use as FILTER so it restricts recall without affecting score.
+        val mustAllTokensQuery: Query? = buildPresenceFilterForTokens(analyzedStd, near)
+        // Build a phrase query with slop=near so the NEAR level meaningfully controls proximity.
+        val phraseQuery: Query? = QueryBuilder(stdAnalyzer).createPhraseQuery("text", norm, near)
 
         return withSearcher { searcher ->
             val b = BooleanQuery.Builder()
             b.add(TermQuery(Term("type", "line")), BooleanClause.Occur.FILTER)
             if (bookFilter != null) b.add(IntPoint.newExactQuery("book_id", bookFilter.toInt()), BooleanClause.Occur.FILTER)
             if (categoryFilter != null) b.add(IntPoint.newExactQuery("category_id", categoryFilter.toInt()), BooleanClause.Occur.FILTER)
-            b.add(rankedQuery, BooleanClause.Occur.MUST)
+            // Apply mandatory presence (AND) as a filter
+            if (mustAllTokensQuery != null) b.add(mustAllTokensQuery, BooleanClause.Occur.FILTER)
+            // Enforce proximity via phrase slop when we have a multi-term query
+            val analyzedCount = analyzedStd.size
+            if (phraseQuery != null && analyzedCount >= 2) {
+                // Use SHOULD so NEAR influences ranking, not recall
+                b.add(phraseQuery, BooleanClause.Occur.SHOULD)
+            }
+            // Keep expanded components for scoring only, not recall expansion.
+            b.add(rankedQuery, BooleanClause.Occur.SHOULD)
             val query = b.build()
 
             // Apply offset by fetching up to offset+limit and then subList
@@ -177,6 +191,8 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val highlightTerms = analyzedStd
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
         val rankedQuery = buildExpandedQuery(norm, near)
+        val mustAllTokensQuery: Query? = buildPresenceFilterForTokens(analyzedStd, near)
+        val phraseQuery: Query? = QueryBuilder(stdAnalyzer).createPhraseQuery("text", norm, near)
 
         val bookIdInts = bookIds.asSequence().map { it.toInt() }.toList().toIntArray()
         if (bookIdInts.isEmpty()) return emptyList()
@@ -185,7 +201,12 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             val b = BooleanQuery.Builder()
             b.add(TermQuery(Term("type", "line")), BooleanClause.Occur.FILTER)
             b.add(IntPoint.newSetQuery("book_id", *bookIdInts), BooleanClause.Occur.FILTER)
-            b.add(rankedQuery, BooleanClause.Occur.MUST)
+            if (mustAllTokensQuery != null) b.add(mustAllTokensQuery, BooleanClause.Occur.FILTER)
+            val analyzedCount = analyzedStd.size
+            if (phraseQuery != null && analyzedCount >= 2) {
+                b.add(phraseQuery, BooleanClause.Occur.SHOULD)
+            }
+            b.add(rankedQuery, BooleanClause.Occur.SHOULD)
             val query = b.build()
 
             val top = searcher.search(query, offset + limit)
@@ -223,6 +244,50 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         ts.end(); ts.close()
         out
     } catch (_: Exception) { null }
+
+    /**
+     * Build an n-gram presence query that requires all 4-grams of the token
+     * to be present in field 'text_ng4'. Returns null when token < 4 chars.
+     */
+    private fun buildNgramPresenceForToken(token: String): Query? {
+        if (token.length < 4) return null
+        val grams = mutableListOf<String>()
+        var i = 0
+        val L = token.length
+        while (i + 4 <= L) {
+            grams += token.substring(i, i + 4)
+            i += 1
+        }
+        if (grams.isEmpty()) return null
+        val b = BooleanQuery.Builder()
+        for (g in grams.distinct()) {
+            b.add(TermQuery(Term("text_ng4", g)), BooleanClause.Occur.MUST)
+        }
+        return b.build()
+    }
+
+    /**
+     * Presence filter (AND across tokens). For NEAR>0, each token may be satisfied by
+     * either exact term in 'text' OR by its 4-gram presence in 'text_ng4'.
+     */
+    private fun buildPresenceFilterForTokens(tokens: List<String>, near: Int): Query? {
+        if (tokens.isEmpty()) return null
+        val outer = BooleanQuery.Builder()
+        for (t in tokens) {
+            val exact = TermQuery(Term("text", t))
+            val clause = if (near > 0) {
+                val ngram = buildNgramPresenceForToken(t)
+                if (ngram != null) {
+                    BooleanQuery.Builder().apply {
+                        add(exact, BooleanClause.Occur.SHOULD)
+                        add(ngram, BooleanClause.Occur.SHOULD)
+                    }.build()
+                } else exact
+            } else exact
+            outer.add(clause, BooleanClause.Occur.MUST)
+        }
+        return outer.build()
+    }
 
     private fun buildHebrewStdQuery(norm: String, near: Int): Query {
         // Use standard Hebrew tokenizer at query time against field 'text'
@@ -263,7 +328,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         // or out-of-order matches from leaking into results.
         if (near == 0) return base
 
-        // For relaxed modes (near > 0), add helpful fallbacks that improve recall.
+        // For relaxed modes (near > 0), include n-gram + fuzzy as scoring signals (SHOULD).
         val ngram = buildNgram4Query(norm)
         val fuzzy = buildFuzzyQuery(norm, near)
         val builder = BooleanQuery.Builder()

@@ -25,7 +25,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     private val dir = FSDirectory.open(indexDir)
     private val log = LoggerFactory.getLogger(LuceneSearchService::class.java)
 
-    // HebMorph exact analyzer for high-precision queries
+    // HebMorph dictionary (query-time only)
     private val hebDict: com.code972.hebmorph.datastructures.DictHebMorph? by lazy {
         val path = resolveHSpellPath()
         if (path == null) {
@@ -38,9 +38,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             }.onFailure { e -> log.error("Failed loading HebMorph dictionary", e) }.getOrNull()
         }
     }
-    private val hebrewExactAnalyzer: Analyzer by lazy {
-        hebDict?.let { org.apache.lucene.analysis.hebrew.HebrewExactAnalyzer(it) } ?: StandardAnalyzer()
-    }
+    private val stdAnalyzer: Analyzer by lazy { StandardAnalyzer() }
 
     private inline fun <T> withSearcher(block: (IndexSearcher) -> T): T {
         DirectoryReader.open(dir).use { reader ->
@@ -116,14 +114,14 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
 
     /**
      * Build an HTML snippet from raw line text by highlighting query terms.
-     * Uses StandardAnalyzer tokens only.
+     * Uses HebMorph query-time tokens (fallback to Standard when HebMorph is unavailable).
      */
     fun buildSnippetFromRaw(raw: String, rawQuery: String, near: Int): String {
         val norm = normalizeHebrew(rawQuery)
         if (norm.isBlank()) return Jsoup.clean(raw, Safelist.none())
         val rawClean = Jsoup.clean(raw, Safelist.none())
-        val analyzed = (analyzeToTerms(hebrewExactAnalyzer, norm) ?: emptyList())
-        val highlightTerms = filterTermsForHighlight(analyzed)
+        val analyzedStd = (analyzeToTerms(stdAnalyzer, norm) ?: emptyList())
+        val highlightTerms = filterTermsForHighlight(analyzedStd)
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
         return buildSnippet(rawClean, anchorTerms, highlightTerms)
     }
@@ -139,11 +137,11 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val norm = normalizeHebrew(rawQuery)
         if (norm.isBlank()) return emptyList()
 
-        val analyzedTerms = (analyzeToTerms(hebrewExactAnalyzer, norm) ?: emptyList())
-        val highlightTerms = analyzedTerms
+        val analyzedStd = (analyzeToTerms(stdAnalyzer, norm) ?: emptyList())
+        val highlightTerms = analyzedStd
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
 
-        val rankedQuery = buildExactHebMorphQuery(norm)
+        val rankedQuery = buildExpandedQuery(norm, near)
 
         return withSearcher { searcher ->
             val b = BooleanQuery.Builder()
@@ -187,10 +185,10 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val norm = normalizeHebrew(rawQuery)
         if (norm.isBlank()) return emptyList()
 
-        val analyzedTerms = (analyzeToTerms(hebrewExactAnalyzer, norm) ?: emptyList())
-        val highlightTerms = analyzedTerms
+        val analyzedStd = (analyzeToTerms(stdAnalyzer, norm) ?: emptyList())
+        val highlightTerms = analyzedStd
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
-        val rankedQuery = buildExactHebMorphQuery(norm)
+        val rankedQuery = buildExpandedQuery(norm, near)
 
         val bookIdInts = bookIds.asSequence().map { it.toInt() }.toList().toIntArray()
         if (bookIdInts.isEmpty()) return emptyList()
@@ -238,11 +236,50 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         out
     } catch (_: Exception) { null }
 
-    private fun buildExactHebMorphQuery(norm: String): Query {
-        // Use HebMorph exact analyzer and match only the HebMorph field (text_he) with slop 0
-        val qb = QueryBuilder(hebrewExactAnalyzer)
-        return qb.createPhraseQuery("text_he", norm, 0) ?: BooleanQuery.Builder().build()
+    private fun buildHebrewStdQuery(norm: String, near: Int): Query {
+        // Use standard Hebrew tokenizer at query time against field 'text'
+        val qb = QueryBuilder(stdAnalyzer)
+        val phrase = qb.createPhraseQuery("text", norm, near)
+        if (phrase != null) return phrase
+        val bool = qb.createBooleanQuery("text", norm, BooleanClause.Occur.MUST)
+        return bool ?: BooleanQuery.Builder().build()
     }
+
+    private fun buildNgram4Query(norm: String): Query? {
+        // Build MUST query over 4-gram terms on field 'text_ng4'
+        val tokens = norm.split("\\s+".toRegex()).map { it.trim() }.filter { it.length >= 4 }
+        if (tokens.isEmpty()) return null
+        val grams = mutableListOf<String>()
+        for (t in tokens) {
+            val s = t
+            val L = s.length
+            var i = 0
+            while (i + 4 <= L) {
+                grams += s.substring(i, i + 4)
+                i += 1
+            }
+        }
+        val uniq = grams.distinct()
+        if (uniq.isEmpty()) return null
+        val b = BooleanQuery.Builder()
+        for (g in uniq) {
+            b.add(TermQuery(Term("text_ng4", g)), BooleanClause.Occur.MUST)
+        }
+        return b.build()
+    }
+
+    private fun buildExpandedQuery(norm: String, near: Int): Query {
+        val base = buildHebrewStdQuery(norm, near)
+        val ngram = buildNgram4Query(norm)
+        return if (ngram != null) {
+            BooleanQuery.Builder().apply {
+                add(base, BooleanClause.Occur.SHOULD)
+                add(ngram, BooleanClause.Occur.SHOULD)
+            }.build()
+        } else base
+    }
+
+    // No HebMorph query branch; use only StandardAnalyzer + optional 4-gram
 
     private fun resolveHSpellPath(): String? {
         System.getProperty("hebmorph.hspell.path")?.let { if (it.isNotBlank()) return it }
@@ -420,12 +457,6 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         s = s.replace('\u05BE', ' ')
         // Remove gershayim/geresh
         s = s.replace("\u05F4", "").replace("\u05F3", "")
-        // Normalize final letters to base forms to align with index-time char filter
-        s = s.replace('\u05DA', '\u05DB') // ך -> כ
-            .replace('\u05DD', '\u05DE') // ם -> מ
-            .replace('\u05DF', '\u05E0') // ן -> נ
-            .replace('\u05E3', '\u05E4') // ף -> פ
-            .replace('\u05E5', '\u05E6') // ץ -> צ
         // Collapse whitespace
         s = s.replace("\\s+".toRegex(), " ").trim()
         return s

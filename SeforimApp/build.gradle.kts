@@ -149,8 +149,6 @@ kotlin {
             implementation("org.apache.lucene:lucene-highlighter:10.3.1")
             // HebMorph Lucene module (provided via included build substitution)
             implementation("com.code972.hebmorph:hebmorph-lucene:10.3.1")
-            // Shared Hebrew analyzers (via composite build substitution)
-            implementation("io.github.kdroidfilter.seforimlibrary:analysis")
             // HTML sanitization for search snippets
             implementation(libs.jsoup)
         }

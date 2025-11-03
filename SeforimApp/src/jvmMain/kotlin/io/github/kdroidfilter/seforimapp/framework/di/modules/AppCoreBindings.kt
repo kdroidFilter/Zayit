@@ -86,12 +86,14 @@ object AppCoreBindings {
         stateManager: TabStateManager,
         repository: SeforimRepository,
         lucene: LuceneSearchService,
+        lookup: LuceneLookupSearchService,
         settings: Settings
     ): SearchHomeViewModel = SearchHomeViewModel(
         tabsViewModel = tabsViewModel,
         stateManager = stateManager,
         repository = repository,
         lucene = lucene,
+        lookup = lookup,
         settings = settings
     )
 }

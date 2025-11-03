@@ -7,6 +7,7 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
@@ -42,6 +43,7 @@ class SearchHomeViewModel(
     private val stateManager: TabStateManager,
     private val repository: SeforimRepository,
     private val lucene: LuceneSearchService,
+    private val lookup: LuceneLookupSearchService,
     private val settings: Settings
 ) : ViewModel() {
 
@@ -86,8 +88,8 @@ class SearchHomeViewModel(
                             val path = buildCategoryPathTitles(cat.id)
                             CategorySuggestionDto(cat, path.ifEmpty { listOf(cat.title) })
                         }
-                        // Books via Lucene title+acronym terms (prefix per token)
-                        val bookIds = lucene.searchBooksByTitlePrefix(qNorm, limit = 50)
+                        // Books via lookup index (title variants + acronyms + topics) with prefix per token
+                        val bookIds = lookup.searchBooksPrefix(qNorm, limit = 50)
                         val ftsBooks = bookIds.mapNotNull { id -> runCatching { repository.getBook(id) }.getOrNull() }
 
                         val bookItems = ftsBooks.map { book ->

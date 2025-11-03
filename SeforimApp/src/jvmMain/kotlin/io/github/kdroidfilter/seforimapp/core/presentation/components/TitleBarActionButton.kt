@@ -17,10 +17,12 @@ fun TitleBarActionButton(
     onClick: () -> Unit,
     contentDescription: String,
     tooltipText: String,
+    enabled: Boolean = true,
     ) {
     IconActionButton(
         key = key,
         onClick = onClick,
+        enabled = enabled,
         contentDescription = contentDescription,
         tooltip = {
             Text(tooltipText)

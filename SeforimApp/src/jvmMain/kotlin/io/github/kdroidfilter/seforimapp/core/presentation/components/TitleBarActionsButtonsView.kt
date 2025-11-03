@@ -12,6 +12,8 @@ import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.*
@@ -27,6 +29,18 @@ fun TitleBarActionsButtonsView() {
 
     // Access app graph outside of callbacks to avoid reading CompositionLocals in non-composable contexts
     val appGraph = LocalAppGraph.current
+    val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
+    val tabs = tabsViewModel.tabs.collectAsState().value
+    val selectedTabIndex = tabsViewModel.selectedTabIndex.collectAsState().value
+    val currentTab = tabs.getOrNull(selectedTabIndex)
+    val findEnabled = when (val dest = currentTab?.destination) {
+        is TabsDestination.Search -> true
+        is TabsDestination.BookContent -> {
+            val selectedBook: Book? = appGraph.tabStateManager.getState(dest.tabId, StateKeys.SELECTED_BOOK)
+            selectedBook != null
+        }
+        else -> false
+    }
 
     val iconDescription = when (theme) {
         IntUiThemes.Light -> stringResource(Res.string.light_theme)
@@ -67,7 +81,8 @@ fun TitleBarActionsButtonsView() {
             if (isOpen) AppSettings.closeFindBar()
             else AppSettings.openFindBar()
         },
-        tooltipText = stringResource(Res.string.find_tooltip),
+        tooltipText = if (findEnabled) stringResource(Res.string.find_tooltip) else stringResource(Res.string.find_disabled_tooltip),
+        enabled = findEnabled
     )
     TitleBarActionButton(
         key = when (theme) {

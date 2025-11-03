@@ -6,7 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -16,7 +15,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,10 +27,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.isShiftPressed
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -46,18 +40,13 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import androidx.compose.foundation.gestures.ScrollableState
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AnimatedHorizontalProgressBar
-import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.breadcrumb_separator
-import seforimapp.seforimapp.generated.resources.search_near_label
 import seforimapp.seforimapp.generated.resources.search_no_results
-import seforimapp.seforimapp.generated.resources.search_results_for
 import seforimapp.seforimapp.generated.resources.search_searching
 import seforimapp.seforimapp.generated.resources.search_load_more
 import seforimapp.seforimapp.generated.resources.search_result_count
@@ -83,12 +72,12 @@ import org.jetbrains.compose.splitpane.SplitPaneState
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.ui.input.key.key
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.type
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
-import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
 import kotlinx.coroutines.launch
 import androidx.compose.ui.zIndex
 import seforimapp.seforimapp.generated.resources.search_level_1_value
@@ -96,13 +85,6 @@ import seforimapp.seforimapp.generated.resources.search_level_2_value
 import seforimapp.seforimapp.generated.resources.search_level_3_value
 import seforimapp.seforimapp.generated.resources.search_level_4_value
 import seforimapp.seforimapp.generated.resources.search_level_5_value
- 
-
-@Composable
-fun SearchResultScreen(viewModel: SearchResultViewModel) {
-    // Content-only variant (no shell); useful for previews or nested usage
-    SearchResultContent(viewModel = viewModel)
-}
 
 @Composable
 private fun SearchToolbar(
@@ -375,11 +357,38 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
         )
 
         Spacer(Modifier.height(12.dp))
-        // Header
-        GroupHeader(
-            text = stringResource(Res.string.search_results_for, state.query),
+        // Header row: results count + inline progress/separator + optional cancel
+        Row(
             modifier = Modifier.fillMaxWidth(),
-        )
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            GroupHeader(
+                text = stringResource(Res.string.search_result_count, visibleResults.size),
+                modifier = Modifier.padding(end = 12.dp)
+            )
+
+            // Inline thin progress bar acts as a separator and stays full when finished
+            val loading = state.isLoading || state.isLoadingMore
+            val total = state.progressTotal
+            val progress = when {
+                loading && total != null && total > 0L -> (state.progressCurrent.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+                loading -> 0.33f // unknown total: show partial bar as activity indicator
+                else -> 1f
+            }
+            AnimatedHorizontalProgressBar(
+                value = progress,
+                modifier = Modifier.weight(1f).height(3.dp)
+            )
+
+            if (loading) {
+                Spacer(Modifier.width(8.dp))
+                IconActionButton(
+                    key = AllIconsKeys.Windows.Close,
+                    onClick = { viewModel.cancelSearch() },
+                    contentDescription = "Cancel search"
+                )
+            }
+        }
 
         Spacer(Modifier.height(8.dp))
 
@@ -397,45 +406,7 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
             }
         }
 
-        // Near level + dynamic results count (filtered list)
-        val visibleResults = viewModel.visibleResultsFlow.collectAsState().value
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(Res.string.search_near_label, state.near),
-                color = JewelTheme.globalColors.text.info,
-                modifier = Modifier.padding(bottom = 8.dp),
-                fontSize = commentSize.sp
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = stringResource(Res.string.search_result_count, visibleResults.size),
-                color = JewelTheme.globalColors.text.normal,
-                modifier = Modifier.padding(bottom = 8.dp),
-                fontSize = commentSize.sp
-            )
-            Spacer(Modifier.weight(1f))
-            if (state.isLoading || state.isLoadingMore) {
-                IconActionButton(
-                    key = AllIconsKeys.Windows.Close,
-                    onClick = { viewModel.cancelSearch() },
-                    contentDescription = "Cancel search"
-                )
-            }
-        }
-
-        if (state.isLoading || state.isLoadingMore) {
-            Spacer(Modifier.height(6.dp))
-            val total = state.progressTotal
-            if (total != null && total > 0L) {
-                val fraction = (state.progressCurrent.toFloat() / total.toFloat()).coerceIn(0f, 1f)
-                AnimatedHorizontalProgressBar(value = fraction, modifier = Modifier.fillMaxWidth())
-            } else {
-                // Fallback indeterminate indicator when total is unknown (e.g., TOC scope)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                    CircularProgressIndicator()
-                }
-            }
-        }
+        // Inline progress above replaces the old loading row/spinner
 
         // Results list
         Box(

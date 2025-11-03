@@ -56,6 +56,7 @@ import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.add_tab
 import seforimapp.seforimapp.generated.resources.close_tab
 import seforimapp.seforimapp.generated.resources.home
+import seforimapp.seforimapp.generated.resources.search_results_tab_title
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -119,11 +120,14 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                             }
                         }
 
-                        val isTruncated = tabItem.title.length > AppSettings.MAX_TAB_TITLE_LENGTH
-                        val label = tabItem.title.ifEmpty { stringResource(Res.string.home) }
+                        val baseLabel = tabItem.title.ifEmpty { stringResource(Res.string.home) }
+                        val label = if (tabItem.tabType == TabType.SEARCH && tabItem.title.isNotEmpty()) {
+                            stringResource(Res.string.search_results_tab_title, tabItem.title)
+                        } else baseLabel
+                        val isTruncated = label.length > AppSettings.MAX_TAB_TITLE_LENGTH
 
                         if (isTruncated) {
-                            Tooltip({ Text(tabItem.title) }) {
+                            Tooltip({ Text(label) }) {
                                 SingleLineTabContent(
                                     label = label,
                                     state = tabState,
@@ -165,11 +169,14 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                             }
                         }
 
-                        val isTruncated = tabItem.title.length > AppSettings.MAX_TAB_TITLE_LENGTH
-                        val label = tabItem.title.ifEmpty { stringResource(Res.string.home) }
+                        val baseLabel = tabItem.title.ifEmpty { stringResource(Res.string.home) }
+                        val label = if (tabItem.tabType == TabType.SEARCH && tabItem.title.isNotEmpty()) {
+                            stringResource(Res.string.search_results_tab_title, tabItem.title)
+                        } else baseLabel
+                        val isTruncated = label.length > AppSettings.MAX_TAB_TITLE_LENGTH
 
                         if (isTruncated) {
-                            Tooltip({ Text(tabItem.title) }) {
+                            Tooltip({ Text(label) }) {
                                 SingleLineTabContent(
                                     label = label,
                                     state = tabState,

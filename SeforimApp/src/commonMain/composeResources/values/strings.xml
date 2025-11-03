@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">זית</string>
+    <!-- Window title pattern: AppName - CurrentTab -->
+    <string name="window_title_with_tab">%1$s - %2$s</string>
 
     <!-- Title Bar Action Buttons View-->
     <string name="light_theme">ערכת נושא בהירה</string>
@@ -274,6 +276,8 @@
     <string name="search_result_count">נמצאו %1$d תוצאות</string>
     <string name="search_stop">בטל חיפוש</string>
     <string name="search_near_selector_label">קרבה</string>
+    <!-- Tab/window title for search: "Search results : query" -->
+    <string name="search_results_tab_title">תוצאות חיפוש : %1$s</string>
 
     <!-- Reference open action -->
     <string name="open_book">פתח ספר</string>

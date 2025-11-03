@@ -207,8 +207,10 @@ class SearchResultViewModel(
     private val countsMutex = Mutex()
 
     init {
-        val initialQuery = savedStateHandle.get<String>("searchQuery")
-            ?: stateManager.getState<String>(tabId, SearchStateKeys.QUERY)
+        // Prefer TabStateManager value (persisted across sessions) over the nav argument,
+        // so the top bar reflects the most recent query even if the destination query is stale.
+        val initialQuery = stateManager.getState<String>(tabId, SearchStateKeys.QUERY)
+            ?: savedStateHandle.get<String>("searchQuery")
             ?: ""
         val initialNear = stateManager.getState<Int>(tabId, SearchStateKeys.NEAR) ?: 5
         val initialScrollIndex = stateManager.getState<Int>(tabId, SearchStateKeys.SCROLL_INDEX) ?: 0
@@ -369,9 +371,33 @@ class SearchResultViewModel(
     fun executeSearch() {
         val q = _uiState.value.query.trim()
         if (q.isBlank()) return
+        // New search: clear any previous streaming job and reset scroll/anchor state
         currentJob?.cancel()
+        // Reset persisted scroll/anchor so restoration targets the top for fresh results
+        stateManager.saveState(tabId, SearchStateKeys.SCROLL_INDEX, 0)
+        stateManager.saveState(tabId, SearchStateKeys.SCROLL_OFFSET, 0)
+        stateManager.saveState(tabId, SearchStateKeys.ANCHOR_ID, -1L)
+        stateManager.saveState(tabId, SearchStateKeys.ANCHOR_INDEX, 0)
+        // Reflect the reset in the in-memory UI state immediately
+        _uiState.value = _uiState.value.copy(
+            scrollIndex = 0,
+            scrollOffset = 0,
+            anchorId = -1L,
+            anchorIndex = 0
+        )
+        // Drop any cached snapshot for this tab to avoid restoring stale results
+        SearchTabCache.clear(tabId)
         currentJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
             _uiState.value = _uiState.value.copy(isLoading = true, results = emptyList(), hasMore = false, progressCurrent = 0, progressTotal = null)
+            // Reset aggregates and counts for a clean run
+            countsMutex.withLock {
+                categoryCountsAcc.clear()
+                bookCountsAcc.clear()
+                booksForCategoryAcc.clear()
+                tocCountsAcc.clear()
+                _categoryAgg.value = CategoryAgg(emptyMap(), emptyMap(), emptyMap())
+                _tocCounts.value = emptyMap()
+            }
             stateManager.saveState(tabId, SearchStateKeys.QUERY, q)
             try {
                 val near = _uiState.value.near

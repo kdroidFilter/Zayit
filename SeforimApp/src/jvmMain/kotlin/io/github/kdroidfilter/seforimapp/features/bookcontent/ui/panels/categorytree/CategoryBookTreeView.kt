@@ -136,7 +136,7 @@ fun CategoryBookTreeView(
      * -------------------------------------------------------------------- */
     Box(modifier = modifier.fillMaxSize().padding(bottom = 8.dp)) {
         VerticallyScrollableContainer(
-            scrollState = listState as ScrollableState,
+            scrollState = listState,
         ) {
             LazyColumn(
                 state = listState,
@@ -149,6 +149,103 @@ fun CategoryBookTreeView(
                     Box(modifier = Modifier.padding(start = (item.level * 16).dp)) {
                         item.content()
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(FlowPreview::class)
+@Composable
+fun SearchResultCategoryTreeView(
+    uiState: io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState,
+    onEvent: (io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent) -> Unit,
+    searchViewModel: io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel,
+    modifier: Modifier = Modifier
+) {
+    // Collect search UI to drive selection overrides and recompute triggers
+    val searchUi = searchViewModel.uiState.collectAsState().value
+
+    // Build a self-contained tree from current results (independent of navigation state's children)
+    val searchTree by produceState(initialValue = emptyList<io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory>(), searchUi.results) {
+        value = runCatching { searchViewModel.buildSearchResultTree() }.getOrDefault(emptyList())
+    }
+
+    // Restore/track scroll position using the same keys as the classic tree
+    val listState: LazyListState = rememberLazyListState(
+        initialFirstVisibleItemIndex = uiState.navigation.scrollIndex,
+        initialFirstVisibleItemScrollOffset = uiState.navigation.scrollOffset
+    )
+
+    // Persist scroll as user scrolls
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .distinctUntilChanged()
+            .debounce(150)
+            .collect { (index, offset) -> onEvent(io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent.BookTreeScrolled(index, offset)) }
+    }
+
+    // Flatten the search tree with current expansion state
+    val expanded = uiState.navigation.expandedCategories
+    val selectedCategoryIdOverride = searchUi.scopeCategoryPath.lastOrNull()?.id
+    val selectedBookIdOverride = searchUi.scopeBook?.id
+
+    val items = remember(searchTree, expanded, selectedCategoryIdOverride, selectedBookIdOverride) {
+        buildList<TreeItem> {
+            fun addNode(node: io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory, level: Int) {
+                add(
+                    TreeItem(
+                        id = "category_${'$'}{node.category.id}",
+                        level = level,
+                        content = {
+                            CategoryItem(
+                                category = node.category,
+                                isExpanded = expanded.contains(node.category.id),
+                                isSelected = selectedBookIdOverride == null && (selectedCategoryIdOverride?.let { it == node.category.id } == true),
+                                onClick = {
+                                    // Toggle expansion + apply search filter
+                                    onEvent(io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent.CategorySelected(node.category))
+                                    searchViewModel.filterByCategoryId(node.category.id)
+                                },
+                                count = node.count,
+                                showCount = true
+                            )
+                        }
+                    )
+                )
+
+                if (expanded.contains(node.category.id)) {
+                    // Books under this category (only those with results)
+                    node.books.forEach { sb ->
+                        add(
+                            TreeItem(
+                                id = "book_${'$'}{sb.book.id}",
+                                level = level + 1,
+                                content = {
+                                    BookItem(
+                                        book = sb.book,
+                                        isSelected = selectedBookIdOverride?.let { it == sb.book.id } == true,
+                                        onClick = { searchViewModel.filterByBookId(sb.book.id) },
+                                        count = sb.count,
+                                        showCount = true
+                                    )
+                                }
+                            )
+                        )
+                    }
+                    // Child categories
+                    node.children.forEach { child -> addNode(child, level + 1) }
+                }
+            }
+            searchTree.forEach { addNode(it, 0) }
+        }
+    }
+
+    VerticallyScrollableContainer(scrollState = listState) {
+        LazyColumn(state = listState, modifier = modifier.fillMaxSize()) {
+            items(items) { node ->
+                Box(modifier = Modifier.fillMaxWidth().padding(start = (node.level * 12).dp)) {
+                    node.content()
                 }
             }
         }

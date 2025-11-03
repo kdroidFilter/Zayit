@@ -47,44 +47,29 @@ fun CategoryTreePanel(
 
             val windowInfo = LocalWindowInfo.current
 
-            // If a searchViewModel is provided, derive counts maps and selection overrides using flows
-            val searchUi = searchViewModel?.uiState?.collectAsState()?.value
-            val categoryAgg = searchViewModel?.categoryAggFlow?.collectAsState()?.value
-            val categoryCounts: Map<Long, Int> = categoryAgg?.categoryCounts ?: emptyMap()
-            val bookCounts: Map<Long, Int> = categoryAgg?.bookCounts ?: emptyMap()
-            val booksForCategoryOverride: Map<Long, List<io.github.kdroidfilter.seforimlibrary.core.models.Book>> = categoryAgg?.booksForCategory ?: emptyMap()
-            val selectedCategoryIdOverride = searchUi?.scopeCategoryPath?.lastOrNull()?.id
-            val selectedBookIdOverride = searchUi?.scopeBook?.id
-
-            CategoryBookTreeView(
-                navigationState = uiState.navigation,
-                onCategoryClick = {
-                    // Always toggle expansion/selection for UX
-                    onEvent(BookContentEvent.CategorySelected(it))
-                    if (searchViewModel != null) {
-                        searchViewModel.filterByCategoryId(it.id)
-                    }
-                },
-                onBookClick = {
-                    if (searchViewModel != null) {
-                        searchViewModel.filterByBookId(it.id)
-                    } else {
+            if (searchViewModel != null) {
+                // In search mode, render a self-contained tree built from results so categories update instantly
+                SearchResultCategoryTreeView(
+                    uiState = uiState,
+                    onEvent = onEvent,
+                    searchViewModel = searchViewModel,
+                )
+            } else {
+                // Classic navigation tree
+                CategoryBookTreeView(
+                    navigationState = uiState.navigation,
+                    onCategoryClick = { onEvent(BookContentEvent.CategorySelected(it)) },
+                    onBookClick = {
                         val mods = windowInfo.keyboardModifiers
                         if (mods.isCtrlPressed || mods.isMetaPressed) {
                             onEvent(BookContentEvent.BookSelectedInNewTab(it))
                         } else {
                             onEvent(BookContentEvent.BookSelected(it))
                         }
-                    }
-                },
-                onScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) },
-                categoryCounts = categoryCounts,
-                bookCounts = bookCounts,
-                selectedCategoryIdOverride = selectedCategoryIdOverride,
-                selectedBookIdOverride = selectedBookIdOverride,
-                showCounts = searchViewModel != null,
-                booksForCategoryOverride = booksForCategoryOverride
-            )
+                    },
+                    onScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) }
+                )
+            }
         }
     }
 }

@@ -258,6 +258,12 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
 
     private fun buildExpandedQuery(norm: String, near: Int): Query {
         val base = buildHebrewStdQuery(norm, near)
+        // In precise mode (near == 0), enforce strict contiguous phrase matching
+        // with exact term order and no fallbacks. This prevents partial, fuzzy,
+        // or out-of-order matches from leaking into results.
+        if (near == 0) return base
+
+        // For relaxed modes (near > 0), add helpful fallbacks that improve recall.
         val ngram = buildNgram4Query(norm)
         val fuzzy = buildFuzzyQuery(norm, near)
         val builder = BooleanQuery.Builder()

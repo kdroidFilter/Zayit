@@ -256,6 +256,12 @@ class SearchHomeViewModel(
         // reusing stale results when a new search is submitted.
         SearchTabCache.clear(currentTabId)
 
+        // Also reset persisted scroll/anchor so the SearchResult screen starts at the top
+        stateManager.saveState(currentTabId, SearchStateKeys.SCROLL_INDEX, 0)
+        stateManager.saveState(currentTabId, SearchStateKeys.SCROLL_OFFSET, 0)
+        stateManager.saveState(currentTabId, SearchStateKeys.ANCHOR_ID, -1L)
+        stateManager.saveState(currentTabId, SearchStateKeys.ANCHOR_INDEX, 0)
+
         // Replace current tab destination to Search (no new tab)
         tabsViewModel.replaceCurrentTabDestination(
             TabsDestination.Search(query, currentTabId)

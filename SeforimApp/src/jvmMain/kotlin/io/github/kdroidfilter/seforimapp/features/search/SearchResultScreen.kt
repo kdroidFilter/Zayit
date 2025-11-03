@@ -97,6 +97,7 @@ private fun SearchToolbar(
     near: Int,
     onSubmit: (query: String, near: Int) -> Unit,
     onNearChange: (Int) -> Unit,
+    onQueryChange: (String) -> Unit,
 ) {
     var currentNear by remember { mutableStateOf(near) }
     LaunchedEffect(near) { currentNear = near }
@@ -108,6 +109,13 @@ private fun SearchToolbar(
         if (text != initialQuery) {
             searchState.edit { replace(0, length, initialQuery) }
         }
+    }
+
+    // Persist live edits so session restore reopens with the last typed text
+    LaunchedEffect(Unit) {
+        snapshotFlow { searchState.text.toString() }
+            .distinctUntilChanged()
+            .collect { q -> onQueryChange(q) }
     }
 
     Row(
@@ -360,7 +368,8 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                 onNearChange = { newNear ->
                     // Only update NEAR; wait for Enter/click to run search
                     viewModel.setNear(newNear)
-                }
+                },
+                onQueryChange = { q -> viewModel.setQuery(q) }
             )
 
             Spacer(Modifier.height(12.dp))

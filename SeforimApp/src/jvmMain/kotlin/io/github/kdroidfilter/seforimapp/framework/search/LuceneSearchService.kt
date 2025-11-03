@@ -146,8 +146,9 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             // Enforce proximity via phrase slop when we have a multi-term query
             val analyzedCount = analyzedStd.size
             if (phraseQuery != null && analyzedCount >= 2) {
-                // Use SHOULD so NEAR influences ranking, not recall
-                b.add(phraseQuery, BooleanClause.Occur.SHOULD)
+                // NEAR=0: enforce strict phrase; NEAR>0: use as ranking signal
+                val occur = if (near == 0) BooleanClause.Occur.MUST else BooleanClause.Occur.SHOULD
+                b.add(phraseQuery, occur)
             }
             // Keep expanded components for scoring only, not recall expansion.
             b.add(rankedQuery, BooleanClause.Occur.SHOULD)
@@ -204,7 +205,8 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             if (mustAllTokensQuery != null) b.add(mustAllTokensQuery, BooleanClause.Occur.FILTER)
             val analyzedCount = analyzedStd.size
             if (phraseQuery != null && analyzedCount >= 2) {
-                b.add(phraseQuery, BooleanClause.Occur.SHOULD)
+                val occur = if (near == 0) BooleanClause.Occur.MUST else BooleanClause.Occur.SHOULD
+                b.add(phraseQuery, occur)
             }
             b.add(rankedQuery, BooleanClause.Occur.SHOULD)
             val query = b.build()

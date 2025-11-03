@@ -282,5 +282,10 @@
     <!-- Reference open action -->
     <string name="open_book">פתח ספר</string>
 
+    <!-- Settings action bar -->
+    <string name="settings_ok">אישור</string>
+    <string name="settings_cancel">ביטול</string>
+    <string name="settings_apply">החל</string>
+
 
 </resources>

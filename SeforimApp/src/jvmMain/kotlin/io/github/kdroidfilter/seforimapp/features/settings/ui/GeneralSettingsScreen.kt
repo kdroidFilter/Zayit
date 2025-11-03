@@ -48,12 +48,6 @@ private fun GeneralSettingsView(
         modifier = Modifier.fillMaxSize().padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text = stringResource(Res.string.settings_db_path_label))
-            Text(text = state.databasePath ?: stringResource(Res.string.settings_db_path_not_set))
-        }
-
-        Divider(orientation = Orientation.Horizontal)
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Checkbox(

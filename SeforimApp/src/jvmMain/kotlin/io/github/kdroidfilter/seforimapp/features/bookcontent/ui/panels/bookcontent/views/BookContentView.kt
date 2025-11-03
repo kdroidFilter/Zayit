@@ -129,6 +129,12 @@ fun BookContentView(
     // Selected font for main book content
     val bookFontCode by AppSettings.bookFontCodeFlow.collectAsState()
     val hebrewFontFamily = FontCatalog.familyFor(bookFontCode)
+    // macOS fallback: some Hebrew fonts have no Bold face; slightly scale bold text for visibility
+    val boldScaleForPlatform = remember(bookFontCode) {
+        val isMac = System.getProperty("os.name")?.contains("Mac", ignoreCase = true) == true
+        val lacksBold = bookFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
+        if (isMac && lacksBold) 1.08f else 1.0f
+    }
 
     // Track restoration state per book
     var hasRestored by remember(book.id) { mutableStateOf(false) }
@@ -361,6 +367,7 @@ fun BookContentView(
                         baseTextSize = textSize,
                         lineHeight = lineHeight,
                         fontFamily = hebrewFontFamily,
+                        boldScale = boldScaleForPlatform,
                         onLineSelected = onLineSelected,
                         scrollToLineTimestamp = scrollToLineTimestamp,
                         highlightQuery = findState.text.toString().takeIf { showFind },
@@ -444,13 +451,14 @@ private fun LineItem(
     baseTextSize: Float = 16f,
     lineHeight: Float = 1.5f,
     fontFamily: FontFamily,
+    boldScale: Float = 1.0f,
     onLineSelected: (Line) -> Unit,
     scrollToLineTimestamp: Long,
     highlightQuery: String? = null,
     currentMatchStart: Int? = null
 ) {
     // Memoize the annotated string with proper keys
-    val annotated = remember(line.id, line.content, baseTextSize) { buildAnnotatedFromHtml(line.content, baseTextSize) }
+    val annotated = remember(line.id, line.content, baseTextSize, boldScale) { buildAnnotatedFromHtml(line.content, baseTextSize, boldScale = if (boldScale < 1f) 1f else boldScale) }
 
     // Build highlighted text when a query is active (>= 2 chars)
     val baseHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.22f)

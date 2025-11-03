@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,6 +80,8 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import kotlinx.coroutines.launch
 import androidx.compose.ui.zIndex
@@ -228,7 +232,8 @@ fun SearchResultInBookShell(
                     },
                     secondContent = {
                         // Prefer book content only when providers are ready; otherwise keep search visible
-                        val showBookContent = bookUiState.navigation.selectedBook != null && bookUiState.providers != null
+                        val showBookContent =
+                            bookUiState.navigation.selectedBook != null && bookUiState.providers != null
                         if (showBookContent) {
                             BookContentPanel(uiState = bookUiState, onEvent = onEvent)
                         } else {
@@ -314,7 +319,8 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
     var currentHitIndex by remember { mutableStateOf(-1) }
     var currentMatchStart by remember { mutableStateOf(-1) }
 
-    fun recomputeMatches(query: String) { /* removed: counter not needed */ }
+    fun recomputeMatches(query: String) { /* removed: counter not needed */
+    }
 
     fun navigateTo(next: Boolean) {
         val q = findState.text.toString()
@@ -341,149 +347,155 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
     val keyHandler = remember { { _: KeyEvent -> false } }
 
     Box(modifier = Modifier.fillMaxSize().onPreviewKeyEvent(keyHandler)) {
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        // Top persistent search toolbar
-        SearchToolbar(
-            initialQuery = state.query,
-            near = state.near,
-            onSubmit = { query, nearValue ->
-                viewModel.setQuery(query)
-                viewModel.setNear(nearValue)
-                viewModel.executeSearch()
-            },
-            onNearChange = { newNear ->
-                // Only update NEAR; wait for Enter/click to run search
-                viewModel.setNear(newNear)
-            }
-        )
-
-        Spacer(Modifier.height(12.dp))
-        // Header row: results count + classic separator + optional cancel
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            GroupHeader(
-                text = stringResource(Res.string.search_result_count, visibleResults.size),
-                modifier = Modifier.padding(end = 12.dp)
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            // Top persistent search toolbar
+            SearchToolbar(
+                initialQuery = state.query,
+                near = state.near,
+                onSubmit = { query, nearValue ->
+                    viewModel.setQuery(query)
+                    viewModel.setNear(nearValue)
+                    viewModel.executeSearch()
+                },
+                onNearChange = { newNear ->
+                    // Only update NEAR; wait for Enter/click to run search
+                    viewModel.setNear(newNear)
+                }
             )
 
-            // Classic thin separator line
+            Spacer(Modifier.height(12.dp))
+            // Header row: results count + classic separator + optional cancel
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                GroupHeader(
+                    text = stringResource(Res.string.search_result_count, visibleResults.size),
+                    modifier = Modifier.padding(end = 12.dp)
+                )
+
+                // Classic thin separator line
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(1.dp)
+                        .background(JewelTheme.globalColors.borders.disabled)
+                )
+
+                if (state.isLoading || state.isLoadingMore) {
+                    Spacer(Modifier.width(8.dp))
+                    IconActionButton(
+                        key = AllIconsKeys.Windows.Close,
+                        onClick = { viewModel.cancelSearch() },
+                        contentDescription = "Cancel search"
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Scope breadcrumb if filtered to a book or category
+            if (state.scopeBook != null || state.scopeCategoryPath.isNotEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                    val pieces = buildList {
+                        addAll(state.scopeCategoryPath.map { it.title })
+                        state.scopeBook?.let { add(it.title) }
+                    }
+                    pieces.forEachIndexed { index, piece ->
+                        if (index > 0) Text(
+                            text = stringResource(Res.string.breadcrumb_separator),
+                            color = JewelTheme.globalColors.text.disabled,
+                            fontSize = commentSize.sp
+                        )
+                        Text(text = piece, fontSize = commentSize.sp)
+                    }
+                }
+            }
+
+            // Inline progress above replaces the old loading row/spinner
+
+            // Results list
             Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(1.dp)
-                    .background(JewelTheme.globalColors.borders.disabled)
-            )
-
-            if (state.isLoading || state.isLoadingMore) {
-                Spacer(Modifier.width(8.dp))
-                IconActionButton(
-                    key = AllIconsKeys.Windows.Close,
-                    onClick = { viewModel.cancelSearch() },
-                    contentDescription = "Cancel search"
-                )
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        // Scope breadcrumb if filtered to a book or category
-        if (state.scopeBook != null || state.scopeCategoryPath.isNotEmpty()) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-                val pieces = buildList {
-                    addAll(state.scopeCategoryPath.map { it.title })
-                    state.scopeBook?.let { add(it.title) }
-                }
-                pieces.forEachIndexed { index, piece ->
-                    if (index > 0) Text(text = stringResource(Res.string.breadcrumb_separator), color = JewelTheme.globalColors.text.disabled, fontSize = commentSize.sp)
-                    Text(text = piece, fontSize = commentSize.sp)
-                }
-            }
-        }
-
-        // Inline progress above replaces the old loading row/spinner
-
-        // Results list
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 32.dp)
-                .background(JewelTheme.globalColors.panelBackground)
-        ) {
-            if (visibleResults.isEmpty()) {
-                if (state.isLoading) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
+                    .fillMaxSize()
+                    .padding(horizontal = 32.dp)
+                    .background(JewelTheme.globalColors.panelBackground)
+            ) {
+                if (visibleResults.isEmpty()) {
+                    if (state.isLoading) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
+                        }
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(text = stringResource(Res.string.search_no_results), fontSize = commentSize.sp)
+                        }
                     }
                 } else {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = stringResource(Res.string.search_no_results), fontSize = commentSize.sp)
-                    }
-                }
-            } else {
-                VerticallyScrollableContainer(scrollState = listState as ScrollableState) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize().padding(end = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    VerticallyScrollableContainer(
+                        scrollState = listState as ScrollableState,
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        itemsIndexed(items = visibleResults, key = { _, it -> it.lineId }) { idx, result ->
-                            val windowInfo = LocalWindowInfo.current
-                            ResultRow(
-                                title = null,
-                                badgeText = result.bookTitle,
-                                snippet = result.snippet,
-                                textSize = mainTextSize,
-                                lineHeight = mainLineHeight,
-                                fontFamily = hebrewFontFamily,
-                                findQuery = findQuery,
-                                currentMatchStart = if (idx == currentHitIndex) currentMatchStart else null,
-                                bottomContent = {
-                                    ResultBreadcrumb(
-                                        viewModel = viewModel,
-                                        result = result,
-                                        textSize = mainTextSize,
-                                        lineHeight = mainLineHeight,
-                                        fontFamily = hebrewFontFamily
-                                    )
-                                },
-                                onClick = {
-                                    val mods = windowInfo.keyboardModifiers
-                                    // Inverted behavior: Ctrl/Meta = same tab, otherwise new tab
-                                    val openInNewTab = !(mods.isCtrlPressed || mods.isMetaPressed)
-                                    viewModel.openResult(result, openInNewTab)
-                                }
-                            )
-                        }
-                        if (state.isLoading) {
-                            item {
-                                Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                                    Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize().padding(end = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            itemsIndexed(items = visibleResults, key = { _, it -> it.lineId }) { idx, result ->
+                                val windowInfo = LocalWindowInfo.current
+                                SearchResultItemGoogleStyle(
+                                    result = result,
+                                    textSize = mainTextSize,
+                                    lineHeight = mainLineHeight,
+                                    fontFamily = hebrewFontFamily,
+                                    findQuery = findQuery,
+                                    currentMatchStart = if (idx == currentHitIndex) currentMatchStart else null,
+                                    onClick = {
+                                        val mods = windowInfo.keyboardModifiers
+                                        val openInNewTab = !(mods.isCtrlPressed || mods.isMetaPressed)
+                                        viewModel.openResult(result, openInNewTab)
+                                    },
+                                    viewModel = viewModel,
+                                    bookFontCode = bookFontCode
+                                )
+                            }
+                            if (state.isLoading) {
+                                item {
+                                    Box(
+                                        Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
+                                    }
                                 }
                             }
-                        }
-                        if (state.hasMore && !state.isLoading && !state.isLoadingMore) {
-                            item {
-                                Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                                    DefaultButton(onClick = { viewModel.loadMore() }) {
-                                        Text(stringResource(Res.string.search_load_more), fontSize = commentSize.sp)
+                            if (state.hasMore && !state.isLoading && !state.isLoadingMore) {
+                                item {
+                                    Box(
+                                        Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        DefaultButton(onClick = { viewModel.loadMore() }) {
+                                            Text(stringResource(Res.string.search_load_more), fontSize = commentSize.sp)
+                                        }
+                                    }
+                                }
+                            }
+                            if (state.isLoadingMore) {
+                                item {
+                                    Box(
+                                        Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
                                     }
                                 }
                             }
                         }
-                        if (state.isLoadingMore) {
-                            item {
-                                Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                                    Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
-                                }
-                            }
-                        }
                     }
                 }
             }
         }
-    }
 
         // Find bar overlay
         if (showFind) {
@@ -533,7 +545,8 @@ private fun ResultRow(
                     )
                     Spacer(Modifier.height(4.dp))
                 }
-                val annotated: AnnotatedString = remember(snippet, textSize) { buildAnnotatedFromHtml(snippet, textSize, boldScale = 1.1f) }
+                val annotated: AnnotatedString =
+                    remember(snippet, textSize) { buildAnnotatedFromHtml(snippet, textSize, boldScale = 1.1f) }
                 val baseHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.22f)
                 val currentHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.42f)
                 val display = remember(annotated, findQuery, currentMatchStart, baseHl, currentHl) {
@@ -584,9 +597,10 @@ private fun ResultBreadcrumb(
     lineHeight: Float,
     fontFamily: FontFamily
 ) {
-    val piecesState = androidx.compose.runtime.produceState(initialValue = emptyList<String>(), result.bookId, result.lineId) {
-        value = kotlin.runCatching { viewModel.getBreadcrumbPiecesFor(result) }.getOrDefault(emptyList())
-    }
+    val piecesState =
+        androidx.compose.runtime.produceState(initialValue = emptyList<String>(), result.bookId, result.lineId) {
+            value = kotlin.runCatching { viewModel.getBreadcrumbPiecesFor(result) }.getOrDefault(emptyList())
+        }
     val pieces = piecesState.value
     if (pieces.isEmpty()) return
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -606,6 +620,115 @@ private fun ResultBreadcrumb(
                 fontFamily = fontFamily,
                 maxLines = 1,
                 lineHeight = (textSize * lineHeight).sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchResultItemGoogleStyle(
+    result: io.github.kdroidfilter.seforimlibrary.core.models.SearchResult,
+    textSize: Float,
+    lineHeight: Float,
+    fontFamily: FontFamily,
+    findQuery: String?,
+    currentMatchStart: Int? = null,
+    onClick: () -> Unit,
+    viewModel: SearchResultViewModel,
+    bookFontCode: String
+) {
+    // Compute breadcrumb pieces once per item
+    val piecesState =
+        androidx.compose.runtime.produceState(initialValue = emptyList<String>(), result.bookId, result.lineId) {
+            value = kotlin.runCatching { viewModel.getBreadcrumbPiecesFor(result) }.getOrDefault(emptyList())
+        }
+    val pieces = piecesState.value
+
+    // Derive book title and TOC leaf for the header line
+    val bookTitle = result.bookTitle
+    val tocLeaf: String? = remember(pieces, bookTitle) {
+        val bookIndex = pieces.indexOfFirst { it == bookTitle }
+        if (bookIndex >= 0 && bookIndex < pieces.lastIndex) pieces.last() else null
+    }
+
+    // Full path string for the footer line
+    val sep = stringResource(Res.string.breadcrumb_separator)
+    val fullPath: String? = if (pieces.isEmpty()) null else pieces.joinToString(sep)
+
+    // Build annotated snippet with bold segments coming from HTML (<b> ... )
+    // On macOS, some Hebrew fonts in our catalog don't include bold faces.
+    // Apply a subtle boldScale to keep emphasis visible on those fonts.
+    val boldScaleForPlatform = remember(bookFontCode) {
+        val isMac = System.getProperty("os.name")?.contains("Mac", ignoreCase = true) == true
+        val lacksBold = bookFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
+        if (isMac && lacksBold) 1.08f else 1.0f
+    }
+    val annotated: AnnotatedString = remember(result.snippet, textSize, boldScaleForPlatform) {
+        // Keep keyword emphasis without oversized glyphs (slight scale on mac for non-bold fonts)
+        buildAnnotatedFromHtml(result.snippet, textSize, boldScale = boldScaleForPlatform)
+    }
+    // Softer overlays for better legibility
+    val baseHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.12f)
+    val currentHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.28f)
+    val display = remember(annotated, findQuery, currentMatchStart, baseHl, currentHl) {
+        io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
+            annotated = annotated,
+            query = findQuery,
+            currentStart = currentMatchStart?.takeIf { it >= 0 },
+            currentLength = findQuery?.length,
+            baseColor = baseHl,
+            currentColor = currentHl
+        )
+    }
+
+    // Visual layout inspired by Google results, styled with Jewel
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp)
+    ) {
+        // Top: small book title – toc leaf
+        Row(
+            modifier = Modifier.fillMaxWidth().pointerHoverIcon(PointerIcon.Hand)
+        ) {
+            val header = if (tocLeaf.isNullOrBlank()) bookTitle else buildString {
+                append(bookTitle)
+                append(stringResource(Res.string.breadcrumb_separator))
+                append(tocLeaf)
+            }
+            Text(
+                text = header,
+                color = JewelTheme.globalColors.text.selected,
+                fontSize = (textSize * 1.1f).sp,
+                fontFamily = fontFamily,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(Modifier.height(2.dp))
+
+        // Middle: the snippet text with bold keywords
+        Text(
+            text = display,
+            color = JewelTheme.globalColors.text.normal,
+            fontFamily = fontFamily,
+            lineHeight = (textSize * lineHeight).sp,
+            fontSize = textSize.sp,
+            textAlign = TextAlign.Justify
+        )
+
+        // Bottom: smaller full path of the book
+        if (!fullPath.isNullOrBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = fullPath,
+                color = JewelTheme.globalColors.text.disabled,
+                fontFamily = fontFamily,
+                fontSize = (textSize * 0.8f).sp,
+                maxLines = 1
             )
         }
     }

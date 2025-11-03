@@ -985,7 +985,19 @@ class SearchResultViewModel(
         val out = ArrayList<SearchResult>(hits.size)
         for (hit in hits) {
             val raw = runCatching { repository.getLine(hit.lineId)?.content }.getOrNull() ?: ""
-            val snippet = runCatching { lucene.buildSnippetFromRaw(raw, rawQuery, near) }.getOrDefault(raw)
+            val rawCleanSingle = Jsoup.clean(raw, Safelist.none())
+            // Build a uniform-length source by stitching nearby lines when the matched line is short
+            val minSourceLen = 280
+            val neighborWindow = 4
+            val aggregateSource: String = if (rawCleanSingle.length >= minSourceLen) {
+                rawCleanSingle
+            } else {
+                val start = (hit.lineIndex - neighborWindow).coerceAtLeast(0)
+                val end = hit.lineIndex + neighborWindow
+                val neighbors = runCatching { repository.getLines(hit.bookId, start, end) }.getOrDefault(emptyList())
+                if (neighbors.isNotEmpty()) neighbors.joinToString(" ") { Jsoup.clean(it.content, Safelist.none()) } else rawCleanSingle
+            }
+            val snippet = runCatching { lucene.buildSnippetFromRaw(aggregateSource, rawQuery, near) }.getOrDefault(rawCleanSingle)
             // Cache category depth for tiebreaks (favor shallower books)
             if (depthByBookId[hit.bookId] == null) {
                 val catId = runCatching { repository.getBook(hit.bookId)?.categoryId }.getOrNull()
@@ -995,8 +1007,7 @@ class SearchResultViewModel(
                 }
             }
             // Cache exact raw match (favor lines that contain the raw query exactly, no normalization)
-            val rawClean = Jsoup.clean(raw, Safelist.none())
-            val isExact = rawQuery.trim().let { q -> q.isNotEmpty() && rawClean.contains(q) }
+            val isExact = rawQuery.trim().let { q -> q.isNotEmpty() && rawCleanSingle.contains(q) }
             exactRawMatchByLineId[hit.lineId] = isExact
             val scoreBoost = if (isExact) 1e-3 else 0.0
             out += SearchResult(

@@ -244,6 +244,11 @@ private fun CommentariesDisplay(
     // Memorizes the configuration to avoid recreating it
     val commentaryFontCode by AppSettings.commentaryFontCodeFlow.collectAsState()
     val commentaryFontFamily = FontCatalog.familyFor(commentaryFontCode)
+    val boldScaleForPlatform = remember(commentaryFontCode) {
+        val isMac = System.getProperty("os.name")?.contains("Mac", ignoreCase = true) == true
+        val lacksBold = commentaryFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
+        if (isMac && lacksBold) 1.08f else 1.0f
+    }
 
     val layoutConfig = remember(
         selectedCommentators,
@@ -252,7 +257,8 @@ private fun CommentariesDisplay(
         contentState.commentariesScrollIndex,
         contentState.commentariesScrollOffset,
         textSizes,
-        commentaryFontFamily
+        commentaryFontFamily,
+        boldScaleForPlatform
     ) {
         CommentariesLayoutConfig(
             selectedCommentators = selectedCommentators,
@@ -275,7 +281,8 @@ private fun CommentariesDisplay(
                 }
             },
             textSizes = textSizes,
-            fontFamily = commentaryFontFamily
+            fontFamily = commentaryFontFamily,
+            boldScale = boldScaleForPlatform
         )
     }
 
@@ -423,6 +430,7 @@ private fun CommentaryListView(
                         commentary = commentary,
                         textSizes = config.textSizes,
                         fontFamily = config.fontFamily,
+                        boldScale = config.boldScale,
                         onClick = { config.onCommentClick(commentary) }
                     )
                 }
@@ -445,6 +453,7 @@ private fun CommentaryItem(
     commentary: CommentaryWithText,
     textSizes: AnimatedTextSizes,
     fontFamily: FontFamily,
+    boldScale: Float = 1.0f,
     onClick: () -> Unit
 ) {
     // Memorizes the pointerInput to avoid recreating it
@@ -461,10 +470,11 @@ private fun CommentaryItem(
             .then(clickModifier)
     ) {
         // Cache the annotation to avoid rebuilding it
-        val annotated = remember(commentary.targetText, textSizes.commentTextSize) {
+        val annotated = remember(commentary.targetText, textSizes.commentTextSize, boldScale) {
             buildAnnotatedFromHtml(
                 commentary.targetText,
-                textSizes.commentTextSize
+                textSizes.commentTextSize,
+                boldScale = if (boldScale < 1f) 1f else boldScale
             )
         }
 
@@ -656,4 +666,5 @@ private data class CommentariesLayoutConfig(
     val onCommentClick: (CommentaryWithText) -> Unit,
     val textSizes: AnimatedTextSizes,
     val fontFamily: FontFamily,
+    val boldScale: Float,
 )

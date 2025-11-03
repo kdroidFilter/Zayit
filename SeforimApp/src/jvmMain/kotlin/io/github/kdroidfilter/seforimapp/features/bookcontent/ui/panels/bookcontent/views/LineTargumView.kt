@@ -73,6 +73,11 @@ fun LineTargumView(
     // Selected font for targumim
     val targumFontCode by AppSettings.targumFontCodeFlow.collectAsState()
     val targumFontFamily = FontCatalog.familyFor(targumFontCode)
+    val boldScaleForPlatform = remember(targumFontCode) {
+        val isMac = System.getProperty("os.name")?.contains("Mac", ignoreCase = true) == true
+        val lacksBold = targumFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
+        if (isMac && lacksBold) 1.08f else 1.0f
+    }
 
     val paneInteractionSource = remember { MutableInteractionSource() }
 
@@ -154,7 +159,8 @@ fun LineTargumView(
                                             onLinkClick = onLinkClick,
                                             commentTextSize = commentTextSize,
                                             lineHeight = lineHeight,
-                                            fontFamily = targumFontFamily
+                                            fontFamily = targumFontFamily,
+                                            boldScale = boldScaleForPlatform
                                         )
 
                                         Spacer(modifier = Modifier.height(8.dp))
@@ -247,6 +253,7 @@ private fun PagedLinksList(
     commentTextSize: Float,
     lineHeight: Float,
     fontFamily: FontFamily,
+    boldScale: Float = 1.0f,
 ) {
     val pagerFlow: Flow<PagingData<CommentaryWithText>> = remember(lineId, sourceBookId) {
         buildLinksPagerFor(lineId, sourceBookId).distinctUntilChanged()
@@ -280,6 +287,7 @@ private fun PagedLinksList(
                         commentTextSize = commentTextSize,
                         lineHeight = lineHeight,
                         fontFamily = fontFamily,
+                        boldScale = boldScale,
                         onLinkClick = onLinkClick
                     )
                 }
@@ -309,6 +317,7 @@ private fun LinkItem(
     commentTextSize: Float,
     lineHeight: Float,
     fontFamily: FontFamily,
+    boldScale: Float = 1.0f,
     onLinkClick: (CommentaryWithText) -> Unit
 ) {
     // Optimisation : mémorisation du callback pour éviter recréation
@@ -324,10 +333,11 @@ private fun LinkItem(
                 detectTapGestures(onTap = { onClick() })
             }
     ) {
-        val annotated = remember(item.link.id, item.targetText, commentTextSize) {
+        val annotated = remember(item.link.id, item.targetText, commentTextSize, boldScale) {
             buildAnnotatedFromHtml(
                 item.targetText,
-                commentTextSize
+                commentTextSize,
+                boldScale = if (boldScale < 1f) 1f else boldScale
             )
         }
 

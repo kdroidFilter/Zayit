@@ -3,7 +3,6 @@ package io.github.kdroidfilter.seforimapp
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.awt.AwtWindow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.DpSize
@@ -18,6 +17,7 @@ import dev.zacsweers.metro.createGraph
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.darkmodedetector.mac.setMacOsAdaptiveTitleBar
 import io.github.kdroidfilter.platformtools.getOperatingSystem
+import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsNavHost
@@ -30,6 +30,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.vinceglb.filekit.FileKit
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -39,15 +40,7 @@ import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.ui.ComponentStyling
 import org.jetbrains.jewel.window.DecoratedWindow
 import org.jetbrains.jewel.window.DecoratedWindowScope
-import seforimapp.seforimapp.generated.resources.AppIcon
-import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.app_name
-import seforimapp.seforimapp.generated.resources.home
-import seforimapp.seforimapp.generated.resources.window_title_with_tab
-import seforimapp.seforimapp.generated.resources.search_results_tab_title
-import io.github.kdroidfilter.seforim.tabs.TabType
-import seforimapp.seforimapp.generated.resources.home
-import seforimapp.seforimapp.generated.resources.window_title_with_tab
+import seforimapp.seforimapp.generated.resources.*
 import java.awt.Dimension
 import java.awt.Toolkit
 import java.awt.Window
@@ -72,10 +65,13 @@ fun main() {
         FileKit.init(appId)
 
         val screen = Toolkit.getDefaultToolkit().screenSize
-        val windowState = rememberWindowState(
+        val windowState = if (getOperatingSystem() != OperatingSystem.WINDOWS) rememberWindowState(
             position = WindowPosition.Aligned(Alignment.Center),
             placement = WindowPlacement.Maximized,
             size = DpSize(screen.width.dp, screen.height.dp)
+        ) else rememberWindowState(
+            position = WindowPosition.Aligned(Alignment.Center),
+            placement = WindowPlacement.Maximized,
         )
 
         var isWindowVisible by remember { mutableStateOf(true) }
@@ -169,6 +165,10 @@ fun main() {
 
                         LaunchedEffect(Unit) {
                             window.minimumSize = Dimension(600, 300)
+                            if (getOperatingSystem() == OperatingSystem.WINDOWS) {
+                                delay(100)
+                                windowState.placement = WindowPlacement.Maximized
+                            }
                         }
                         MainTitleBar()
 

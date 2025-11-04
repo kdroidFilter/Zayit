@@ -314,5 +314,10 @@
     <string name="settings_info_repo_prompt">ניתן לעיין בקוד המקור במאגר:</string>
     <string name="settings_info_repo_url_text">https://github.com/kdroidFilter/SeforimApp</string>
 
+    <!-- Filtering (search panels) accessibility labels -->
+    <string name="filter_select_category">בחר קטגוריה לסינון</string>
+    <string name="filter_select_book">בחר ספר לסינון</string>
+    <string name="filter_select_toc">בחר סעיף לסינון</string>
+
 
 </resources>

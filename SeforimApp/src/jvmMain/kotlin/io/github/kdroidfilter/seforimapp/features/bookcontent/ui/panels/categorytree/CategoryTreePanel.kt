@@ -24,9 +24,7 @@ import seforimapp.seforimapp.generated.resources.book_list
 fun CategoryTreePanel(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    modifier: Modifier = Modifier,
-    // Optional: integrate search results counts and filtering
-    searchViewModel: io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel? = null
+    modifier: Modifier = Modifier
 ) {
     val paneHoverSource = remember { MutableInteractionSource() }
     Column(modifier = modifier.hoverable(paneHoverSource)) {
@@ -46,30 +44,20 @@ fun CategoryTreePanel(
 //            Spacer(modifier = Modifier.height(16.dp))
 
             val windowInfo = LocalWindowInfo.current
-
-            if (searchViewModel != null) {
-                // In search mode, render a self-contained tree built from results so categories update instantly
-                SearchResultCategoryTreeView(
-                    uiState = uiState,
-                    onEvent = onEvent,
-                    searchViewModel = searchViewModel,
-                )
-            } else {
-                // Classic navigation tree
-                CategoryBookTreeView(
-                    navigationState = uiState.navigation,
-                    onCategoryClick = { onEvent(BookContentEvent.CategorySelected(it)) },
-                    onBookClick = {
-                        val mods = windowInfo.keyboardModifiers
-                        if (mods.isCtrlPressed || mods.isMetaPressed) {
-                            onEvent(BookContentEvent.BookSelectedInNewTab(it))
-                        } else {
-                            onEvent(BookContentEvent.BookSelected(it))
-                        }
-                    },
-                    onScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) }
-                )
-            }
+            // Classic navigation tree only (search variant is a dedicated composable)
+            CategoryBookTreeView(
+                navigationState = uiState.navigation,
+                onCategoryClick = { onEvent(BookContentEvent.CategorySelected(it)) },
+                onBookClick = {
+                    val mods = windowInfo.keyboardModifiers
+                    if (mods.isCtrlPressed || mods.isMetaPressed) {
+                        onEvent(BookContentEvent.BookSelectedInNewTab(it))
+                    } else {
+                        onEvent(BookContentEvent.BookSelected(it))
+                    }
+                },
+                onScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) }
+            )
         }
     }
 }
@@ -98,4 +86,44 @@ private fun SearchField(
     )
 }
 
-// No local flatten helpers needed; we consume aggregated counts directly from ViewModel flows
+// Search mode variant: state + events only
+
+@Composable
+fun SearchCategoryTreePanel(
+    uiState: BookContentState,
+    onEvent: (BookContentEvent) -> Unit,
+    searchUi: io.github.kdroidfilter.seforimapp.features.search.SearchUiState,
+    searchTree: List<io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory>,
+    isFiltering: Boolean,
+    selectedCategoryIds: Set<Long>,
+    selectedBookIds: Set<Long>,
+    onCategoryCheckedChange: (Long, Boolean) -> Unit,
+    onBookCheckedChange: (Long, Boolean) -> Unit,
+    onEnsureScopeBookForToc: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val paneHoverSource = remember { MutableInteractionSource() }
+    Column(modifier = modifier.hoverable(paneHoverSource)) {
+        PaneHeader(
+            label = stringResource(Res.string.book_list),
+            interactionSource = paneHoverSource,
+            onHide = { onEvent(BookContentEvent.ToggleBookTree) }
+        )
+        Column(
+            modifier = Modifier.padding(horizontal = 8.dp)
+        ) {
+            SearchResultCategoryTreeView(
+                uiState = uiState,
+                onEvent = onEvent,
+                searchUi = searchUi,
+                searchTree = searchTree,
+                isFiltering = isFiltering,
+                selectedCategoryIds = selectedCategoryIds,
+                selectedBookIds = selectedBookIds,
+                onCategoryCheckedChange = onCategoryCheckedChange,
+                onBookCheckedChange = onBookCheckedChange,
+                onEnsureScopeBookForToc = onEnsureScopeBookForToc
+            )
+        }
+    }
+}

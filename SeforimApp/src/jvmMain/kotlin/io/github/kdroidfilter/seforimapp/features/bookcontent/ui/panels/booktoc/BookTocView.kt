@@ -1,21 +1,13 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc
 
-import androidx.compose.foundation.VerticalScrollbar
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.ScrollableState
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.text.font.FontWeight.Companion.Normal
 import androidx.compose.ui.unit.dp
@@ -25,7 +17,6 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.Selectable
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.VisibleTocEntry
-// Repository access removed from the view to respect architecture (use state only)
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.LineTocMapping
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
@@ -33,6 +24,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 
@@ -69,7 +61,10 @@ fun BookTocView(
     onlyWithResults: Boolean = false,
     tocCounts: Map<Long, Int> = emptyMap(),
     selectedTocOverride: Long? = null,
-    onTocFilter: ((TocEntry) -> Unit)? = null
+    onTocFilter: ((TocEntry) -> Unit)? = null,
+    // Multi-select integration: optional checkboxes per entry
+    multiSelectIds: Set<Long> = emptySet(),
+    onToggle: ((TocEntry, Boolean) -> Unit)? = null
 ) {
     val visibleEntries = remember(tocEntries, expandedEntries, tocChildren, lines, lineTocMappings, showCounts, onlyWithResults, tocCounts) {
         buildVisibleTocEntries(tocEntries, expandedEntries, tocChildren, onlyWithResults, tocCounts)
@@ -119,7 +114,9 @@ fun BookTocView(
                         },
                         onEntryExpand = onEntryExpand,
                         showCount = showCounts,
-                        count = tocCounts[visibleEntry.entry.id] ?: 0
+                        count = tocCounts[visibleEntry.entry.id] ?: 0,
+                        checkboxChecked = if (onToggle != null) multiSelectIds.contains(visibleEntry.entry.id) else null,
+                        onCheckboxToggle = onToggle?.let { handler -> { checked: Boolean -> handler(visibleEntry.entry, checked) } }
                     )
                 }
             }
@@ -137,7 +134,9 @@ fun BookTocView(
     onlyWithResults: Boolean = false,
     selectedTocOverride: Long? = null,
     tocCounts: Map<Long, Int> = emptyMap(),
-    onTocFilter: ((TocEntry) -> Unit)? = null
+    onTocFilter: ((TocEntry) -> Unit)? = null,
+    multiSelectIds: Set<Long> = emptySet(),
+    onToggle: ((TocEntry, Boolean) -> Unit)? = null
 ) {
     val rootEntries = uiState.toc.children[-1L] ?: uiState.toc.entries
     var displayEntries by remember(uiState.toc.entries, uiState.toc.children, uiState.navigation.selectedBook?.id) {
@@ -184,7 +183,9 @@ fun BookTocView(
         onlyWithResults = onlyWithResults,
         tocCounts = tocCounts,
         selectedTocOverride = selectedTocOverride,
-        onTocFilter = onTocFilter
+        onTocFilter = onTocFilter,
+        multiSelectIds = multiSelectIds,
+        onToggle = onToggle
     )
 }
 
@@ -231,7 +232,9 @@ private fun TocEntryItem(
     onEntryClick: (TocEntry) -> Unit,
     onEntryExpand: (TocEntry) -> Unit,
     showCount: Boolean = false,
-    count: Int = 0
+    count: Int = 0,
+    checkboxChecked: Boolean? = null,
+    onCheckboxToggle: ((Boolean) -> Unit)? = null
 ) {
     val isLastChild = visibleEntry.isLastChild
     val isSelected = selectedTocEntryId != null && visibleEntry.entry.id == selectedTocEntryId
@@ -264,6 +267,12 @@ private fun TocEntryItem(
         }
 
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            if (checkboxChecked != null && onCheckboxToggle != null) {
+                Checkbox(
+                    checked = checkboxChecked,
+                    onCheckedChange = onCheckboxToggle
+                )
+            }
             Text(
                 text = visibleEntry.entry.text,
                 fontWeight = if (isSelected) Bold else Normal,

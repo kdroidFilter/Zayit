@@ -1,99 +1,66 @@
 package io.github.kdroidfilter.seforimapp.features.search
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.animation.core.tween
+// removed: AnimatedHorizontalProgressBar (classic separator instead)
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
-import org.jetbrains.compose.resources.stringResource
-import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.GroupHeader
-import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.DefaultButton
-import org.jetbrains.jewel.ui.component.IconActionButton
-import org.jetbrains.jewel.ui.component.TextField
-import org.jetbrains.jewel.ui.component.ListComboBox
-import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.ScrollableState
-// removed: AnimatedHorizontalProgressBar (classic separator instead)
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.rememberCoroutineScope
-import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.breadcrumb_separator
-import seforimapp.seforimapp.generated.resources.search_no_results
-import seforimapp.seforimapp.generated.resources.search_searching
-import seforimapp.seforimapp.generated.resources.search_load_more
-import seforimapp.seforimapp.generated.resources.search_result_count
-import seforimapp.seforimapp.generated.resources.search_placeholder
-import seforimapp.seforimapp.generated.resources.search_near_selector_label
-import seforimapp.seforimapp.generated.resources.search_icon_description
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
-import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.StartVerticalBar
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EndVerticalBar
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree.CategoryTreePanel
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.BookTocPanel
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
-import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.input.pointer.isCtrlPressed
-import androidx.compose.ui.input.pointer.isMetaPressed
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.map
-import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
-import org.jetbrains.compose.splitpane.SplitPaneState
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.key
-import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.IconButton
-import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
-import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import seforimapp.seforimapp.generated.resources.search_level_1_value
-import seforimapp.seforimapp.generated.resources.search_level_2_value
-import seforimapp.seforimapp.generated.resources.search_level_3_value
-import seforimapp.seforimapp.generated.resources.search_level_4_value
-import seforimapp.seforimapp.generated.resources.search_level_5_value
+import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
+import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EndVerticalBar
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.StartVerticalBar
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
+import org.jetbrains.compose.splitpane.SplitPaneState
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.*
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import seforimapp.seforimapp.generated.resources.*
 
 @Composable
 private fun SearchToolbar(
@@ -184,14 +151,38 @@ private fun SearchToolbar(
     }
 }
 
+
 @OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class)
 @Composable
-fun SearchResultInBookShell(
+fun SearchResultInBookShellMvi(
     bookUiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    viewModel: SearchResultViewModel
+    // Search state
+    searchUi: SearchUiState,
+    visibleResults: List<io.github.kdroidfilter.seforimlibrary.core.models.SearchResult>,
+    isFiltering: Boolean,
+    breadcrumbs: Map<Long, List<String>>,
+    searchTree: List<SearchResultViewModel.SearchTreeCategory>,
+    selectedCategoryIds: Set<Long>,
+    selectedBookIds: Set<Long>,
+    selectedTocIds: Set<Long>,
+    tocCounts: Map<Long, Int>,
+    tocTree: SearchResultViewModel.TocTree?,
+    // Events
+    onSubmit: (query: String, near: Int) -> Unit,
+    onNearChange: (Int) -> Unit,
+    onQueryChange: (String) -> Unit,
+    onScroll: (anchorId: Long, anchorIndex: Int, index: Int, offset: Int) -> Unit,
+    onCancelSearch: () -> Unit,
+    onOpenResult: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult, Boolean) -> Unit,
+    onRequestBreadcrumb: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult) -> Unit,
+    onLoadMore: () -> Unit,
+    onCategoryCheckedChange: (Long, Boolean) -> Unit,
+    onBookCheckedChange: (Long, Boolean) -> Unit,
+    onEnsureScopeBookForToc: (Long) -> Unit,
+    onTocToggle: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry, Boolean) -> Unit,
+    onTocFilter: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry) -> Unit,
 ) {
-    // Observe split panes and persist positions similar to BookContentView
     val splitPaneConfigs = listOf(
         SplitPaneConfig(
             splitState = bookUiState.layout.mainSplitState,
@@ -230,7 +221,18 @@ fun SearchResultInBookShell(
             firstMinSize = if (bookUiState.navigation.isVisible) io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults.MIN_MAIN else 0f,
             firstContent = {
                 if (bookUiState.navigation.isVisible) {
-                    CategoryTreePanel(uiState = bookUiState, onEvent = onEvent, searchViewModel = viewModel)
+                    io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree.SearchCategoryTreePanel(
+                        uiState = bookUiState,
+                        onEvent = onEvent,
+                        searchUi = searchUi,
+                        searchTree = searchTree,
+                        isFiltering = isFiltering,
+                        selectedCategoryIds = selectedCategoryIds,
+                        selectedBookIds = selectedBookIds,
+                        onCategoryCheckedChange = onCategoryCheckedChange,
+                        onBookCheckedChange = onBookCheckedChange,
+                        onEnsureScopeBookForToc = onEnsureScopeBookForToc
+                    )
                 }
             },
             secondContent = {
@@ -239,17 +241,38 @@ fun SearchResultInBookShell(
                     firstMinSize = if (bookUiState.toc.isVisible) io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults.MIN_TOC else 0f,
                     firstContent = {
                         if (bookUiState.toc.isVisible) {
-                            BookTocPanel(uiState = bookUiState, onEvent = onEvent, searchViewModel = viewModel)
+                            io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.SearchBookTocPanel(
+                                uiState = bookUiState,
+                                onEvent = onEvent,
+                                searchUi = searchUi,
+                                tocTree = tocTree,
+                                tocCounts = tocCounts,
+                                selectedTocIds = selectedTocIds,
+                                onToggle = onTocToggle,
+                                onTocFilter = onTocFilter
+                            )
                         }
                     },
                     secondContent = {
-                        // Prefer book content only when providers are ready; otherwise keep search visible
                         val showBookContent =
                             bookUiState.navigation.selectedBook != null && bookUiState.providers != null
                         if (showBookContent) {
                             BookContentPanel(uiState = bookUiState, onEvent = onEvent)
                         } else {
-                            SearchResultContent(viewModel = viewModel)
+                            SearchResultContentMvi(
+                                state = searchUi,
+                                visibleResults = visibleResults,
+                                isFiltering = isFiltering,
+                                breadcrumbs = breadcrumbs,
+                                onSubmit = onSubmit,
+                                onNearChange = onNearChange,
+                                onQueryChange = onQueryChange,
+                                onScroll = onScroll,
+                                onCancelSearch = onCancelSearch,
+                                onOpenResult = onOpenResult,
+                                onRequestBreadcrumb = onRequestBreadcrumb,
+                                onLoadMore = onLoadMore
+                            )
                         }
                     },
                     showSplitter = bookUiState.toc.isVisible
@@ -269,12 +292,22 @@ private data class SplitPaneConfig @OptIn(ExperimentalSplitPaneApi::class) const
 )
 
 @Composable
-private fun SearchResultContent(viewModel: SearchResultViewModel) {
-    val state = viewModel.uiState.collectAsState().value
+private fun SearchResultContentMvi(
+    state: SearchUiState,
+    visibleResults: List<io.github.kdroidfilter.seforimlibrary.core.models.SearchResult>,
+    isFiltering: Boolean,
+    breadcrumbs: Map<Long, List<String>>,
+    onSubmit: (query: String, near: Int) -> Unit,
+    onNearChange: (Int) -> Unit,
+    onQueryChange: (String) -> Unit,
+    onScroll: (anchorId: Long, anchorIndex: Int, index: Int, offset: Int) -> Unit,
+    onCancelSearch: () -> Unit,
+    onOpenResult: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult, openInNewTab: Boolean) -> Unit,
+    onRequestBreadcrumb: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult) -> Unit,
+    onLoadMore: () -> Unit = {}
+) {
     val listState = rememberLazyListState()
     val findQuery by AppSettings.findQueryFlow.collectAsState()
-    val visibleResults by viewModel.visibleResultsFlow.collectAsState()
-    val isFiltering by viewModel.isFilteringFlow.collectAsState()
     val scope = rememberCoroutineScope()
     // Match BookContent main text font settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -302,11 +335,11 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
             .distinctUntilChanged()
-            .filter { !viewModel.uiState.value.isLoading }
+            .filter { !state.isLoading }
             .collect { (index, offset) ->
-                val items = viewModel.uiState.value.results
+                val items = state.results
                 val anchorId = items.getOrNull(index)?.lineId ?: -1L
-                viewModel.onScroll(anchorId = anchorId, anchorIndex = 0, index = index, offset = offset)
+                onScroll(anchorId, 0, index, offset)
             }
     }
 
@@ -365,16 +398,9 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
             SearchToolbar(
                 initialQuery = state.query,
                 near = state.near,
-                onSubmit = { query, nearValue ->
-                    viewModel.setQuery(query)
-                    viewModel.setNear(nearValue)
-                    viewModel.executeSearch()
-                },
-                onNearChange = { newNear ->
-                    // Only update NEAR; wait for Enter/click to run search
-                    viewModel.setNear(newNear)
-                },
-                onQueryChange = { q -> viewModel.setQuery(q) }
+                onSubmit = onSubmit,
+                onNearChange = onNearChange,
+                onQueryChange = onQueryChange
             )
 
             Spacer(Modifier.height(12.dp))
@@ -400,7 +426,7 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                     Spacer(Modifier.width(8.dp))
                     IconActionButton(
                         key = AllIconsKeys.Windows.Close,
-                        onClick = { viewModel.cancelSearch() },
+                        onClick = onCancelSearch,
                         contentDescription = "Cancel search"
                     )
                 }
@@ -450,9 +476,10 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                                     onClick = {
                                         val mods = windowInfo.keyboardModifiers
                                         val openInNewTab = !(mods.isCtrlPressed || mods.isMetaPressed)
-                                        viewModel.openResult(result, openInNewTab)
+                                        onOpenResult(result, openInNewTab)
                                     },
-                                    viewModel = viewModel,
+                                    breadcrumbs = breadcrumbs,
+                                    onRequestBreadcrumb = onRequestBreadcrumb,
                                     bookFontCode = bookFontCode
                                 )
                             }
@@ -472,7 +499,7 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
                                         Modifier.fillMaxWidth().padding(vertical = 16.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        DefaultButton(onClick = { viewModel.loadMore() }) {
+                                        DefaultButton(onClick = onLoadMore) {
                                             Text(stringResource(Res.string.search_load_more), fontSize = commentSize.sp)
                                         }
                                     }
@@ -529,115 +556,6 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
     }
 }
 
-@Composable
-private fun ResultRow(
-    title: String?,
-    badgeText: String,
-    snippet: String,
-    textSize: Float,
-    lineHeight: Float,
-    fontFamily: FontFamily,
-    findQuery: String?,
-    currentMatchStart: Int? = null,
-    bottomContent: (@Composable () -> Unit)? = null,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color.Transparent)
-            .border(1.dp, JewelTheme.globalColors.borders.disabled, RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick).padding(12.dp)
-    ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.weight(1f)) {
-                if (title != null) {
-                    Text(
-                        text = title,
-                        color = JewelTheme.globalColors.text.normal,
-                        fontSize = textSize.sp,
-                        fontFamily = fontFamily,
-                        lineHeight = (textSize * lineHeight).sp
-                    )
-                    Spacer(Modifier.height(4.dp))
-                }
-                val annotated: AnnotatedString =
-                    remember(snippet, textSize) { buildAnnotatedFromHtml(snippet, textSize, boldScale = 1.1f) }
-                val baseHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.22f)
-                val currentHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.42f)
-                val display = remember(annotated, findQuery, currentMatchStart, baseHl, currentHl) {
-                    io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
-                        annotated = annotated,
-                        query = findQuery,
-                        currentStart = currentMatchStart?.takeIf { it >= 0 },
-                        currentLength = findQuery?.length,
-                        baseColor = baseHl,
-                        currentColor = currentHl
-                    )
-                }
-                Text(
-                    text = display,
-                    fontFamily = fontFamily,
-                    lineHeight = (textSize * lineHeight).sp,
-                    textAlign = TextAlign.Justify
-                )
-                if (bottomContent != null) {
-                    Spacer(Modifier.height(4.dp))
-                    bottomContent()
-                }
-            }
-            Spacer(Modifier.width(8.dp))
-            Box(
-                modifier = Modifier.align(Alignment.Top).clip(RoundedCornerShape(6.dp))
-                    .background(JewelTheme.globalColors.panelBackground)
-                    .border(1.dp, JewelTheme.globalColors.borders.disabled, RoundedCornerShape(6.dp))
-            ) {
-                Text(
-                    text = badgeText,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    fontSize = textSize.sp,
-                    fontFamily = fontFamily,
-                    lineHeight = (textSize * lineHeight).sp
-                )
-            }
-        }
-    }
-}
-
-
-@Composable
-private fun ResultBreadcrumb(
-    viewModel: SearchResultViewModel,
-    result: io.github.kdroidfilter.seforimlibrary.core.models.SearchResult,
-    textSize: Float,
-    lineHeight: Float,
-    fontFamily: FontFamily
-) {
-    val piecesState =
-        androidx.compose.runtime.produceState(initialValue = emptyList<String>(), result.bookId, result.lineId) {
-            value = kotlin.runCatching { viewModel.getBreadcrumbPiecesFor(result) }.getOrDefault(emptyList())
-        }
-    val pieces = piecesState.value
-    if (pieces.isEmpty()) return
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        pieces.forEachIndexed { index, piece ->
-            if (index > 0) Text(
-                text = stringResource(Res.string.breadcrumb_separator),
-                color = JewelTheme.globalColors.text.disabled,
-                fontSize = textSize.sp,
-                fontFamily = fontFamily,
-                maxLines = 1,
-                lineHeight = (textSize * lineHeight).sp
-            )
-            Text(
-                text = piece,
-                color = JewelTheme.globalColors.text.normal,
-                fontSize = textSize.sp,
-                fontFamily = fontFamily,
-                maxLines = 1,
-                lineHeight = (textSize * lineHeight).sp
-            )
-        }
-    }
-}
 
 @Composable
 private fun SearchResultItemGoogleStyle(
@@ -648,26 +566,25 @@ private fun SearchResultItemGoogleStyle(
     findQuery: String?,
     currentMatchStart: Int? = null,
     onClick: () -> Unit,
-    viewModel: SearchResultViewModel,
+    breadcrumbs: Map<Long, List<String>>,
+    onRequestBreadcrumb: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult) -> Unit,
     bookFontCode: String
 ) {
-    // Compute breadcrumb pieces once per item
-    val piecesState =
-        androidx.compose.runtime.produceState(initialValue = emptyList<String>(), result.bookId, result.lineId) {
-            value = kotlin.runCatching { viewModel.getBreadcrumbPiecesFor(result) }.getOrDefault(emptyList())
-        }
-    val pieces = piecesState.value
+    // Breadcrumb pieces come from state; request on-demand via callback
+    val pieces = breadcrumbs[result.lineId]
+    LaunchedEffect(result.lineId) { if (pieces == null) onRequestBreadcrumb(result) }
 
     // Derive book title and TOC leaf for the header line
     val bookTitle = result.bookTitle
     val tocLeaf: String? = remember(pieces, bookTitle) {
-        val bookIndex = pieces.indexOfFirst { it == bookTitle }
-        if (bookIndex >= 0 && bookIndex < pieces.lastIndex) pieces.last() else null
+        val list = pieces ?: emptyList()
+        val bookIndex = list.indexOfFirst { it == bookTitle }
+        if (bookIndex >= 0 && bookIndex < list.lastIndex) list.last() else null
     }
 
     // Full path string for the footer line
     val sep = stringResource(Res.string.breadcrumb_separator)
-    val fullPath: String? = if (pieces.isEmpty()) null else pieces.joinToString(sep)
+    val fullPath: String? = if (pieces.isNullOrEmpty()) null else pieces.joinToString(sep)
 
     // Build annotated snippet with bold segments coming from HTML (<b> ... )
     // On macOS, some Hebrew fonts in our catalog don't include bold faces.

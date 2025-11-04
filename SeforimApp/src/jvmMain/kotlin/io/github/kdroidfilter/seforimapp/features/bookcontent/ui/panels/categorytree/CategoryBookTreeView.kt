@@ -1,7 +1,11 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,9 +25,12 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.text.font.FontWeight.Companion.Normal
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ChevronIcon
+import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableRow
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationState
+import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.icons.Book_2
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -31,20 +38,9 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
-import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.iconButtonStyle
-import androidx.compose.ui.zIndex
-import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
-// animation imports are at top; remove stray duplicates at file end if any
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
 
 @Stable
 private data class TreeItem(
@@ -166,24 +162,25 @@ fun CategoryBookTreeView(
 @OptIn(FlowPreview::class)
 @Composable
 fun SearchResultCategoryTreeView(
-    uiState: io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState,
-    onEvent: (io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent) -> Unit,
-    searchViewModel: io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel,
+    expandedCategoryIds: Set<Long>,
+    scrollIndex: Int,
+    scrollOffset: Int,
+    searchTree: List<SearchResultViewModel.SearchTreeCategory>,
+    isFiltering: Boolean,
+    selectedCategoryIds: Set<Long>,
+    selectedBookIds: Set<Long>,
+    onCategoryRowClick: (Category) -> Unit,
+    onPersistScroll: (Int, Int) -> Unit,
+    onCategoryCheckedChange: (Long, Boolean) -> Unit,
+    onBookCheckedChange: (Long, Boolean) -> Unit,
+    onEnsureScopeBookForToc: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Collect search UI to drive selection overrides and recompute triggers
-    val searchUi = searchViewModel.uiState.collectAsState().value
-    val isFiltering by searchViewModel.isFilteringFlow.collectAsState()
-
-    // Build a self-contained tree from current results (independent of navigation state's children)
-    val searchTree by produceState(initialValue = emptyList<io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory>(), searchUi.results) {
-        value = runCatching { searchViewModel.buildSearchResultTree() }.getOrDefault(emptyList())
-    }
 
     // Restore/track scroll position using the same keys as the classic tree
     val listState: LazyListState = rememberLazyListState(
-        initialFirstVisibleItemIndex = uiState.navigation.scrollIndex,
-        initialFirstVisibleItemScrollOffset = uiState.navigation.scrollOffset
+        initialFirstVisibleItemIndex = scrollIndex,
+        initialFirstVisibleItemScrollOffset = scrollOffset
     )
 
     // Persist scroll as user scrolls
@@ -191,33 +188,34 @@ fun SearchResultCategoryTreeView(
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
             .distinctUntilChanged()
             .debounce(150)
-            .collect { (index, offset) -> onEvent(io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent.BookTreeScrolled(index, offset)) }
+            .collect { (index, offset) -> onPersistScroll(index, offset) }
     }
 
     // Flatten the search tree with current expansion state
-    val expanded = uiState.navigation.expandedCategories
-    val selectedCategoryIdOverride = searchUi.scopeCategoryPath.lastOrNull()?.id
-    val selectedBookIdOverride = searchUi.scopeBook?.id
-
-    val items = remember(searchTree, expanded, selectedCategoryIdOverride, selectedBookIdOverride) {
-        buildList<TreeItem> {
-            fun addNode(node: io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory, level: Int) {
+    val expanded = expandedCategoryIds
+    val items = remember(searchTree, expanded, selectedCategoryIds, selectedBookIds) {
+        buildList {
+            fun addNode(node: SearchResultViewModel.SearchTreeCategory, level: Int, ancestorSelected: Boolean) {
+                val isThisSelected = selectedCategoryIds.contains(node.category.id)
+                val cascadedSelected = ancestorSelected || isThisSelected
                 add(
                     TreeItem(
-                        id = "category_${'$'}{node.category.id}",
+                        id = "category_${node.category.id}",
                         level = level,
                         content = {
                             CategoryItem(
                                 category = node.category,
                                 isExpanded = expanded.contains(node.category.id),
-                                isSelected = selectedBookIdOverride == null && (selectedCategoryIdOverride?.let { it == node.category.id } == true),
-                                onClick = {
-                                    // Toggle expansion + apply search filter
-                                    onEvent(io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent.CategorySelected(node.category))
-                                    searchViewModel.filterByCategoryId(node.category.id)
-                                },
+                                // In search mode, highlight remains aligned with checkbox selection
+                                isSelected = isThisSelected,
+                                onClick = { onCategoryRowClick(node.category) },
                                 count = node.count,
-                                showCount = true
+                                showCount = true,
+                                checkboxChecked = isThisSelected,
+                                onCheckboxToggle = { checked ->
+                                    // Checkbox exclusively controls selection
+                                    onCategoryCheckedChange(node.category.id, checked)
+                                }
                             )
                         }
                     )
@@ -228,25 +226,40 @@ fun SearchResultCategoryTreeView(
                     node.books.forEach { sb ->
                         add(
                             TreeItem(
-                                id = "book_${'$'}{sb.book.id}",
+                                id = "book_${sb.book.id}",
                                 level = level + 1,
                                 content = {
+                                    val checkedByBook = selectedBookIds.contains(sb.book.id)
+                                    val checkedByCategory = cascadedSelected
+                                    val isChecked = checkedByBook || checkedByCategory
                                     BookItem(
                                         book = sb.book,
-                                        isSelected = selectedBookIdOverride?.let { it == sb.book.id } == true,
-                                        onClick = { searchViewModel.filterByBookId(sb.book.id) },
+                                        // Align highlight with effective checkbox (book OR cascaded category)
+                                        isSelected = isChecked,
+                                        onClick = {
+                                            // Do not toggle selection when clicking the row in search mode
+                                            // Intentionally no-op to avoid checking the checkbox
+                                        },
                                         count = sb.count,
-                                        showCount = true
+                                        showCount = true,
+                                        checkboxChecked = isChecked,
+                                        onCheckboxToggle = { checked ->
+                                            onBookCheckedChange(sb.book.id, checked)
+                                            if (checked) {
+                                                // Ensure TOC panel appears for this book
+                                                onEnsureScopeBookForToc(sb.book.id)
+                                            }
+                                        }
                                     )
                                 }
                             )
                         )
                     }
                     // Child categories
-                    node.children.forEach { child -> addNode(child, level + 1) }
+                    node.children.forEach { child -> addNode(child, level + 1, cascadedSelected) }
                 }
             }
-            searchTree.forEach { addNode(it, 0) }
+            searchTree.forEach { addNode(it, 0, false) }
         }
     }
 
@@ -262,7 +275,7 @@ fun SearchResultCategoryTreeView(
         }
 
         // Loader overlay while applying filters, with fast fade
-        androidx.compose.animation.AnimatedVisibility(
+        AnimatedVisibility(
             visible = isFiltering,
             enter = fadeIn(tween(durationMillis = 120, easing = LinearEasing)),
             exit = fadeOut(tween(durationMillis = 120, easing = LinearEasing))
@@ -377,7 +390,9 @@ private fun CategoryItem(
     isSelected: Boolean,
     onClick: () -> Unit,
     count: Int,
-    showCount: Boolean
+    showCount: Boolean,
+    checkboxChecked: Boolean? = null,
+    onCheckboxToggle: ((Boolean) -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -398,6 +413,12 @@ private fun CategoryItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
+        if (checkboxChecked != null && onCheckboxToggle != null) {
+            Checkbox(
+                checked = checkboxChecked,
+                onCheckedChange = onCheckboxToggle
+            )
+        }
         ChevronIcon(
             expanded = isExpanded,
             tint = JewelTheme.globalColors.text.normal,
@@ -419,11 +440,19 @@ private fun BookItem(
     isSelected: Boolean,
     onClick: () -> Unit,
     count: Int,
-    showCount: Boolean
+    showCount: Boolean,
+    checkboxChecked: Boolean? = null,
+    onCheckboxToggle: ((Boolean) -> Unit)? = null
 ) {
     SelectableRow(isSelected = isSelected, onClick = onClick) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (checkboxChecked != null && onCheckboxToggle != null) {
+                    Checkbox(
+                        checked = checkboxChecked,
+                        onCheckedChange = onCheckboxToggle
+                    )
+                }
                 Icon(
                    imageVector = Book_2,
                     contentDescription = null,
@@ -436,5 +465,3 @@ private fun BookItem(
         }
     }
 }
-
-// CountBadge is now shared in core.presentation.components

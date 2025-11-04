@@ -69,7 +69,7 @@ class DownloadViewModel(
                 _total.value = null
                 _speed.value = 0L
 
-                val zstPath = useCase.downloadLatestDatabase { read, total, progress, speed ->
+                val path = useCase.downloadLatestBundle { read, total, progress, speed ->
                     _downloaded.value = read
                     _total.value = total
                     _progress.value = progress
@@ -81,7 +81,7 @@ class DownloadViewModel(
                 _progress.value = 1f
                 _completed.value = true
                 // Make the result available to the extraction step
-                processRepository.setPendingZstPath(zstPath)
+                processRepository.setPendingZstPath(path)
             }.onFailure {
                 _inProgress.value = false
                 _speed.value = 0L
@@ -90,4 +90,3 @@ class DownloadViewModel(
         }
     }
 }
-

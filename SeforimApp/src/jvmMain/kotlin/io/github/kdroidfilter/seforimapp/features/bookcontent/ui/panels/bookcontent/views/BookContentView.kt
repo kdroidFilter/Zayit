@@ -76,6 +76,9 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -346,12 +349,12 @@ fun BookContentView(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize().onPreviewKeyEvent(previewKeyHandler)) {
+    Box(modifier = modifier.fillMaxSize().padding(bottom = 8.dp).onPreviewKeyEvent(previewKeyHandler)) {
         // Content with text selection
         SelectionContainer(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize().padding(end = 16.dp)
             ) {
             items(
                 count = lazyPagingItems.itemCount,
@@ -411,8 +414,27 @@ fun BookContentView(
             }
         }
 
-        // Find-in-page bar overlay (top-start) using shared component
+        // Find-in-page bar overlay with result count badge (uniform style)
         if (showFind) {
+            // Compute total matches across currently loaded snapshot (approximate)
+            val queryText = findState.text.toString()
+            val snapshotItems = lazyPagingItems.itemSnapshotList.items
+            val matchCount = remember(queryText, snapshotItems) {
+                if (queryText.length < 2) 0 else {
+                    var total = 0
+                    // Count non-overlapping occurrences per visible/loaded line
+                    for (ln in snapshotItems) {
+                        if (ln == null) continue
+                        val text = try { buildAnnotatedFromHtml(ln.content, textSize).text } catch (_: Throwable) { ln.content }
+                        var idx = text.indexOf(queryText, ignoreCase = true)
+                        while (idx >= 0) {
+                            total += 1
+                            idx = text.indexOf(queryText, startIndex = idx + queryText.length, ignoreCase = true)
+                        }
+                    }
+                    total
+                }
+            }
             Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -420,6 +442,19 @@ fun BookContentView(
                     .zIndex(2f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (queryText.length >= 2) {
+                    // Wrap badge in a small panel background to improve border contrast,
+                    // keeping the badge's own border color (disabled) identical to the tree.
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(JewelTheme.globalColors.panelBackground)
+                            .padding(2.dp)
+                    ) {
+                        CountBadge(count = matchCount)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
                 FindInPageBar(
                     state = findState,
                     onEnterNext = { navigateToMatch(true) },

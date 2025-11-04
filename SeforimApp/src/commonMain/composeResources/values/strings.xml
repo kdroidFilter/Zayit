@@ -46,6 +46,7 @@
     <string name="settings_category_profile">פרופיל</string>
     <string name="settings_category_region">אזור</string>
     <string name="settings_category_fonts">גופנים</string>
+    <string name="settings_category_info">מידע</string>
     <string name="add_tab">הוסף לשונית</string>
     <string name="home">דף הבית</string>
     <string name="close_tab">סגור לשונית</string>
@@ -288,6 +289,9 @@
     <string name="settings_ok">אישור</string>
     <string name="settings_cancel">ביטול</string>
     <string name="settings_apply">החל</string>
+
+    <!-- Settings > Info -->
+    <string name="settings_info_app_version">גרסה: %1$s</string>
 
 
 </resources>

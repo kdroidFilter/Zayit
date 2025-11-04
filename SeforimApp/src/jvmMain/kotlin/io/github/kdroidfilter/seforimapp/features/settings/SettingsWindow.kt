@@ -62,6 +62,7 @@ import seforimapp.seforimapp.generated.resources.settings_category_general
 import seforimapp.seforimapp.generated.resources.settings_category_profile
 import seforimapp.seforimapp.generated.resources.settings_category_region
 import seforimapp.seforimapp.generated.resources.settings_ok
+import seforimapp.seforimapp.generated.resources.settings_category_info
 
 @Composable
 fun SettingsWindow(onClose: () -> Unit) {
@@ -157,6 +158,7 @@ private fun SettingsWindowView(
                             currentRoute.contains("Profile") -> stringResource(Res.string.settings_category_profile)
                             currentRoute.contains("Region") -> stringResource(Res.string.settings_category_region)
                             currentRoute.contains("Fonts") -> stringResource(Res.string.settings_category_fonts)
+                            currentRoute.contains("Info") -> stringResource(Res.string.settings_category_info)
                             else -> stringResource(Res.string.settings)
                         }
 

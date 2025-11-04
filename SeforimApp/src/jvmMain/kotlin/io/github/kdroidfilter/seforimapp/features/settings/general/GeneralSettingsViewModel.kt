@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.kdroidfilter.platformtools.appmanager.restartApplication
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -54,9 +55,26 @@ class GeneralSettingsViewModel : ViewModel() {
                 ramSaver.value = event.value
             }
             is GeneralSettingsEvents.ResetApp -> {
-                runCatching { AppSettings.getDatabasePath() }
-                    .getOrNull()
-                    ?.let { path -> kotlin.runCatching { java.io.File(path).delete() } }
+                val dbPath = runCatching { AppSettings.getDatabasePath() }.getOrNull()
+                if (!dbPath.isNullOrBlank()) {
+                    val dbFile = File(dbPath)
+                    val baseDir = dbFile.parentFile
+                    // Delete DB file
+                    runCatching { if (dbFile.exists()) dbFile.delete() }
+                    // Delete Lucene index directories next to the DB
+                    if (baseDir != null && baseDir.exists()) {
+                        val dirNames = listOf(
+                            dbFile.name + ".lucene",
+                            dbFile.name + ".lookup.lucene",
+                            dbFile.name + ".luceneindex",
+                            dbFile.name + ".lookupindex",
+                        )
+                        dirNames.forEach { name ->
+                            val d = File(baseDir, name)
+                            if (d.exists()) runCatching { d.deleteRecursively() }
+                        }
+                    }
+                }
                 AppSettings.clearAll()
                 restartApplication()
                 resetDone.value = true

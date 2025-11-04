@@ -38,6 +38,7 @@ import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.iconButtonStyle
 import androidx.compose.ui.zIndex
+import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 // animation imports are at top; remove stray duplicates at file end if any
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -436,18 +437,4 @@ private fun BookItem(
     }
 }
 
-@Composable
-private fun CountBadge(count: Int) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(JewelTheme.globalColors.panelBackground)
-            .border(1.dp, JewelTheme.globalColors.borders.disabled, RoundedCornerShape(6.dp))
-    ) {
-        Text(
-            text = count.toString(),
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            color = JewelTheme.globalColors.text.disabled
-        )
-    }
-}
+// CountBadge is now shared in core.presentation.components

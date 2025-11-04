@@ -15,5 +15,7 @@ sealed interface SettingsDestination {
 
     @Serializable
     data object Fonts : SettingsDestination
-}
 
+    @Serializable
+    data object Info : SettingsDestination
+}

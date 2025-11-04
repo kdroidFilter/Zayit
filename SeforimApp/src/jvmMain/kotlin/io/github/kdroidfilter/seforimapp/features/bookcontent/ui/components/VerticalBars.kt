@@ -49,30 +49,30 @@ fun StartVerticalBar(
             )
         },
         bottomContent = {
-            SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.my_bookmarks),
-                onClick = { },
-                isSelected = false,
-                icon = JournalBookmark,
-                iconDescription = stringResource(Res.string.bookmarks),
-                label = stringResource(Res.string.bookmarks)
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.my_commentaries),
-                onClick = { },
-                isSelected = false,
-                icon = JournalText,
-                iconDescription = stringResource(Res.string.my_commentaries_label),
-                label = stringResource(Res.string.my_commentaries_label)
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.write_note_tooltip),
-                onClick = { },
-                isSelected = false,
-                icon = NotebookPen,
-                iconDescription = stringResource(Res.string.write_note),
-                label = stringResource(Res.string.write_note)
-            )
+//            SelectableIconButtonWithToolip(
+//                toolTipText = stringResource(Res.string.my_bookmarks),
+//                onClick = { },
+//                isSelected = false,
+//                icon = JournalBookmark,
+//                iconDescription = stringResource(Res.string.bookmarks),
+//                label = stringResource(Res.string.bookmarks)
+//            )
+//            SelectableIconButtonWithToolip(
+//                toolTipText = stringResource(Res.string.my_commentaries),
+//                onClick = { },
+//                isSelected = false,
+//                icon = JournalText,
+//                iconDescription = stringResource(Res.string.my_commentaries_label),
+//                label = stringResource(Res.string.my_commentaries_label)
+//            )
+//            SelectableIconButtonWithToolip(
+//                toolTipText = stringResource(Res.string.write_note_tooltip),
+//                onClick = { },
+//                isSelected = false,
+//                icon = NotebookPen,
+//                iconDescription = stringResource(Res.string.write_note),
+//                label = stringResource(Res.string.write_note)
+//            )
         }
     )
 }
@@ -120,17 +120,17 @@ fun EndVerticalBar(
                 iconDescription = stringResource(Res.string.zoom_out),
                 label = stringResource(Res.string.zoom_out),
             )
-            SelectableIconButtonWithToolip(
-                toolTipText = stringResource(
-                    if (noBookSelected) Res.string.please_select_a_book else Res.string.add_bookmark_tooltip
-                ),
-                onClick = { },
-                isSelected = false,
-                icon = Bookmark,
-                iconDescription = stringResource(Res.string.add_bookmark),
-                label = stringResource(Res.string.add_bookmark),
-                enabled = !noBookSelected
-            )
+//            SelectableIconButtonWithToolip(
+//                toolTipText = stringResource(
+//                    if (noBookSelected) Res.string.please_select_a_book else Res.string.add_bookmark_tooltip
+//                ),
+//                onClick = { },
+//                isSelected = false,
+//                icon = Bookmark,
+//                iconDescription = stringResource(Res.string.add_bookmark),
+//                label = stringResource(Res.string.add_bookmark),
+//                enabled = !noBookSelected
+//            )
         },
         bottomContent = {
 
@@ -165,19 +165,19 @@ fun EndVerticalBar(
                 enabled = commentaryEnabled
             )
             // Show Links button (UI-only for now)
-            SelectableIconButtonWithToolip(
-                toolTipText = when {
-                    noBookSelected -> stringResource(Res.string.please_select_a_book)
-                    linksEnabled -> stringResource(Res.string.show_links_tooltip)
-                    else -> stringResource(Res.string.links_not_available_in_book)
-                },
-                onClick = { },
-                isSelected = false,
-                icon = Library_books,
-                iconDescription = stringResource(Res.string.show_links),
-                label = stringResource(Res.string.show_links),
-                enabled = linksEnabled
-            )
+//            SelectableIconButtonWithToolip(
+//                toolTipText = when {
+//                    noBookSelected -> stringResource(Res.string.please_select_a_book)
+//                    linksEnabled -> stringResource(Res.string.show_links_tooltip)
+//                    else -> stringResource(Res.string.links_not_available_in_book)
+//                },
+//                onClick = { },
+//                isSelected = false,
+//                icon = Library_books,
+//                iconDescription = stringResource(Res.string.show_links),
+//                label = stringResource(Res.string.show_links),
+//                enabled = linksEnabled
+//            )
 
         }
     )

@@ -186,7 +186,7 @@ object AppSettings {
     }
 
     fun getTargumFontCode(): String {
-        return settings[KEY_FONT_TARGUM, "notorashihebrew"]
+        return settings[KEY_FONT_TARGUM, "frankruhllibre"]
     }
 
     fun setTargumFontCode(code: String) {

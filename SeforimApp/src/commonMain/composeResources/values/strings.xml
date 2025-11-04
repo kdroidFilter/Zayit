@@ -216,6 +216,8 @@
     <string name="onboarding_download_progress">%1$s / %2$s</string>
     <string name="retry_button">נסה שוב</string>
     <string name="save_button">שמור</string>
+    <!-- Speed / network -->
+    <string name="speed_calculating">מחשב את המהירות...</string>
     <!-- Disk space check -->
     <string name="onboarding_disk_title">בדיקת שטח פנוי בדיסק</string>
     <string name="onboarding_disk_space_sufficient">קיים מספיק שטח פנוי</string>
@@ -236,7 +238,8 @@
     <string name="bytes_unit_mb">מ״ב</string>
     <string name="bytes_unit_gb">ג״ב</string>
     <string name="bytes_unit_tb">ט״ב</string>
-    <string name="bytes_per_second_pattern">%s/שנייה</string>
+    <string name="bytes_per_second_pattern">%1$s/שנייה</string>
+    <string name="eta_calculating">מחשב את הזמן הנותר...</string>
     <!-- ETA units -->
     <string name="eta_hours_unit_singular">שעה</string>
     <string name="eta_hours_unit_plural">שעות</string>
@@ -292,6 +295,10 @@
 
     <!-- Settings > Info -->
     <string name="settings_info_app_version">גרסה: %1$s</string>
+    <string name="settings_info_created_by">נוצר על ידי Elie Gambache - KdroidFilter</string>
+    <string name="settings_info_open_source">יישום זה הוא קוד פתוח תחת רישיון AGPL-3.0; ניתן להשתמש ולהפיץ בהתאם לתנאי הרישיון.</string>
+    <string name="settings_info_repo_prompt">ניתן לעיין בקוד המקור במאגר:</string>
+    <string name="settings_info_repo_url_text">https://github.com/kdroidFilter/SeforimApp</string>
 
 
 </resources>

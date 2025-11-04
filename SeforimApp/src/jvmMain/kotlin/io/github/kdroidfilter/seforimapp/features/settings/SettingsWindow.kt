@@ -131,7 +131,7 @@ private fun SettingsWindowView(
                     SettingsSidebar(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .width(260.dp),
+                            .width(120.dp),
                         navController = navController
                     )
 

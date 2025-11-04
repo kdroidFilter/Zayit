@@ -166,6 +166,17 @@ fun HomeView(
                         // In REFERENCE mode, repurpose the first TextField as the predictive
                         // Book picker (with Category/Book suggestions). Enter should NOT open.
                         val isReferenceMode = searchUi.selectedFilter == SearchFilter.REFERENCE
+                        val topSearchFocusRequester = remember { FocusRequester() }
+                        // When switching to REFERENCE mode, focus the first (top) text field
+                        LaunchedEffect(searchUi.selectedFilter) {
+                            // When switching modes, always focus the top text field
+                            if (searchUi.selectedFilter == SearchFilter.REFERENCE ||
+                                searchUi.selectedFilter == SearchFilter.TEXT) {
+                                // small delay to ensure composition is settled
+                                delay(100)
+                                topSearchFocusRequester.requestFocus()
+                            }
+                        }
                         val mappedCategorySuggestionsForBar = searchUi.categorySuggestions.map { cs ->
                             CategorySuggestion(cs.category, cs.path)
                         }
@@ -183,6 +194,7 @@ fun HomeView(
                             },
                             modifier = Modifier,
                             showIcon = !isReferenceMode,
+                            focusRequester = topSearchFocusRequester,
                             // Suggestions: in REFERENCE mode show only books; in TEXT mode none here
                             suggestionsVisible = if (isReferenceMode) searchUi.suggestionsVisible else false,
                             categorySuggestions = emptyList(),

@@ -84,7 +84,7 @@ jobs:
         shell: bash
         run: |
           chmod +x ./gradlew
-          ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseDmg
+          ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleasePkg
 
       # 5) Upload artifacts
       - name: Upload Linux .deb

@@ -408,24 +408,6 @@ private fun SearchResultContent(viewModel: SearchResultViewModel) {
 
             Spacer(Modifier.height(8.dp))
 
-            // Scope breadcrumb if filtered to a book or category
-            if (state.scopeBook != null || state.scopeCategoryPath.isNotEmpty()) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-                    val pieces = buildList {
-                        addAll(state.scopeCategoryPath.map { it.title })
-                        state.scopeBook?.let { add(it.title) }
-                    }
-                    pieces.forEachIndexed { index, piece ->
-                        if (index > 0) Text(
-                            text = stringResource(Res.string.breadcrumb_separator),
-                            color = JewelTheme.globalColors.text.disabled,
-                            fontSize = commentSize.sp
-                        )
-                        Text(text = piece, fontSize = commentSize.sp)
-                    }
-                }
-            }
-
             // Inline progress above replaces the old loading row/spinner
 
             // Results list

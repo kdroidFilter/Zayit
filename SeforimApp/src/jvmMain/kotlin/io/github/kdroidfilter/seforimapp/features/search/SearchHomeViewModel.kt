@@ -84,13 +84,29 @@ class SearchHomeViewModel(
                         val pattern = "%$q%"
                         // Categories
                         val catsRaw = repository
-                            .findCategoriesByTitleLike(pattern, limit = 12)
+                            .findCategoriesByTitleLike(pattern, limit = 50)
                             .filter { it.title.isNotBlank() }
                             .distinctBy { it.id }
-                        val catSuggestions = catsRaw.map { cat ->
-                            val path = buildCategoryPathTitles(cat.id)
-                            CategorySuggestionDto(cat, path.ifEmpty { listOf(cat.title) })
+                        // Rank helper for category titles against raw query
+                        fun catTitleRank(title: String): Int = when {
+                            title.equals(q, ignoreCase = true) -> 0
+                            title.startsWith(q, ignoreCase = true) -> 1
+                            title.contains(q, ignoreCase = true) -> 2
+                            else -> 3
                         }
+                        val catItems = catsRaw.map { cat ->
+                            val path = buildCategoryPathTitles(cat.id)
+                            val depth = repository.getCategoryDepth(cat.id)
+                            CategorySuggestionDto(cat, path.ifEmpty { listOf(cat.title) }) to depth
+                        }
+                        // Prioritize: 1) shallower hierarchy, 2) better title match
+                        val catSuggestions = catItems
+                            .sortedWith(
+                                compareBy<Pair<CategorySuggestionDto, Int>> { it.second }
+                                    .thenBy { catTitleRank(it.first.category.title) }
+                            )
+                            .map { it.first }
+                            .take(12)
                         // Books via lookup index (title variants + acronyms + topics) with prefix per token
                         val bookIds = lookup.searchBooksPrefix(qNorm, limit = 50)
                         val lookupBooks = bookIds.mapNotNull { id ->
@@ -155,8 +171,11 @@ class SearchHomeViewModel(
                     } else {
                         val allToc = repository.getBookToc(book.id)
                         val matches = allToc
+                            .asSequence()
                             .filter { it.text.isNotBlank() && it.text.contains(q, ignoreCase = true) }
+                            .sortedWith(compareBy<TocEntry> { it.level }.thenBy { it.text })
                             .take(30)
+                            .toList()
                         val suggestions = matches.map { toc ->
                             val path = buildTocPathTitles(toc)
                             TocSuggestionDto(toc, path)

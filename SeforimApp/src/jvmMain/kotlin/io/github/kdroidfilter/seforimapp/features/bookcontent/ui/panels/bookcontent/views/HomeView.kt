@@ -245,10 +245,12 @@ fun HomeView(
                                 categorySuggestions = mappedCategorySuggestions,
                                 bookSuggestions = mappedBookSuggestions,
                                 selectedBook = searchUi.selectedScopeBook,
+                                selectedCategory = searchUi.selectedScopeCategory,
                                 tocSuggestionsVisible = searchUi.tocSuggestionsVisible,
                                 tocSuggestions = mappedTocSuggestions,
                                 onSubmit = onSubmitAction,
                                 submitAfterPick = afterPickSubmit,
+                                submitOnEnterIfSelection = !isReferenceMode,
                                 // Hide the left Category/Book field in REFERENCE mode
                                 showCategoryBookField = !isReferenceMode,
                                 tocPreviewHints = searchUi.tocPreviewHints,
@@ -281,9 +283,12 @@ fun HomeView(
                                 val canOpen = searchUi.selectedScopeBook != null || searchUi.selectedScopeToc != null
                                 Row(
                                     horizontalArrangement = Arrangement.Center,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                                 ) {
-                                    DefaultButton(onClick = { openReference() }, enabled = canOpen) {
+                                    DefaultButton(
+                                        onClick = { openReference() },
+                                        enabled = canOpen,
+                                    ) {
                                         Text(stringResource(Res.string.open_book))
                                     }
                                 }
@@ -417,10 +422,12 @@ private fun ReferenceByCategorySection(
     categorySuggestions: List<CategorySuggestion> = emptyList(),
     bookSuggestions: List<BookSuggestion> = emptyList(),
     selectedBook: BookModel? = null,
+    selectedCategory: Category? = null,
     tocSuggestionsVisible: Boolean = false,
     tocSuggestions: List<TocSuggestion> = emptyList(),
     onSubmit: () -> Unit = {},
     submitAfterPick: Boolean = false,
+    submitOnEnterIfSelection: Boolean = false,
     showCategoryBookField: Boolean = true,
     tocPreviewHints: List<String> = emptyList(),
     showHeader: Boolean = true,
@@ -476,6 +483,8 @@ private fun ReferenceByCategorySection(
                         suggestionsVisible = suggestionsVisible,
                         categorySuggestions = categorySuggestions,
                         bookSuggestions = bookSuggestions,
+                        selectedBook = selectedBook,
+                        selectedCategory = selectedCategory,
                         placeholderHints = bookHints,
                         onPickCategory = { picked ->
                             onPickCategory(picked)
@@ -485,7 +494,8 @@ private fun ReferenceByCategorySection(
                             onPickBook(picked)
                             if (submitAfterPick) onSubmit()
                         },
-                        onSubmit = {}
+                        onSubmit = onSubmit,
+                        submitOnEnterIfSelection = submitOnEnterIfSelection
                     )
                 }
             }
@@ -798,6 +808,7 @@ private fun SearchBar(
     tocSuggestionsVisible: Boolean = false,
     tocSuggestions: List<TocSuggestion> = emptyList(),
     selectedBook: BookModel? = null,
+    selectedCategory: Category? = null,
     onPickToc: (TocSuggestion) -> Unit = {},
     // Focus & popup control
     autoFocus: Boolean = true,
@@ -807,6 +818,8 @@ private fun SearchBar(
     placeholderHints: List<String>? = null,
     // Synchronized placeholder override (renders plain text if provided)
     placeholderText: String? = null,
+    // In text-mode left field, allow Enter to submit when a selection exists and no suggestion is focused
+    submitOnEnterIfSelection: Boolean = false,
 ) {
     // Hints from string resources
     val referenceHints = listOf(
@@ -889,6 +902,11 @@ private fun SearchBar(
                                             val idx = focusedIndex - categoriesCount
                                             val picked = bookSuggestions.getOrNull(idx)
                                             if (picked != null) onPickBook(picked)
+                                        }
+                                    } else {
+                                        // No suggestion focused/visible: if a selection exists, allow submit (text-mode behavior)
+                                        if (submitOnEnterIfSelection && (selectedBook != null || selectedCategory != null)) {
+                                            onSubmit()
                                         }
                                     }
                                 }
@@ -1001,8 +1019,8 @@ private fun SearchBar(
                             tocSuggestions = tocSuggestions,
                             onPickToc = onPickToc,
                             focusedIndex = focusedIndex,
-                            selectedBook = selectedBook
-                        )
+                    selectedBook = selectedBook
+                )
                     } else {
                         SuggestionsPanel(
                             categorySuggestions = categorySuggestions,

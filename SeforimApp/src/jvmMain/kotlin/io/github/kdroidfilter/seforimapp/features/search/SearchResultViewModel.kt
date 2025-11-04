@@ -26,11 +26,14 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -205,13 +208,15 @@ class SearchResultViewModel(
     val isFilteringFlow: StateFlow<Boolean> =
         filterKeyFlow
             .drop(1) // ignore initial state on first subscription
-            .flatMapLatest {
-                kotlinx.coroutines.flow.flow {
-                    emit(true)
-                    // Wait for the next recomputation of visible results
-                    visibleResultsFlow.drop(1).first()
-                    emit(false)
+            .flatMapLatest { newKey ->
+                // Show until visibleResultsFlow emits for the current filter key.
+                combine(visibleResultsFlow, filterKeyFlow) { _, currentKey ->
+                    currentKey == newKey
                 }
+                    .filter { it }
+                    .take(1)
+                    .map { false }
+                    .onStart { emit(true) }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
@@ -488,11 +493,13 @@ class SearchResultViewModel(
                     val now = System.nanoTime()
                     val sizeDelta = acc.size - lastEmittedSize
                     if (force || sizeDelta >= EMIT_RESULTS_STEP || (now - lastEmitNanos) >= EMIT_MIN_INTERVAL_NS) {
-                        // Sort by rank desc, then exact raw match, then category depth asc
-                        val sorted = acc.sortedWith(compareByDescending<SearchResult> { it.rank }
-                            .thenByDescending { exactRawMatchByLineId[it.lineId] == true }
-                            .thenBy { depthByBookId[it.bookId] ?: Int.MAX_VALUE }
-                            .thenBy { it.lineIndex })
+                        // Sort by hierarchy depth first (shallow first), then rank desc, then exact raw match
+                        val sorted = acc.sortedWith(
+                            compareBy<SearchResult> { depthByBookId[it.bookId] ?: Int.MAX_VALUE }
+                                .thenByDescending { it.rank }
+                                .thenByDescending { exactRawMatchByLineId[it.lineId] == true }
+                                .thenBy { it.lineIndex }
+                        )
                         _uiState.value = _uiState.value.copy(
                             results = sorted,
                             scrollToAnchorTimestamp = System.currentTimeMillis(),

@@ -11,11 +11,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbr-21.0.9-linux-x64-b895.147.tar.gz"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-linux-x64-b895.147.tar.gz"
           - os: windows-latest
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbr-21.0.9-windows-x64-b895.147.zip"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-windows-x64-b895.147.zip"
           - os: macos-latest  # runner Apple Silicon (ARM64)
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbr-21.0.9-osx-aarch64-b895.147.pkg"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-osx-aarch64-b895.147.pkg"
 
     steps:
       # 1) Checkout with tags and submodules

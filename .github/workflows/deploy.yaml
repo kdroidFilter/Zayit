@@ -1,4 +1,4 @@
-name: Build and Release Compose Desktop App (Linux deb, Windows msi with JBR)
+name: Build and Release Compose Desktop App (Linux deb, Windows msi, macOS dmg with JBR)
 on:
   push:
     tags:
@@ -9,7 +9,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbr_jcef-21.0.9-linux-x64-b895.147.tar.gz"
+          - os: windows-latest
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbr_jcef-21.0.9-windows-x64-b895.147.zip"
+          - os: macos-13   # runner Intel (x64)
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbr_jcef-21.0.9-osx-x64-b895.147.pkg"
+          - os: macos-latest  # runner Apple Silicon (ARM64)
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbr_jcef-21.0.9-osx-aarch64-b895.147.pkg"
 
     steps:
       # 1) Checkout with tags and submodules
@@ -19,13 +27,40 @@ jobs:
           fetch-depth: 0          # ensure tags are available
           submodules: recursive   # pull submodules (including nested)
 
-      # 2) Set up JetBrains JDK (JBR) on both OSes
-      - name: Set up JetBrains JDK (JBR 21)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'jetbrains'
-          java-version: '21'
-          token: ${{ secrets.GITHUB_TOKEN }}
+      # 2) Install JetBrains JDK (JBR 21.0.9 + JCEF) from provided URLs per-OS and set JAVA_HOME
+      - name: Install JBR on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L -o jbr.tar.gz "${{ matrix.jdk_url }}"
+          mkdir -p "$RUNNER_TEMP/jbr"
+          tar -xzf jbr.tar.gz -C "$RUNNER_TEMP/jbr"
+          JBR_DIR=$(find "$RUNNER_TEMP/jbr" -maxdepth 1 -type d -name "jbr*" | head -n 1)
+          echo "JAVA_HOME=$JBR_DIR" >> "$GITHUB_ENV"
+          echo "$JBR_DIR/bin" >> "$GITHUB_PATH"
+
+      - name: Install JBR on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest -Uri "${{ matrix.jdk_url }}" -OutFile "$env:RUNNER_TEMP\jbr.zip"
+          Expand-Archive -Path "$env:RUNNER_TEMP\jbr.zip" -DestinationPath "$env:RUNNER_TEMP\jbr" -Force
+          $jbrDir = Get-ChildItem "$env:RUNNER_TEMP\jbr" | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+          "$([string]::Format('JAVA_HOME={0}', $jbrDir.FullName))" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "$($jbrDir.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Install JBR on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L -o jbr.pkg "${{ matrix.jdk_url }}"
+          sudo installer -pkg jbr.pkg -target /
+          export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+          echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
 
       # 3) Configure Gradle (cache + wrapper)
       - name: Set up Gradle
@@ -45,6 +80,13 @@ jobs:
         shell: pwsh
         run: .\gradlew.bat :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseMsi
 
+      - name: Build macOS .dmg
+        if: startsWith(matrix.os, 'macos')
+        shell: bash
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseDmg
+
       # 5) Upload artifacts
       - name: Upload Linux .deb
         if: matrix.os == 'ubuntu-latest'
@@ -60,6 +102,14 @@ jobs:
         with:
           name: windows-msi
           path: SeforimApp/build/compose/binaries/main-release/msi/*.msi
+          if-no-files-found: error
+
+      - name: Upload macOS .dmg
+        if: startsWith(matrix.os, 'macos')
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: SeforimApp/build/compose/binaries/main-release/dmg/*.dmg
           if-no-files-found: error
 
   release:
@@ -85,6 +135,11 @@ jobs:
         with:
           name: windows-msi
 
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-dmg
+
       # 2) Inspect
       - name: List downloaded files
         run: ls -R
@@ -96,5 +151,6 @@ jobs:
           files: |
             *.deb
             *.msi
+            *.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

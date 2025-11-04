@@ -35,7 +35,10 @@ data class SearchHomeUiState(
     val selectedScopeCategory: Category? = null,
     val selectedScopeBook: Book? = null,
     val selectedScopeToc: TocEntry? = null,
-    val userDisplayName: String = ""
+    val userDisplayName: String = "",
+    // Hints for the 2nd field placeholder when a book is selected
+    val tocPreviewHints: List<String> = emptyList(),
+    val pairedReferenceHints: List<Pair<String, String>> = emptyList()
 )
 
 class SearchHomeViewModel(
@@ -151,6 +154,24 @@ class SearchHomeViewModel(
                     }
                 }
         }
+
+        // Precompute a small set of (book, toc) pairs for synchronized placeholders
+        viewModelScope.launch {
+            val pairs = try {
+                val out = mutableListOf<Pair<String, String>>()
+                val books = repository.getAllBooks()
+                for (b in books) {
+                    val toc = try { repository.getBookToc(b.id) } catch (_: Exception) { emptyList() }
+                    val first = toc.firstOrNull { it.text.isNotBlank() }?.text
+                    if (first != null && out.none { it.first == b.title }) {
+                        out += b.title to first
+                    }
+                    if (out.size >= 5) break
+                }
+                out
+            } catch (_: Exception) { emptyList() }
+            _uiState.value = _uiState.value.copy(pairedReferenceHints = pairs)
+        }
     }
 
     fun onReferenceQueryChanged(query: String) {
@@ -160,6 +181,7 @@ class SearchHomeViewModel(
                 selectedScopeCategory = null,
                 selectedScopeBook = null,
                 selectedScopeToc = null,
+                tocPreviewHints = emptyList(),
             )
         }
     }
@@ -178,19 +200,35 @@ class SearchHomeViewModel(
             selectedScopeToc = null,
             suggestionsVisible = false,
             tocSuggestionsVisible = false,
-            tocSuggestions = emptyList()
+            tocSuggestions = emptyList(),
+            tocPreviewHints = emptyList()
         )
     }
 
     fun onPickBook(book: Book) {
+        // Update synchronously first
         _uiState.value = _uiState.value.copy(
             selectedScopeCategory = null,
             selectedScopeBook = book,
             selectedScopeToc = null,
             suggestionsVisible = false,
             tocSuggestionsVisible = false,
-            tocSuggestions = emptyList()
+            tocSuggestions = emptyList(),
+            tocPreviewHints = emptyList()
         )
+        // Load preview hints asynchronously
+        viewModelScope.launch {
+            val preview = runCatching {
+                repository
+                    .getBookToc(book.id)
+                    .asSequence()
+                    .mapNotNull { it.text.takeIf { t -> t.isNotBlank() } }
+                    .distinct()
+                    .take(5)
+                    .toList()
+            }.getOrElse { emptyList() }
+            _uiState.value = _uiState.value.copy(tocPreviewHints = preview)
+        }
     }
 
     fun onPickToc(toc: TocEntry) {

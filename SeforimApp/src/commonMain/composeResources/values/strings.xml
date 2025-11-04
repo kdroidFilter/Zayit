@@ -133,6 +133,20 @@
     <string name="reference_hint_4">ברכות דף ב עמוד א</string>
     <string name="reference_hint_5">תהילים פרק כג פסוק ד</string>
 
+    <!-- Book names only (for reference-mode first field) -->
+    <string name="reference_book_hint_1">משנה ברורה</string>
+    <string name="reference_book_hint_2">רמב"ם</string>
+    <string name="reference_book_hint_3">תהילים</string>
+    <string name="reference_book_hint_4">ברכות</string>
+    <string name="reference_book_hint_5">שו"ע אורח חיים</string>
+
+    <!-- TOC examples (for second field when no book yet) -->
+    <string name="reference_toc_hint_1">פרק א</string>
+    <string name="reference_toc_hint_2">סימן א</string>
+    <string name="reference_toc_hint_3">סעיף א</string>
+    <string name="reference_toc_hint_4">דף ב עמוד א</string>
+    <string name="reference_toc_hint_5">שער א</string>
+
     <string name="text_hint_1">הכל בידי שמים חוץ מיראת שמים</string>
     <string name="text_hint_2">ואהבת לרעך כמוך</string>
     <string name="text_hint_3">שמע ישראל ה׳ אלקינו ה׳ אחד</string>

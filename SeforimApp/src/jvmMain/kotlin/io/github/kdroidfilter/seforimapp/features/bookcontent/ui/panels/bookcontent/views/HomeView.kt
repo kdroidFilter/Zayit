@@ -18,6 +18,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -25,6 +27,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -57,8 +60,14 @@ import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.comboBoxStyle
 import org.jetbrains.skiko.Cursor
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.LayoutDirection
 import seforimapp.seforimapp.generated.resources.*
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
+import kotlin.math.roundToInt
 
 // SearchFilter moved to features.search.SearchFilter per architecture guidelines.
 
@@ -126,6 +135,15 @@ fun HomeView(
                 scope.launch { searchVm.openSelectedReferenceInCurrentTab() }
             }
 
+            // Book-only placeholder hints for the first field (reference mode)
+            val bookOnlyHintsGlobal = listOf(
+                stringResource(Res.string.reference_book_hint_1),
+                stringResource(Res.string.reference_book_hint_2),
+                stringResource(Res.string.reference_book_hint_3),
+                stringResource(Res.string.reference_book_hint_4),
+                stringResource(Res.string.reference_book_hint_5)
+            )
+
             // Main search field focus handled inside SearchBar via autoFocus
 
             LazyColumn(
@@ -145,15 +163,44 @@ fun HomeView(
                 }
                 item {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        // In REFERENCE mode, repurpose the first TextField as the predictive
+                        // Book picker (with Category/Book suggestions). Enter should NOT open.
+                        val isReferenceMode = searchUi.selectedFilter == SearchFilter.REFERENCE
+                        val mappedCategorySuggestionsForBar = searchUi.categorySuggestions.map { cs ->
+                            CategorySuggestion(cs.category, cs.path)
+                        }
+                        val mappedBookSuggestionsForBar = searchUi.bookSuggestions.map { bs ->
+                            BookSuggestion(bs.book, bs.path)
+                        }
+                        val breadcrumbSeparatorTop = stringResource(Res.string.breadcrumb_separator)
                         SearchBar(
-                            state = searchState,
+                            state = if (isReferenceMode) referenceSearchState else searchState,
                             selectedFilter = searchUi.selectedFilter,
                             onFilterChange = { searchVm.onFilterChange(it) },
-                            onSubmit = { launchSearch() },
+                            onSubmit = if (isReferenceMode) { { /* no-op in reference mode */ } } else { { launchSearch() } },
                             onTab = {
                                 scopeExpanded = true
                             },
-                            modifier = Modifier
+                            modifier = Modifier,
+                            showIcon = !isReferenceMode,
+                            // Suggestions: in REFERENCE mode show only books; in TEXT mode none here
+                            suggestionsVisible = if (isReferenceMode) searchUi.suggestionsVisible else false,
+                            categorySuggestions = emptyList(),
+                            bookSuggestions = if (isReferenceMode) mappedBookSuggestionsForBar else emptyList(),
+                            placeholderHints = if (isReferenceMode) bookOnlyHintsGlobal else null,
+                            placeholderText = null,
+                            onPickCategory = { picked ->
+                                // Update VM and reflect breadcrumb in the bar input
+                                searchVm.onPickCategory(picked.category)
+                                val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparatorTop)
+                                referenceSearchState.edit { replace(0, length, full) }
+                            },
+                            onPickBook = { picked ->
+                                // Update VM and reflect breadcrumb in the bar input
+                                searchVm.onPickBook(picked.book)
+                                val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparatorTop)
+                                referenceSearchState.edit { replace(0, length, full) }
+                            }
                         )
                     }
                 }
@@ -202,6 +249,10 @@ fun HomeView(
                                 tocSuggestions = mappedTocSuggestions,
                                 onSubmit = onSubmitAction,
                                 submitAfterPick = afterPickSubmit,
+                                // Hide the left Category/Book field in REFERENCE mode
+                                showCategoryBookField = !isReferenceMode,
+                                tocPreviewHints = searchUi.tocPreviewHints,
+                                showHeader = !isReferenceMode,
                                 onPickCategory = { picked ->
                                     searchVm.onPickCategory(picked.category)
                                     val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparator)
@@ -370,157 +421,117 @@ private fun ReferenceByCategorySection(
     tocSuggestions: List<TocSuggestion> = emptyList(),
     onSubmit: () -> Unit = {},
     submitAfterPick: Boolean = false,
+    showCategoryBookField: Boolean = true,
+    tocPreviewHints: List<String> = emptyList(),
+    showHeader: Boolean = true,
     onPickCategory: (CategorySuggestion) -> Unit = {},
     onPickBook: (BookSuggestion) -> Unit = {},
     onPickToc: (TocSuggestion) -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
-    GroupHeader(
-        text = stringResource(Res.string.search_by_category_or_book),
-        modifier =
-            modifier
-                .clickable(indication = null, interactionSource = interactionSource) {
-                    onExpandedChange(!isExpanded)
+    if (showHeader) {
+        GroupHeader(
+            text = stringResource(Res.string.search_by_category_or_book),
+            modifier =
+                modifier
+                    .clickable(indication = null, interactionSource = interactionSource) {
+                        onExpandedChange(!isExpanded)
+                    }
+                    .hoverable(interactionSource)
+                    .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))),
+            startComponent = {
+                if (isExpanded) {
+                    Icon(AllIconsKeys.General.ChevronDown, stringResource(Res.string.chevron_icon_description))
+                } else {
+                    Icon(AllIconsKeys.General.ChevronLeft, stringResource(Res.string.chevron_icon_description))
                 }
-                .hoverable(interactionSource)
-                .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))),
-        startComponent = {
-            if (isExpanded) {
-                Icon(AllIconsKeys.General.ChevronDown, stringResource(Res.string.chevron_icon_description))
-            } else {
-                Icon(AllIconsKeys.General.ChevronLeft, stringResource(Res.string.chevron_icon_description))
-            }
-        },
-    )
-
-    if (!isExpanded) return
+            },
+        )
+        if (!isExpanded) return
+    }
 
     val refState = state ?: remember { TextFieldState() }
     val tocTfState = tocState ?: remember { TextFieldState() }
 
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Left: Category/Book Editable ComboBox with predictive suggestions
-            Column(Modifier.weight(1f)) {
-                val leftPopupManager = remember {
-                    PopupManager(onPopupVisibleChange = {}, name = "ReferenceScopePopup")
-                }
-                var leftFocusedIndex by remember { mutableIntStateOf(-1) }
-                val leftCategoriesCount = categorySuggestions.size
-                val leftTotal = leftCategoriesCount + bookSuggestions.size
-                LaunchedEffect(suggestionsVisible, categorySuggestions, bookSuggestions) {
-                    val visible = suggestionsVisible && (categorySuggestions.isNotEmpty() || bookSuggestions.isNotEmpty())
-                    leftPopupManager.setPopupVisible(visible)
-                    leftFocusedIndex = if (visible) 0 else -1
-                }
-                EditableComboBox(
-                    textFieldState = refState,
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    enabled = true,
-                    outline = Outline.None,
-                    interactionSource = remember { MutableInteractionSource() },
-                    style = JewelTheme.comboBoxStyle,
-                    textStyle = TextStyle(fontSize = 13.sp),
-                    onArrowDownPress = {
-                        if (leftTotal > 0) {
-                            leftFocusedIndex = (leftFocusedIndex + 1).coerceAtMost(leftTotal - 1)
-                        }
-                    },
-                    onArrowUpPress = {
-                        if (leftTotal > 0) {
-                            leftFocusedIndex = (leftFocusedIndex - 1).coerceAtLeast(0)
-                        }
-                    },
-                    onEnterPress = {
-                        if (leftFocusedIndex in 0 until leftTotal) {
-                            if (leftFocusedIndex < leftCategoriesCount) {
-                                val picked = categorySuggestions[leftFocusedIndex]
-                                onPickCategory(picked)
-                                if (submitAfterPick) onSubmit()
-                            } else {
-                                val idx = leftFocusedIndex - leftCategoriesCount
-                                val picked = bookSuggestions.getOrNull(idx)
-                                if (picked != null) {
-                                    onPickBook(picked)
-                                    if (submitAfterPick) onSubmit()
-                                }
-                            }
-                        } else {
-                            onSubmit()
-                        }
-                    },
-                    popupManager = leftPopupManager,
-                    popupContent = {
-                        SuggestionsPanel(
-                            categorySuggestions = categorySuggestions,
-                            bookSuggestions = bookSuggestions,
-                            onPickCategory = onPickCategory,
-                            onPickBook = onPickBook,
-                            focusedIndex = leftFocusedIndex
-                        )
-                    }
-                )
-            }
-
-            // Right: TOC Editable ComboBox with predictive suggestions
-            Column(Modifier.weight(1f)) {
-                val rightPopupManager = remember {
-                    PopupManager(onPopupVisibleChange = {}, name = "TocScopePopup")
-                }
-                var rightFocusedIndex by remember { mutableIntStateOf(-1) }
-                LaunchedEffect(tocSuggestionsVisible, tocSuggestions, selectedBook?.id) {
-                    val visible = selectedBook != null && tocSuggestionsVisible && tocSuggestions.isNotEmpty()
-                    rightPopupManager.setPopupVisible(visible)
-                    rightFocusedIndex = if (visible) 0 else -1
-                }
-                EditableComboBox(
-                    textFieldState = tocTfState,
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    enabled = selectedBook != null,
-                    outline = Outline.None,
-                    interactionSource = remember { MutableInteractionSource() },
-                    style = JewelTheme.comboBoxStyle,
-                    textStyle = TextStyle(fontSize = 13.sp),
-                    onArrowDownPress = {
-                        if (tocSuggestions.isNotEmpty()) {
-                            rightFocusedIndex = (rightFocusedIndex + 1).coerceAtMost(tocSuggestions.lastIndex)
-                        }
-                    },
-                    onArrowUpPress = {
-                        if (tocSuggestions.isNotEmpty()) {
-                            rightFocusedIndex = (rightFocusedIndex - 1).coerceAtLeast(0)
-                        }
-                    },
-                    onEnterPress = {
-                        if (rightFocusedIndex in tocSuggestions.indices) {
-                            onPickToc(tocSuggestions[rightFocusedIndex])
+            if (showCategoryBookField) {
+                // Left: Category/Book SearchBar with predictive suggestions (same look as ref mode)
+                Column(Modifier.weight(1f)) {
+                    val bookHints = listOf(
+                        stringResource(Res.string.reference_book_hint_1),
+                        stringResource(Res.string.reference_book_hint_2),
+                        stringResource(Res.string.reference_book_hint_3),
+                        stringResource(Res.string.reference_book_hint_4),
+                        stringResource(Res.string.reference_book_hint_5)
+                    )
+                    SearchBar(
+                        state = refState,
+                        selectedFilter = SearchFilter.REFERENCE, // force reference behavior for suggestions
+                        onFilterChange = {},
+                        showToggle = false,
+                        showIcon = false,
+                        enabled = true,
+                        suggestionsVisible = suggestionsVisible,
+                        categorySuggestions = categorySuggestions,
+                        bookSuggestions = bookSuggestions,
+                        placeholderHints = bookHints,
+                        onPickCategory = { picked ->
+                            onPickCategory(picked)
                             if (submitAfterPick) onSubmit()
-                        } else {
-                            onSubmit()
-                        }
-                    },
-                    popupManager = rightPopupManager,
-                    popupContent = {
-                        TocSuggestionsPanel(
-                            tocSuggestions = tocSuggestions,
-                            onPickToc = onPickToc,
-                            focusedIndex = rightFocusedIndex,
-                            selectedBook = selectedBook
-                        )
-                    }
-                )
+                        },
+                        onPickBook = { picked ->
+                            onPickBook(picked)
+                            if (submitAfterPick) onSubmit()
+                        },
+                        onSubmit = {}
+                    )
+                }
             }
-        }
-    }
 
-    // Once a book is selected, clear TOC field and move focus to it
-    LaunchedEffect(selectedBook?.id) {
-        if (selectedBook != null) {
-            // Clear previous TOC query when the book changes
-            tocTfState.edit { replace(0, length, "") }
+            // Right: TOC field — always visible but disabled until a book is selected
+            Column(Modifier.weight(1f)) {
+                val tocFocusRequester = remember { FocusRequester() }
+                val tocOnlyHints = listOf(
+                    stringResource(Res.string.reference_toc_hint_1),
+                    stringResource(Res.string.reference_toc_hint_2),
+                    stringResource(Res.string.reference_toc_hint_3),
+                    stringResource(Res.string.reference_toc_hint_4),
+                    stringResource(Res.string.reference_toc_hint_5)
+                )
+                SearchBar(
+                    state = tocTfState,
+                    selectedFilter = SearchFilter.REFERENCE,
+                    onFilterChange = {},
+                    showToggle = false,
+                    showIcon = false,
+                    enabled = selectedBook != null,
+                    suggestionsVisible = false,
+                    categorySuggestions = emptyList(),
+                    bookSuggestions = emptyList(),
+                    // TOC suggestions overlay
+                    tocSuggestionsVisible = tocSuggestionsVisible && selectedBook != null,
+                    tocSuggestions = tocSuggestions,
+                    selectedBook = selectedBook,
+                    onPickToc = { picked ->
+                        onPickToc(picked)
+                        if (submitAfterPick) onSubmit()
+                    },
+                    autoFocus = false,
+                    focusRequester = tocFocusRequester,
+                    // Remove animated placeholder for second field
+                    placeholderHints = null,
+                    placeholderText = ""
+                )
+                // Focus the second field as soon as a book is picked
+                LaunchedEffect(selectedBook?.id) {
+                    if (selectedBook != null) {
+                        tocTfState.edit { replace(0, length, "") }
+                        tocFocusRequester.requestFocus()
+                    }
+                }
+            }
         }
     }
 }
@@ -776,7 +787,26 @@ private fun SearchBar(
     showIcon: Boolean = true,
     onSubmit: () -> Unit = {},
     onTab: (() -> Unit)? = null,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    // Reference-mode suggestion parameters (ignored in TEXT mode)
+    suggestionsVisible: Boolean = false,
+    categorySuggestions: List<CategorySuggestion> = emptyList(),
+    bookSuggestions: List<BookSuggestion> = emptyList(),
+    onPickCategory: (CategorySuggestion) -> Unit = {},
+    onPickBook: (BookSuggestion) -> Unit = {},
+    // TOC suggestions (for the second field)
+    tocSuggestionsVisible: Boolean = false,
+    tocSuggestions: List<TocSuggestion> = emptyList(),
+    selectedBook: BookModel? = null,
+    onPickToc: (TocSuggestion) -> Unit = {},
+    // Focus & popup control
+    autoFocus: Boolean = true,
+    focusRequester: FocusRequester? = null,
+    onDismissSuggestions: () -> Unit = {},
+    // Placeholder hints override (animated)
+    placeholderHints: List<String>? = null,
+    // Synchronized placeholder override (renders plain text if provided)
+    placeholderText: String? = null,
 ) {
     // Hints from string resources
     val referenceHints = listOf(
@@ -795,7 +825,7 @@ private fun SearchBar(
         stringResource(Res.string.text_hint_5)
     )
 
-    val hints = if (selectedFilter == SearchFilter.REFERENCE) referenceHints else textHints
+    val hints = placeholderHints ?: if (selectedFilter == SearchFilter.REFERENCE) referenceHints else textHints
 
     // Restart animation cleanly when switching filter
     var filterVersion by remember { mutableStateOf(0) }
@@ -805,63 +835,187 @@ private fun SearchBar(
     val isUserTyping by remember { derivedStateOf { state.text.isNotEmpty() } }
 
     // Auto-focus the main search field on first composition
-    val focusRequester = remember { FocusRequester() }
+    val internalFocusRequester = remember { FocusRequester() }
+    val effectiveFocusRequester = focusRequester ?: internalFocusRequester
     LaunchedEffect(Unit) {
         delay(200)
-        if (enabled) focusRequester.requestFocus()
+        if (enabled && autoFocus) effectiveFocusRequester.requestFocus()
     }
 
-    TextField(
-        state = state,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(40.dp)
-            .onPreviewKeyEvent { ev ->
-                when {
-                    (ev.key == Key.Enter || ev.key == Key.NumPadEnter) && ev.type == KeyEventType.KeyUp -> {
-                        onSubmit(); true
+    // Predictive suggestions management for REFERENCE mode while keeping TextField style
+    var focusedIndex by remember { mutableIntStateOf(-1) }
+    var popupVisible by remember { mutableStateOf(false) }
+    val categoriesCount = categorySuggestions.size
+    val totalCatBook = categoriesCount + bookSuggestions.size
+    val totalToc = tocSuggestions.size
+    val usingToc = totalToc > 0 || tocSuggestionsVisible
+    LaunchedEffect(selectedFilter, suggestionsVisible, tocSuggestionsVisible, categorySuggestions, bookSuggestions, tocSuggestions) {
+        val shouldOpen = selectedFilter == SearchFilter.REFERENCE &&
+            ((suggestionsVisible && totalCatBook > 0) || (tocSuggestionsVisible && totalToc > 0))
+        popupVisible = shouldOpen
+        focusedIndex = if (shouldOpen) 0 else -1
+    }
+
+    var anchor by remember { mutableStateOf<AnchorBounds?>(null) }
+    Column(modifier = modifier.fillMaxWidth()) {
+        TextField(
+            state = state,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .onGloballyPositioned { coords ->
+                    val pos = coords.positionInWindow()
+                    anchor = AnchorBounds(
+                        windowOffset = IntOffset(pos.x.roundToInt(), pos.y.roundToInt()),
+                        size = IntSize(coords.size.width, coords.size.height)
+                    )
+                }
+                .onPreviewKeyEvent { ev ->
+                    val isRef = selectedFilter == SearchFilter.REFERENCE
+                    when {
+                        (ev.key == Key.Enter || ev.key == Key.NumPadEnter) && ev.type == KeyEventType.KeyUp -> {
+                            if (isRef) {
+                                // Commit current suggestion, don't open
+                                if (usingToc) {
+                                    if (focusedIndex in 0 until totalToc) {
+                                        onPickToc(tocSuggestions[focusedIndex])
+                                    }
+                                } else {
+                                    if (focusedIndex in 0 until totalCatBook) {
+                                        if (focusedIndex < categoriesCount) {
+                                            val picked = categorySuggestions[focusedIndex]
+                                            onPickCategory(picked)
+                                        } else {
+                                            val idx = focusedIndex - categoriesCount
+                                            val picked = bookSuggestions.getOrNull(idx)
+                                            if (picked != null) onPickBook(picked)
+                                        }
+                                    }
+                                }
+                                true
+                            } else {
+                                onSubmit(); true
+                            }
+                        }
+                        isRef && ev.key == Key.DirectionDown && ev.type == KeyEventType.KeyUp -> {
+                            val total = if (usingToc) totalToc else totalCatBook
+                            if (total > 0) focusedIndex = (focusedIndex + 1).coerceAtMost(total - 1)
+                            true
+                        }
+                        isRef && ev.key == Key.DirectionUp && ev.type == KeyEventType.KeyUp -> {
+                            val total = if (usingToc) totalToc else totalCatBook
+                            if (total > 0) focusedIndex = (focusedIndex - 1).coerceAtLeast(0)
+                            true
+                        }
+                        isRef && ev.key == Key.Escape && ev.type == KeyEventType.KeyUp -> {
+                            popupVisible = false
+                            onDismissSuggestions()
+                            true
+                        }
+                        ev.key == Key.Tab && ev.type == KeyEventType.KeyUp -> {
+                            onTab?.invoke(); true
+                        }
+                        else -> false
                     }
-                    ev.key == Key.Tab && ev.type == KeyEventType.KeyUp -> {
-                        onTab?.invoke(); true
+                }
+                .focusRequester(effectiveFocusRequester),
+            enabled = enabled,
+            placeholder = {
+                if (placeholderText != null) {
+                    Text(
+                        placeholderText,
+                        style = TextStyle(fontSize = 13.sp, color = Color(0xFF9AA0A6)),
+                        maxLines = 1
+                    )
+                } else {
+                    key(filterVersion) {
+                        TypewriterPlaceholder(
+                            hints = hints,
+                            textStyle = TextStyle(fontSize = 13.sp, color = Color(0xFF9AA0A6)),
+                            typingDelayPerChar = 155L,
+                            deletingDelayPerChar = 45L,
+                            holdDelayMs = 1600L,
+                            preTypePauseMs = 500L,
+                            postDeletePauseMs = 450L,
+                            speedMultiplier = 1.15f, // a tad slower overall
+                            enabled = !isUserTyping
+                        )
                     }
-                    else -> false
+                }
+            },
+            trailingIcon = if (showToggle) ({
+                IntegratedSwitch(
+                    selectedFilter = selectedFilter,
+                    onFilterChange = onFilterChange
+                )
+            }) else null,
+            leadingIcon = {
+                if (!showIcon) return@TextField
+                IconButton({ onSubmit() }) {
+                    Icon(
+                        key = AllIconsKeys.Actions.Find,
+                        contentDescription = stringResource(Res.string.search_icon_description),
+                        modifier = Modifier.size(16.dp).pointerHoverIcon(PointerIcon.Hand),
+                    )
+                }
+            },
+            textStyle = TextStyle(fontSize = 13.sp),
+        )
+
+        // Overlay suggestions anchored under the TextField
+        val a = anchor
+        val showOverlay = selectedFilter == SearchFilter.REFERENCE && popupVisible && a != null &&
+            ((usingToc && totalToc > 0 && (selectedBook != null)) || (!usingToc && totalCatBook > 0))
+        if (showOverlay) {
+            val provider = remember(a) {
+                object : PopupPositionProvider {
+                    override fun calculatePosition(
+                        anchorBounds: IntRect,
+                        windowSize: IntSize,
+                        layoutDirection: LayoutDirection,
+                        popupContentSize: IntSize
+                    ): IntOffset {
+                        var x = a.windowOffset.x
+                        var y = a.windowOffset.y + a.size.height + 4
+                        // Clamp horizontally inside window
+                        if (x + popupContentSize.width > windowSize.width) {
+                            x = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+                        }
+                        // Clamp vertically inside window (prefer below, otherwise above)
+                        if (y + popupContentSize.height > windowSize.height) {
+                            val aboveY = a.windowOffset.y - popupContentSize.height - 4
+                            y = aboveY.coerceAtLeast(0)
+                        }
+                        return IntOffset(x, y)
+                    }
                 }
             }
-            .focusRequester(focusRequester),
-        enabled = enabled,
-        placeholder = {
-            key(filterVersion) {
-                TypewriterPlaceholder(
-                    hints = hints,
-                    textStyle = TextStyle(fontSize = 13.sp, color = Color(0xFF9AA0A6)),
-                    typingDelayPerChar = 155L,
-                    deletingDelayPerChar = 45L,
-                    holdDelayMs = 1600L,
-                    preTypePauseMs = 500L,
-                    postDeletePauseMs = 450L,
-                    speedMultiplier = 1.15f, // a tad slower overall
-                    enabled = !isUserTyping
-                )
+            Popup(
+                popupPositionProvider = provider,
+                properties = PopupProperties(focusable = false)
+            ) {
+                val widthDp = with(LocalDensity.current) { a.size.width.toDp() }
+                Box(Modifier.width(widthDp)) {
+                    if (usingToc) {
+                        TocSuggestionsPanel(
+                            tocSuggestions = tocSuggestions,
+                            onPickToc = onPickToc,
+                            focusedIndex = focusedIndex,
+                            selectedBook = selectedBook
+                        )
+                    } else {
+                        SuggestionsPanel(
+                            categorySuggestions = categorySuggestions,
+                            bookSuggestions = bookSuggestions,
+                            onPickCategory = onPickCategory,
+                            onPickBook = onPickBook,
+                            focusedIndex = focusedIndex
+                        )
+                    }
+                }
             }
-        },
-        trailingIcon = if (showToggle) ({
-            IntegratedSwitch(
-                selectedFilter = selectedFilter,
-                onFilterChange = onFilterChange
-            )
-        }) else null,
-        leadingIcon = {
-            if (!showIcon) return@TextField
-            IconButton({ onSubmit() }) {
-                Icon(
-                    key = AllIconsKeys.Actions.Find,
-                    contentDescription = stringResource(Res.string.search_icon_description),
-                    modifier = Modifier.size(16.dp).pointerHoverIcon(PointerIcon.Hand),
-                )
-            }
-        },
-        textStyle = TextStyle(fontSize = 13.sp),
-    )
+        }
+    }
 }
 
 

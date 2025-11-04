@@ -14,8 +14,6 @@ jobs:
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbr_jcef-21.0.9-linux-x64-b895.147.tar.gz"
           - os: windows-latest
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbr_jcef-21.0.9-windows-x64-b895.147.zip"
-          - os: macos-13   # runner Intel (x64)
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbr_jcef-21.0.9-osx-x64-b895.147.pkg"
           - os: macos-latest  # runner Apple Silicon (ARM64)
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbr_jcef-21.0.9-osx-aarch64-b895.147.pkg"
 

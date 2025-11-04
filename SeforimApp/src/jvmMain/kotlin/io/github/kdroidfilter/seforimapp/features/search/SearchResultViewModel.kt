@@ -941,8 +941,46 @@ class SearchResultViewModel(
 
     // Multi-select toggles for checkboxes
     fun setCategoryChecked(categoryId: Long, checked: Boolean) {
-        _selectedCategoryIds.update { set -> if (checked) set + categoryId else set - categoryId }
-        maybeClearFiltersIfNoneChecked()
+        viewModelScope.launch {
+            val ids = mutableSetOf<Long>()
+            ids += categoryId
+            // Prefer current search tree to derive descendants (only categories present in results)
+            val tree = runCatching { searchTreeFlow.value }.getOrElse { emptyList() }
+            if (tree.isNotEmpty()) {
+                fun findNode(list: List<SearchTreeCategory>): SearchTreeCategory? {
+                    for (n in list) {
+                        if (n.category.id == categoryId) return n
+                        val f = findNode(n.children)
+                        if (f != null) return f
+                    }
+                    return null
+                }
+                val start = findNode(tree)
+                if (start != null) {
+                    fun dfs(n: SearchTreeCategory) {
+                        for (c in n.children) {
+                            ids += c.category.id
+                            dfs(c)
+                        }
+                    }
+                    dfs(start)
+                }
+            } else {
+                // Fallback to repository traversal
+                val stack = ArrayDeque<Long>()
+                stack.addLast(categoryId)
+                var guard = 0
+                while (stack.isNotEmpty() && guard++ < 10000) {
+                    val current = stack.removeFirst()
+                    val children = runCatching { repository.getCategoryChildren(current) }.getOrElse { emptyList() }
+                    for (ch in children) {
+                        if (ids.add(ch.id)) stack.addLast(ch.id)
+                    }
+                }
+            }
+            _selectedCategoryIds.update { set -> if (checked) set + ids else set - ids }
+            maybeClearFiltersIfNoneChecked()
+        }
     }
 
     fun setBookChecked(bookId: Long, checked: Boolean) {

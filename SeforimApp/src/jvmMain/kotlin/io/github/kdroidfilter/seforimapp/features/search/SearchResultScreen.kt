@@ -140,7 +140,6 @@ private fun SearchToolbar(
 
         // NEAR selector
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(text = stringResource(Res.string.search_near_selector_label), fontSize = 13.sp)
             // Mirror HomeView's semantic levels → NEAR values mapping
             val nearValues = remember { listOf(0, 3, 5, 10, 20) }
             val labels = listOf(
@@ -154,7 +153,9 @@ private fun SearchToolbar(
             ListComboBox(
                 items = labels,
                 selectedIndex = selectedIndex,
-                modifier = Modifier.width(160.dp),
+                modifier = Modifier
+                    .width(160.dp)
+                    .height(36.dp),
                 onSelectedItemChange = { idx ->
                     val newNear = nearValues.getOrNull(idx) ?: return@ListComboBox
                     if (newNear != currentNear) {

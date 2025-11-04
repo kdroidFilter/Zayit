@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -32,6 +33,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationState
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
+import io.github.kdroidfilter.seforimapp.features.search.SearchUiState
 import io.github.kdroidfilter.seforimapp.icons.Book_2
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -165,7 +167,7 @@ fun CategoryBookTreeView(
 fun SearchResultCategoryTreeView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    searchUi: io.github.kdroidfilter.seforimapp.features.search.SearchUiState,
+    searchUi: SearchUiState,
     searchTree: List<SearchResultViewModel.SearchTreeCategory>,
     isFiltering: Boolean,
     selectedCategoryIds: Set<Long>,
@@ -193,28 +195,29 @@ fun SearchResultCategoryTreeView(
     // Flatten the search tree with current expansion state
     val expanded = uiState.navigation.expandedCategories
     val items = remember(searchTree, expanded, selectedCategoryIds, selectedBookIds) {
-        buildList<TreeItem> {
-            fun addNode(node: SearchResultViewModel.SearchTreeCategory, level: Int) {
+        buildList {
+            fun addNode(node: SearchResultViewModel.SearchTreeCategory, level: Int, ancestorSelected: Boolean) {
+                val isThisSelected = selectedCategoryIds.contains(node.category.id)
+                val cascadedSelected = ancestorSelected || isThisSelected
                 add(
                     TreeItem(
-                        id = "category_${'$'}{node.category.id}",
+                        id = $$"category_$$${node.category.id}",
                         level = level,
                         content = {
                             CategoryItem(
                                 category = node.category,
                                 isExpanded = expanded.contains(node.category.id),
-                                // In search mode, align highlight with checkbox selection
-                                isSelected = selectedCategoryIds.contains(node.category.id),
+                                // In search mode, highlight remains aligned with checkbox selection
+                                isSelected = isThisSelected,
                                 onClick = {
-                                    // Toggle expansion + toggle checkbox selection (aligned behavior)
+                                    // Only toggle expansion on row click; do not change checkbox state
                                     onEvent(BookContentEvent.CategorySelected(node.category))
-                                    val currentlyChecked = selectedCategoryIds.contains(node.category.id)
-                                    onCategoryCheckedChange(node.category.id, !currentlyChecked)
                                 },
                                 count = node.count,
                                 showCount = true,
-                                checkboxChecked = selectedCategoryIds.contains(node.category.id),
+                                checkboxChecked = isThisSelected,
                                 onCheckboxToggle = { checked ->
+                                    // Checkbox exclusively controls selection
                                     onCategoryCheckedChange(node.category.id, checked)
                                 }
                             )
@@ -227,22 +230,23 @@ fun SearchResultCategoryTreeView(
                     node.books.forEach { sb ->
                         add(
                             TreeItem(
-                                id = "book_${'$'}{sb.book.id}",
+                                id = $$"book_$$${sb.book.id}",
                                 level = level + 1,
                                 content = {
+                                    val checkedByBook = selectedBookIds.contains(sb.book.id)
+                                    val checkedByCategory = cascadedSelected
+                                    val isChecked = checkedByBook || checkedByCategory
                                     BookItem(
                                         book = sb.book,
-                                        // In search mode, align highlight with checkbox selection
-                                        isSelected = selectedBookIds.contains(sb.book.id),
+                                        // Align highlight with effective checkbox (book OR cascaded category)
+                                        isSelected = isChecked,
                                         onClick = {
-                                            val currentlyChecked = selectedBookIds.contains(sb.book.id)
-                                            val next = !currentlyChecked
-                                            onBookCheckedChange(sb.book.id, next)
-                                            if (next) onEnsureScopeBookForToc(sb.book.id)
+                                            // Do not toggle selection when clicking the row in search mode
+                                            // Intentionally no-op to avoid checking the checkbox
                                         },
                                         count = sb.count,
                                         showCount = true,
-                                        checkboxChecked = selectedBookIds.contains(sb.book.id),
+                                        checkboxChecked = isChecked,
                                         onCheckboxToggle = { checked ->
                                             onBookCheckedChange(sb.book.id, checked)
                                             if (checked) {
@@ -256,10 +260,10 @@ fun SearchResultCategoryTreeView(
                         )
                     }
                     // Child categories
-                    node.children.forEach { child -> addNode(child, level + 1) }
+                    node.children.forEach { child -> addNode(child, level + 1, cascadedSelected) }
                 }
             }
-            searchTree.forEach { addNode(it, 0) }
+            searchTree.forEach { addNode(it, 0, false) }
         }
     }
 
@@ -275,7 +279,7 @@ fun SearchResultCategoryTreeView(
         }
 
         // Loader overlay while applying filters, with fast fade
-        androidx.compose.animation.AnimatedVisibility(
+        AnimatedVisibility(
             visible = isFiltering,
             enter = fadeIn(tween(durationMillis = 120, easing = LinearEasing)),
             exit = fadeOut(tween(durationMillis = 120, easing = LinearEasing))
@@ -465,5 +469,3 @@ private fun BookItem(
         }
     }
 }
-
-// CountBadge is now shared in core.presentation.components

@@ -18,20 +18,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.WindowPosition
+import androidx.compose.ui.window.rememberWindowState
 import androidx.navigation.compose.rememberNavController
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils.buildThemeDefinition
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsNavHost
 import io.github.kdroidfilter.seforimapp.features.settings.ui.SettingsSidebar
 import org.jetbrains.compose.resources.painterResource
@@ -49,7 +49,6 @@ import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.typography
 import org.jetbrains.jewel.window.DecoratedWindow
 import org.jetbrains.jewel.window.TitleBar
 import org.jetbrains.jewel.window.newFullscreenControls
@@ -57,12 +56,8 @@ import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.settings
 import seforimapp.seforimapp.generated.resources.settings_cancel
-import seforimapp.seforimapp.generated.resources.settings_category_fonts
-import seforimapp.seforimapp.generated.resources.settings_category_general
-import seforimapp.seforimapp.generated.resources.settings_category_profile
-import seforimapp.seforimapp.generated.resources.settings_category_region
 import seforimapp.seforimapp.generated.resources.settings_ok
-import seforimapp.seforimapp.generated.resources.settings_category_info
+ 
 
 @Composable
 fun SettingsWindow(onClose: () -> Unit) {
@@ -83,7 +78,7 @@ private fun SettingsWindowView(
                 titleBarStyle = ThemeUtils.pickTitleBarStyle(),
             )
     ) {
-        val settingsWindowState = remember { getCenteredWindowState(1000, 700) }
+        val settingsWindowState = rememberWindowState(position = WindowPosition.Aligned(Alignment.Center), size = DpSize(700.dp,500.dp))
         DecoratedWindow(
             onCloseRequest = onClose,
             title = stringResource(Res.string.settings),
@@ -149,28 +144,6 @@ private fun SettingsWindowView(
                             .fillMaxHeight()
                             .padding(start = 16.dp)
                     ) {
-                        // Content header resembling IntelliJ Settings breadcrumb
-                        val currentRoute = navController.currentBackStackEntryFlow
-                            .collectAsState(initial = navController.currentBackStackEntry)
-                            .value?.destination?.route.orEmpty()
-                        val headerText = when {
-                            currentRoute.contains("General") -> stringResource(Res.string.settings_category_general)
-                            currentRoute.contains("Profile") -> stringResource(Res.string.settings_category_profile)
-                            currentRoute.contains("Region") -> stringResource(Res.string.settings_category_region)
-                            currentRoute.contains("Fonts") -> stringResource(Res.string.settings_category_fonts)
-                            currentRoute.contains("Info") -> stringResource(Res.string.settings_category_info)
-                            else -> stringResource(Res.string.settings)
-                        }
-
-                        Text(
-                            text = headerText,
-                            fontSize = JewelTheme.typography.h2TextStyle.fontSize,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Divider(orientation = Orientation.Horizontal)
-                        Spacer(Modifier.height(8.dp))
-
                         Box(modifier = Modifier.weight(1f)) {
                             SettingsNavHost(navController = navController)
                         }

@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -28,8 +29,6 @@ import androidx.navigation.NavHostController
 import io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.Divider
-import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.settings_category_fonts
@@ -81,8 +80,10 @@ fun SettingsSidebar(
 
 @Composable
 private fun SidebarItem(label: String, selected: Boolean, onClick: () -> Unit) {
-    val bg = if (selected) JewelTheme.globalColors.panelBackground else JewelTheme.globalColors.panelBackground
-    // Add a slim indicator and emphasize the selected item label
+    // Selected background similar to IntelliJ: subtle accent-tinted fill + left indicator
+    val selectedBackground = JewelTheme.globalColors.borders.focused.copy(alpha = 0.15f)
+    val bg = if (selected) selectedBackground else JewelTheme.globalColors.panelBackground
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -95,7 +96,9 @@ private fun SidebarItem(label: String, selected: Boolean, onClick: () -> Unit) {
             modifier = Modifier
                 .width(3.dp)
                 .height(18.dp)
-                .background(if (selected) JewelTheme.globalColors.text.normal else JewelTheme.globalColors.panelBackground)
+                .background(
+                    if (selected) JewelTheme.globalColors.borders.focused else Color.Transparent
+                )
         )
         Spacer(Modifier.width(8.dp))
         Text(text = label, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)

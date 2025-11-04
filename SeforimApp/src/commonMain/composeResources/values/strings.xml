@@ -120,7 +120,7 @@
     <string name="please_select_a_book">אנא בחר ספר</string>
 
     <!-- Home Page View -->
-    <string name="search_mode_reference">מקור</string>
+    <string name="search_mode_reference">ספר</string>
     <string name="search_mode_text">טקסט</string>
     <string name="search_mode_reference_explicit">חיפוש לפי מקור</string>
     <string name="search_mode_text_explicit">חיפוש בטקסט</string>

@@ -898,6 +898,12 @@ private fun SearchBar(
                 .onPreviewKeyEvent { ev ->
                     val isRef = selectedFilter == SearchFilter.REFERENCE
                     when {
+                        // Alt toggles between Reference and Text modes
+                        (ev.key == Key.AltLeft || ev.key == Key.AltRight) && ev.type == KeyEventType.KeyUp -> {
+                            val next = if (selectedFilter == SearchFilter.REFERENCE) SearchFilter.TEXT else SearchFilter.REFERENCE
+                            onFilterChange(next)
+                            true
+                        }
                         (ev.key == Key.Enter || ev.key == Key.NumPadEnter) && ev.type == KeyEventType.KeyUp -> {
                             if (isRef) {
                                 // Commit current suggestion, don't open

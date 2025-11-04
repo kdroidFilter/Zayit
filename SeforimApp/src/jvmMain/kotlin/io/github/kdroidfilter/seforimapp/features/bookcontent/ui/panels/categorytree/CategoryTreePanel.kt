@@ -86,7 +86,7 @@ private fun SearchField(
     )
 }
 
-// Search mode variant: state + events only
+// Search mode variant: lambdas-only for events (no onEvent)
 
 @Composable
 fun SearchCategoryTreePanel(
@@ -113,13 +113,15 @@ fun SearchCategoryTreePanel(
             modifier = Modifier.padding(horizontal = 8.dp)
         ) {
             SearchResultCategoryTreeView(
-                uiState = uiState,
-                onEvent = onEvent,
-                searchUi = searchUi,
+                expandedCategoryIds = uiState.navigation.expandedCategories,
+                scrollIndex = uiState.navigation.scrollIndex,
+                scrollOffset = uiState.navigation.scrollOffset,
                 searchTree = searchTree,
                 isFiltering = isFiltering,
                 selectedCategoryIds = selectedCategoryIds,
                 selectedBookIds = selectedBookIds,
+                onCategoryRowClick = { onEvent(BookContentEvent.CategorySelected(it)) },
+                onPersistScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) },
                 onCategoryCheckedChange = onCategoryCheckedChange,
                 onBookCheckedChange = onBookCheckedChange,
                 onEnsureScopeBookForToc = onEnsureScopeBookForToc

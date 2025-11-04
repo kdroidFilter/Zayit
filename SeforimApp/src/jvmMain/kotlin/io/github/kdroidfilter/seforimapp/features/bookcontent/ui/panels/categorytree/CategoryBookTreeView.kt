@@ -29,11 +29,8 @@ import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ChevronIcon
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableRow
-import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationState
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
-import io.github.kdroidfilter.seforimapp.features.search.SearchUiState
 import io.github.kdroidfilter.seforimapp.icons.Book_2
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -165,13 +162,15 @@ fun CategoryBookTreeView(
 @OptIn(FlowPreview::class)
 @Composable
 fun SearchResultCategoryTreeView(
-    uiState: BookContentState,
-    onEvent: (BookContentEvent) -> Unit,
-    searchUi: SearchUiState,
+    expandedCategoryIds: Set<Long>,
+    scrollIndex: Int,
+    scrollOffset: Int,
     searchTree: List<SearchResultViewModel.SearchTreeCategory>,
     isFiltering: Boolean,
     selectedCategoryIds: Set<Long>,
     selectedBookIds: Set<Long>,
+    onCategoryRowClick: (Category) -> Unit,
+    onPersistScroll: (Int, Int) -> Unit,
     onCategoryCheckedChange: (Long, Boolean) -> Unit,
     onBookCheckedChange: (Long, Boolean) -> Unit,
     onEnsureScopeBookForToc: (Long) -> Unit,
@@ -180,8 +179,8 @@ fun SearchResultCategoryTreeView(
 
     // Restore/track scroll position using the same keys as the classic tree
     val listState: LazyListState = rememberLazyListState(
-        initialFirstVisibleItemIndex = uiState.navigation.scrollIndex,
-        initialFirstVisibleItemScrollOffset = uiState.navigation.scrollOffset
+        initialFirstVisibleItemIndex = scrollIndex,
+        initialFirstVisibleItemScrollOffset = scrollOffset
     )
 
     // Persist scroll as user scrolls
@@ -189,11 +188,11 @@ fun SearchResultCategoryTreeView(
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
             .distinctUntilChanged()
             .debounce(150)
-            .collect { (index, offset) -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) }
+            .collect { (index, offset) -> onPersistScroll(index, offset) }
     }
 
     // Flatten the search tree with current expansion state
-    val expanded = uiState.navigation.expandedCategories
+    val expanded = expandedCategoryIds
     val items = remember(searchTree, expanded, selectedCategoryIds, selectedBookIds) {
         buildList {
             fun addNode(node: SearchResultViewModel.SearchTreeCategory, level: Int, ancestorSelected: Boolean) {
@@ -201,7 +200,7 @@ fun SearchResultCategoryTreeView(
                 val cascadedSelected = ancestorSelected || isThisSelected
                 add(
                     TreeItem(
-                        id = $$"category_$$${node.category.id}",
+                        id = "category_${node.category.id}",
                         level = level,
                         content = {
                             CategoryItem(
@@ -209,10 +208,7 @@ fun SearchResultCategoryTreeView(
                                 isExpanded = expanded.contains(node.category.id),
                                 // In search mode, highlight remains aligned with checkbox selection
                                 isSelected = isThisSelected,
-                                onClick = {
-                                    // Only toggle expansion on row click; do not change checkbox state
-                                    onEvent(BookContentEvent.CategorySelected(node.category))
-                                },
+                                onClick = { onCategoryRowClick(node.category) },
                                 count = node.count,
                                 showCount = true,
                                 checkboxChecked = isThisSelected,
@@ -230,7 +226,7 @@ fun SearchResultCategoryTreeView(
                     node.books.forEach { sb ->
                         add(
                             TreeItem(
-                                id = $$"book_$$${sb.book.id}",
+                                id = "book_${sb.book.id}",
                                 level = level + 1,
                                 content = {
                                     val checkedByBook = selectedBookIds.contains(sb.book.id)

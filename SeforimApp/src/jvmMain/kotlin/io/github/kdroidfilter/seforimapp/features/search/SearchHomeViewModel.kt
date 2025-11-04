@@ -93,9 +93,23 @@ class SearchHomeViewModel(
                         }
                         // Books via lookup index (title variants + acronyms + topics) with prefix per token
                         val bookIds = lookup.searchBooksPrefix(qNorm, limit = 50)
-                        val ftsBooks = bookIds.mapNotNull { id -> runCatching { repository.getBook(id) }.getOrNull() }
+                        val lookupBooks = bookIds.mapNotNull { id ->
+                            runCatching { repository.getBook(id) }.getOrNull()
+                        }
 
-                        val bookItems = ftsBooks.map { book ->
+                        // Fallback: broaden with simple title LIKE when lookup misses matches
+                        // This improves coverage for partial/substring inputs and unusual tokenization.
+                        val likeBooks = runCatching {
+                            repository.findBooksByTitleLike("%$q%", limit = 50)
+                                .filter { it.title.isNotBlank() }
+                        }.getOrDefault(emptyList())
+
+                        // Merge while preserving lookup order first, then LIKE results without duplicates
+                        val bookCandidates = LinkedHashMap<Long, Book>()
+                        lookupBooks.forEach { b -> bookCandidates.putIfAbsent(b.id, b) }
+                        likeBooks.forEach { b -> bookCandidates.putIfAbsent(b.id, b) }
+
+                        val bookItems = bookCandidates.values.map { book ->
                             val catPath = buildCategoryPathTitles(book.categoryId)
                             val depth = repository.getCategoryDepth(book.categoryId)
                             BookSuggestionDto(book, catPath + book.title) to depth

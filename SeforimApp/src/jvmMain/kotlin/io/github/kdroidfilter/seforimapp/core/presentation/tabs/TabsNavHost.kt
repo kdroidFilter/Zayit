@@ -17,8 +17,11 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
+import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultInBookShellMvi
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
+import io.github.kdroidfilter.seforimapp.features.search.SearchShellActions
 import io.github.kdroidfilter.seforimapp.features.search.SearchUiState
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.jewel.foundation.modifier.trackActivation
@@ -90,7 +93,7 @@ fun TabsNavHost() {
                 val bookVm = remember(appGraph, destination) {
                     appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
                 }
-                val bcUiState by bookVm.uiState.collectAsState()
+                val bcUiState = rememberBookShellState(bookVm)
                 val ss = rememberSearchShellState(viewModel)
                 SearchResultInBookShellMvi(
                     bookUiState = bcUiState,
@@ -105,23 +108,25 @@ fun TabsNavHost() {
                     selectedTocIds = ss.selectedTocIds,
                     tocCounts = ss.tocCounts,
                     tocTree = ss.tocTree,
-                    onSubmit = { q, near ->
-                        viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetQuery(q))
-                        viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetNear(near))
-                        viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.ExecuteSearch)
-                    },
-                    onNearChange = { n -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetNear(n)) },
-                    onQueryChange = { q -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
-                    onScroll = { anchorId, anchorIndex, index, offset -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.OnScroll(anchorId, anchorIndex, index, offset)) },
-                    onCancelSearch = { viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.CancelSearch) },
-                    onOpenResult = { r, newTab -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.OpenResult(r, newTab)) },
-                    onRequestBreadcrumb = { r -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.RequestBreadcrumb(r)) },
-                    onLoadMore = { viewModel.loadMore() },
-                    onCategoryCheckedChange = { id, checked -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetCategoryChecked(id, checked)) },
-                    onBookCheckedChange = { id, checked -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetBookChecked(id, checked)) },
-                    onEnsureScopeBookForToc = { id -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.EnsureScopeBookForToc(id)) },
-                    onTocToggle = { entry, checked -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetTocChecked(entry.id, checked)) },
-                    onTocFilter = { entry -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.FilterByTocId(entry.id)) }
+                    actions = SearchShellActions(
+                        onSubmit = { q, near ->
+                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q))
+                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetNear(near))
+                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
+                        },
+                        onNearChange = { n -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetNear(n)) },
+                        onQueryChange = { q -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
+                        onScroll = { anchorId, anchorIndex, index, offset -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.OnScroll(anchorId, anchorIndex, index, offset)) },
+                        onCancelSearch = { viewModel.onEvent(SearchResultViewModel.SearchResultEvents.CancelSearch) },
+                        onOpenResult = { r, newTab -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.OpenResult(r, newTab)) },
+                        onRequestBreadcrumb = { r -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.RequestBreadcrumb(r)) },
+                        onLoadMore = { viewModel.loadMore() },
+                        onCategoryCheckedChange = { id, checked -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetCategoryChecked(id, checked)) },
+                        onBookCheckedChange = { id, checked -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetBookChecked(id, checked)) },
+                        onEnsureScopeBookForToc = { id -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.EnsureScopeBookForToc(id)) },
+                        onTocToggle = { entry, checked -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetTocChecked(entry.id, checked)) },
+                        onTocFilter = { entry -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.FilterByTocId(entry.id)) },
+                    )
                 )
             }
             nonAnimatedComposable<TabsDestination.BookContent> { backStackEntry ->
@@ -182,7 +187,7 @@ fun TabsNavHost() {
                             val bookVm = remember(appGraph, destination) {
                                 appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
                             }
-                            val bcUiState by bookVm.uiState.collectAsState()
+                            val bcUiState = rememberBookShellState(bookVm)
                             val ss = rememberSearchShellState(viewModel)
                             SearchResultInBookShellMvi(
                                 bookUiState = bcUiState,
@@ -197,23 +202,26 @@ fun TabsNavHost() {
                                 selectedTocIds = ss.selectedTocIds,
                                 tocCounts = ss.tocCounts,
                                 tocTree = ss.tocTree,
-                                onSubmit = { q, near ->
-                                    viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetQuery(q))
-                                    viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetNear(near))
-                                    viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.ExecuteSearch)
-                                },
-                                onNearChange = { n -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetNear(n)) },
-                                onQueryChange = { q -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
-                                onScroll = { anchorId, anchorIndex, index, offset -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.OnScroll(anchorId, anchorIndex, index, offset)) },
-                                onCancelSearch = { viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.CancelSearch) },
-                                onOpenResult = { r, newTab -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.OpenResult(r, newTab)) },
-                                onRequestBreadcrumb = { r -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.RequestBreadcrumb(r)) },
-                                onLoadMore = { viewModel.loadMore() },
-                                onCategoryCheckedChange = { id, checked -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetCategoryChecked(id, checked)) },
-                                onBookCheckedChange = { id, checked -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetBookChecked(id, checked)) },
-                                onEnsureScopeBookForToc = { id -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.EnsureScopeBookForToc(id)) },
-                                onTocToggle = { entry, checked -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.SetTocChecked(entry.id, checked)) },
-                                onTocFilter = { entry -> viewModel.onEvent(io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchResultEvents.FilterByTocId(entry.id)) }
+                                actions = SearchShellActions(
+                                    onSubmit = { q, near ->
+                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q))
+                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetNear(near))
+                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
+                                    },
+                                    onNearChange = { n -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetNear(n)) },
+                                    onQueryChange = { q -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
+                                    onScroll = { anchorId, anchorIndex, index, offset -> viewModel.onEvent(
+                                        SearchResultViewModel.SearchResultEvents.OnScroll(anchorId, anchorIndex, index, offset)) },
+                                    onCancelSearch = { viewModel.onEvent(SearchResultViewModel.SearchResultEvents.CancelSearch) },
+                                    onOpenResult = { r, newTab -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.OpenResult(r, newTab)) },
+                                    onRequestBreadcrumb = { r -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.RequestBreadcrumb(r)) },
+                                    onLoadMore = { viewModel.loadMore() },
+                                    onCategoryCheckedChange = { id, checked -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetCategoryChecked(id, checked)) },
+                                    onBookCheckedChange = { id, checked -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetBookChecked(id, checked)) },
+                                    onEnsureScopeBookForToc = { id -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.EnsureScopeBookForToc(id)) },
+                                    onTocToggle = { entry, checked -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetTocChecked(entry.id, checked)) },
+                                    onTocFilter = { entry -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.FilterByTocId(entry.id)) },
+                                )
                             )
                         }
                         nonAnimatedComposable<TabsDestination.BookContent> { backStackEntry ->
@@ -238,12 +246,12 @@ private data class SearchShellState(
     val visibleResults: List<io.github.kdroidfilter.seforimlibrary.core.models.SearchResult>,
     val isFiltering: Boolean,
     val breadcrumbs: Map<Long, List<String>>,
-    val searchTree: List<io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory>,
+    val searchTree: List<SearchResultViewModel.SearchTreeCategory>,
     val selectedCategoryIds: Set<Long>,
     val selectedBookIds: Set<Long>,
     val selectedTocIds: Set<Long>,
     val tocCounts: Map<Long, Int>,
-    val tocTree: io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.TocTree?
+    val tocTree: SearchResultViewModel.TocTree?
 )
 
 @Composable
@@ -270,4 +278,9 @@ private fun rememberSearchShellState(viewModel: SearchResultViewModel): SearchSh
         tocCounts = tocCounts,
         tocTree = tocTree
     )
+}
+
+@Composable
+private fun rememberBookShellState(viewModel: BookContentViewModel): BookContentState {
+    return viewModel.uiState.collectAsState().value
 }

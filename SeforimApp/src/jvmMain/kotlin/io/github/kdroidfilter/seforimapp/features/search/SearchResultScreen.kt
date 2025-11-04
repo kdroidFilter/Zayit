@@ -62,6 +62,22 @@ import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.*
 
+data class SearchShellActions(
+    val onSubmit: (query: String, near: Int) -> Unit,
+    val onNearChange: (Int) -> Unit,
+    val onQueryChange: (String) -> Unit,
+    val onScroll: (anchorId: Long, anchorIndex: Int, index: Int, offset: Int) -> Unit,
+    val onCancelSearch: () -> Unit,
+    val onOpenResult: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult, openInNewTab: Boolean) -> Unit,
+    val onRequestBreadcrumb: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult) -> Unit,
+    val onLoadMore: () -> Unit,
+    val onCategoryCheckedChange: (Long, Boolean) -> Unit,
+    val onBookCheckedChange: (Long, Boolean) -> Unit,
+    val onEnsureScopeBookForToc: (Long) -> Unit,
+    val onTocToggle: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry, Boolean) -> Unit,
+    val onTocFilter: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry) -> Unit,
+)
+
 @Composable
 private fun SearchToolbar(
     initialQuery: String,
@@ -168,20 +184,7 @@ fun SearchResultInBookShellMvi(
     selectedTocIds: Set<Long>,
     tocCounts: Map<Long, Int>,
     tocTree: SearchResultViewModel.TocTree?,
-    // Events
-    onSubmit: (query: String, near: Int) -> Unit,
-    onNearChange: (Int) -> Unit,
-    onQueryChange: (String) -> Unit,
-    onScroll: (anchorId: Long, anchorIndex: Int, index: Int, offset: Int) -> Unit,
-    onCancelSearch: () -> Unit,
-    onOpenResult: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult, Boolean) -> Unit,
-    onRequestBreadcrumb: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult) -> Unit,
-    onLoadMore: () -> Unit,
-    onCategoryCheckedChange: (Long, Boolean) -> Unit,
-    onBookCheckedChange: (Long, Boolean) -> Unit,
-    onEnsureScopeBookForToc: (Long) -> Unit,
-    onTocToggle: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry, Boolean) -> Unit,
-    onTocFilter: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry) -> Unit,
+    actions: SearchShellActions,
 ) {
     val splitPaneConfigs = listOf(
         SplitPaneConfig(
@@ -229,9 +232,9 @@ fun SearchResultInBookShellMvi(
                         isFiltering = isFiltering,
                         selectedCategoryIds = selectedCategoryIds,
                         selectedBookIds = selectedBookIds,
-                        onCategoryCheckedChange = onCategoryCheckedChange,
-                        onBookCheckedChange = onBookCheckedChange,
-                        onEnsureScopeBookForToc = onEnsureScopeBookForToc
+                        onCategoryCheckedChange = actions.onCategoryCheckedChange,
+                        onBookCheckedChange = actions.onBookCheckedChange,
+                        onEnsureScopeBookForToc = actions.onEnsureScopeBookForToc
                     )
                 }
             },
@@ -248,8 +251,8 @@ fun SearchResultInBookShellMvi(
                                 tocTree = tocTree,
                                 tocCounts = tocCounts,
                                 selectedTocIds = selectedTocIds,
-                                onToggle = onTocToggle,
-                                onTocFilter = onTocFilter
+                                onToggle = actions.onTocToggle,
+                                onTocFilter = actions.onTocFilter
                             )
                         }
                     },
@@ -264,14 +267,7 @@ fun SearchResultInBookShellMvi(
                                 visibleResults = visibleResults,
                                 isFiltering = isFiltering,
                                 breadcrumbs = breadcrumbs,
-                                onSubmit = onSubmit,
-                                onNearChange = onNearChange,
-                                onQueryChange = onQueryChange,
-                                onScroll = onScroll,
-                                onCancelSearch = onCancelSearch,
-                                onOpenResult = onOpenResult,
-                                onRequestBreadcrumb = onRequestBreadcrumb,
-                                onLoadMore = onLoadMore
+                                actions = actions
                             )
                         }
                     },
@@ -297,14 +293,7 @@ private fun SearchResultContentMvi(
     visibleResults: List<io.github.kdroidfilter.seforimlibrary.core.models.SearchResult>,
     isFiltering: Boolean,
     breadcrumbs: Map<Long, List<String>>,
-    onSubmit: (query: String, near: Int) -> Unit,
-    onNearChange: (Int) -> Unit,
-    onQueryChange: (String) -> Unit,
-    onScroll: (anchorId: Long, anchorIndex: Int, index: Int, offset: Int) -> Unit,
-    onCancelSearch: () -> Unit,
-    onOpenResult: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult, openInNewTab: Boolean) -> Unit,
-    onRequestBreadcrumb: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult) -> Unit,
-    onLoadMore: () -> Unit = {}
+    actions: SearchShellActions
 ) {
     val listState = rememberLazyListState()
     val findQuery by AppSettings.findQueryFlow.collectAsState()
@@ -339,7 +328,7 @@ private fun SearchResultContentMvi(
             .collect { (index, offset) ->
                 val items = state.results
                 val anchorId = items.getOrNull(index)?.lineId ?: -1L
-                onScroll(anchorId, 0, index, offset)
+                actions.onScroll(anchorId, 0, index, offset)
             }
     }
 
@@ -398,9 +387,9 @@ private fun SearchResultContentMvi(
             SearchToolbar(
                 initialQuery = state.query,
                 near = state.near,
-                onSubmit = onSubmit,
-                onNearChange = onNearChange,
-                onQueryChange = onQueryChange
+                onSubmit = actions.onSubmit,
+                onNearChange = actions.onNearChange,
+                onQueryChange = actions.onQueryChange
             )
 
             Spacer(Modifier.height(12.dp))
@@ -426,7 +415,7 @@ private fun SearchResultContentMvi(
                     Spacer(Modifier.width(8.dp))
                     IconActionButton(
                         key = AllIconsKeys.Windows.Close,
-                        onClick = onCancelSearch,
+                        onClick = actions.onCancelSearch,
                         contentDescription = "Cancel search"
                     )
                 }
@@ -476,10 +465,10 @@ private fun SearchResultContentMvi(
                                     onClick = {
                                         val mods = windowInfo.keyboardModifiers
                                         val openInNewTab = !(mods.isCtrlPressed || mods.isMetaPressed)
-                                        onOpenResult(result, openInNewTab)
+                                        actions.onOpenResult(result, openInNewTab)
                                     },
                                     breadcrumbs = breadcrumbs,
-                                    onRequestBreadcrumb = onRequestBreadcrumb,
+                                    onRequestBreadcrumb = actions.onRequestBreadcrumb,
                                     bookFontCode = bookFontCode
                                 )
                             }
@@ -499,7 +488,7 @@ private fun SearchResultContentMvi(
                                         Modifier.fillMaxWidth().padding(vertical = 16.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        DefaultButton(onClick = onLoadMore) {
+                                        DefaultButton(onClick = actions.onLoadMore) {
                                             Text(stringResource(Res.string.search_load_more), fontSize = commentSize.sp)
                                         }
                                     }

@@ -166,7 +166,7 @@ fun main() {
                         LaunchedEffect(Unit) {
                             window.minimumSize = Dimension(600, 300)
                             if (getOperatingSystem() == OperatingSystem.WINDOWS) {
-                                delay(200)
+                                delay(10)
                                 windowState.placement = WindowPlacement.Maximized
                             }
                         }

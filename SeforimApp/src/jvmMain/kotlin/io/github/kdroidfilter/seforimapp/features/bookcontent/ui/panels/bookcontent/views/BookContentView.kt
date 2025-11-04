@@ -4,12 +4,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.*
@@ -18,13 +20,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -35,6 +42,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -44,12 +52,33 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
+import org.jetbrains.jewel.ui.component.TextField as JewelTextField
+import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.notoserifhebrew
+import seforimapp.seforimapp.generated.resources.search_in_page
+import seforimapp.seforimapp.generated.resources.chevron_icon_description
+import seforimapp.seforimapp.generated.resources.search_result_count
+import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -66,6 +95,8 @@ fun BookContentView(
     scrollToLineTimestamp: Long = 0,
     anchorId: Long = -1L,
     anchorIndex: Int = 0,
+    topAnchorLineId: Long = -1L,
+    topAnchorTimestamp: Long = 0L,
     onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> }
 ) {
     // Collect paging data
@@ -98,6 +129,16 @@ fun BookContentView(
         label = "lineHeightAnimation"
     )
 
+    // Selected font for main book content
+    val bookFontCode by AppSettings.bookFontCodeFlow.collectAsState()
+    val hebrewFontFamily = FontCatalog.familyFor(bookFontCode)
+    // macOS fallback: some Hebrew fonts have no Bold face; slightly scale bold text for visibility
+    val boldScaleForPlatform = remember(bookFontCode) {
+        val isMac = System.getProperty("os.name")?.contains("Mac", ignoreCase = true) == true
+        val lacksBold = bookFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
+        if (isMac && lacksBold) 1.08f else 1.0f
+    }
+
     // Track restoration state per book
     var hasRestored by remember(book.id) { mutableStateOf(false) }
 
@@ -109,8 +150,12 @@ fun BookContentView(
 
     // Ensure the selected line is visible when explicitly requested (keyboard/nav)
     // without forcing it to the very top of the viewport.
-    LaunchedEffect(scrollToLineTimestamp, selectedLineId) {
+    LaunchedEffect(scrollToLineTimestamp, selectedLineId, topAnchorTimestamp, topAnchorLineId) {
         if (scrollToLineTimestamp == 0L || selectedLineId == null) return@LaunchedEffect
+
+        // Skip minimal bring-into-view when a top-anchoring request is active for this selection
+        val isTopAnchorRequest = (topAnchorTimestamp == scrollToLineTimestamp && topAnchorLineId == selectedLineId)
+        if (isTopAnchorRequest) return@LaunchedEffect
 
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
             delay(16)
@@ -129,89 +174,78 @@ fun BookContentView(
         }
     }
 
-    // Improved restoration algorithm for pagination
-    LaunchedEffect(lazyPagingItems.loadState.refresh, anchorId) {
-        // Only restore if we haven't already and we have items and an anchor
-        if (!hasRestored && anchorId != -1L && anchorId != restoredAnchorId) {
+    // Robust top-anchored restoration for TOC-driven selection.
+    // Trigger on every new anchorId. This ensures repeated TOC clicks always re-align at the top.
+    LaunchedEffect(topAnchorTimestamp, topAnchorLineId) {
+        if (topAnchorTimestamp == 0L || topAnchorLineId == -1L) return@LaunchedEffect
 
-            // Wait for the initial page load to complete
-            if (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-                // Wait for loading to finish
-                while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-                    delay(16)
-                }
+        // Reset restoration guard for this top-anchor event
+        hasRestored = false
+
+        // Wait for any ongoing refresh to complete
+        while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
+            delay(16)
+        }
+
+        // Helper to locate the target index in the current snapshot
+        fun currentTargetIndex(): Int? {
+            val snapshot = lazyPagingItems.itemSnapshotList
+            return snapshot.indices.firstOrNull { snapshot[it]?.id == topAnchorLineId }
+        }
+
+        var targetIndex = currentTargetIndex()
+        if (targetIndex == null) {
+            debugln { "Top-anchor target $topAnchorLineId not yet in snapshot; waiting" }
+            withTimeoutOrNull(1500L) {
+                snapshotFlow { lazyPagingItems.itemSnapshotList.items }
+                    .map { items -> items.indices.firstOrNull { items[it]?.id == topAnchorLineId } }
+                    .filterNotNull()
+                    .first().also { idx -> targetIndex = idx }
             }
+        }
 
-            // Now check if we have items
-            if (lazyPagingItems.itemCount > 0) {
-                // Find the anchor line in the current page
-                val snapshot = lazyPagingItems.itemSnapshotList
-                val anchorLineIndex = snapshot.indices.firstOrNull { snapshot[it]?.id == anchorId }
-
-                if (anchorLineIndex != null) {
-                    debugln { "Found anchor at index $anchorLineIndex, scrolling with offset $scrollOffset" }
-
-                    // Scroll directly to the anchor with the saved offset
-                    listState.scrollToItem(anchorLineIndex, scrollOffset)
-                    hasRestored = true
-                    restoredAnchorId = anchorId
-                } else {
-                    debugln { "Anchor line $anchorId not found in current page" }
-
-                    // Fallback strategy when anchor is not in current page:
-                    // 1) Try selected line if present in snapshot
-                    // 2) Otherwise, fall back to saved anchorIndex/scrollIndex within bounds
-                    val selectedIndex = if (selectedLineId != null) {
-                        snapshot.indices.firstOrNull { snapshot[it]?.id == selectedLineId }
-                    } else null
-
-                    if (selectedIndex != null) {
-                        debugln { "Fallback to selected line at index $selectedIndex" }
-                        listState.scrollToItem(selectedIndex)
-                        hasRestored = true
-                    } else {
-                        val itemCount = lazyPagingItems.itemCount
-                        if (itemCount > 0) {
-                            // Prefer anchorIndex if it’s in range; otherwise use scrollIndex; clamp to [0, itemCount-1]
-                            val indexByAnchor = anchorIndex.takeIf { it in 0 until itemCount }
-                            val indexByScroll = scrollIndex.takeIf { it in 0 until itemCount }
-                            val targetIndex = (indexByAnchor ?: indexByScroll ?: (itemCount - 1).coerceAtLeast(0))
-                            val targetOffset = if (targetIndex == scrollIndex) scrollOffset.coerceAtLeast(0) else 0
-                            debugln { "Fallback to index-based restore: index=$targetIndex, offset=$targetOffset (anchor missing)" }
-                            listState.scrollToItem(targetIndex, targetOffset)
-                            hasRestored = true
-                        }
-                    }
-                }
-            }
+        targetIndex?.let { idx ->
+            debugln { "Top-anchoring to index $idx for line $topAnchorLineId" }
+            listState.scrollToItem(idx, 0)
+            restoredAnchorId = topAnchorLineId
+            hasRestored = true
         }
     }
 
-    // Fallback restoration when no anchor is available: use saved scrollIndex/scrollOffset
-    LaunchedEffect(lazyPagingItems.loadState.refresh, scrollIndex, scrollOffset, anchorId) {
-        // Only attempt if we haven't restored yet, there is no anchor, and we actually have a non-zero saved position
-        if (!hasRestored && anchorId == -1L && (scrollIndex > 0 || scrollOffset > 0)) {
-            // Even if a preservedListState is provided, actively restore the position when we have saved scroll values
+    // Initial restoration from saved state (TabSystem): prefer saved anchor, otherwise saved index/offset.
+    // Runs once per book unless a top-anchor request has been issued (which handles itself).
+    LaunchedEffect(book.id, topAnchorTimestamp) {
+        if (topAnchorTimestamp != 0L) return@LaunchedEffect
+        if (hasRestored) return@LaunchedEffect
 
-            // Wait for the initial page load to complete
-            if (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-                while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-                    delay(16)
-                }
+        // Wait for initial page load to complete
+        while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
+            delay(16)
+        }
+
+        if (lazyPagingItems.itemCount <= 0) return@LaunchedEffect
+
+        // Try saved anchor if available
+        if (anchorId != -1L) {
+            val snapshot = lazyPagingItems.itemSnapshotList
+            val idx = snapshot.indices.firstOrNull { snapshot[it]?.id == anchorId }
+            if (idx != null) {
+                debugln { "Restoring by saved anchor: idx=$idx, offset=$scrollOffset" }
+                listState.scrollToItem(idx, scrollOffset.coerceAtLeast(0))
+                hasRestored = true
+                restoredAnchorId = anchorId
+                return@LaunchedEffect
             }
+        }
 
-            // Now, if we have items, try to scroll to the saved index/offset
-            if (lazyPagingItems.itemCount > 0) {
-                val itemCount = lazyPagingItems.itemCount
-                val targetIndex = scrollIndex.coerceIn(0, maxOf(0, itemCount - 1))
-                val targetOffset = scrollOffset.coerceAtLeast(0)
-
-                if (targetIndex != 0 || targetOffset != 0) {
-                    debugln { "Restoring scroll by index/offset: index=$targetIndex, offset=$targetOffset (no anchor)" }
-                    listState.scrollToItem(targetIndex, targetOffset)
-                    hasRestored = true
-                }
-            }
+        // Fallback to index/offset when no anchor or anchor not in snapshot
+        if (scrollIndex > 0 || scrollOffset > 0) {
+            val itemCount = lazyPagingItems.itemCount
+            val targetIndex = scrollIndex.coerceIn(0, maxOf(0, itemCount - 1))
+            val targetOffset = scrollOffset.coerceAtLeast(0)
+            debugln { "Restoring by index/offset: index=$targetIndex, offset=$targetOffset" }
+            listState.scrollToItem(targetIndex, targetOffset)
+            hasRestored = true
         }
     }
 
@@ -260,40 +294,68 @@ fun BookContentView(
             }
     }
 
-    // Memoize key event handler to avoid recreation
-    val keyEventHandler = remember(onEvent) {
-        { keyEvent: androidx.compose.ui.input.key.KeyEvent ->
-            debugln { "[BookContentView] Key event: key=${keyEvent.key}, type=${keyEvent.type}" }
+    // Find-in-page UI state
+    val showFind by AppSettings.findBarOpenFlow.collectAsState()
+    val findState = remember { TextFieldState() }
+    var currentHitLineIndex by remember { mutableIntStateOf(-1) }
+    var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
+    var currentMatchStart by remember { mutableIntStateOf(-1) }
 
-            if (keyEvent.type != KeyEventType.KeyDown) {
-                false
-            } else {
-                when (keyEvent.key) {
-                    Key.DirectionUp -> {
-                        debugln { "[BookContentView] Up arrow key pressed, navigating to previous line" }
-                        onEvent(BookContentEvent.NavigateToPreviousLine)
-                        true
-                    }
-                    Key.DirectionDown -> {
-                        debugln { "[BookContentView] Down arrow key pressed, navigating to next line" }
-                        onEvent(BookContentEvent.NavigateToNextLine)
-                        true
-                    }
-                    else -> false
+    // Helper: recompute total matches across loaded snapshot (approximate)
+    fun recomputeMatchesCount(query: String) { /* removed: no counter needed */ }
+
+    // Navigate to next/previous line containing the query (wrap-around)
+    val scope = rememberCoroutineScope()
+    fun navigateToMatch(next: Boolean) {
+        val query = findState.text.toString()
+        if (query.length < 2) return
+        val snapshot = lazyPagingItems.itemSnapshotList
+        if (snapshot.size == 0) return
+        val startIndex = if (currentHitLineIndex in snapshot.indices) currentHitLineIndex else listState.firstVisibleItemIndex
+        val step = if (next) 1 else -1
+        var i = startIndex
+        var guard = 0
+        val size = snapshot.size
+        while (guard++ < size) {
+            i = (i + step + size) % size
+            val line = snapshot[i] ?: continue
+            val text = buildAnnotatedFromHtml(line.content, textSize).text
+            val start = text.indexOf(query, ignoreCase = true)
+            if (start >= 0) {
+                currentHitLineIndex = i
+                currentMatchLineId = line.id
+                currentMatchStart = start
+                // Bring line into view (slight offset)
+                scope.launch {
+                    listState.scrollToItem(i, 32)
                 }
+                break
             }
         }
     }
 
-    SelectionContainer(
-        modifier = modifier
-            .fillMaxSize()
-            .onKeyEvent(keyEventHandler)
-    ) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize()
-        ) {
+    // Global preview handler: ensures Ctrl/Cmd+F opens find bar regardless of focus
+    val previewKeyHandler = remember(onEvent) {
+        { keyEvent: androidx.compose.ui.input.key.KeyEvent ->
+            // Ctrl/Cmd+F handled globally at window level; do not intercept here
+            if (keyEvent.type == KeyEventType.KeyDown) {
+                when (keyEvent.key) {
+                    Key.DirectionUp -> { onEvent(BookContentEvent.NavigateToPreviousLine); true }
+                    Key.DirectionDown -> { onEvent(BookContentEvent.NavigateToNextLine); true }
+                    Key.Escape -> { if (showFind) { AppSettings.closeFindBar(); true } else false }
+                    else -> false
+                }
+            } else false
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize().padding(bottom = 8.dp).onPreviewKeyEvent(previewKeyHandler)) {
+        // Content with text selection
+        SelectionContainer(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().padding(end = 16.dp)
+            ) {
             items(
                 count = lazyPagingItems.itemCount,
                 key = lazyPagingItems.itemKey { it.id },
@@ -307,8 +369,12 @@ fun BookContentView(
                         isSelected = selectedLineId == line.id,
                         baseTextSize = textSize,
                         lineHeight = lineHeight,
+                        fontFamily = hebrewFontFamily,
+                        boldScale = boldScaleForPlatform,
                         onLineSelected = onLineSelected,
-                        scrollToLineTimestamp = scrollToLineTimestamp
+                        scrollToLineTimestamp = scrollToLineTimestamp,
+                        highlightQuery = findState.text.toString().takeIf { showFind },
+                        currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null
                     )
                 } else {
                     // Placeholder while loading
@@ -319,11 +385,13 @@ fun BookContentView(
             // Show loading indicators
             lazyPagingItems.apply {
                 when {
-                    loadState.refresh is LoadState.Loading -> {
+                    // Avoid flicker: only show full loader on refresh if we have no items yet
+                    loadState.refresh is LoadState.Loading && itemCount == 0 -> {
                         item(contentType = "loading") {
                             LoadingIndicator()
                         }
                     }
+                    // Keep small loader for pagination append
                     loadState.append is LoadState.Loading -> {
                         item(contentType = "loading") {
                             LoadingIndicator(isSmall = true)
@@ -341,6 +409,61 @@ fun BookContentView(
                             ErrorIndicator(message = "Error loading more: ${error.message}")
                         }
                     }
+                }
+            }
+            }
+        }
+
+        // Find-in-page bar overlay with result count badge (uniform style)
+        if (showFind) {
+            // Compute total matches across currently loaded snapshot (approximate)
+            val queryText = findState.text.toString()
+            val snapshotItems = lazyPagingItems.itemSnapshotList.items
+            val matchCount = remember(queryText, snapshotItems) {
+                if (queryText.length < 2) 0 else {
+                    var total = 0
+                    // Count non-overlapping occurrences per visible/loaded line
+                    for (ln in snapshotItems) {
+                        if (ln == null) continue
+                        val text = try { buildAnnotatedFromHtml(ln.content, textSize).text } catch (_: Throwable) { ln.content }
+                        var idx = text.indexOf(queryText, ignoreCase = true)
+                        while (idx >= 0) {
+                            total += 1
+                            idx = text.indexOf(queryText, startIndex = idx + queryText.length, ignoreCase = true)
+                        }
+                    }
+                    total
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp)
+                    .zIndex(2f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (queryText.length >= 2) {
+                    // Wrap badge in a small panel background to improve border contrast,
+                    // keeping the badge's own border color (disabled) identical to the tree.
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(JewelTheme.globalColors.panelBackground)
+                            .padding(2.dp)
+                    ) {
+                        CountBadge(count = matchCount)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+                FindInPageBar(
+                    state = findState,
+                    onEnterNext = { navigateToMatch(true) },
+                    onEnterPrev = { navigateToMatch(false) },
+                    onClose = { AppSettings.closeFindBar(); AppSettings.setFindQuery("") }
+                )
+                LaunchedEffect(findState.text, showFind) {
+                    val q = findState.text.toString()
+                    AppSettings.setFindQuery(if (showFind && q.length >= 2) q else "")
                 }
             }
         }
@@ -362,12 +485,28 @@ private fun LineItem(
     isSelected: Boolean,
     baseTextSize: Float = 16f,
     lineHeight: Float = 1.5f,
+    fontFamily: FontFamily,
+    boldScale: Float = 1.0f,
     onLineSelected: (Line) -> Unit,
-    scrollToLineTimestamp: Long
+    scrollToLineTimestamp: Long,
+    highlightQuery: String? = null,
+    currentMatchStart: Int? = null
 ) {
     // Memoize the annotated string with proper keys
-    val annotated = remember(line.id, line.content, baseTextSize) {
-        buildAnnotatedFromHtml(line.content, baseTextSize)
+    val annotated = remember(line.id, line.content, baseTextSize, boldScale) { buildAnnotatedFromHtml(line.content, baseTextSize, boldScale = if (boldScale < 1f) 1f else boldScale) }
+
+    // Build highlighted text when a query is active (>= 2 chars)
+    val baseHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.22f)
+    val currentHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.42f)
+    val displayText: AnnotatedString = remember(annotated, highlightQuery, currentMatchStart, baseHl, currentHl) {
+        io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
+            annotated = annotated,
+            query = highlightQuery,
+            currentStart = currentMatchStart?.takeIf { it >= 0 },
+            currentLength = highlightQuery?.length,
+            baseColor = baseHl,
+            currentColor = currentHl
+        )
     }
 
     // Memoize click handler to avoid recreation
@@ -376,7 +515,7 @@ private fun LineItem(
     }
 
     // Get theme color in composable context
-    val borderColor = if (isSelected) JewelTheme.globalColors.borders.disabled else Color.Transparent
+    val borderColor = if (isSelected) JewelTheme.globalColors.outlines.focused else Color.Transparent
 
     val bringRequester = remember { BringIntoViewRequester() }
 
@@ -397,15 +536,6 @@ private fun LineItem(
         detectTapGestures(onTap = { clickHandler() })
     }
 
-    val hebrewFontFamily =
-        FontFamily(
-            Font(
-                resource = Res.font.notoserifhebrew,
-                weight = FontWeight.Normal
-            )
-        )
-
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -425,9 +555,9 @@ private fun LineItem(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = annotated,
+                text = displayText,
                 textAlign = TextAlign.Justify,
-                fontFamily = hebrewFontFamily,
+                fontFamily = fontFamily,
                 lineHeight = (baseTextSize * lineHeight).sp,
                 modifier = textModifier
             )

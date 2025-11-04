@@ -18,6 +18,7 @@ import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -43,6 +44,7 @@ import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import seforimapp.seforimapp.generated.resources.*
 
 private const val MAX_COMMENTATORS = 4
@@ -240,13 +242,23 @@ private fun CommentariesDisplay(
     val windowInfo = LocalWindowInfo.current
 
     // Memorizes the configuration to avoid recreating it
+    val commentaryFontCode by AppSettings.commentaryFontCodeFlow.collectAsState()
+    val commentaryFontFamily = FontCatalog.familyFor(commentaryFontCode)
+    val boldScaleForPlatform = remember(commentaryFontCode) {
+        val isMac = System.getProperty("os.name")?.contains("Mac", ignoreCase = true) == true
+        val lacksBold = commentaryFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
+        if (isMac && lacksBold) 1.08f else 1.0f
+    }
+
     val layoutConfig = remember(
         selectedCommentators,
         titleToIdMap,
         selectedLine.id,
         contentState.commentariesScrollIndex,
         contentState.commentariesScrollOffset,
-        textSizes
+        textSizes,
+        commentaryFontFamily,
+        boldScaleForPlatform
     ) {
         CommentariesLayoutConfig(
             selectedCommentators = selectedCommentators,
@@ -268,7 +280,9 @@ private fun CommentariesDisplay(
                     )
                 }
             },
-            textSizes = textSizes
+            textSizes = textSizes,
+            fontFamily = commentaryFontFamily,
+            boldScale = boldScaleForPlatform
         )
     }
 
@@ -415,6 +429,8 @@ private fun CommentaryListView(
                     CommentaryItem(
                         commentary = commentary,
                         textSizes = config.textSizes,
+                        fontFamily = config.fontFamily,
+                        boldScale = config.boldScale,
                         onClick = { config.onCommentClick(commentary) }
                     )
                 }
@@ -436,6 +452,8 @@ private fun CommentaryListView(
 private fun CommentaryItem(
     commentary: CommentaryWithText,
     textSizes: AnimatedTextSizes,
+    fontFamily: FontFamily,
+    boldScale: Float = 1.0f,
     onClick: () -> Unit
 ) {
     // Memorizes the pointerInput to avoid recreating it
@@ -452,17 +470,22 @@ private fun CommentaryItem(
             .then(clickModifier)
     ) {
         // Cache the annotation to avoid rebuilding it
-        val annotated = remember(commentary.targetText, textSizes.commentTextSize) {
+        val annotated = remember(commentary.targetText, textSizes.commentTextSize, boldScale) {
             buildAnnotatedFromHtml(
                 commentary.targetText,
-                textSizes.commentTextSize
+                textSizes.commentTextSize,
+                boldScale = if (boldScale < 1f) 1f else boldScale
             )
         }
 
-        val fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew))
+        // Highlight occurrences from global find-in-page query
+        val findQuery by AppSettings.findQueryFlow.collectAsState()
+        val display: AnnotatedString = remember(annotated, findQuery) {
+            io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated(annotated, findQuery)
+        }
 
         Text(
-            text = annotated,
+            text = display,
             textAlign = TextAlign.Justify,
             fontFamily = fontFamily,
             lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp
@@ -641,5 +664,7 @@ private data class CommentariesLayoutConfig(
     val scrollOffset: Int,
     val onScroll: (Int, Int) -> Unit,
     val onCommentClick: (CommentaryWithText) -> Unit,
-    val textSizes: AnimatedTextSizes
+    val textSizes: AnimatedTextSizes,
+    val fontFamily: FontFamily,
+    val boldScale: Float,
 )

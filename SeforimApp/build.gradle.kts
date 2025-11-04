@@ -20,7 +20,7 @@ val ref = System.getenv("GITHUB_REF") ?: ""
 val version = if (ref.startsWith("refs/tags/")) {
     val tag = ref.removePrefix("refs/tags/")
     if (tag.startsWith("v")) tag.substring(1) else tag
-} else "0.2.3"
+} else "0.3.0"
 
 // Turn 0.x[.y] into 1.x[.y] for macOS (DMG/PKG require MAJOR > 0)
 fun macSafeVersion(ver: String): String {
@@ -124,7 +124,6 @@ kotlin {
 //        androidMain.dependencies {
 //            implementation(compose.uiTooling)
 //            implementation(libs.androidx.activityCompose)
-//            implementation(libs.kotlinx.coroutines.android)
 //            implementation(libs.ktor.client.okhttp)
 //        }
 
@@ -143,6 +142,14 @@ kotlin {
             implementation(libs.sqlite.driver)
             implementation(libs.zstd.jni)
             implementation(libs.ktor.client.okhttp)
+            implementation("org.apache.lucene:lucene-core:10.3.1")
+            implementation("org.apache.lucene:lucene-analysis-common:10.3.1")
+            implementation("org.apache.lucene:lucene-queryparser:10.3.1")
+            implementation("org.apache.lucene:lucene-highlighter:10.3.1")
+            implementation("org.apache.commons:commons-compress:1.26.2")
+
+            // HTML sanitization for search snippets
+            implementation(libs.jsoup)
         }
     }
 }
@@ -175,9 +182,13 @@ compose.desktop {
             // Package-time resources root; include files under OS-specific subfolders (common, macos, windows, linux)
             appResourcesRootDir.set(layout.projectDirectory.dir("src/jvmMain/assets"))
             // Show splash image from the packaged resources directory
-            jvmArgs += listOf("-splash:\$APPDIR/resources/splash.png")
+            jvmArgs += listOf(
+                "-splash:\$APPDIR/resources/splash.png",
+                "--enable-native-access=ALL-UNNAMED",
+                "--add-modules=jdk.incubator.vector"
+            )
 
-            modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility")
+            modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility", "jdk.incubator.vector")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb)
             vendor = "KDroidFilter"
 

@@ -7,7 +7,7 @@ jsoup = "1.21.2"
 jvmNativeTrustedRoots = "1.1.7"
 koalaplotCore = "0.9.1"
 kotlin = "2.2.21"
-compose = "1.9.1"
+compose = "1.9.2"
 agp = "8.12.3"
 androidx-activityCompose = "1.11.0"
 androidx-uiTest = "1.9.4"
@@ -36,6 +36,7 @@ navigationCompose = "2.9.1"
 sqliteDriver = "2.1.0"
 zstdJni = "1.5.7-6"
 metro = "0.7.2"
+lucene = "10.3.1"
 
 [libraries]
 
@@ -97,6 +98,10 @@ navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-co
 split-pane-desktop = { module = "org.jetbrains.compose.components:components-splitpane-desktop", version.ref = "compose"}
 sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqliteDriver" }
 zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstdJni" }
+lucene-core = { module = "org.apache.lucene:lucene-core", version.ref = "lucene" }
+lucene-analysis-common = { module = "org.apache.lucene:lucene-analysis-common", version.ref = "lucene" }
+lucene-queryparser = { module = "org.apache.lucene:lucene-queryparser", version.ref = "lucene" }
+lucene-highlighter = { module = "org.apache.lucene:lucene-highlighter", version.ref = "lucene" }
 
 # Metro
 metro-runtime = { module = "dev.zacsweers.metro:runtime", version.ref = "metro" }

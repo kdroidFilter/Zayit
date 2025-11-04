@@ -3,7 +3,6 @@ package io.github.kdroidfilter.seforim.tabs
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.seforim.navigation.Navigator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -19,32 +18,27 @@ data class TabItem(
 )
 
 class TabsViewModel(
-    private val navigator: Navigator,
     private val titleUpdateManager: TabTitleUpdateManager,
-    private val stateManager: TabStateManager
+    private val stateManager: TabStateManager,
+    startDestination: TabsDestination
 ) : ViewModel() {
 
     private var _nextTabId = 2 // Commence à 2 car on a déjà un onglet par défaut
-    private val _tabs = MutableStateFlow(listOf(
-        TabItem(
-            id = 1,
-            title = getTabTitle(navigator.startDestination),
-            destination = navigator.startDestination
+    private val _tabs = MutableStateFlow(
+        listOf(
+            TabItem(
+                id = 1,
+                title = getTabTitle(startDestination),
+                destination = startDestination
+            )
         )
-    ))
+    )
     val tabs = _tabs.asStateFlow()
 
     private val _selectedTabIndex = MutableStateFlow(0)
     val selectedTabIndex = _selectedTabIndex.asStateFlow()
 
     init {
-        // Écouter les requêtes de navigation
-        viewModelScope.launch {
-            navigator.navigationRequests.collect { destination ->
-                addTabWithDestination(destination)
-            }
-        }
-        
         // Écouter les mises à jour de titre
         viewModelScope.launch {
             titleUpdateManager.titleUpdates.collect { update ->
@@ -63,9 +57,19 @@ class TabsViewModel(
 
     private fun closeTab(index: Int) {
         val currentTabs = _tabs.value
-        if (currentTabs.size <= 1) return // Ne pas fermer le dernier onglet
 
         if (index < 0 || index >= currentTabs.size) return // Index invalide
+
+        // If it's the last remaining tab, reset it to a fresh one instead of removing it
+        if (currentTabs.size == 1) {
+            // Replace the current (and only) tab with a brand‑new tabId and default destination
+            // This clears the previous tab state and avoids leaving the UI without any tab
+            replaceCurrentTabWithNewTabId(
+                TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())
+            )
+            _selectedTabIndex.value = 0
+            return
+        }
 
         // Capture tabId to clear any per-tab cached state
         val tabIdToClose = currentTabs[index].destination.tabId
@@ -97,16 +101,12 @@ class TabsViewModel(
 
         _selectedTabIndex.value = newSelectedIndex
 
-        // Encourage memory reclamation after closing a tab
-        System.gc()
     }
 
     private fun selectTab(index: Int) {
         val currentTabs = _tabs.value
         if (index in 0..currentTabs.lastIndex && index != _selectedTabIndex.value) {
             _selectedTabIndex.value = index
-            // Trigger GC when switching tabs
-            System.gc()
         }
     }
 
@@ -115,7 +115,8 @@ class TabsViewModel(
         val newTab = TabItem(
             id = _nextTabId++,
             title = getTabTitle(destination),
-            destination = destination
+            destination = destination,
+            tabType = TabType.SEARCH
         )
         _tabs.value = _tabs.value + newTab
         _selectedTabIndex.value = _tabs.value.lastIndex
@@ -126,7 +127,7 @@ class TabsViewModel(
     private fun addTabWithDestination(destination: TabsDestination) {
         // Preserve the provided tabId to allow callers to pre-initialize tab state (e.g., via TabStateManager).
         val newDestination = when (destination) {
-            is TabsDestination.Home -> TabsDestination.Home(destination.tabId)
+            is TabsDestination.Home -> TabsDestination.Home(destination.tabId, destination.version)
             is TabsDestination.Search -> TabsDestination.Search(destination.searchQuery, destination.tabId)
             is TabsDestination.BookContent -> TabsDestination.BookContent(destination.bookId, destination.tabId, destination.lineId)
         }
@@ -134,17 +135,111 @@ class TabsViewModel(
         val newTab = TabItem(
             id = _nextTabId++,
             title = getTabTitle(newDestination),
-            destination = newDestination
+            destination = newDestination,
+            tabType = when (newDestination) {
+                is TabsDestination.Home -> TabType.SEARCH
+                is TabsDestination.Search -> TabType.SEARCH
+                is TabsDestination.BookContent -> if (newDestination.bookId > 0) TabType.BOOK else TabType.SEARCH
+            }
         )
         _tabs.value = _tabs.value + newTab
         _selectedTabIndex.value = _tabs.value.lastIndex
-        // Trigger GC when a new tab is opened via navigation
-        System.gc()
     }
 
+    /**
+     * Public API to open a new tab with the given destination.
+     * Keeps the provided tabId, selects the new tab.
+     */
+    fun openTab(destination: TabsDestination) {
+        addTabWithDestination(destination)
+    }
+
+    /**
+     * Replaces the destination of the currently selected tab, preserving the tabId.
+     * Does not create a new tab. Updates the tab title accordingly.
+     */
+    fun replaceCurrentTabDestination(destination: TabsDestination) {
+        val index = _selectedTabIndex.value
+        val currentTabs = _tabs.value
+        if (index !in 0..currentTabs.lastIndex) return
+
+        val current = currentTabs[index]
+        val newDestination = when (destination) {
+            is TabsDestination.Home -> TabsDestination.Home(
+                tabId = current.destination.tabId,
+                version = System.currentTimeMillis()
+            )
+            is TabsDestination.Search -> TabsDestination.Search(
+                searchQuery = destination.searchQuery,
+                tabId = current.destination.tabId
+            )
+            is TabsDestination.BookContent -> TabsDestination.BookContent(
+                bookId = destination.bookId,
+                tabId = current.destination.tabId,
+                lineId = destination.lineId
+            )
+        }
+
+        val updated = current.copy(
+            title = getTabTitle(newDestination),
+            destination = newDestination,
+            tabType = when (newDestination) {
+                is TabsDestination.Home -> TabType.SEARCH
+                is TabsDestination.Search -> TabType.SEARCH
+                is TabsDestination.BookContent -> if (newDestination.bookId > 0) TabType.BOOK else TabType.SEARCH
+            }
+        )
+        _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
+    }
+
+    /**
+     * Replaces the currently selected tab with a fresh tabId, similar to opening
+     * a brand-new tab but keeping the same visual slot. Clears the previous tabId
+     * state to avoid leaking state into the new content.
+     */
+    fun replaceCurrentTabWithNewTabId(destination: TabsDestination) {
+        val index = _selectedTabIndex.value
+        val currentTabs = _tabs.value
+        if (index !in 0..currentTabs.lastIndex) return
+
+        val current = currentTabs[index]
+        val oldTabId = current.destination.tabId
+        val newTabId = UUID.randomUUID().toString()
+
+        val newDestination = when (destination) {
+            is TabsDestination.Home -> TabsDestination.Home(
+                tabId = newTabId,
+                version = System.currentTimeMillis()
+            )
+            is TabsDestination.Search -> TabsDestination.Search(
+                searchQuery = destination.searchQuery,
+                tabId = newTabId
+            )
+            is TabsDestination.BookContent -> TabsDestination.BookContent(
+                bookId = destination.bookId,
+                tabId = newTabId,
+                lineId = destination.lineId
+            )
+        }
+
+        // Clear all state for the old tabId to free memory and avoid state bleed
+        stateManager.clearTabState(oldTabId)
+
+        val updated = current.copy(
+            title = getTabTitle(newDestination),
+            destination = newDestination,
+            tabType = when (newDestination) {
+                is TabsDestination.Home -> TabType.SEARCH
+                is TabsDestination.Search -> TabType.SEARCH
+                is TabsDestination.BookContent -> if (newDestination.bookId > 0) TabType.BOOK else TabType.SEARCH
+            }
+        )
+        _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
+    }
     private fun getTabTitle(destination: TabsDestination): String {
         return when (destination) {
-            is TabsDestination.Home -> "Home"
+            // For Home, return empty so UI can localize via resources
+            is TabsDestination.Home -> ""
             is TabsDestination.Search -> destination.searchQuery
             is TabsDestination.BookContent -> if (destination.bookId > 0) "${destination.bookId}" else ""
         }

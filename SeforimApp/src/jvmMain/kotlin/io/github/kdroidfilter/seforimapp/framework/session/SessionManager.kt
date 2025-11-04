@@ -8,6 +8,7 @@ import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
+import io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -83,21 +84,20 @@ object SessionManager {
 
         // Recreate tabs and selection via navigator/tabs VM
         val tabsVm: TabsViewModel = appGraph.tabsViewModel
-        val navigator = appGraph.navigator
         val titleUpdateManager: TabTitleUpdateManager = appGraph.tabTitleUpdateManager
 
         if (saved.tabs.isEmpty()) return
 
         runBlocking {
             // Open first tab then close default initial one
-            navigator.navigate(saved.tabs.first())
+            tabsVm.openTab(saved.tabs.first())
         }
         // Close the initial default tab at index 0
         tabsVm.onEvent(TabsEvents.onClose(0))
 
         // Open remaining tabs
         saved.tabs.drop(1).forEach { dest ->
-            runBlocking { navigator.navigate(dest) }
+            runBlocking { tabsVm.openTab(dest) }
         }
 
         // Update tab titles immediately based on restored state (e.g., Book.title),
@@ -162,6 +162,21 @@ object SessionManager {
             StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE -> json.encodeToString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), value as Map<Long, Set<Long>>)
             StateKeys.SELECTED_TARGUM_SOURCES_BY_BOOK -> json.encodeToString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), value as Map<Long, Set<Long>>)
 
+            // Search (SearchResultView)
+            SearchStateKeys.QUERY -> json.encodeToString(String.serializer(), value as String)
+            SearchStateKeys.NEAR -> json.encodeToString(Int.serializer(), value as Int)
+            SearchStateKeys.FILTER_CATEGORY_ID -> json.encodeToString(Long.serializer(), value as Long)
+            SearchStateKeys.FILTER_BOOK_ID -> json.encodeToString(Long.serializer(), value as Long)
+            SearchStateKeys.FILTER_TOC_ID -> json.encodeToString(Long.serializer(), value as Long)
+            SearchStateKeys.DATASET_SCOPE -> json.encodeToString(String.serializer(), value as String)
+            SearchStateKeys.FETCH_CATEGORY_ID -> json.encodeToString(Long.serializer(), value as Long)
+            SearchStateKeys.FETCH_BOOK_ID -> json.encodeToString(Long.serializer(), value as Long)
+            SearchStateKeys.FETCH_TOC_ID -> json.encodeToString(Long.serializer(), value as Long)
+            SearchStateKeys.SCROLL_INDEX -> json.encodeToString(Int.serializer(), value as Int)
+            SearchStateKeys.SCROLL_OFFSET -> json.encodeToString(Int.serializer(), value as Int)
+            SearchStateKeys.ANCHOR_ID -> json.encodeToString(Long.serializer(), value as Long)
+            SearchStateKeys.ANCHOR_INDEX -> json.encodeToString(Int.serializer(), value as Int)
+
             // Layout
             StateKeys.SPLIT_PANE_POSITION -> json.encodeToString(Float.serializer(), value as Float)
             StateKeys.TOC_SPLIT_PANE_POSITION -> json.encodeToString(Float.serializer(), value as Float)
@@ -222,6 +237,21 @@ object SessionManager {
             StateKeys.SELECTED_COMMENTATORS_BY_BOOK -> json.decodeFromString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), encoded)
             StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE -> json.decodeFromString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), encoded)
             StateKeys.SELECTED_TARGUM_SOURCES_BY_BOOK -> json.decodeFromString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), encoded)
+
+            // Search (SearchResultView)
+            SearchStateKeys.QUERY -> json.decodeFromString(String.serializer(), encoded)
+            SearchStateKeys.NEAR -> json.decodeFromString(Int.serializer(), encoded)
+            SearchStateKeys.FILTER_CATEGORY_ID -> json.decodeFromString(Long.serializer(), encoded)
+            SearchStateKeys.FILTER_BOOK_ID -> json.decodeFromString(Long.serializer(), encoded)
+            SearchStateKeys.FILTER_TOC_ID -> json.decodeFromString(Long.serializer(), encoded)
+            SearchStateKeys.DATASET_SCOPE -> json.decodeFromString(String.serializer(), encoded)
+            SearchStateKeys.FETCH_CATEGORY_ID -> json.decodeFromString(Long.serializer(), encoded)
+            SearchStateKeys.FETCH_BOOK_ID -> json.decodeFromString(Long.serializer(), encoded)
+            SearchStateKeys.FETCH_TOC_ID -> json.decodeFromString(Long.serializer(), encoded)
+            SearchStateKeys.SCROLL_INDEX -> json.decodeFromString(Int.serializer(), encoded)
+            SearchStateKeys.SCROLL_OFFSET -> json.decodeFromString(Int.serializer(), encoded)
+            SearchStateKeys.ANCHOR_ID -> json.decodeFromString(Long.serializer(), encoded)
+            SearchStateKeys.ANCHOR_INDEX -> json.decodeFromString(Int.serializer(), encoded)
 
             // Layout
             StateKeys.SPLIT_PANE_POSITION -> json.decodeFromString(Float.serializer(), encoded)

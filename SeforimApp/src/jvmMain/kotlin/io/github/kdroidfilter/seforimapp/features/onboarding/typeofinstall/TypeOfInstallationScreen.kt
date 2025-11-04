@@ -3,6 +3,10 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -36,18 +40,31 @@ fun TypeOfInstallationScreen(navController: NavController, progressBarState: Pro
         progressBarState.setProgress(0.3f)
     }
     val viewModel: TypeOfInstallationViewModel = LocalAppGraph.current.typeOfInstallationViewModel
-    val pickZstLauncher = rememberFilePickerLauncher(
-        type = FileKitType.File(extensions = listOf("zst"))
+    // Offline: pick two files (part01 then part02)
+    var part01Path by remember { mutableStateOf<String?>(null) }
+    val pickPart02Launcher = rememberFilePickerLauncher(
+        type = FileKitType.File(extensions = listOf("part02"))
     ) { file ->
-        val path = file?.path
-        if (path != null) {
-            viewModel.onEvent(TypeOfInstallationEvents.OfflineFileChosen(path))
-            // Jump to the start of the Extract step when selecting an offline archive
-            progressBarState.setProgress(0.8f)
+        val p2 = file?.path
+        val p1 = part01Path
+        if (!p2.isNullOrBlank() && !p1.isNullOrBlank()) {
+            // Provide part01 path; ExtractUseCase discovers part02 automatically in the same folder
+            viewModel.onEvent(TypeOfInstallationEvents.OfflineFileChosen(p1))
+            // Jump to the start of the Extract step
+            progressBarState.setProgress(0.7f)
             // Move forward and clear all previous onboarding steps so back is disabled
             navController.navigate(OnBoardingDestination.ExtractScreen) {
                 popUpTo<OnBoardingDestination.InitScreen> { inclusive = true }
             }
+        }
+    }
+    val pickPart01Launcher = rememberFilePickerLauncher(
+        type = FileKitType.File(extensions = listOf("part01"))
+    ) { file ->
+        part01Path = file?.path
+        if (part01Path != null) {
+            // Immediately ask for part02
+            pickPart02Launcher.launch()
         }
     }
     TypeOfInstallationView(
@@ -57,7 +74,7 @@ fun TypeOfInstallationScreen(navController: NavController, progressBarState: Pro
                 popUpTo<OnBoardingDestination.InitScreen> { inclusive = true }
             }
         },
-        onOfflineInstallation = { pickZstLauncher.launch() }
+        onOfflineInstallation = { pickPart01Launcher.launch() }
     )
 }
 

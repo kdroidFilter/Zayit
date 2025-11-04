@@ -17,6 +17,7 @@ import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,7 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.*
+import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -67,6 +69,15 @@ fun LineTargumView(
         animationSpec = tween(durationMillis = 300),
         label = "linkLineHeightAnim"
     )
+
+    // Selected font for targumim
+    val targumFontCode by AppSettings.targumFontCodeFlow.collectAsState()
+    val targumFontFamily = FontCatalog.familyFor(targumFontCode)
+    val boldScaleForPlatform = remember(targumFontCode) {
+        val isMac = System.getProperty("os.name")?.contains("Mac", ignoreCase = true) == true
+        val lacksBold = targumFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
+        if (isMac && lacksBold) 1.08f else 1.0f
+    }
 
     val paneInteractionSource = remember { MutableInteractionSource() }
 
@@ -147,7 +158,9 @@ fun LineTargumView(
                                             onScroll = onScroll,
                                             onLinkClick = onLinkClick,
                                             commentTextSize = commentTextSize,
-                                            lineHeight = lineHeight
+                                            lineHeight = lineHeight,
+                                            fontFamily = targumFontFamily,
+                                            boldScale = boldScaleForPlatform
                                         )
 
                                         Spacer(modifier = Modifier.height(8.dp))
@@ -238,7 +251,9 @@ private fun PagedLinksList(
     onScroll: (Int, Int) -> Unit,
     onLinkClick: (CommentaryWithText) -> Unit,
     commentTextSize: Float,
-    lineHeight: Float
+    lineHeight: Float,
+    fontFamily: FontFamily,
+    boldScale: Float = 1.0f,
 ) {
     val pagerFlow: Flow<PagingData<CommentaryWithText>> = remember(lineId, sourceBookId) {
         buildLinksPagerFor(lineId, sourceBookId).distinctUntilChanged()
@@ -271,6 +286,8 @@ private fun PagedLinksList(
                         item = item,
                         commentTextSize = commentTextSize,
                         lineHeight = lineHeight,
+                        fontFamily = fontFamily,
+                        boldScale = boldScale,
                         onLinkClick = onLinkClick
                     )
                 }
@@ -299,6 +316,8 @@ private fun LinkItem(
     item: CommentaryWithText,
     commentTextSize: Float,
     lineHeight: Float,
+    fontFamily: FontFamily,
+    boldScale: Float = 1.0f,
     onLinkClick: (CommentaryWithText) -> Unit
 ) {
     // Optimisation : mémorisation du callback pour éviter recréation
@@ -314,17 +333,22 @@ private fun LinkItem(
                 detectTapGestures(onTap = { onClick() })
             }
     ) {
-        val annotated = remember(item.link.id, item.targetText, commentTextSize) {
+        val annotated = remember(item.link.id, item.targetText, commentTextSize, boldScale) {
             buildAnnotatedFromHtml(
                 item.targetText,
-                commentTextSize
+                commentTextSize,
+                boldScale = if (boldScale < 1f) 1f else boldScale
             )
         }
 
-        val fontFamily = FontFamily(Font(resource = Res.font.notorashihebrew))
+        // Highlight occurrences using global find-in-page query
+        val findQuery by AppSettings.findQueryFlow.collectAsState()
+        val display: AnnotatedString = remember(annotated, findQuery) {
+            io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated(annotated, findQuery)
+        }
 
         Text(
-            text = annotated,
+            text = display,
             textAlign = TextAlign.Justify,
             fontFamily = fontFamily,
             lineHeight = (commentTextSize * lineHeight).sp

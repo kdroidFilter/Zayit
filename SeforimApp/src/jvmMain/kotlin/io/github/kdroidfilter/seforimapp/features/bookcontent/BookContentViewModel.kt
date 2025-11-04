@@ -4,7 +4,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
-import io.github.kdroidfilter.seforim.navigation.Navigator
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -31,7 +30,7 @@ class BookContentViewModel(
     private val tabStateManager: TabStateManager,
     private val repository: SeforimRepository,
     private val titleUpdateManager: TabTitleUpdateManager,
-    private val navigator: Navigator
+    private val tabsViewModel: TabsViewModel
 ) : TabAwareViewModel(
     tabId = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: "",
     stateManager = tabStateManager
@@ -121,8 +120,10 @@ class BookContentViewModel(
                     loadBookData(restoredBook)
                 }
 
-                // Restaurer la ligne sélectionnée
+                // Restaurer la ligne sélectionnée et recalculer le TOC/breadcrumb
                 stateManager.state.value.content.selectedLine?.let { line ->
+                    // Also rebuild TOC selection + breadcrumb from the restored line
+                    contentUseCase.selectLine(line)
                     commentariesUseCase.reapplySelectedCommentators(line)
                     commentariesUseCase.reapplySelectedLinkSources(line)
                 }
@@ -133,13 +134,22 @@ class BookContentViewModel(
                 }
             }
 
-            // Observer le livre sélectionné pour mettre à jour le titre
+            // Observer le livre sélectionné et le TOC courant pour mettre à jour le titre
             stateManager.state
-                .map { it.navigation.selectedBook }
-                .filterNotNull()
+                .map { state ->
+                    val bookTitle = state.navigation.selectedBook?.title.orEmpty()
+                    val tocLabel = state.toc.breadcrumbPath.lastOrNull()?.text?.takeIf { it.isNotBlank() }
+                    val combined = if (bookTitle.isNotBlank() && tocLabel != null) {
+                        "$bookTitle - $tocLabel"
+                    } else {
+                        bookTitle
+                    }
+                    combined
+                }
+                .filter { it.isNotEmpty() }
                 .distinctUntilChanged()
-                .collect { book ->
-                    titleUpdateManager.updateTabTitle(currentTabId, book.title, TabType.BOOK)
+                .collect { combined ->
+                    titleUpdateManager.updateTabTitle(currentTabId, combined, TabType.BOOK)
                 }
         }
     }
@@ -351,24 +361,55 @@ class BookContentViewModel(
                 // Always prefer an explicit anchor when present (e.g., opening from a commentary link)
                 val shouldUseAnchor = state.content.anchorId != -1L
 
-                val initialLineId = when {
+                // Resolve initial line anchor if any, otherwise fall back to the first TOC's first line
+                // so that opening a book from the category tree selects the first meaningful section.
+                val resolvedInitialLineId: Long? = when {
                     forceAnchorId != null -> forceAnchorId
                     shouldUseAnchor -> state.content.anchorId
                     state.content.selectedLine != null -> state.content.selectedLine?.id
-                    else -> null
+                    else -> {
+                        // Compute from TOC: take the first root TOC entry (or its first leaf) and
+                        // select its first associated line. Fallback to the very first line of the book.
+                        runCatching {
+                            val root = repository.getBookRootToc(book.id)
+                            val first = root.firstOrNull()
+                            val targetEntryId = if (first == null) null else findFirstLeafTocId(first)
+                                ?: first?.id
+                            val fromToc = targetEntryId?.let { id ->
+                                repository.getLineIdsForTocEntry(id).firstOrNull()
+                            }
+                            fromToc ?: repository.getLineByIndex(book.id, 0)?.id
+                        }.getOrNull()
+                    }
                 }
 
-                debugln { "Loading book data - initialLineId: $initialLineId" }
+                debugln { "Loading book data - initialLineId: $resolvedInitialLineId" }
 
-                // Créer le nouveau pager pour les lignes
-                _linesPagingData.value = contentUseCase.buildLinesPager(book.id, initialLineId)
+                // Build pager centered on the resolved initial line when available
+                _linesPagingData.value = contentUseCase.buildLinesPager(book.id, resolvedInitialLineId)
 
-                // Charger le TOC
+                // Load TOC after pager creation
                 tocUseCase.loadRootToc(book.id)
+
+                // If we computed an initial line (i.e., opened from the category tree with no prior anchor),
+                // select it to update TOC selection and breadcrumbs, and request a top-anchor alignment.
+                if (resolvedInitialLineId != null && !shouldUseAnchor && forceAnchorId == null && state.content.selectedLine == null) {
+                    loadAndSelectLine(resolvedInitialLineId)
+                }
             } finally {
                 stateManager.setLoading(false)
             }
         }
+    }
+
+    /**
+     * Finds the first leaf TOC entry under the given entry, depth-first.
+     */
+    private suspend fun findFirstLeafTocId(entry: io.github.kdroidfilter.seforimlibrary.core.models.TocEntry): Long? {
+        if (!entry.hasChildren) return entry.id
+        val children = runCatching { repository.getTocChildren(entry.id) }.getOrDefault(emptyList())
+        val firstChild = children.firstOrNull() ?: return entry.id
+        return findFirstLeafTocId(firstChild)
     }
 
     /** Sélectionne une ligne */
@@ -400,7 +441,7 @@ class BookContentViewModel(
         // Copier l'état de navigation vers le nouvel onglet
         stateManager.copyNavigationState(currentTabId, newTabId, tabStateManager)
 
-        navigator.navigate(
+        tabsViewModel.openTab(
             TabsDestination.BookContent(
                 bookId = book.id,
                 tabId = newTabId
@@ -421,7 +462,7 @@ class BookContentViewModel(
         // Optional: indicate the initial anchor for a center scroll upon loading
         tabStateManager.saveState(newTabId, StateKeys.CONTENT_ANCHOR_ID, lineId)
 
-        navigator.navigate(
+        tabsViewModel.openTab(
             TabsDestination.BookContent(
                 bookId = bookId,
                 tabId = newTabId,

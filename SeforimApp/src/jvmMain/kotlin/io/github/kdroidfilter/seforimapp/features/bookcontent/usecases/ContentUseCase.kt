@@ -72,7 +72,13 @@ class ContentUseCase(
                     selectedLine = line,
                     anchorId = line.id,
                     anchorIndex = 0,
-                    scrollToLineTimestamp = System.currentTimeMillis()
+                    // When selection originates from TOC/breadcrumb, force anchoring at top
+                    // by resetting scroll position before pager restoration.
+                    scrollIndex = 0,
+                    scrollOffset = 0,
+                    scrollToLineTimestamp = System.currentTimeMillis(),
+                    topAnchorLineId = line.id,
+                    topAnchorRequestTimestamp = System.currentTimeMillis()
                 )
             }
 

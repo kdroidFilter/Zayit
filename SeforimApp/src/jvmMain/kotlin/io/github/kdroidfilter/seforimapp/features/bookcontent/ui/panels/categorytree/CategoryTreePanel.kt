@@ -24,7 +24,9 @@ import seforimapp.seforimapp.generated.resources.book_list
 fun CategoryTreePanel(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Optional: integrate search results counts and filtering
+    searchViewModel: io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel? = null
 ) {
     val paneHoverSource = remember { MutableInteractionSource() }
     Column(modifier = modifier.hoverable(paneHoverSource)) {
@@ -44,19 +46,30 @@ fun CategoryTreePanel(
 //            Spacer(modifier = Modifier.height(16.dp))
 
             val windowInfo = LocalWindowInfo.current
-            CategoryBookTreeView(
-                navigationState = uiState.navigation,
-                onCategoryClick = { onEvent(BookContentEvent.CategorySelected(it)) },
-                onBookClick = {
-                    val mods = windowInfo.keyboardModifiers
-                    if (mods.isCtrlPressed || mods.isMetaPressed) {
-                        onEvent(BookContentEvent.BookSelectedInNewTab(it))
-                    } else {
-                        onEvent(BookContentEvent.BookSelected(it))
-                    }
-                },
-                onScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) }
-            )
+
+            if (searchViewModel != null) {
+                // In search mode, render a self-contained tree built from results so categories update instantly
+                SearchResultCategoryTreeView(
+                    uiState = uiState,
+                    onEvent = onEvent,
+                    searchViewModel = searchViewModel,
+                )
+            } else {
+                // Classic navigation tree
+                CategoryBookTreeView(
+                    navigationState = uiState.navigation,
+                    onCategoryClick = { onEvent(BookContentEvent.CategorySelected(it)) },
+                    onBookClick = {
+                        val mods = windowInfo.keyboardModifiers
+                        if (mods.isCtrlPressed || mods.isMetaPressed) {
+                            onEvent(BookContentEvent.BookSelectedInNewTab(it))
+                        } else {
+                            onEvent(BookContentEvent.BookSelected(it))
+                        }
+                    },
+                    onScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) }
+                )
+            }
         }
     }
 }
@@ -84,3 +97,5 @@ private fun SearchField(
         placeholder = { Text(stringResource(Res.string.search_placeholder)) }
     )
 }
+
+// No local flatten helpers needed; we consume aggregated counts directly from ViewModel flows

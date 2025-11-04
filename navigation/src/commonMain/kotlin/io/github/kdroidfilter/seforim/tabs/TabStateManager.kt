@@ -56,6 +56,15 @@ class TabStateManager {
     }
 
     /**
+     * Removes a specific saved state key for the given tab, if present.
+     * This is useful to reset portions of a tab's state (e.g., selected book)
+     * without wiping the entire tab state.
+     */
+    fun removeState(tabId: String, key: String) {
+        stateCache[tabId]?.remove(key)
+    }
+
+    /**
      * Clears all state for all tabs.
      */
     fun clearAllState() {

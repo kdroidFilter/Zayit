@@ -1,53 +1,46 @@
 package io.github.kdroidfilter.seforimapp.framework.di
 
 import androidx.lifecycle.SavedStateHandle
-import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.russhwolf.settings.Settings
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Provides
-import dev.zacsweers.metro.SingleIn
-import io.github.kdroidfilter.seforim.navigation.DefaultNavigator
-import io.github.kdroidfilter.seforim.navigation.Navigator
+import io.github.kdroidfilter.seforim.navigation.TabNavControllerRegistry
 import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
-import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadUseCase
-import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractUseCase
-import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
+import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceUseCase
-import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeOfInstallationViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.data.databaseFetcher
-import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
-import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
-import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeOfInstallationViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileViewModel
-import java.util.UUID
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
+import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
+import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
+import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
 
 /**
  * Metro DI graph: provider functions annotated with @Provides.
  * Singletons are scoped to [AppScope].
  */
-@DependencyGraph
-@SingleIn(AppScope::class)
+@DependencyGraph(AppScope::class)
 abstract class AppGraph {
 
     // Expose strongly-typed graph entries as abstract vals for generated implementation
-    abstract val navigator: Navigator
+    // Removed Navigator; use TabsViewModel + TabNavControllerRegistry
     abstract val tabStateManager: TabStateManager
     abstract val tabTitleUpdateManager: TabTitleUpdateManager
+    abstract val tabNavControllerRegistry: TabNavControllerRegistry
     abstract val settings: Settings
     abstract val repository: SeforimRepository
+    abstract val luceneSearchService: LuceneSearchService
     abstract val tabsViewModel: TabsViewModel
-    abstract val settingsViewModel: SettingsViewModel
+    abstract val settingsWindowViewModel: SettingsWindowViewModel
+    abstract val generalSettingsViewModel: io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsViewModel
+    abstract val fontsSettingsViewModel: io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsViewModel
+    abstract val searchHomeViewModel: SearchHomeViewModel
 
     abstract val typeOfInstallationViewModel: TypeOfInstallationViewModel
     abstract val downloadViewModel: DownloadViewModel
@@ -57,69 +50,20 @@ abstract class AppGraph {
     abstract val userProfileViewModel: UserProfileViewModel
 
     @Provides
-    @SingleIn(AppScope::class)
-    fun provideNavigator(): Navigator =
-        DefaultNavigator(startDestination = TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString()))
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideTabStateManager(): TabStateManager = TabStateManager()
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideTabTitleUpdateManager(): TabTitleUpdateManager = TabTitleUpdateManager()
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideSettings(): Settings = Settings()
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideRepository(): SeforimRepository {
-        val dbPath = getDatabasePath()
-        val driver = JdbcSqliteDriver("jdbc:sqlite:$dbPath")
-        return SeforimRepository(dbPath, driver)
-    }
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideTabsViewModel(
-        navigator: Navigator,
-        titleUpdateManager: TabTitleUpdateManager,
-        stateManager: TabStateManager
-    ): TabsViewModel = TabsViewModel(
-        navigator = navigator,
-        titleUpdateManager = titleUpdateManager,
-        stateManager = stateManager
-    )
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideSettingsViewModel(settings: Settings): SettingsViewModel {
-        // Ensure AppSettings uses the same Settings instance as provided by DI
-        AppSettings.initialize(settings)
-        return SettingsViewModel()
-    }
-
-    @Provides
     fun provideBookContentViewModel(
         savedStateHandle: SavedStateHandle,
         tabStateManager: TabStateManager,
         repository: SeforimRepository,
         titleUpdateManager: TabTitleUpdateManager,
-        navigator: Navigator,
+        tabsViewModel: TabsViewModel,
         settings: Settings
-    ): BookContentViewModel {
-        // Ensure AppSettings uses the same Settings instance
-        AppSettings.initialize(settings)
-        return BookContentViewModel(
-            savedStateHandle = savedStateHandle,
-            tabStateManager = tabStateManager,
-            repository = repository,
-            titleUpdateManager = titleUpdateManager,
-            navigator = navigator
-        )
-    }
+    ): BookContentViewModel = BookContentViewModel(
+        savedStateHandle = savedStateHandle,
+        tabStateManager = tabStateManager,
+        repository = repository,
+        titleUpdateManager = titleUpdateManager,
+        tabsViewModel = tabsViewModel
+    )
 
     // Convenience factory to create a route-scoped BookContentViewModel from a NavBackStackEntry
     fun bookContentViewModel(savedStateHandle: SavedStateHandle): BookContentViewModel =
@@ -128,75 +72,36 @@ abstract class AppGraph {
             tabStateManager = tabStateManager,
             repository = repository,
             titleUpdateManager = tabTitleUpdateManager,
-            navigator = navigator,
+            tabsViewModel = tabsViewModel,
             settings = settings
         )
 
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideOnboardingProcessRepository(): OnboardingProcessRepository = OnboardingProcessRepository()
+    // Convenience factory to create a route-scoped SearchResultViewModel
+    fun searchResultViewModel(savedStateHandle: SavedStateHandle): SearchResultViewModel =
+        provideSearchResultViewModel(
+            savedStateHandle = savedStateHandle,
+            tabStateManager = tabStateManager,
+            repository = repository,
+            lucene = luceneSearchService,
+            titleUpdateManager = tabTitleUpdateManager,
+            tabsViewModel = tabsViewModel
+        )
 
     @Provides
-    @SingleIn(AppScope::class)
-    fun provideDownloadUseCase(): DownloadUseCase = DownloadUseCase(
-        gitHubReleaseFetcher = databaseFetcher
+    fun provideSearchResultViewModel(
+        savedStateHandle: SavedStateHandle,
+        tabStateManager: TabStateManager,
+        repository: SeforimRepository,
+        lucene: LuceneSearchService,
+        titleUpdateManager: TabTitleUpdateManager,
+        tabsViewModel: TabsViewModel
+    ): SearchResultViewModel = SearchResultViewModel(
+        savedStateHandle = savedStateHandle,
+        stateManager = tabStateManager,
+        repository = repository,
+        lucene = lucene,
+        titleUpdateManager = titleUpdateManager,
+        tabsViewModel = tabsViewModel
     )
 
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideExtractUseCase(settings: Settings): ExtractUseCase {
-        // Ensure AppSettings uses the same Settings instance
-        AppSettings.initialize(settings)
-        return ExtractUseCase()
-    }
-
-    @Provides
-    fun provideTypeOfInstallationViewModel(
-        processRepository: OnboardingProcessRepository
-    ): TypeOfInstallationViewModel = TypeOfInstallationViewModel(processRepository)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideDownloadViewModel(
-        downloadUseCase: DownloadUseCase,
-        processRepository: OnboardingProcessRepository
-    ): DownloadViewModel = DownloadViewModel(downloadUseCase, processRepository)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideExtractViewModel(
-        extractUseCase: ExtractUseCase,
-        processRepository: OnboardingProcessRepository
-    ): ExtractViewModel = ExtractViewModel(extractUseCase, processRepository)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideAvailableDiskSpaceUseCase(): AvailableDiskSpaceUseCase = AvailableDiskSpaceUseCase()
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideAvailableDiskSpaceViewModel(
-        useCase: AvailableDiskSpaceUseCase
-    ): AvailableDiskSpaceViewModel = AvailableDiskSpaceViewModel(useCase)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideRegionConfigUseCase(): RegionConfigUseCase = RegionConfigUseCase()
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideRegionConfigViewModel(
-        useCase: RegionConfigUseCase
-    ): RegionConfigViewModel = RegionConfigViewModel(useCase)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideUserProfileUseCase(): UserProfileUseCase = UserProfileUseCase()
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideUserProfileViewModel(
-        useCase: UserProfileUseCase
-    ): UserProfileViewModel = UserProfileViewModel(useCase)
 }

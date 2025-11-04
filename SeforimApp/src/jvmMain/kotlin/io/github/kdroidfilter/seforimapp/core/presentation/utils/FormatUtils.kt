@@ -12,6 +12,7 @@ import seforimapp.seforimapp.generated.resources.eta_hours_unit_plural
 import seforimapp.seforimapp.generated.resources.eta_hours_unit_singular
 import seforimapp.seforimapp.generated.resources.eta_minutes_unit_plural
 import seforimapp.seforimapp.generated.resources.eta_minutes_unit_singular
+import seforimapp.seforimapp.generated.resources.bytes_per_second_pattern
 import seforimapp.seforimapp.generated.resources.eta_seconds_unit_plural
 import seforimapp.seforimapp.generated.resources.eta_seconds_unit_singular
 
@@ -36,8 +37,7 @@ fun formatBytes(bytes: Long): String {
 @Composable
 fun formatBytesPerSec(bps: Long): String {
     val bytesText = formatBytes(bps)
-    val perSecond = stringResource(Res.string.eta_seconds_unit_singular)
-    return "$bytesText/$perSecond"
+    return stringResource(Res.string.bytes_per_second_pattern, bytesText)
 }
 
 @Composable

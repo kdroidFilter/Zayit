@@ -125,6 +125,10 @@ data class ContentState(
     val shouldScrollToLine: Boolean = false,
     val scrollToLineTimestamp: Long = 0L,
 
+    // One-shot request to top-anchor a specific line (e.g., from TOC)
+    val topAnchorLineId: Long = -1L,
+    val topAnchorRequestTimestamp: Long = 0L,
+
     // Transient UI signals (not persisted)
     val maxCommentatorsLimitSignal: Long = 0L
 )

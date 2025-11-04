@@ -57,13 +57,15 @@ fun BookContentPanel(
                                 onEvent(BookContentEvent.LineSelected(line))
                             },
                             onEvent = onEvent,
-                            modifier = Modifier.padding(horizontal = 8.dp),
+                            modifier = Modifier,
                             preservedListState = bookListState,
                             scrollIndex = uiState.content.scrollIndex,
                             scrollOffset = uiState.content.scrollOffset,
                             scrollToLineTimestamp = uiState.content.scrollToLineTimestamp,
                             anchorId = uiState.content.anchorId,
                             anchorIndex = uiState.content.anchorIndex,
+                            topAnchorLineId = uiState.content.topAnchorLineId,
+                            topAnchorTimestamp = uiState.content.topAnchorRequestTimestamp,
                             onScroll = { anchorId, anchorIndex, scrollIndex, scrollOffset ->
                                 onEvent(
                                     BookContentEvent.ContentScrolled(

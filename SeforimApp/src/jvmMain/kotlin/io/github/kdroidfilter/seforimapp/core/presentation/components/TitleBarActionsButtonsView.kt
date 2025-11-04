@@ -2,27 +2,21 @@ package io.github.kdroidfilter.seforimapp.core.presentation.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
+import io.github.kdroidfilter.seforim.tabs.TabStateManager
+import io.github.kdroidfilter.seforim.tabs.TabsDestination
+import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
-import io.github.kdroidfilter.seforimapp.features.settings.Settings
-import io.github.kdroidfilter.seforimapp.features.settings.SettingsEvents
-import io.github.kdroidfilter.seforimapp.features.settings.SettingsViewModel
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
+import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
+import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import seforimapp.seforimapp.generated.resources.dark_theme
-import seforimapp.seforimapp.generated.resources.find
-import seforimapp.seforimapp.generated.resources.find_tooltip
-import seforimapp.seforimapp.generated.resources.info
-import seforimapp.seforimapp.generated.resources.info_tooltip
-import seforimapp.seforimapp.generated.resources.light_theme
-import seforimapp.seforimapp.generated.resources.settings
-import seforimapp.seforimapp.generated.resources.settings_tooltip
-import seforimapp.seforimapp.generated.resources.switch_to_dark_theme
-import seforimapp.seforimapp.generated.resources.switch_to_light_theme
-import seforimapp.seforimapp.generated.resources.switch_to_system_theme
-import seforimapp.seforimapp.generated.resources.system_theme
-import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.*
 
 @Composable
 fun TitleBarActionsButtonsView() {
@@ -30,8 +24,23 @@ fun TitleBarActionsButtonsView() {
     val theme = themeViewModel.theme.collectAsState().value
 
     // Use ViewModel-driven settings window visibility to respect MVVM conventions
-    val settingsViewModel: SettingsViewModel = LocalAppGraph.current.settingsViewModel
+    val settingsViewModel: SettingsWindowViewModel = LocalAppGraph.current.settingsWindowViewModel
     val settingsState = settingsViewModel.state.collectAsState().value
+
+    // Access app graph outside of callbacks to avoid reading CompositionLocals in non-composable contexts
+    val appGraph = LocalAppGraph.current
+    val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
+    val tabs = tabsViewModel.tabs.collectAsState().value
+    val selectedTabIndex = tabsViewModel.selectedTabIndex.collectAsState().value
+    val currentTab = tabs.getOrNull(selectedTabIndex)
+    val findEnabled = when (val dest = currentTab?.destination) {
+        is TabsDestination.Search -> true
+        is TabsDestination.BookContent -> {
+            val selectedBook: Book? = appGraph.tabStateManager.getState(dest.tabId, StateKeys.SELECTED_BOOK)
+            selectedBook != null
+        }
+        else -> false
+    }
 
     val iconDescription = when (theme) {
         IntUiThemes.Light -> stringResource(Res.string.light_theme)
@@ -43,13 +52,37 @@ fun TitleBarActionsButtonsView() {
         IntUiThemes.Dark -> stringResource(Res.string.switch_to_system_theme)
         IntUiThemes.System -> stringResource(Res.string.switch_to_light_theme)
     }
+
+    TitleBarActionButton(
+        key = AllIconsKeys.Nodes.HomeFolder,
+        contentDescription = stringResource(Res.string.home),
+        onClick = {
+            // Replace current tab destination with Home, preserving tabId
+            val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
+            val tabStateManager: TabStateManager = appGraph.tabStateManager
+
+            val tabs = tabsViewModel.tabs.value
+            val selectedIndex = tabsViewModel.selectedTabIndex.value
+            val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
+
+            if (currentTabId != null) {
+                // Replace current tab with a fresh tabId, like opening a new tab in place
+                tabsViewModel.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
+            }
+        },
+        tooltipText = stringResource(Res.string.home_tooltip),
+    )
     TitleBarActionButton(
         key = AllIconsKeys.Actions.Find,
         contentDescription = stringResource(Res.string.find),
         onClick = {
-            //TODO
+            // Toggle the global Find-in-Page bar regardless of current focus
+            val isOpen = AppSettings.findBarOpenFlow.value
+            if (isOpen) AppSettings.closeFindBar()
+            else AppSettings.openFindBar()
         },
-        tooltipText = stringResource(Res.string.find_tooltip),
+        tooltipText = if (findEnabled) stringResource(Res.string.find_tooltip) else stringResource(Res.string.find_disabled_tooltip),
+        enabled = findEnabled
     )
     TitleBarActionButton(
         key = when (theme) {
@@ -70,23 +103,15 @@ fun TitleBarActionsButtonsView() {
         tooltipText = iconToolTipText,
     )
     TitleBarActionButton(
-        key = AllIconsKeys.General.ShowInfos,
-        contentDescription = stringResource(Res.string.info),
-        onClick = {
-            //TODO
-        },
-        tooltipText = stringResource(Res.string.info_tooltip),
-    )
-    TitleBarActionButton(
         key = AllIconsKeys.General.Settings,
         contentDescription = stringResource(Res.string.settings),
         onClick = {
-            settingsViewModel.onEvent(SettingsEvents.onOpen)
+            settingsViewModel.onEvent(SettingsWindowEvents.onOpen)
         },
         tooltipText = stringResource(Res.string.settings_tooltip),
     )
 
     if (settingsState.isVisible) {
-        Settings(onClose = { settingsViewModel.onEvent(SettingsEvents.onClose) })
+        SettingsWindow(onClose = { settingsViewModel.onEvent(SettingsWindowEvents.onClose) })
     }
 }

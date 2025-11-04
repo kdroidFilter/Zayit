@@ -3,10 +3,12 @@ package io.github.kdroidfilter.seforimapp
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.awt.AwtWindow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
@@ -40,7 +42,14 @@ import org.jetbrains.jewel.window.DecoratedWindowScope
 import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.app_name
+import seforimapp.seforimapp.generated.resources.home
+import seforimapp.seforimapp.generated.resources.window_title_with_tab
+import seforimapp.seforimapp.generated.resources.search_results_tab_title
+import io.github.kdroidfilter.seforim.tabs.TabType
+import seforimapp.seforimapp.generated.resources.home
+import seforimapp.seforimapp.generated.resources.window_title_with_tab
 import java.awt.Dimension
+import java.awt.Toolkit
 import java.awt.Window
 import java.util.*
 
@@ -62,9 +71,11 @@ fun main() {
     application {
         FileKit.init(appId)
 
+        val screen = Toolkit.getDefaultToolkit().screenSize
         val windowState = rememberWindowState(
             position = WindowPosition.Aligned(Alignment.Center),
-            size = DpSize(1280.dp, 720.dp)
+            placement = WindowPlacement.Maximized,
+            size = DpSize(screen.width.dp, screen.height.dp)
         )
 
         var isWindowVisible by remember { mutableStateOf(true) }
@@ -112,13 +123,30 @@ fun main() {
                 if (showOnboarding == true) {
                     OnBoardingWindow()
                 } else if (showOnboarding == false) {
+                    // Build dynamic window title: "AppName - CurrentTab"
+                    val tabsVm = appGraph.tabsViewModel
+                    val tabs by tabsVm.tabs.collectAsState()
+                    val selectedIndex by tabsVm.selectedTabIndex.collectAsState()
+                    val appTitle = stringResource(Res.string.app_name)
+                    val selectedTab = tabs.getOrNull(selectedIndex)
+                    val rawTitle = selectedTab?.title.orEmpty()
+                    val tabType = selectedTab?.tabType
+                    val formattedTabTitle = when {
+                        rawTitle.isEmpty() -> stringResource(Res.string.home)
+                        tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, rawTitle)
+                        else -> rawTitle
+                    }
+                    val windowTitle = if (formattedTabTitle.isNotBlank())
+                        stringResource(Res.string.window_title_with_tab, appTitle, formattedTabTitle)
+                    else appTitle
+
                     DecoratedWindow(
                         onCloseRequest = {
                             // Persist session if enabled, then exit
                             SessionManager.saveIfEnabled(appGraph)
                             exitApplication()
                         },
-                        title = stringResource(Res.string.app_name),
+                        title = windowTitle,
                         icon = if (getOperatingSystem() == OperatingSystem.MACOS) null else painterResource(  Res.drawable.AppIcon),
                         state = windowState,
                         visible = isWindowVisible,

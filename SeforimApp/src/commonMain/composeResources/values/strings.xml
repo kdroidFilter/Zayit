@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">זית</string>
+    <!-- Window title pattern: AppName - CurrentTab -->
+    <string name="window_title_with_tab">%1$s - %2$s</string>
 
     <!-- Title Bar Action Buttons View-->
     <string name="light_theme">ערכת נושא בהירה</string>
@@ -10,6 +12,10 @@
     <string name="switch_to_light_theme">עבור לערכת נושא בהירה</string>
     <string name="find">חיפוש</string>
     <string name="find_tooltip">חפש בכל המאגר</string>
+    <string name="find_disabled_tooltip">חיפוש זמין במסך תוצאות או כשספר נבחר</string>
+    <string name="home_tooltip">עבור לדף הבית</string>
+    <string name="titlebar_home">דף הבית</string>
+    <string name="titlebar_home_tooltip">עבור לדף הבית</string>
     <string name="info">מידע</string>
     <string name="info_tooltip">הצג מידע</string>
     <string name="settings">הגדרות</string>
@@ -18,11 +24,32 @@
     <string name="settings_db_path_label">נתיב מסד הנתונים:</string>
     <string name="settings_db_path_not_set">לא הוגדר</string>
     <string name="settings_persist_session">שמור מצב בין הפעלות</string>
+    <string name="settings_ram_saver">מצב חיסכון בזיכרון (RAM)</string>
+    <string name="settings_font_book_label">גופן לטקסט הספר</string>
+    <string name="settings_font_commentary_label">גופן לפירושים</string>
+    <string name="settings_font_targum_label">גופן לתרגומים</string>
+    <!-- Font names -->
+    <string name="font_noto_serif_hebrew">Noto Serif Hebrew</string>
+    <string name="font_noto_rashi_hebrew">Noto Rashi Hebrew</string>
+    <string name="font_frank_ruhl_libre">Frank Ruhl Libre</string>
+    <string name="font_miriam_libre">Miriam Libre</string>
+    <string name="font_open_sans">Open Sans</string>
+    <string name="font_open_sans_italic">Open Sans Italic</string>
+    <string name="font_cardo">Cardo</string>
+    <string name="font_tinos">Tinos</string>
+    <string name="font_libertinus_serif">Libertinus Serif</string>
+    <string name="font_bona_nova_sc">Bona Nova SC</string>
 
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>
+    <string name="settings_category_general">כללי</string>
+    <string name="settings_category_profile">פרופיל</string>
+    <string name="settings_category_region">אזור</string>
+    <string name="settings_category_fonts">גופנים</string>
+    <string name="settings_category_info">מידע</string>
     <string name="add_tab">הוסף לשונית</string>
     <string name="home">דף הבית</string>
+    <string name="close_tab">סגור לשונית</string>
 
     <!-- Book Content Screen - Start Vertical Bar -->
     <string name="navigation">ניווט</string>
@@ -93,7 +120,7 @@
     <string name="please_select_a_book">אנא בחר ספר</string>
 
     <!-- Home Page View -->
-    <string name="search_mode_reference">מקור</string>
+    <string name="search_mode_reference">ספר</string>
     <string name="search_mode_text">טקסט</string>
     <string name="search_mode_reference_explicit">חיפוש לפי מקור</string>
     <string name="search_mode_text_explicit">חיפוש בטקסט</string>
@@ -105,6 +132,20 @@
     <string name="reference_hint_3">משנה ברורה סימן רלה סעיף קטן ד</string>
     <string name="reference_hint_4">ברכות דף ב עמוד א</string>
     <string name="reference_hint_5">תהילים פרק כג פסוק ד</string>
+
+    <!-- Book names only (for reference-mode first field) -->
+    <string name="reference_book_hint_1">משנה ברורה</string>
+    <string name="reference_book_hint_2">רמב"ם</string>
+    <string name="reference_book_hint_3">תהילים</string>
+    <string name="reference_book_hint_4">ברכות</string>
+    <string name="reference_book_hint_5">שו"ע אורח חיים</string>
+
+    <!-- TOC examples (for second field when no book yet) -->
+    <string name="reference_toc_hint_1">פרק א</string>
+    <string name="reference_toc_hint_2">סימן א</string>
+    <string name="reference_toc_hint_3">סעיף א</string>
+    <string name="reference_toc_hint_4">דף ב עמוד א</string>
+    <string name="reference_toc_hint_5">שער א</string>
 
     <string name="text_hint_1">הכל בידי שמים חוץ מיראת שמים</string>
     <string name="text_hint_2">ואהבת לרעך כמוך</string>
@@ -188,6 +229,9 @@
     <string name="onboarding_pick_zst_button">בחר קובץ ‎.zst מקומי</string>
     <string name="onboarding_download_progress">%1$s / %2$s</string>
     <string name="retry_button">נסה שוב</string>
+    <string name="save_button">שמור</string>
+    <!-- Speed / network -->
+    <string name="speed_calculating">מחשב את המהירות...</string>
     <!-- Disk space check -->
     <string name="onboarding_disk_title">בדיקת שטח פנוי בדיסק</string>
     <string name="onboarding_disk_space_sufficient">קיים מספיק שטח פנוי</string>
@@ -208,7 +252,8 @@
     <string name="bytes_unit_mb">מ״ב</string>
     <string name="bytes_unit_gb">ג״ב</string>
     <string name="bytes_unit_tb">ט״ב</string>
-    <string name="bytes_per_second_pattern">%s/שנייה</string>
+    <string name="bytes_per_second_pattern">%1$s/שנייה</string>
+    <string name="eta_calculating">מחשב את הזמן הנותר...</string>
     <!-- ETA units -->
     <string name="eta_hours_unit_singular">שעה</string>
     <string name="eta_hours_unit_plural">שעות</string>
@@ -235,6 +280,39 @@
     <string name="onboarding_region_country_label">בחרו מדינה</string>
     <string name="onboarding_region_city_label">בחרו עיר</string>
     <string name="onboarding_region_description">היישום זקוק למידע על אזור מגוריכם כדי לספק תכנים מותאמים למיקומכם, כגון פרשת השבוע, זמני קריאת שמע ושאר זמני היום.</string>
+
+    <!-- Search results screen -->
+    <string name="search_results_for">תוצאות עבור "%1$s"</string>
+    <string name="search_near_label">קרבה: NEAR/%1$d</string>
+    <string name="search_no_results">לא נמצאו תוצאות</string>
+    <string name="search_searching">מחפש...</string>
+    <string name="search_scope">בתוך:</string>
+    <string name="breadcrumb_separator"> &gt; </string>
+    <string name="chevron_icon_description">חץ</string>
+    <string name="search_icon_description">חיפוש</string>
+    <string name="search_load_more">טען תוצאות נוספות</string>
+    <string name="search_result_count">נמצאו %1$d תוצאות</string>
+    <string name="search_stop">בטל חיפוש</string>
+    <string name="search_near_selector_label">קרבה</string>
+    <!-- Tab/window title for search: "Search results : query" -->
+    <string name="search_results_tab_title">תוצאות חיפוש : %1$s</string>
+    <!-- Home tab label: "Home - AppName" -->
+    <string name="home_tab_with_app">דף הבית - %1$s</string>
+
+    <!-- Reference open action -->
+    <string name="open_book">פתח ספר</string>
+
+    <!-- Settings action bar -->
+    <string name="settings_ok">אישור</string>
+    <string name="settings_cancel">ביטול</string>
+    <string name="settings_apply">החל</string>
+
+    <!-- Settings > Info -->
+    <string name="settings_info_app_version">גרסה: %1$s</string>
+    <string name="settings_info_created_by">נוצר על ידי Elie Gambache - KdroidFilter</string>
+    <string name="settings_info_open_source">יישום זה הוא קוד פתוח תחת רישיון AGPL-3.0; ניתן להשתמש ולהפיץ בהתאם לתנאי הרישיון.</string>
+    <string name="settings_info_repo_prompt">ניתן לעיין בקוד המקור במאגר:</string>
+    <string name="settings_info_repo_url_text">https://github.com/kdroidFilter/SeforimApp</string>
 
 
 </resources>

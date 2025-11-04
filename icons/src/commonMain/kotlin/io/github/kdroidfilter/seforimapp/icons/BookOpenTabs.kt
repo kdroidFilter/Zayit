@@ -11,8 +11,8 @@ import androidx.compose.ui.unit.dp
 fun BookOpenTabs(tint : Color): ImageVector {
     val _Book_5 = ImageVector.Builder(
         name = "Book_5",
-        defaultWidth = 20.dp,
-        defaultHeight = 20.dp,
+        defaultWidth = 16.dp,
+        defaultHeight = 16.dp,
         viewportWidth = 960f,
         viewportHeight = 960f,
         autoMirror = true,

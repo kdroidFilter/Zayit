@@ -36,7 +36,7 @@ fun SelectableIconButtonWithToolip(
         if (shortcutHint.isNullOrBlank()) {
             Text(toolTipText)
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(toolTipText)
 
                 Text(shortcutHint, color = JewelTheme.globalColors.text.disabled)

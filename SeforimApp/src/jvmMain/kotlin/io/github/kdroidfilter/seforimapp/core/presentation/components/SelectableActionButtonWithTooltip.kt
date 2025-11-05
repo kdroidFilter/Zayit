@@ -29,10 +29,19 @@ fun SelectableIconButtonWithToolip(
     icon : ImageVector,
     iconDescription : String = "",
     label: String,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    shortcutHint: String? = null,
 ){
     Tooltip({
-        Text(toolTipText)
+        if (shortcutHint.isNullOrBlank()) {
+            Text(toolTipText)
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(toolTipText)
+
+                Text(shortcutHint, color = JewelTheme.globalColors.text.disabled)
+            }
+        }
     }) {
         ActionButton(
             onClick = onClick,

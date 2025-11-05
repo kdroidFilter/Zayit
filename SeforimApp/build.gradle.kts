@@ -1,12 +1,7 @@
+import io.github.kdroidfilter.buildsrc.RenameMacPkgTask
 import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
-import org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag
-import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
-import org.gradle.api.DefaultTask
-import org.gradle.api.file.ProjectLayout
-import org.gradle.api.tasks.TaskAction
-import javax.inject.Inject
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -258,7 +253,7 @@ val macArchSuffix: String = run {
 }
 
 // Finds all .pkg files under build/compose/binaries and appends arch suffix if missing
-val renameMacPkg = tasks.register<io.github.kdroidfilter.build.RenameMacPkgTask>("renameMacPkg") {
+val renameMacPkg = tasks.register<RenameMacPkgTask>("renameMacPkg") {
     enabled = isMacHost
     group = "distribution"
     description = "Rename generated macOS .pkg files to include architecture suffix (e.g., _arm64 or _x64)."

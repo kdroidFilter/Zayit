@@ -3,6 +3,10 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
 import org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.ProjectLayout
+import org.gradle.api.tasks.TaskAction
+import javax.inject.Inject
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -242,4 +246,28 @@ tasks.withType<Jar> {
     exclude("META-INF/*.DSA")
     exclude("META-INF/*.RSA")
     exclude("META-INF/*.EC")
+}
+
+
+
+// --- macOS: rename generated .pkg to include architecture suffix (_arm64 or _x64)
+val isMacHost: Boolean = System.getProperty("os.name").lowercase().contains("mac")
+val macArchSuffix: String = run {
+    val arch = System.getProperty("os.arch").lowercase()
+    if (arch.contains("aarch64") || arch.contains("arm")) "_arm64" else "_x64"
+}
+
+// Finds all .pkg files under build/compose/binaries and appends arch suffix if missing
+val renameMacPkg = tasks.register<io.github.kdroidfilter.build.RenameMacPkgTask>("renameMacPkg") {
+    enabled = isMacHost
+    group = "distribution"
+    description = "Rename generated macOS .pkg files to include architecture suffix (e.g., _arm64 or _x64)."
+    archSuffix.set(macArchSuffix)
+}
+
+// Ensure the rename runs after any Compose Desktop task that produces a PKG
+// This covers tasks like `packageReleasePkg`, `packageDebugPkg`, etc.
+// Exclude the renamer itself to avoid circular finalizer
+tasks.matching { it.name.endsWith("Pkg") && it.name != "renameMacPkg" }.configureEach {
+    finalizedBy(renameMacPkg)
 }

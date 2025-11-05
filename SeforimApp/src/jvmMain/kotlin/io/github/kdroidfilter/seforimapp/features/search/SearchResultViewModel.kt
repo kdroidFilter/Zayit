@@ -47,6 +47,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.delay
 import java.util.UUID
+import java.util.PriorityQueue
+import java.util.Arrays
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
 import io.github.kdroidfilter.seforimapp.features.search.domain.BuildSearchTreeUseCase
@@ -193,6 +195,8 @@ class SearchResultViewModel(
     private val booksForCategoryAcc: MutableMap<Long, MutableSet<Book>> = mutableMapOf()
     private val tocCountsAcc: MutableMap<Long, Int> = mutableMapOf()
     private val cacheMutex = Mutex()
+    private val countsMutex = Mutex()
+    private val indexMutex = Mutex()
 
     private val _categoryAgg = MutableStateFlow(CategoryAgg(emptyMap(), emptyMap(), emptyMap()))
     private val _tocCounts = MutableStateFlow<Map<Long, Int>>(emptyMap())
@@ -303,15 +307,18 @@ class SearchResultViewModel(
                 val selectedBooks = extra.first
                 val multiBooks = extra.second
                 val multiLines = extra.third
-                when {
-                    multiLines.isNotEmpty() -> results.parallelFilterCores { it.lineId in multiLines }
-                    selectedBooks.isNotEmpty() -> results.parallelFilterCores { it.bookId in selectedBooks }
-                    multiBooks.isNotEmpty() -> results.parallelFilterCores { it.bookId in multiBooks }
-                    tocId != null -> results.parallelFilterCores { it.lineId in allowedLineIds }
-                    bookId != null -> results.parallelFilterCores { it.bookId == bookId }
-                    allowedBooks.isNotEmpty() -> results.parallelFilterCores { it.bookId in allowedBooks }
-                    else -> results
-                }
+                val out = fastFilterVisibleResults(
+                    results = results,
+                    bookId = bookId,
+                    allowedBooks = allowedBooks,
+                    allowedLineIds = allowedLineIds,
+                    tocActive = tocId != null,
+                    selectedBooks = selectedBooks,
+                    multiBooks = multiBooks,
+                    multiLines = multiLines
+                )
+                // Always return a new list instance so StateFlow emits even if content unchanged
+                ArrayList(out)
             }
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -335,15 +342,18 @@ class SearchResultViewModel(
     val isFilteringFlow: StateFlow<Boolean> =
         filterKeyFlow
             .drop(1) // ignore initial state on first subscription
-            .flatMapLatest { newKey ->
-                // Show until visibleResultsFlow emits for the current filter key.
-                combine(visibleResultsFlow, filterKeyFlow) { _, currentKey ->
-                    currentKey == newKey
+            .flatMapLatest {
+                // Show overlay until visible results emission changes either size or identity
+                val initial = Pair(visibleResultsFlow.value.size, System.identityHashCode(visibleResultsFlow.value))
+                kotlinx.coroutines.flow.flow {
+                    emit(true)
+                    visibleResultsFlow
+                        .map { Pair(it.size, System.identityHashCode(it)) }
+                        .distinctUntilChanged()
+                        .filter { it != initial }
+                        .first()
+                    emit(false)
                 }
-                    .filter { it }
-                    .take(1)
-                    .flatMapLatest { kotlinx.coroutines.flow.flow { delay(150); emit(false) } }
-                    .onStart { emit(true) }
             }
             .distinctUntilChanged()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -376,11 +386,233 @@ class SearchResultViewModel(
 
     private var currentTocBookId: Long? = null
 
+    // --- Fast filtering index helpers ---
+    private data class ResultsIndex(
+        val identity: Int,
+        val bookToIndices: Map<Long, IntArray>,
+        val lineIdToIndex: Map<Long, Int>
+    )
+    @Volatile private var resultsIndex: ResultsIndex? = null
+
+    private suspend fun ensureResultsIndex(results: List<SearchResult>) {
+        val identity = System.identityHashCode(results)
+        val current = resultsIndex
+        if (current != null && current.identity == identity) return
+        indexMutex.withLock {
+            val cur2 = resultsIndex
+            if (cur2 != null && cur2.identity == identity) return@withLock
+            val bookMap = HashMap<Long, MutableList<Int>>()
+            val lineMap = HashMap<Long, Int>(results.size * 2)
+            var i = 0
+            for (r in results) {
+                bookMap.getOrPut(r.bookId) { ArrayList() }.add(i)
+                lineMap[r.lineId] = i
+                i++
+            }
+            val finalBook = HashMap<Long, IntArray>(bookMap.size)
+            for ((k, v) in bookMap) {
+                val arr = IntArray(v.size)
+                var idx = 0
+                for (n in v) { arr[idx++] = n }
+                finalBook[k] = arr
+            }
+            resultsIndex = ResultsIndex(identity = identity, bookToIndices = finalBook, lineIdToIndex = lineMap)
+        }
+    }
+
+    private suspend fun fastFilterVisibleResults(
+        results: List<SearchResult>,
+        bookId: Long?,
+        allowedBooks: Set<Long>,
+        allowedLineIds: Set<Long>,
+        tocActive: Boolean,
+        selectedBooks: Set<Long>,
+        multiBooks: Set<Long>,
+        multiLines: Set<Long>
+    ): List<SearchResult> {
+        if (results.isEmpty()) return emptyList()
+        if (!tocActive && bookId == null && allowedBooks.isEmpty() && selectedBooks.isEmpty() && multiBooks.isEmpty() && multiLines.isEmpty()) {
+            return results
+        }
+        ensureResultsIndex(results)
+        val index = resultsIndex ?: return results
+
+        fun fromLineIds(lineIds: Set<Long>): List<SearchResult> {
+            if (lineIds.isEmpty()) return emptyList()
+            // Build primitive array then parallel sort to leverage all cores
+            var count = 0
+            val tmp = IntArray(lineIds.size)
+            for (lid in lineIds) {
+                val idx = index.lineIdToIndex[lid]
+                if (idx != null) tmp[count++] = idx
+            }
+            if (count == 0) return emptyList()
+            val arr = if (count == tmp.size) tmp else tmp.copyOf(count)
+            Arrays.parallelSort(arr)
+            return ArrayList<SearchResult>(arr.size).apply { var i = 0; while (i < arr.size) { add(results[arr[i]]); i++ } }
+        }
+
+        suspend fun fromBookIds(bookIds: Set<Long>): List<SearchResult> {
+            if (bookIds.isEmpty()) return emptyList()
+            if (bookIds.size == 1) {
+                val bid = bookIds.first()
+                val arr = index.bookToIndices[bid] ?: return emptyList()
+                return ArrayList<SearchResult>(arr.size).apply {
+                    var i = 0
+                    while (i < arr.size) { add(results[arr[i]]); i++ }
+                }
+            }
+            val arrays = ArrayList<IntArray>(bookIds.size)
+            for (bid in bookIds) index.bookToIndices[bid]?.let { arrays.add(it) }
+            if (arrays.isEmpty()) return emptyList()
+            val merged = mergeSortedIndicesParallel(arrays)
+            return ArrayList<SearchResult>(merged.size).apply { var i = 0; while (i < merged.size) { add(results[merged[i]]); i++ } }
+        }
+
+        // Union semantics across active filters (categories/books/TOC/selected lines)
+        val toMerge = ArrayList<IntArray>(6)
+        if (multiLines.isNotEmpty()) {
+            // collect indices for multi-selected TOC lines
+            var count = 0
+            val tmp = IntArray(multiLines.size)
+            for (lid in multiLines) index.lineIdToIndex[lid]?.let { tmp[count++] = it }
+            if (count > 0) {
+                val arr = if (count == tmp.size) tmp else tmp.copyOf(count)
+                Arrays.parallelSort(arr)
+                toMerge.add(arr)
+            }
+        }
+        if (selectedBooks.isNotEmpty()) {
+            val arr = mergeSortedIndicesParallel(selectedBooks.mapNotNull { index.bookToIndices[it] })
+            if (arr.isNotEmpty()) toMerge.add(arr)
+        }
+        if (multiBooks.isNotEmpty()) {
+            val arr = mergeSortedIndicesParallel(multiBooks.mapNotNull { index.bookToIndices[it] })
+            if (arr.isNotEmpty()) toMerge.add(arr)
+        }
+        if (tocActive && allowedLineIds.isNotEmpty()) {
+            var count = 0
+            val tmp = IntArray(allowedLineIds.size)
+            for (lid in allowedLineIds) index.lineIdToIndex[lid]?.let { tmp[count++] = it }
+            if (count > 0) {
+                val arr = if (count == tmp.size) tmp else tmp.copyOf(count)
+                Arrays.parallelSort(arr)
+                toMerge.add(arr)
+            }
+        }
+        if (bookId != null) {
+            index.bookToIndices[bookId]?.let { if (it.isNotEmpty()) toMerge.add(it) }
+        }
+        if (toMerge.isNotEmpty()) {
+            val merged = mergeSortedIndicesParallel(toMerge)
+            return ArrayList<SearchResult>(merged.size).apply { var i = 0; while (i < merged.size) { add(results[merged[i]]); i++ } }
+        }
+        // fallback to scope allowedBooks only
+        if (allowedBooks.isNotEmpty()) {
+            val distinctBooks = index.bookToIndices.size
+            return if (allowedBooks.size >= distinctBooks * 3 / 4) {
+                results.parallelFilterByBook(allowedBooks)
+            } else {
+                val arr = mergeSortedIndicesParallel(allowedBooks.mapNotNull { index.bookToIndices[it] })
+                ArrayList<SearchResult>(arr.size).apply { var i = 0; while (i < arr.size) { add(results[arr[i]]); i++ } }
+            }
+        }
+        return results
+    }
+
+    private suspend fun mergeSortedIndicesParallel(arrays: List<IntArray>): IntArray {
+        if (arrays.isEmpty()) return IntArray(0)
+        if (arrays.size == 1) return arrays[0]
+        return coroutineScope {
+            fun mergeTwo(a: IntArray, b: IntArray): IntArray {
+                val out = IntArray(a.size + b.size)
+                var i = 0; var j = 0; var k = 0
+                var hasLast = false
+                var last = 0
+                while (i < a.size && j < b.size) {
+                    val av = a[i]
+                    val bv = b[j]
+                    val v: Int
+                    if (av <= bv) { v = av; i++ } else { v = bv; j++ }
+                    if (!hasLast || v != last) {
+                        out[k++] = v
+                        last = v
+                        hasLast = true
+                    }
+                }
+                while (i < a.size) {
+                    val v = a[i++]
+                    if (!hasLast || v != last) {
+                        out[k++] = v
+                        last = v
+                        hasLast = true
+                    }
+                }
+                while (j < b.size) {
+                    val v = b[j++]
+                    if (!hasLast || v != last) {
+                        out[k++] = v
+                        last = v
+                        hasLast = true
+                    }
+                }
+                return if (k == out.size) out else out.copyOf(k)
+            }
+            suspend fun mergeRange(start: Int, end: Int): IntArray {
+                val len = end - start
+                return when {
+                    len <= 0 -> IntArray(0)
+                    len == 1 -> arrays[start]
+                    len == 2 -> mergeTwo(arrays[start], arrays[start + 1])
+                    else -> {
+                        val mid = start + len / 2
+                        val left = async(Dispatchers.Default) { mergeRange(start, mid) }
+                        val right = async(Dispatchers.Default) { mergeRange(mid, end) }
+                        mergeTwo(left.await(), right.await())
+                    }
+                }
+            }
+            mergeRange(0, arrays.size)
+        }
+    }
+
+    private fun List<SearchResult>.parallelFilterByBook(allowed: Set<Long>): List<SearchResult> = run {
+        val total = this.size
+        val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
+        if (total < PARALLEL_FILTER_THRESHOLD || cores == 1) return@run this.fastFilterByBookSequential(allowed)
+        val chunk = (total + cores - 1) / cores
+        kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.Default) {
+            val tasks = ArrayList<kotlinx.coroutines.Deferred<List<SearchResult>>>(cores)
+            var start = 0
+            while (start < total) {
+                val s = start
+                val e = kotlin.math.min(total, start + chunk)
+                tasks += async {
+                    val sub = ArrayList<SearchResult>(e - s)
+                    var i = s
+                    while (i < e) {
+                        val v = this@parallelFilterByBook[i]
+                        if (v.bookId in allowed) sub.add(v)
+                        i++
+                    }
+                    sub
+                }
+                start = e
+            }
+            tasks.awaitAll().flatten()
+        }
+    }
+
+    private fun List<SearchResult>.fastFilterByBookSequential(allowed: Set<Long>): List<SearchResult> {
+        val out = ArrayList<SearchResult>(this.size)
+        for (r in this) if (r.bookId in allowed) out.add(r)
+        return out
+    }
+
     // Bulk caches for TOC counting within a scoped book
     private var cachedCountsBookId: Long? = null
     private var lineIdToTocId: Map<Long, Long> = emptyMap()
     private var tocParentById: Map<Long, Long?> = emptyMap()
-    private val countsMutex = Mutex()
 
     init {
         // Prefer TabStateManager value (persisted across sessions) over the nav argument,
@@ -758,6 +990,15 @@ class SearchResultViewModel(
                 }
 
             } finally {
+                // Keep loading until the visible results emission reflects the final list
+                val initial = Pair(visibleResultsFlow.value.size, System.identityHashCode(visibleResultsFlow.value))
+                runCatching {
+                    visibleResultsFlow
+                        .map { Pair(it.size, System.identityHashCode(it)) }
+                        .distinctUntilChanged()
+                        .filter { it != initial }
+                        .first()
+                }
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
@@ -1447,30 +1688,7 @@ class SearchResultViewModel(
 
 // In-file helpers for efficient parallel filtering on CPU cores
 private suspend fun <T> List<T>.parallelFilterCores(predicate: (T) -> Boolean): List<T> {
-    val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
-    if (this.size < PARALLEL_FILTER_THRESHOLD || cores == 1) {
-        return this.filter(predicate)
-    }
-    val total = this.size
-    val chunkSize = (total + cores - 1) / cores
-    return coroutineScope {
-        val tasks = mutableListOf<kotlinx.coroutines.Deferred<List<T>>>()
-        var start = 0
-        while (start < total) {
-            val s = start
-            val e = kotlin.math.min(start + chunkSize, total)
-            tasks += async(Dispatchers.Default) {
-                val sub = ArrayList<T>(e - s)
-                var i = s
-                while (i < e) {
-                    val v = this@parallelFilterCores[i]
-                    if (predicate(v)) sub.add(v)
-                    i++
-                }
-                sub
-            }
-            start = e
-        }
-        tasks.awaitAll().flatten()
-    }
+    // Disable multithreading for filtering: use simple sequential filter to reduce
+    // CPU spikes and memory pressure at startup.
+    return this.filter(predicate)
 }

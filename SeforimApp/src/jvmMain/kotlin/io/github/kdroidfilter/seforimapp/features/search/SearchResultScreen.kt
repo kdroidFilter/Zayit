@@ -100,9 +100,7 @@ private fun SearchToolbar(
 
     // Persist live edits so session restore reopens with the last typed text
     LaunchedEffect(Unit) {
-        snapshotFlow { searchState.text.toString() }
-            .distinctUntilChanged()
-            .collect { q -> onQueryChange(q) }
+        snapshotFlow { searchState.text.toString() }.distinctUntilChanged().collect { q -> onQueryChange(q) }
     }
 
     Row(
@@ -112,30 +110,23 @@ private fun SearchToolbar(
     ) {
         // Query field
         TextField(
-            state = searchState,
-            modifier = Modifier
-                .weight(1f)
-                .height(36.dp)
-                .onPreviewKeyEvent { ev ->
-                    if ((ev.key == androidx.compose.ui.input.key.Key.Enter || ev.key == androidx.compose.ui.input.key.Key.NumPadEnter) && ev.type == androidx.compose.ui.input.key.KeyEventType.KeyUp) {
-                        val q = searchState.text.toString()
-                        onSubmit(q, currentNear)
-                        true
-                    } else false
-                },
-            placeholder = { Text(stringResource(Res.string.search_placeholder)) },
-            leadingIcon = {
-                IconButton(onClick = {
+            state = searchState, modifier = Modifier.weight(1f).height(36.dp).onPreviewKeyEvent { ev ->
+                if ((ev.key == androidx.compose.ui.input.key.Key.Enter || ev.key == androidx.compose.ui.input.key.Key.NumPadEnter) && ev.type == androidx.compose.ui.input.key.KeyEventType.KeyUp) {
                     val q = searchState.text.toString()
                     onSubmit(q, currentNear)
-                }) {
-                    Icon(
-                        key = AllIconsKeys.Actions.Find,
-                        contentDescription = stringResource(Res.string.search_icon_description)
-                    )
-                }
-            },
-            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
+                    true
+                } else false
+            }, placeholder = { Text(stringResource(Res.string.search_placeholder)) }, leadingIcon = {
+            IconButton(modifier = Modifier.pointerHoverIcon(PointerIcon.Hand), onClick = {
+                val q = searchState.text.toString()
+                onSubmit(q, currentNear)
+            }) {
+                Icon(
+                    key = AllIconsKeys.Actions.Find,
+                    contentDescription = stringResource(Res.string.search_icon_description)
+                )
+            }
+        }, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
         )
 
         // NEAR selector
@@ -153,17 +144,14 @@ private fun SearchToolbar(
             ListComboBox(
                 items = labels,
                 selectedIndex = selectedIndex,
-                modifier = Modifier
-                    .width(160.dp)
-                    .height(36.dp),
+                modifier = Modifier.width(160.dp).height(36.dp),
                 onSelectedItemChange = { idx ->
                     val newNear = nearValues.getOrNull(idx) ?: return@ListComboBox
                     if (newNear != currentNear) {
                         currentNear = newNear
                         onNearChange(newNear)
                     }
-                }
-            )
+                })
         }
     }
 }
@@ -189,25 +177,18 @@ fun SearchResultInBookShellMvi(
 ) {
     val splitPaneConfigs = listOf(
         SplitPaneConfig(
-            splitState = bookUiState.layout.mainSplitState,
-            isVisible = bookUiState.navigation.isVisible,
-            positionFilter = { it > 0 }
-        ),
-        SplitPaneConfig(
-            splitState = bookUiState.layout.tocSplitState,
-            isVisible = bookUiState.toc.isVisible,
-            positionFilter = { it > 0 }
-        )
-    )
+        splitState = bookUiState.layout.mainSplitState,
+        isVisible = bookUiState.navigation.isVisible,
+        positionFilter = { it > 0 }), SplitPaneConfig(
+        splitState = bookUiState.layout.tocSplitState,
+        isVisible = bookUiState.toc.isVisible,
+        positionFilter = { it > 0 }))
 
     splitPaneConfigs.forEach { config ->
         LaunchedEffect(config.splitState, config.isVisible) {
             if (config.isVisible) {
-                snapshotFlow { config.splitState.positionPercentage }
-                    .map { ((it * 100).toInt() / 100f) }
-                    .distinctUntilChanged()
-                    .debounce(300)
-                    .filter(config.positionFilter)
+                snapshotFlow { config.splitState.positionPercentage }.map { ((it * 100).toInt() / 100f) }
+                    .distinctUntilChanged().debounce(300).filter(config.positionFilter)
                     .collect { onEvent(BookContentEvent.SaveState) }
             }
         }
@@ -283,9 +264,7 @@ fun SearchResultInBookShellMvi(
 }
 
 private data class SplitPaneConfig @OptIn(ExperimentalSplitPaneApi::class) constructor(
-    val splitState: SplitPaneState,
-    val isVisible: Boolean,
-    val positionFilter: (Float) -> Boolean
+    val splitState: SplitPaneState, val isVisible: Boolean, val positionFilter: (Float) -> Boolean
 )
 
 @Composable
@@ -302,15 +281,11 @@ private fun SearchResultContentMvi(
     // Match BookContent main text font settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val mainTextSize by animateFloatAsState(
-        targetValue = rawTextSize,
-        animationSpec = tween(durationMillis = 200),
-        label = "searchMainTextSizeAnim"
+        targetValue = rawTextSize, animationSpec = tween(durationMillis = 200), label = "searchMainTextSizeAnim"
     )
     val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
     val mainLineHeight by animateFloatAsState(
-        targetValue = rawLineHeight,
-        animationSpec = tween(durationMillis = 200),
-        label = "searchLineHeightAnim"
+        targetValue = rawLineHeight, animationSpec = tween(durationMillis = 200), label = "searchLineHeightAnim"
     )
     val bookFontCode by AppSettings.bookFontCodeFlow.collectAsState()
     val hebrewFontFamily: FontFamily = FontCatalog.familyFor(bookFontCode)
@@ -323,10 +298,8 @@ private fun SearchResultContentMvi(
 
     // Persist scroll/anchor as the user scrolls (disabled while loading)
     LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .distinctUntilChanged()
-            .filter { !state.isLoading }
-            .collect { (index, offset) ->
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }.distinctUntilChanged()
+            .filter { !state.isLoading }.collect { (index, offset) ->
                 val items = state.results
                 val anchorId = items.getOrNull(index)?.lineId ?: -1L
                 actions.onScroll(anchorId, 0, index, offset)
@@ -396,8 +369,7 @@ private fun SearchResultContentMvi(
             Spacer(Modifier.height(12.dp))
             // Header row: results count + classic separator + optional cancel
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
             ) {
                 GroupHeader(
                     text = stringResource(Res.string.search_result_count, visibleResults.size),
@@ -406,10 +378,7 @@ private fun SearchResultContentMvi(
 
                 // Classic thin separator line
                 Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(1.dp)
-                        .background(JewelTheme.globalColors.borders.disabled)
+                    modifier = Modifier.weight(1f).height(1.dp).background(JewelTheme.globalColors.borders.disabled)
                 )
 
                 if (state.isLoading || state.isLoadingMore) {
@@ -428,9 +397,7 @@ private fun SearchResultContentMvi(
 
             // Results list
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(JewelTheme.globalColors.panelBackground)
+                modifier = Modifier.fillMaxSize().background(JewelTheme.globalColors.panelBackground)
             ) {
                 if (visibleResults.isEmpty()) {
                     if (state.isLoading) {
@@ -444,14 +411,11 @@ private fun SearchResultContentMvi(
                     }
                 } else {
                     VerticallyScrollableContainer(
-                        scrollState = listState as ScrollableState,
-                        modifier = Modifier.fillMaxSize()
+                        scrollState = listState as ScrollableState, modifier = Modifier.fillMaxSize()
                     ) {
                         LazyColumn(
                             state = listState,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 32.dp),
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             itemsIndexed(items = visibleResults, key = { _, it -> it.lineId }) { idx, result ->
@@ -516,10 +480,8 @@ private fun SearchResultContentMvi(
                     exit = fadeOut(tween(durationMillis = 120, easing = LinearEasing))
                 ) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.4f))
-                            .zIndex(1f),
+                        modifier = Modifier.fillMaxSize()
+                            .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.4f)).zIndex(1f),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
@@ -539,8 +501,7 @@ private fun SearchResultContentMvi(
                     state = findState,
                     onEnterNext = { navigateTo(true) },
                     onEnterPrev = { navigateTo(false) },
-                    onClose = { AppSettings.closeFindBar(); AppSettings.setFindQuery("") }
-                )
+                    onClose = { AppSettings.closeFindBar(); AppSettings.setFindQuery("") })
             }
         }
     }
@@ -604,10 +565,7 @@ private fun SearchResultItemGoogleStyle(
 
     // Visual layout inspired by Google results, styled with Jewel
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
-            .clickable(onClick = onClick)
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)).clickable(onClick = onClick)
             .padding(vertical = 10.dp)
     ) {
         // Top: small book title – toc leaf

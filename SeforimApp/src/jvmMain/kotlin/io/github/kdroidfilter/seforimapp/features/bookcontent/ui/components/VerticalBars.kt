@@ -3,6 +3,8 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import io.github.kdroidfilter.platformtools.OperatingSystem
+import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
@@ -96,22 +98,24 @@ fun EndVerticalBar(
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
         topContent = {
+            // Platform-specific shortcut hint for Zoom In
             SelectableIconButtonWithToolip(
-                toolTipText = if (canZoomIn) 
-                    stringResource(Res.string.zoom_in_tooltip) 
-                else 
+                toolTipText = if (canZoomIn)
+                    stringResource(Res.string.zoom_in_tooltip)
+                else
                     stringResource(Res.string.zoom_in_tooltip) + " (${AppSettings.MAX_TEXT_SIZE.toInt()}sp max)",
                 onClick = { AppSettings.increaseTextSize() },
                 isSelected = false,
                 enabled = canZoomIn,
                 icon = ZoomIn,
                 iconDescription = stringResource(Res.string.zoom_in),
-                label = stringResource(Res.string.zoom_in)
+                label = stringResource(Res.string.zoom_in),
+                shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "⊕+Cmd" else "⊕+Ctrl"
             )
             SelectableIconButtonWithToolip(
-                toolTipText = if (canZoomOut) 
-                    stringResource(Res.string.zoom_out_tooltip) 
-                else 
+                toolTipText = if (canZoomOut)
+                    stringResource(Res.string.zoom_out_tooltip)
+                else
                     stringResource(Res.string.zoom_out_tooltip) + " (${AppSettings.MIN_TEXT_SIZE.toInt()}sp min)",
                 onClick = { AppSettings.decreaseTextSize() },
                 isSelected = false,
@@ -119,6 +123,7 @@ fun EndVerticalBar(
                 icon = ZoomOut,
                 iconDescription = stringResource(Res.string.zoom_out),
                 label = stringResource(Res.string.zoom_out),
+                shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "⊖+Cmd" else "⊖+Ctrl"
             )
 //            SelectableIconButtonWithToolip(
 //                toolTipText = stringResource(

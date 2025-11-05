@@ -34,12 +34,14 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
+import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -48,6 +50,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EndV
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.StartVerticalBar
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
+import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -68,8 +71,8 @@ data class SearchShellActions(
     val onQueryChange: (String) -> Unit,
     val onScroll: (anchorId: Long, anchorIndex: Int, index: Int, offset: Int) -> Unit,
     val onCancelSearch: () -> Unit,
-    val onOpenResult: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult, openInNewTab: Boolean) -> Unit,
-    val onRequestBreadcrumb: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult) -> Unit,
+    val onOpenResult: (SearchResult, openInNewTab: Boolean) -> Unit,
+    val onRequestBreadcrumb: (SearchResult) -> Unit,
     val onLoadMore: () -> Unit,
     val onCategoryCheckedChange: (Long, Boolean) -> Unit,
     val onBookCheckedChange: (Long, Boolean) -> Unit,
@@ -164,7 +167,7 @@ fun SearchResultInBookShellMvi(
     onEvent: (BookContentEvent) -> Unit,
     // Search state
     searchUi: SearchUiState,
-    visibleResults: List<io.github.kdroidfilter.seforimlibrary.core.models.SearchResult>,
+    visibleResults: List<SearchResult>,
     isFiltering: Boolean,
     breadcrumbs: Map<Long, List<String>>,
     searchTree: List<SearchResultViewModel.SearchTreeCategory>,
@@ -270,7 +273,7 @@ private data class SplitPaneConfig @OptIn(ExperimentalSplitPaneApi::class) const
 @Composable
 private fun SearchResultContentMvi(
     state: SearchUiState,
-    visibleResults: List<io.github.kdroidfilter.seforimlibrary.core.models.SearchResult>,
+    visibleResults: List<SearchResult>,
     isFiltering: Boolean,
     breadcrumbs: Map<Long, List<String>>,
     actions: SearchShellActions
@@ -510,7 +513,7 @@ private fun SearchResultContentMvi(
 
 @Composable
 private fun SearchResultItemGoogleStyle(
-    result: io.github.kdroidfilter.seforimlibrary.core.models.SearchResult,
+    result: SearchResult,
     textSize: Float,
     lineHeight: Float,
     fontFamily: FontFamily,
@@ -518,7 +521,7 @@ private fun SearchResultItemGoogleStyle(
     currentMatchStart: Int? = null,
     onClick: () -> Unit,
     breadcrumbs: Map<Long, List<String>>,
-    onRequestBreadcrumb: (io.github.kdroidfilter.seforimlibrary.core.models.SearchResult) -> Unit,
+    onRequestBreadcrumb: (SearchResult) -> Unit,
     bookFontCode: String
 ) {
     // Breadcrumb pieces come from state; request on-demand via callback
@@ -553,7 +556,7 @@ private fun SearchResultItemGoogleStyle(
     val baseHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.12f)
     val currentHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.28f)
     val display = remember(annotated, findQuery, currentMatchStart, baseHl, currentHl) {
-        io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
+        highlightAnnotatedWithCurrent(
             annotated = annotated,
             query = findQuery,
             currentStart = currentMatchStart?.takeIf { it >= 0 },
@@ -583,6 +586,7 @@ private fun SearchResultItemGoogleStyle(
                 fontSize = (textSize * 1.1f).sp,
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.Medium,
+                textDecoration = TextDecoration.Underline,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -604,7 +608,7 @@ private fun SearchResultItemGoogleStyle(
             Spacer(Modifier.height(4.dp))
             Text(
                 text = fullPath,
-                color = JewelTheme.globalColors.text.disabled,
+                color = JewelTheme.globalColors.text.disabledSelected,
                 fontFamily = fontFamily,
                 fontSize = (textSize * 0.8f).sp,
                 maxLines = 1

@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.platformtools.getAppVersion
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TextWithLink
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
@@ -25,7 +26,7 @@ import seforimapp.seforimapp.generated.resources.settings_info_repo_url_text
 
 @Composable
 fun InfoSettingsScreen() {
-    val version = remember { currentAppVersion() }
+    val version = getAppVersion()
     InfoSettingsView(version)
 }
 
@@ -52,23 +53,6 @@ private fun InfoSettingsView(version: String) {
     }
 }
 
-private class VersionProbe
-
-private fun currentAppVersion(): String {
-    // Prefer reading from JAR manifest when packaged
-    val implVersion = VersionProbe::class.java.`package`?.implementationVersion
-    if (!implVersion.isNullOrBlank()) return implVersion
-
-    // Fallback: mirror build script tag parsing for CI-based builds
-    val ref = System.getenv("GITHUB_REF") ?: ""
-    return if (ref.startsWith("refs/tags/")) {
-        val tag = ref.removePrefix("refs/tags/")
-        if (tag.startsWith("v")) tag.substring(1) else tag
-    } else {
-        // Default development version; keep in sync with build script default
-        "0.3.0"
-    }
-}
 
 @Composable
 @Preview

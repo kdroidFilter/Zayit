@@ -268,28 +268,34 @@ private data class SearchShellState(
 
 @Composable
 private fun rememberSearchShellState(viewModel: SearchResultViewModel): SearchShellState {
-    val searchUi by viewModel.uiState.collectAsState()
-    val visibleResults by viewModel.visibleResultsFlow.collectAsState()
-    val isFiltering by viewModel.isFilteringFlow.collectAsState()
-    val breadcrumbs by viewModel.breadcrumbsFlow.collectAsState()
-    val searchTree by viewModel.searchTreeFlow.collectAsState()
-    val selectedCategoryIds by viewModel.selectedCategoryIdsFlow.collectAsState()
-    val selectedBookIds by viewModel.selectedBookIdsFlow.collectAsState()
-    val selectedTocIds by viewModel.selectedTocIdsFlow.collectAsState()
-    val tocCounts by viewModel.tocCountsFlow.collectAsState()
-    val tocTree by viewModel.tocTreeFlow.collectAsState()
-    return SearchShellState(
-        searchUi = searchUi,
-        visibleResults = visibleResults,
-        isFiltering = isFiltering,
-        breadcrumbs = breadcrumbs,
-        searchTree = searchTree,
-        selectedCategoryIds = selectedCategoryIds,
-        selectedBookIds = selectedBookIds,
-        selectedTocIds = selectedTocIds,
-        tocCounts = tocCounts,
-        tocTree = tocTree
-    )
+    val searchUi by remember(viewModel) { viewModel.uiState }.collectAsState()
+    val visibleResults by remember(viewModel) { viewModel.visibleResultsFlow }.collectAsState()
+    val isFiltering by remember(viewModel) { viewModel.isFilteringFlow }.collectAsState()
+    val breadcrumbs by remember(viewModel) { viewModel.breadcrumbsFlow }.collectAsState()
+    val searchTree by remember(viewModel) { viewModel.searchTreeFlow }.collectAsState()
+    val selectedCategoryIds by remember(viewModel) { viewModel.selectedCategoryIdsFlow }.collectAsState()
+    val selectedBookIds by remember(viewModel) { viewModel.selectedBookIdsFlow }.collectAsState()
+    val selectedTocIds by remember(viewModel) { viewModel.selectedTocIdsFlow }.collectAsState()
+    val tocCounts by remember(viewModel) { viewModel.tocCountsFlow }.collectAsState()
+    val tocTree by remember(viewModel) { viewModel.tocTreeFlow }.collectAsState()
+    
+    return remember(
+        searchUi, visibleResults, isFiltering, breadcrumbs, searchTree,
+        selectedCategoryIds, selectedBookIds, selectedTocIds, tocCounts, tocTree
+    ) {
+        SearchShellState(
+            searchUi = searchUi,
+            visibleResults = visibleResults,
+            isFiltering = isFiltering,
+            breadcrumbs = breadcrumbs,
+            searchTree = searchTree,
+            selectedCategoryIds = selectedCategoryIds,
+            selectedBookIds = selectedBookIds,
+            selectedTocIds = selectedTocIds,
+            tocCounts = tocCounts,
+            tocTree = tocTree
+        )
+    }
 }
 
 @Composable

@@ -45,6 +45,13 @@ import java.awt.Dimension
 import java.awt.Toolkit
 import java.awt.Window
 import java.util.*
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
+import io.github.kdroidfilter.seforim.tabs.TabsEvents
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
@@ -147,10 +154,20 @@ fun main() {
                         state = windowState,
                         visible = isWindowVisible,
                         onKeyEvent = { keyEvent ->
-                            processKeyShortcuts(
-                                keyEvent = keyEvent, onNavigateTo = {
-                                    //TODO
-                                })
+                            if (keyEvent.type == KeyEventType.KeyDown) {
+                                val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                                if (isCtrlOrCmd && keyEvent.key == Key.T) {
+                                    tabsVm.onEvent(TabsEvents.onAdd)
+                                    true
+                                } else {
+                                    processKeyShortcuts(
+                                        keyEvent = keyEvent,
+                                        onNavigateTo = { /* no-op: legacy shortcuts not used here */ }
+                                    )
+                                }
+                            } else {
+                                false
+                            }
                         },
                     ) {
                         /**

@@ -93,6 +93,11 @@ fun TabsNavHost() {
                 val bookVm = remember(appGraph, destination) {
                     appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
                 }
+                // Mark Search UI as visible only while this destination is composed
+                DisposableEffect(destination.tabId) {
+                    viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetUiVisible(true))
+                    onDispose { viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetUiVisible(false)) }
+                }
                 val bcUiState = rememberBookShellState(bookVm)
                 val ss = rememberSearchShellState(viewModel)
                 SearchResultInBookShellMvi(
@@ -186,6 +191,13 @@ fun TabsNavHost() {
                             val viewModel = remember(appGraph, destination) { appGraph.searchResultViewModel(backStackEntry.savedStateHandle) }
                             val bookVm = remember(appGraph, destination) {
                                 appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
+                            }
+                            // Keep tree computation disabled when tab is not selected
+                            LaunchedEffect(isSelected) {
+                                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetUiVisible(isSelected))
+                            }
+                            DisposableEffect(destination.tabId) {
+                                onDispose { viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetUiVisible(false)) }
                             }
                             val bcUiState = rememberBookShellState(bookVm)
                             val ss = rememberSearchShellState(viewModel)

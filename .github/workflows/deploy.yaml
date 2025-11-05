@@ -136,10 +136,11 @@ jobs:
         with:
           name: windows-msi
 
-      - name: Download macOS artifact
+      - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
-          name: macos-pkg
+          pattern: macos-pkg-* 
+          merge-multiple: true
 
       # 2) Inspect
       - name: List downloaded files

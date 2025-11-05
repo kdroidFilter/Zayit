@@ -142,11 +142,9 @@ kotlin {
             implementation(libs.sqlite.driver)
             implementation(libs.zstd.jni)
             implementation(libs.ktor.client.okhttp)
-            implementation("org.apache.lucene:lucene-core:10.3.1")
-            implementation("org.apache.lucene:lucene-analysis-common:10.3.1")
-            implementation("org.apache.lucene:lucene-queryparser:10.3.1")
-            implementation("org.apache.lucene:lucene-highlighter:10.3.1")
-            implementation("org.apache.commons:commons-compress:1.26.2")
+            implementation(libs.lucene.core)
+
+            implementation(libs.commons.compress)
 
             // HTML sanitization for search snippets
             implementation(libs.jsoup)

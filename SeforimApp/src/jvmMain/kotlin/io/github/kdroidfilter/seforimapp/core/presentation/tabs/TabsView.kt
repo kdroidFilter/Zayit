@@ -59,6 +59,8 @@ import seforimapp.seforimapp.generated.resources.home
 import seforimapp.seforimapp.generated.resources.search_results_tab_title
 import seforimapp.seforimapp.generated.resources.app_name
 import seforimapp.seforimapp.generated.resources.home_tab_with_app
+import io.github.kdroidfilter.platformtools.getOperatingSystem
+import io.github.kdroidfilter.platformtools.OperatingSystem
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -250,11 +252,14 @@ private fun RtlAwareTabStripWithAddButton(
         modifier = Modifier.fillMaxWidth()
     ) {
         if (isRtl) {
+            val os = getOperatingSystem()
+            val shortcutHint = if (os == OperatingSystem.MACOS) "Cmd+T" else "Ctrl+T"
             TitleBarActionButton(
                 onClick = onAddClick,
                 key = AllIconsKeys.General.Add,
                 contentDescription = stringResource(Res.string.add_tab),
-                tooltipText = stringResource(Res.string.add_tab)
+                tooltipText = stringResource(Res.string.add_tab),
+                shortcutHint = shortcutHint
             )
         }
 
@@ -275,11 +280,14 @@ private fun RtlAwareTabStripWithAddButton(
         )
 
         if (!isRtl) {
+            val os = getOperatingSystem()
+            val shortcutHint = if (os == OperatingSystem.MACOS) "Cmd+T" else "Ctrl+T"
             TitleBarActionButton(
                 onClick = onAddClick,
                 key = AllIconsKeys.General.Add,
                 contentDescription = stringResource(Res.string.add_tab),
-                tooltipText = stringResource(Res.string.add_tab)
+                tooltipText = stringResource(Res.string.add_tab),
+                shortcutHint = shortcutHint
             )
         }
     }

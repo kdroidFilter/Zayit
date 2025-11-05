@@ -49,8 +49,12 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.Box
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
@@ -159,6 +163,14 @@ fun main() {
                                 if (isCtrlOrCmd && keyEvent.key == Key.T) {
                                     tabsVm.onEvent(TabsEvents.onAdd)
                                     true
+                                } else if (isCtrlOrCmd && keyEvent.key == Key.Tab) {
+                                    val count = tabs.size
+                                    if (count > 0) {
+                                        val direction = if (keyEvent.isShiftPressed) -1 else 1
+                                        val newIndex = (selectedIndex + direction + count) % count
+                                        tabsVm.onEvent(TabsEvents.onSelected(newIndex))
+                                    }
+                                    true
                                 } else {
                                     processKeyShortcuts(
                                         keyEvent = keyEvent,
@@ -197,7 +209,42 @@ fun main() {
                                 sessionRestored = true
                             }
                         }
-                        TabsNavHost()
+                        // Intercept key combos early to avoid focus traversal consuming Tab
+                        Box(
+                            modifier = Modifier.onPreviewKeyEvent { keyEvent ->
+                                if (keyEvent.type == KeyEventType.KeyDown) {
+                                    val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                                    when {
+                                        // Ctrl/Cmd + Shift + Tab => previous tab
+                                        isCtrlOrCmd && keyEvent.key == Key.Tab && keyEvent.isShiftPressed -> {
+                                            val count = tabs.size
+                                            if (count > 0) {
+                                                val newIndex = (selectedIndex - 1 + count) % count
+                                                tabsVm.onEvent(TabsEvents.onSelected(newIndex))
+                                            }
+                                            true
+                                        }
+                                        // Ctrl/Cmd + Tab => next tab
+                                        isCtrlOrCmd && keyEvent.key == Key.Tab -> {
+                                            val count = tabs.size
+                                            if (count > 0) {
+                                                val newIndex = (selectedIndex + 1) % count
+                                                tabsVm.onEvent(TabsEvents.onSelected(newIndex))
+                                            }
+                                            true
+                                        }
+                                        // Ctrl/Cmd + T => new tab
+                                        isCtrlOrCmd && keyEvent.key == Key.T -> {
+                                            tabsVm.onEvent(TabsEvents.onAdd)
+                                            true
+                                        }
+                                        else -> false
+                                    }
+                                } else false
+                            }
+                        ) {
+                            TabsNavHost()
+                        }
                     }
                 } // else (null) -> render nothing until decision made
             }

@@ -29,6 +29,7 @@ object StateKeys {
     
     // Content
     const val SELECTED_LINE = "selectedLine"
+    const val SELECTED_LINE_ID = "selectedLineId"
     const val SHOW_COMMENTARIES = "showCommentaries"
     const val SHOW_TARGUM = "showTargum"
     const val PARAGRAPH_SCROLL_POSITION = "paragraphScrollPosition"

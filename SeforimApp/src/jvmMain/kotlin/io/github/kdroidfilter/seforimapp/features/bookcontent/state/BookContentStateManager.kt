@@ -196,7 +196,10 @@ class BookContentStateManager(
         saveState(StateKeys.TOC_SCROLL_OFFSET, currentState.toc.scrollOffset)
         
         // Content
-        currentState.content.selectedLine?.let { saveState(StateKeys.SELECTED_LINE, it) }
+        currentState.content.selectedLine?.let { 
+            saveState(StateKeys.SELECTED_LINE, it)
+            saveState(StateKeys.SELECTED_LINE_ID, it.id)
+        }
         saveState(StateKeys.SHOW_COMMENTARIES, currentState.content.showCommentaries)
         saveState(StateKeys.SHOW_TARGUM, currentState.content.showTargum)
         saveState(StateKeys.CONTENT_SCROLL_INDEX, currentState.content.scrollIndex)

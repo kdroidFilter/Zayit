@@ -105,6 +105,8 @@ class SearchResultViewModel(
         data class OnScroll(val anchorId: Long, val anchorIndex: Int, val index: Int, val offset: Int) : SearchResultEvents()
         data class OpenResult(val result: SearchResult, val openInNewTab: Boolean) : SearchResultEvents()
         data class RequestBreadcrumb(val result: SearchResult) : SearchResultEvents()
+        // Hint from UI about visibility, to gate heavy computations (e.g., search tree)
+        data class SetUiVisible(val visible: Boolean) : SearchResultEvents()
     }
 
     fun onEvent(event: SearchResultEvents) {
@@ -129,6 +131,7 @@ class SearchResultViewModel(
                     _breadcrumbs.update { it + (event.result.lineId to pieces) }
                 }
             }
+            is SearchResultEvents.SetUiVisible -> _uiVisible.value = event.visible
         }
     }
     // Key representing the current search parameters (no result caching).
@@ -196,6 +199,9 @@ class SearchResultViewModel(
     private var wasPausedByTabSwitch: Boolean = false
     private val _breadcrumbs = MutableStateFlow<Map<Long, List<String>>>(emptyMap())
     val breadcrumbsFlow: StateFlow<Map<Long, List<String>>> = _breadcrumbs.asStateFlow()
+
+    // Whether the Search UI is currently visible/active. Used to gate heavy flows at startup.
+    private val _uiVisible = MutableStateFlow(false)
 
     // Allowed sets computed only when scope changes (Debounce 300ms on scope)
     private val scopeBookIdFlow = uiState.map { it.scopeBook?.id }.distinctUntilChanged()
@@ -349,11 +355,18 @@ class SearchResultViewModel(
     private val _tocTree = MutableStateFlow<TocTree?>(null)
     val tocTreeFlow: StateFlow<TocTree?> = _tocTree.asStateFlow()
     val searchTreeFlow: StateFlow<List<SearchTreeCategory>> =
-        uiState
-            .map { it.results }
-            .debounce(100)
-            .mapLatest { buildSearchResultTree() }
-            .flowOn(Dispatchers.Default)
+        _uiVisible
+            .flatMapLatest { visible ->
+                if (!visible) {
+                    kotlinx.coroutines.flow.flowOf(emptyList())
+                } else {
+                    uiState
+                        .map { it.results }
+                        .debounce(100)
+                        .mapLatest { buildSearchResultTree() }
+                        .flowOn(Dispatchers.Default)
+                }
+            }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Helper to combine 4 values strongly typed

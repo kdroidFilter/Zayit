@@ -46,6 +46,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.PriorityQueue
 import java.util.Arrays
@@ -297,30 +298,32 @@ class SearchResultViewModel(
 
     val visibleResultsFlow: StateFlow<List<SearchResult>> =
         combine(baseScopeFlow, extraMultiFlow) { base, extra -> Pair(base, extra) }
+            .distinctUntilChanged()
             .debounce(50)
             .mapLatest { (base, extra) ->
-                val results = base.a
-                val bookId = base.b
-                val allowedBooks = base.c
-                val allowedLineIds = base.d
-                val tocId = base.e
-                val selectedBooks = extra.first
-                val multiBooks = extra.second
-                val multiLines = extra.third
-                val out = fastFilterVisibleResults(
-                    results = results,
-                    bookId = bookId,
-                    allowedBooks = allowedBooks,
-                    allowedLineIds = allowedLineIds,
-                    tocActive = tocId != null,
-                    selectedBooks = selectedBooks,
-                    multiBooks = multiBooks,
-                    multiLines = multiLines
-                )
-                // Always return a new list instance so StateFlow emits even if content unchanged
-                ArrayList(out)
+                withContext(Dispatchers.Default) {
+                    val results = base.a
+                    val bookId = base.b
+                    val allowedBooks = base.c
+                    val allowedLineIds = base.d
+                    val tocId = base.e
+                    val selectedBooks = extra.first
+                    val multiBooks = extra.second
+                    val multiLines = extra.third
+                    val out = fastFilterVisibleResults(
+                        results = results,
+                        bookId = bookId,
+                        allowedBooks = allowedBooks,
+                        allowedLineIds = allowedLineIds,
+                        tocActive = tocId != null,
+                        selectedBooks = selectedBooks,
+                        multiBooks = multiBooks,
+                        multiLines = multiLines
+                    )
+                    // Always return a new list instance so StateFlow emits even if content unchanged
+                    ArrayList(out)
+                }
             }
-            .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Emits true whenever a filter key changes (category/book/toc), and becomes false

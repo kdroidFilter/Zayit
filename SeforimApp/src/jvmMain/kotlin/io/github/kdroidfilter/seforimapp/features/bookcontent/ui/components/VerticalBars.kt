@@ -110,7 +110,7 @@ fun EndVerticalBar(
                 icon = ZoomIn,
                 iconDescription = stringResource(Res.string.zoom_in),
                 label = stringResource(Res.string.zoom_in),
-                shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "⊕+Cmd" else "⊕+Ctrl"
+                shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "+⌘" else "+Ctrl"
             )
             SelectableIconButtonWithToolip(
                 toolTipText = if (canZoomOut)
@@ -123,7 +123,7 @@ fun EndVerticalBar(
                 icon = ZoomOut,
                 iconDescription = stringResource(Res.string.zoom_out),
                 label = stringResource(Res.string.zoom_out),
-                shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "⊖+Cmd" else "⊖+Ctrl"
+                shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "-⌘" else "-Ctrl"
             )
 //            SelectableIconButtonWithToolip(
 //                toolTipText = stringResource(

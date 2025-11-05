@@ -253,7 +253,7 @@ private fun RtlAwareTabStripWithAddButton(
     ) {
         if (isRtl) {
             val os = getOperatingSystem()
-            val shortcutHint = if (os == OperatingSystem.MACOS) "Cmd+T" else "Ctrl+T"
+            val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
             TitleBarActionButton(
                 onClick = onAddClick,
                 key = AllIconsKeys.General.Add,
@@ -281,7 +281,7 @@ private fun RtlAwareTabStripWithAddButton(
 
         if (!isRtl) {
             val os = getOperatingSystem()
-            val shortcutHint = if (os == OperatingSystem.MACOS) "Cmd+T" else "Ctrl+T"
+            val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
             TitleBarActionButton(
                 onClick = onAddClick,
                 key = AllIconsKeys.General.Add,

@@ -117,15 +117,13 @@ class BookContentViewModel(
                 if (requestedLineId != null) {
                     loadBookById(restoredBook.id, requestedLineId)
                 } else {
-                    loadBookData(restoredBook)
-                }
-
-                // Restaurer la ligne sélectionnée et recalculer le TOC/breadcrumb
-                stateManager.state.value.content.selectedLine?.let { line ->
-                    // Also rebuild TOC selection + breadcrumb from the restored line
-                    contentUseCase.selectLine(line)
-                    commentariesUseCase.reapplySelectedCommentators(line)
-                    commentariesUseCase.reapplySelectedLinkSources(line)
+                    // Vérifier s'il y a une ligne sélectionnée sauvegardée à restaurer
+                    val savedLineId = tabStateManager.getState<Long>(currentTabId, StateKeys.SELECTED_LINE_ID)
+                    if (savedLineId != null) {
+                        loadBookById(restoredBook.id, savedLineId)
+                    } else {
+                        loadBookData(restoredBook)
+                    }
                 }
             } else {
                 // Charger depuis les paramètres

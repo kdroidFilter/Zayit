@@ -17,7 +17,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -82,7 +87,7 @@ class SearchHomeViewModel(
             referenceQuery
                 .debounce(200)
                 .distinctUntilChanged()
-                .collect { qRaw ->
+                .collectLatest { qRaw ->
                     val q = qRaw.trim()
                     val qNorm = sanitizeHebrewForAcronym(q)
                     if (q.isBlank()) {
@@ -92,71 +97,93 @@ class SearchHomeViewModel(
                             suggestionsVisible = false
                         )
                     } else {
-                        val pattern = "%$q%"
-                        // Categories
-                        val catsRaw = repository
-                            .findCategoriesByTitleLike(pattern, limit = 50)
-                            .filter { it.title.isNotBlank() }
-                            .distinctBy { it.id }
-                        // Rank helper for category titles against raw query
-                        fun catTitleRank(title: String): Int = when {
-                            title.equals(q, ignoreCase = true) -> 0
-                            title.startsWith(q, ignoreCase = true) -> 1
-                            title.contains(q, ignoreCase = true) -> 2
-                            else -> 3
-                        }
-                        val catItems = catsRaw.map { cat ->
-                            val path = buildCategoryPathTitles(cat.id)
-                            val depth = repository.getCategoryDepth(cat.id)
-                            CategorySuggestionDto(cat, path.ifEmpty { listOf(cat.title) }) to depth
-                        }
-                        // Prioritize: 1) shallower hierarchy, 2) better title match
-                        val catSuggestions = catItems
-                            .sortedWith(
-                                compareBy<Pair<CategorySuggestionDto, Int>> { it.second }
-                                    .thenBy { catTitleRank(it.first.category.title) }
-                            )
-                            .map { it.first }
-                            .take(12)
-                        // Books via lookup index (title variants + acronyms + topics) with prefix per token
-                        val bookIds = lookup.searchBooksPrefix(qNorm, limit = 50)
-                        val lookupBooks = bookIds.mapNotNull { id ->
-                            runCatching { repository.getBook(id) }.getOrNull()
+                        val result = withContext(Dispatchers.Default) {
+                            coroutineScope {
+                                val pattern = "%$q%"
+
+                                // Helper ranks by quick string match only (cheap)
+                                fun catTitleRank(title: String): Int = when {
+                                    title.equals(q, ignoreCase = true) -> 0
+                                    title.startsWith(q, ignoreCase = true) -> 1
+                                    title.contains(q, ignoreCase = true) -> 2
+                                    else -> 3
+                                }
+                                fun titleRank(title: String): Int = when {
+                                    title.equals(q, ignoreCase = true) -> 0
+                                    title.startsWith(q, ignoreCase = true) -> 1
+                                    title.contains(q, ignoreCase = true) -> 2
+                                    else -> 3
+                                }
+
+                                // Categories: fetch, cheap-rank, compute depth for top-N, then build paths for final
+                                val catsDeferred = async(Dispatchers.IO) {
+                                    val catsRaw = repository
+                                        .findCategoriesByTitleLike(pattern, limit = 50)
+                                        .filter { it.title.isNotBlank() }
+                                        .distinctBy { it.id }
+                                    val topForDepth = catsRaw
+                                        .sortedBy { catTitleRank(it.title) }
+                                        .take(24)
+                                    val withDepth = topForDepth.map { cat ->
+                                        // Depth via DB (cheaper than full path) for ranking
+                                        val depth = runCatching { repository.getCategoryDepth(cat.id) }.getOrDefault(Int.MAX_VALUE)
+                                        cat to depth
+                                    }
+                                    val topFinal = withDepth
+                                        .sortedWith(compareBy<Pair<Category, Int>> { it.second }
+                                            .thenBy { catTitleRank(it.first.title) })
+                                        .take(12)
+                                        .map { it.first }
+                                    // Build display paths only for final items
+                                    topFinal.map { cat ->
+                                        val path = runCatching { buildCategoryPathTitles(cat.id) }.getOrDefault(emptyList())
+                                        CategorySuggestionDto(cat, path.ifEmpty { listOf(cat.title) })
+                                    }
+                                }
+
+                                // Books: lookup + LIKE, cheap-rank, compute depth for top-N, then build paths for final
+                                val booksDeferred = async(Dispatchers.Default) {
+                                    val bookIds = lookup.searchBooksPrefix(qNorm, limit = 50)
+                                    val lookupBooks = withContext(Dispatchers.IO) {
+                                        bookIds.mapNotNull { id -> runCatching { repository.getBook(id) }.getOrNull() }
+                                    }
+                                    val likeBooks = withContext(Dispatchers.IO) {
+                                        runCatching {
+                                            repository.findBooksByTitleLike("%$q%", limit = 50)
+                                                .filter { it.title.isNotBlank() }
+                                        }.getOrDefault(emptyList())
+                                    }
+                                    val bookCandidates = LinkedHashMap<Long, Book>()
+                                    lookupBooks.forEach { b -> bookCandidates.putIfAbsent(b.id, b) }
+                                    likeBooks.forEach { b -> bookCandidates.putIfAbsent(b.id, b) }
+
+                                    val topForDepth = bookCandidates.values
+                                        .sortedBy { titleRank(it.title) }
+                                        .take(24)
+                                    val withDepth = withContext(Dispatchers.IO) {
+                                        topForDepth.map { b -> b to runCatching { repository.getCategoryDepth(b.categoryId) }.getOrDefault(Int.MAX_VALUE) }
+                                    }
+                                    val topFinal = withDepth
+                                        .sortedWith(compareBy<Pair<Book, Int>> { it.second }
+                                            .thenBy { titleRank(it.first.title) })
+                                        .take(12)
+                                        .map { it.first }
+                                    // Build path only for final items (IO-bound)
+                                    topFinal.map { b ->
+                                        val catPath = withContext(Dispatchers.IO) {
+                                            runCatching { buildCategoryPathTitles(b.categoryId) }.getOrDefault(emptyList())
+                                        }
+                                        BookSuggestionDto(b, catPath + b.title)
+                                    }
+                                }
+
+                                val cats = catsDeferred.await()
+                                val books = booksDeferred.await()
+                                cats to books
+                            }
                         }
 
-                        // Fallback: broaden with simple title LIKE when lookup misses matches
-                        // This improves coverage for partial/substring inputs and unusual tokenization.
-                        val likeBooks = runCatching {
-                            repository.findBooksByTitleLike("%$q%", limit = 50)
-                                .filter { it.title.isNotBlank() }
-                        }.getOrDefault(emptyList())
-
-                        // Merge while preserving lookup order first, then LIKE results without duplicates
-                        val bookCandidates = LinkedHashMap<Long, Book>()
-                        lookupBooks.forEach { b -> bookCandidates.putIfAbsent(b.id, b) }
-                        likeBooks.forEach { b -> bookCandidates.putIfAbsent(b.id, b) }
-
-                        val bookItems = bookCandidates.values.map { book ->
-                            val catPath = buildCategoryPathTitles(book.categoryId)
-                            val depth = repository.getCategoryDepth(book.categoryId)
-                            BookSuggestionDto(book, catPath + book.title) to depth
-                        }
-
-                        fun titleRank(title: String): Int = when {
-                            title.equals(q, ignoreCase = true) -> 0
-                            title.startsWith(q, ignoreCase = true) -> 1
-                            title.contains(q, ignoreCase = true) -> 2
-                            else -> 3
-                        }
-
-                        // Prioritize: 1) shallower hierarchy, 2) real title match
-                        val bookSuggestions = bookItems
-                            .sortedWith(
-                                compareBy<Pair<BookSuggestionDto, Int>> { it.second }
-                                    .thenBy { titleRank(it.first.book.title) }
-                            )
-                            .map { it.first }
-                            .take(12)
+                        val (catSuggestions, bookSuggestions) = result
                         _uiState.value = _uiState.value.copy(
                             categorySuggestions = catSuggestions,
                             bookSuggestions = bookSuggestions,
@@ -171,7 +198,7 @@ class SearchHomeViewModel(
             tocQuery
                 .debounce(200)
                 .distinctUntilChanged()
-                .collect { qRaw ->
+                .collectLatest { qRaw ->
                     val q = qRaw.trim()
                     val book = _uiState.value.selectedScopeBook
                     if (q.isBlank() || book == null) {
@@ -180,16 +207,18 @@ class SearchHomeViewModel(
                             tocSuggestionsVisible = false
                         )
                     } else {
-                        val allToc = repository.getBookToc(book.id)
-                        val matches = allToc
-                            .asSequence()
-                            .filter { it.text.isNotBlank() && it.text.contains(q, ignoreCase = true) }
-                            .sortedWith(compareBy<TocEntry> { it.level }.thenBy { it.text })
-                            .take(30)
-                            .toList()
-                        val suggestions = matches.map { toc ->
-                            val path = buildTocPathTitles(toc)
-                            TocSuggestionDto(toc, path)
+                        val suggestions = withContext(Dispatchers.Default) {
+                            val allToc = withContext(Dispatchers.IO) { repository.getBookToc(book.id) }
+                            val matches = allToc
+                                .asSequence()
+                                .filter { it.text.isNotBlank() && it.text.contains(q, ignoreCase = true) }
+                                .sortedWith(compareBy<TocEntry> { it.level }.thenBy { it.text })
+                                .take(30)
+                                .toList()
+                            matches.map { toc ->
+                                val path = runCatching { buildTocPathTitles(toc) }.getOrDefault(emptyList())
+                                TocSuggestionDto(toc, path)
+                            }
                         }
                         _uiState.value = _uiState.value.copy(
                             tocSuggestions = suggestions,
@@ -202,17 +231,19 @@ class SearchHomeViewModel(
         // Precompute a small set of (book, toc) pairs for synchronized placeholders
         viewModelScope.launch {
             val pairs = try {
-                val out = mutableListOf<Pair<String, String>>()
-                val books = repository.getAllBooks()
-                for (b in books) {
-                    val toc = try { repository.getBookToc(b.id) } catch (_: Exception) { emptyList() }
-                    val first = toc.firstOrNull { it.text.isNotBlank() }?.text
-                    if (first != null && out.none { it.first == b.title }) {
-                        out += b.title to first
+                withContext(Dispatchers.IO) {
+                    val out = mutableListOf<Pair<String, String>>()
+                    val books = repository.getAllBooks()
+                    for (b in books) {
+                        val toc = try { repository.getBookToc(b.id) } catch (_: Exception) { emptyList() }
+                        val first = toc.firstOrNull { it.text.isNotBlank() }?.text
+                        if (first != null && out.none { it.first == b.title }) {
+                            out += b.title to first
+                        }
+                        if (out.size >= 5) break
                     }
-                    if (out.size >= 5) break
+                    out
                 }
-                out
             } catch (_: Exception) { emptyList() }
             _uiState.value = _uiState.value.copy(pairedReferenceHints = pairs)
         }

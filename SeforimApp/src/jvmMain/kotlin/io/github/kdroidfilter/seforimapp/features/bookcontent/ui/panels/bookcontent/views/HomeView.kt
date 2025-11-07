@@ -175,6 +175,24 @@ fun HomeView(
                                 // small delay to ensure composition is settled
                                 delay(100)
                                 topSearchFocusRequester.requestFocus()
+
+                                // Preserve what the user typed when toggling modes. If the destination
+                                // field is empty, copy the current text from the other field so users
+                                // don't have to retype after realizing they were in the wrong mode.
+                                when (searchUi.selectedFilter) {
+                                    SearchFilter.TEXT -> {
+                                        val from = referenceSearchState.text.toString()
+                                        if (from.isNotBlank() && searchState.text.isEmpty()) {
+                                            searchState.edit { replace(0, length, from) }
+                                        }
+                                    }
+                                    SearchFilter.REFERENCE -> {
+                                        val from = searchState.text.toString()
+                                        if (from.isNotBlank() && referenceSearchState.text.isEmpty()) {
+                                            referenceSearchState.edit { replace(0, length, from) }
+                                        }
+                                    }
+                                }
                             }
                         }
                         val mappedCategorySuggestionsForBar = searchUi.categorySuggestions.map { cs ->

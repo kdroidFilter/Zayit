@@ -81,7 +81,7 @@ fun TitleBarActionsButtonsView() {
             if (isOpen) AppSettings.closeFindBar()
             else AppSettings.openFindBar()
         },
-        tooltipText = if (findEnabled) stringResource(Res.string.) else stringResource(Res.string.find_disabled_tooltip),
+        tooltipText = if (findEnabled) stringResource(Res.string.search_in_page_tooltip) else stringResource(Res.string.find_disabled_tooltip),
         enabled = findEnabled
     )
     TitleBarActionButton(

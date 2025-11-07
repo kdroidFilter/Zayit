@@ -8,6 +8,8 @@ object StateKeys {
     const val TAB_ID = "tabId"
     const val BOOK_ID = "bookId"
     const val LINE_ID = "lineId"
+    // Source hints for book opening (ephemeral)
+    const val OPEN_SOURCE = "bookOpenSource"
     
     // Navigation
     const val SELECTED_BOOK = "selectedBook"

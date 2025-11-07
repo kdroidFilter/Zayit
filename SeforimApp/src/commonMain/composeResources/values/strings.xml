@@ -72,7 +72,7 @@
     <string name="add_bookmark_tooltip">הוסף סימנייה</string>
     <string name="add_bookmark">הוסף סימנייה</string>
     <string name="search_in_page_tooltip">חפש בתוך העמוד</string>
-    <string name="search_in_page">חפש בעמוד</string>
+    <string name="search_in_page">הקלד כדי לחפש בעמוד...</string>
     <string name="print_tooltip">הדפס עמוד זה</string>
     <string name="print">הדפס</string>
     <string name="report_tooltip">דווח על בעיה בעמוד זה</string>

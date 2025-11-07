@@ -182,14 +182,7 @@ fun SearchResultCategoryTreeView(
         initialFirstVisibleItemIndex = scrollIndex,
         initialFirstVisibleItemScrollOffset = scrollOffset
     )
-
-    // Persist scroll as user scrolls
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .distinctUntilChanged()
-            .debounce(150)
-            .collect { (index, offset) -> onPersistScroll(index, offset) }
-    }
+    var hasRestored by remember { mutableStateOf(false) }
 
     // Flatten the search tree with current expansion state
     val expanded = expandedCategoryIds
@@ -260,6 +253,25 @@ fun SearchResultCategoryTreeView(
                 }
             }
             searchTree.forEach { addNode(it, 0, false) }
+        }
+    }
+
+    // 1) Restore scroll once items are ready
+    LaunchedEffect(items.size) {
+        if (items.isNotEmpty() && !hasRestored) {
+            val safeIndex = scrollIndex.coerceIn(0, items.lastIndex)
+            listState.scrollToItem(safeIndex, scrollOffset)
+            hasRestored = true
+        }
+    }
+
+    // 2) Persist scroll only after restoration to avoid thrashing
+    LaunchedEffect(listState, hasRestored) {
+        if (hasRestored) {
+            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+                .distinctUntilChanged()
+                .debounce(150)
+                .collect { (index, offset) -> onPersistScroll(index, offset) }
         }
     }
 

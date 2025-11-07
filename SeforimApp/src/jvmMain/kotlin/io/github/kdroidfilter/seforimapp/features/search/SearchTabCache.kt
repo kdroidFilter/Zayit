@@ -20,6 +20,20 @@ object SearchTabCache {
     )
 
     @Serializable
+    data class SearchTreeBookSnapshot(
+        val book: Book,
+        val count: Int
+    )
+
+    @Serializable
+    data class SearchTreeCategorySnapshot(
+        val category: io.github.kdroidfilter.seforimlibrary.core.models.Category,
+        val count: Int,
+        val children: List<SearchTreeCategorySnapshot>,
+        val books: List<SearchTreeBookSnapshot>
+    )
+
+    @Serializable
     data class TocTreeSnapshot(
         val rootEntries: List<TocEntry>,
         val children: Map<Long, List<TocEntry>>
@@ -30,7 +44,9 @@ object SearchTabCache {
         val results: List<SearchResult>,
         val categoryAgg: CategoryAggSnapshot,
         val tocCounts: Map<Long, Int>,
-        val tocTree: TocTreeSnapshot?
+        val tocTree: TocTreeSnapshot?,
+        // Optional precomputed search tree to accelerate restore
+        val searchTree: List<SearchTreeCategorySnapshot>? = null
     )
 
     private val cache = object : LinkedHashMap<String, Snapshot>(16, 0.75f, true) {

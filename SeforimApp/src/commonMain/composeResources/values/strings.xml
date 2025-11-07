@@ -11,7 +11,7 @@
     <string name="switch_to_system_theme">עבור לערכת נושא מערכת</string>
     <string name="switch_to_light_theme">עבור לערכת נושא בהירה</string>
     <string name="find">חיפוש</string>
-    <string name="find_tooltip">חפש בעמוד הנוכחי</string>
+    <string name="find_tooltip">חפש בכל המאגר</string>
     <string name="find_disabled_tooltip">חיפוש זמין במסך תוצאות או כשספר נבחר</string>
     <string name="home_tooltip">עבור לדף הבית</string>
     <string name="titlebar_home">דף הבית</string>

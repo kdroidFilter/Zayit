@@ -367,20 +367,27 @@ class SearchResultViewModel(
 
     private val _tocTree = MutableStateFlow<TocTree?>(null)
     val tocTreeFlow: StateFlow<TocTree?> = _tocTree.asStateFlow()
-    val searchTreeFlow: StateFlow<List<SearchTreeCategory>> =
-        _uiVisible
-            .flatMapLatest { visible ->
-                if (!visible) {
-                    kotlinx.coroutines.flow.flowOf(emptyList())
-                } else {
-                    uiState
-                        .map { it.results }
-                        .debounce(100)
-                        .mapLatest { buildSearchResultTree() }
-                        .flowOn(Dispatchers.Default)
+    private val _searchTree = MutableStateFlow<List<SearchTreeCategory>>(emptyList())
+    val searchTreeFlow: StateFlow<List<SearchTreeCategory>> = _searchTree.asStateFlow()
+
+    init {
+        // Compute search tree when visible and results change; emits into _searchTree
+        viewModelScope.launch {
+            _uiVisible
+                .flatMapLatest { visible ->
+                    if (!visible) {
+                        kotlinx.coroutines.flow.flowOf(emptyList())
+                    } else {
+                        uiState
+                            .map { it.results }
+                            .debounce(100)
+                            .mapLatest { buildSearchResultTree() }
+                            .flowOn(Dispatchers.Default)
+                    }
                 }
-            }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+                .collect { tree -> _searchTree.value = tree }
+        }
+    }
 
     // Helper to combine 4 values strongly typed
     private data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
@@ -691,6 +698,17 @@ class SearchResultViewModel(
             // Restore TOC tree if present
             cached.tocTree?.let { snap ->
                 _tocTree.value = TocTree(snap.rootEntries, snap.children)
+            }
+            // Restore precomputed search tree if present to avoid recomputation on cold restore
+            cached.searchTree?.let { snapList ->
+                fun mapNode(n: SearchTabCache.SearchTreeCategorySnapshot): SearchTreeCategory =
+                    SearchTreeCategory(
+                        category = n.category,
+                        count = n.count,
+                        children = n.children.map { mapNode(it) },
+                        books = n.books.map { SearchTreeBook(it.book, it.count) }
+                    )
+                _searchTree.value = snapList.map { mapNode(it) }
             }
             // Reconstruct currentKey from dataset fetch scope (not view filters)
             currentKey = SearchParamsKey(
@@ -1041,6 +1059,19 @@ class SearchResultViewModel(
         val treeSnap = _tocTree.value?.let { t ->
             SearchTabCache.TocTreeSnapshot(t.rootEntries, t.children)
         }
+        val searchTreeSnap: List<SearchTabCache.SearchTreeCategorySnapshot>? = runCatching {
+            val cur = searchTreeFlow.value
+            if (cur.isEmpty()) null else {
+                fun mapNode(n: SearchTreeCategory): SearchTabCache.SearchTreeCategorySnapshot =
+                    SearchTabCache.SearchTreeCategorySnapshot(
+                        category = n.category,
+                        count = n.count,
+                        children = n.children.map { mapNode(it) },
+                        books = n.books.map { b -> SearchTabCache.SearchTreeBookSnapshot(b.book, b.count) }
+                    )
+                cur.map { mapNode(it) }
+            }
+        }.getOrNull()
         return SearchTabCache.Snapshot(
             results = results,
             categoryAgg = SearchTabCache.CategoryAggSnapshot(
@@ -1049,7 +1080,8 @@ class SearchResultViewModel(
                 booksForCategory = catAgg.booksForCategory
             ),
             tocCounts = _tocCounts.value,
-            tocTree = treeSnap
+            tocTree = treeSnap,
+            searchTree = searchTreeSnap
         )
     }
 

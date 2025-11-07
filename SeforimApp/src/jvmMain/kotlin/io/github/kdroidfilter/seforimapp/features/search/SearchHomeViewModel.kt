@@ -447,6 +447,12 @@ class SearchHomeViewModel(
         // Pre-initialize minimal state so the BookContent shell does not flash Home
         stateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys.SELECTED_BOOK, book)
         anchorLineId?.let { stateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys.CONTENT_ANCHOR_ID, it) }
+        // Type-safe hint that this open came from Home/Reference predictive flow
+        stateManager.saveState(
+            currentTabId,
+            io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys.OPEN_SOURCE,
+            io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE
+        )
 
         // Replace destination in-place to open the book
         tabsViewModel.replaceCurrentTabDestination(

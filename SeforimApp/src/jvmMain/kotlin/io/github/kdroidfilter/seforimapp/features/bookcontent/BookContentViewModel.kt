@@ -122,6 +122,12 @@ class BookContentViewModel(
                     if (savedLineId != null) {
                         loadBookById(restoredBook.id, savedLineId)
                     } else {
+                        // Cas Home/Reference: livre choisi sans TOC (pas de lineId). Ouvrir le TOC (type-safe source).
+                        val openSource: io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource? =
+                            tabStateManager.getState(currentTabId, StateKeys.OPEN_SOURCE)
+                        if (openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE) {
+                            ensureTocVisibleOnFirstOpen()
+                        }
                         loadBookData(restoredBook)
                     }
                 }
@@ -272,6 +278,12 @@ class BookContentViewModel(
         try {
             repository.getBook(bookId)?.let { book ->
                 navigationUseCase.selectBook(book)
+                // Open TOC only when the source is Home/Reference predictive flow (type-safe)
+                val openSource: io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource? =
+                    tabStateManager.getState(currentTabId, StateKeys.OPEN_SOURCE)
+                if (openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE) {
+                    ensureTocVisibleOnFirstOpen()
+                }
 
                 if (lineId != null) {
                     stateManager.updateContent {
@@ -296,6 +308,19 @@ class BookContentViewModel(
         } finally {
             stateManager.setLoading(false)
             System.gc()
+        }
+    }
+
+    /**
+     * Ensures the TOC pane is shown when opening the first book in a tab
+     * (e.g., from Home/Reference flow), mirroring the behavior of loadBook().
+     */
+    private fun ensureTocVisibleOnFirstOpen() {
+        val current = stateManager.state.value
+        if (!current.toc.isVisible) {
+            // Restore last known TOC split position and show the pane
+            current.layout.tocSplitState.positionPercentage = current.layout.previousPositions.toc
+            stateManager.updateToc { copy(isVisible = true) }
         }
     }
 

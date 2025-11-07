@@ -100,8 +100,9 @@ fun MyApplication() {
 
 `TabsNavHost` creates a `NavHost` per tab and builds the same routes in each.
 Home reuses the BookContent shell. When no book is selected in state, the shell
-renders `HomeView`. This keeps a consistent layout whether you’re on Home,
-Search results, or a specific book.
+renders `HomeView`. When navigating directly to a book (e.g., opening a tab on a
+specific book or line), the navigation targets `TabsDestination.BookContent` and the
+screen shows a minimal loader until the book is ready, avoiding a Home→Book flash.
 
 ```kotlin
 NavHost(
@@ -232,6 +233,25 @@ saveState("allItems", completeListOfItems)  // Bad: saves entire list
        // Replace destination in-place, no new tab created
        tabsViewModel.replaceCurrentTabDestination(TabsDestination.Home(currentTabId))
    }
+   ```
+
+8. **Avoid Home→Book flicker for new tabs** – When opening a book in a new tab,
+   pre-initialize the tab’s state with the selected book so the UI can show a
+   loader immediately instead of rendering the Home screen first:
+
+   ```kotlin
+   val newTabId = UUID.randomUUID().toString()
+   val repository: SeforimRepository = // from DI
+   val tabStateManager: TabStateManager = // from DI
+   val tabsVm: TabsViewModel = // from DI
+
+   // Pre-seed state
+   repository.getBook(bookId)?.let { book ->
+       tabStateManager.saveState(newTabId, StateKeys.SELECTED_BOOK, book)
+   }
+
+   // Navigate directly to BookContent
+   tabsVm.openTab(TabsDestination.BookContent(bookId = bookId, tabId = newTabId))
    ```
 
 ## Example Implementation

@@ -439,6 +439,11 @@ class BookContentViewModel(
         // Copier l'état de navigation vers le nouvel onglet
         stateManager.copyNavigationState(currentTabId, newTabId, tabStateManager)
 
+        // Pré-initialiser le nouvel onglet avec le livre sélectionné pour éviter
+        // l'affichage de la page d'accueil avant le chargement.
+        tabStateManager.saveState(newTabId, StateKeys.SELECTED_BOOK, book)
+
+        // Naviguer directement vers le contenu du livre dans le nouvel onglet
         tabsViewModel.openTab(
             TabsDestination.BookContent(
                 bookId = book.id,

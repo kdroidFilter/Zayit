@@ -125,7 +125,8 @@ class BookContentViewModel(
                         // Cas Home/Reference: livre choisi sans TOC (pas de lineId). Ouvrir le TOC (type-safe source).
                         val openSource: io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource? =
                             tabStateManager.getState(currentTabId, StateKeys.OPEN_SOURCE)
-                        if (openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE) {
+                        if (openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE ||
+                            openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.CATEGORY_TREE_NEW_TAB) {
                             ensureTocVisibleOnFirstOpen()
                         }
                         loadBookData(restoredBook)
@@ -278,10 +279,11 @@ class BookContentViewModel(
         try {
             repository.getBook(bookId)?.let { book ->
                 navigationUseCase.selectBook(book)
-                // Open TOC only when the source is Home/Reference predictive flow (type-safe)
+                // Afficher le TOC pour certaines origines d'ouverture (type-safe)
                 val openSource: io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource? =
                     tabStateManager.getState(currentTabId, StateKeys.OPEN_SOURCE)
-                if (openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE) {
+                if (openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE ||
+                    openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.CATEGORY_TREE_NEW_TAB) {
                     ensureTocVisibleOnFirstOpen()
                 }
 
@@ -467,6 +469,12 @@ class BookContentViewModel(
         // Pré-initialiser le nouvel onglet avec le livre sélectionné pour éviter
         // l'affichage de la page d'accueil avant le chargement.
         tabStateManager.saveState(newTabId, StateKeys.SELECTED_BOOK, book)
+        // Indiquer la source d'ouverture pour afficher le TOC automatiquement dans le nouvel onglet
+        tabStateManager.saveState(
+            newTabId,
+            StateKeys.OPEN_SOURCE,
+            io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.CATEGORY_TREE_NEW_TAB
+        )
 
         // Naviguer directement vers le contenu du livre dans le nouvel onglet
         tabsViewModel.openTab(

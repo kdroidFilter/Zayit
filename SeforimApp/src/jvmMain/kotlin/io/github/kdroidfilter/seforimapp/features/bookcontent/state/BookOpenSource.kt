@@ -5,6 +5,6 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.state
  * Used to tailor initial UI (e.g., showing TOC) only for specific flows.
  */
 enum class BookOpenSource {
-    HOME_REFERENCE
+    HOME_REFERENCE,
+    CATEGORY_TREE_NEW_TAB
 }
-

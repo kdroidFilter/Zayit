@@ -993,14 +993,18 @@ class SearchResultViewModel(
                 }
 
             } finally {
-                // Keep loading until the visible results emission reflects the final list
-                val initial = Pair(visibleResultsFlow.value.size, System.identityHashCode(visibleResultsFlow.value))
+                // Clear loading promptly; if a new visibleResults emission is pending, wait briefly
+                // but never block indefinitely (important when final results are empty and identical
+                // to the pre-stream empty list reference).
                 runCatching {
-                    visibleResultsFlow
-                        .map { Pair(it.size, System.identityHashCode(it)) }
-                        .distinctUntilChanged()
-                        .filter { it != initial }
-                        .first()
+                    val initial = Pair(visibleResultsFlow.value.size, System.identityHashCode(visibleResultsFlow.value))
+                    kotlinx.coroutines.withTimeoutOrNull(300) {
+                        visibleResultsFlow
+                            .map { Pair(it.size, System.identityHashCode(it)) }
+                            .distinctUntilChanged()
+                            .filter { it != initial }
+                            .first()
+                    }
                 }
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }

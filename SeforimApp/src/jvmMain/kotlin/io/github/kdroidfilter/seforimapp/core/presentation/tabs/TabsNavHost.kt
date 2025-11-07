@@ -121,6 +121,10 @@ fun TabsNavHost() {
                         },
                         onNearChange = { n -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetNear(n)) },
                         onQueryChange = { q -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
+                        onGlobalExtendedChange = { extended ->
+                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(extended))
+                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
+                        },
                         onScroll = { anchorId, anchorIndex, index, offset -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.OnScroll(anchorId, anchorIndex, index, offset)) },
                         onCancelSearch = { viewModel.onEvent(SearchResultViewModel.SearchResultEvents.CancelSearch) },
                         onOpenResult = { r, newTab -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.OpenResult(r, newTab)) },
@@ -222,6 +226,10 @@ fun TabsNavHost() {
                                     },
                                     onNearChange = { n -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetNear(n)) },
                                     onQueryChange = { q -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
+                                    onGlobalExtendedChange = { extended ->
+                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(extended))
+                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
+                                    },
                                     onScroll = { anchorId, anchorIndex, index, offset -> viewModel.onEvent(
                                         SearchResultViewModel.SearchResultEvents.OnScroll(anchorId, anchorIndex, index, offset)) },
                                     onCancelSearch = { viewModel.onEvent(SearchResultViewModel.SearchResultEvents.CancelSearch) },

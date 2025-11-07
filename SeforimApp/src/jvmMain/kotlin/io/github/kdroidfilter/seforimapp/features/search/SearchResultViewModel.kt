@@ -60,6 +60,7 @@ private const val PARALLEL_FILTER_THRESHOLD = 2_000
 data class SearchUiState(
     val query: String = "",
     val near: Int = 5,
+    val globalExtended: Boolean = false,
     val isLoading: Boolean = false,
     val results: List<SearchResult> = emptyList(),
     val scopeCategoryPath: List<Category> = emptyList(),
@@ -110,6 +111,8 @@ class SearchResultViewModel(
         data class RequestBreadcrumb(val result: SearchResult) : SearchResultEvents()
         // Hint from UI about visibility, to gate heavy computations (e.g., search tree)
         data class SetUiVisible(val visible: Boolean) : SearchResultEvents()
+        // Toggle global search scope (base-only vs extended)
+        data class SetGlobalExtended(val extended: Boolean) : SearchResultEvents()
     }
 
     fun onEvent(event: SearchResultEvents) {
@@ -135,6 +138,10 @@ class SearchResultViewModel(
                 }
             }
             is SearchResultEvents.SetUiVisible -> _uiVisible.value = event.visible
+            is SearchResultEvents.SetGlobalExtended -> {
+                _uiState.value = _uiState.value.copy(globalExtended = event.extended)
+                stateManager.saveState(tabId, SearchStateKeys.GLOBAL_EXTENDED, event.extended)
+            }
         }
     }
     // Key representing the current search parameters (no result caching).
@@ -816,7 +823,9 @@ class SearchResultViewModel(
             scrollIndex = 0,
             scrollOffset = 0,
             anchorId = -1L,
-            anchorIndex = 0
+            anchorIndex = 0,
+            // Trigger a one-time restoration when first results arrive
+            scrollToAnchorTimestamp = System.currentTimeMillis()
         )
         // Drop any cached snapshot for this tab to avoid restoring stale results
         SearchTabCache.clear(tabId)
@@ -840,6 +849,11 @@ class SearchResultViewModel(
                 val fetchCategoryId = stateManager.getState<Long>(tabId, SearchStateKeys.FETCH_CATEGORY_ID)?.takeIf { datasetScope == "category" && it > 0 }
                 val fetchBookId = stateManager.getState<Long>(tabId, SearchStateKeys.FETCH_BOOK_ID)?.takeIf { (datasetScope == "book" || datasetScope == "toc") && it > 0 }
                 val fetchTocId = stateManager.getState<Long>(tabId, SearchStateKeys.FETCH_TOC_ID)?.takeIf { datasetScope == "toc" && it > 0 }
+                // Apply persisted/initial global-extended flag to UI state so toolbar reflects it
+                val extended = stateManager.getState<Boolean>(tabId, SearchStateKeys.GLOBAL_EXTENDED) ?: false
+                if (_uiState.value.globalExtended != extended) {
+                    _uiState.value = _uiState.value.copy(globalExtended = extended)
+                }
 
                 val key = SearchParamsKey(
                     query = q,
@@ -898,7 +912,6 @@ class SearchResultViewModel(
                         )
                         _uiState.value = _uiState.value.copy(
                             results = sorted,
-                            scrollToAnchorTimestamp = System.currentTimeMillis(),
                             progressCurrent = acc.size
                         )
                         lastEmitNanos = now
@@ -980,13 +993,22 @@ class SearchResultViewModel(
                         }
                     }
                     else -> {
+                        val extendedGlobal = _uiState.value.globalExtended
+                        val baseOnlyBookIds: List<Long>? = if (!extendedGlobal) runCatching { repository.getBaseBookIds() }.getOrNull() else null
                         var offset = 0
-                        var hits = lucene.searchAllText(q, near, limit = batchSizeFor(acc.size), offset = offset)
+                        var hits = when {
+                            baseOnlyBookIds != null && baseOnlyBookIds.isNotEmpty() -> lucene.searchInBooks(q, near, baseOnlyBookIds, limit = batchSizeFor(acc.size), offset = offset)
+                            else -> lucene.searchAllText(q, near, limit = batchSizeFor(acc.size), offset = offset)
+                        }
                         while (hits.isNotEmpty()) {
                             val currentHits = hits
                             val nextOffset = offset + currentHits.size
                             val nextDeferred = async(Dispatchers.Default) {
-                                lucene.searchAllText(q, near, limit = batchSizeFor(acc.size + currentHits.size), offset = nextOffset)
+                                when {
+                                    baseOnlyBookIds != null && baseOnlyBookIds.isNotEmpty() ->
+                                        lucene.searchInBooks(q, near, baseOnlyBookIds, limit = batchSizeFor(acc.size + currentHits.size), offset = nextOffset)
+                                    else -> lucene.searchAllText(q, near, limit = batchSizeFor(acc.size + currentHits.size), offset = nextOffset)
+                                }
                             }
                             val page = toResultsWithDbSnippets(currentHits, q, near)
                             acc += page

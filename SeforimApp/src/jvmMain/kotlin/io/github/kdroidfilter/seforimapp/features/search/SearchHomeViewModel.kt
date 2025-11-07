@@ -34,6 +34,7 @@ data class TocSuggestionDto(val toc: TocEntry, val path: List<String>)
 data class SearchHomeUiState(
     val selectedFilter: SearchFilter = SearchFilter.TEXT,
     val selectedLevelIndex: Int = 2,
+    val globalExtended: Boolean = false,
     val suggestionsVisible: Boolean = false,
     val categorySuggestions: List<CategorySuggestionDto> = emptyList(),
     val bookSuggestions: List<BookSuggestionDto> = emptyList(),
@@ -352,10 +353,13 @@ class SearchHomeViewModel(
         _uiState.value = _uiState.value.copy(selectedFilter = filter)
     }
 
+
     fun onLevelIndexChange(index: Int) {
         val coerced = index.coerceIn(0, NEAR_LEVELS.lastIndex)
         _uiState.value = _uiState.value.copy(selectedLevelIndex = coerced)
     }
+
+    fun onGlobalExtendedChange(extended: Boolean) { _uiState.value = _uiState.value.copy(globalExtended = extended) }
 
     suspend fun submitSearch(query: String) {
         val currentTabs = tabsViewModel.tabs.value
@@ -401,6 +405,7 @@ class SearchHomeViewModel(
         // Persist search params for this tab to restore state
         stateManager.saveState(currentTabId, SearchStateKeys.QUERY, query)
         stateManager.saveState(currentTabId, SearchStateKeys.NEAR, NEAR_LEVELS[_uiState.value.selectedLevelIndex])
+        stateManager.saveState(currentTabId, SearchStateKeys.GLOBAL_EXTENDED, _uiState.value.globalExtended)
 
         // Clear any previous cached search snapshot for this tab to avoid
         // reusing stale results when a new search is submitted.

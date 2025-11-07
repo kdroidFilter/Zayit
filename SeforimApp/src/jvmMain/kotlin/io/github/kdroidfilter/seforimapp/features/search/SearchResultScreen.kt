@@ -69,6 +69,7 @@ data class SearchShellActions(
     val onSubmit: (query: String, near: Int) -> Unit,
     val onNearChange: (Int) -> Unit,
     val onQueryChange: (String) -> Unit,
+    val onGlobalExtendedChange: (Boolean) -> Unit,
     val onScroll: (anchorId: Long, anchorIndex: Int, index: Int, offset: Int) -> Unit,
     val onCancelSearch: () -> Unit,
     val onOpenResult: (SearchResult, openInNewTab: Boolean) -> Unit,
@@ -88,6 +89,8 @@ private fun SearchToolbar(
     onSubmit: (query: String, near: Int) -> Unit,
     onNearChange: (Int) -> Unit,
     onQueryChange: (String) -> Unit,
+    globalExtended: Boolean,
+    onGlobalExtendedChange: (Boolean) -> Unit,
 ) {
     var currentNear by remember { mutableStateOf(near) }
     LaunchedEffect(near) { currentNear = near }
@@ -155,6 +158,13 @@ private fun SearchToolbar(
                         onNearChange(newNear)
                     }
                 })
+        }
+
+        // Global extended toggle (default off → base books only)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = globalExtended, onCheckedChange = { onGlobalExtendedChange(it) })
+            Spacer(Modifier.width(4.dp))
+            Text(stringResource(Res.string.search_extended_label))
         }
     }
 }
@@ -367,7 +377,9 @@ private fun SearchResultContentMvi(
                 near = state.near,
                 onSubmit = actions.onSubmit,
                 onNearChange = actions.onNearChange,
-                onQueryChange = actions.onQueryChange
+                onQueryChange = actions.onQueryChange,
+                globalExtended = state.globalExtended,
+                onGlobalExtendedChange = actions.onGlobalExtendedChange
             )
 
             Spacer(Modifier.height(12.dp))

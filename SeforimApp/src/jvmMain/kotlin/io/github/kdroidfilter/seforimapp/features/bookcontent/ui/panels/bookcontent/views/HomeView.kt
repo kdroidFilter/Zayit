@@ -115,6 +115,8 @@ fun HomeView(
             val searchState = remember { TextFieldState() }
             val referenceSearchState = remember { TextFieldState() }
             val tocSearchState = remember { TextFieldState() }
+            // Shared focus requester so Tab from the first field can move focus to the TOC field
+            val tocFieldFocusRequester = remember { FocusRequester() }
             var scopeExpanded by remember { mutableStateOf(false) }
             // Forward reference input changes to the ViewModel (VM handles debouncing and suggestions)
             LaunchedEffect(Unit) {
@@ -206,9 +208,19 @@ fun HomeView(
                             state = if (isReferenceMode) referenceSearchState else searchState,
                             selectedFilter = searchUi.selectedFilter,
                             onFilterChange = { searchVm.onFilterChange(it) },
-                            onSubmit = if (isReferenceMode) { { /* no-op in reference mode */ } } else { { launchSearch() } },
+                            onSubmit = if (isReferenceMode) { { openReference() } } else { { launchSearch() } },
                             onTab = {
-                                scopeExpanded = true
+                                if (isReferenceMode) {
+                                    // After choosing the first suggestion, focus the TOC field
+                                    scope.launch {
+                                        // small delay to ensure state (selectedBook) is updated and field enabled
+                                        delay(120)
+                                        tocFieldFocusRequester.requestFocus()
+                                    }
+                                } else {
+                                    // Text mode: expand the scope section as before
+                                    scopeExpanded = true
+                                }
                             },
                             modifier = Modifier,
                             showIcon = !isReferenceMode,
@@ -219,6 +231,7 @@ fun HomeView(
                             bookSuggestions = if (isReferenceMode) mappedBookSuggestionsForBar else emptyList(),
                             placeholderHints = if (isReferenceMode) bookOnlyHintsGlobal else null,
                             placeholderText = null,
+                            submitOnEnterInReference = isReferenceMode,
                             onPickCategory = { picked ->
                                 // Update VM and reflect breadcrumb in the bar input
                                 searchVm.onPickCategory(picked.category)
@@ -283,6 +296,7 @@ fun HomeView(
                                 submitOnEnterIfSelection = !isReferenceMode,
                                 // Hide the left Category/Book field in REFERENCE mode
                                 showCategoryBookField = !isReferenceMode,
+                                tocFieldFocusRequester = tocFieldFocusRequester,
                                 tocPreviewHints = searchUi.tocPreviewHints,
                                 showHeader = !isReferenceMode,
                                 onPickCategory = { picked ->
@@ -461,6 +475,7 @@ private fun ReferenceByCategorySection(
     showCategoryBookField: Boolean = true,
     tocPreviewHints: List<String> = emptyList(),
     showHeader: Boolean = true,
+    tocFieldFocusRequester: FocusRequester? = null,
     onPickCategory: (CategorySuggestion) -> Unit = {},
     onPickBook: (BookSuggestion) -> Unit = {},
     onPickToc: (TocSuggestion) -> Unit = {}
@@ -532,7 +547,8 @@ private fun ReferenceByCategorySection(
 
             // Right: TOC field — always visible but disabled until a book is selected
             Column(Modifier.weight(1f)) {
-                val tocFocusRequester = remember { FocusRequester() }
+                val defaultTocFocusRequester = remember { FocusRequester() }
+                val tocFocusRequester = tocFieldFocusRequester ?: defaultTocFocusRequester
                 val tocOnlyHints = listOf(
                     stringResource(Res.string.reference_toc_hint_1),
                     stringResource(Res.string.reference_toc_hint_2),
@@ -564,11 +580,15 @@ private fun ReferenceByCategorySection(
                     placeholderHints = null,
                     placeholderText = ""
                 )
-                // Focus the second field as soon as a book is picked
-                LaunchedEffect(selectedBook?.id) {
+                // Focus the second field when a book is picked only in non-reference mode
+                LaunchedEffect(selectedBook?.id, showCategoryBookField) {
                     if (selectedBook != null) {
+                        // Clear previous TOC query
                         tocTfState.edit { replace(0, length, "") }
-                        tocFocusRequester.requestFocus()
+                        if (showCategoryBookField) {
+                            // In text-mode flow, auto-advance focus to TOC field
+                            tocFocusRequester.requestFocus()
+                        }
                     }
                 }
             }
@@ -850,6 +870,8 @@ private fun SearchBar(
     placeholderText: String? = null,
     // In text-mode left field, allow Enter to submit when a selection exists and no suggestion is focused
     submitOnEnterIfSelection: Boolean = false,
+    // In reference-mode first field, pressing Enter should also submit when a book is picked
+    submitOnEnterInReference: Boolean = false,
 ) {
     // Hints from string resources
     val referenceHints = listOf(
@@ -937,7 +959,10 @@ private fun SearchBar(
                                         } else {
                                             val idx = focusedIndex - categoriesCount
                                             val picked = bookSuggestions.getOrNull(idx)
-                                            if (picked != null) onPickBook(picked)
+                                            if (picked != null) {
+                                                onPickBook(picked)
+                                                if (submitOnEnterInReference) onSubmit()
+                                            }
                                         }
                                     } else {
                                         // No suggestion focused/visible: if a selection exists, allow submit (text-mode behavior)
@@ -967,7 +992,19 @@ private fun SearchBar(
                             true
                         }
                         ev.key == Key.Tab && ev.type == KeyEventType.KeyUp -> {
-                            onTab?.invoke(); true
+                            // In reference mode and when a Tab handler is provided (top bar),
+                            // select the first book suggestion and then focus the TOC field.
+                            if (isRef && onTab != null) {
+                                val firstBook = bookSuggestions.firstOrNull()
+                                if (firstBook != null) {
+                                    onPickBook(firstBook)
+                                }
+                                onTab()
+                                true
+                            } else {
+                                // Otherwise, let default focus traversal happen
+                                onTab?.invoke(); false
+                            }
                         }
                         else -> false
                     }

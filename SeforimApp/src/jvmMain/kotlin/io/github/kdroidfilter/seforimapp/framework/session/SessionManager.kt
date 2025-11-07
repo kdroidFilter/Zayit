@@ -18,6 +18,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.protobuf.ProtoBuf
+import java.util.Base64
 
 /**
  * Persists and restores the navigation session (open tabs + per-tab state) when enabled in settings.
@@ -28,12 +30,13 @@ object SessionManager {
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
+    private val proto = ProtoBuf
 
     @Serializable
     private data class SavedSession(
         val tabs: List<TabsDestination>,
         val selectedIndex: Int,
-        val tabStates: Map<String, Map<String, String>> // tabId -> (stateKey -> encodedJson)
+        val tabStates: Map<String, Map<String, String>> // tabId -> (stateKey -> base64(proto) or legacy json)
     )
 
     /** Saves current session if the user enabled persistence in settings. */
@@ -62,8 +65,10 @@ object SessionManager {
             tabStates = encodedStates
         )
 
-        val jsonStr = json.encodeToString(SavedSession.serializer(), saved)
-        AppSettings.setSavedSessionJson(jsonStr)
+        // Persist as ProtoBuf bytes (base64, chunked in settings for size limits)
+        val bytes = proto.encodeToByteArray(SavedSession.serializer(), saved)
+        val b64 = Base64.getEncoder().encodeToString(bytes)
+        AppSettings.setSavedSessionJson(b64)
     }
 
     /** Restores a saved session if the user enabled persistence in settings. */
@@ -71,7 +76,22 @@ object SessionManager {
         if (!AppSettings.isPersistSessionEnabled()) return
         val blob = AppSettings.getSavedSessionJson() ?: return
 
-        val saved = runCatching { json.decodeFromString(SavedSession.serializer(), blob) }.getOrNull() ?: return
+        // Try to decode as base64(ProtoBuf) first, then legacy JSON fallback
+        val savedFromProto = runCatching {
+            val bytes = Base64.getDecoder().decode(blob)
+            proto.decodeFromByteArray(SavedSession.serializer(), bytes)
+        }.getOrNull()
+        val saved = savedFromProto ?: runCatching {
+            json.decodeFromString(SavedSession.serializer(), blob)
+        }.getOrNull() ?: return
+        if (savedFromProto == null) {
+            // Migrate legacy JSON session to ProtoBuf for next time
+            runCatching {
+                val bytes = proto.encodeToByteArray(SavedSession.serializer(), saved)
+                val b64 = Base64.getEncoder().encodeToString(bytes)
+                AppSettings.setSavedSessionJson(b64)
+            }
+        }
 
         val decodedStates: Map<String, Map<String, Any>> = saved.tabStates.mapValues { (_, stateMap) ->
             stateMap.mapNotNull { (key, encoded) ->
@@ -119,73 +139,73 @@ object SessionManager {
     private fun encodeValue(key: String, value: Any): String? = try {
         when (key) {
             // Navigation
-            StateKeys.EXPANDED_CATEGORIES -> json.encodeToString(SetSerializer(Long.serializer()), value as Set<Long>)
+            StateKeys.EXPANDED_CATEGORIES -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(SetSerializer(Long.serializer()), value as Set<Long>))
             // Skip heavy caches that can be recomputed quickly on startup
             StateKeys.CATEGORY_CHILDREN -> null
             StateKeys.BOOKS_IN_CATEGORY -> null
-            StateKeys.SELECTED_CATEGORY -> json.encodeToString(Category.serializer().nullable, value as Category?)
-            StateKeys.SELECTED_BOOK -> json.encodeToString(Book.serializer().nullable, value as Book?)
-            StateKeys.SEARCH_TEXT -> json.encodeToString(String.serializer(), value as String)
-            StateKeys.SHOW_BOOK_TREE -> json.encodeToString(Boolean.serializer(), value as Boolean)
-            StateKeys.BOOK_TREE_SCROLL_INDEX -> json.encodeToString(Int.serializer(), value as Int)
-            StateKeys.BOOK_TREE_SCROLL_OFFSET -> json.encodeToString(Int.serializer(), value as Int)
+            StateKeys.SELECTED_CATEGORY -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Category.serializer().nullable, value as Category?))
+            StateKeys.SELECTED_BOOK -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Book.serializer().nullable, value as Book?))
+            StateKeys.SEARCH_TEXT -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(String.serializer(), value as String))
+            StateKeys.SHOW_BOOK_TREE -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Boolean.serializer(), value as Boolean))
+            StateKeys.BOOK_TREE_SCROLL_INDEX -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            StateKeys.BOOK_TREE_SCROLL_OFFSET -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
 
             // TOC
-            StateKeys.EXPANDED_TOC_ENTRIES -> json.encodeToString(SetSerializer(Long.serializer()), value as Set<Long>)
+            StateKeys.EXPANDED_TOC_ENTRIES -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(SetSerializer(Long.serializer()), value as Set<Long>))
             StateKeys.TOC_CHILDREN -> null
-            StateKeys.SHOW_TOC -> json.encodeToString(Boolean.serializer(), value as Boolean)
-            StateKeys.TOC_SCROLL_INDEX -> json.encodeToString(Int.serializer(), value as Int)
-            StateKeys.TOC_SCROLL_OFFSET -> json.encodeToString(Int.serializer(), value as Int)
+            StateKeys.SHOW_TOC -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Boolean.serializer(), value as Boolean))
+            StateKeys.TOC_SCROLL_INDEX -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            StateKeys.TOC_SCROLL_OFFSET -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
 
             // Content
-            StateKeys.SELECTED_LINE -> json.encodeToString(Line.serializer().nullable, value as Line?)
-            StateKeys.SHOW_COMMENTARIES -> json.encodeToString(Boolean.serializer(), value as Boolean)
-            StateKeys.SHOW_TARGUM -> json.encodeToString(Boolean.serializer(), value as Boolean)
-            StateKeys.CONTENT_SCROLL_INDEX -> json.encodeToString(Int.serializer(), value as Int)
-            StateKeys.CONTENT_SCROLL_OFFSET -> json.encodeToString(Int.serializer(), value as Int)
-            StateKeys.CONTENT_ANCHOR_ID -> json.encodeToString(Long.serializer(), value as Long)
-            StateKeys.CONTENT_ANCHOR_INDEX -> json.encodeToString(Int.serializer(), value as Int)
-            StateKeys.PARAGRAPH_SCROLL_POSITION -> json.encodeToString(Int.serializer(), value as Int)
-            StateKeys.CHAPTER_SCROLL_POSITION -> json.encodeToString(Int.serializer(), value as Int)
-            StateKeys.SELECTED_CHAPTER -> json.encodeToString(Int.serializer(), value as Int)
+            StateKeys.SELECTED_LINE -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Line.serializer().nullable, value as Line?))
+            StateKeys.SHOW_COMMENTARIES -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Boolean.serializer(), value as Boolean))
+            StateKeys.SHOW_TARGUM -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Boolean.serializer(), value as Boolean))
+            StateKeys.CONTENT_SCROLL_INDEX -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            StateKeys.CONTENT_SCROLL_OFFSET -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            StateKeys.CONTENT_ANCHOR_ID -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Long.serializer(), value as Long))
+            StateKeys.CONTENT_ANCHOR_INDEX -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            StateKeys.PARAGRAPH_SCROLL_POSITION -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            StateKeys.CHAPTER_SCROLL_POSITION -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            StateKeys.SELECTED_CHAPTER -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
 
             // Commentaries
-            StateKeys.COMMENTARIES_SELECTED_TAB -> json.encodeToString(Int.serializer(), value as Int)
-            StateKeys.COMMENTARIES_SCROLL_INDEX -> json.encodeToString(Int.serializer(), value as Int)
-            StateKeys.COMMENTARIES_SCROLL_OFFSET -> json.encodeToString(Int.serializer(), value as Int)
-            StateKeys.COMMENTATORS_LIST_SCROLL_INDEX -> json.encodeToString(Int.serializer(), value as Int)
-            StateKeys.COMMENTATORS_LIST_SCROLL_OFFSET -> json.encodeToString(Int.serializer(), value as Int)
-            StateKeys.COMMENTARIES_COLUMN_SCROLL_INDEX_BY_COMMENTATOR -> json.encodeToString(MapSerializer(Long.serializer(), Int.serializer()), value as Map<Long, Int>)
-            StateKeys.COMMENTARIES_COLUMN_SCROLL_OFFSET_BY_COMMENTATOR -> json.encodeToString(MapSerializer(Long.serializer(), Int.serializer()), value as Map<Long, Int>)
-            StateKeys.SELECTED_COMMENTATORS_BY_LINE -> json.encodeToString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), value as Map<Long, Set<Long>>)
-            StateKeys.SELECTED_COMMENTATORS_BY_BOOK -> json.encodeToString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), value as Map<Long, Set<Long>>)
-            StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE -> json.encodeToString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), value as Map<Long, Set<Long>>)
-            StateKeys.SELECTED_TARGUM_SOURCES_BY_BOOK -> json.encodeToString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), value as Map<Long, Set<Long>>)
+            StateKeys.COMMENTARIES_SELECTED_TAB -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            StateKeys.COMMENTARIES_SCROLL_INDEX -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            StateKeys.COMMENTARIES_SCROLL_OFFSET -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            StateKeys.COMMENTATORS_LIST_SCROLL_INDEX -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            StateKeys.COMMENTATORS_LIST_SCROLL_OFFSET -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            StateKeys.COMMENTARIES_COLUMN_SCROLL_INDEX_BY_COMMENTATOR -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(MapSerializer(Long.serializer(), Int.serializer()), value as Map<Long, Int>))
+            StateKeys.COMMENTARIES_COLUMN_SCROLL_OFFSET_BY_COMMENTATOR -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(MapSerializer(Long.serializer(), Int.serializer()), value as Map<Long, Int>))
+            StateKeys.SELECTED_COMMENTATORS_BY_LINE -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), value as Map<Long, Set<Long>>))
+            StateKeys.SELECTED_COMMENTATORS_BY_BOOK -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), value as Map<Long, Set<Long>>))
+            StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), value as Map<Long, Set<Long>>))
+            StateKeys.SELECTED_TARGUM_SOURCES_BY_BOOK -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), value as Map<Long, Set<Long>>))
 
             // Search (SearchResultView)
-            SearchStateKeys.QUERY -> json.encodeToString(String.serializer(), value as String)
-            SearchStateKeys.NEAR -> json.encodeToString(Int.serializer(), value as Int)
-            SearchStateKeys.FILTER_CATEGORY_ID -> json.encodeToString(Long.serializer(), value as Long)
-            SearchStateKeys.FILTER_BOOK_ID -> json.encodeToString(Long.serializer(), value as Long)
-            SearchStateKeys.FILTER_TOC_ID -> json.encodeToString(Long.serializer(), value as Long)
-            SearchStateKeys.DATASET_SCOPE -> json.encodeToString(String.serializer(), value as String)
-            SearchStateKeys.FETCH_CATEGORY_ID -> json.encodeToString(Long.serializer(), value as Long)
-            SearchStateKeys.FETCH_BOOK_ID -> json.encodeToString(Long.serializer(), value as Long)
-            SearchStateKeys.FETCH_TOC_ID -> json.encodeToString(Long.serializer(), value as Long)
-            SearchStateKeys.SCROLL_INDEX -> json.encodeToString(Int.serializer(), value as Int)
-            SearchStateKeys.SCROLL_OFFSET -> json.encodeToString(Int.serializer(), value as Int)
-            SearchStateKeys.ANCHOR_ID -> json.encodeToString(Long.serializer(), value as Long)
-            SearchStateKeys.ANCHOR_INDEX -> json.encodeToString(Int.serializer(), value as Int)
+            SearchStateKeys.QUERY -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(String.serializer(), value as String))
+            SearchStateKeys.NEAR -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            SearchStateKeys.FILTER_CATEGORY_ID -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Long.serializer(), value as Long))
+            SearchStateKeys.FILTER_BOOK_ID -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Long.serializer(), value as Long))
+            SearchStateKeys.FILTER_TOC_ID -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Long.serializer(), value as Long))
+            SearchStateKeys.DATASET_SCOPE -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(String.serializer(), value as String))
+            SearchStateKeys.FETCH_CATEGORY_ID -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Long.serializer(), value as Long))
+            SearchStateKeys.FETCH_BOOK_ID -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Long.serializer(), value as Long))
+            SearchStateKeys.FETCH_TOC_ID -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Long.serializer(), value as Long))
+            SearchStateKeys.SCROLL_INDEX -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            SearchStateKeys.SCROLL_OFFSET -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
+            SearchStateKeys.ANCHOR_ID -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Long.serializer(), value as Long))
+            SearchStateKeys.ANCHOR_INDEX -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Int.serializer(), value as Int))
 
             // Layout
-            StateKeys.SPLIT_PANE_POSITION -> json.encodeToString(Float.serializer(), value as Float)
-            StateKeys.TOC_SPLIT_PANE_POSITION -> json.encodeToString(Float.serializer(), value as Float)
-            StateKeys.CONTENT_SPLIT_PANE_POSITION -> json.encodeToString(Float.serializer(), value as Float)
-            StateKeys.TARGUM_SPLIT_PANE_POSITION -> json.encodeToString(Float.serializer(), value as Float)
-            StateKeys.PREVIOUS_MAIN_SPLIT_POSITION -> json.encodeToString(Float.serializer(), value as Float)
-            StateKeys.PREVIOUS_TOC_SPLIT_POSITION -> json.encodeToString(Float.serializer(), value as Float)
-            StateKeys.PREVIOUS_CONTENT_SPLIT_POSITION -> json.encodeToString(Float.serializer(), value as Float)
-            StateKeys.PREVIOUS_TARGUM_SPLIT_POSITION -> json.encodeToString(Float.serializer(), value as Float)
+            StateKeys.SPLIT_PANE_POSITION -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Float.serializer(), value as Float))
+            StateKeys.TOC_SPLIT_PANE_POSITION -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Float.serializer(), value as Float))
+            StateKeys.CONTENT_SPLIT_PANE_POSITION -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Float.serializer(), value as Float))
+            StateKeys.TARGUM_SPLIT_PANE_POSITION -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Float.serializer(), value as Float))
+            StateKeys.PREVIOUS_MAIN_SPLIT_POSITION -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Float.serializer(), value as Float))
+            StateKeys.PREVIOUS_TOC_SPLIT_POSITION -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Float.serializer(), value as Float))
+            StateKeys.PREVIOUS_CONTENT_SPLIT_POSITION -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Float.serializer(), value as Float))
+            StateKeys.PREVIOUS_TARGUM_SPLIT_POSITION -> Base64.getEncoder().encodeToString(proto.encodeToByteArray(Float.serializer(), value as Float))
 
             else -> null
         }
@@ -194,74 +214,75 @@ object SessionManager {
     }
 
     private fun decodeValue(key: String, encoded: String): Any? = try {
+        // Primary path: base64(ProtoBuf) per key. Fallback to legacy JSON string when needed.
         when (key) {
             // Navigation
-            StateKeys.EXPANDED_CATEGORIES -> json.decodeFromString(SetSerializer(Long.serializer()), encoded)
+            StateKeys.EXPANDED_CATEGORIES -> runCatching { proto.decodeFromByteArray(SetSerializer(Long.serializer()), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(SetSerializer(Long.serializer()), encoded) }
             StateKeys.CATEGORY_CHILDREN -> null
             StateKeys.BOOKS_IN_CATEGORY -> null
-            StateKeys.SELECTED_CATEGORY -> json.decodeFromString(Category.serializer().nullable, encoded)
-            StateKeys.SELECTED_BOOK -> json.decodeFromString(Book.serializer().nullable, encoded)
-            StateKeys.SEARCH_TEXT -> json.decodeFromString(String.serializer(), encoded)
-            StateKeys.SHOW_BOOK_TREE -> json.decodeFromString(Boolean.serializer(), encoded)
-            StateKeys.BOOK_TREE_SCROLL_INDEX -> json.decodeFromString(Int.serializer(), encoded)
-            StateKeys.BOOK_TREE_SCROLL_OFFSET -> json.decodeFromString(Int.serializer(), encoded)
+            StateKeys.SELECTED_CATEGORY -> runCatching { proto.decodeFromByteArray(Category.serializer().nullable, Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Category.serializer().nullable, encoded) }
+            StateKeys.SELECTED_BOOK -> runCatching { proto.decodeFromByteArray(Book.serializer().nullable, Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Book.serializer().nullable, encoded) }
+            StateKeys.SEARCH_TEXT -> runCatching { proto.decodeFromByteArray(String.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(String.serializer(), encoded) }
+            StateKeys.SHOW_BOOK_TREE -> runCatching { proto.decodeFromByteArray(Boolean.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Boolean.serializer(), encoded) }
+            StateKeys.BOOK_TREE_SCROLL_INDEX -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            StateKeys.BOOK_TREE_SCROLL_OFFSET -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
 
             // TOC
-            StateKeys.EXPANDED_TOC_ENTRIES -> json.decodeFromString(SetSerializer(Long.serializer()), encoded)
+            StateKeys.EXPANDED_TOC_ENTRIES -> runCatching { proto.decodeFromByteArray(SetSerializer(Long.serializer()), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(SetSerializer(Long.serializer()), encoded) }
             StateKeys.TOC_CHILDREN -> null
-            StateKeys.SHOW_TOC -> json.decodeFromString(Boolean.serializer(), encoded)
-            StateKeys.TOC_SCROLL_INDEX -> json.decodeFromString(Int.serializer(), encoded)
-            StateKeys.TOC_SCROLL_OFFSET -> json.decodeFromString(Int.serializer(), encoded)
+            StateKeys.SHOW_TOC -> runCatching { proto.decodeFromByteArray(Boolean.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Boolean.serializer(), encoded) }
+            StateKeys.TOC_SCROLL_INDEX -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            StateKeys.TOC_SCROLL_OFFSET -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
 
             // Content
-            StateKeys.SELECTED_LINE -> json.decodeFromString(Line.serializer().nullable, encoded)
-            StateKeys.SHOW_COMMENTARIES -> json.decodeFromString(Boolean.serializer(), encoded)
-            StateKeys.SHOW_TARGUM -> json.decodeFromString(Boolean.serializer(), encoded)
-            StateKeys.CONTENT_SCROLL_INDEX -> json.decodeFromString(Int.serializer(), encoded)
-            StateKeys.CONTENT_SCROLL_OFFSET -> json.decodeFromString(Int.serializer(), encoded)
-            StateKeys.CONTENT_ANCHOR_ID -> json.decodeFromString(Long.serializer(), encoded)
-            StateKeys.CONTENT_ANCHOR_INDEX -> json.decodeFromString(Int.serializer(), encoded)
-            StateKeys.PARAGRAPH_SCROLL_POSITION -> json.decodeFromString(Int.serializer(), encoded)
-            StateKeys.CHAPTER_SCROLL_POSITION -> json.decodeFromString(Int.serializer(), encoded)
-            StateKeys.SELECTED_CHAPTER -> json.decodeFromString(Int.serializer(), encoded)
+            StateKeys.SELECTED_LINE -> runCatching { proto.decodeFromByteArray(Line.serializer().nullable, Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Line.serializer().nullable, encoded) }
+            StateKeys.SHOW_COMMENTARIES -> runCatching { proto.decodeFromByteArray(Boolean.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Boolean.serializer(), encoded) }
+            StateKeys.SHOW_TARGUM -> runCatching { proto.decodeFromByteArray(Boolean.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Boolean.serializer(), encoded) }
+            StateKeys.CONTENT_SCROLL_INDEX -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            StateKeys.CONTENT_SCROLL_OFFSET -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            StateKeys.CONTENT_ANCHOR_ID -> runCatching { proto.decodeFromByteArray(Long.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Long.serializer(), encoded) }
+            StateKeys.CONTENT_ANCHOR_INDEX -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            StateKeys.PARAGRAPH_SCROLL_POSITION -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            StateKeys.CHAPTER_SCROLL_POSITION -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            StateKeys.SELECTED_CHAPTER -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
 
             // Commentaries
-            StateKeys.COMMENTARIES_SELECTED_TAB -> json.decodeFromString(Int.serializer(), encoded)
-            StateKeys.COMMENTARIES_SCROLL_INDEX -> json.decodeFromString(Int.serializer(), encoded)
-            StateKeys.COMMENTARIES_SCROLL_OFFSET -> json.decodeFromString(Int.serializer(), encoded)
-            StateKeys.COMMENTATORS_LIST_SCROLL_INDEX -> json.decodeFromString(Int.serializer(), encoded)
-            StateKeys.COMMENTATORS_LIST_SCROLL_OFFSET -> json.decodeFromString(Int.serializer(), encoded)
-            StateKeys.COMMENTARIES_COLUMN_SCROLL_INDEX_BY_COMMENTATOR -> json.decodeFromString(MapSerializer(Long.serializer(), Int.serializer()), encoded)
-            StateKeys.COMMENTARIES_COLUMN_SCROLL_OFFSET_BY_COMMENTATOR -> json.decodeFromString(MapSerializer(Long.serializer(), Int.serializer()), encoded)
-            StateKeys.SELECTED_COMMENTATORS_BY_LINE -> json.decodeFromString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), encoded)
-            StateKeys.SELECTED_COMMENTATORS_BY_BOOK -> json.decodeFromString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), encoded)
-            StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE -> json.decodeFromString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), encoded)
-            StateKeys.SELECTED_TARGUM_SOURCES_BY_BOOK -> json.decodeFromString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), encoded)
+            StateKeys.COMMENTARIES_SELECTED_TAB -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            StateKeys.COMMENTARIES_SCROLL_INDEX -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            StateKeys.COMMENTARIES_SCROLL_OFFSET -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            StateKeys.COMMENTATORS_LIST_SCROLL_INDEX -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            StateKeys.COMMENTATORS_LIST_SCROLL_OFFSET -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            StateKeys.COMMENTARIES_COLUMN_SCROLL_INDEX_BY_COMMENTATOR -> runCatching { proto.decodeFromByteArray(MapSerializer(Long.serializer(), Int.serializer()), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(MapSerializer(Long.serializer(), Int.serializer()), encoded) }
+            StateKeys.COMMENTARIES_COLUMN_SCROLL_OFFSET_BY_COMMENTATOR -> runCatching { proto.decodeFromByteArray(MapSerializer(Long.serializer(), Int.serializer()), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(MapSerializer(Long.serializer(), Int.serializer()), encoded) }
+            StateKeys.SELECTED_COMMENTATORS_BY_LINE -> runCatching { proto.decodeFromByteArray(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), encoded) }
+            StateKeys.SELECTED_COMMENTATORS_BY_BOOK -> runCatching { proto.decodeFromByteArray(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), encoded) }
+            StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE -> runCatching { proto.decodeFromByteArray(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), encoded) }
+            StateKeys.SELECTED_TARGUM_SOURCES_BY_BOOK -> runCatching { proto.decodeFromByteArray(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(MapSerializer(Long.serializer(), SetSerializer(Long.serializer())), encoded) }
 
             // Search (SearchResultView)
-            SearchStateKeys.QUERY -> json.decodeFromString(String.serializer(), encoded)
-            SearchStateKeys.NEAR -> json.decodeFromString(Int.serializer(), encoded)
-            SearchStateKeys.FILTER_CATEGORY_ID -> json.decodeFromString(Long.serializer(), encoded)
-            SearchStateKeys.FILTER_BOOK_ID -> json.decodeFromString(Long.serializer(), encoded)
-            SearchStateKeys.FILTER_TOC_ID -> json.decodeFromString(Long.serializer(), encoded)
-            SearchStateKeys.DATASET_SCOPE -> json.decodeFromString(String.serializer(), encoded)
-            SearchStateKeys.FETCH_CATEGORY_ID -> json.decodeFromString(Long.serializer(), encoded)
-            SearchStateKeys.FETCH_BOOK_ID -> json.decodeFromString(Long.serializer(), encoded)
-            SearchStateKeys.FETCH_TOC_ID -> json.decodeFromString(Long.serializer(), encoded)
-            SearchStateKeys.SCROLL_INDEX -> json.decodeFromString(Int.serializer(), encoded)
-            SearchStateKeys.SCROLL_OFFSET -> json.decodeFromString(Int.serializer(), encoded)
-            SearchStateKeys.ANCHOR_ID -> json.decodeFromString(Long.serializer(), encoded)
-            SearchStateKeys.ANCHOR_INDEX -> json.decodeFromString(Int.serializer(), encoded)
+            SearchStateKeys.QUERY -> runCatching { proto.decodeFromByteArray(String.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(String.serializer(), encoded) }
+            SearchStateKeys.NEAR -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            SearchStateKeys.FILTER_CATEGORY_ID -> runCatching { proto.decodeFromByteArray(Long.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Long.serializer(), encoded) }
+            SearchStateKeys.FILTER_BOOK_ID -> runCatching { proto.decodeFromByteArray(Long.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Long.serializer(), encoded) }
+            SearchStateKeys.FILTER_TOC_ID -> runCatching { proto.decodeFromByteArray(Long.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Long.serializer(), encoded) }
+            SearchStateKeys.DATASET_SCOPE -> runCatching { proto.decodeFromByteArray(String.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(String.serializer(), encoded) }
+            SearchStateKeys.FETCH_CATEGORY_ID -> runCatching { proto.decodeFromByteArray(Long.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Long.serializer(), encoded) }
+            SearchStateKeys.FETCH_BOOK_ID -> runCatching { proto.decodeFromByteArray(Long.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Long.serializer(), encoded) }
+            SearchStateKeys.FETCH_TOC_ID -> runCatching { proto.decodeFromByteArray(Long.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Long.serializer(), encoded) }
+            SearchStateKeys.SCROLL_INDEX -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            SearchStateKeys.SCROLL_OFFSET -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
+            SearchStateKeys.ANCHOR_ID -> runCatching { proto.decodeFromByteArray(Long.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Long.serializer(), encoded) }
+            SearchStateKeys.ANCHOR_INDEX -> runCatching { proto.decodeFromByteArray(Int.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Int.serializer(), encoded) }
 
             // Layout
-            StateKeys.SPLIT_PANE_POSITION -> json.decodeFromString(Float.serializer(), encoded)
-            StateKeys.TOC_SPLIT_PANE_POSITION -> json.decodeFromString(Float.serializer(), encoded)
-            StateKeys.CONTENT_SPLIT_PANE_POSITION -> json.decodeFromString(Float.serializer(), encoded)
-            StateKeys.TARGUM_SPLIT_PANE_POSITION -> json.decodeFromString(Float.serializer(), encoded)
-            StateKeys.PREVIOUS_MAIN_SPLIT_POSITION -> json.decodeFromString(Float.serializer(), encoded)
-            StateKeys.PREVIOUS_TOC_SPLIT_POSITION -> json.decodeFromString(Float.serializer(), encoded)
-            StateKeys.PREVIOUS_CONTENT_SPLIT_POSITION -> json.decodeFromString(Float.serializer(), encoded)
-            StateKeys.PREVIOUS_TARGUM_SPLIT_POSITION -> json.decodeFromString(Float.serializer(), encoded)
+            StateKeys.SPLIT_PANE_POSITION -> runCatching { proto.decodeFromByteArray(Float.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Float.serializer(), encoded) }
+            StateKeys.TOC_SPLIT_PANE_POSITION -> runCatching { proto.decodeFromByteArray(Float.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Float.serializer(), encoded) }
+            StateKeys.CONTENT_SPLIT_PANE_POSITION -> runCatching { proto.decodeFromByteArray(Float.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Float.serializer(), encoded) }
+            StateKeys.TARGUM_SPLIT_PANE_POSITION -> runCatching { proto.decodeFromByteArray(Float.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Float.serializer(), encoded) }
+            StateKeys.PREVIOUS_MAIN_SPLIT_POSITION -> runCatching { proto.decodeFromByteArray(Float.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Float.serializer(), encoded) }
+            StateKeys.PREVIOUS_TOC_SPLIT_POSITION -> runCatching { proto.decodeFromByteArray(Float.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Float.serializer(), encoded) }
+            StateKeys.PREVIOUS_CONTENT_SPLIT_POSITION -> runCatching { proto.decodeFromByteArray(Float.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Float.serializer(), encoded) }
+            StateKeys.PREVIOUS_TARGUM_SPLIT_POSITION -> runCatching { proto.decodeFromByteArray(Float.serializer(), Base64.getDecoder().decode(encoded)) }.getOrElse { json.decodeFromString(Float.serializer(), encoded) }
 
             else -> null
         }

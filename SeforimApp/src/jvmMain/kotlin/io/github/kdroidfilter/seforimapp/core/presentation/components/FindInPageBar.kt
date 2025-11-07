@@ -23,6 +23,8 @@ import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.search_in_page
 import seforimapp.seforimapp.generated.resources.chevron_icon_description
 import kotlinx.coroutines.delay
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 
 @Composable
 fun FindInPageBar(
@@ -31,12 +33,21 @@ fun FindInPageBar(
     onEnterNext: () -> Unit = {},
     onEnterPrev: () -> Unit = {},
     onClose: () -> Unit = {},
-    // Focus is handled by callers if needed; no internal autofocus logic
+    // When true, requests focus on the text field when composed
+    autoFocus: Boolean = true,
 ) {
     val panelColor = JewelTheme.globalColors.panelBackground
     val borderColor = JewelTheme.globalColors.borders.focused
     val shape = RoundedCornerShape(8.dp)
-    // No internal focus management
+    // Focus management: request focus when shown so typing works immediately
+    val focusRequester = androidx.compose.runtime.remember { FocusRequester() }
+    LaunchedEffect(autoFocus) {
+        if (autoFocus) {
+            // Small delay ensures the node is placed before requesting focus
+            delay(10)
+            focusRequester.requestFocus()
+        }
+    }
 
     Row(
         modifier = modifier
@@ -50,6 +61,7 @@ fun FindInPageBar(
             modifier = Modifier
                 .widthIn(min = 220.dp, max = 380.dp)
                 .height(36.dp)
+                .focusRequester(focusRequester)
                 .onPreviewKeyEvent { ev ->
                     if (ev.type == KeyEventType.KeyUp && (ev.key == Key.Enter || ev.key == Key.NumPadEnter)) {
                         if (ev.isShiftPressed) onEnterPrev() else onEnterNext()

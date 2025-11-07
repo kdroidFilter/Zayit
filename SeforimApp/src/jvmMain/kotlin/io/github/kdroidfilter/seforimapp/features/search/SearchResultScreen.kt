@@ -309,10 +309,11 @@ private fun SearchResultContentMvi(
             }
     }
 
-    // Restore scroll/anchor as soon as the anchor is available (even while loading)
-    var hasRestored by remember { mutableStateOf(false) }
+    // Restore scroll/anchor when a new anchor timestamp is emitted.
+    // We restore exactly once per timestamp to handle new searches and filter changes.
+    var lastRestoredTs by remember { mutableStateOf(0L) }
     LaunchedEffect(state.scrollToAnchorTimestamp, state.results) {
-        if (!hasRestored && state.results.isNotEmpty()) {
+        if (state.results.isNotEmpty() && lastRestoredTs != state.scrollToAnchorTimestamp) {
             val anchorIdx = if (state.anchorId > 0) {
                 state.results.indexOfFirst { it.lineId == state.anchorId }.takeIf { it >= 0 }
             } else null
@@ -320,7 +321,7 @@ private fun SearchResultContentMvi(
             val targetOffset = state.scrollOffset
             if (targetIndex >= 0) {
                 listState.scrollToItem(targetIndex, targetOffset)
-                hasRestored = true
+                lastRestoredTs = state.scrollToAnchorTimestamp
             }
         }
     }

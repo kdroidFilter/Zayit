@@ -79,7 +79,7 @@
     <string name="report">דיווח</string>
     <string name="commentaries">פירושים</string>
     <string name="show_commentaries_tooltip">הצג את הפירושים הקיימים על שורה זאת</string>
-    <string name="show_commentaries">הציג פירושים</string>
+    <string name="show_commentaries">הצג פירושים</string>
     <string name="columns_gap_tooltip">שנה את מבנה העמודות</string>
     <string name="columns_gap">מבנה עמודות</string>
     <string name="filter_commentators_tooltip">סנן את הפרשנים</string>

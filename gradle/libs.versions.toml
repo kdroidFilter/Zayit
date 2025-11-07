@@ -55,6 +55,7 @@ jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 jvm-native-trusted-roots = { module = "org.jetbrains.nativecerts:jvm-native-trusted-roots", version.ref = "jvmNativeTrustedRoots" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 koalaplot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaplotCore" }
+kotlinx-serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "kotlinx-serialization" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }

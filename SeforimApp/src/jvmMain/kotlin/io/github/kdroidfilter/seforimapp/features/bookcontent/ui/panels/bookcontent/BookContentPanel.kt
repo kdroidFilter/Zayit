@@ -1,14 +1,18 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
@@ -19,6 +23,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.Enha
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.*
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 
 
 @OptIn(ExperimentalSplitPaneApi::class)
@@ -33,13 +38,24 @@ fun BookContentPanel(
     val bookListState = remember(uiState.navigation.selectedBook?.id) { LazyListState() }
 
     if (uiState.navigation.selectedBook == null) {
-        HomeView(uiState = uiState, onEvent = onEvent, modifier = modifier)
+        // If we're actively loading a book for this tab, avoid flashing the Home screen.
+        // Show a minimal loader until the selected book is ready.
+        if (uiState.isLoading) {
+            LoaderPanel(modifier = modifier)
+        } else {
+            HomeView(uiState = uiState, onEvent = onEvent, modifier = modifier)
+        }
         return
     }
 
     // Use providers from uiState for paging data and builder functions
-    val providers = uiState.providers ?: // Providers not ready yet; avoid accessing ViewModel directly per requirements
-    return
+    val providers = uiState.providers
+    if (providers == null) {
+        // Book is selected but providers are not ready yet (initialization in progress).
+        // Show a centered loader to avoid blank content or Home flicker.
+        LoaderPanel(modifier = modifier)
+        return
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
 
@@ -100,6 +116,17 @@ fun BookContentPanel(
             onEvent = onEvent,
             verticalPadding = 8.dp
         )
+    }
+}
+
+@Composable
+private fun LoaderPanel(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .wrapContentSize(Alignment.Center)
+    ) {
+        CircularProgressIndicator()
     }
 }
 

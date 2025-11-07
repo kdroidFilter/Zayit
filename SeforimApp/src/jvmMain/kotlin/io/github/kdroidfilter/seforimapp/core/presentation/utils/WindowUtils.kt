@@ -50,13 +50,11 @@ fun processKeyShortcuts(keyEvent: KeyEvent, onNavigateTo: (String) -> Unit): Boo
                 AppSettings.increaseTextSize()
                 return true
             }
-            // Handle Equals key with Shift (which produces +)
+            // Handle Equals key too: many layouts send '=' for zoom-in (with or without Shift)
             Key.Equals -> {
-                if (keyEvent.isShiftPressed) {
-                    debugln { "[DEBUG_LOG] Detected Equals key with Shift (+ key), increasing text size" }
-                    AppSettings.increaseTextSize()
-                    return true
-                }
+                debugln { "[DEBUG_LOG] Detected Equals key, increasing text size" }
+                AppSettings.increaseTextSize()
+                return true
             }
             Key.Minus, Key.NumPadSubtract -> {
                 debugln { "[DEBUG_LOG] Detected Minus or NumPadSubtract key, decreasing text size" }

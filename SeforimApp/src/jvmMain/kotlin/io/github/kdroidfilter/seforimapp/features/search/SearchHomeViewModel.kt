@@ -16,9 +16,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 
 data class CategorySuggestionDto(val category: Category, val path: List<String>)
 data class BookSuggestionDto(val book: Book, val path: List<String>)
@@ -65,6 +67,15 @@ class SearchHomeViewModel(
             val lastName: String = settings["user_last_name", ""]
             val displayName = "$firstName $lastName".trim()
             _uiState.value = _uiState.value.copy(userDisplayName = displayName)
+        }
+        // Observe changes in user profile and keep display name in sync
+        viewModelScope.launch {
+            AppSettings.userFirstNameFlow
+                .combine(AppSettings.userLastNameFlow) { f, l -> "$f $l".trim() }
+                .distinctUntilChanged()
+                .collect { displayName ->
+                    _uiState.value = _uiState.value.copy(userDisplayName = displayName)
+                }
         }
         // Debounced suggestions based on reference query
         viewModelScope.launch {

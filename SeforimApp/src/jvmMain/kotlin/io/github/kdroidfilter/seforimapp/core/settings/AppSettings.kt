@@ -76,6 +76,9 @@ object AppSettings {
         _commentaryFontCodeFlow.value = getCommentaryFontCode()
         _targumFontCodeFlow.value = getTargumFontCode()
         _ramSaverEnabledFlow.value = isRamSaverEnabled()
+        // User profile reactive values
+        _userFirstNameFlow.value = getUserFirstName() ?: ""
+        _userLastNameFlow.value = getUserLastName() ?: ""
     }
 
     // StateFlow to observe text size changes
@@ -292,6 +295,13 @@ object AppSettings {
     }
 
     // User profile accessors
+    // Reactive flows to observe user identity changes across the app
+    private val _userFirstNameFlow = MutableStateFlow(getUserFirstName() ?: "")
+    val userFirstNameFlow: StateFlow<String> = _userFirstNameFlow.asStateFlow()
+
+    private val _userLastNameFlow = MutableStateFlow(getUserLastName() ?: "")
+    val userLastNameFlow: StateFlow<String> = _userLastNameFlow.asStateFlow()
+
     fun getUserFirstName(): String? {
         val value: String = settings[KEY_USER_FIRST_NAME, ""]
         return value.ifBlank { null }
@@ -299,6 +309,7 @@ object AppSettings {
 
     fun setUserFirstName(value: String?) {
         settings[KEY_USER_FIRST_NAME] = value?.takeIf { it.isNotBlank() } ?: ""
+        _userFirstNameFlow.value = getUserFirstName() ?: ""
     }
 
     fun getUserLastName(): String? {
@@ -308,6 +319,7 @@ object AppSettings {
 
     fun setUserLastName(value: String?) {
         settings[KEY_USER_LAST_NAME] = value?.takeIf { it.isNotBlank() } ?: ""
+        _userLastNameFlow.value = getUserLastName() ?: ""
     }
 
     // Community is stored as a stable code (enum name), not a localized label

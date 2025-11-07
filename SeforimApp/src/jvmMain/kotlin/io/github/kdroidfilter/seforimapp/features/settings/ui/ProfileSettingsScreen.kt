@@ -81,6 +81,8 @@ private fun ProfileSettingsView(
                 LaunchedEffect(firstNameState.text) {
                     val value = firstNameState.text.toString()
                     if (value != state.firstName) onEvent(UserProfileEvents.FirstNameChanged(value))
+                    // Persist immediately to keep behavior consistent with other settings
+                    AppSettings.setUserFirstName(value.trim())
                 }
                 TextField(state = firstNameState, modifier = Modifier.widthIn(max = 240.dp))
             }
@@ -94,6 +96,8 @@ private fun ProfileSettingsView(
                 LaunchedEffect(lastNameState.text) {
                     val value = lastNameState.text.toString()
                     if (value != state.lastName) onEvent(UserProfileEvents.LastNameChanged(value))
+                    // Persist immediately to keep behavior consistent with other settings
+                    AppSettings.setUserLastName(value.trim())
                 }
                 TextField(state = lastNameState, modifier = Modifier.widthIn(max = 240.dp))
             }
@@ -111,7 +115,11 @@ private fun ProfileSettingsView(
                 ListComboBox(
                     items = communityLabels,
                     selectedIndex = state.selectedCommunityIndex,
-                    onSelectedItemChange = { index -> onEvent(UserProfileEvents.SelectCommunity(index)) }
+                    onSelectedItemChange = { index ->
+                        onEvent(UserProfileEvents.SelectCommunity(index))
+                        val community = state.communities.getOrNull(index)
+                        AppSettings.setUserCommunityCode(community?.name)
+                    }
                 )
             }
         }

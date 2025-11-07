@@ -64,6 +64,39 @@ class SearchHomeViewModel(
     private val tocQuery = MutableStateFlow("")
 
     private val NEAR_LEVELS = listOf(0, 3, 5, 10, 20)
+    private val MIN_PREFIX_LEN = 2 // minimum characters before triggering predictive queries
+
+    // Lightweight, thread-safe LRU caches to avoid repeated DB hits when typing fast
+    private class LruCache<K, V>(private val maxSize: Int) : LinkedHashMap<K, V>(maxSize, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean = size > maxSize
+    }
+    private val categoryDepthCache = LruCache<Long, Int>(512)
+    private val categoryPathCache = LruCache<Long, List<String>>(512)
+    private val tocPathCache = LruCache<Long, List<String>>(2048)
+
+    private suspend fun getCategoryDepthCached(catId: Long): Int {
+        synchronized(categoryDepthCache) { categoryDepthCache[catId]?.let { return it } }
+        val depth = withContext(Dispatchers.IO) {
+            runCatching { repository.getCategoryDepth(catId) }.getOrDefault(Int.MAX_VALUE)
+        }
+        synchronized(categoryDepthCache) { categoryDepthCache[catId] = depth }
+        return depth
+    }
+
+    private suspend fun buildCategoryPathTitlesCached(catId: Long): List<String> {
+        synchronized(categoryPathCache) { categoryPathCache[catId]?.let { return it } }
+        val path = withContext(Dispatchers.IO) { runCatching { buildCategoryPathTitles(catId) }.getOrDefault(emptyList()) }
+        synchronized(categoryPathCache) { categoryPathCache[catId] = path }
+        return path
+    }
+
+    private suspend fun buildTocPathTitlesCached(entry: TocEntry): List<String> {
+        val key = entry.id
+        synchronized(tocPathCache) { tocPathCache[key]?.let { return it } }
+        val path = withContext(Dispatchers.IO) { runCatching { buildTocPathTitles(entry) }.getOrDefault(emptyList()) }
+        synchronized(tocPathCache) { tocPathCache[key] = path }
+        return path
+    }
 
     init {
         // Build display name from injected Settings
@@ -90,7 +123,7 @@ class SearchHomeViewModel(
                 .collectLatest { qRaw ->
                     val q = qRaw.trim()
                     val qNorm = sanitizeHebrewForAcronym(q)
-                    if (q.isBlank()) {
+                    if (q.isBlank() || q.length < MIN_PREFIX_LEN) {
                         _uiState.value = _uiState.value.copy(
                             categorySuggestions = emptyList(),
                             bookSuggestions = emptyList(),
@@ -125,8 +158,8 @@ class SearchHomeViewModel(
                                         .sortedBy { catTitleRank(it.title) }
                                         .take(24)
                                     val withDepth = topForDepth.map { cat ->
-                                        // Depth via DB (cheaper than full path) for ranking
-                                        val depth = runCatching { repository.getCategoryDepth(cat.id) }.getOrDefault(Int.MAX_VALUE)
+                                        // Depth via cache for ranking
+                                        val depth = getCategoryDepthCached(cat.id)
                                         cat to depth
                                     }
                                     val topFinal = withDepth
@@ -136,7 +169,7 @@ class SearchHomeViewModel(
                                         .map { it.first }
                                     // Build display paths only for final items
                                     topFinal.map { cat ->
-                                        val path = runCatching { buildCategoryPathTitles(cat.id) }.getOrDefault(emptyList())
+                                        val path = buildCategoryPathTitlesCached(cat.id)
                                         CategorySuggestionDto(cat, path.ifEmpty { listOf(cat.title) })
                                     }
                                 }
@@ -160,8 +193,8 @@ class SearchHomeViewModel(
                                     val topForDepth = bookCandidates.values
                                         .sortedBy { titleRank(it.title) }
                                         .take(24)
-                                    val withDepth = withContext(Dispatchers.IO) {
-                                        topForDepth.map { b -> b to runCatching { repository.getCategoryDepth(b.categoryId) }.getOrDefault(Int.MAX_VALUE) }
+                                    val withDepth = withContext(Dispatchers.Default) {
+                                        topForDepth.map { b -> b to getCategoryDepthCached(b.categoryId) }
                                     }
                                     val topFinal = withDepth
                                         .sortedWith(compareBy<Pair<Book, Int>> { it.second }
@@ -170,9 +203,7 @@ class SearchHomeViewModel(
                                         .map { it.first }
                                     // Build path only for final items (IO-bound)
                                     topFinal.map { b ->
-                                        val catPath = withContext(Dispatchers.IO) {
-                                            runCatching { buildCategoryPathTitles(b.categoryId) }.getOrDefault(emptyList())
-                                        }
+                                        val catPath = buildCategoryPathTitlesCached(b.categoryId)
                                         BookSuggestionDto(b, catPath + b.title)
                                     }
                                 }
@@ -201,7 +232,7 @@ class SearchHomeViewModel(
                 .collectLatest { qRaw ->
                     val q = qRaw.trim()
                     val book = _uiState.value.selectedScopeBook
-                    if (q.isBlank() || book == null) {
+                    if (q.isBlank() || q.length < MIN_PREFIX_LEN || book == null) {
                         _uiState.value = _uiState.value.copy(
                             tocSuggestions = emptyList(),
                             tocSuggestionsVisible = false
@@ -216,7 +247,7 @@ class SearchHomeViewModel(
                                 .take(30)
                                 .toList()
                             matches.map { toc ->
-                                val path = runCatching { buildTocPathTitles(toc) }.getOrDefault(emptyList())
+                                val path = buildTocPathTitlesCached(toc)
                                 TocSuggestionDto(toc, path)
                             }
                         }

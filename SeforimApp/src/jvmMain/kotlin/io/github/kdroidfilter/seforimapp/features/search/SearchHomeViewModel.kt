@@ -123,7 +123,7 @@ class SearchHomeViewModel(
                 .collectLatest { qRaw ->
                     val q = qRaw.trim()
                     val qNorm = sanitizeHebrewForAcronym(q)
-                    if (q.isBlank() || q.length < MIN_PREFIX_LEN) {
+                    if (q.isBlank()) {
                         _uiState.value = _uiState.value.copy(
                             categorySuggestions = emptyList(),
                             bookSuggestions = emptyList(),
@@ -174,37 +174,41 @@ class SearchHomeViewModel(
                                     }
                                 }
 
-                                // Books: lookup + LIKE, cheap-rank, compute depth for top-N, then build paths for final
+                                // Books: enforce 2-char minimum; if shorter, return empty suggestions for books
                                 val booksDeferred = async(Dispatchers.Default) {
-                                    val bookIds = lookup.searchBooksPrefix(qNorm, limit = 50)
-                                    val lookupBooks = withContext(Dispatchers.IO) {
-                                        bookIds.mapNotNull { id -> runCatching { repository.getBook(id) }.getOrNull() }
-                                    }
-                                    val likeBooks = withContext(Dispatchers.IO) {
-                                        runCatching {
-                                            repository.findBooksByTitleLike("%$q%", limit = 50)
-                                                .filter { it.title.isNotBlank() }
-                                        }.getOrDefault(emptyList())
-                                    }
-                                    val bookCandidates = LinkedHashMap<Long, Book>()
-                                    lookupBooks.forEach { b -> bookCandidates.putIfAbsent(b.id, b) }
-                                    likeBooks.forEach { b -> bookCandidates.putIfAbsent(b.id, b) }
+                                    if (q.length < MIN_PREFIX_LEN) {
+                                        emptyList<BookSuggestionDto>()
+                                    } else {
+                                        val bookIds = lookup.searchBooksPrefix(qNorm, limit = 50)
+                                        val lookupBooks = withContext(Dispatchers.IO) {
+                                            bookIds.mapNotNull { id -> runCatching { repository.getBook(id) }.getOrNull() }
+                                        }
+                                        val likeBooks = withContext(Dispatchers.IO) {
+                                            runCatching {
+                                                repository.findBooksByTitleLike("%$q%", limit = 50)
+                                                    .filter { it.title.isNotBlank() }
+                                            }.getOrDefault(emptyList())
+                                        }
+                                        val bookCandidates = LinkedHashMap<Long, Book>()
+                                        lookupBooks.forEach { b -> bookCandidates.putIfAbsent(b.id, b) }
+                                        likeBooks.forEach { b -> bookCandidates.putIfAbsent(b.id, b) }
 
-                                    val topForDepth = bookCandidates.values
-                                        .sortedBy { titleRank(it.title) }
-                                        .take(24)
-                                    val withDepth = withContext(Dispatchers.Default) {
-                                        topForDepth.map { b -> b to getCategoryDepthCached(b.categoryId) }
-                                    }
-                                    val topFinal = withDepth
-                                        .sortedWith(compareBy<Pair<Book, Int>> { it.second }
-                                            .thenBy { titleRank(it.first.title) })
-                                        .take(12)
-                                        .map { it.first }
-                                    // Build path only for final items (IO-bound)
-                                    topFinal.map { b ->
-                                        val catPath = buildCategoryPathTitlesCached(b.categoryId)
-                                        BookSuggestionDto(b, catPath + b.title)
+                                        val topForDepth = bookCandidates.values
+                                            .sortedBy { titleRank(it.title) }
+                                            .take(24)
+                                        val withDepth = withContext(Dispatchers.Default) {
+                                            topForDepth.map { b -> b to getCategoryDepthCached(b.categoryId) }
+                                        }
+                                        val topFinal = withDepth
+                                            .sortedWith(compareBy<Pair<Book, Int>> { it.second }
+                                                .thenBy { titleRank(it.first.title) })
+                                            .take(12)
+                                            .map { it.first }
+                                        // Build path only for final items (IO-bound)
+                                        topFinal.map { b ->
+                                            val catPath = buildCategoryPathTitlesCached(b.categoryId)
+                                            BookSuggestionDto(b, catPath + b.title)
+                                        }
                                     }
                                 }
 
@@ -232,7 +236,7 @@ class SearchHomeViewModel(
                 .collectLatest { qRaw ->
                     val q = qRaw.trim()
                     val book = _uiState.value.selectedScopeBook
-                    if (q.isBlank() || q.length < MIN_PREFIX_LEN || book == null) {
+                    if (q.isBlank() || book == null) {
                         _uiState.value = _uiState.value.copy(
                             tocSuggestions = emptyList(),
                             tocSuggestionsVisible = false

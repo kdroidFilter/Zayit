@@ -350,9 +350,10 @@ fun BookContentView(
     }
 
     Box(modifier = modifier.fillMaxSize().padding(bottom = 8.dp).onPreviewKeyEvent(previewKeyHandler)) {
-        // Content with text selection
-        SelectionContainer(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
+        // Content list. Avoid a single SelectionContainer around the entire
+        // paged list to prevent cross-item selection spanning unloaded pages,
+        // which can crash when paging composes/uncomposes items.
+        LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().padding(end = 16.dp)
             ) {
@@ -437,9 +438,10 @@ fun BookContentView(
             }
             Row(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
+                    .fillMaxWidth()
                     .padding(12.dp)
                     .zIndex(2f),
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (queryText.length >= 2) {
@@ -468,7 +470,6 @@ fun BookContentView(
             }
         }
     }
-}
 
 // Data class for anchor information
 private data class AnchorData(
@@ -554,13 +555,18 @@ private fun LineItem(
                     .zIndex(1f)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = displayText,
-                textAlign = TextAlign.Justify,
-                fontFamily = fontFamily,
-                lineHeight = (baseTextSize * lineHeight).sp,
-                modifier = textModifier
-            )
+            // Enable selection per line item only. This avoids cross-item
+            // selections interacting poorly with paging (items getting
+            // disposed while selection spans them).
+            SelectionContainer {
+                Text(
+                    text = displayText,
+                    textAlign = TextAlign.Justify,
+                    fontFamily = fontFamily,
+                    lineHeight = (baseTextSize * lineHeight).sp,
+                    modifier = textModifier
+                )
+            }
         }
     }
 }

@@ -152,15 +152,42 @@ class SearchResultViewModel(
         val filterBookId: Long?,
         val filterTocId: Long?
     )
-    // Batching policy: fetch WARMUP_BATCH_SIZE until WARMUP_LIMIT results, then STEADY_BATCH_SIZE
+    // Batching policy:
+    // - 20 for the first 100 results (best time-to-first-results)
+    // - then 100 until 500
+    // - then 5,000; then 10,000; then double each step up to 200,000
     private companion object {
-        private const val WARMUP_LIMIT = 500
-        private const val WARMUP_BATCH_SIZE = 20
-        private const val STEADY_BATCH_SIZE = 100
+        private const val STAGE1_LIMIT = 100
+        private const val STAGE2_LIMIT = 500
+        private const val STAGE3_LIMIT = 5_000
+        private const val STAGE4_LIMIT = 10_000
+        private const val STAGE5_LIMIT = 20_000
+        private const val STAGE6_LIMIT = 40_000
+        private const val STAGE7_LIMIT = 80_000
+        private const val STAGE8_LIMIT = 160_000
+
+        private const val STAGE1_BATCH = 20
+        private const val STAGE2_BATCH = 100
+        private const val STAGE3_BATCH = 5_000
+        private const val STAGE4_BATCH = 10_000
+        private const val STAGE5_BATCH = 20_000
+        private const val STAGE6_BATCH = 40_000
+        private const val STAGE7_BATCH = 80_000
+        private const val STAGE8_BATCH = 160_000
+        private const val STAGE9_BATCH = 200_000
     }
 
-    private fun batchSizeFor(currentCount: Int): Int =
-        if (currentCount < WARMUP_LIMIT) WARMUP_BATCH_SIZE else STEADY_BATCH_SIZE
+    private fun batchSizeFor(currentCount: Int): Int = when {
+        currentCount < STAGE1_LIMIT -> STAGE1_BATCH
+        currentCount < STAGE2_LIMIT -> STAGE2_BATCH
+        currentCount < STAGE3_LIMIT -> STAGE3_BATCH
+        currentCount < STAGE4_LIMIT -> STAGE4_BATCH
+        currentCount < STAGE5_LIMIT -> STAGE5_BATCH
+        currentCount < STAGE6_LIMIT -> STAGE6_BATCH
+        currentCount < STAGE7_LIMIT -> STAGE7_BATCH
+        currentCount < STAGE8_LIMIT -> STAGE8_BATCH
+        else -> STAGE9_BATCH
+    }
     private val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
 
     private val _uiState = MutableStateFlow(SearchUiState())

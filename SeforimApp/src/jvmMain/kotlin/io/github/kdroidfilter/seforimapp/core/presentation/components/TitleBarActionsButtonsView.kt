@@ -6,6 +6,8 @@ import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
+import io.github.kdroidfilter.platformtools.OperatingSystem
+import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
@@ -53,6 +55,10 @@ fun TitleBarActionsButtonsView() {
         IntUiThemes.System -> stringResource(Res.string.switch_to_light_theme)
     }
 
+    val homeShortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS)
+        stringResource(Res.string.shortcut_home_mac)
+    else stringResource(Res.string.shortcut_home_windows)
+
     TitleBarActionButton(
         key = AllIconsKeys.Nodes.HomeFolder,
         contentDescription = stringResource(Res.string.home),
@@ -71,6 +77,7 @@ fun TitleBarActionsButtonsView() {
             }
         },
         tooltipText = stringResource(Res.string.home_tooltip),
+        shortcutHint = homeShortcutHint,
     )
     TitleBarActionButton(
         key = AllIconsKeys.Actions.Find,

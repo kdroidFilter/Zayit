@@ -88,14 +88,7 @@ fun TitleBarActionsButtonsView() {
             if (isOpen) AppSettings.closeFindBar()
             else AppSettings.openFindBar()
         },
-        tooltipText = if (findEnabled) stringResource(Res.string.find_tooltip) else stringResource(Res.string.find_disabled_tooltip),
-        shortcutHint = if (findEnabled) {
-            if (getOperatingSystem() == OperatingSystem.MACOS) {
-                stringResource(Res.string.shortcut_find_mac)
-            } else {
-                stringResource(Res.string.shortcut_find_windows)
-            }
-        } else null,
+        tooltipText = if (findEnabled) stringResource(Res.string.search_in_page_tooltip) else stringResource(Res.string.find_disabled_tooltip),
         enabled = findEnabled
     )
     TitleBarActionButton(

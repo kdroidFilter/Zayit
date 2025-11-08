@@ -16,8 +16,10 @@ jobs:
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-windows-x64-b1163.69.zip"
           - os: macos-latest  # runner Apple Silicon (ARM64)
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-osx-aarch64-b895.147.pkg"
+            jdk_arch: aarch64
           - os: macos-latest  # runner Apple Silicon (ARM64) with jbr X64
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-osx-x64-b895.147.pkg"
+            jdk_arch: x64
 
     steps:
       # 1) Checkout with tags and submodules
@@ -109,7 +111,7 @@ jobs:
         if: startsWith(matrix.os, 'macos')
         uses: actions/upload-artifact@v4
         with:
-          name: macos-pkg
+          name: macos-pkg-${{ matrix.jdk_arch }}
           path: SeforimApp/build/compose/binaries/main-release/pkg/*.pkg
           if-no-files-found: error
 
@@ -136,10 +138,11 @@ jobs:
         with:
           name: windows-msi
 
-      - name: Download macOS artifact
+      - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
-          name: macos-pkg
+          pattern: macos-pkg-* 
+          merge-multiple: true
 
       # 2) Inspect
       - name: List downloaded files

@@ -42,6 +42,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentS
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.*
+import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -1044,11 +1045,15 @@ private fun SearchBar(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CustomToggleableChip(
-                        checked = globalExtended,
-                        onClick = onGlobalExtendedChange,
-                        text = stringResource(Res.string.search_extended_label)
-                    )
+                    // Chip visible seulement en mode TEXT
+                    if (selectedFilter == SearchFilter.TEXT) {
+                        CustomToggleableChip(
+                            checked = globalExtended,
+                            onClick = onGlobalExtendedChange,
+                            tooltipText = stringResource(Res.string.search_extended_tooltip),
+                            withPadding = false
+                        )
+                    }
                     IntegratedSwitch(
                         selectedFilter = selectedFilter,
                         onFilterChange = onFilterChange
@@ -1258,33 +1263,6 @@ private fun SearchLevelCard(
     }
 }
 
-@Composable
-private fun CustomToggleableChip(
-    checked: Boolean,
-    onClick: (Boolean) -> Unit,
-    text: String,
-    modifier: Modifier = Modifier
-) {
-    // Style inspiré de l'IntegratedSwitch
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(JewelTheme.globalColors.panelBackground)
-            .border(
-                width = 1.dp,
-                color = JewelTheme.globalColors.borders.disabled,
-                shape = RoundedCornerShape(20.dp)
-            )
-            .padding(2.dp)
-    ) {
-        // Utilise le même FilterButton que l'IntegratedSwitch
-        FilterButton(
-            text = text,
-            isSelected = checked,
-            onClick = { onClick(!checked) }
-        )
-    }
-}
 
 @androidx.compose.desktop.ui.tooling.preview.Preview
 @Composable

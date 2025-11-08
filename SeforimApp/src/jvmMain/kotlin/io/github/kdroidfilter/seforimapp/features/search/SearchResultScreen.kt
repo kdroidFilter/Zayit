@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
+import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -161,11 +162,11 @@ private fun SearchToolbar(
         }
 
         // Global extended toggle (default off → base books only)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = globalExtended, onCheckedChange = { onGlobalExtendedChange(it) })
-            Spacer(Modifier.width(4.dp))
-            Text(stringResource(Res.string.search_extended_label))
-        }
+        CustomToggleableChip(
+            checked = globalExtended,
+            onClick = onGlobalExtendedChange,
+            tooltipText = stringResource(Res.string.search_extended_tooltip)
+        )
     }
 }
 

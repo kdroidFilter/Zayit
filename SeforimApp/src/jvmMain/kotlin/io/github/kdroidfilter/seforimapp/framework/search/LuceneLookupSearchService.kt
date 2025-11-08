@@ -9,7 +9,8 @@ import org.apache.lucene.store.FSDirectory
 import java.nio.file.Path
 
 class LuceneLookupSearchService(indexDir: Path, private val analyzer: Analyzer = StandardAnalyzer()) {
-    private val dir = FSDirectory.open(indexDir)
+    // Open Lucene directory lazily to avoid any I/O at app startup
+    private val dir by lazy { FSDirectory.open(indexDir) }
 
     data class TocHit(
         val tocId: Long,

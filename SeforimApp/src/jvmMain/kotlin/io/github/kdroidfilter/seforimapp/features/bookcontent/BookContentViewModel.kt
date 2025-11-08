@@ -126,7 +126,8 @@ class BookContentViewModel(
                         val openSource: io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource? =
                             tabStateManager.getState(currentTabId, StateKeys.OPEN_SOURCE)
                         if (openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE ||
-                            openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.CATEGORY_TREE_NEW_TAB) {
+                            openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.CATEGORY_TREE_NEW_TAB ||
+                            openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.SEARCH_RESULT) {
                             ensureTocVisibleOnFirstOpen()
                         }
                         loadBookData(restoredBook)
@@ -283,7 +284,8 @@ class BookContentViewModel(
                 val openSource: io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource? =
                     tabStateManager.getState(currentTabId, StateKeys.OPEN_SOURCE)
                 if (openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE ||
-                    openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.CATEGORY_TREE_NEW_TAB) {
+                    openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.CATEGORY_TREE_NEW_TAB ||
+                    openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.SEARCH_RESULT) {
                     ensureTocVisibleOnFirstOpen()
                 }
 

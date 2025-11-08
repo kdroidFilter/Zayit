@@ -1487,6 +1487,12 @@ class SearchResultViewModel(
                 stateManager.saveState(newTabId, StateKeys.SELECTED_BOOK, book)
             }
             stateManager.saveState(newTabId, StateKeys.CONTENT_ANCHOR_ID, result.lineId)
+            // Hint BookContent to show TOC on first open from search
+            stateManager.saveState(
+                newTabId,
+                StateKeys.OPEN_SOURCE,
+                io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.SEARCH_RESULT
+            )
 
             tabsViewModel.openTab(
                 TabsDestination.BookContent(
@@ -1514,6 +1520,12 @@ class SearchResultViewModel(
                 stateManager.saveState(tabId, StateKeys.SELECTED_BOOK, book)
             }
             stateManager.saveState(tabId, StateKeys.CONTENT_ANCHOR_ID, result.lineId)
+            // Hint BookContent to show TOC on first open from search in the current tab
+            stateManager.saveState(
+                tabId,
+                StateKeys.OPEN_SOURCE,
+                io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.SEARCH_RESULT
+            )
 
             // Swap current tab destination to BookContent while preserving tabId
             tabsViewModel.replaceCurrentTabDestination(

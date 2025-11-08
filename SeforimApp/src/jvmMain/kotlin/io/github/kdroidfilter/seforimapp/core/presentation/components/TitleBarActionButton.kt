@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.IconActionButton
+import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icon.IconKey
 
@@ -23,21 +24,22 @@ fun TitleBarActionButton(
     shortcutHint: String? = null,
     enabled: Boolean = true,
 ) {
-    IconActionButton(
-        key = key,
-        onClick = onClick,
-        enabled = enabled,
-        contentDescription = contentDescription,
-        tooltip = {
-            if (shortcutHint.isNullOrBlank()) {
+    Tooltip({
+        if (shortcutHint.isNullOrBlank()) {
+            Text(tooltipText)
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(tooltipText)
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(tooltipText)
-                    Text(shortcutHint, color =JewelTheme.globalColors.text.disabled)
-                }
+                Text(shortcutHint, color = JewelTheme.globalColors.text.disabled)
             }
-        },
-        modifier = Modifier.width(40.dp).fillMaxHeight()
-    )
+        }
+    }) {
+        IconActionButton(
+            key = key,
+            onClick = onClick,
+            enabled = enabled,
+            contentDescription = contentDescription,
+            modifier = Modifier.width(40.dp).fillMaxHeight()
+        )
+    }
 }

@@ -59,6 +59,10 @@ fun TitleBarActionsButtonsView() {
         stringResource(Res.string.shortcut_home_mac)
     else stringResource(Res.string.shortcut_home_windows)
 
+    val findShortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS)
+        stringResource(Res.string.shortcut_find_mac)
+    else stringResource(Res.string.shortcut_find_windows)
+
     TitleBarActionButton(
         key = AllIconsKeys.Nodes.HomeFolder,
         contentDescription = stringResource(Res.string.home),
@@ -89,6 +93,7 @@ fun TitleBarActionsButtonsView() {
             else AppSettings.openFindBar()
         },
         tooltipText = if (findEnabled) stringResource(Res.string.search_in_page_tooltip) else stringResource(Res.string.find_disabled_tooltip),
+        shortcutHint = findShortcutHint,
         enabled = findEnabled
     )
     TitleBarActionButton(

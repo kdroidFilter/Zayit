@@ -358,7 +358,7 @@ private fun SearchResultContentMvi(
         while (guard++ < size) {
             i = (i + step + size) % size
             val text = buildAnnotatedFromHtml(vis[i].snippet, state.textSize).text
-            val start = text.indexOf(q, ignoreCase = true)
+            val start = io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOriginal(text, q).firstOrNull()?.first ?: -1
             if (start >= 0) {
                 currentHitIndex = i
                 currentMatchStart = start

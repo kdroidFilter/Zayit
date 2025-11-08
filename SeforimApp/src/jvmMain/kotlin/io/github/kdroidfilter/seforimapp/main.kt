@@ -48,6 +48,7 @@ import java.util.*
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
@@ -56,6 +57,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.Box
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
+import io.github.kdroidfilter.seforim.tabs.TabsDestination
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
@@ -171,6 +173,17 @@ fun main() {
                                         tabsVm.onEvent(TabsEvents.onSelected(newIndex))
                                     }
                                     true
+                                } else if ((keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
+                                    (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H)
+                                ) {
+                                    val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
+                                    if (currentTabId != null) {
+                                        // Navigate current tab back to Home (preserve tab slot, refresh state)
+                                        tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
+                                        true
+                                    } else {
+                                        false
+                                    }
                                 } else {
                                     processKeyShortcuts(
                                         keyEvent = keyEvent,
@@ -237,6 +250,15 @@ fun main() {
                                         isCtrlOrCmd && keyEvent.key == Key.T -> {
                                             tabsVm.onEvent(TabsEvents.onAdd)
                                             true
+                                        }
+                                        // Alt + Home (Windows) or Cmd + Shift + H (macOS) => go Home on current tab
+                                        (keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
+                                                (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H) -> {
+                                            val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
+                                            if (currentTabId != null) {
+                                                tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
+                                                true
+                                            } else false
                                         }
                                         else -> false
                                     }

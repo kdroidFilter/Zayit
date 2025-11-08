@@ -6,5 +6,6 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.state
  */
 enum class BookOpenSource {
     HOME_REFERENCE,
-    CATEGORY_TREE_NEW_TAB
+    CATEGORY_TREE_NEW_TAB,
+    SEARCH_RESULT
 }

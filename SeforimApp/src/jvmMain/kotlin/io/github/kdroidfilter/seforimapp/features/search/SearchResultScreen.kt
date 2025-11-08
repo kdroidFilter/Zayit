@@ -435,7 +435,8 @@ private fun SearchResultContentMvi(
                             modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            itemsIndexed(items = visibleResults, key = { _, it -> it.lineId }) { idx, result ->
+                            // Use a composite key to ensure uniqueness across books and pages
+                            itemsIndexed(items = visibleResults, key = { index, it -> Pair(it.bookId, Pair(it.lineId, index)) }) { idx, result ->
                                 val windowInfo = LocalWindowInfo.current
                                 SearchResultItemGoogleStyle(
                                     result = result,

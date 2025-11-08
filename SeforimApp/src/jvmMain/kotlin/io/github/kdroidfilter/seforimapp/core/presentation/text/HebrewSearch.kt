@@ -19,7 +19,8 @@ internal fun stripDiacriticsWithMap(src: String): Pair<String, IntArray> {
     var i = 0
     while (i < src.length) {
         val ch = src[i]
-        if (!nikudOrTeamim(ch)) {
+        // Drop nikud/ta'amim and also gershayim/geresh for matching
+        if (!nikudOrTeamim(ch) && ch != '\u05F4' && ch != '\u05F3') {
             out.append(ch)
             map.add(i)
         }
@@ -43,6 +44,9 @@ internal fun normalizeQueryForHebrew(raw: String): String {
     s = s.replace("[\u0591-\u05AF]".toRegex(), "")
     // Remove nikud signs including meteg and qamatz qatan
     s = s.replace("[\u05B0\u05B1\u05B2\u05B3\u05B4\u05B5\u05B6\u05B7\u05B8\u05B9\u05BB\u05BC\u05BD\u05C1\u05C2\u05C7]".toRegex(), "")
+    // Replace maqaf with space and remove gershayim/geresh
+    s = s.replace('\u05BE', ' ')
+    s = s.replace("\u05F4", "").replace("\u05F3", "")
     // Normalize Hebrew final letters (sofit) to base forms
     s = replaceFinalsWithBase(s)
     // Lowercase for case-insensitive match (safe for Latin)
@@ -79,4 +83,3 @@ internal fun findAllMatchesOriginal(text: String, query: String): List<IntRange>
     }
     return out
 }
-

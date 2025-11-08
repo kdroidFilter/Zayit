@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
+import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -69,6 +70,7 @@ data class SearchShellActions(
     val onSubmit: (query: String, near: Int) -> Unit,
     val onNearChange: (Int) -> Unit,
     val onQueryChange: (String) -> Unit,
+    val onGlobalExtendedChange: (Boolean) -> Unit,
     val onScroll: (anchorId: Long, anchorIndex: Int, index: Int, offset: Int) -> Unit,
     val onCancelSearch: () -> Unit,
     val onOpenResult: (SearchResult, openInNewTab: Boolean) -> Unit,
@@ -88,6 +90,8 @@ private fun SearchToolbar(
     onSubmit: (query: String, near: Int) -> Unit,
     onNearChange: (Int) -> Unit,
     onQueryChange: (String) -> Unit,
+    globalExtended: Boolean,
+    onGlobalExtendedChange: (Boolean) -> Unit,
 ) {
     var currentNear by remember { mutableStateOf(near) }
     LaunchedEffect(near) { currentNear = near }
@@ -156,6 +160,13 @@ private fun SearchToolbar(
                     }
                 })
         }
+
+        // Global extended toggle (default off → base books only)
+        CustomToggleableChip(
+            checked = globalExtended,
+            onClick = onGlobalExtendedChange,
+            tooltipText = stringResource(Res.string.search_extended_tooltip)
+        )
     }
 }
 
@@ -367,7 +378,9 @@ private fun SearchResultContentMvi(
                 near = state.near,
                 onSubmit = actions.onSubmit,
                 onNearChange = actions.onNearChange,
-                onQueryChange = actions.onQueryChange
+                onQueryChange = actions.onQueryChange,
+                globalExtended = state.globalExtended,
+                onGlobalExtendedChange = actions.onGlobalExtendedChange
             )
 
             Spacer(Modifier.height(12.dp))

@@ -18,4 +18,6 @@ object SearchStateKeys {
     const val SCROLL_OFFSET = "search.scroll.offset"
     const val ANCHOR_ID = "search.anchor.id"
     const val ANCHOR_INDEX = "search.anchor.index"
+    // Global search scope: when false (default), restrict to base books only; when true, search all books
+    const val GLOBAL_EXTENDED = "search.global.extended"
 }

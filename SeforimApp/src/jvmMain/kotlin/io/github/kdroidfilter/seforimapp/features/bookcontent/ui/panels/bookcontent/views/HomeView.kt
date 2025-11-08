@@ -42,6 +42,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentS
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.*
+import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -232,6 +233,8 @@ fun HomeView(
                             placeholderHints = if (isReferenceMode) bookOnlyHintsGlobal else null,
                             placeholderText = null,
                             submitOnEnterInReference = isReferenceMode,
+                            globalExtended = searchUi.globalExtended,
+                            onGlobalExtendedChange = { searchVm.onGlobalExtendedChange(it) },
                             onPickCategory = { picked ->
                                 // Update VM and reflect breadcrumb in the bar input
                                 searchVm.onPickCategory(picked.category)
@@ -872,6 +875,9 @@ private fun SearchBar(
     submitOnEnterIfSelection: Boolean = false,
     // In reference-mode first field, pressing Enter should also submit when a book is picked
     submitOnEnterInReference: Boolean = false,
+    // Advanced search toggle
+    globalExtended: Boolean = false,
+    onGlobalExtendedChange: (Boolean) -> Unit = {}
 ) {
     // Hints from string resources
     val referenceHints = listOf(
@@ -1035,10 +1041,24 @@ private fun SearchBar(
                 }
             },
             trailingIcon = if (showToggle) ({
-                IntegratedSwitch(
-                    selectedFilter = selectedFilter,
-                    onFilterChange = onFilterChange
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Chip visible seulement en mode TEXT
+                    if (selectedFilter == SearchFilter.TEXT) {
+                        CustomToggleableChip(
+                            checked = globalExtended,
+                            onClick = onGlobalExtendedChange,
+                            tooltipText = stringResource(Res.string.search_extended_tooltip),
+                            withPadding = false
+                        )
+                    }
+                    IntegratedSwitch(
+                        selectedFilter = selectedFilter,
+                        onFilterChange = onFilterChange
+                    )
+                }
             }) else null,
             leadingIcon = {
                 if (!showIcon) return@TextField
@@ -1242,6 +1262,7 @@ private fun SearchLevelCard(
         }
     }
 }
+
 
 @androidx.compose.desktop.ui.tooling.preview.Preview
 @Composable

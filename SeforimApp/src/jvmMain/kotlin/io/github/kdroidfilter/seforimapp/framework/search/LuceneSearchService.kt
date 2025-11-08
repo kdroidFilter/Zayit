@@ -12,7 +12,6 @@ import org.apache.lucene.util.QueryBuilder
 import org.apache.lucene.store.FSDirectory
 import org.apache.lucene.document.IntPoint
 import java.nio.file.Path
-import org.slf4j.LoggerFactory
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
 
@@ -22,8 +21,8 @@ import org.jsoup.safety.Safelist
  */
 class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = StandardAnalyzer()) {
     private val indexRoot: Path = indexDir
-    private val dir = FSDirectory.open(indexDir)
-    private val log = LoggerFactory.getLogger(LuceneSearchService::class.java)
+    // Open Lucene directory lazily to avoid any I/O at app startup
+    private val dir by lazy { FSDirectory.open(indexDir) }
 
 
     private val stdAnalyzer: Analyzer by lazy { StandardAnalyzer() }
@@ -35,16 +34,8 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         }
     }
 
-    init {
-        // Light sanity check that the index can be opened
-        runCatching {
-            DirectoryReader.open(dir).use { r ->
-                log.info("Lucene index opened at {} (docs={})", indexRoot, r.maxDoc())
-            }
-        }.onFailure { e ->
-            log.error("Failed to open Lucene index at {}", indexRoot, e)
-        }
-    }
+    // No eager index opening: the index is stable and does not need
+    // to be checked or analyzed at application startup.
 
     // --- Title suggestions ---
 

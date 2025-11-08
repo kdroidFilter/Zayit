@@ -94,6 +94,19 @@ fun BookTocView(
         }
     }
 
+    // Bring selected TOC entry into view once per book after restore
+    var didAutoCenter by remember(tocEntries) { mutableStateOf(false) }
+    LaunchedEffect(selectedTocOverride ?: selectedTocEntryId, visibleEntries.size, hasRestored, didAutoCenter) {
+        val selId = (selectedTocOverride ?: selectedTocEntryId) ?: return@LaunchedEffect
+        if (!didAutoCenter && hasRestored && visibleEntries.isNotEmpty()) {
+            val idx = visibleEntries.indexOfFirst { it.entry.id == selId }
+            if (idx >= 0) {
+                listState.scrollToItem(idx, 0)
+                didAutoCenter = true
+            }
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize().padding(bottom = 8.dp)) {
         VerticallyScrollableContainer(
             scrollState = listState as ScrollableState,

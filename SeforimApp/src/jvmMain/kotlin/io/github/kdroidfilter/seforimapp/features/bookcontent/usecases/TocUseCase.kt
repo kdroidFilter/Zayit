@@ -159,4 +159,40 @@ class TocUseCase(
             )
         }
     }
+
+    /**
+     * Expand all parent entries from the given TOC entry to the root so that
+     * the branch to this entry is visible in the TOC panel. Children lists
+     * are loaded on demand.
+     */
+    suspend fun expandPathToTocEntry(tocId: Long) {
+        // Build path from leaf to root
+        val path = mutableListOf<TocEntry>()
+        var currentId: Long? = tocId
+        var guard = 0
+        while (currentId != null && guard++ < 512) {
+            val entry = runCatching { repository.getTocEntry(currentId) }.getOrNull() ?: break
+            path += entry
+            currentId = entry.parentId
+        }
+        if (path.isEmpty()) return
+        val ordered = path.asReversed()
+        // Ensure children for each ancestor are loaded and mark as expanded
+        for ((idx, e) in ordered.withIndex()) {
+            // Skip the last element (leaf) for children loading; expanding its parent is enough
+            if (e.hasChildren && !stateManager.state.first().toc.children.containsKey(e.id)) {
+                runCatching { loadTocChildren(e.id) }
+            }
+            // Expand all ancestors (and optionally the leaf if it has children)
+            stateManager.updateToc(save = false) {
+                copy(expandedEntries = expandedEntries + e.id)
+            }
+        }
+    }
+
+    /** Convenience: expand path to the TOC entry associated with a line. */
+    suspend fun expandPathToLine(lineId: Long) {
+        val tocId = runCatching { repository.getTocEntryIdForLine(lineId) }.getOrNull() ?: return
+        expandPathToTocEntry(tocId)
+    }
 }

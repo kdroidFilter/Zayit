@@ -134,6 +134,19 @@ fun CategoryBookTreeView(
         }
     }
 
+    // 3) After restoration, if a book is selected, ensure it's brought into view once.
+    var didAutoCenter by remember(navigationState.selectedBook?.id) { mutableStateOf(false) }
+    LaunchedEffect(navigationState.selectedBook?.id, treeItems.size, hasRestored, didAutoCenter) {
+        val selId = navigationState.selectedBook?.id ?: return@LaunchedEffect
+        if (!didAutoCenter && hasRestored && treeItems.isNotEmpty()) {
+            val idx = treeItems.indexOfFirst { it.id == "book_${'$'}selId" }
+            if (idx >= 0) {
+                listState.scrollToItem(idx, 0)
+                didAutoCenter = true
+            }
+        }
+    }
+
 
     /* ---------------------------------------------------------------------
      * UI.

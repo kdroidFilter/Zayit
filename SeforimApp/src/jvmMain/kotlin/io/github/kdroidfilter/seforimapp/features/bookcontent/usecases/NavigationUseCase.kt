@@ -182,4 +182,51 @@ class NavigationUseCase(
             copy(selectedBook = book)
         }
     }
+
+    /**
+     * Expand the categories along the path to the given book so that the
+     * tree shows the selected book in its category branch. Loads children
+     * lists for each ancestor, and ensures the leaf category's books are
+     * present so the book row can render.
+     */
+    suspend fun expandPathToBookId(bookId: Long) {
+        val book = runCatching { repository.getBook(bookId) }.getOrNull() ?: return
+        expandPathToBook(book)
+    }
+
+    suspend fun expandPathToBook(book: Book) {
+        val leafCatId = book.categoryId
+        // Build path from leaf to root
+        val path = mutableListOf<Category>()
+        var currentId: Long? = leafCatId
+        var guard = 0
+        while (currentId != null && guard++ < 512) {
+            val cat = runCatching { repository.getCategory(currentId) }.getOrNull() ?: break
+            path += cat
+            currentId = cat.parentId
+        }
+        if (path.isEmpty()) return
+        val orderedPath = path.asReversed()
+
+        // Load children for each ancestor in the path so the branch can be displayed
+        val childrenDelta = mutableMapOf<Long, List<Category>>()
+        for (cat in orderedPath) {
+            val children = runCatching { repository.getCategoryChildren(cat.id) }.getOrDefault(emptyList())
+            if (children.isNotEmpty()) childrenDelta[cat.id] = children
+        }
+        // Ensure books of the leaf category are present
+        val leafBooks = runCatching { repository.getBooksByCategory(leafCatId) }.getOrDefault(emptyList())
+
+        // Apply state: expand all categories along the path, populate children & leaf books,
+        // and set the selected category to the leaf.
+        val expandIds = orderedPath.map { it.id }.toSet()
+        stateManager.updateNavigation {
+            copy(
+                expandedCategories = expandedCategories + expandIds,
+                categoryChildren = categoryChildren + childrenDelta,
+                booksInCategory = booksInCategory + leafBooks,
+                selectedCategory = orderedPath.last()
+            )
+        }
+    }
 }

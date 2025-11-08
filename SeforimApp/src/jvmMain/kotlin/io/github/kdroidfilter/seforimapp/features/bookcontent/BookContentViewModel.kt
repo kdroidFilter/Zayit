@@ -281,6 +281,8 @@ class BookContentViewModel(
         try {
             repository.getBook(bookId)?.let { book ->
                 navigationUseCase.selectBook(book)
+                // Expand navigation tree up to the selected book's category
+                runCatching { navigationUseCase.expandPathToBook(book) }
                 // Afficher le TOC pour certaines origines d'ouverture (type-safe)
                 val openSource: io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource? =
                     tabStateManager.getState(currentTabId, StateKeys.OPEN_SOURCE)
@@ -306,6 +308,8 @@ class BookContentViewModel(
                         stateManager.updateContent {
                             copy(scrollToLineTimestamp = System.currentTimeMillis())
                         }
+                        // Expand TOC to the line's TOC entry so the branch is visible
+                        runCatching { tocUseCase.expandPathToLine(line.id) }
                     }
                 } else {
                     loadBook(book)
@@ -335,6 +339,8 @@ class BookContentViewModel(
         val previousBook = stateManager.state.value.navigation.selectedBook
 
         navigationUseCase.selectBook(book)
+        // Expand navigation tree up to the selected book's category
+        viewModelScope.launch { runCatching { navigationUseCase.expandPathToBook(book) } }
 
         // Afficher automatiquement le TOC lors de la première sélection d'un livre si caché
         if (previousBook == null && !stateManager.state.value.toc.isVisible) {
@@ -424,6 +430,8 @@ class BookContentViewModel(
                 // select it to update TOC selection and breadcrumbs, and request a top-anchor alignment.
                 if (resolvedInitialLineId != null && !shouldUseAnchor && forceAnchorId == null && state.content.selectedLine == null) {
                     loadAndSelectLine(resolvedInitialLineId)
+                    // Expand TOC path to the resolved initial line (first entry/leaf)
+                    runCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
                 }
             } finally {
                 stateManager.setLoading(false)

@@ -43,6 +43,7 @@ import androidx.paging.compose.itemKey
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
+import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOriginal
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -320,7 +321,7 @@ fun BookContentView(
             i = (i + step + size) % size
             val line = snapshot[i] ?: continue
             val text = buildAnnotatedFromHtml(line.content, textSize).text
-            val start = text.indexOf(query, ignoreCase = true)
+            val start = findAllMatchesOriginal(text, query).firstOrNull()?.first ?: -1
             if (start >= 0) {
                 currentHitLineIndex = i
                 currentMatchLineId = line.id
@@ -427,11 +428,7 @@ fun BookContentView(
                     for (ln in snapshotItems) {
                         if (ln == null) continue
                         val text = try { buildAnnotatedFromHtml(ln.content, textSize).text } catch (_: Throwable) { ln.content }
-                        var idx = text.indexOf(queryText, ignoreCase = true)
-                        while (idx >= 0) {
-                            total += 1
-                            idx = text.indexOf(queryText, startIndex = idx + queryText.length, ignoreCase = true)
-                        }
+                        total += findAllMatchesOriginal(text, queryText).size
                     }
                     total
                 }

@@ -3,6 +3,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -17,19 +18,18 @@ jobs:
           - os: macos-latest  # runner Apple Silicon (ARM64)
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-osx-aarch64-b895.147.pkg"
             jdk_arch: aarch64
-          - os: macos-latest  # runner Apple Silicon (ARM64) with jbr X64
+          - os: macos-13      # runner MacIntel (x64)
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-osx-x64-b895.147.pkg"
             jdk_arch: x64
 
     steps:
-      # 1) Checkout with tags and submodules
       - name: Checkout source (with submodules)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0          # ensure tags are available
-          submodules: recursive   # pull submodules (including nested)
+          fetch-depth: 0
+          submodules: recursive
 
-      # 2) Install JetBrains JDK (JBR 21.0.9 + JCEF) from provided URLs per-OS and set JAVA_HOME
+      # Linux JDK Install
       - name: Install JBR on Linux
         if: runner.os == 'Linux'
         shell: bash
@@ -38,11 +38,11 @@ jobs:
           curl -L -o jbr.tar.gz "${{ matrix.jdk_url }}"
           mkdir -p "$RUNNER_TEMP/jbr"
           tar -xzf jbr.tar.gz -C "$RUNNER_TEMP/jbr"
-          # Pick the extracted JBR directory (not the container folder)
           JBR_DIR=$(find "$RUNNER_TEMP/jbr" -mindepth 1 -maxdepth 1 -type d -name "jbr*" | head -n 1)
           echo "JAVA_HOME=$JBR_DIR" >> "$GITHUB_ENV"
           echo "$JBR_DIR/bin" >> "$GITHUB_PATH"
 
+      # Windows JDK Install
       - name: Install JBR on Windows
         if: runner.os == 'Windows'
         shell: pwsh
@@ -54,6 +54,7 @@ jobs:
           "$([string]::Format('JAVA_HOME={0}', $jbrDir.FullName))" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "$($jbrDir.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
+      # macOS JDK Install
       - name: Install JBR on macOS
         if: runner.os == 'macOS'
         shell: bash
@@ -65,13 +66,13 @@ jobs:
           echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
           echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
 
-      # 3) Configure Gradle (cache + wrapper)
+      # Gradle Setup
       - name: Set up Gradle
         uses: gradle/gradle-build-action@v2
         with:
           gradle-version: '8.14'
 
-      # 4) Build per-OS packages
+      # Builds
       - name: Build Linux .deb
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -90,7 +91,7 @@ jobs:
           chmod +x ./gradlew
           ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleasePkg
 
-      # 5) Upload artifacts
+      # Upload Artifacts
       - name: Upload Linux .deb
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
@@ -127,7 +128,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 1) Download artifacts
+      # Download Artifacts
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
@@ -144,14 +145,22 @@ jobs:
           pattern: macos-pkg-* 
           merge-multiple: true
 
-      # 2) Inspect
+      # List files
       - name: List downloaded files
         run: ls -R
 
-      # 3) Create GitHub Release with the packages
-      - name: Create GitHub Release
+      # Get the latest tag (used in manual workflow dispatch)
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          tag=$(git describe --tags --abbrev=0)
+          echo "TAG=$tag" >> $GITHUB_ENV
+
+      # Upload to latest release (attach to the correct tag)
+      - name: Upload to Latest Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ env.TAG }}
           files: |
             *.deb
             *.msi

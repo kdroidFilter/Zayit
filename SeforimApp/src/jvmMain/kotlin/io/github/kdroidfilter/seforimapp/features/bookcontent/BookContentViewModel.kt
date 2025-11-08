@@ -127,7 +127,8 @@ class BookContentViewModel(
                             tabStateManager.getState(currentTabId, StateKeys.OPEN_SOURCE)
                         if (openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE ||
                             openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.CATEGORY_TREE_NEW_TAB ||
-                            openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.SEARCH_RESULT) {
+                            openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.SEARCH_RESULT ||
+                            openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.COMMENTARY_OR_TARGUM) {
                             ensureTocVisibleOnFirstOpen()
                         }
                         loadBookData(restoredBook)
@@ -285,7 +286,8 @@ class BookContentViewModel(
                     tabStateManager.getState(currentTabId, StateKeys.OPEN_SOURCE)
                 if (openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE ||
                     openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.CATEGORY_TREE_NEW_TAB ||
-                    openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.SEARCH_RESULT) {
+                    openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.SEARCH_RESULT ||
+                    openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.COMMENTARY_OR_TARGUM) {
                     ensureTocVisibleOnFirstOpen()
                 }
 
@@ -499,6 +501,13 @@ class BookContentViewModel(
         }
         // Optional: indicate the initial anchor for a center scroll upon loading
         tabStateManager.saveState(newTabId, StateKeys.CONTENT_ANCHOR_ID, lineId)
+
+        // Hint BookContent to show TOC when opened from Commentary/Targum panels
+        tabStateManager.saveState(
+            newTabId,
+            StateKeys.OPEN_SOURCE,
+            io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.COMMENTARY_OR_TARGUM
+        )
 
         tabsViewModel.openTab(
             TabsDestination.BookContent(

@@ -48,6 +48,9 @@
 
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>
+    <!-- Shortcut hints (OS-specific) for Settings action -->
+    <string name="shortcut_settings_mac">,+⌘</string>
+    <string name="shortcut_settings_windows">,+Ctrl</string>
     <string name="settings_category_general">כללי</string>
     <string name="settings_category_profile">פרופיל</string>
     <string name="settings_category_region">אזור</string>

@@ -184,6 +184,10 @@ fun main() {
                                     } else {
                                         false
                                     }
+                                } else if (isCtrlOrCmd && keyEvent.key == Key.Comma) {
+                                    // Open settings with Cmd+, or Ctrl+,
+                                    appGraph.settingsWindowViewModel.onEvent(io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents.onOpen)
+                                    true
                                 } else {
                                     processKeyShortcuts(
                                         keyEvent = keyEvent,
@@ -259,6 +263,11 @@ fun main() {
                                                 tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
                                                 true
                                             } else false
+                                        }
+                                        // Ctrl/Cmd + Comma => open settings
+                                        isCtrlOrCmd && keyEvent.key == Key.Comma -> {
+                                            appGraph.settingsWindowViewModel.onEvent(io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents.onOpen)
+                                            true
                                         }
                                         else -> false
                                     }

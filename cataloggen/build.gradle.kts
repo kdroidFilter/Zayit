@@ -8,7 +8,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.squareup:kotlinpoet:1.15.3")
+    implementation(libs.kotlinpoet)
     implementation(libs.jdbc.driver)
     implementation(libs.sqlite.driver)
     implementation("io.github.kdroidfilter.seforimlibrary:dao")

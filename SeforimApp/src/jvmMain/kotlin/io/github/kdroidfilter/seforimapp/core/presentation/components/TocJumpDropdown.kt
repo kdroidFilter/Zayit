@@ -2,35 +2,26 @@ package io.github.kdroidfilter.seforimapp.core.presentation.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
-import kotlinx.coroutines.launch
-import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 
 /** Quick TOC jump menu for a specific book. */
@@ -44,6 +35,7 @@ fun TocJumpDropdown(
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier,
     popupWidthMultiplier: Float = 1.5f,
+    minPopupHeight: Dp = Dp.Unspecified,
     maxPopupHeight: Dp = 360.dp,
     prepareItems: (suspend () -> List<TocQuickLink>)? = null,
 ) {
@@ -53,6 +45,7 @@ fun TocJumpDropdown(
     DropdownButton(
         modifier = modifier,
         popupWidthMultiplier = popupWidthMultiplier,
+        minPopupHeight = minPopupHeight,
         maxPopupHeight = maxPopupHeight,
         content = { Text(title) },
         popupContent = { close ->
@@ -109,6 +102,7 @@ fun TocJumpDropdownByIds(
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier,
     popupWidthMultiplier: Float = 1.5f,
+    minPopupHeight: Dp = Dp.Unspecified,
     maxPopupHeight: Dp = 360.dp,
 ) {
     val loader: suspend () -> List<TocQuickLink> = {
@@ -126,6 +120,7 @@ fun TocJumpDropdownByIds(
         onEvent = onEvent,
         modifier = modifier,
         popupWidthMultiplier = popupWidthMultiplier,
+        minPopupHeight = minPopupHeight,
         maxPopupHeight = maxPopupHeight,
         prepareItems = loader
     )
@@ -138,6 +133,7 @@ fun TocJumpDropdownByIds(
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier,
     popupWidthMultiplier: Float = 1.5f,
+    minPopupHeight: Dp = Dp.Unspecified,
     maxPopupHeight: Dp = 360.dp,
 ) {
     val t = PrecomputedCatalog.BOOK_TITLES[bookId]
@@ -149,6 +145,7 @@ fun TocJumpDropdownByIds(
             onEvent = onEvent,
             modifier = modifier,
             popupWidthMultiplier = popupWidthMultiplier,
+            minPopupHeight = minPopupHeight,
             maxPopupHeight = maxPopupHeight
         )
     }

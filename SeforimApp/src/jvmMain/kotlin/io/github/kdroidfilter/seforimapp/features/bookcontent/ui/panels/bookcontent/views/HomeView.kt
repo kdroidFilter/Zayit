@@ -18,8 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -27,24 +25,28 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.*
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.zIndex
+import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
+import io.github.kdroidfilter.seforimapp.core.presentation.components.*
+import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.*
-import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -58,24 +60,12 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.Outline
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.theme.comboBoxStyle
 import org.jetbrains.skiko.Cursor
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.zIndex
-import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
-import io.github.kdroidfilter.seforimapp.core.presentation.components.DropdownButton
-import io.github.kdroidfilter.seforimapp.core.presentation.components.TocJumpDropdownByIds
-import org.jetbrains.jewel.ui.Orientation
 import seforimapp.seforimapp.generated.resources.*
-import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 import kotlin.math.roundToInt
+import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 
 // SearchFilter moved to features.search.SearchFilter per architecture guidelines.
 
@@ -110,33 +100,14 @@ fun HomeView(
     Box(modifier = Modifier.fillMaxSize().zIndex(1f).padding(16.dp), contentAlignment = Alignment.TopStart) {
 
         Row (Modifier.widthIn(min = 125.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CategoryDropdown(categoryId = 2L, maxPopupHeight = 160.dp, onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) })
-            CategoryDropdown(categoryId = 3L, onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) })
-            CategoryDropdown(categoryId = 4L, onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) })
-            MultiCategoryDropdown(
-                labelCategoryId = 5L,
-                bookCategoryIds = listOf(6L, 7L, 8L, 9L, 10L, 11L),
-                onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) }
-            )
-            MultiCategoryDropdown(
-                labelCategoryId = 12L,
-                bookCategoryIds = listOf(13L, 14L, 15L, 16L, 17L, 18L),
-                popupWidthMultiplier = 1.1f,
-                onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) }
-            )
-            MultiCategoryDropdown(
-                labelCategoryId = 19L,
-                bookCategoryIds = listOf(20L, 21L, 22L, 23L, 24L),
-                popupWidthMultiplier = 1.1f,
-                onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) }
-            )
-            CategoryDropdown(categoryId = 60L, maxPopupHeight = 120.dp, onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) })
-            TocJumpDropdownByIds(
-                bookId = 410L,
-                tocTextIds = listOf(3455L, 4098L, 4099L, 4100L),
-                onEvent = onEvent
-            )
-
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.TORAH, onEvent = onEvent, maxPopupHeight = 120.dp, popupWidthMultiplier = 1.1f)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.NEVIIM, onEvent = onEvent, popupWidthMultiplier = 1.2f )
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.KETUVIM, onEvent = onEvent, popupWidthMultiplier = 1.3f)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.MISHNA, onEvent = onEvent)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.BAVLI, onEvent = onEvent, popupWidthMultiplier = 1.1f)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.YERUSHALMI, onEvent = onEvent, popupWidthMultiplier = 1.1f)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.TUR_QUICK_LINKS, onEvent = onEvent, maxPopupHeight = 130.dp)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.SHULCHAN_ARUCH, onEvent = onEvent, maxPopupHeight = 130.dp, popupWidthMultiplier = 1.1f)
         }
     }
 
@@ -385,140 +356,6 @@ fun HomeView(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun CategoryDropdown(
-    categoryId: Long,
-    onBookSelected: (BookModel) -> Unit,
-    maxPopupHeight: Dp = 360.dp,
-    modifier: Modifier = Modifier
-) {
-    val repository = LocalAppGraph.current.repository
-    val categoryTitle = remember { PrecomputedCatalog.CATEGORY_TITLES[categoryId] }
-    val precomputedBooks = remember { PrecomputedCatalog.CATEGORY_BOOKS[categoryId] }
-
-    LaunchedEffect(Unit) { }
-    val categoryScope = rememberCoroutineScope()
-
-    if (categoryTitle != null && !precomputedBooks.isNullOrEmpty()) {
-        DropdownButton(
-            modifier = modifier.widthIn(max = 280.dp),
-            popupWidthMultiplier = 1.5f,
-            maxPopupHeight = maxPopupHeight,
-            content = { Text(text = categoryTitle) },
-            popupContent = { close ->
-                precomputedBooks!!.forEach { bookRef ->
-                    val hoverSource = remember { MutableInteractionSource() }
-                    val isHovered by hoverSource.collectIsHoveredAsState()
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (isHovered) AppColors.HOVER_HIGHLIGHT else Color.Transparent)
-                            .clickable(
-                                indication = null,
-                                interactionSource = hoverSource
-                            ) {
-                                close()
-                                categoryScope.launch {
-                                    val b = runCatching { repository.getBook(bookRef.id) }.getOrNull()
-                                    if (b != null) onBookSelected(b)
-                                }
-                            }
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                            .pointerHoverIcon(PointerIcon.Hand),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = bookRef.title,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            fontSize = 13.sp
-                        )
-                    }
-                }
-            }
-        )
-    }
-}
-
-
-@Composable
-private fun MultiCategoryDropdown(
-    labelCategoryId: Long,
-    bookCategoryIds: List<Long>,
-    onBookSelected: (BookModel) -> Unit,
-    popupWidthMultiplier : Float = 1.5f,
-    modifier: Modifier = Modifier
-) {
-    val repository = LocalAppGraph.current.repository
-    val labelTitle = remember { PrecomputedCatalog.CATEGORY_TITLES[labelCategoryId] }
-    val sections = remember {
-        bookCategoryIds.mapNotNull { cid ->
-            val t = PrecomputedCatalog.CATEGORY_TITLES[cid]
-            val list = PrecomputedCatalog.CATEGORY_BOOKS[cid]
-            if (t != null && !list.isNullOrEmpty()) t to list else null
-        }
-    }
-
-    LaunchedEffect(Unit) { }
-    val multiScope = rememberCoroutineScope()
-
-    if (labelTitle != null && sections.any { it.second.isNotEmpty() }) {
-        DropdownButton(
-            modifier = modifier.widthIn(max = 280.dp),
-            popupWidthMultiplier = popupWidthMultiplier,
-            content = { Text(text = labelTitle) },
-            popupContent = { close ->
-                sections.forEachIndexed { index, (catTitle, books) ->
-                    if (books.isEmpty()) return@forEachIndexed
-                    if (index > 0) {
-                        Divider(orientation = Orientation.Horizontal)
-                    }
-                    Text(
-                        text = catTitle,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = JewelTheme.globalColors.text.disabled
-                    )
-                    books.forEach { bookRef ->
-                        val hoverSource = remember { MutableInteractionSource() }
-                        val isHovered by hoverSource.collectIsHoveredAsState()
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(if (isHovered) AppColors.HOVER_HIGHLIGHT else Color.Transparent)
-                                .clickable(
-                                    indication = null,
-                                    interactionSource = hoverSource
-                                ) {
-                                    close()
-                                    multiScope.launch {
-                                        val b = runCatching { repository.getBook(bookRef.id) }.getOrNull()
-                                        if (b != null) onBookSelected(b)
-                                    }
-                                }
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                                .pointerHoverIcon(PointerIcon.Hand),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = bookRef.title,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                fontSize = 13.sp
-                            )
-                        }
-                    }
-                }
-            }
-        )
     }
 }
 

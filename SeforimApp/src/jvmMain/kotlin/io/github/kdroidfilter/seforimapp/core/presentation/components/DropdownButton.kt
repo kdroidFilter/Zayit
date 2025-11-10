@@ -1,38 +1,24 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.components
 
-import androidx.compose.foundation.VerticalScrollbar
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.round
+import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.component.Icon
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.LayoutDirection
 
 /**
  * DropdownButton is a convenience composable inspired by Jewel's split buttons.
@@ -47,6 +33,7 @@ fun DropdownButton(
     enabled: Boolean = true,
     textStyle: TextStyle = JewelTheme.defaultTextStyle,
     maxPopupHeight: Dp = 360.dp,
+    minPopupHeight: Dp = Dp.Unspecified,
     popupWidthMatchButton: Boolean = true,
     popupWidthMultiplier: Float = 1f,
     showScrollbar: Boolean = true,
@@ -116,7 +103,7 @@ fun DropdownButton(
                 Box(
                     Modifier
                         .then(if (popupWidthMatchButton) Modifier.width(widthDp) else Modifier)
-                        .heightIn(max = maxPopupHeight)
+                        .requiredHeightIn(min = minPopupHeight, max = maxPopupHeight)
                         .clip(shape)
                         .background(JewelTheme.globalColors.panelBackground)
                         .border(1.dp, JewelTheme.globalColors.borders.normal, shape)

@@ -218,6 +218,13 @@ class BookContentViewModel(
                     }
                 }
 
+                is BookContentEvent.OpenBookById -> {
+                    val book = repository.getBook(event.bookId)
+                    if (book != null) {
+                        loadBook(book)
+                    }
+                }
+
                 BookContentEvent.NavigateToPreviousLine -> {
                     val line = contentUseCase.navigateToPreviousLine()
                     if (line != null) {

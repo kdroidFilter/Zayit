@@ -39,6 +39,7 @@ plugins {
 }
 
 include(":SeforimApp")
+include(":cataloggen")
 
 include(":jewel")
 include((":htmlparser"))

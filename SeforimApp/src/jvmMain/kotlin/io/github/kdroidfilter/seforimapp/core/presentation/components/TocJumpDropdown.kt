@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
-import io.github.kdroidfilter.seforimapp.core.presentation.cache.BookTitleCache
+import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
@@ -77,10 +77,12 @@ fun TocJumpDropdown(
                             indication = null,
                             interactionSource = hoverSource
                         ) {
-                            scope.launch {
-                                val lineId = quick.firstLineId ?: repo.getLineIdsForTocEntry(quick.tocId).firstOrNull() ?: return@launch
-                                close()
+                            close()
+                            val lineId = quick.firstLineId
+                            if (lineId != null) {
                                 onEvent(BookContentEvent.OpenBookAtLine(bookId = bookId, lineId = lineId))
+                            } else {
+                                onEvent(BookContentEvent.OpenBookById(bookId))
                             }
                         }
                         .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -109,16 +111,11 @@ fun TocJumpDropdownByIds(
     popupWidthMultiplier: Float = 1.5f,
     maxPopupHeight: Dp = 360.dp,
 ) {
-    val repo = LocalAppGraph.current.repository
     val loader: suspend () -> List<TocQuickLink> = {
-        val bookToc = runCatching { repo.getBookToc(bookId) }.getOrNull().orEmpty()
-        val byTextId = bookToc.associateBy { it.textId }
-        val mappings = runCatching { repo.getLineTocMappingsForBook(bookId) }.getOrNull().orEmpty()
-        val firstLineByToc = HashMap<Long, Long>()
-        for (m in mappings) if (!firstLineByToc.containsKey(m.tocEntryId)) firstLineByToc[m.tocEntryId] = m.lineId
-        tocTextIds.mapNotNull { textId ->
-            val e = byTextId[textId]
-            e?.let { if (it.text.isNotBlank()) TocQuickLink(it.text, it.id, firstLineByToc[it.id]) else null }
+        val bookMap = PrecomputedCatalog.TOC_BY_TOC_TEXT_ID[bookId].orEmpty()
+        tocTextIds.mapNotNull { tx ->
+            val ql = bookMap[tx] ?: return@mapNotNull null
+            TocQuickLink(ql.label, ql.tocEntryId, ql.firstLineId)
         }
     }
 
@@ -143,19 +140,7 @@ fun TocJumpDropdownByIds(
     popupWidthMultiplier: Float = 1.5f,
     maxPopupHeight: Dp = 360.dp,
 ) {
-    val repo = LocalAppGraph.current.repository
-    var title by androidx.compose.runtime.remember { mutableStateOf<String?>(BookTitleCache.get(bookId)) }
-    androidx.compose.runtime.LaunchedEffect(bookId) {
-        if (title == null) {
-            val book = runCatching { repo.getBook(bookId) }.getOrNull()
-            val resolved = book?.title?.takeIf { it.isNotBlank() }
-            if (resolved != null) {
-                BookTitleCache.put(bookId, resolved)
-                title = resolved
-            }
-        }
-    }
-    val t = title
+    val t = PrecomputedCatalog.BOOK_TITLES[bookId]
     if (t != null) {
         TocJumpDropdownByIds(
             title = t,

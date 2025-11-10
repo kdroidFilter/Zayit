@@ -69,12 +69,11 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.zIndex
+import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
 import io.github.kdroidfilter.seforimapp.core.presentation.components.DropdownButton
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TocJumpDropdownByIds
 import org.jetbrains.jewel.ui.Orientation
 import seforimapp.seforimapp.generated.resources.*
-import io.github.kdroidfilter.seforimapp.core.presentation.cache.BookTitleCache
-import io.github.kdroidfilter.seforimapp.core.presentation.cache.CategoryTitleCache
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 import kotlin.math.roundToInt
 
@@ -397,34 +396,20 @@ private fun CategoryDropdown(
     modifier: Modifier = Modifier
 ) {
     val repository = LocalAppGraph.current.repository
-    var books by remember { mutableStateOf<List<BookModel>?>(null) }
-    var category by remember { mutableStateOf<Category?>(null) }
-    var categoryTitle by remember { mutableStateOf(CategoryTitleCache.get(categoryId)) }
+    val categoryTitle = remember { PrecomputedCatalog.CATEGORY_TITLES[categoryId] }
+    val precomputedBooks = remember { PrecomputedCatalog.CATEGORY_BOOKS[categoryId] }
 
-    LaunchedEffect(categoryId) {
-        if (categoryTitle == null) {
-            val catT = runCatching { repository.getCategory(categoryId) }.getOrNull()
-            category = catT
-            catT?.title?.let { CategoryTitleCache.put(categoryId, it); categoryTitle = it }
-        } else {
-            if (category == null) category = runCatching { repository.getCategory(categoryId) }.getOrNull()
-        }
-    }
+    LaunchedEffect(Unit) { }
+    val categoryScope = rememberCoroutineScope()
 
-    if (categoryTitle != null || category != null) {
+    if (categoryTitle != null && !precomputedBooks.isNullOrEmpty()) {
         DropdownButton(
             modifier = modifier.widthIn(max = 280.dp),
             popupWidthMultiplier = 1.5f,
             maxPopupHeight = maxPopupHeight,
-            content = { Text(text = categoryTitle ?: category!!.title) },
+            content = { Text(text = categoryTitle) },
             popupContent = { close ->
-                if (books == null) {
-                    LaunchedEffect(Unit) {
-                        books = runCatching { repository.getBooksByCategory(categoryId) }.getOrNull().orEmpty()
-                    }
-                }
-                val list = books.orEmpty()
-                list.forEach { book ->
+                precomputedBooks!!.forEach { bookRef ->
                     val hoverSource = remember { MutableInteractionSource() }
                     val isHovered by hoverSource.collectIsHoveredAsState()
                     Row(
@@ -437,14 +422,17 @@ private fun CategoryDropdown(
                                 interactionSource = hoverSource
                             ) {
                                 close()
-                                onBookSelected(book)
+                                categoryScope.launch {
+                                    val b = runCatching { repository.getBook(bookRef.id) }.getOrNull()
+                                    if (b != null) onBookSelected(b)
+                                }
                             }
                             .padding(horizontal = 12.dp, vertical = 8.dp)
                             .pointerHoverIcon(PointerIcon.Hand),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val displayTitle = remember(category!!.title, book.title) {
-                            stripLabelPrefix(category!!.title, book.title)
+                        val displayTitle = remember(categoryTitle, bookRef.title) {
+                            stripLabelPrefix(categoryTitle, bookRef.title)
                         }
                         Text(
                             text = displayTitle,
@@ -459,6 +447,7 @@ private fun CategoryDropdown(
     }
 }
 
+
 @Composable
 private fun MultiCategoryDropdown(
     labelCategoryId: Long,
@@ -468,39 +457,25 @@ private fun MultiCategoryDropdown(
     modifier: Modifier = Modifier
 ) {
     val repository = LocalAppGraph.current.repository
-    var labelCategory by remember { mutableStateOf<Category?>(null) }
-    var labelTitle by remember { mutableStateOf(CategoryTitleCache.get(labelCategoryId)) }
-    var sections by remember { mutableStateOf<List<Pair<String, List<BookModel>>>?>(null) }
-
-    LaunchedEffect(labelCategoryId) {
-        if (labelTitle == null) {
-            val label = runCatching { repository.getCategory(labelCategoryId) }.getOrNull()
-            labelCategory = label
-            label?.title?.let { CategoryTitleCache.put(labelCategoryId, it); labelTitle = it }
-        } else if (labelCategory == null) {
-            labelCategory = runCatching { repository.getCategory(labelCategoryId) }.getOrNull()
+    val labelTitle = remember { PrecomputedCatalog.CATEGORY_TITLES[labelCategoryId] }
+    val sections = remember {
+        bookCategoryIds.mapNotNull { cid ->
+            val t = PrecomputedCatalog.CATEGORY_TITLES[cid]
+            val list = PrecomputedCatalog.CATEGORY_BOOKS[cid]
+            if (t != null && !list.isNullOrEmpty()) t to list else null
         }
     }
 
-    if (labelTitle != null || labelCategory != null) {
+    LaunchedEffect(Unit) { }
+    val multiScope = rememberCoroutineScope()
+
+    if (labelTitle != null && sections.any { it.second.isNotEmpty() }) {
         DropdownButton(
             modifier = modifier.widthIn(max = 280.dp),
             popupWidthMultiplier = popupWidthMultiplier,
-            content = { Text(text = labelTitle ?: labelCategory!!.title) },
+            content = { Text(text = labelTitle) },
             popupContent = { close ->
-                if (sections == null) {
-                    LaunchedEffect(Unit) {
-                        val built = mutableListOf<Pair<String, List<BookModel>>>()
-                        for (cid in bookCategoryIds) {
-                            val title = CategoryTitleCache.get(cid) ?: runCatching { repository.getCategory(cid) }.getOrNull()?.title?.also { CategoryTitleCache.put(cid, it) }
-                            val list = runCatching { repository.getBooksByCategory(cid) }.getOrNull().orEmpty()
-                            if (title != null) built += (title to list)
-                        }
-                        sections = built
-                    }
-                }
-                val sec = sections.orEmpty()
-                sec.forEachIndexed { index, (catTitle, books) ->
+                sections.forEachIndexed { index, (catTitle, books) ->
                     if (books.isEmpty()) return@forEachIndexed
                     if (index > 0) {
                         Divider(orientation = Orientation.Horizontal)
@@ -514,7 +489,7 @@ private fun MultiCategoryDropdown(
                         fontWeight = FontWeight.SemiBold,
                         color = JewelTheme.globalColors.text.disabled
                     )
-                    books.forEach { book ->
+                    books.forEach { bookRef ->
                         val hoverSource = remember { MutableInteractionSource() }
                         val isHovered by hoverSource.collectIsHoveredAsState()
                         Row(
@@ -527,15 +502,17 @@ private fun MultiCategoryDropdown(
                                     interactionSource = hoverSource
                                 ) {
                                     close()
-                                    onBookSelected(book)
+                                    multiScope.launch {
+                                        val b = runCatching { repository.getBook(bookRef.id) }.getOrNull()
+                                        if (b != null) onBookSelected(b)
+                                    }
                                 }
                                 .padding(horizontal = 12.dp, vertical = 8.dp)
                                 .pointerHoverIcon(PointerIcon.Hand),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val labelTitle = labelCategory!!.title
-                            val displayTitle = remember(labelTitle, book.title) {
-                                stripLabelPrefix(labelTitle, book.title)
+                            val displayTitle = remember(labelTitle, bookRef.title) {
+                                stripLabelPrefix(labelTitle ?: "", bookRef.title)
                             }
                             Text(
                                 text = displayTitle,

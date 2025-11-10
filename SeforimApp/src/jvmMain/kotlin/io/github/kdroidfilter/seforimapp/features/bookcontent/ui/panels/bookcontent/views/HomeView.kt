@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -43,6 +44,7 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.*
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -66,6 +68,9 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.zIndex
+import io.github.kdroidfilter.seforimapp.core.presentation.components.DropdownButton
+import org.jetbrains.jewel.ui.Orientation
 import seforimapp.seforimapp.generated.resources.*
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 import kotlin.math.roundToInt
@@ -100,6 +105,34 @@ fun HomeView(
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    Box(modifier = Modifier.fillMaxSize().zIndex(1f).padding(16.dp), contentAlignment = Alignment.TopStart) {
+
+        Row (Modifier.widthIn(min = 125.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CategoryDropdown(categoryId = 2L, maxPopupHeight = 160.dp, onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) })
+            CategoryDropdown(categoryId = 3L, onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) })
+            CategoryDropdown(categoryId = 4L, onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) })
+            MultiCategoryDropdown(
+                labelCategoryId = 5L,
+                bookCategoryIds = listOf(6L, 7L, 8L, 9L, 10L, 11L),
+                onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) }
+            )
+            MultiCategoryDropdown(
+                labelCategoryId = 12L,
+                bookCategoryIds = listOf(13L, 14L, 15L, 16L, 17L, 18L),
+                popupWidthMultiplier = 1.1f,
+                onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) }
+            )
+            MultiCategoryDropdown(
+                labelCategoryId = 19L,
+                bookCategoryIds = listOf(20L, 21L, 22L, 23L, 24L),
+                popupWidthMultiplier = 1.1f,
+                onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) }
+            )
+            CategoryDropdown(categoryId = 60L, maxPopupHeight = 120.dp, onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) })
+
+        }
+    }
+
     val listState = rememberLazyListState()
     VerticallyScrollableContainer(
         scrollState = listState as ScrollableState,
@@ -349,12 +382,171 @@ fun HomeView(
 }
 
 @Composable
+private fun CategoryDropdown(
+    categoryId: Long,
+    onBookSelected: (BookModel) -> Unit,
+    maxPopupHeight: Dp = 360.dp,
+    modifier: Modifier = Modifier
+) {
+    val repository = LocalAppGraph.current.repository
+    var books by remember { mutableStateOf<List<BookModel>>(emptyList()) }
+    var category by remember { mutableStateOf<Category?>(null) }
+
+    LaunchedEffect(categoryId) {
+        val cat = runCatching { repository.getCategory(categoryId) }.getOrNull()
+        val loaded = runCatching { repository.getBooksByCategory(categoryId) }.getOrNull().orEmpty()
+        category = cat
+        books = loaded
+    }
+
+    if (category != null && books.isNotEmpty()) {
+        DropdownButton(
+            modifier = modifier.widthIn(max = 280.dp),
+            popupWidthMultiplier = 1.5f,
+            maxPopupHeight = maxPopupHeight,
+            content = { Text(text = category!!.title) },
+            popupContent = { close ->
+                books.forEach { book ->
+                    val hoverSource = remember { MutableInteractionSource() }
+                    val isHovered by hoverSource.collectIsHoveredAsState()
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isHovered) AppColors.HOVER_HIGHLIGHT else Color.Transparent)
+                            .clickable(
+                                indication = null,
+                                interactionSource = hoverSource
+                            ) {
+                                close()
+                                onBookSelected(book)
+                            }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .pointerHoverIcon(PointerIcon.Hand),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val displayTitle = remember(category!!.title, book.title) {
+                            stripLabelPrefix(category!!.title, book.title)
+                        }
+                        Text(
+                            text = displayTitle,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun MultiCategoryDropdown(
+    labelCategoryId: Long,
+    bookCategoryIds: List<Long>,
+    onBookSelected: (BookModel) -> Unit,
+    popupWidthMultiplier : Float = 1.5f,
+    modifier: Modifier = Modifier
+) {
+    val repository = LocalAppGraph.current.repository
+    var labelCategory by remember { mutableStateOf<Category?>(null) }
+    var sections by remember { mutableStateOf<List<Pair<Category, List<BookModel>>>>(emptyList()) }
+
+    LaunchedEffect(labelCategoryId, bookCategoryIds) {
+        val label = runCatching { repository.getCategory(labelCategoryId) }.getOrNull()
+        val built = mutableListOf<Pair<Category, List<BookModel>>>()
+        for (cid in bookCategoryIds) {
+            val cat = runCatching { repository.getCategory(cid) }.getOrNull() ?: continue
+            val list = runCatching { repository.getBooksByCategory(cid) }.getOrNull().orEmpty()
+            built += (cat to list)
+        }
+        labelCategory = label
+        sections = built
+    }
+
+    if (labelCategory != null && sections.any { it.second.isNotEmpty() }) {
+        DropdownButton(
+            modifier = modifier.widthIn(max = 280.dp),
+            popupWidthMultiplier = popupWidthMultiplier,
+            content = { Text(text = labelCategory!!.title) },
+            popupContent = { close ->
+                sections.forEachIndexed { index, (cat, books) ->
+                    if (books.isEmpty()) return@forEachIndexed
+                    if (index > 0) {
+                        Divider(orientation = Orientation.Horizontal)
+                    }
+                    Text(
+                        text = cat.title,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = JewelTheme.globalColors.text.disabled
+                    )
+                    books.forEach { book ->
+                        val hoverSource = remember { MutableInteractionSource() }
+                        val isHovered by hoverSource.collectIsHoveredAsState()
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (isHovered) AppColors.HOVER_HIGHLIGHT else Color.Transparent)
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = hoverSource
+                                ) {
+                                    close()
+                                    onBookSelected(book)
+                                }
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .pointerHoverIcon(PointerIcon.Hand),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val labelTitle = labelCategory!!.title
+                            val displayTitle = remember(labelTitle, book.title) {
+                                stripLabelPrefix(labelTitle, book.title)
+                            }
+                            Text(
+                                text = displayTitle,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
 private fun WelcomeUser(username: String) {
     Text(
         stringResource(Res.string.home_welcome_user, username),
         textAlign = TextAlign.Center,
         fontSize = 36.sp
     )
+}
+
+// Utility to strip a leading label from a title when it's in the form "<label> <rest>"
+private fun stripLabelPrefix(label: String, title: String): String {
+    // Remove leading label with common separators:
+    // "<label>, ...", "<label> , ...", "<label> + ...", "<label>+ ...", or just "<label> ..."
+    val prefix = Regex.escape(label)
+    val patterns = listOf(
+        Regex("^$prefix\\s*,\\s*"),  // label + comma
+        Regex("^$prefix,\\s*"),       // label,comma (no space before comma)
+        Regex("^$prefix\\s*\\+\\s*"), // label + plus
+        Regex("^$prefix\\s+")         // label + space
+    )
+    for (p in patterns) {
+        val replaced = title.replaceFirst(p, "")
+        if (replaced !== title) return replaced.trimStart()
+    }
+    return title
 }
 
 /** App logo shown on the Home screen. */
@@ -814,7 +1006,7 @@ private fun SuggestionRow(parts: List<String>, onClick: () -> Unit, highlighted:
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
-            .background(if (active) Color(0x220E639C) else Color.Transparent)
+            .background(if (active) AppColors.HOVER_HIGHLIGHT else Color.Transparent)
             .clickable(onClick = onClick)
             .pointerHoverIcon(PointerIcon.Hand)
             .hoverable(hoverSource)

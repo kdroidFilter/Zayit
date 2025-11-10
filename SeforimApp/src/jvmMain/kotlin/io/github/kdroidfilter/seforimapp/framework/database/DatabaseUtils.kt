@@ -22,7 +22,7 @@ fun getDatabasePath(): String {
 }
 
 
-//fun getDatabasePath() = "/Users/eliegambache/IdeaProjects/SeforimApp/SeforimLibrary/generator/build/seforim.db"
+//fun getDatabasePath() = "/home/elie-gambache/IdeaProjects/SeforimApp/SeforimLibrary/generator/build/seforim.db"
 
 /**
  * Singleton holder for the precomputed catalog.

@@ -116,7 +116,7 @@ fun HomeView(
         scrollState = listState as ScrollableState,
     ) {
         Box(
-            modifier = modifier.padding(16.dp).fillMaxSize(),
+            modifier = modifier.padding(top = 56.dp).fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             // Keep state outside LazyColumn so it persists across item recompositions

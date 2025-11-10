@@ -242,7 +242,9 @@ private fun RtlAwareTabStripWithAddButton(
             // si première frame = maxValue encore 0, attendre encore une frame
             if (scrollState.maxValue == 0) withFrameNanos { }
 
-            val target = scrollState.maxValue
+            // En RTL, les nouveaux onglets s'ajoutent à gauche, donc on scroll vers 0
+            // En LTR, les nouveaux onglets s'ajoutaient à droite, donc on scrollait vers maxValue
+            val target = if (isRtl) 0 else scrollState.maxValue
             scrollState.animateScrollTo(target)
         }
     }

@@ -73,6 +73,8 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.DropdownBu
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TocJumpDropdownByIds
 import org.jetbrains.jewel.ui.Orientation
 import seforimapp.seforimapp.generated.resources.*
+import io.github.kdroidfilter.seforimapp.core.presentation.cache.BookTitleCache
+import io.github.kdroidfilter.seforimapp.core.presentation.cache.CategoryTitleCache
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 import kotlin.math.roundToInt
 
@@ -395,24 +397,34 @@ private fun CategoryDropdown(
     modifier: Modifier = Modifier
 ) {
     val repository = LocalAppGraph.current.repository
-    var books by remember { mutableStateOf<List<BookModel>>(emptyList()) }
+    var books by remember { mutableStateOf<List<BookModel>?>(null) }
     var category by remember { mutableStateOf<Category?>(null) }
+    var categoryTitle by remember { mutableStateOf(CategoryTitleCache.get(categoryId)) }
 
     LaunchedEffect(categoryId) {
-        val cat = runCatching { repository.getCategory(categoryId) }.getOrNull()
-        val loaded = runCatching { repository.getBooksByCategory(categoryId) }.getOrNull().orEmpty()
-        category = cat
-        books = loaded
+        if (categoryTitle == null) {
+            val catT = runCatching { repository.getCategory(categoryId) }.getOrNull()
+            category = catT
+            catT?.title?.let { CategoryTitleCache.put(categoryId, it); categoryTitle = it }
+        } else {
+            if (category == null) category = runCatching { repository.getCategory(categoryId) }.getOrNull()
+        }
     }
 
-    if (category != null && books.isNotEmpty()) {
+    if (categoryTitle != null || category != null) {
         DropdownButton(
             modifier = modifier.widthIn(max = 280.dp),
             popupWidthMultiplier = 1.5f,
             maxPopupHeight = maxPopupHeight,
-            content = { Text(text = category!!.title) },
+            content = { Text(text = categoryTitle ?: category!!.title) },
             popupContent = { close ->
-                books.forEach { book ->
+                if (books == null) {
+                    LaunchedEffect(Unit) {
+                        books = runCatching { repository.getBooksByCategory(categoryId) }.getOrNull().orEmpty()
+                    }
+                }
+                val list = books.orEmpty()
+                list.forEach { book ->
                     val hoverSource = remember { MutableInteractionSource() }
                     val isHovered by hoverSource.collectIsHoveredAsState()
                     Row(
@@ -457,33 +469,44 @@ private fun MultiCategoryDropdown(
 ) {
     val repository = LocalAppGraph.current.repository
     var labelCategory by remember { mutableStateOf<Category?>(null) }
-    var sections by remember { mutableStateOf<List<Pair<Category, List<BookModel>>>>(emptyList()) }
+    var labelTitle by remember { mutableStateOf(CategoryTitleCache.get(labelCategoryId)) }
+    var sections by remember { mutableStateOf<List<Pair<String, List<BookModel>>>?>(null) }
 
-    LaunchedEffect(labelCategoryId, bookCategoryIds) {
-        val label = runCatching { repository.getCategory(labelCategoryId) }.getOrNull()
-        val built = mutableListOf<Pair<Category, List<BookModel>>>()
-        for (cid in bookCategoryIds) {
-            val cat = runCatching { repository.getCategory(cid) }.getOrNull() ?: continue
-            val list = runCatching { repository.getBooksByCategory(cid) }.getOrNull().orEmpty()
-            built += (cat to list)
+    LaunchedEffect(labelCategoryId) {
+        if (labelTitle == null) {
+            val label = runCatching { repository.getCategory(labelCategoryId) }.getOrNull()
+            labelCategory = label
+            label?.title?.let { CategoryTitleCache.put(labelCategoryId, it); labelTitle = it }
+        } else if (labelCategory == null) {
+            labelCategory = runCatching { repository.getCategory(labelCategoryId) }.getOrNull()
         }
-        labelCategory = label
-        sections = built
     }
 
-    if (labelCategory != null && sections.any { it.second.isNotEmpty() }) {
+    if (labelTitle != null || labelCategory != null) {
         DropdownButton(
             modifier = modifier.widthIn(max = 280.dp),
             popupWidthMultiplier = popupWidthMultiplier,
-            content = { Text(text = labelCategory!!.title) },
+            content = { Text(text = labelTitle ?: labelCategory!!.title) },
             popupContent = { close ->
-                sections.forEachIndexed { index, (cat, books) ->
+                if (sections == null) {
+                    LaunchedEffect(Unit) {
+                        val built = mutableListOf<Pair<String, List<BookModel>>>()
+                        for (cid in bookCategoryIds) {
+                            val title = CategoryTitleCache.get(cid) ?: runCatching { repository.getCategory(cid) }.getOrNull()?.title?.also { CategoryTitleCache.put(cid, it) }
+                            val list = runCatching { repository.getBooksByCategory(cid) }.getOrNull().orEmpty()
+                            if (title != null) built += (title to list)
+                        }
+                        sections = built
+                    }
+                }
+                val sec = sections.orEmpty()
+                sec.forEachIndexed { index, (catTitle, books) ->
                     if (books.isEmpty()) return@forEachIndexed
                     if (index > 0) {
                         Divider(orientation = Orientation.Horizontal)
                     }
                     Text(
-                        text = cat.title,
+                        text = catTitle,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 6.dp),

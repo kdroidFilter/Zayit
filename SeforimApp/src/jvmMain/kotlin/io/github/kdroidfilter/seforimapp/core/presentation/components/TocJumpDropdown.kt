@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
+import io.github.kdroidfilter.seforimapp.core.presentation.cache.BookTitleCache
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
@@ -33,17 +34,18 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 
 /** Quick TOC jump menu for a specific book. */
-data class TocQuickLink(val label: String, val tocId: Long)
+data class TocQuickLink(val label: String, val tocId: Long, val firstLineId: Long?)
 
 @Composable
 fun TocJumpDropdown(
     title: String,
     bookId: Long,
-    items: List<TocQuickLink>,
+    items: List<TocQuickLink> = emptyList(),
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier,
     popupWidthMultiplier: Float = 1.5f,
     maxPopupHeight: Dp = 360.dp,
+    prepareItems: (suspend () -> List<TocQuickLink>)? = null,
 ) {
     val repo = LocalAppGraph.current.repository
     val scope = rememberCoroutineScope()
@@ -54,8 +56,16 @@ fun TocJumpDropdown(
         maxPopupHeight = maxPopupHeight,
         content = { Text(title) },
         popupContent = { close ->
-            // Simple scrollable list of predefined TOC quick links
-            items.forEach { quick ->
+            // Lazy: prepare items only when popup opens if not provided
+            var links by androidx.compose.runtime.remember { mutableStateOf<List<TocQuickLink>?>(if (items.isNotEmpty()) items else null) }
+            val loader = prepareItems
+            if (links == null && loader != null) {
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    links = runCatching { loader() }.getOrNull().orEmpty()
+                }
+            }
+            val render = links.orEmpty()
+            render.forEach { quick ->
                 val hoverSource = remember { MutableInteractionSource() }
                 val isHovered by hoverSource.collectIsHoveredAsState()
                 Row(
@@ -68,7 +78,7 @@ fun TocJumpDropdown(
                             interactionSource = hoverSource
                         ) {
                             scope.launch {
-                                val lineId = repo.getLineIdsForTocEntry(quick.tocId).firstOrNull() ?: return@launch
+                                val lineId = quick.firstLineId ?: repo.getLineIdsForTocEntry(quick.tocId).firstOrNull() ?: return@launch
                                 close()
                                 onEvent(BookContentEvent.OpenBookAtLine(bookId = bookId, lineId = lineId))
                             }
@@ -100,27 +110,27 @@ fun TocJumpDropdownByIds(
     maxPopupHeight: Dp = 360.dp,
 ) {
     val repo = LocalAppGraph.current.repository
-    var links by remember(tocTextIds) { mutableStateOf<List<TocQuickLink>>(emptyList()) }
-
-    // Resolve toc entries for this book by matching textId
-    androidx.compose.runtime.LaunchedEffect(bookId, tocTextIds) {
+    val loader: suspend () -> List<TocQuickLink> = {
         val bookToc = runCatching { repo.getBookToc(bookId) }.getOrNull().orEmpty()
         val byTextId = bookToc.associateBy { it.textId }
-        val resolved = tocTextIds.mapNotNull { textId ->
-            val entry = byTextId[textId]
-            entry?.let { e -> if (e.text.isNotBlank()) TocQuickLink(e.text, e.id) else null }
+        val mappings = runCatching { repo.getLineTocMappingsForBook(bookId) }.getOrNull().orEmpty()
+        val firstLineByToc = HashMap<Long, Long>()
+        for (m in mappings) if (!firstLineByToc.containsKey(m.tocEntryId)) firstLineByToc[m.tocEntryId] = m.lineId
+        tocTextIds.mapNotNull { textId ->
+            val e = byTextId[textId]
+            e?.let { if (it.text.isNotBlank()) TocQuickLink(it.text, it.id, firstLineByToc[it.id]) else null }
         }
-        links = resolved
     }
 
     TocJumpDropdown(
         title = title,
         bookId = bookId,
-        items = links,
+        items = emptyList(),
         onEvent = onEvent,
         modifier = modifier,
         popupWidthMultiplier = popupWidthMultiplier,
-        maxPopupHeight = maxPopupHeight
+        maxPopupHeight = maxPopupHeight,
+        prepareItems = loader
     )
 }
 
@@ -134,10 +144,16 @@ fun TocJumpDropdownByIds(
     maxPopupHeight: Dp = 360.dp,
 ) {
     val repo = LocalAppGraph.current.repository
-    var title by androidx.compose.runtime.remember { mutableStateOf<String?>(null) }
+    var title by androidx.compose.runtime.remember { mutableStateOf<String?>(BookTitleCache.get(bookId)) }
     androidx.compose.runtime.LaunchedEffect(bookId) {
-        val book = runCatching { repo.getBook(bookId) }.getOrNull()
-        title = book?.title?.takeIf { it.isNotBlank() }
+        if (title == null) {
+            val book = runCatching { repo.getBook(bookId) }.getOrNull()
+            val resolved = book?.title?.takeIf { it.isNotBlank() }
+            if (resolved != null) {
+                BookTitleCache.put(bookId, resolved)
+                title = resolved
+            }
+        }
     }
     val t = title
     if (t != null) {

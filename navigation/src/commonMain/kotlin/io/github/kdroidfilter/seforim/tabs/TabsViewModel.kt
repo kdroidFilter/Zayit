@@ -118,8 +118,8 @@ class TabsViewModel(
             destination = destination,
             tabType = TabType.SEARCH
         )
-        _tabs.value = _tabs.value + newTab
-        _selectedTabIndex.value = _tabs.value.lastIndex
+        _tabs.value = listOf(newTab) + _tabs.value
+        _selectedTabIndex.value = 0
         // Trigger GC when a new tab is opened via the plus button
         System.gc()
     }
@@ -142,8 +142,8 @@ class TabsViewModel(
                 is TabsDestination.BookContent -> if (newDestination.bookId > 0) TabType.BOOK else TabType.SEARCH
             }
         )
-        _tabs.value = _tabs.value + newTab
-        _selectedTabIndex.value = _tabs.value.lastIndex
+        _tabs.value = listOf(newTab) + _tabs.value
+        _selectedTabIndex.value = 0
     }
 
     /**

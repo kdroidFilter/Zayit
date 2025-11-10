@@ -14,6 +14,7 @@ androidx-activityCompose = "1.11.0"
 androidx-uiTest = "1.9.4"
 hotReload = "1.0.0-rc02"
 kermit = "2.0.8"
+kotlinpoet = "2.2.0"
 ktor = "3.3.1"
 androidx-lifecycle = "2.9.5"
 androidx-navigation = "2.9.1"
@@ -55,6 +56,7 @@ jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 jvm-native-trusted-roots = { module = "org.jetbrains.nativecerts:jvm-native-trusted-roots", version.ref = "jvmNativeTrustedRoots" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 koalaplot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaplotCore" }
+kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 kotlinx-serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "kotlinx-serialization" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }

@@ -18,8 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -27,22 +25,28 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.*
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.zIndex
+import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
+import io.github.kdroidfilter.seforimapp.core.presentation.components.*
+import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.*
-import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -56,19 +60,12 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.Outline
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.theme.comboBoxStyle
 import org.jetbrains.skiko.Cursor
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.LayoutDirection
 import seforimapp.seforimapp.generated.resources.*
-import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 import kotlin.math.roundToInt
+import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 
 // SearchFilter moved to features.search.SearchFilter per architecture guidelines.
 
@@ -100,12 +97,26 @@ fun HomeView(
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    Box(modifier = Modifier.fillMaxSize().zIndex(1f).padding(16.dp), contentAlignment = Alignment.TopStart) {
+
+        Row (Modifier.widthIn(min = 125.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.TORAH, onEvent = onEvent, maxPopupHeight = 120.dp, popupWidthMultiplier = 1.1f)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.NEVIIM, onEvent = onEvent, popupWidthMultiplier = 1.2f )
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.KETUVIM, onEvent = onEvent, popupWidthMultiplier = 1.3f)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.MISHNA, onEvent = onEvent)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.BAVLI, onEvent = onEvent, popupWidthMultiplier = 1.1f)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.YERUSHALMI, onEvent = onEvent, popupWidthMultiplier = 1.1f)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.TUR_QUICK_LINKS, onEvent = onEvent, maxPopupHeight = 130.dp)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.SHULCHAN_ARUCH, onEvent = onEvent, maxPopupHeight = 130.dp, popupWidthMultiplier = 1.1f)
+        }
+    }
+
     val listState = rememberLazyListState()
     VerticallyScrollableContainer(
         scrollState = listState as ScrollableState,
     ) {
         Box(
-            modifier = modifier.padding(16.dp).fillMaxSize(),
+            modifier = modifier.padding(top = 56.dp).fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             // Keep state outside LazyColumn so it persists across item recompositions
@@ -814,7 +825,7 @@ private fun SuggestionRow(parts: List<String>, onClick: () -> Unit, highlighted:
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
-            .background(if (active) Color(0x220E639C) else Color.Transparent)
+            .background(if (active) AppColors.HOVER_HIGHLIGHT else Color.Transparent)
             .clickable(onClick = onClick)
             .pointerHoverIcon(PointerIcon.Hand)
             .hoverable(hoverSource)

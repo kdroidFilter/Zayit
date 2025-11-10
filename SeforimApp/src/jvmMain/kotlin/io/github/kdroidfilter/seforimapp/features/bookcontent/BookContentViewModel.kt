@@ -201,6 +201,30 @@ class BookContentViewModel(
                 is BookContentEvent.LoadAndSelectLine ->
                     loadAndSelectLine(event.lineId)
 
+                is BookContentEvent.OpenBookAtLine -> {
+                    // If already on the target book, just jump to the line
+                    val currentBookId = stateManager.state.value.navigation.selectedBook?.id
+                    if (currentBookId == event.bookId) {
+                        loadAndSelectLine(event.lineId)
+                    } else {
+                        // Load the target book and force-anchor to the requested line
+                        val book = repository.getBook(event.bookId)
+                        if (book != null) {
+                            // Select the book in navigation and open TOC on first open
+                            navigationUseCase.selectBook(book)
+                            ensureTocVisibleOnFirstOpen()
+                            loadBookData(book, forceAnchorId = event.lineId)
+                        }
+                    }
+                }
+
+                is BookContentEvent.OpenBookById -> {
+                    val book = repository.getBook(event.bookId)
+                    if (book != null) {
+                        loadBook(book)
+                    }
+                }
+
                 BookContentEvent.NavigateToPreviousLine -> {
                     val line = contentUseCase.navigateToPreviousLine()
                     if (line != null) {
@@ -426,12 +450,17 @@ class BookContentViewModel(
                 // Load TOC after pager creation
                 tocUseCase.loadRootToc(book.id)
 
-                // If we computed an initial line (i.e., opened from the category tree with no prior anchor),
-                // select it to update TOC selection and breadcrumbs, and request a top-anchor alignment.
-                if (resolvedInitialLineId != null && !shouldUseAnchor && forceAnchorId == null && state.content.selectedLine == null) {
-                    loadAndSelectLine(resolvedInitialLineId)
-                    // Expand TOC path to the resolved initial line (first entry/leaf)
-                    runCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
+                // If we have an explicit forced anchor, always select it to ensure correct scroll/selection.
+                // Otherwise, when opening with no prior anchor and no selection, select the computed initial line.
+                if (resolvedInitialLineId != null) {
+                    if (forceAnchorId != null) {
+                        loadAndSelectLine(resolvedInitialLineId)
+                        runCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
+                    } else if (!shouldUseAnchor && state.content.selectedLine == null) {
+                        loadAndSelectLine(resolvedInitialLineId)
+                        // Expand TOC path to the resolved initial line (first entry/leaf)
+                        runCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
+                    }
                 }
             } finally {
                 stateManager.setLoading(false)

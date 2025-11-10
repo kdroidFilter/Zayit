@@ -929,6 +929,32 @@ private fun SearchBar(
 
     var anchor by remember { mutableStateOf<AnchorBounds?>(null) }
     Column(modifier = modifier.fillMaxWidth()) {
+        // Local helpers to ensure popup is dismissed when committing a choice
+        fun dismissPopup() {
+            popupVisible = false
+            onDismissSuggestions()
+        }
+
+        fun handlePickCategory(cat: CategorySuggestion) {
+            onPickCategory(cat)
+            dismissPopup()
+        }
+
+        fun handlePickBook(book: BookSuggestion) {
+            onPickBook(book)
+            dismissPopup()
+        }
+
+        fun handlePickToc(toc: TocSuggestion) {
+            onPickToc(toc)
+            dismissPopup()
+        }
+
+        fun handleSubmit() {
+            onSubmit()
+            // If we were showing an overlay, close it after submission
+            if (selectedFilter == SearchFilter.REFERENCE) dismissPopup()
+        }
         TextField(
             state = state,
             modifier = Modifier
@@ -955,31 +981,31 @@ private fun SearchBar(
                                 // Commit current suggestion, don't open
                                 if (usingToc) {
                                     if (focusedIndex in 0 until totalToc) {
-                                        onPickToc(tocSuggestions[focusedIndex])
+                                        handlePickToc(tocSuggestions[focusedIndex])
                                     }
                                 } else {
                                     if (focusedIndex in 0 until totalCatBook) {
                                         if (focusedIndex < categoriesCount) {
                                             val picked = categorySuggestions[focusedIndex]
-                                            onPickCategory(picked)
+                                            handlePickCategory(picked)
                                         } else {
                                             val idx = focusedIndex - categoriesCount
                                             val picked = bookSuggestions.getOrNull(idx)
                                             if (picked != null) {
-                                                onPickBook(picked)
-                                                if (submitOnEnterInReference) onSubmit()
+                                                handlePickBook(picked)
+                                                if (submitOnEnterInReference) handleSubmit()
                                             }
                                         }
                                     } else {
                                         // No suggestion focused/visible: if a selection exists, allow submit (text-mode behavior)
                                         if (submitOnEnterIfSelection && (selectedBook != null || selectedCategory != null)) {
-                                            onSubmit()
+                                            handleSubmit()
                                         }
                                     }
                                 }
                                 true
                             } else {
-                                onSubmit(); true
+                                handleSubmit(); true
                             }
                         }
                         isRef && ev.key == Key.DirectionDown && ev.type == KeyEventType.KeyUp -> {
@@ -1003,7 +1029,7 @@ private fun SearchBar(
                             if (isRef && onTab != null) {
                                 val firstBook = bookSuggestions.firstOrNull()
                                 if (firstBook != null) {
-                                    onPickBook(firstBook)
+                                    handlePickBook(firstBook)
                                 }
                                 onTab()
                                 true
@@ -1062,7 +1088,7 @@ private fun SearchBar(
             }) else null,
             leadingIcon = {
                 if (!showIcon) return@TextField
-                IconButton({ onSubmit() }) {
+                IconButton({ handleSubmit() }) {
                     Icon(
                         key = AllIconsKeys.Actions.Find,
                         contentDescription = stringResource(Res.string.search_icon_description),
@@ -1110,7 +1136,7 @@ private fun SearchBar(
                     if (usingToc) {
                         TocSuggestionsPanel(
                             tocSuggestions = tocSuggestions,
-                            onPickToc = onPickToc,
+                            onPickToc = ::handlePickToc,
                             focusedIndex = focusedIndex,
                     selectedBook = selectedBook
                 )
@@ -1118,8 +1144,8 @@ private fun SearchBar(
                         SuggestionsPanel(
                             categorySuggestions = categorySuggestions,
                             bookSuggestions = bookSuggestions,
-                            onPickCategory = onPickCategory,
-                            onPickBook = onPickBook,
+                            onPickCategory = ::handlePickCategory,
+                            onPickBook = ::handlePickBook,
                             focusedIndex = focusedIndex
                         )
                     }

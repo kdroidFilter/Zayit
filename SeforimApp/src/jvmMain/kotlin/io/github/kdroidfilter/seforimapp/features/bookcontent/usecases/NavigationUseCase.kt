@@ -3,14 +3,20 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
+import io.github.kdroidfilter.seforimapp.logger.debugln
+import io.github.kdroidfilter.seforimapp.logger.errorln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
+import io.github.kdroidfilter.seforimlibrary.core.models.extractAllBooks
+import io.github.kdroidfilter.seforimlibrary.core.models.extractCategoryChildren
+import io.github.kdroidfilter.seforimlibrary.core.models.extractRootCategories
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 
 /**
- * UseCase pour gérer la navigation dans l'arbre des catégories et livres
+ * Use case to manage navigation in the categories and books tree
  */
 class NavigationUseCase(
     private val repository: SeforimRepository,
@@ -18,60 +24,27 @@ class NavigationUseCase(
 ) {
     
     /**
-     * Charge les catégories racine
+     * Load the root categories and the full tree from the precomputed catalog.
+     * The catalog MUST be available, otherwise nothing is loaded.
      */
-    suspend fun loadRootCategories() {
-        val rootCategories = repository.getRootCategories()
-        
-        stateManager.updateNavigation {
-            copy(rootCategories = rootCategories)
+     fun loadRootCategories() {
+        val catalog = CatalogCache.getCatalog() ?: run {
+            errorln { "ERROR: Precomputed catalog not available!" }
+            return
         }
-        
-        // Si des catégories étaient déjà expandées, recharger leur sous-arbre minimal
-        // (enfants directs + livres) afin que la vue arborescente puisse s’afficher immédiatement
-        // au retour d’onglet/restauration de session.
-        val expandedCategories = stateManager.state.first().navigation.expandedCategories
-        if (expandedCategories.isNotEmpty()) {
-            val booksToLoad = mutableSetOf<Book>()
-            val childrenMap = mutableMapOf<Long, List<Category>>()
 
-            suspend fun restoreExpandedSubtree(categoryId: Long, guard: Int = 0) {
-                if (guard > 512) return // sécurité contre les cycles
-                // Livres dans la catégorie
-                runCatching { repository.getBooksByCategory(categoryId) }
-                    .onSuccess { if (it.isNotEmpty()) booksToLoad.addAll(it) }
-                // Enfants directs
-                val children = runCatching { repository.getCategoryChildren(categoryId) }
-                    .getOrElse { emptyList() }
-                if (children.isNotEmpty()) {
-                    childrenMap[categoryId] = children
-                }
-                // Si un enfant est également marqué comme expanded, restaurer récursivement
-                children.forEach { child ->
-                    if (expandedCategories.contains(child.id)) {
-                        restoreExpandedSubtree(child.id, guard + 1)
-                    }
-                }
-            }
-
-            // Restaurer pour chaque catégorie marquée expanded
-            expandedCategories.forEach { categoryId ->
-                runCatching { restoreExpandedSubtree(categoryId) }
-            }
-
-            if (booksToLoad.isNotEmpty() || childrenMap.isNotEmpty()) {
-                stateManager.updateNavigation {
-                    copy(
-                        booksInCategory = booksInCategory + booksToLoad,
-                        categoryChildren = categoryChildren + childrenMap
-                    )
-                }
-            }
+        debugln { "✓ Using precomputed catalog for navigation tree" }
+        stateManager.updateNavigation {
+            copy(
+                rootCategories = catalog.extractRootCategories(),
+                categoryChildren = catalog.extractCategoryChildren(),
+                booksInCategory = catalog.extractAllBooks()
+            )
         }
     }
     
     /**
-     * Sélectionne une catégorie
+     * Select a category
      */
     suspend fun selectCategory(category: Category) {
         stateManager.updateNavigation {
@@ -81,47 +54,27 @@ class NavigationUseCase(
     }
     
     /**
-     * Expand/collapse une catégorie
+     * Expand/collapse a category.
+     * With the precomputed catalog, all data is already loaded,
+     * so we simply toggle the expanded state.
      */
     suspend fun expandCategory(category: Category) {
         val currentState = stateManager.state.first().navigation
         val isExpanded = currentState.expandedCategories.contains(category.id)
-        
-        if (isExpanded) {
-            // Collapse
-            stateManager.updateNavigation {
-                copy(expandedCategories = expandedCategories - category.id)
-            }
-        } else {
-            // Expand - charger les enfants et les livres si nécessaire
-            val needsChildrenLoad = !currentState.categoryChildren.containsKey(category.id)
-            
-            if (needsChildrenLoad) {
-                val children = repository.getCategoryChildren(category.id)
-                val books = repository.getBooksByCategory(category.id)
-                
-                stateManager.updateNavigation {
-                    copy(
-                        expandedCategories = expandedCategories + category.id,
-                        categoryChildren = if (children.isNotEmpty()) {
-                            categoryChildren + (category.id to children)
-                        } else categoryChildren,
-                        booksInCategory = if (books.isNotEmpty()) {
-                            booksInCategory + books
-                        } else booksInCategory
-                    )
+
+        stateManager.updateNavigation {
+            copy(
+                expandedCategories = if (isExpanded) {
+                    expandedCategories - category.id
+                } else {
+                    expandedCategories + category.id
                 }
-            } else {
-                // Juste toggle l'expansion
-                stateManager.updateNavigation {
-                    copy(expandedCategories = expandedCategories + category.id)
-                }
-            }
+            )
         }
     }
     
     /**
-     * Met à jour le texte de recherche
+     * Update the search text
      */
     fun updateSearchText(text: String) {
         stateManager.updateNavigation {
@@ -130,7 +83,7 @@ class NavigationUseCase(
     }
     
     /**
-     * Toggle la visibilité de l'arbre de navigation
+     * Toggle the visibility of the navigation tree
      */
     fun toggleBookTree(): Float {
         val currentState = stateManager.state.value
@@ -138,7 +91,7 @@ class NavigationUseCase(
         val newPosition: Float
         
         if (isVisible) {
-            // Cacher - sauvegarder la position actuelle
+            // Hide - save the current position
             val prev = currentState.layout.mainSplitState.positionPercentage
             stateManager.updateLayout {
                 copy(
@@ -150,7 +103,7 @@ class NavigationUseCase(
             newPosition = 0f
             currentState.layout.mainSplitState.positionPercentage = newPosition
         } else {
-            // Montrer - restaurer la position précédente
+            // Show - restore the previous position
             newPosition = currentState.layout.previousPositions.main
             currentState.layout.mainSplitState.positionPercentage = newPosition
         }
@@ -163,7 +116,7 @@ class NavigationUseCase(
     }
     
     /**
-     * Met à jour la position de scroll de l'arbre
+     * Update the tree scroll position
      */
     fun updateBookTreeScrollPosition(index: Int, offset: Int) {
         stateManager.updateNavigation {
@@ -175,7 +128,7 @@ class NavigationUseCase(
     }
     
     /**
-     * Sélectionne un livre
+     * Select a book
      */
     fun selectBook(book: Book) {
         stateManager.updateNavigation {
@@ -196,36 +149,29 @@ class NavigationUseCase(
 
     suspend fun expandPathToBook(book: Book) {
         val leafCatId = book.categoryId
-        // Build path from leaf to root
         val path = mutableListOf<Category>()
         var currentId: Long? = leafCatId
         var guard = 0
+
+        // Build the path using the data already loaded from the catalog
+        val navState = stateManager.state.first().navigation
         while (currentId != null && guard++ < 512) {
-            val cat = runCatching { repository.getCategory(currentId) }.getOrNull() ?: break
+            val cat = navState.run {
+                rootCategories.find { it.id == currentId }
+                    ?: categoryChildren.values.flatten().find { it.id == currentId }
+            } ?: break
             path += cat
             currentId = cat.parentId
         }
+
         if (path.isEmpty()) return
         val orderedPath = path.asReversed()
-
-        // Load children for each ancestor in the path so the branch can be displayed
-        val childrenDelta = mutableMapOf<Long, List<Category>>()
-        for (cat in orderedPath) {
-            val children = runCatching { repository.getCategoryChildren(cat.id) }.getOrDefault(emptyList())
-            if (children.isNotEmpty()) childrenDelta[cat.id] = children
-        }
-        // Ensure books of the leaf category are present
-        val leafBooks = runCatching { repository.getBooksByCategory(leafCatId) }.getOrDefault(emptyList())
-
-        // Apply state: expand all categories along the path, populate children & leaf books,
-        // and set the selected category to the leaf.
         val expandIds = orderedPath.map { it.id }.toSet()
+
         stateManager.updateNavigation {
             copy(
                 expandedCategories = expandedCategories + expandIds,
-                categoryChildren = categoryChildren + childrenDelta,
-                booksInCategory = booksInCategory + leafBooks,
-                selectedCategory = orderedPath.last()
+                selectedCategory = orderedPath.lastOrNull()
             )
         }
     }

@@ -140,11 +140,11 @@
     <string name="reference_hint_5">תהילים פרק כג פסוק ד</string>
 
     <!-- Book names only (for reference-mode first field) -->
-    <string name="reference_book_hint_1">משנה ברורה</string>
-    <string name="reference_book_hint_2">רמב"ם</string>
+    <string name="reference_book_hint_1">משנת יסודות התורה</string>
+    <string name="reference_book_hint_2">שוע יוד</string>
     <string name="reference_book_hint_3">תהילים</string>
     <string name="reference_book_hint_4">ברכות</string>
-    <string name="reference_book_hint_5">שו"ע אורח חיים</string>
+    <string name="reference_book_hint_5">שוע אורח חיים</string>
 
     <!-- TOC examples (for second field when no book yet) -->
     <string name="reference_toc_hint_1">פרק א</string>

@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforimapp.core.presentation.components.DropdownButton
+import io.github.kdroidfilter.seforimapp.core.presentation.components.TocJumpDropdownByIds
 import org.jetbrains.jewel.ui.Orientation
 import seforimapp.seforimapp.generated.resources.*
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
@@ -129,6 +130,11 @@ fun HomeView(
                 onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) }
             )
             CategoryDropdown(categoryId = 60L, maxPopupHeight = 120.dp, onBookSelected = { book -> onEvent(BookContentEvent.BookSelected(book)) })
+            TocJumpDropdownByIds(
+                bookId = 410L,
+                tocTextIds = listOf(3455L, 4098L, 4099L, 4100L),
+                onEvent = onEvent
+            )
 
         }
     }

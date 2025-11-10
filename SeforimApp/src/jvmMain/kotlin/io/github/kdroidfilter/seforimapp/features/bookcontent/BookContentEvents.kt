@@ -28,6 +28,8 @@ sealed interface BookContentEvent {
     // Content events
     data class LineSelected(val line: Line) : BookContentEvent
     data class LoadAndSelectLine(val lineId: Long) : BookContentEvent
+    // Open a specific book and jump to a given line in the current tab
+    data class OpenBookAtLine(val bookId: Long, val lineId: Long) : BookContentEvent
     data object ToggleCommentaries : BookContentEvent
     data object ToggleTargum : BookContentEvent
     data class ContentScrolled(

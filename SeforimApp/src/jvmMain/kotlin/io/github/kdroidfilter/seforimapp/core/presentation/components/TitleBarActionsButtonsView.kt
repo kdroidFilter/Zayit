@@ -63,6 +63,10 @@ fun TitleBarActionsButtonsView() {
         stringResource(Res.string.shortcut_find_mac)
     else stringResource(Res.string.shortcut_find_windows)
 
+    val settingsShortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS)
+        stringResource(Res.string.shortcut_settings_mac)
+    else stringResource(Res.string.shortcut_settings_windows)
+
     TitleBarActionButton(
         key = AllIconsKeys.Nodes.HomeFolder,
         contentDescription = stringResource(Res.string.home),
@@ -121,6 +125,7 @@ fun TitleBarActionsButtonsView() {
             settingsViewModel.onEvent(SettingsWindowEvents.onOpen)
         },
         tooltipText = stringResource(Res.string.settings_tooltip),
+        shortcutHint = settingsShortcutHint,
     )
 
     if (settingsState.isVisible) {

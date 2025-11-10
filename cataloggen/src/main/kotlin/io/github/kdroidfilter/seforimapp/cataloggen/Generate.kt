@@ -31,15 +31,21 @@ fun main(args: Array<String>) {
         }
     }
 
-    // Collect books per category and book titles
+    // Collect books per category and book titles (strip display titles by category label)
     val bookTitles: MutableMap<Long, String> = mutableMapOf()
     val categoryBooks: MutableMap<Long, List<Pair<Long, String>>> = mutableMapOf()
     runBlocking {
         categoryTitles.keys.forEach { cid ->
             val books = runCatching { repo.getBooksByCategory(cid) }.getOrDefault(emptyList())
+            // Prefer stripping both the current category label and the root label,
+            // to support cases like "שולחן ערוך, ..." and "תלמוד ירושלמי ...".
+            val categoryLabel = categoryTitles[cid]
+            val rootLabel = rootCategoryTitle(repo, cid)
+            val labels = listOfNotNull(categoryLabel, rootLabel).distinct()
             val refs = books.map { b ->
                 bookTitles[b.id] = b.title
-                b.id to b.title
+                val display = stripAnyLabelPrefix(labels, b.title)
+                b.id to display
             }
             categoryBooks[cid] = refs
         }
@@ -111,6 +117,17 @@ private fun collectCategoryTitles(repo: SeforimRepository, parentId: Long, out: 
     }
 }
 
+private fun rootCategoryTitle(repo: SeforimRepository, categoryId: Long): String = runBlocking {
+    var cur = runCatching { repo.getCategory(categoryId) }.getOrNull()
+    var lastTitle: String? = cur?.title
+    var guard = 0
+    while (cur?.parentId != null && guard++ < 50) {
+        cur = runCatching { repo.getCategory(cur.parentId!!) }.getOrNull()
+        if (cur?.title != null) lastTitle = cur.title
+    }
+    lastTitle ?: ""
+}
+
 private fun buildCatalogType(
     pkg: String,
     bookTitles: Map<Long, String>,
@@ -180,6 +197,31 @@ private val STRING = String::class.asClassName()
 private val LONG = Long::class.asClassName()
 private val LIST = ClassName("kotlin.collections", "List")
 private val MAP = ClassName("kotlin.collections", "Map")
+
+private fun stripLabelPrefix(label: String, title: String): String {
+    if (label.isBlank()) return title
+    val prefix = Regex.escape(label)
+    val patterns = listOf(
+        Regex("^$prefix\\s*,\\s*"),  // label + comma
+        Regex("^$prefix,\\s*"),       // label,comma
+        Regex("^$prefix\\s*[:\u2013\u2014-]\\s*"), // label + colon/en/em dash/hyphen
+        Regex("^$prefix\\s*\\+\\s*"), // label + plus
+        Regex("^$prefix\\s+")         // label + space
+    )
+    for (p in patterns) {
+        val replaced = title.replaceFirst(p, "")
+        if (replaced !== title) return replaced.trimStart()
+    }
+    return title
+}
+
+private fun stripAnyLabelPrefix(labels: List<String>, title: String): String {
+    var result = title
+    for (lbl in labels) {
+        result = stripLabelPrefix(lbl, result)
+    }
+    return result
+}
 
 private inline fun <K, V, R> Iterable<Map.Entry<K, V>>.associateNotNull(transform: (Map.Entry<K, V>) -> R?): Map<K, R> {
     val dest = LinkedHashMap<K, R>()

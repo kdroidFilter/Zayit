@@ -431,11 +431,8 @@ private fun CategoryDropdown(
                             .pointerHoverIcon(PointerIcon.Hand),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val displayTitle = remember(categoryTitle, bookRef.title) {
-                            stripLabelPrefix(categoryTitle, bookRef.title)
-                        }
                         Text(
-                            text = displayTitle,
+                            text = bookRef.title,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             fontSize = 13.sp
@@ -511,11 +508,8 @@ private fun MultiCategoryDropdown(
                                 .pointerHoverIcon(PointerIcon.Hand),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val displayTitle = remember(labelTitle, bookRef.title) {
-                                stripLabelPrefix(labelTitle ?: "", bookRef.title)
-                            }
                             Text(
-                                text = displayTitle,
+                                text = bookRef.title,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 fontSize = 13.sp
@@ -535,24 +529,6 @@ private fun WelcomeUser(username: String) {
         textAlign = TextAlign.Center,
         fontSize = 36.sp
     )
-}
-
-// Utility to strip a leading label from a title when it's in the form "<label> <rest>"
-private fun stripLabelPrefix(label: String, title: String): String {
-    // Remove leading label with common separators:
-    // "<label>, ...", "<label> , ...", "<label> + ...", "<label>+ ...", or just "<label> ..."
-    val prefix = Regex.escape(label)
-    val patterns = listOf(
-        Regex("^$prefix\\s*,\\s*"),  // label + comma
-        Regex("^$prefix,\\s*"),       // label,comma (no space before comma)
-        Regex("^$prefix\\s*\\+\\s*"), // label + plus
-        Regex("^$prefix\\s+")         // label + space
-    )
-    for (p in patterns) {
-        val replaced = title.replaceFirst(p, "")
-        if (replaced !== title) return replaced.trimStart()
-    }
-    return title
 }
 
 /** App logo shown on the Home screen. */

@@ -144,7 +144,7 @@ fun main() {
                             } else {
                                 // Everything is ready, show main app
                                 mainState.setShowOnBoarding(false)
-                                showDatabaseUpdate = true //Todo set to false for release
+                                showDatabaseUpdate = false
                             }
                         }
                     } catch (_: Exception) {

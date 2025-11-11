@@ -45,7 +45,9 @@ fun OfflineUpdateScreen(
         }
         if (extractState.completed && hasStartedExtraction) {
             DatabaseUpdateProgressBarState.setUpdateComplete()
-            navController.navigate(DatabaseUpdateDestination.CompletionScreen)
+            navController.navigate(DatabaseUpdateDestination.CompletionScreen) {
+                popUpTo<DatabaseUpdateDestination.OfflineUpdateScreen> { inclusive = true }
+            }
         }
     }
     

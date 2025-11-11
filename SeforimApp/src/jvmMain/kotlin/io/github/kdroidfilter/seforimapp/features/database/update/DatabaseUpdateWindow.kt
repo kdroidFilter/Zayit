@@ -15,7 +15,6 @@ import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateNavHost
 import io.github.kdroidfilter.seforimapp.icons.Deployed_code_update
-import io.github.kdroidfilter.seforimapp.icons.Install_desktop
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.trackActivation
@@ -27,7 +26,10 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.window.DecoratedWindow
 import org.jetbrains.jewel.window.TitleBar
 import org.jetbrains.jewel.window.newFullscreenControls
-import seforimapp.seforimapp.generated.resources.*
+import seforimapp.seforimapp.generated.resources.AppIcon
+import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.app_name
+import seforimapp.seforimapp.generated.resources.db_update_title_bar
 
 @Composable
 fun ApplicationScope.DatabaseUpdateWindow(

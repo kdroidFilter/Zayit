@@ -50,7 +50,9 @@ fun OnlineUpdateScreen(
         }
         if (downloadState.completed) {
             DatabaseUpdateProgressBarState.setUpdateComplete()
-            navController.navigate(DatabaseUpdateDestination.CompletionScreen)
+            navController.navigate(DatabaseUpdateDestination.CompletionScreen) {
+                popUpTo<DatabaseUpdateDestination.OnlineUpdateScreen> { inclusive = true }
+            }
         }
     }
     

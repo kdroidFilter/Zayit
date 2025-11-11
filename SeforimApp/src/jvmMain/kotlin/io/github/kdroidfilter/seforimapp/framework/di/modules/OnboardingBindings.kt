@@ -6,6 +6,7 @@ import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.databaseFetcher
 import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceUseCase
@@ -90,4 +91,8 @@ object OnboardingBindings {
     fun provideUserProfileViewModel(
         useCase: UserProfileUseCase
     ): UserProfileViewModel = UserProfileViewModel(useCase)
+    
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideDatabaseCleanupUseCase(): DatabaseCleanupUseCase = DatabaseCleanupUseCase()
 }

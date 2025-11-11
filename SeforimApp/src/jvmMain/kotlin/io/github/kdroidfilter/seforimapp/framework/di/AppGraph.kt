@@ -9,6 +9,8 @@ import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
+import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
@@ -45,9 +47,11 @@ abstract class AppGraph {
     abstract val typeOfInstallationViewModel: TypeOfInstallationViewModel
     abstract val downloadViewModel: DownloadViewModel
     abstract val extractViewModel: ExtractViewModel
+    abstract val onboardingProcessRepository: OnboardingProcessRepository
     abstract val availableDiskSpaceViewModel: AvailableDiskSpaceViewModel
     abstract val regionConfigViewModel: RegionConfigViewModel
     abstract val userProfileViewModel: UserProfileViewModel
+    abstract val databaseCleanupUseCase: DatabaseCleanupUseCase
 
     @Provides
     fun provideBookContentViewModel(

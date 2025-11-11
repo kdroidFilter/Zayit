@@ -36,6 +36,7 @@ fun OfflineUpdateScreen(
     var part01Path by remember { mutableStateOf<String?>(null) }
     var hasStartedExtraction by remember { mutableStateOf(false) }
     var cleanupCompleted by remember { mutableStateOf(false) }
+    var isCleaningUp by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     
     LaunchedEffect(extractState) {
@@ -83,15 +84,20 @@ fun OfflineUpdateScreen(
     
     OnBoardingScaffold(title = stringResource(Res.string.db_update_offline_title)) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             when {
                 !hasStartedExtraction -> {
                     // File selection phase
+                    Icon(
+                        io.github.kdroidfilter.seforimapp.icons.Unarchive,
+                        contentDescription = null,
+                        modifier = Modifier.size(192.dp),
+                        tint = JewelTheme.globalColors.text.normal
+                    )
+                    
                     Text(
                         text = stringResource(Res.string.db_update_file_selection),
                         textAlign = TextAlign.Center
@@ -119,12 +125,17 @@ fun OfflineUpdateScreen(
                 }
                 
                 extractState.inProgress -> {
+                    Icon(
+                        io.github.kdroidfilter.seforimapp.icons.Unarchive,
+                        contentDescription = null,
+                        modifier = Modifier.size(192.dp),
+                        tint = JewelTheme.globalColors.text.normal
+                    )
+                    
                     Text(
                         text = stringResource(Res.string.db_update_extracting),
                         textAlign = TextAlign.Center
                     )
-                    
-                    CircularProgressIndicator()
                     
                     Text(
                         text = "${(extractState.progress * 100).toInt()}%",

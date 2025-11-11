@@ -56,26 +56,30 @@ fun OnlineUpdateScreen(
     
     OnBoardingScaffold(title = stringResource(Res.string.db_update_downloading_title)) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             when {
                 !downloadState.inProgress && !downloadState.completed && downloadState.errorMessage == null -> {
-                    Text(
-                        text = stringResource(Res.string.db_update_preparing_download),
-                        textAlign = TextAlign.Center
-                    )
-                    CircularProgressIndicator()
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(48.dp))
+                        Text(
+                            text = stringResource(Res.string.db_update_preparing_download),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
                 
                 downloadState.inProgress -> {
                     Icon(
                         Download_for_offline,
                         contentDescription = null,
-                        modifier = Modifier.size(96.dp),
+                        modifier = Modifier.size(192.dp),
                         tint = JewelTheme.globalColors.text.normal
                     )
                     
@@ -92,8 +96,8 @@ fun OnlineUpdateScreen(
 
                     totalText?.let {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalAlignment = Alignment.CenterVertically, 
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Icon(
                                 FileArrowDown,
@@ -103,13 +107,14 @@ fun OnlineUpdateScreen(
                             )
                             Text(
                                 text = stringResource(Res.string.onboarding_download_progress, downloadedText, it),
-                                textAlign = TextAlign.Center
+                                modifier = Modifier.width(175.dp),
+                                textAlign = TextAlign.End
                             )
                         }
                         
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalAlignment = Alignment.CenterVertically, 
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Icon(
                                 Speed,
@@ -119,7 +124,8 @@ fun OnlineUpdateScreen(
                             )
                             Text(
                                 text = speedText,
-                                textAlign = TextAlign.Center
+                                modifier = Modifier.width(175.dp),
+                                textAlign = TextAlign.End
                             )
                         }
                         
@@ -131,17 +137,18 @@ fun OnlineUpdateScreen(
                         etaSeconds?.let { secs ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
                                 Icon(
                                     Timer,
                                     contentDescription = null,
                                     tint = JewelTheme.globalColors.text.normal,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(15.dp)
                                 )
                                 Text(
                                     text = formatEta(secs),
-                                    textAlign = TextAlign.Center
+                                    modifier = Modifier.width(175.dp),
+                                    textAlign = TextAlign.End
                                 )
                             }
                         }

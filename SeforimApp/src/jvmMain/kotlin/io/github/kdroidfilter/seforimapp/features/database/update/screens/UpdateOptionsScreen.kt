@@ -17,6 +17,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
+import org.jetbrains.jewel.ui.typography
 import seforimapp.seforimapp.generated.resources.*
 
 @Composable
@@ -70,7 +71,7 @@ private fun RowScope.UpdateOptionColumn(
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(title)
+        Text(title, fontSize = JewelTheme.typography.h1TextStyle.fontSize)
         Icon(icon, title, modifier = Modifier.size(72.dp), tint = JewelTheme.globalColors.text.normal)
         Text(
             description,

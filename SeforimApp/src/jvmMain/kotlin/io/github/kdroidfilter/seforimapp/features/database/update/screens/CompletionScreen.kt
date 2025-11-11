@@ -15,6 +15,7 @@ import io.github.kdroidfilter.seforimapp.icons.CheckCircle
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
+import org.jetbrains.jewel.ui.icons.AllIconsKeys.General.Error
 import seforimapp.seforimapp.generated.resources.*
 
 @Composable
@@ -83,19 +84,12 @@ fun CompletionScreen(
                     verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
                 ) {
                     // Error icon
-                    Icon(
-                        org.jetbrains.jewel.ui.icons.AllIconsKeys.General.Error,
+                    Image(
+                        Error,
                         contentDescription = null,
                         modifier = Modifier.size(72.dp),
-                        tint = JewelTheme.globalColors.text.normal
                     )
-                    
-                    // Title
-                    Text(
-                        text = stringResource(Res.string.db_update_version_error_title),
-                        textAlign = TextAlign.Center
-                    )
-                    
+
                     // Description
                     Text(
                         text = stringResource(Res.string.db_update_version_error_message),

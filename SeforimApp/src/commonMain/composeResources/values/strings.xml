@@ -213,7 +213,7 @@
     <string name="installation_online_button">התחלת התקנה מקוונת</string>
     <!-- Offline -->
     <string name="installation_offline_title">התקנה לא-מקוונת</string>
-    <string name="installation_offline_desc">עליכם לבחור קובץ מסד נתונים מוכן שהורד מראש מעמוד ההפצות האחרון. הורידו את הקובץ עם הסיומת .zst מעמוד ההפצה, ולאחר מכן בחרו אותו כאן להמשך ההתקנה.</string>
+    <string name="installation_offline_desc">עליכם לבחור קובץ מסד נתונים מוכן שהורד מראש מעמוד ההפצות האחרון. הורידו את הקבצים עם הסיומות .part01 ו-.part02 מעמוד ההפצה, ולאחר מכן בחרו אותם כאן להמשך ההתקנה.</string>
     <string name="installation_offline_button">התחלת התקנה לא-מקוונת</string>
     <!-- Releases info (לשימוש היכן שתרצה; ה-URL עצמו יישום אצלך בקוד) -->
     <string name="installation_releases_hint">עמוד ההפצות האחרון</string>
@@ -221,7 +221,15 @@
 
     <!--Downloading-->
     <string name="onboarding_downloading_message">אנא המתן בזמן שאנו מורידים את מסד הנתונים</string>
+    <string name="onboarding_file_selection">בחירת קבצים</string>
+    <string name="onboarding_select_files_message">אנא בחרו את קבצי ‎.part01 ו-‎.part02 של מסד הנתונים</string>
+    <string name="onboarding_part01_selected">קובץ part01 נבחר ✓</string>
+    <string name="onboarding_choose_files">בחירת קבצים</string>
     <string name="onboarding_extracting_message">אנא המתן בזמן שאנו מחלצים את מסד הנתונים</string>
+    <string name="onboarding_verifying_version">בודק תאימות גרסה...</string>
+    <string name="onboarding_version_error_title">הגרסה אינה תואמת</string>
+    <string name="onboarding_version_error_message">מסד הנתונים שנבחר אינו תואם לגרסה זו של היישום. אנא הורידו את הגרסה העדכנית של מסד הנתונים.</string>
+    <string name="onboarding_restart_installation">התחל התקנה מחדש</string>
 
     <string name="onboarding_extracting_did_you_know">הידעת? זית משתמשת באלגוריתם הדחיסה המתקדם ביותר — לא ZIP ולא RAR, אלא ZST ברמת הדחיסה הגבוהה ביותר! דחיסה מרבית ומהירות חילוץ מרבית!</string>
 

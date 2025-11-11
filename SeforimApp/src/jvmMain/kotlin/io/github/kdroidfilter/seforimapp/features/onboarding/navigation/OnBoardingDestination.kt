@@ -20,7 +20,13 @@ sealed interface OnBoardingDestination {
     data object DatabaseOnlineInstallerScreen : OnBoardingDestination
 
     @Serializable
+    data object OfflineFileSelectionScreen : OnBoardingDestination
+
+    @Serializable
     data object ExtractScreen : OnBoardingDestination
+
+    @Serializable
+    data object VersionVerificationScreen : OnBoardingDestination
 
     @Serializable
     data object UserProfilScreen : OnBoardingDestination

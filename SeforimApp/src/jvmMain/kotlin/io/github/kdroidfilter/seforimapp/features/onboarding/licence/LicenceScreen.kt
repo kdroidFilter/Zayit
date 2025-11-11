@@ -18,6 +18,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardi
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
+import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
@@ -50,11 +51,19 @@ fun LicenceScreen(navController: NavController, progressBarState: ProgressBarSta
     }
     LicenceView(
         onNext = {
-            // If DB already configured and found, skip install flow and go to user info
-            val dbReady = runCatching { getDatabasePath() }.isSuccess
-            if (dbReady) {
+            // Check if DB exists and has compatible version
+            val dbExists = runCatching { getDatabasePath() }.isSuccess
+            val dbVersionCompatible = if (dbExists) {
+                DatabaseVersionManager.isDatabaseVersionCompatible()
+            } else {
+                false
+            }
+            
+            if (dbExists && dbVersionCompatible) {
+                // DB exists and version is compatible - skip install flow and go to user info
                 navController.navigate(OnBoardingDestination.UserProfilScreen)
             } else {
+                // DB doesn't exist or version is incompatible - continue with installation flow
                 navController.navigate(OnBoardingDestination.AvailableDiskSpaceScreen)
             }
         },

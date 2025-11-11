@@ -49,6 +49,7 @@ fun DownloadScreen(
     navController: NavController, progressBarState: ProgressBarState = ProgressBarState
 ) {
     val viewModel: DownloadViewModel = LocalAppGraph.current.downloadViewModel
+    val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
     val state by viewModel.state.collectAsState()
 
     // Update top progress indicator baseline for this step
@@ -62,10 +63,32 @@ fun DownloadScreen(
 
     // Trigger download once when entering this screen
     var started by remember { mutableStateOf(false) }
+    var cleanupCompleted by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        // Nettoyer les anciens fichiers de base de données avant de commencer
+        if (!cleanupCompleted) {
+            cleanupUseCase.cleanupDatabaseFiles()
+            cleanupCompleted = true
+        }
+    }
+    
     LaunchedEffect(state.inProgress, state.completed) {
-        if (!started && !state.inProgress && !state.completed) {
+        if (!started && !state.inProgress && !state.completed && cleanupCompleted) {
             started = true
             viewModel.onEvent(DownloadEvents.Start)
+        }
+    }
+
+    // Clear back stack once download starts to prevent going back
+    var backStackCleared by remember { mutableStateOf(false) }
+    LaunchedEffect(state.inProgress) {
+        if (!backStackCleared && state.inProgress) {
+            backStackCleared = true
+            // Clear back stack to prevent returning to installation type selection
+            navController.navigate(OnBoardingDestination.DatabaseOnlineInstallerScreen) {
+                popUpTo(0) { inclusive = true }
+            }
         }
     }
 
@@ -100,7 +123,7 @@ fun DownloadView(
             // Error banner with retry
             if (state.errorMessage != null) {
                 val generic = stringResource(Res.string.onboarding_error_occurred)
-                val detail = state.errorMessage?.takeIf { it.isNotBlank() }
+                val detail = state.errorMessage.takeIf { it.isNotBlank() }
                 val message = detail?.let { stringResource(Res.string.onboarding_error_with_detail, it) } ?: generic
                 val retryLabel = stringResource(Res.string.retry_button)
                 DefaultErrorBanner(
@@ -142,7 +165,7 @@ fun DownloadView(
                     )
                 }
                 val etaSeconds = if (speedBps > 0L) {
-                    val remaining = (totalBytes!! - state.downloadedBytes).coerceAtLeast(0)
+                    val remaining = (totalBytes - state.downloadedBytes).coerceAtLeast(0)
                     ((remaining + speedBps - 1) / speedBps)
                 } else null
                 etaSeconds?.let { secs ->

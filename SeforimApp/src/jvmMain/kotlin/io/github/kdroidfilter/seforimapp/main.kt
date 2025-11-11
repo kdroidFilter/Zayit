@@ -25,7 +25,9 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
+import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseUpdateWindow
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
+import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
@@ -91,6 +93,7 @@ fun main() {
 
         val mainState = MainAppState
         val showOnboarding: Boolean? = mainState.showOnBoarding.collectAsState().value
+        var showDatabaseUpdate by remember { mutableStateOf<Boolean?>(null) }
 
         val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
             isWindowVisible = true
@@ -115,23 +118,50 @@ fun main() {
                     titleBarStyle = ThemeUtils.pickTitleBarStyle(),
                 )
             ) {
-                // Decide whether to show onboarding based on database availability and completion flag
+                // Decide whether to show onboarding, database update, or main app
                 LaunchedEffect(Unit) {
                     try {
                         // getDatabasePath() throws if not configured or file missing
                         getDatabasePath()
-                        // If DB exists, show onboarding only if not finished yet
-                        val finished = AppSettings.isOnboardingFinished()
-                        mainState.setShowOnBoarding(!finished)
+                        
+                        // Check if onboarding is finished
+                        val onboardingFinished = AppSettings.isOnboardingFinished()
+                        
+                        if (!onboardingFinished) {
+                            // Show onboarding if not finished
+                            mainState.setShowOnBoarding(true)
+                            showDatabaseUpdate = false
+                        } else {
+                            // Onboarding is finished, check database version
+                            val isVersionCompatible = DatabaseVersionManager.isDatabaseVersionCompatible()
+                            
+                            if (!isVersionCompatible) {
+                                // Database needs update
+                                mainState.setShowOnBoarding(false)
+                                showDatabaseUpdate = true
+                            } else {
+                                // Everything is ready, show main app
+                                mainState.setShowOnBoarding(false)
+                                showDatabaseUpdate = true //Todo set to false for release
+                            }
+                        }
                     } catch (_: Exception) {
                         // If DB is missing/unconfigured, show onboarding
                         mainState.setShowOnBoarding(true)
+                        showDatabaseUpdate = false
                     }
                 }
 
                 if (showOnboarding == true) {
                     OnBoardingWindow()
-                } else if (showOnboarding == false) {
+                } else if (showDatabaseUpdate == true) {
+                    DatabaseUpdateWindow(
+                        onUpdateCompleted = {
+                            // After database update, refresh the version check and show main app
+                            showDatabaseUpdate = false
+                        }
+                    )
+                } else if (showOnboarding == false && showDatabaseUpdate == false) {
                     // Build dynamic window title: "AppName - CurrentTab"
                     val tabsVm = appGraph.tabsViewModel
                     val tabs by tabsVm.tabs.collectAsState()

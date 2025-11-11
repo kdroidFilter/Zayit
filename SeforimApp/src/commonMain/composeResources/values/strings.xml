@@ -330,5 +330,52 @@
     <string name="filter_select_book">בחר ספר לסינון</string>
     <string name="filter_select_toc">בחר סעיף לסינון</string>
 
+    <!-- Database Update Window -->
+    <string name="db_update_title_bar">עדכון מסד הנתונים</string>
+    
+    <!-- Version Check Screen -->
+    <string name="db_update_version_check_title">יש לעדכן את מסד הנתונים</string>
+    <string name="db_update_database_outdated">מסד הנתונים אינו מעודכן</string>
+    <string name="db_update_current_version">גרסה נוכחית: %1$s</string>
+    <string name="db_update_required_version">גרסה נדרשת: %1$s</string>
+    <string name="db_update_version_unknown">לא ידועה</string>
+    <string name="db_update_need_to_update">מסד הנתונים שלכם דורש עדכון כדי להיות תואם לגרסה זו של היישום. ניתן להוריד אותו מהאינטרנט או להשתמש בקובץ מקומי.</string>
+    <string name="db_update_continue">המשך</string>
+    
+    <!-- Update Options Screen -->
+    <string name="db_update_options_title">אפשרויות עדכון</string>
+    <string name="db_update_local_file_title">קובץ מקומי</string>
+    <string name="db_update_local_file_desc">השתמשו בקובץ מסד נתונים שהורד מראש (קבצי ‎.part01 ו-‎.part02)</string>
+    <string name="db_update_local_file_button">בחירת קובץ</string>
+    <string name="db_update_download_title">הורדה</string>
+    <string name="db_update_download_desc">הורידו באופן אוטומטי את הגרסה העדכנית ביותר של מסד הנתונים מהאינטרנט</string>
+    <string name="db_update_download_button">הורדה</string>
+    
+    <!-- Online Update Screen -->
+    <string name="db_update_downloading_title">הורדה בתהליך</string>
+    <string name="db_update_preparing_download">מכין הורדה...</string>
+    <string name="db_update_downloading">הורדה בתהליך</string>
+    <string name="db_update_download_completed">ההורדה הושלמה!</string>
+    <string name="db_update_download_success_message">מסד הנתונים עודכן בהצלחה.</string>
+    <string name="db_update_download_error">שגיאה בהורדה</string>
+    <string name="db_update_download_error_unknown">שגיאה לא ידועה</string>
+    <string name="db_update_back">חזור</string>
+    <string name="db_update_retry">נסה שוב</string>
+    
+    <!-- Offline Update Screen -->
+    <string name="db_update_offline_title">עדכון מקובץ מקומי</string>
+    <string name="db_update_file_selection">בחירת קבצים</string>
+    <string name="db_update_select_files_message">אנא בחרו את קבצי ‎.part01 ו-‎.part02 של מסד הנתונים</string>
+    <string name="db_update_part01_selected">קובץ part01 נבחר ✓</string>
+    <string name="db_update_choose_files">בחירת קבצים</string>
+    <string name="db_update_extracting">חילוץ בתהליך</string>
+    <string name="db_update_extraction_completed">החילוץ הושלם!</string>
+    <string name="db_update_extraction_error">שגיאה בחילוץ</string>
+    
+    <!-- Completion Screen -->
+    <string name="db_update_completion_title">העדכון הושלם</string>
+    <string name="db_update_success_title">העדכון בוצע בהצלחה!</string>
+    <string name="db_update_success_message">מסד הנתונים שלכם עודכן בהצלחה. כעת ניתן להשתמש ביישום.</string>
+
 
 </resources>

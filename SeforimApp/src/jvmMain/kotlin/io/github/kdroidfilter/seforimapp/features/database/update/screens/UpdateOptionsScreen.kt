@@ -9,6 +9,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
+import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
 import io.github.kdroidfilter.seforimapp.icons.Unarchive
@@ -20,6 +21,10 @@ import seforimapp.seforimapp.generated.resources.*
 
 @Composable
 fun UpdateOptionsScreen(navController: NavController) {
+    LaunchedEffect(Unit) {
+        DatabaseUpdateProgressBarState.setVersionCheckComplete()
+    }
+    
     OnBoardingScaffold(title = stringResource(Res.string.db_update_options_title)) {
         Row(modifier = Modifier.fillMaxSize()) {
             UpdateOptionColumn(
@@ -28,6 +33,7 @@ fun UpdateOptionsScreen(navController: NavController) {
                 icon = Unarchive,
                 description = stringResource(Res.string.db_update_local_file_desc),
                 buttonAction = {
+                    DatabaseUpdateProgressBarState.setOptionsSelected()
                     navController.navigate(DatabaseUpdateDestination.OfflineUpdateScreen)
                 },
                 buttonText = stringResource(Res.string.db_update_local_file_button)
@@ -39,6 +45,7 @@ fun UpdateOptionsScreen(navController: NavController) {
                 icon = Download_for_offline,
                 description = stringResource(Res.string.db_update_download_desc),
                 buttonAction = {
+                    DatabaseUpdateProgressBarState.setOptionsSelected()
                     navController.navigate(DatabaseUpdateDestination.OnlineUpdateScreen)
                 },
                 buttonText = stringResource(Res.string.db_update_download_button)

@@ -8,6 +8,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
+import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
 import org.jetbrains.compose.resources.stringResource
@@ -20,6 +21,10 @@ import seforimapp.seforimapp.generated.resources.*
 fun VersionCheckScreen(navController: NavController) {
     val currentVersion = remember { DatabaseVersionManager.getCurrentDatabaseVersion() }
     val minRequiredVersion = remember { DatabaseVersionManager.getMinimumRequiredVersion() }
+    
+    LaunchedEffect(Unit) {
+        DatabaseUpdateProgressBarState.resetProgress()
+    }
     
     OnBoardingScaffold(title = stringResource(Res.string.db_update_version_check_title)) {
         Column(

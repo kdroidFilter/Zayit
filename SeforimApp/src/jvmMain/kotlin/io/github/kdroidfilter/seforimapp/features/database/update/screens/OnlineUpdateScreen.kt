@@ -8,10 +8,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
+import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytesPerSec
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatEta
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadEvents
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
+import io.github.kdroidfilter.seforimapp.icons.FileArrowDown
+import io.github.kdroidfilter.seforimapp.icons.Speed
+import io.github.kdroidfilter.seforimapp.icons.Timer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
@@ -24,14 +32,25 @@ fun OnlineUpdateScreen(
 ) {
     val downloadViewModel: DownloadViewModel = LocalAppGraph.current.downloadViewModel
     val downloadState by downloadViewModel.state.collectAsState()
+    val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
+    
+    var cleanupCompleted by remember { mutableStateOf(false) }
     
     LaunchedEffect(Unit) {
+        // Nettoyer les anciens fichiers de base de données avant de commencer
+        cleanupUseCase.cleanupDatabaseFiles()
+        cleanupCompleted = true
+        DatabaseUpdateProgressBarState.setDownloadStarted()
         downloadViewModel.onEvent(DownloadEvents.Start)
     }
     
     LaunchedEffect(downloadState) {
+        if (downloadState.inProgress) {
+            DatabaseUpdateProgressBarState.setDownloadProgress(downloadState.progress)
+        }
         if (downloadState.completed) {
-            onUpdateCompleted()
+            DatabaseUpdateProgressBarState.setUpdateComplete()
+            navController.navigate(DatabaseUpdateDestination.CompletionScreen)
         }
     }
     
@@ -53,23 +72,79 @@ fun OnlineUpdateScreen(
                 }
                 
                 downloadState.inProgress -> {
+                    Icon(
+                        Download_for_offline,
+                        contentDescription = null,
+                        modifier = Modifier.size(96.dp),
+                        tint = JewelTheme.globalColors.text.normal
+                    )
+                    
                     Text(
                         text = stringResource(Res.string.db_update_downloading),
                         textAlign = TextAlign.Center
                     )
                     
-                    CircularProgressIndicator()
-                    
-                    Text(
-                        text = "${(downloadState.progress * 100).toInt()}%",
-                        textAlign = TextAlign.Center
-                    )
-                    
-                    if (downloadState.downloadedBytes > 0 && downloadState.totalBytes != null && downloadState.totalBytes!! > 0) {
-                        Text(
-                            text = "${downloadState.downloadedBytes / 1024 / 1024} MB / ${downloadState.totalBytes!! / 1024 / 1024} MB",
-                            textAlign = TextAlign.Center
-                        )
+                    val downloadedText = formatBytes(downloadState.downloadedBytes)
+                    val totalBytes = downloadState.totalBytes
+                    val totalText = totalBytes?.let { formatBytes(it) }
+                    val speedBps = downloadState.speedBytesPerSec
+                    val speedText = formatBytesPerSec(speedBps)
+
+                    totalText?.let {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                FileArrowDown,
+                                contentDescription = null,
+                                tint = JewelTheme.globalColors.text.normal,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = stringResource(Res.string.onboarding_download_progress, downloadedText, it),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Speed,
+                                contentDescription = null,
+                                tint = JewelTheme.globalColors.text.normal,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = speedText,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        
+                        val etaSeconds = if (speedBps > 0L) {
+                            val remaining = (totalBytes!! - downloadState.downloadedBytes).coerceAtLeast(0)
+                            ((remaining + speedBps - 1) / speedBps)
+                        } else null
+                        
+                        etaSeconds?.let { secs ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Timer,
+                                    contentDescription = null,
+                                    tint = JewelTheme.globalColors.text.normal,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = formatEta(secs),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
                 }
                 

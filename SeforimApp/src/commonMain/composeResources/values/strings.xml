@@ -376,6 +376,10 @@
     <string name="db_update_completion_title">העדכון הושלם</string>
     <string name="db_update_success_title">העדכון בוצע בהצלחה!</string>
     <string name="db_update_success_message">מסד הנתונים שלכם עודכן בהצלחה. כעת ניתן להשתמש ביישום.</string>
+    <string name="db_update_verifying_version">בודק תאימות גרסה...</string>
+    <string name="db_update_version_error_title">הגרסה אינה תואמת</string>
+    <string name="db_update_version_error_message">מסד הנתונים שנבחר אינו תואם לגרסה זו של היישום. אנא בחרו קובץ אחר או הורידו את הגרסה העדכנית.</string>
+    <string name="db_update_try_again">נסו שוב</string>
 
 
 </resources>

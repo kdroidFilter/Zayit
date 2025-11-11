@@ -3,11 +3,13 @@ package io.github.kdroidfilter.seforimapp.features.database.update.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
+import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
@@ -29,13 +31,20 @@ fun OfflineUpdateScreen(
     val extractViewModel: ExtractViewModel = LocalAppGraph.current.extractViewModel
     val extractState by extractViewModel.state.collectAsState()
     val processRepository: OnboardingProcessRepository = LocalAppGraph.current.onboardingProcessRepository
+    val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
     
     var part01Path by remember { mutableStateOf<String?>(null) }
     var hasStartedExtraction by remember { mutableStateOf(false) }
+    var cleanupCompleted by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     
     LaunchedEffect(extractState) {
+        if (extractState.inProgress) {
+            DatabaseUpdateProgressBarState.setDownloadProgress(extractState.progress)
+        }
         if (extractState.completed && hasStartedExtraction) {
-            onUpdateCompleted()
+            DatabaseUpdateProgressBarState.setUpdateComplete()
+            navController.navigate(DatabaseUpdateDestination.CompletionScreen)
         }
     }
     
@@ -46,10 +55,18 @@ fun OfflineUpdateScreen(
         val p2 = file?.path
         val p1 = part01Path
         if (!p2.isNullOrBlank() && !p1.isNullOrBlank()) {
-            // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
-            processRepository.setPendingZstPath(p1)
-            extractViewModel.onEvent(ExtractEvents.StartIfPending)
-            hasStartedExtraction = true
+            scope.launch {
+                // Nettoyer les anciens fichiers avant de commencer l'extraction
+                if (!cleanupCompleted) {
+                    cleanupUseCase.cleanupDatabaseFiles()
+                    cleanupCompleted = true
+                }
+                // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
+                DatabaseUpdateProgressBarState.setDownloadStarted()
+                processRepository.setPendingZstPath(p1)
+                extractViewModel.onEvent(ExtractEvents.StartIfPending)
+                hasStartedExtraction = true
+            }
         }
     }
     

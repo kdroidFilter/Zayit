@@ -1,8 +1,12 @@
 package io.github.kdroidfilter.seforimapp.features.database.update.navigation
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
@@ -11,6 +15,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import io.github.kdroidfilter.seforim.navigation.NavigationAnimations
+import io.github.kdroidfilter.seforimapp.core.presentation.components.AnimatedHorizontalProgressBar
 import io.github.kdroidfilter.seforimapp.features.database.update.screens.VersionCheckScreen
 import io.github.kdroidfilter.seforimapp.features.database.update.screens.UpdateOptionsScreen
 import io.github.kdroidfilter.seforimapp.features.database.update.screens.OnlineUpdateScreen
@@ -22,11 +27,16 @@ fun DatabaseUpdateNavHost(
     navController: NavHostController,
     onUpdateCompleted: () -> Unit = {}
 ) {
-    NavHost(
-        navController = navController,
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        startDestination = DatabaseUpdateDestination.VersionCheckScreen
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        val progressBarState = DatabaseUpdateProgressBarState
+        val progress by progressBarState.progress.collectAsState()
+        AnimatedHorizontalProgressBar(progress, Modifier.fillMaxWidth())
+        
+        NavHost(
+            navController = navController,
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            startDestination = DatabaseUpdateDestination.VersionCheckScreen
+        ) {
         noAnimatedComposable<DatabaseUpdateDestination.VersionCheckScreen> {
             VersionCheckScreen(navController = navController)
         }
@@ -50,7 +60,11 @@ fun DatabaseUpdateNavHost(
         }
         
         noAnimatedComposable<DatabaseUpdateDestination.CompletionScreen> {
-            CompletionScreen(onUpdateCompleted = onUpdateCompleted)
+            CompletionScreen(
+                navController = navController,
+                onUpdateCompleted = onUpdateCompleted
+            )
+        }
         }
     }
 }

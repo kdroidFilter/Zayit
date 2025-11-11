@@ -30,7 +30,7 @@ fun UpdateOptionsScreen(navController: NavController) {
         Row(modifier = Modifier.fillMaxSize()) {
             UpdateOptionColumn(
                 // Offline
-                title = stringResource(Res.string.db_update_local_file_title),
+                title = stringResource(Res.string.installation_offline_title),
                 icon = Unarchive,
                 description = stringResource(Res.string.db_update_local_file_desc),
                 buttonAction = {
@@ -42,7 +42,7 @@ fun UpdateOptionsScreen(navController: NavController) {
             Divider(orientation = Orientation.Vertical, modifier = Modifier.fillMaxHeight().width(1.dp))
             UpdateOptionColumn(
                 // Online
-                title = stringResource(Res.string.db_update_download_title),
+                title = stringResource(Res.string.installation_online_title),
                 icon = Download_for_offline,
                 description = stringResource(Res.string.db_update_download_desc),
                 buttonAction = {

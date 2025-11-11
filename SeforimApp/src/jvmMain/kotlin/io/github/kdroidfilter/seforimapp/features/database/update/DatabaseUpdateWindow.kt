@@ -31,7 +31,8 @@ import seforimapp.seforimapp.generated.resources.*
 
 @Composable
 fun ApplicationScope.DatabaseUpdateWindow(
-    onUpdateCompleted: () -> Unit = {}
+    onUpdateCompleted: () -> Unit = {},
+    isDatabaseMissing: Boolean = false
 ) {
     val updateWindowState = remember { getCenteredWindowState(720, 420) }
     DecoratedWindow(
@@ -105,7 +106,8 @@ fun ApplicationScope.DatabaseUpdateWindow(
         ) {
             DatabaseUpdateNavHost(
                 navController = navController,
-                onUpdateCompleted = onUpdateCompleted
+                onUpdateCompleted = onUpdateCompleted,
+                isDatabaseMissing = isDatabaseMissing
             )
         }
     }

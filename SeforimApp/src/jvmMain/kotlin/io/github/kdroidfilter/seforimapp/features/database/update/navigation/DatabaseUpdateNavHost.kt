@@ -25,7 +25,8 @@ import io.github.kdroidfilter.seforimapp.features.database.update.screens.Comple
 @Composable
 fun DatabaseUpdateNavHost(
     navController: NavHostController,
-    onUpdateCompleted: () -> Unit = {}
+    onUpdateCompleted: () -> Unit = {},
+    isDatabaseMissing: Boolean = false
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         val progressBarState = DatabaseUpdateProgressBarState
@@ -38,7 +39,10 @@ fun DatabaseUpdateNavHost(
             startDestination = DatabaseUpdateDestination.VersionCheckScreen
         ) {
         noAnimatedComposable<DatabaseUpdateDestination.VersionCheckScreen> {
-            VersionCheckScreen(navController = navController)
+            VersionCheckScreen(
+                navController = navController,
+                isDatabaseMissing = isDatabaseMissing
+            )
         }
         
         noAnimatedComposable<DatabaseUpdateDestination.UpdateOptionsScreen> {

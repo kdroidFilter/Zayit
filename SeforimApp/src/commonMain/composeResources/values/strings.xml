@@ -335,11 +335,13 @@
     
     <!-- Version Check Screen -->
     <string name="db_update_version_check_title">יש לעדכן את מסד הנתונים</string>
+    <string name="db_update_reinstall_title">יש להתקין מחדש את מסד הנתונים</string>
     <string name="db_update_database_outdated">מסד הנתונים אינו מעודכן</string>
     <string name="db_update_current_version">גרסה נוכחית: %1$s</string>
     <string name="db_update_required_version">גרסה נדרשת: %1$s</string>
     <string name="db_update_version_unknown">לא ידועה</string>
     <string name="db_update_need_to_update">מסד הנתונים שלכם דורש עדכון כדי להיות תואם לגרסה זו של היישום. ניתן להוריד אותו מהאינטרנט או להשתמש בקובץ מקומי.</string>
+    <string name="db_update_database_missing_error">חלה תקלה במסד הנתונים וכעת עליכם להתקין אותו מחדש. ניתן להוריד אותו מהאינטרנט או להשתמש בקובץ מקומי.</string>
     <string name="db_update_continue">המשך</string>
     
     <!-- Update Options Screen -->

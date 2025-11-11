@@ -94,6 +94,7 @@ fun main() {
         val mainState = MainAppState
         val showOnboarding: Boolean? = mainState.showOnBoarding.collectAsState().value
         var showDatabaseUpdate by remember { mutableStateOf<Boolean?>(null) }
+        var isDatabaseMissing by remember { mutableStateOf(false) }
 
         val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
             isWindowVisible = true
@@ -139,6 +140,7 @@ fun main() {
                                 // Database needs update
                                 mainState.setShowOnBoarding(false)
                                 showDatabaseUpdate = true
+                                isDatabaseMissing = false
                             } else {
                                 // Everything is ready, show main app
                                 mainState.setShowOnBoarding(false)
@@ -146,9 +148,20 @@ fun main() {
                             }
                         }
                     } catch (_: Exception) {
-                        // If DB is missing/unconfigured, show onboarding
-                        mainState.setShowOnBoarding(true)
-                        showDatabaseUpdate = false
+                        // If DB is missing but app is configured, show database update with error message
+                        val onboardingFinished = AppSettings.isOnboardingFinished()
+                        
+                        if (!onboardingFinished) {
+                            // App not configured, show onboarding
+                            mainState.setShowOnBoarding(true)
+                            showDatabaseUpdate = false
+                            isDatabaseMissing = false
+                        } else {
+                            // App configured but DB missing, show database update with error
+                            mainState.setShowOnBoarding(false)
+                            showDatabaseUpdate = true
+                            isDatabaseMissing = true
+                        }
                     }
                 }
 
@@ -159,7 +172,8 @@ fun main() {
                         onUpdateCompleted = {
                             // After database update, refresh the version check and show main app
                             showDatabaseUpdate = false
-                        }
+                        },
+                        isDatabaseMissing = isDatabaseMissing
                     )
                 } else if (showOnboarding == false && showDatabaseUpdate == false) {
                     // Build dynamic window title: "AppName - CurrentTab"

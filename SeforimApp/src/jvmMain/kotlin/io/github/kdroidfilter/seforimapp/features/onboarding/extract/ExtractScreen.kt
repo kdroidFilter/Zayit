@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
@@ -18,6 +19,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultErrorBanner
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.InlineInformationBanner
+import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.theme.defaultBannerStyle
 import org.jetbrains.jewel.ui.theme.inlineBannerStyle
 import seforimapp.seforimapp.generated.resources.*
@@ -42,13 +44,13 @@ fun ExtractScreen(
     // Kick off extraction if a pending path exists
     LaunchedEffect(Unit) { viewModel.onEvent(ExtractEvents.StartIfPending) }
 
-    // Navigate to finish when DB is ready
+    // Navigate to version verification when DB extraction is ready
     var navigated by remember { mutableStateOf(false) }
     LaunchedEffect(state.completed) {
         if (!navigated && state.completed) {
             navigated = true
-            // Continue to user profile step and remove Extract from back stack to disable back navigation
-            navController.navigate(OnBoardingDestination.UserProfilScreen) {
+            // Continue to version verification step and remove Extract from back stack to disable back navigation
+            navController.navigate(OnBoardingDestination.VersionVerificationScreen) {
                 popUpTo<OnBoardingDestination.ExtractScreen> { inclusive = true }
             }
         }
@@ -86,6 +88,13 @@ fun ExtractView(
                 modifier = Modifier.size(192.dp),
                 tint = JewelTheme.globalColors.text.normal
             )
+            
+            if (state.inProgress) {
+                Text(
+                    text = "${(state.progress * 100).toInt()}%",
+                    textAlign = TextAlign.Center
+                )
+            }
 
             InlineInformationBanner(
                 style = JewelTheme.inlineBannerStyle.information,

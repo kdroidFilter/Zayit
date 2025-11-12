@@ -3,26 +3,19 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
 import io.github.kdroidfilter.seforimapp.icons.Unarchive
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
-import io.github.vinceglb.filekit.dialogs.FileKitType
-import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
-import io.github.vinceglb.filekit.path
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -40,41 +33,19 @@ fun TypeOfInstallationScreen(navController: NavController, progressBarState: Pro
         progressBarState.setProgress(0.3f)
     }
     val viewModel: TypeOfInstallationViewModel = LocalAppGraph.current.typeOfInstallationViewModel
-    // Offline: pick two files (part01 then part02)
-    var part01Path by remember { mutableStateOf<String?>(null) }
-    val pickPart02Launcher = rememberFilePickerLauncher(
-        type = FileKitType.File(extensions = listOf("part02"))
-    ) { file ->
-        val p2 = file?.path
-        val p1 = part01Path
-        if (!p2.isNullOrBlank() && !p1.isNullOrBlank()) {
-            // Provide part01 path; ExtractUseCase discovers part02 automatically in the same folder
-            viewModel.onEvent(TypeOfInstallationEvents.OfflineFileChosen(p1))
-            // Jump to the start of the Extract step
-            progressBarState.setProgress(0.7f)
-            // Move forward and clear all previous onboarding steps so back is disabled
-            navController.navigate(OnBoardingDestination.ExtractScreen) {
-                popUpTo<OnBoardingDestination.InitScreen> { inclusive = true }
-            }
-        }
-    }
-    val pickPart01Launcher = rememberFilePickerLauncher(
-        type = FileKitType.File(extensions = listOf("part01"))
-    ) { file ->
-        part01Path = file?.path
-        if (part01Path != null) {
-            // Immediately ask for part02
-            pickPart02Launcher.launch()
-        }
-    }
     TypeOfInstallationView(
         onOnlineInstallation = {
             // Move forward and clear all previous onboarding steps so back is disabled
             navController.navigate(OnBoardingDestination.DatabaseOnlineInstallerScreen) {
-                popUpTo<OnBoardingDestination.InitScreen> { inclusive = true }
+                popUpTo(0) { inclusive = true }
             }
         },
-        onOfflineInstallation = { pickPart01Launcher.launch() }
+        onOfflineInstallation = { 
+            // Move forward and clear all previous onboarding steps so back is disabled
+            navController.navigate(OnBoardingDestination.OfflineFileSelectionScreen) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
     )
 }
 

@@ -5,3 +5,6 @@
 [submodule "SeforimAcronymizer"]
 	path = SeforimAcronymizer
 	url = https://github.com/kdroidFilter/SeforimAcronymizer.git
+[submodule "SeforimMagicIndexer"]
+	path = SeforimMagicIndexer
+	url = https://github.com/kdroidFilter/SeforimMagicIndexer

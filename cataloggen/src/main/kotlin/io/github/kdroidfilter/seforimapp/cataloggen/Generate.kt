@@ -12,25 +12,56 @@ import java.io.File
  * precomputed titles and mappings used by the app UI.
  *
  * Usage (via Gradle task):
- *   ./gradlew :cataloggen:generatePrecomputedCatalog
+ *   With env var (recommended):
+ *     SEFORIM_DB=/path/to/seforim.db ./gradlew :cataloggen:generatePrecomputedCatalog --args="<outputDir>"
+ *   Legacy (without env var):
+ *     ./gradlew :cataloggen:generatePrecomputedCatalog --args="<dbPath> <outputDir>"
  */
 fun main(args: Array<String>) {
-    require(args.size >= 2) { "Expected arguments: <dbPath> <outputDir>" }
-    val dbPath = args[0]
-    val outputDir = File(args[1])
+    val envDb = System.getenv("SEFORIM_DB")?.takeIf { it.isNotBlank() }
+
+    // Supported invocation modes:
+    //  - 2 args: <dbPath> <outputDir> (legacy)
+    //  - 1 arg and SEFORIM_DB set: <outputDir>
+    val (dbPath, outputDirPath) = when {
+        args.size >= 2 -> args[0] to args[1]
+        args.size == 1 && envDb != null -> envDb to args[0]
+        else -> error(
+            """
+            Invalid arguments. Supported usages:\n
+            1) With env var (recommended):
+               SEFORIM_DB=/path/to/seforim.db <command> --args=\"<outputDir>\"
+
+            2) Legacy (no env var):
+               <command> --args=\"<dbPath> <outputDir>\"\n
+            Received ${args.size} arg(s), SEFORIM_DB set=${envDb != null}.
+            """.trimIndent()
+        )
+    }
+    println(dbPath)
+    val outputDir = File(outputDirPath)
 
     val driver = JdbcSqliteDriver("jdbc:sqlite:$dbPath")
     val repo = SeforimRepository(dbPath, driver)
 
     // Only include categories used in the current UI
-    val categoriesOfInterest = setOf<Long>(
-        2, 3, 4, // Tanakh
+    val baseCategoriesOfInterest = setOf<Long>(
+        1, 2, 3, 4, // Tanakh (root + children)
         5, 6, 7, 8, 9, 10, 11, // Mishnah root + orders
         12, 13, 14, 15, 16, 17, 18, // Bavli root + orders
         19, 20, 21, 22, 23, 24, // Yerushalmi root + orders
+        43, // Mishneh Torah (root)
         59, // Tur
         60  // Shulchan Aruch
     )
+    // Enrich categories to include Mishneh Torah's child categories so we can display all its books
+    val categoriesOfInterest = runBlocking {
+        val set = baseCategoriesOfInterest.toMutableSet()
+        // Fetch immediate child categories of Mishneh Torah (43)
+        val mtChildren = runCatching { repo.getCategoryChildren(43) }.getOrDefault(emptyList())
+        set.addAll(mtChildren.map { it.id })
+        set.toSet()
+    }
     val categoryTitles: MutableMap<Long, String> = mutableMapOf()
     runBlocking {
         categoriesOfInterest.forEach { cid ->
@@ -44,11 +75,8 @@ fun main(args: Array<String>) {
     runBlocking {
         categoryTitles.keys.forEach { cid ->
             val books = runCatching { repo.getBooksByCategory(cid) }.getOrDefault(emptyList())
-            // Prefer stripping both the current category label and the root label,
-            // to support cases like "שולחן ערוך, ..." and "תלמוד ירושלמי ...".
-            val categoryLabel = categoryTitles[cid]
-            val rootLabel = rootCategoryTitle(repo, cid)
-            val labels = listOfNotNull(categoryLabel, rootLabel).distinct()
+            // Strip any ancestor labels (category, parent, root, etc.) to avoid repetition like "משנה תורה, ..."
+            val labels = ancestorTitles(repo, cid)
             val refs = books.map { b ->
                 bookTitles[b.id] = b.title
                 val display = stripAnyLabelPrefix(labels, b.title)
@@ -152,7 +180,20 @@ fun main(args: Array<String>) {
         .addType(multiCategorySpec)
         .addType(tocQuickLinksSpec)
 
-    val catalogObject = buildCatalogType(pkg, bookTitles, categoryTitles, categoryBooks, tocByTocTextId)
+    val mishnehTorahChildrenIds: List<Long> = runBlocking {
+        runCatching { repo.getCategoryChildren(43) }
+            .getOrDefault(emptyList())
+            .map { it.id }
+    }
+
+    val catalogObject = buildCatalogType(
+        pkg,
+        bookTitles,
+        categoryTitles,
+        categoryBooks,
+        tocByTocTextId,
+        mishnehTorahChildrenIds
+    )
     val fileSpec = fileSpecBuilder.addType(catalogObject)
         .build()
 
@@ -181,12 +222,26 @@ private fun rootCategoryTitle(repo: SeforimRepository, categoryId: Long): String
     lastTitle ?: ""
 }
 
+private fun ancestorTitles(repo: SeforimRepository, categoryId: Long): List<String> = runBlocking {
+    val labels = mutableListOf<String>()
+    var cur = runCatching { repo.getCategory(categoryId) }.getOrNull()
+    if (cur?.title != null) labels += cur.title
+    var guard = 0
+    while (cur?.parentId != null && guard++ < 50) {
+        cur = runCatching { repo.getCategory(cur.parentId!!) }.getOrNull()
+        val t = cur?.title
+        if (!t.isNullOrBlank()) labels += t
+    }
+    labels.distinct()
+}
+
 private fun buildCatalogType(
     pkg: String,
     bookTitles: Map<Long, String>,
     categoryTitles: Map<Long, String>,
     categoryBooks: Map<Long, List<Pair<Long, String>>>,
-    tocByTocTextId: Map<Long, Map<Long, Triple<String, Long, Long?>>>
+    tocByTocTextId: Map<Long, Map<Long, Triple<String, Long, Long?>>>,
+    mishnehTorahChildrenIds: List<Long>,
 ): TypeSpec {
     val builder = TypeSpec.objectBuilder("PrecomputedCatalog")
 
@@ -248,6 +303,7 @@ private fun buildCatalogType(
 
     // Categories
     val categoriesPretty = linkedMapOf(
+        1L to "TANAKH",
         2L to "TORAH",
         3L to "NEVIIM",
         4L to "KETUVIM",
@@ -271,6 +327,7 @@ private fun buildCatalogType(
         22L to "YERUSHALMI_NASHIM",
         23L to "YERUSHALMI_NEZIKIN",
         24L to "YERUSHALMI_TAHAROT",
+        43L to "MISHNE_TORAH",
         59L to "TUR",
         60L to "SHULCHAN_ARUCH",
     )
@@ -334,10 +391,8 @@ private fun buildCatalogType(
     val dropdownSpecClass = ClassName(pkg, "DropdownSpec")
     val listOfDropdownSpec = LIST.parameterizedBy(dropdownSpecClass)
     val homeDropdowns = CodeBlock.builder().add("listOf(\n")
-        // 3 single categories
-        .add("  CategoryDropdownSpec(%LL),\n", 2L)
-        .add("  CategoryDropdownSpec(%LL),\n", 3L)
-        .add("  CategoryDropdownSpec(%LL),\n", 4L)
+        // Tanakh combined like Yerushalmi: root label with child categories' books
+        .add("  MultiCategoryDropdownSpec(%LL, listOf(%LL, %LL, %LL)),\n", 1L, 2L, 3L, 4L)
         // Mishna
         .add("  MultiCategoryDropdownSpec(%LL, listOf(%LL, %LL, %LL, %LL, %LL, %LL)),\n",
             5L, 6L, 7L, 8L, 9L, 10L, 11L)
@@ -360,6 +415,13 @@ private fun buildCatalogType(
             .build()
     )
     // Named specs for easy use in UI
+    dropdownsObj.addProperty(
+        PropertySpec.builder("TANAKH", dropdownSpecClass)
+            .initializer("MultiCategoryDropdownSpec(%LL, listOf(%LL, %LL, %LL))",
+                1L, 2L, 3L, 4L)
+            .build()
+    )
+    // Conserver les presets historiques pour compatibilité éventuelle
     dropdownsObj.addProperty(
         PropertySpec.builder("TORAH", dropdownSpecClass)
             .initializer("CategoryDropdownSpec(%LL)", 2L)
@@ -398,6 +460,22 @@ private fun buildCatalogType(
             .initializer("CategoryDropdownSpec(%LL)", 60L)
             .build()
     )
+    // Mishneh Torah: display all books under its child categories
+    run {
+        val listLiteral = CodeBlock.builder().apply {
+            add("listOf(")
+            mishnehTorahChildrenIds.forEachIndexed { idx, id ->
+                if (idx > 0) add(", ")
+                add("%LL", id)
+            }
+            add(")")
+        }.build()
+        dropdownsObj.addProperty(
+            PropertySpec.builder("MISHNE_TORAH", dropdownSpecClass)
+                .initializer(CodeBlock.of("MultiCategoryDropdownSpec(%LL, %L)", 43L, listLiteral))
+                .build()
+        )
+    }
     dropdownsObj.addProperty(
         PropertySpec.builder("TUR_QUICK_LINKS", dropdownSpecClass)
             .initializer("TocQuickLinksSpec(%LL, listOf(%LL, %LL, %LL, %LL))",

@@ -216,14 +216,107 @@ public object PrecomputedCatalog {
         176L to "תלמוד ירושלמי עבודה זרה",
         177L to "תלמוד ירושלמי הוריות",
         178L to "תלמוד ירושלמי נדה",
+        322L to "משנה תורה, מסירת תורה שבעל פה",
+        323L to "משנה תורה, מצוות לא תעשה",
+        324L to "משנה תורה, מצוות עשה",
+        325L to "משנה תורה, תוכן החיבור",
+        326L to "משנה תורה, הלכות יסודי התורה",
+        327L to "משנה תורה, הלכות דעות",
+        328L to "משנה תורה, הלכות תלמוד תורה",
+        329L to "משנה תורה, הלכות עבודה זרה וחוקות הגויים",
+        330L to "משנה תורה, הלכות תשובה",
+        331L to "משנה תורה, הלכות קריאת שמע",
+        332L to "משנה תורה, הלכות תפילה וברכת כהנים",
+        333L to "משנה תורה, הלכות תפילין ומזוזה וספר תורה",
+        334L to "משנה תורה, הלכות ציצית",
+        335L to "משנה תורה, הלכות ברכות",
+        336L to "משנה תורה, הלכות מילה",
+        337L to "משנה תורה, סדר התפילה",
+        338L to "משנה תורה, הלכות שבת",
+        339L to "משנה תורה, הלכות עירובין",
+        340L to "משנה תורה, הלכות שקלים",
+        341L to "משנה תורה, הלכות קידוש החודש",
+        342L to "משנה תורה, הלכות תעניות",
+        343L to "משנה תורה, הלכות מגילה וחנוכה",
+        344L to "משנה תורה, הלכות שופר וסוכה ולולב",
+        345L to "משנה תורה, הלכות שביתת יום טוב",
+        346L to "משנה תורה, הלכות שביתת עשור",
+        347L to "משנה תורה, הלכות חמץ ומצה",
+        348L to "משנה תורה, הלכות אישות",
+        349L to "משנה תורה, הלכות גירושין",
+        350L to "משנה תורה, הלכות יבום וחליצה",
+        351L to "משנה תורה, הלכות סוטה",
+        352L to "משנה תורה, הלכות נערה בתולה",
+        353L to "משנה תורה, הלכות מאכלות אסורות",
+        354L to "משנה תורה, הלכות שחיטה",
+        355L to "משנה תורה, הלכות איסורי ביאה",
+        356L to "משנה תורה, הלכות נדרים",
+        357L to "משנה תורה, הלכות נזירות",
+        358L to "משנה תורה, הלכות ערכים וחרמין",
+        359L to "משנה תורה, הלכות שבועות",
+        360L to "משנה תורה, הלכות תרומות",
+        361L to "משנה תורה, הלכות מעשרות",
+        362L to "משנה תורה, הלכות מעשר שני ונטע רבעי",
+        363L to "משנה תורה, הלכות שמיטה ויובל",
+        364L to "משנה תורה, הלכות מתנות עניים",
+        365L to "משנה תורה, הלכות כלאים",
+        366L to "משנה תורה, הלכות ביכורים ושאר מתנות כהונה שבגבולין",
+        367L to "משנה תורה, הלכות בית הבחירה",
+        368L to "משנה תורה, הלכות כלי המקדש והעובדין בו",
+        369L to "משנה תורה, הלכות איסורי המזבח",
+        370L to "משנה תורה, הלכות ביאת מקדש",
+        371L to "משנה תורה, הלכות מעשה הקרבנות",
+        372L to "משנה תורה, הלכות עבודת יום הכפורים",
+        373L to "משנה תורה, הלכות פסולי המוקדשין",
+        374L to "משנה תורה, הלכות תמידים ומוספין",
+        375L to "משנה תורה, הלכות מעילה",
+        376L to "משנה תורה, הלכות בכורות",
+        377L to "משנה תורה, הלכות שגגות",
+        378L to "משנה תורה, הלכות מחוסרי כפרה",
+        379L to "משנה תורה, הלכות תמורה",
+        380L to "משנה תורה, הלכות קרבן פסח",
+        381L to "משנה תורה, הלכות חגיגה",
+        382L to "משנה תורה, הלכות נזקי ממון",
+        383L to "משנה תורה, הלכות גזילה ואבידה",
+        384L to "משנה תורה, הלכות גניבה",
+        385L to "משנה תורה, הלכות חובל ומזיק",
+        386L to "משנה תורה, הלכות רוצח ושמירת נפש",
+        387L to "משנה תורה, הלכות מכירה",
+        388L to "משנה תורה, הלכות זכייה ומתנה",
+        389L to "משנה תורה, הלכות שלוחין ושותפין",
+        390L to "משנה תורה, הלכות עבדים",
+        391L to "משנה תורה, הלכות שכנים",
+        392L to "משנה תורה, הלכות מלווה ולווה",
+        393L to "משנה תורה, הלכות שכירות",
+        394L to "משנה תורה, הלכות נחלות",
+        395L to "משנה תורה, הלכות טוען ונטען",
+        396L to "משנה תורה, הלכות שאלה ופיקדון",
+        397L to "משנה תורה, הלכות שאר אבות הטומאות",
+        398L to "משנה תורה, הלכות טומאת מת",
+        399L to "משנה תורה, הלכות טומאת צרעת",
+        400L to "משנה תורה, הלכות מטמאי משכב ומושב",
+        401L to "משנה תורה, הלכות טומאת אוכלים",
+        402L to "משנה תורה, הלכות פרה אדומה",
+        403L to "משנה תורה, הלכות מקואות",
+        404L to "משנה תורה, הלכות כלים",
+        405L to "משנה תורה, הלכות סנהדרין והעונשין המסורין להם",
+        406L to "משנה תורה, הלכות עדות",
+        407L to "משנה תורה, הלכות ממרים",
+        408L to "משנה תורה, הלכות אבל",
+        409L to "משנה תורה, הלכות מלכים ומלחמות",
         410L to "טור",
         411L to "שולחן ערוך, אורח חיים",
         412L to "שולחן ערוך, יורה דעה",
         413L to "שולחן ערוך, אבן העזר",
         414L to "שולחן ערוך, חושן משפט",
+        804L to "דבש תמר - ב (רמבם)",
+        805L to "דרך המלך (חוידנסקי)",
+        938L to "חדושי רבנו חיים הלוי על הרמבם",
+        1_530L to "מחנה אפרים חלק א - ב",
       )
 
   public val CATEGORY_TITLES: Map<Long, String> = mapOf(
+        1L to "תנך",
         2L to "תורה",
         3L to "נביאים",
         4L to "כתובים",
@@ -247,11 +340,29 @@ public object PrecomputedCatalog {
         22L to "סדר נשים",
         23L to "סדר נזיקין",
         24L to "סדר טהרות",
+        43L to "משנה תורה",
+        44L to "הקדמה",
+        45L to "ספר מדע",
+        46L to "ספר אהבה",
+        47L to "ספר זמנים",
+        48L to "ספר נשים",
+        49L to "ספר קדושה",
+        50L to "ספר הפלאה",
+        51L to "ספר זרעים",
+        52L to "ספר עבודה",
+        53L to "ספר קורבנות",
+        54L to "ספר נזיקין",
+        55L to "ספר קניין",
+        56L to "ספר משפטים",
+        57L to "ספר טהרה",
+        58L to "ספר שופטים",
         59L to "טור",
         60L to "שולחן ערוך",
+        76L to "מפרשים",
       )
 
   public val CATEGORY_BOOKS: Map<Long, List<BookRef>> = mapOf(
+        1L to listOf() ,
         2L to listOf(BookRef(1L, "בראשית"), BookRef(2L, "שמות"), BookRef(3L, "ויקרא"), BookRef(4L, "במדבר"), BookRef(5L, "דברים")) ,
         3L to listOf(BookRef(6L, "יהושע"), BookRef(7L, "שופטים"), BookRef(8L, "שמואל א"), BookRef(9L, "שמואל ב"), BookRef(10L, "מלכים א"), BookRef(11L, "מלכים ב"), BookRef(12L, "ישעיהו"), BookRef(13L, "ירמיהו"), BookRef(14L, "יחזקאל"), BookRef(15L, "הושע"), BookRef(16L, "יואל"), BookRef(17L, "עמוס"), BookRef(18L, "עובדיה"), BookRef(19L, "יונה"), BookRef(20L, "מיכה"), BookRef(21L, "נחום"), BookRef(22L, "חבקוק"), BookRef(23L, "צפניה"), BookRef(24L, "חגי"), BookRef(25L, "זכריה"), BookRef(26L, "מלאכי")) ,
         4L to listOf(BookRef(28L, "תהילים"), BookRef(30L, "משלי"), BookRef(29L, "איוב"), BookRef(31L, "שיר השירים"), BookRef(27L, "רות"), BookRef(33L, "איכה"), BookRef(32L, "קהלת"), BookRef(34L, "אסתר"), BookRef(35L, "דניאל"), BookRef(36L, "עזרא"), BookRef(37L, "נחמיה"), BookRef(38L, "דברי הימים א"), BookRef(39L, "דברי הימים ב")) ,
@@ -275,8 +386,25 @@ public object PrecomputedCatalog {
         22L to listOf(BookRef(163L, "יבמות"), BookRef(167L, "סוטה"), BookRef(164L, "כתובות"), BookRef(165L, "נדרים"), BookRef(166L, "נזיר"), BookRef(168L, "גיטין"), BookRef(169L, "קידושין")) ,
         23L to listOf(BookRef(170L, "בבא קמא"), BookRef(171L, "בבא מציעא"), BookRef(172L, "בבא בתרא"), BookRef(173L, "סנהדרין"), BookRef(175L, "שבועות"), BookRef(176L, "עבודה זרה"), BookRef(174L, "מכות"), BookRef(177L, "הוריות")) ,
         24L to listOf(BookRef(178L, "נדה")) ,
+        43L to listOf() ,
+        44L to listOf(BookRef(322L, "מסירת תורה שבעל פה"), BookRef(324L, "מצוות עשה"), BookRef(323L, "מצוות לא תעשה"), BookRef(325L, "תוכן החיבור")) ,
+        45L to listOf(BookRef(326L, "הלכות יסודי התורה"), BookRef(327L, "הלכות דעות"), BookRef(328L, "הלכות תלמוד תורה"), BookRef(329L, "הלכות עבודה זרה וחוקות הגויים"), BookRef(330L, "הלכות תשובה")) ,
+        46L to listOf(BookRef(331L, "הלכות קריאת שמע"), BookRef(332L, "הלכות תפילה וברכת כהנים"), BookRef(333L, "הלכות תפילין ומזוזה וספר תורה"), BookRef(334L, "הלכות ציצית"), BookRef(335L, "הלכות ברכות"), BookRef(336L, "הלכות מילה"), BookRef(337L, "סדר התפילה")) ,
+        47L to listOf(BookRef(338L, "הלכות שבת"), BookRef(339L, "הלכות עירובין"), BookRef(346L, "הלכות שביתת עשור"), BookRef(345L, "הלכות שביתת יום טוב"), BookRef(347L, "הלכות חמץ ומצה"), BookRef(344L, "הלכות שופר וסוכה ולולב"), BookRef(340L, "הלכות שקלים"), BookRef(341L, "הלכות קידוש החודש"), BookRef(342L, "הלכות תעניות"), BookRef(343L, "הלכות מגילה וחנוכה")) ,
+        48L to listOf(BookRef(348L, "הלכות אישות"), BookRef(349L, "הלכות גירושין"), BookRef(350L, "הלכות יבום וחליצה"), BookRef(352L, "הלכות נערה בתולה"), BookRef(351L, "הלכות סוטה")) ,
+        49L to listOf(BookRef(355L, "הלכות איסורי ביאה"), BookRef(353L, "הלכות מאכלות אסורות"), BookRef(354L, "הלכות שחיטה")) ,
+        50L to listOf(BookRef(359L, "הלכות שבועות"), BookRef(356L, "הלכות נדרים"), BookRef(357L, "הלכות נזירות"), BookRef(358L, "הלכות ערכים וחרמין")) ,
+        51L to listOf(BookRef(365L, "הלכות כלאים"), BookRef(364L, "הלכות מתנות עניים"), BookRef(360L, "הלכות תרומות"), BookRef(361L, "הלכות מעשרות"), BookRef(362L, "הלכות מעשר שני ונטע רבעי"), BookRef(366L, "הלכות ביכורים ושאר מתנות כהונה שבגבולין"), BookRef(363L, "הלכות שמיטה ויובל")) ,
+        52L to listOf(BookRef(367L, "הלכות בית הבחירה"), BookRef(368L, "הלכות כלי המקדש והעובדין בו"), BookRef(370L, "הלכות ביאת מקדש"), BookRef(369L, "הלכות איסורי המזבח"), BookRef(371L, "הלכות מעשה הקרבנות"), BookRef(374L, "הלכות תמידים ומוספין"), BookRef(373L, "הלכות פסולי המוקדשין"), BookRef(372L, "הלכות עבודת יום הכפורים"), BookRef(375L, "הלכות מעילה")) ,
+        53L to listOf(BookRef(380L, "הלכות קרבן פסח"), BookRef(381L, "הלכות חגיגה"), BookRef(376L, "הלכות בכורות"), BookRef(377L, "הלכות שגגות"), BookRef(378L, "הלכות מחוסרי כפרה"), BookRef(379L, "הלכות תמורה")) ,
+        54L to listOf(BookRef(382L, "הלכות נזקי ממון"), BookRef(384L, "הלכות גניבה"), BookRef(383L, "הלכות גזילה ואבידה"), BookRef(385L, "הלכות חובל ומזיק"), BookRef(386L, "הלכות רוצח ושמירת נפש")) ,
+        55L to listOf(BookRef(387L, "הלכות מכירה"), BookRef(388L, "הלכות זכייה ומתנה"), BookRef(391L, "הלכות שכנים"), BookRef(389L, "הלכות שלוחין ושותפין"), BookRef(390L, "הלכות עבדים")) ,
+        56L to listOf(BookRef(393L, "הלכות שכירות"), BookRef(396L, "הלכות שאלה ופיקדון"), BookRef(392L, "הלכות מלווה ולווה"), BookRef(395L, "הלכות טוען ונטען"), BookRef(394L, "הלכות נחלות")) ,
+        57L to listOf(BookRef(398L, "הלכות טומאת מת"), BookRef(402L, "הלכות פרה אדומה"), BookRef(399L, "הלכות טומאת צרעת"), BookRef(400L, "הלכות מטמאי משכב ומושב"), BookRef(397L, "הלכות שאר אבות הטומאות"), BookRef(401L, "הלכות טומאת אוכלים"), BookRef(404L, "הלכות כלים"), BookRef(403L, "הלכות מקואות")) ,
+        58L to listOf(BookRef(405L, "הלכות סנהדרין והעונשין המסורין להם"), BookRef(406L, "הלכות עדות"), BookRef(407L, "הלכות ממרים"), BookRef(408L, "הלכות אבל"), BookRef(409L, "הלכות מלכים ומלחמות")) ,
         59L to listOf(BookRef(410L, "טור")) ,
         60L to listOf(BookRef(411L, "אורח חיים"), BookRef(412L, "יורה דעה"), BookRef(413L, "אבן העזר"), BookRef(414L, "חושן משפט")) ,
+        76L to listOf(BookRef(804L, "דבש תמר - ב (רמבם)"), BookRef(805L, "דרך המלך (חוידנסקי)"), BookRef(938L, "חדושי רבנו חיים הלוי על הרמבם"), BookRef(1_530L, "מחנה אפרים חלק א - ב")) ,
       )
 
   public val TOC_BY_TOC_TEXT_ID: Map<Long, Map<Long, TocQuickLink>> = mapOf(
@@ -285,6 +413,11 @@ public object PrecomputedCatalog {
 
   public object Ids {
     public object Categories {
+      /**
+       * תנך
+       */
+      public const val TANAKH: Long = 1L
+
       /**
        * תורה
        */
@@ -401,6 +534,11 @@ public object PrecomputedCatalog {
       public const val YERUSHALMI_TAHAROT: Long = 24L
 
       /**
+       * משנה תורה
+       */
+      public const val MISHNE_TORAH: Long = 43L
+
+      /**
        * טור
        */
       public const val TUR: Long = 59L
@@ -443,15 +581,15 @@ public object PrecomputedCatalog {
 
   public object Dropdowns {
     public val HOME: List<DropdownSpec> = listOf(
-          CategoryDropdownSpec(2L),
-          CategoryDropdownSpec(3L),
-          CategoryDropdownSpec(4L),
+          MultiCategoryDropdownSpec(1L, listOf(2L, 3L, 4L)),
           MultiCategoryDropdownSpec(5L, listOf(6L, 7L, 8L, 9L, 10L, 11L)),
           MultiCategoryDropdownSpec(12L, listOf(13L, 14L, 15L, 16L, 17L, 18L)),
           MultiCategoryDropdownSpec(19L, listOf(20L, 21L, 22L, 23L, 24L)),
           CategoryDropdownSpec(60L),
           TocQuickLinksSpec(410L, listOf(3_455L, 4_098L, 4_099L, 4_100L)),
         )
+
+    public val TANAKH: DropdownSpec = MultiCategoryDropdownSpec(1L, listOf(2L, 3L, 4L))
 
     public val TORAH: DropdownSpec = CategoryDropdownSpec(2L)
 
@@ -469,6 +607,9 @@ public object PrecomputedCatalog {
         MultiCategoryDropdownSpec(19L, listOf(20L, 21L, 22L, 23L, 24L))
 
     public val SHULCHAN_ARUCH: DropdownSpec = CategoryDropdownSpec(60L)
+
+    public val MISHNE_TORAH: DropdownSpec =
+        MultiCategoryDropdownSpec(43L, listOf(44L, 76L, 46L, 50L, 47L, 51L, 57L, 45L, 56L, 54L, 48L, 52L, 49L, 53L, 55L, 58L))
 
     public val TUR_QUICK_LINKS: DropdownSpec =
         TocQuickLinksSpec(410L, listOf(3_455L, 4_098L, 4_099L, 4_100L))

@@ -4,34 +4,30 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isMetaPressed
-import androidx.compose.ui.input.key.isCtrlPressed
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.isPrimaryPressed
+import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -41,45 +37,23 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
+import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
+import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOriginal
+import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.Font
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
-import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.IconButton
-import org.jetbrains.jewel.ui.component.TextField as JewelTextField
-import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.notoserifhebrew
-import seforimapp.seforimapp.generated.resources.search_in_page
-import seforimapp.seforimapp.generated.resources.chevron_icon_description
-import seforimapp.seforimapp.generated.resources.search_result_count
-import org.jetbrains.compose.resources.stringResource
-import androidx.compose.ui.input.key.isShiftPressed
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -303,7 +277,8 @@ fun BookContentView(
     var currentMatchStart by remember { mutableIntStateOf(-1) }
 
     // Helper: recompute total matches across loaded snapshot (approximate)
-    fun recomputeMatchesCount(query: String) { /* removed: no counter needed */ }
+    fun recomputeMatchesCount(query: String) { /* removed: no counter needed */
+    }
 
     // Navigate to next/previous line containing the query (wrap-around)
     val scope = rememberCoroutineScope()
@@ -312,7 +287,8 @@ fun BookContentView(
         if (query.length < 2) return
         val snapshot = lazyPagingItems.itemSnapshotList
         if (snapshot.size == 0) return
-        val startIndex = if (currentHitLineIndex in snapshot.indices) currentHitLineIndex else listState.firstVisibleItemIndex
+        val startIndex =
+            if (currentHitLineIndex in snapshot.indices) currentHitLineIndex else listState.firstVisibleItemIndex
         val step = if (next) 1 else -1
         var i = startIndex
         var guard = 0
@@ -341,78 +317,110 @@ fun BookContentView(
             // Ctrl/Cmd+F handled globally at window level; do not intercept here
             if (keyEvent.type == KeyEventType.KeyDown) {
                 when (keyEvent.key) {
-                    Key.DirectionUp -> { onEvent(BookContentEvent.NavigateToPreviousLine); true }
-                    Key.DirectionDown -> { onEvent(BookContentEvent.NavigateToNextLine); true }
-                    Key.Escape -> { if (showFind) { AppSettings.closeFindBar(); true } else false }
+                    Key.DirectionUp -> {
+                        onEvent(BookContentEvent.NavigateToPreviousLine); true
+                    }
+
+                    Key.DirectionDown -> {
+                        onEvent(BookContentEvent.NavigateToNextLine); true
+                    }
+
+                    Key.Escape -> {
+                        if (showFind) {
+                            AppSettings.closeFindBar(); true
+                        } else false
+                    }
+
                     else -> false
                 }
             } else false
         }
     }
 
-    Box(modifier = modifier.fillMaxSize().padding(bottom = 8.dp).onPreviewKeyEvent(previewKeyHandler)) {
-        // Content list. Avoid a single SelectionContainer around the entire
-        // paged list to prevent cross-item selection spanning unloaded pages,
-        // which can crash when paging composes/uncomposes items.
-        LazyColumn(
+    // Workaround for Compose selection crash when extending selection with Shift+Click across
+    // multiple selectables in a virtualized list. We intercept Shift+primary mouse presses at
+    // the container level to avoid the extend-selection path, while preserving normal drag
+    // selection and regular clicks.
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    val isShiftPrimaryPress = event.buttons.isPrimaryPressed && event.keyboardModifiers.isShiftPressed
+                    if (isShiftPrimaryPress) {
+                        // Consume to prevent SelectionContainer from handling extend-selection
+                        event.changes.forEach { it.consume() }
+                    }
+                }
+            }
+    ) {
+        SelectionContainer {
+            Box(modifier = Modifier.fillMaxSize().padding(bottom = 8.dp).onPreviewKeyEvent(previewKeyHandler)) {
+            // Content list. Avoid a single SelectionContainer around the entire
+            // paged list to prevent cross-item selection spanning unloaded pages,
+            // which can crash when paging composes/uncomposes items.
+            LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().padding(end = 16.dp)
             ) {
-            items(
-                count = lazyPagingItems.itemCount,
-                key = lazyPagingItems.itemKey { it.id },
-                contentType = { "line" }  // Optimization: specify content type
-            ) { index ->
-                val line = lazyPagingItems[index]
+                items(
+                    count = lazyPagingItems.itemCount,
+                    key = lazyPagingItems.itemKey { it.id },
+                    contentType = { "line" }  // Optimization: specify content type
+                ) { index ->
+                    val line = lazyPagingItems[index]
 
-                if (line != null) {
-                    LineItem(
-                        line = line,
-                        isSelected = selectedLineId == line.id,
-                        baseTextSize = textSize,
-                        lineHeight = lineHeight,
-                        fontFamily = hebrewFontFamily,
-                        boldScale = boldScaleForPlatform,
-                        onLineSelected = onLineSelected,
-                        scrollToLineTimestamp = scrollToLineTimestamp,
-                        highlightQuery = findState.text.toString().takeIf { showFind },
-                        currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null
-                    )
-                } else {
-                    // Placeholder while loading
-                    LoadingPlaceholder()
-                }
-            }
-
-            // Show loading indicators
-            lazyPagingItems.apply {
-                when {
-                    // Avoid flicker: only show full loader on refresh if we have no items yet
-                    loadState.refresh is LoadState.Loading && itemCount == 0 -> {
-                        item(contentType = "loading") {
-                            LoadingIndicator()
-                        }
-                    }
-                    // Keep small loader for pagination append
-                    loadState.append is LoadState.Loading -> {
-                        item(contentType = "loading") {
-                            LoadingIndicator(isSmall = true)
-                        }
-                    }
-                    loadState.refresh is LoadState.Error -> {
-                        val error = (loadState.refresh as LoadState.Error).error
-                        item(contentType = "error") {
-                            ErrorIndicator(message = "Error: ${error.message}")
-                        }
-                    }
-                    loadState.append is LoadState.Error -> {
-                        val error = (loadState.append as LoadState.Error).error
-                        item(contentType = "error") {
-                            ErrorIndicator(message = "Error loading more: ${error.message}")
-                        }
+                    if (line != null) {
+                        LineItem(
+                            line = line,
+                            isSelected = selectedLineId == line.id,
+                            baseTextSize = textSize,
+                            lineHeight = lineHeight,
+                            fontFamily = hebrewFontFamily,
+                            boldScale = boldScaleForPlatform,
+                            onLineSelected = onLineSelected,
+                            scrollToLineTimestamp = scrollToLineTimestamp,
+                            highlightQuery = findState.text.toString().takeIf { showFind },
+                            currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null
+                        )
+                    } else {
+                        // Placeholder while loading
+                        LoadingPlaceholder()
                     }
                 }
-            }
+
+                // Show loading indicators
+                lazyPagingItems.apply {
+                    when {
+                        // Avoid flicker: only show full loader on refresh if we have no items yet
+                        loadState.refresh is LoadState.Loading && itemCount == 0 -> {
+                            item(contentType = "loading") {
+                                LoadingIndicator()
+                            }
+                        }
+                        // Keep small loader for pagination append
+                        loadState.append is LoadState.Loading -> {
+                            item(contentType = "loading") {
+                                LoadingIndicator(isSmall = true)
+                            }
+                        }
+
+                        loadState.refresh is LoadState.Error -> {
+                            val error = (loadState.refresh as LoadState.Error).error
+                            item(contentType = "error") {
+                                ErrorIndicator(message = "Error: ${error.message}")
+                            }
+                        }
+
+                        loadState.append is LoadState.Error -> {
+                            val error = (loadState.append as LoadState.Error).error
+                            item(contentType = "error") {
+                                ErrorIndicator(message = "Error loading more: ${error.message}")
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -427,7 +435,11 @@ fun BookContentView(
                     // Count non-overlapping occurrences per visible/loaded line
                     for (ln in snapshotItems) {
                         if (ln == null) continue
-                        val text = try { buildAnnotatedFromHtml(ln.content, textSize).text } catch (_: Throwable) { ln.content }
+                        val text = try {
+                            buildAnnotatedFromHtml(ln.content, textSize).text
+                        } catch (_: Throwable) {
+                            ln.content
+                        }
                         total += findAllMatchesOriginal(text, queryText).size
                     }
                     total
@@ -467,6 +479,9 @@ fun BookContentView(
             }
         }
     }
+}
+
+}
 
 // Data class for anchor information
 private data class AnchorData(
@@ -491,7 +506,13 @@ private fun LineItem(
     currentMatchStart: Int? = null
 ) {
     // Memoize the annotated string with proper keys
-    val annotated = remember(line.id, line.content, baseTextSize, boldScale) { buildAnnotatedFromHtml(line.content, baseTextSize, boldScale = if (boldScale < 1f) 1f else boldScale) }
+    val annotated = remember(line.id, line.content, baseTextSize, boldScale) {
+        buildAnnotatedFromHtml(
+            line.content,
+            baseTextSize,
+            boldScale = if (boldScale < 1f) 1f else boldScale
+        )
+    }
 
     // Build highlighted text when a query is active (>= 2 chars)
     val baseHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.22f)
@@ -522,7 +543,8 @@ private fun LineItem(
         if (isSelected && scrollToLineTimestamp != 0L) {
             try {
                 bringRequester.bringIntoView()
-            } catch (_: Throwable) { /* no-op: layout might not be ready yet */ }
+            } catch (_: Throwable) { /* no-op: layout might not be ready yet */
+            }
         }
     }
 
@@ -531,8 +553,8 @@ private fun LineItem(
     }
         .bringIntoViewRequester(bringRequester)
         .pointerInput(line) {
-        detectTapGestures(onTap = { clickHandler() })
-    }
+            detectTapGestures(onTap = { clickHandler() })
+        }
 
     Box(
         modifier = Modifier
@@ -552,18 +574,13 @@ private fun LineItem(
                     .zIndex(1f)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            // Enable selection per line item only. This avoids cross-item
-            // selections interacting poorly with paging (items getting
-            // disposed while selection spans them).
-            SelectionContainer {
-                Text(
-                    text = displayText,
-                    textAlign = TextAlign.Justify,
-                    fontFamily = fontFamily,
-                    lineHeight = (baseTextSize * lineHeight).sp,
-                    modifier = textModifier
-                )
-            }
+            Text(
+                text = displayText,
+                textAlign = TextAlign.Justify,
+                fontFamily = fontFamily,
+                lineHeight = (baseTextSize * lineHeight).sp,
+                modifier = textModifier
+            )
         }
     }
 }

@@ -87,7 +87,7 @@
     <string name="report_tooltip">דווח על בעיה בעמוד זה</string>
     <string name="report">דיווח</string>
     <string name="commentaries">פירושים</string>
-    <string name="show_commentaries_tooltip">הצג את הפירושים הקיימים על שורה זאת</string>
+    <string name="show_commentaries_tooltip">הצג את הפירושים הקיימים על פסקה זו</string>
     <string name="show_commentaries">הצג פירושים</string>
     <string name="columns_gap_tooltip">שנה את מבנה העמודות</string>
     <string name="columns_gap">מבנה עמודות</string>
@@ -109,7 +109,7 @@
     
     <!-- Line Comments View -->
     <string name="select_line_for_commentaries">בחר שורה כדי לצפות בפירושים שלה</string>
-    <string name="no_commentaries_for_line">אין פירושים זמינים לשורה זו</string>
+    <string name="no_commentaries_for_line">אין פירושים זמינים לפסקה זו</string>
     <string name="no_commentaries_from_selected">אין פירושים זמינים מהפרשנים שנבחרו לשורה זו</string>
     <string name="select_at_least_one_commentator">אנא בחר לפחות פרשן אחד מהרשימה</string>
     <string name="select_between_1_and_4_commentators">אנא בחר בין 1 ל-4 פרשנים</string>

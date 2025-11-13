@@ -11,17 +11,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLa
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
-import io.github.kdroidfilter.seforimapp.icons.Align_end
-import io.github.kdroidfilter.seforimapp.icons.Align_horizontal_right
-import io.github.kdroidfilter.seforimapp.icons.Bookmark
-import io.github.kdroidfilter.seforimapp.icons.JournalBookmark
-import io.github.kdroidfilter.seforimapp.icons.JournalText
-import io.github.kdroidfilter.seforimapp.icons.Library
-import io.github.kdroidfilter.seforimapp.icons.Library_books
-import io.github.kdroidfilter.seforimapp.icons.NotebookPen
-import io.github.kdroidfilter.seforimapp.icons.TableOfContents
-import io.github.kdroidfilter.seforimapp.icons.ZoomIn
-import io.github.kdroidfilter.seforimapp.icons.ZoomOut
+import io.github.kdroidfilter.seforimapp.icons.*
 import org.jetbrains.compose.resources.stringResource
 import seforimapp.seforimapp.generated.resources.*
 
@@ -138,37 +128,37 @@ fun EndVerticalBar(
 //            )
         },
         bottomContent = {
-
             val targumEnabled = selectedBook?.hasTargumConnection == true
             val commentaryEnabled = selectedBook?.hasCommentaryConnection == true
             val linksEnabled = (selectedBook?.hasReferenceConnection == true) || (selectedBook?.hasOtherConnection == true)
 
-            SelectableIconButtonWithToolip(
-                toolTipText = when {
-                    noBookSelected -> stringResource(Res.string.please_select_a_book)
-                    targumEnabled -> stringResource(Res.string.show_targumim_tooltip)
-                    else -> stringResource(Res.string.targum_not_available_in_book)
-                },
-                onClick = { onEvent(BookContentEvent.ToggleTargum) },
-                isSelected = uiState.content.showTargum,
-                icon = Align_horizontal_right,
-                iconDescription = stringResource(Res.string.show_targumim),
-                label = stringResource(Res.string.show_targumim),
-                enabled = targumEnabled
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText = when {
-                    noBookSelected -> stringResource(Res.string.please_select_a_book)
-                    commentaryEnabled -> stringResource(Res.string.show_commentaries_tooltip)
-                    else -> stringResource(Res.string.commentaries_not_available_in_book)
-                },
-                onClick = { onEvent(BookContentEvent.ToggleCommentaries) },
-                isSelected = uiState.content.showCommentaries,
-                icon = Align_end,
-                iconDescription = stringResource(Res.string.show_commentaries),
-                label = stringResource(Res.string.show_commentaries),
-                enabled = commentaryEnabled
-            )
+            // Hide both buttons on Home (no book selected)
+            if (!noBookSelected) {
+                // Show Targum only when available for the book
+                if (targumEnabled) {
+                    SelectableIconButtonWithToolip(
+                        toolTipText = stringResource(Res.string.show_targumim_tooltip),
+                        onClick = { onEvent(BookContentEvent.ToggleTargum) },
+                        isSelected = uiState.content.showTargum,
+                        icon = Align_horizontal_right,
+                        iconDescription = stringResource(Res.string.show_targumim),
+                        label = stringResource(Res.string.show_targumim),
+                        enabled = true
+                    )
+                }
+                // Show Commentaries only when available for the book
+                if (commentaryEnabled) {
+                    SelectableIconButtonWithToolip(
+                        toolTipText = stringResource(Res.string.show_commentaries_tooltip),
+                        onClick = { onEvent(BookContentEvent.ToggleCommentaries) },
+                        isSelected = uiState.content.showCommentaries,
+                        icon = Align_end,
+                        iconDescription = stringResource(Res.string.show_commentaries),
+                        label = stringResource(Res.string.show_commentaries),
+                        enabled = true
+                    )
+                }
+            }
             // Show Links button (UI-only for now)
 //            SelectableIconButtonWithToolip(
 //                toolTipText = when {

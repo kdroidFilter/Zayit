@@ -15,6 +15,8 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytesPerS
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatEta
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadEvents
+import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
 import io.github.kdroidfilter.seforimapp.icons.FileArrowDown
@@ -33,8 +35,11 @@ fun OnlineUpdateScreen(
     val downloadViewModel: DownloadViewModel = LocalAppGraph.current.downloadViewModel
     val downloadState by downloadViewModel.state.collectAsState()
     val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
+    val extractViewModel: ExtractViewModel = LocalAppGraph.current.extractViewModel
+    val extractState by extractViewModel.state.collectAsState()
     
     var cleanupCompleted by remember { mutableStateOf(false) }
+    var hasStartedExtraction by remember { mutableStateOf(false) }
     
     LaunchedEffect(Unit) {
         // Nettoyer les anciens fichiers de base de données avant de commencer
@@ -48,7 +53,19 @@ fun OnlineUpdateScreen(
         if (downloadState.inProgress) {
             DatabaseUpdateProgressBarState.setDownloadProgress(downloadState.progress)
         }
-        if (downloadState.completed) {
+        // When download completes, start extraction
+        if (downloadState.completed && !hasStartedExtraction) {
+            hasStartedExtraction = true
+            extractViewModel.onEvent(ExtractEvents.StartIfPending)
+        }
+    }
+
+    // Propagate extraction progress and navigate once finished
+    LaunchedEffect(extractState) {
+        if (extractState.inProgress) {
+            DatabaseUpdateProgressBarState.setDownloadProgress(extractState.progress)
+        }
+        if (extractState.completed) {
             DatabaseUpdateProgressBarState.setUpdateComplete()
             navController.navigate(DatabaseUpdateDestination.CompletionScreen) {
                 popUpTo<DatabaseUpdateDestination.OnlineUpdateScreen> { inclusive = true }
@@ -156,17 +173,29 @@ fun OnlineUpdateScreen(
                         }
                     }
                 }
-                
-                downloadState.completed -> {
+                // Download completed: show extraction state
+                downloadState.completed && extractState.errorMessage == null && !extractState.completed -> {
+                    Icon(
+                        io.github.kdroidfilter.seforimapp.icons.Unarchive,
+                        contentDescription = null,
+                        modifier = Modifier.size(192.dp),
+                        tint = JewelTheme.globalColors.text.normal
+                    )
+
                     Text(
-                        text = stringResource(Res.string.db_update_download_completed),
+                        text = stringResource(Res.string.db_update_extracting),
                         textAlign = TextAlign.Center
                     )
-                    
-                    Text(
-                        text = stringResource(Res.string.db_update_download_success_message),
-                        textAlign = TextAlign.Center
-                    )
+
+                    if (extractState.inProgress) {
+                        Text(
+                            text = "${(extractState.progress * 100).toInt()}%",
+                            textAlign = TextAlign.Center
+                        )
+                    } else {
+                        // Waiting for extraction to start
+                        CircularProgressIndicator()
+                    }
                 }
                 
                 downloadState.errorMessage != null -> {
@@ -195,6 +224,41 @@ fun OnlineUpdateScreen(
                         DefaultButton(
                             onClick = {
                                 downloadViewModel.onEvent(DownloadEvents.Start)
+                            }
+                        ) {
+                            Text(stringResource(Res.string.db_update_retry))
+                        }
+                    }
+                }
+
+                // Extraction error
+                extractState.errorMessage != null -> {
+                    Text(
+                        text = stringResource(Res.string.db_update_extraction_error),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Text(
+                        text = extractState.errorMessage ?: stringResource(Res.string.db_update_download_error_unknown),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(0.8f)
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { 
+                                navController.popBackStack()
+                            }
+                        ) {
+                            Text(stringResource(Res.string.db_update_back))
+                        }
+
+                        DefaultButton(
+                            onClick = {
+                                hasStartedExtraction = false
+                                extractViewModel.onEvent(ExtractEvents.StartIfPending)
                             }
                         ) {
                             Text(stringResource(Res.string.db_update_retry))

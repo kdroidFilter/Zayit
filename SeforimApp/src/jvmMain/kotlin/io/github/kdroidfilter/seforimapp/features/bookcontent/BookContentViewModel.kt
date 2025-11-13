@@ -59,8 +59,22 @@ class BookContentViewModel(
     val uiState: StateFlow<BookContentState> = stateManager.state
         .map { state ->
             val lineId = state.content.selectedLine?.id
-            val selectedCommentators = lineId?.let { state.content.selectedCommentatorsByLine[it] } ?: emptySet()
-            val selectedLinks = lineId?.let { state.content.selectedLinkSourcesByLine[it] } ?: emptySet()
+            val bookId = state.navigation.selectedBook?.id
+            // Prefer per-line selection; if empty, fall back to sticky per-book selection
+            val selectedCommentators: Set<Long> = when {
+                lineId != null -> {
+                    val perLine = state.content.selectedCommentatorsByLine[lineId].orEmpty()
+                    if (perLine.isNotEmpty()) perLine else state.content.selectedCommentatorsByBook[bookId]?.orEmpty() ?: emptySet()
+                }
+                else -> state.content.selectedCommentatorsByBook[bookId]?.orEmpty() ?: emptySet()
+            }
+            val selectedLinks: Set<Long> = when {
+                lineId != null -> {
+                    val perLine = state.content.selectedLinkSourcesByLine[lineId].orEmpty()
+                    if (perLine.isNotEmpty()) perLine else state.content.selectedLinkSourcesByBook[bookId]?.orEmpty() ?: emptySet()
+                }
+                else -> state.content.selectedLinkSourcesByBook[bookId]?.orEmpty() ?: emptySet()
+            }
             state.copy(
                 providers = Providers(
                     linesPagingData = linesPagingData,
@@ -81,8 +95,21 @@ class BookContentViewModel(
             run {
                 val s = stateManager.state.value
                 val lineId = s.content.selectedLine?.id
-                val selectedCommentators = lineId?.let { s.content.selectedCommentatorsByLine[it] } ?: emptySet()
-                val selectedLinks = lineId?.let { s.content.selectedLinkSourcesByLine[it] } ?: emptySet()
+                val bookId = s.navigation.selectedBook?.id
+                val selectedCommentators: Set<Long> = when {
+                    lineId != null -> {
+                        val perLine = s.content.selectedCommentatorsByLine[lineId].orEmpty()
+                        if (perLine.isNotEmpty()) perLine else s.content.selectedCommentatorsByBook[bookId]?.orEmpty() ?: emptySet()
+                    }
+                    else -> s.content.selectedCommentatorsByBook[bookId]?.orEmpty() ?: emptySet()
+                }
+                val selectedLinks: Set<Long> = when {
+                    lineId != null -> {
+                        val perLine = s.content.selectedLinkSourcesByLine[lineId].orEmpty()
+                        if (perLine.isNotEmpty()) perLine else s.content.selectedLinkSourcesByBook[bookId]?.orEmpty() ?: emptySet()
+                    }
+                    else -> s.content.selectedLinkSourcesByBook[bookId]?.orEmpty() ?: emptySet()
+                }
                 s.copy(
                     providers = Providers(
                         linesPagingData = linesPagingData,

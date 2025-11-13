@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -39,9 +40,10 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
-import io.github.kdroidfilter.seforimapp.core.presentation.components.*
+import io.github.kdroidfilter.seforimapp.core.presentation.components.CatalogDropdown
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
@@ -97,9 +99,22 @@ fun HomeView(
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Global zoom level from AppSettings; used to scale Home view uniformly
+    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    // Apply a gentler zoom curve on the Home screen only: keep default size identical,
+    // but soften +/- zoom steps so they feel less strong here than globally.
+    val homeScale = remember(rawTextSize) {
+        val ratio = rawTextSize / AppSettings.DEFAULT_TEXT_SIZE
+        val softenFactor = 0.3f
+        1f + (ratio - 1f) * softenFactor
+    }
     Box(modifier = Modifier.fillMaxSize().zIndex(1f).padding(16.dp), contentAlignment = Alignment.TopStart) {
 
-        Row (Modifier.widthIn(min = 125.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row (
+            Modifier
+                .widthIn(min = 125.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.TORAH, onEvent = onEvent, maxPopupHeight = 120.dp, popupWidthMultiplier = 1.1f)
             CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.NEVIIM, onEvent = onEvent, popupWidthMultiplier = 1.2f )
             CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.KETUVIM, onEvent = onEvent, popupWidthMultiplier = 1.3f)
@@ -163,7 +178,10 @@ fun HomeView(
             LazyColumn(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.width(600.dp)
+                // Keep aspect ratio by applying uniform scale to the whole Home content
+                modifier = Modifier
+                    .width(600.dp)
+                    .graphicsLayer(scaleX = homeScale, scaleY = homeScale)
             ) {
                 item {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {

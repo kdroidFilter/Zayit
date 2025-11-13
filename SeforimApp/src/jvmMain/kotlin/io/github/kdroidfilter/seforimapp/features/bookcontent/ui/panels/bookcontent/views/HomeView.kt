@@ -144,6 +144,9 @@ fun HomeView(
             val tocSearchState = remember { TextFieldState() }
             // Shared focus requester so Tab from the first field can move focus to the TOC field
             val tocFieldFocusRequester = remember { FocusRequester() }
+            // Shared focus requester for the MAIN search bar so other UI (e.g., level changes)
+            // can reliably return focus to it, allowing immediate Enter to submit.
+            val mainSearchFocusRequester = remember { FocusRequester() }
             var scopeExpanded by remember { mutableStateOf(false) }
             // Forward reference input changes to the ViewModel (VM handles debouncing and suggestions)
             LaunchedEffect(Unit) {
@@ -198,7 +201,6 @@ fun HomeView(
                         // In REFERENCE mode, repurpose the first TextField as the predictive
                         // Book picker (with Category/Book suggestions). Enter should NOT open.
                         val isReferenceMode = searchUi.selectedFilter == SearchFilter.REFERENCE
-                        val topSearchFocusRequester = remember { FocusRequester() }
                         // When switching to REFERENCE mode, focus the first (top) text field
                         LaunchedEffect(searchUi.selectedFilter) {
                             // When switching modes, always focus the top text field
@@ -206,7 +208,7 @@ fun HomeView(
                                 searchUi.selectedFilter == SearchFilter.TEXT) {
                                 // small delay to ensure composition is settled
                                 delay(100)
-                                topSearchFocusRequester.requestFocus()
+                                mainSearchFocusRequester.requestFocus()
 
                                 // Preserve what the user typed when toggling modes. If the destination
                                 // field is empty, copy the current text from the other field so users
@@ -254,7 +256,7 @@ fun HomeView(
                             },
                             modifier = Modifier,
                             showIcon = !isReferenceMode,
-                            focusRequester = topSearchFocusRequester,
+                            focusRequester = mainSearchFocusRequester,
                             // Suggestions: in REFERENCE mode show only books; in TEXT mode none here
                             suggestionsVisible = if (isReferenceMode) searchUi.suggestionsVisible else false,
                             categorySuggestions = emptyList(),
@@ -353,7 +355,12 @@ fun HomeView(
                             if (!isReferenceMode) {
                                 SearchLevelsPanel(
                                     selectedIndex = searchUi.selectedLevelIndex,
-                                    onSelectedIndexChange = { searchVm.onLevelIndexChange(it) }
+                                    onSelectedIndexChange = {
+                                        searchVm.onLevelIndexChange(it)
+                                        // After changing search level, return focus to the main field
+                                        // so the user can immediately press Enter to search.
+                                        mainSearchFocusRequester.requestFocus()
+                                    }
                                 )
                             } else {
                                 val canOpen = searchUi.selectedScopeBook != null || searchUi.selectedScopeToc != null
@@ -1104,14 +1111,22 @@ private fun SearchBar(
                     if (selectedFilter == SearchFilter.TEXT) {
                         CustomToggleableChip(
                             checked = globalExtended,
-                            onClick = onGlobalExtendedChange,
+                            onClick = { newChecked ->
+                                // Apply change and immediately return focus to the text field
+                                onGlobalExtendedChange(newChecked)
+                                effectiveFocusRequester.requestFocus()
+                            },
                             tooltipText = stringResource(Res.string.search_extended_tooltip),
                             withPadding = false
                         )
                     }
                     IntegratedSwitch(
                         selectedFilter = selectedFilter,
-                        onFilterChange = onFilterChange
+                        onFilterChange = { filter ->
+                            // Switch mode and refocus the text field so Enter works right away
+                            onFilterChange(filter)
+                            effectiveFocusRequester.requestFocus()
+                        }
                     )
                 }
             }) else null,

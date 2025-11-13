@@ -68,6 +68,8 @@ import org.jetbrains.skiko.Cursor
 import seforimapp.seforimapp.generated.resources.*
 import kotlin.math.roundToInt
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
+import io.github.kdroidfilter.seforimapp.catalog.MultiCategoryDropdownSpec
+import io.github.kdroidfilter.seforimapp.catalog.CategoryDropdownSpec
 
 // SearchFilter moved to features.search.SearchFilter per architecture guidelines.
 
@@ -115,12 +117,11 @@ fun HomeView(
                 .widthIn(min = 125.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.TORAH, onEvent = onEvent, maxPopupHeight = 120.dp, popupWidthMultiplier = 1.1f)
-            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.NEVIIM, onEvent = onEvent, popupWidthMultiplier = 1.2f )
-            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.KETUVIM, onEvent = onEvent, popupWidthMultiplier = 1.3f)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.TANAKH, onEvent = onEvent, popupWidthMultiplier = 1.50f)
             CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.MISHNA, onEvent = onEvent)
             CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.BAVLI, onEvent = onEvent, popupWidthMultiplier = 1.1f)
             CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.YERUSHALMI, onEvent = onEvent, popupWidthMultiplier = 1.1f)
+            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.MISHNE_TORAH, onEvent = onEvent, popupWidthMultiplier = 1.5f)
             CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.TUR_QUICK_LINKS, onEvent = onEvent, maxPopupHeight = 130.dp)
             CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.SHULCHAN_ARUCH, onEvent = onEvent, maxPopupHeight = 130.dp, popupWidthMultiplier = 1.1f)
         }

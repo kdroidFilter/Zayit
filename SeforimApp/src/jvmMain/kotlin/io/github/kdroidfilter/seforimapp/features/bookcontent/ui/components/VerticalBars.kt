@@ -29,7 +29,8 @@ fun StartVerticalBar(
                 isSelected = uiState.navigation.isVisible,
                 icon = Library,
                 iconDescription = stringResource(Res.string.books),
-                label = stringResource(Res.string.books)
+                label = stringResource(Res.string.books),
+                shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "B+⌘" else "B+Ctrl"
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.book_content),
@@ -37,7 +38,9 @@ fun StartVerticalBar(
                 isSelected = uiState.toc.isVisible,
                 icon = TableOfContents,
                 iconDescription = stringResource(Res.string.table_of_contents),
-                label = stringResource(Res.string.table_of_contents)
+                label = stringResource(Res.string.table_of_contents),
+                shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "B+⇧+⌘" else "B+Shift+Ctrl"
+
             )
         },
         bottomContent = {

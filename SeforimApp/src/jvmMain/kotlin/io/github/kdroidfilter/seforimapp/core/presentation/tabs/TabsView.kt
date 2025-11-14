@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
@@ -61,6 +62,10 @@ import seforimapp.seforimapp.generated.resources.app_name
 import seforimapp.seforimapp.generated.resources.home_tab_with_app
 import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.platformtools.OperatingSystem
+
+// Carry both TabData and its label for tooltips anchored on the whole tab container
+private data class TabEntry(val data: TabData, val labelProvider: @Composable () -> String)
+private val TabTooltipWidthThreshold = 140.dp
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -93,13 +98,10 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
 
-    // Track for auto-scrolling
+    // Track for auto-scrolling (no-op in shrink-to-fit mode)
     var previousTabCount by remember { mutableStateOf(state.tabs.size) }
     val newTabAdded = state.tabs.size > previousTabCount
-
-    LaunchedEffect(state.tabs.size) {
-        previousTabCount = state.tabs.size
-    }
+    LaunchedEffect(state.tabs.size) { previousTabCount = state.tabs.size }
 
     // Create TabData objects with RTL support
     val tabs = remember(state.tabs, state.selectedTabIndex, isRtl) {
@@ -110,7 +112,7 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                 val actualIndex = state.tabs.size - 1 - visualIndex
                 val isSelected = actualIndex == state.selectedTabIndex
 
-                TabData.Default(
+                val tabData = TabData.Default(
                     selected = isSelected,
                     content = { tabState ->
                         val icon: Painter = if (tabItem.tabType == TabType.BOOK) {
@@ -130,23 +132,12 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                             tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
                             else -> tabItem.title
                         }
-                        val isTruncated = label.length > AppSettings.MAX_TAB_TITLE_LENGTH
 
-                        if (isTruncated) {
-                            Tooltip({ Text(label) }) {
-                                SingleLineTabContent(
-                                    label = label,
-                                    state = tabState,
-                                    icon = icon,
-                                )
-                            }
-                        } else {
-                            SingleLineTabContent(
-                                label = label,
-                                state = tabState,
-                                icon = icon,
-                            )
-                        }
+                        SingleLineTabContent(
+                            label = label,
+                            state = tabState,
+                            icon = icon,
+                        )
                     },
                     onClose = {
                         onEvents(TabsEvents.onClose(actualIndex))
@@ -155,13 +146,24 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                         onEvents(TabsEvents.onSelected(actualIndex))
                     },
                 )
+
+                val labelProvider: @Composable () -> String = {
+                    val appTitle = stringResource(Res.string.app_name)
+                    when {
+                        tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
+                        tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
+                        else -> tabItem.title
+                    }
+                }
+
+                TabEntry(tabData, labelProvider)
             }
         } else {
             // For LTR: use normal order
             state.tabs.mapIndexed { index, tabItem ->
                 val isSelected = index == state.selectedTabIndex
 
-                TabData.Default(
+                val tabData = TabData.Default(
                     selected = isSelected,
                     content = { tabState ->
                         val icon: Painter = if (tabItem.tabType == TabType.BOOK) {
@@ -181,23 +183,12 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                             tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
                             else -> tabItem.title
                         }
-                        val isTruncated = label.length > AppSettings.MAX_TAB_TITLE_LENGTH
 
-                        if (isTruncated) {
-                            Tooltip({ Text(label) }) {
-                                SingleLineTabContent(
-                                    label = label,
-                                    state = tabState,
-                                    icon = icon,
-                                )
-                            }
-                        } else {
-                            SingleLineTabContent(
-                                label = label,
-                                state = tabState,
-                                icon = icon,
-                            )
-                        }
+                        SingleLineTabContent(
+                            label = label,
+                            state = tabState,
+                            icon = icon,
+                        )
                     },
                     onClose = {
                         onEvents(TabsEvents.onClose(index))
@@ -206,6 +197,17 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                         onEvents(TabsEvents.onSelected(index))
                     },
                 )
+
+                val labelProvider: @Composable () -> String = {
+                    val appTitle = stringResource(Res.string.app_name)
+                    when {
+                        tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
+                        tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
+                        else -> tabItem.title
+                    }
+                }
+
+                TabEntry(tabData, labelProvider)
             }
         }
     }
@@ -222,76 +224,24 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
 
 @Composable
 private fun RtlAwareTabStripWithAddButton(
-    tabs: List<TabData>,
+    tabs: List<TabEntry>,
     style: TabStyle,
     isRtl: Boolean,
     newTabAdded: Boolean,
     onAddClick: () -> Unit
 ) {
-    val scrollState = rememberScrollState()
-
-    // On mémorise la taille précédente côté strip
-    var lastCount by remember { mutableStateOf(tabs.size) }
-
-    LaunchedEffect(tabs.size, isRtl) {
-        val added = tabs.size > lastCount
-        lastCount = tabs.size
-        if (added) {
-            // attendre que le layout mette à jour maxValue
-            withFrameNanos { }
-            // si première frame = maxValue encore 0, attendre encore une frame
-            if (scrollState.maxValue == 0) withFrameNanos { }
-
-            // En RTL, les nouveaux onglets s'ajoutent à gauche, donc on scroll vers 0
-            // En LTR, les nouveaux onglets s'ajoutaient à droite, donc on scrollait vers maxValue
-            val target = if (isRtl) 0 else scrollState.maxValue
-            scrollState.animateScrollTo(target)
-        }
-    }
+    // Shrink-to-fit mode: no horizontal scroll, tabs adjust width.
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
     ) {
-        if (isRtl) {
-            val os = getOperatingSystem()
-            val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
-            TitleBarActionButton(
-                onClick = onAddClick,
-                key = AllIconsKeys.General.Add,
-                contentDescription = stringResource(Res.string.add_tab),
-                tooltipText = stringResource(Res.string.add_tab),
-                shortcutHint = shortcutHint
-            )
-        }
-
         RtlAwareTabStripContent(
             tabs = tabs,
             style = style,
-            scrollState = scrollState,
-            modifier = Modifier.fillMaxWidth(0.95f)
+            onAddClick = onAddClick,
+            modifier = Modifier.fillMaxWidth()
         )
-
-        Divider(
-            orientation = Orientation.Vertical,
-            modifier = Modifier
-                .fillMaxHeight(0.8f)
-                .padding(horizontal = 4.dp)
-                .width(1.dp),
-            color = JewelTheme.globalColors.borders.disabled
-        )
-
-        if (!isRtl) {
-            val os = getOperatingSystem()
-            val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
-            TitleBarActionButton(
-                onClick = onAddClick,
-                key = AllIconsKeys.General.Add,
-                contentDescription = stringResource(Res.string.add_tab),
-                tooltipText = stringResource(Res.string.add_tab),
-                shortcutHint = shortcutHint
-            )
-        }
     }
 }
 
@@ -299,51 +249,75 @@ private fun RtlAwareTabStripWithAddButton(
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun RtlAwareTabStripContent(
-    tabs: List<TabData>,
+    tabs: List<TabEntry>,
     style: TabStyle,
-    scrollState: ScrollState,
+    onAddClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val interactionSource = remember { MutableInteractionSource() }
     var isActive by remember { mutableStateOf(false) }
 
-    Box(modifier = modifier) {
+    BoxWithConstraints(modifier = modifier) {
+        val maxWidthDp = this.maxWidth
+        // Reserve a non-interactive draggable area at the trailing edge to allow window move
+        val reservedDragArea = 40.dp
+        val extrasWidth = 40.dp /* + button */ + 1.dp /* divider */ + 8.dp /* divider padding */ + reservedDragArea
+        val availableForTabs = (maxWidthDp - extrasWidth).coerceAtLeast(0.dp)
+        val tabsCount = tabs.size.coerceAtLeast(1)
+        // Chrome-like: tabs shrink to fill available width, capped by a max width
+        val maxTabWidth = AppSettings.TAB_FIXED_WIDTH_DP.dp
+        val computedTabWidthTarget = (availableForTabs / tabsCount).coerceAtMost(maxTabWidth)
+        val tabWidth = computedTabWidthTarget
+
         Row(
-            modifier = Modifier
-                .verticalWheelToHorizontal(scrollState, multiplier = 80f)
-                .horizontalScroll(scrollState, reverseScrolling = isRtl) // keep semantics consistent
-                .hoverable(interactionSource)
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            tabs.forEachIndexed { index, tabData ->
-                RtlAwareTab(
-                    isActive = isActive,
-                    tabData = tabData,
-                    tabStyle = style,
-                    tabIndex = index,
-                    tabCount = tabs.size
+            // Tabs + separator + plus button (interactive area)
+            Row(modifier = Modifier.hoverable(interactionSource), verticalAlignment = Alignment.CenterVertically) {
+                tabs.forEachIndexed { index, entry ->
+                    RtlAwareTab(
+                        isActive = isActive,
+                        tabData = entry.data,
+                        tabStyle = style,
+                        tabIndex = index,
+                        tabCount = tabs.size,
+                        tabWidth = tabWidth,
+                        labelProvider = entry.labelProvider
+                    )
+                }
+
+                // Separator between tabs and the plus button
+                Divider(
+                    orientation = Orientation.Vertical,
+                    modifier = Modifier
+                        .fillMaxHeight(0.8f)
+                        .padding(horizontal = 4.dp)
+                        .width(1.dp),
+                    color = JewelTheme.globalColors.borders.disabled
+                )
+
+                // Place the "+" immediately after the divider
+                val os = getOperatingSystem()
+                val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
+                TitleBarActionButton(
+                    onClick = onAddClick,
+                    key = AllIconsKeys.General.Add,
+                    contentDescription = stringResource(Res.string.add_tab),
+                    tooltipText = stringResource(Res.string.add_tab),
+                    shortcutHint = shortcutHint
                 )
             }
-        }
 
-        // Scrollbar with RTL-aware adapter
-        AnimatedVisibility(
-            visible = (scrollState.canScrollForward || scrollState.canScrollBackward),
-            enter = fadeIn(tween(durationMillis = 125, easing = LinearEasing)),
-            exit = fadeOut(tween(durationMillis = 125, delayMillis = 700, easing = LinearEasing)),
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            HorizontalScrollbar(
-                scrollState,
-                style = style.scrollbarStyle,
-                modifier = Modifier.fillMaxWidth()
-            )
+            // Reserved draggable area — intentionally empty/non-interactive
+            Spacer(modifier = Modifier.width(reservedDragArea).fillMaxHeight())
         }
     }
 }
 
 // Custom Tab implementation based on Jewel's internal TabImpl
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun RtlAwareTab(
     isActive: Boolean,
@@ -351,6 +325,8 @@ private fun RtlAwareTab(
     tabStyle: TabStyle,
     tabIndex: Int,
     tabCount: Int,
+    tabWidth: Dp,
+    labelProvider: @Composable () -> String,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -380,10 +356,11 @@ private fun RtlAwareTab(
     val resolvedContentColor = tabStyle.colors.contentFor(tabState).value.takeOrElse { LocalContentColor.current }
 
     CompositionLocalProvider(LocalContentColor provides resolvedContentColor) {
+        val container: @Composable () -> Unit = {
         Row(
             modifier
                 .height(tabStyle.metrics.tabHeight)
-                .width(AppSettings.TAB_FIXED_WIDTH_DP.dp)
+                .width(tabWidth)
                 .background(backgroundColor)
                 .selectable(
                     onClick = tabData.onClick,
@@ -452,6 +429,13 @@ private fun RtlAwareTab(
             }
             closeIconComposable()
         }
+        }
+
+        val label = labelProvider()
+        val showTooltip = label.isNotBlank() &&
+                (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold)
+
+        if (showTooltip) Tooltip({ Text(label) }) { container() } else container()
     }
 }
 

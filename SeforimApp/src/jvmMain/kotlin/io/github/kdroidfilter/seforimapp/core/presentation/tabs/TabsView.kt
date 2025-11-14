@@ -295,15 +295,27 @@ private fun RtlAwareTabStripContent(
         val tabsCount = tabs.size.coerceAtLeast(1)
         // Chrome-like: tabs shrink to fill available width, capped by a max width
         val maxTabWidth = AppSettings.TAB_FIXED_WIDTH_DP.dp
-        val computedTabWidthTarget = (availableForTabs / tabsCount).coerceAtMost(maxTabWidth)
+        val naturalTabWidth = (availableForTabs / tabsCount)
+        val computedTabWidthTarget = naturalTabWidth.coerceAtMost(maxTabWidth)
         val tabWidth = computedTabWidthTarget
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Tabs + separator + plus button (interactive area)
-            Row(modifier = Modifier.hoverable(interactionSource), verticalAlignment = Alignment.CenterVertically) {
+            // Use hysteresis around the threshold to avoid flicker/glitch when toggling modes
+            var shrinkToFitActive by remember { mutableStateOf(false) }
+            val hysteresis = 6.dp
+            LaunchedEffect(naturalTabWidth, maxTabWidth) {
+                if (!shrinkToFitActive && naturalTabWidth < (maxTabWidth - hysteresis)) {
+                    shrinkToFitActive = true
+                } else if (shrinkToFitActive && naturalTabWidth > (maxTabWidth + hysteresis)) {
+                    shrinkToFitActive = false
+                }
+            }
+
+            // Helper to render all tab items with animations
+            val TabsOnly: @Composable RowScope.() -> Unit = {
                 tabs.forEachIndexed { index, entry ->
                     // Wrap each tab in visibility animation to mimic Chrome open/close
                     val isClosing = closingKeys.contains(entry.key)
@@ -347,8 +359,14 @@ private fun RtlAwareTabStripContent(
                         }
                     }
                 }
+            }
 
-                // Separator between tabs and the plus button
+            if (shrinkToFitActive) {
+                // Keep plus fixed at trailing edge during shrink-to-fit
+                Row(modifier = Modifier.weight(1f).hoverable(interactionSource), verticalAlignment = Alignment.CenterVertically) {
+                    TabsOnly()
+                }
+
                 Divider(
                     orientation = Orientation.Vertical,
                     modifier = Modifier
@@ -358,7 +376,6 @@ private fun RtlAwareTabStripContent(
                     color = JewelTheme.globalColors.borders.disabled
                 )
 
-                // Place the "+" immediately after the divider
                 val os = getOperatingSystem()
                 val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
                 TitleBarActionButton(
@@ -368,6 +385,30 @@ private fun RtlAwareTabStripContent(
                     tooltipText = stringResource(Res.string.add_tab),
                     shortcutHint = shortcutHint
                 )
+            } else {
+                // Before shrink-to-fit, keep plus flowing with tabs
+                Row(modifier = Modifier.hoverable(interactionSource), verticalAlignment = Alignment.CenterVertically) {
+                    TabsOnly()
+
+                    Divider(
+                        orientation = Orientation.Vertical,
+                        modifier = Modifier
+                            .fillMaxHeight(0.8f)
+                            .padding(horizontal = 4.dp)
+                            .width(1.dp),
+                        color = JewelTheme.globalColors.borders.disabled
+                    )
+
+                    val os = getOperatingSystem()
+                    val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
+                    TitleBarActionButton(
+                        onClick = onAddClick,
+                        key = AllIconsKeys.General.Add,
+                        contentDescription = stringResource(Res.string.add_tab),
+                        tooltipText = stringResource(Res.string.add_tab),
+                        shortcutHint = shortcutHint
+                    )
+                }
             }
 
             // Reserved draggable area — intentionally empty/non-interactive

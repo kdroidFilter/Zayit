@@ -267,6 +267,7 @@ fun HomeView(
                             submitOnEnterInReference = isReferenceMode,
                             globalExtended = searchUi.globalExtended,
                             onGlobalExtendedChange = { searchVm.onGlobalExtendedChange(it) },
+                            parentScale = homeScale,
                             onPickCategory = { picked ->
                                 // Update VM and reflect breadcrumb in the bar input
                                 searchVm.onPickCategory(picked.category)
@@ -350,7 +351,8 @@ fun HomeView(
                                     val stripped = stripBookPrefixFromTocPath(searchUi.selectedScopeBook, dedup)
                                     val display = stripped.joinToString(breadcrumbSeparator)
                                     tocSearchState.edit { replace(0, length, display) }
-                                }
+                                },
+                                parentScale = homeScale
                             )
 
                             if (!isReferenceMode) {
@@ -518,7 +520,9 @@ private fun ReferenceByCategorySection(
     tocFieldFocusRequester: FocusRequester? = null,
     onPickCategory: (CategorySuggestion) -> Unit = {},
     onPickBook: (BookSuggestion) -> Unit = {},
-    onPickToc: (TocSuggestion) -> Unit = {}
+    onPickToc: (TocSuggestion) -> Unit = {},
+    // Scale applied to Home content; forwarded to inner SearchBars
+    parentScale: Float = 1f,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -580,7 +584,8 @@ private fun ReferenceByCategorySection(
                             if (submitAfterPick) onSubmit()
                         },
                         onSubmit = onSubmit,
-                        submitOnEnterIfSelection = submitOnEnterIfSelection
+                        submitOnEnterIfSelection = submitOnEnterIfSelection,
+                        parentScale = parentScale
                     )
                 }
             }
@@ -618,7 +623,8 @@ private fun ReferenceByCategorySection(
                     focusRequester = tocFocusRequester,
                     // Remove animated placeholder for second field
                     placeholderHints = null,
-                    placeholderText = ""
+                    placeholderText = "",
+                    parentScale = parentScale
                 )
                 // Focus the second field when a book is picked only in non-reference mode
                 LaunchedEffect(selectedBook?.id, showCategoryBookField) {
@@ -914,7 +920,9 @@ private fun SearchBar(
     submitOnEnterInReference: Boolean = false,
     // Advanced search toggle
     globalExtended: Boolean = false,
-    onGlobalExtendedChange: (Boolean) -> Unit = {}
+    onGlobalExtendedChange: (Boolean) -> Unit = {},
+    // Scale applied to Home content; used to keep the popup consistent
+    parentScale: Float = 1f,
 ) {
     // Hints from string resources
     val referenceHints = listOf(
@@ -1157,6 +1165,9 @@ private fun SearchBar(
                         layoutDirection: LayoutDirection,
                         popupContentSize: IntSize
                     ): IntOffset {
+                        // Base position under the TextField. We do not apply the scale
+                        // here because the popup content itself is scaled with a top-left
+                        // origin, which keeps alignment with the unscaled anchor offset.
                         var x = a.windowOffset.x
                         var y = a.windowOffset.y + a.size.height + 4
                         // Clamp horizontally inside window
@@ -1177,7 +1188,19 @@ private fun SearchBar(
                 properties = PopupProperties(focusable = false)
             ) {
                 val widthDp = with(LocalDensity.current) { a.size.width.toDp() }
-                Box(Modifier.width(widthDp)) {
+                // Scale popup content by the same factor as the Home view to keep
+                // typography and spacing consistent with the rest of the UI.
+                Box(
+                    Modifier
+                        .width(widthDp)
+                        .graphicsLayer(
+                            scaleX = parentScale,
+                            scaleY = parentScale,
+                            // Ensure scaling originates from the top-left so the popup
+                            // remains anchored under the TextField.
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+                        )
+                ) {
                     if (usingToc) {
                         TocSuggestionsPanel(
                             tocSuggestions = tocSuggestions,

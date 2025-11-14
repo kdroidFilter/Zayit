@@ -309,10 +309,6 @@ public object PrecomputedCatalog {
         412L to "שולחן ערוך, יורה דעה",
         413L to "שולחן ערוך, אבן העזר",
         414L to "שולחן ערוך, חושן משפט",
-        804L to "דבש תמר - ב (רמבם)",
-        805L to "דרך המלך (חוידנסקי)",
-        938L to "חדושי רבנו חיים הלוי על הרמבם",
-        1_530L to "מחנה אפרים חלק א - ב",
       )
 
   public val CATEGORY_TITLES: Map<Long, String> = mapOf(
@@ -358,7 +354,6 @@ public object PrecomputedCatalog {
         58L to "ספר שופטים",
         59L to "טור",
         60L to "שולחן ערוך",
-        76L to "מפרשים",
       )
 
   public val CATEGORY_BOOKS: Map<Long, List<BookRef>> = mapOf(
@@ -404,7 +399,6 @@ public object PrecomputedCatalog {
         58L to listOf(BookRef(405L, "הלכות סנהדרין והעונשין המסורין להם"), BookRef(406L, "הלכות עדות"), BookRef(407L, "הלכות ממרים"), BookRef(408L, "הלכות אבל"), BookRef(409L, "הלכות מלכים ומלחמות")) ,
         59L to listOf(BookRef(410L, "טור")) ,
         60L to listOf(BookRef(411L, "אורח חיים"), BookRef(412L, "יורה דעה"), BookRef(413L, "אבן העזר"), BookRef(414L, "חושן משפט")) ,
-        76L to listOf(BookRef(804L, "דבש תמר - ב (רמבם)"), BookRef(805L, "דרך המלך (חוידנסקי)"), BookRef(938L, "חדושי רבנו חיים הלוי על הרמבם"), BookRef(1_530L, "מחנה אפרים חלק א - ב")) ,
       )
 
   public val TOC_BY_TOC_TEXT_ID: Map<Long, Map<Long, TocQuickLink>> = mapOf(
@@ -609,7 +603,7 @@ public object PrecomputedCatalog {
     public val SHULCHAN_ARUCH: DropdownSpec = CategoryDropdownSpec(60L)
 
     public val MISHNE_TORAH: DropdownSpec =
-        MultiCategoryDropdownSpec(43L, listOf(44L, 76L, 46L, 50L, 47L, 51L, 57L, 45L, 56L, 54L, 48L, 52L, 49L, 53L, 55L, 58L))
+        MultiCategoryDropdownSpec(43L, listOf(44L, 46L, 50L, 47L, 51L, 57L, 45L, 56L, 54L, 48L, 52L, 49L, 53L, 55L, 58L))
 
     public val TUR_QUICK_LINKS: DropdownSpec =
         TocQuickLinksSpec(410L, listOf(3_455L, 4_098L, 4_099L, 4_100L))

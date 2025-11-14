@@ -236,6 +236,10 @@ fun main() {
                                     // Open settings with Cmd+, or Ctrl+,
                                     appGraph.settingsWindowViewModel.onEvent(io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents.onOpen)
                                     true
+                                } else if (getOperatingSystem() == OperatingSystem.MACOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
+                                    // Minimize window with Cmd+M on macOS
+                                    windowState.isMinimized = true
+                                    true
                                 } else {
                                     processKeyShortcuts(
                                         keyEvent = keyEvent,
@@ -320,6 +324,11 @@ fun main() {
                                         // Ctrl/Cmd + Comma => open settings
                                         isCtrlOrCmd && keyEvent.key == Key.Comma -> {
                                             appGraph.settingsWindowViewModel.onEvent(io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents.onOpen)
+                                            true
+                                        }
+                                        // Cmd + M => minimize window (macOS only)
+                                        getOperatingSystem() == OperatingSystem.MACOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
+                                            windowState.isMinimized = true
                                             true
                                         }
                                         else -> false

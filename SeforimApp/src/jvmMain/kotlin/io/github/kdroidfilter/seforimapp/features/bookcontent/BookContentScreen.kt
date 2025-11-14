@@ -115,15 +115,24 @@ fun BookContentView(
             .onPreviewKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown) {
                     val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                    if (isCtrlOrCmd && keyEvent.key == Key.B) {
-                        if (keyEvent.isShiftPressed) {
-                            onEvent(BookContentEvent.ToggleToc)
-                        } else {
-                            onEvent(BookContentEvent.ToggleBookTree)
+                    when {
+                        isCtrlOrCmd && keyEvent.key == Key.B -> {
+                            if (keyEvent.isShiftPressed) {
+                                onEvent(BookContentEvent.ToggleToc)
+                            } else {
+                                onEvent(BookContentEvent.ToggleBookTree)
+                            }
+                            true
                         }
-                        true
-                    } else {
-                        false
+                        isCtrlOrCmd && keyEvent.key == Key.K -> {
+                            if (keyEvent.isShiftPressed) {
+                                onEvent(BookContentEvent.ToggleTargum)
+                            } else {
+                                onEvent(BookContentEvent.ToggleCommentaries)
+                            }
+                            true
+                        }
+                        else -> false
                     }
                 } else {
                     false

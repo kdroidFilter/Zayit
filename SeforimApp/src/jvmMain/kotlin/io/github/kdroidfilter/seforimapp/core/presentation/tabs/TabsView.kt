@@ -1,60 +1,60 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 
+// (keep existing LayoutDirection import above; avoid duplicate)
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.*
-import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.isSecondary
-import androidx.compose.ui.input.pointer.isTertiary
-import androidx.compose.ui.input.pointer.onPointerEvent
-import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
-import io.github.kdroidfilter.seforim.tabs.TabType
-import io.github.kdroidfilter.seforim.tabs.TabsEvents
-import io.github.kdroidfilter.seforim.tabs.TabsState
-import io.github.kdroidfilter.seforim.tabs.TabsViewModel
-import io.github.kdroidfilter.seforim.tabs.rememberTabsState
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
+import io.github.kdroidfilter.platformtools.OperatingSystem
+import io.github.kdroidfilter.platformtools.getOperatingSystem
+import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.BookOpenTabs
+import io.github.kdroidfilter.seforimapp.icons.CloseAll
+import io.github.kdroidfilter.seforimapp.icons.Tab_close
+import io.github.kdroidfilter.seforimapp.icons.Tab_close_right
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -66,34 +66,10 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
-import io.github.kdroidfilter.seforimapp.icons.CloseAll
-import io.github.kdroidfilter.seforimapp.icons.Tab_close
-import io.github.kdroidfilter.seforimapp.icons.Tab_close_right
-import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.add_tab
-import seforimapp.seforimapp.generated.resources.close_tab
-import seforimapp.seforimapp.generated.resources.home
-import seforimapp.seforimapp.generated.resources.search_results_tab_title
-import seforimapp.seforimapp.generated.resources.app_name
-import seforimapp.seforimapp.generated.resources.home_tab_with_app
-import seforimapp.seforimapp.generated.resources.close_all_tabs
-import seforimapp.seforimapp.generated.resources.close_other_tabs
-import seforimapp.seforimapp.generated.resources.close_tabs_left
-import seforimapp.seforimapp.generated.resources.close_tabs_right
-import io.github.kdroidfilter.platformtools.getOperatingSystem
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
-// (keep existing LayoutDirection import above; avoid duplicate)
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
+import seforimapp.seforimapp.generated.resources.*
 import kotlin.math.roundToInt
+import kotlin.ranges.coerceAtLeast
+import kotlin.ranges.coerceAtMost
 
 // Carry both TabData and its label for tooltips anchored on the whole tab container
 private data class TabEntry(
@@ -108,24 +84,6 @@ private data class TabEntry(
     val onCloseRight: () -> Unit,
 )
 private val TabTooltipWidthThreshold = 140.dp
-
-@OptIn(ExperimentalComposeUiApi::class)
-@Composable
-@Stable
-fun Modifier.verticalWheelToHorizontal(
-    scrollState: ScrollState,
-    multiplier: Float = 80f
-): Modifier {
-    val scope = rememberCoroutineScope()
-    return this.onPointerEvent(PointerEventType.Scroll) { event ->
-        val dy = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
-        if (dy != 0f) {
-            scope.launch { scrollState.scrollBy(dy * multiplier) }
-            event.changes.forEach { it.consume() }
-        }
-    }
-}
-
 
 @Composable
 fun TabsView() {
@@ -670,7 +628,8 @@ private fun RtlAwareTab(
                 Column(
                     Modifier
                         .width(200.dp)
-                        .background(JewelTheme.globalColors.panelBackground, shape)
+                        .clip(shape)
+                        .background(JewelTheme.globalColors.panelBackground)
                         .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
                 ) {
                     data class CtxItem(val title: String, val icon: ImageVector, val mirror: Boolean = false, val action: () -> Unit)

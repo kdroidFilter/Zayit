@@ -188,7 +188,7 @@
 
 
     <!-- Settings -->
-    <string name="close_book_tree_on_new_book">סגור אוטומטית את חלונית העץ בעת בחירת ספר חדש</string>
+    <string name="close_book_tree_on_new_book">סגור אוטומטית את עץ הספרים בעת בחירת ספר חדש</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title_bar">מדריך ההגדרה של זית</string>

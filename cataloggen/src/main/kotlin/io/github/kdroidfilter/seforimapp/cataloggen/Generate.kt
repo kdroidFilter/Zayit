@@ -58,7 +58,10 @@ fun main(args: Array<String>) {
     val categoriesOfInterest = runBlocking {
         val set = baseCategoriesOfInterest.toMutableSet()
         // Fetch immediate child categories of Mishneh Torah (43)
-        val mtChildren = runCatching { repo.getCategoryChildren(43) }.getOrDefault(emptyList())
+        // Exclude categories whose title starts with "מפרשים"
+        val mtChildren = runCatching { repo.getCategoryChildren(43) }
+            .getOrDefault(emptyList())
+            .filter { c -> !c.title.trimStart().startsWith("מפרשים") }
         set.addAll(mtChildren.map { it.id })
         set.toSet()
     }
@@ -74,7 +77,13 @@ fun main(args: Array<String>) {
     val categoryBooks: MutableMap<Long, List<Pair<Long, String>>> = mutableMapOf()
     runBlocking {
         categoryTitles.keys.forEach { cid ->
-            val books = runCatching { repo.getBooksByCategory(cid) }.getOrDefault(emptyList())
+            var books = runCatching { repo.getBooksByCategory(cid) }.getOrDefault(emptyList())
+            // For Mishneh Torah (root 43 or its immediate children), exclude books starting with "מפרשים"
+            val parentId = runCatching { repo.getCategory(cid) }.getOrNull()?.parentId
+            val isMishnehTorahContext = (cid == 43L) || (parentId == 43L)
+            if (isMishnehTorahContext) {
+                books = books.filter { b -> !b.title.trimStart().startsWith("מפרשים") }
+            }
             // Strip any ancestor labels (category, parent, root, etc.) to avoid repetition like "משנה תורה, ..."
             val labels = ancestorTitles(repo, cid)
             val refs = books.map { b ->
@@ -183,6 +192,7 @@ fun main(args: Array<String>) {
     val mishnehTorahChildrenIds: List<Long> = runBlocking {
         runCatching { repo.getCategoryChildren(43) }
             .getOrDefault(emptyList())
+            .filter { c -> !c.title.trimStart().startsWith("מפרשים") }
             .map { it.id }
     }
 

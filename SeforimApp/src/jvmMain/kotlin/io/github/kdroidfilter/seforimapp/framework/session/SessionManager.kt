@@ -108,15 +108,13 @@ object SessionManager {
 
         if (saved.tabs.isEmpty()) return
 
-        runBlocking {
-            // Open first tab then close default initial one
-            tabsVm.openTab(saved.tabs.first())
-        }
-        // Close the initial default tab at index 0
+        // Close the initial default tab BEFORE opening restored tabs
+        // (opening a tab adds it at index 0, so we need to close the default first)
         tabsVm.onEvent(TabsEvents.onClose(0))
 
-        // Open remaining tabs
-        saved.tabs.drop(1).forEach { dest ->
+        // Open all restored tabs in REVERSE order because openTab() adds at index 0
+        // This ensures tabs are restored in the correct order
+        saved.tabs.reversed().forEach { dest ->
             runBlocking { tabsVm.openTab(dest) }
         }
 

@@ -12,19 +12,21 @@ The tab system consists of several key components working together:
 1. **TabsViewModel** – Manages tab list (create/select/close/replace) and titles
 2. **TabsNavHost** – Renders one `NavHost` per tab (kept alive); only the selected
    tab is visible, others are stacked underneath
-3. **TabStateManager** – Persists lightweight, per‑tab state snapshots used for
-   cold‑boot restoration (still supported)
-4. **TabAwareViewModel** – Optional base for screens that want to persist partial
-   state via `TabStateManager` (e.g., selection, toggles)
+3. **TabStateManager** – Persists lightweight, per‑tab state in memory and
+   coordinates with SessionManager for cold‑boot restoration
+4. **SessionManager** – Handles disk persistence of tabs and state across app restarts
 5. **TabsDestination** – Strongly‑typed routes for Home, Search, and BookContent
 6. **TabsView** – Displays the tabs strip and emit user events (select/close/add)
 
 ## Behavior: Simpler, Predictable Tabs
 
 - Each tab has its own `NavHostController`, so ViewModels and UI state remain alive
-  when switching between tabs (no explicit save/restore on tab switch is required).
+  when switching between tabs. **State is automatically preserved** because ViewModels
+  are kept in memory using `tabId` as the stable remember key.
 - On cold boot, the app restores open tabs, the selected tab, and per‑tab saved
   state via `SessionManager` + `TabStateManager`.
+- **Key improvement**: ViewModels now use `tabId` as the remember key instead of
+  `destination`, preventing unnecessary recreation when navigating within the same tab.
 - This approach is intentionally simpler and more maintainable than the previous
   RAM‑optimized system. It may keep more UI in memory if many tabs are open.
 
@@ -56,32 +58,34 @@ sealed interface TabsDestination {
 
 ### 2. Create a ViewModel for Each Screen
 
-Inherit from `TabAwareViewModel` for screens that need to maintain their state:
+Simply inherit from `ViewModel` and use `TabStateManager` directly:
 
 ```kotlin
 class MyScreenViewModel(
     savedStateHandle: SavedStateHandle,
-    stateManager: TabStateManager,
+    private val stateManager: TabStateManager,
     // other dependencies
-) : TabAwareViewModel(
-    tabId = savedStateHandle.get<String>("tabId") ?: "",
-    stateManager = stateManager
-) {
-    // Use saveState() and getState() to persist state
-    private val _myState = MutableStateFlow(getState<String>("myState") ?: "")
+) : ViewModel() {
+    private val tabId: String = savedStateHandle.get<String>("tabId") ?: ""
+
+    // Load initial state from TabStateManager
+    private val _myState = MutableStateFlow(
+        stateManager.getState<String>(tabId, "myState") ?: ""
+    )
     val myState = _myState.asStateFlow()
-    
+
     // Don't forget to save state when it changes
     fun updateState(newState: String) {
         _myState.value = newState
-        saveState("myState", newState)
+        stateManager.saveState(tabId, "myState", newState)
     }
 }
 ```
 
 ### 3. Configure the NavHost
 
-Use `TabsNavHost` in your main composable:
+Use `TabsNavHost` in your main composable. The NavHost automatically uses `tabId`
+as the remember key to ensure ViewModels remain stable across destination changes:
 
 ```kotlin
 @Composable
@@ -89,8 +93,8 @@ fun MyApplication() {
     Column {
         // Display tabs
         TabsView()
-        
-        // Tab content
+
+        // Tab content - handles ViewModel stability automatically
         TabsNavHost()
     }
 }
@@ -127,7 +131,11 @@ NavHost(
         backStackEntry.savedStateHandle["tabId"] = destination.tabId
         backStackEntry.savedStateHandle["parameter"] = destination.parameter
 
-        MyCustomScreen()
+        // IMPORTANT: Use tabId as remember key to keep ViewModel stable
+        val viewModel = remember(appGraph, destination.tabId) {
+            appGraph.myCustomScreenViewModel(backStackEntry.savedStateHandle)
+        }
+        MyCustomScreen(viewModel)
     }
 }
 ```
@@ -199,8 +207,9 @@ saveState("allItems", completeListOfItems)  // Bad: saves entire list
 ```
 
 5. **Handle tab lifecycle properly** – With classic tabs, ViewModels remain
-   alive when switching tabs. Use `TabStateManager` only for state you want to
-   restore after a cold boot.
+   alive when switching tabs because `remember` uses `tabId` as the key.
+   State is automatically preserved in memory. Use `TabStateManager` for
+   state you want to restore after a cold boot.
 
 6. **Localize Home titles in the UI** - The `TabsViewModel` may return an empty
    string for the Home tab title so the UI can localize the label via
@@ -261,26 +270,24 @@ The `BookContentViewModel` in this project is an excellent example of using the 
 ```kotlin
 class BookContentViewModel(
     savedStateHandle: SavedStateHandle,
-    stateManager: TabStateManager,
+    private val tabStateManager: TabStateManager,
     private val repository: SeforimRepository
-) : TabAwareViewModel(
-    tabId = savedStateHandle.get<String>("tabId") ?: "",
-    stateManager = stateManager
-) {
-    // Initialize with saved state or default value
-    private val _searchText = MutableStateFlow(getState<String>("searchText") ?: "")
-    private val _showBookTree = MutableStateFlow(getState<Boolean>("showBookTree") ?: true)
-    
+) : ViewModel() {
+    private val currentTabId: String = savedStateHandle.get<String>("tabId") ?: ""
+
+    // BookContentStateManager wraps TabStateManager for this specific screen
+    private val stateManager = BookContentStateManager(currentTabId, tabStateManager)
+
+    // State is loaded from TabStateManager automatically
+    val uiState: StateFlow<BookContentState> = stateManager.state
+        .map { /* transform state as needed */ }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialState)
+
     // Save state when it changes
     fun updateSearchText(text: String) {
-        _searchText.value = text
-        saveState("searchText", text)
-    }
-    
-    fun toggleBookTree() {
-        val newValue = !_showBookTree.value
-        _showBookTree.value = newValue
-        saveState("showBookTree", newValue)
+        stateManager.updateNavigation {
+            copy(searchText = text)
+        }
     }
 }
    ```

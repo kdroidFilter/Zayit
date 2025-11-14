@@ -15,6 +15,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
@@ -32,8 +33,11 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondary
 import androidx.compose.ui.input.pointer.isTertiary
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,6 +65,7 @@ import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.add_tab
 import seforimapp.seforimapp.generated.resources.close_tab
@@ -68,8 +73,22 @@ import seforimapp.seforimapp.generated.resources.home
 import seforimapp.seforimapp.generated.resources.search_results_tab_title
 import seforimapp.seforimapp.generated.resources.app_name
 import seforimapp.seforimapp.generated.resources.home_tab_with_app
+import seforimapp.seforimapp.generated.resources.close_all_tabs
+import seforimapp.seforimapp.generated.resources.close_other_tabs
+import seforimapp.seforimapp.generated.resources.close_tabs_left
+import seforimapp.seforimapp.generated.resources.close_tabs_right
 import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.platformtools.OperatingSystem
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+// (keep existing LayoutDirection import above; avoid duplicate)
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
+import kotlin.math.roundToInt
 
 // Carry both TabData and its label for tooltips anchored on the whole tab container
 private data class TabEntry(
@@ -78,6 +97,10 @@ private data class TabEntry(
     val labelProvider: @Composable () -> String,
     val onClose: () -> Unit,
     val onClick: () -> Unit,
+    val onCloseAll: () -> Unit,
+    val onCloseOthers: () -> Unit,
+    val onCloseLeft: () -> Unit,
+    val onCloseRight: () -> Unit,
 )
 private val TabTooltipWidthThreshold = 140.dp
 
@@ -172,6 +195,11 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                     labelProvider = labelProvider,
                     onClose = { onEvents(TabsEvents.onClose(actualIndex)) },
                     onClick = { onEvents(TabsEvents.onSelected(actualIndex)) },
+                    onCloseAll = { onEvents(TabsEvents.CloseAll) },
+                    onCloseOthers = { onEvents(TabsEvents.CloseOthers(actualIndex)) },
+                    // RTL: visual "left" corresponds to higher indices (right of actual index)
+                    onCloseLeft = { onEvents(TabsEvents.CloseRight(actualIndex)) },
+                    onCloseRight = { onEvents(TabsEvents.CloseLeft(actualIndex)) },
                 )
             }
         } else {
@@ -225,6 +253,10 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
                     labelProvider = labelProvider,
                     onClose = { onEvents(TabsEvents.onClose(index)) },
                     onClick = { onEvents(TabsEvents.onSelected(index)) },
+                    onCloseAll = { onEvents(TabsEvents.CloseAll) },
+                    onCloseOthers = { onEvents(TabsEvents.CloseOthers(index)) },
+                    onCloseLeft = { onEvents(TabsEvents.CloseLeft(index)) },
+                    onCloseRight = { onEvents(TabsEvents.CloseRight(index)) },
                 )
             }
         }
@@ -352,6 +384,10 @@ private fun RtlAwareTabStripContent(
                                         closingKeys = closingKeys - entry.key
                                     }
                                 },
+                                onCloseAll = entry.onCloseAll,
+                                onCloseOthers = entry.onCloseOthers,
+                                onCloseLeft = entry.onCloseLeft,
+                                onCloseRight = entry.onCloseRight,
                                 animateWidth = !isNew,
                                 enterFromSmall = isNew,
                                 enterDurationMs = enterDurationMs
@@ -439,6 +475,10 @@ private fun RtlAwareTab(
     labelProvider: @Composable () -> String,
     onClick: () -> Unit,
     onClose: () -> Unit,
+    onCloseAll: () -> Unit,
+    onCloseOthers: () -> Unit,
+    onCloseLeft: () -> Unit,
+    onCloseRight: () -> Unit,
     animateWidth: Boolean = true,
     enterFromSmall: Boolean = false,
     enterDurationMs: Int = 200,
@@ -491,12 +531,22 @@ private fun RtlAwareTab(
             animateWidth -> animatedWidth
             else -> tabWidth
         }
+        var anchorOffset by remember { mutableStateOf(IntOffset.Zero) }
+        var anchorSize by remember { mutableStateOf(IntSize.Zero) }
+        var contextMenuOpen by remember { mutableStateOf(false) }
+        var contextClickOffset by remember { mutableStateOf(IntOffset.Zero) }
+
         val container: @Composable () -> Unit = {
         Row(
             modifier
                 .height(tabStyle.metrics.tabHeight)
                 .width(widthForThisTab)
                 .background(backgroundColor)
+                .onGloballyPositioned { coords ->
+                    val pos = coords.positionInWindow()
+                    anchorOffset = IntOffset(pos.x.roundToInt(), pos.y.roundToInt())
+                    anchorSize = coords.size
+                }
                 .selectable(
                     onClick = onClick,
                     selected = tabData.selected,
@@ -519,8 +569,16 @@ private fun RtlAwareTab(
                     )
                 }
                 .padding(tabStyle.metrics.tabPadding)
-                .onPointerEvent(PointerEventType.Release) {
-                    if (it.button.isTertiary) onClose()
+                .onPointerEvent(PointerEventType.Release) { ev ->
+                    // Middle-click closes tab (Chrome-like)
+                    if (ev.button.isTertiary) onClose()
+                    // Right-click opens context menu
+                    if (ev.button.isSecondary) {
+                        val p = ev.changes.firstOrNull()?.position ?: Offset.Zero
+                        contextClickOffset = IntOffset(p.x.roundToInt(), p.y.roundToInt())
+                        contextMenuOpen = true
+                        ev.changes.forEach { it.consume() }
+                    }
                 },
             horizontalArrangement = Arrangement.spacedBy(tabStyle.metrics.closeContentGap),
             verticalAlignment = Alignment.CenterVertically,
@@ -570,7 +628,73 @@ private fun RtlAwareTab(
         val showTooltip = label.isNotBlank() &&
                 (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold)
 
-        if (showTooltip) Tooltip({ Text(label) }) { container() } else container()
+        val contentWithTooltip: @Composable () -> Unit = {
+            if (showTooltip) Tooltip({ Text(label) }) { container() } else container()
+        }
+
+        contentWithTooltip()
+
+        if (contextMenuOpen) {
+            val provider = remember(anchorOffset, anchorSize, contextClickOffset) {
+                object : PopupPositionProvider {
+                    override fun calculatePosition(
+                        anchorBounds: IntRect,
+                        windowSize: IntSize,
+                        layoutDirection: LayoutDirection,
+                        popupContentSize: IntSize
+                    ): IntOffset {
+                        var x = anchorOffset.x + contextClickOffset.x
+                        var y = anchorOffset.y + contextClickOffset.y
+                        if (x + popupContentSize.width > windowSize.width) {
+                            x = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+                        }
+                        if (x < 0) x = 0
+                        if (y + popupContentSize.height > windowSize.height) {
+                            y = (windowSize.height - popupContentSize.height).coerceAtLeast(0)
+                        }
+                        return IntOffset(x, y)
+                    }
+                }
+            }
+            Popup(
+                popupPositionProvider = provider,
+                properties = PopupProperties(focusable = true),
+                onDismissRequest = { contextMenuOpen = false }
+            ) {
+                val shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
+                Column(
+                    Modifier
+                        .width(200.dp)
+                        .background(JewelTheme.globalColors.panelBackground, shape)
+                        .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                ) {
+                    val items = buildList<Pair<String, () -> Unit>> {
+                        add(stringResource(Res.string.close_all_tabs) to onCloseAll)
+                        if (tabCount > 1) add(stringResource(Res.string.close_other_tabs) to onCloseOthers)
+                        if (tabIndex > 0) add(stringResource(Res.string.close_tabs_left) to onCloseLeft)
+                        if (tabIndex < tabCount - 1) add(stringResource(Res.string.close_tabs_right) to onCloseRight)
+                    }
+                    items.forEachIndexed { i, (title, action) ->
+                        val hover = remember { MutableInteractionSource() }
+                        val isHovered by hover.collectIsHoveredAsState()
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .background(if (isHovered) AppColors.HOVER_HIGHLIGHT else androidx.compose.ui.graphics.Color.Transparent)
+                                .hoverable(hover)
+                                .pointerHoverIcon(PointerIcon.Hand)
+                                .clickable(onClick = {
+                                    contextMenuOpen = false
+                                    action()
+                                })
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text(title)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

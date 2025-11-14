@@ -59,6 +59,12 @@
     <string name="add_tab">הוסף לשונית</string>
     <string name="home">דף הבית</string>
     <string name="close_tab">סגור לשונית</string>
+    <string name="close_all_tabs">סגור את כל הלשוניות</string>
+    <string name="close_other_tabs">סגור לשוניות אחרות</string>
+    <!-- Reworded to "close towards the right" for consistency with RTL wording -->
+    <string name="close_tabs_left">סגור לשוניות ימינה</string>
+    <!-- Reworded to "close towards the left" per UX preference -->
+    <string name="close_tabs_right">סגור לשוניות שמאלה</string>
 
     <!-- Book Content Screen - Start Vertical Bar -->
     <string name="navigation">ניווט</string>

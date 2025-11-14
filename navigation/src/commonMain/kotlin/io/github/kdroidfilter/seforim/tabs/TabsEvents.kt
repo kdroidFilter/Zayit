@@ -4,4 +4,9 @@ sealed class TabsEvents {
     data class onClose(val index: Int): TabsEvents()
     data class onSelected(val index: Int): TabsEvents()
     data object onAdd: TabsEvents()
+    // Bulk/advanced close operations
+    data object CloseAll : TabsEvents()
+    data class CloseOthers(val index: Int) : TabsEvents()
+    data class CloseLeft(val index: Int) : TabsEvents()
+    data class CloseRight(val index: Int) : TabsEvents()
 }

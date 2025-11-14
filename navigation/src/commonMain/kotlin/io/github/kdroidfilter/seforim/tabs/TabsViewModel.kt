@@ -52,6 +52,10 @@ class TabsViewModel(
             is TabsEvents.onClose -> closeTab(event.index)
             is TabsEvents.onSelected -> selectTab(event.index)
             TabsEvents.onAdd -> addTab()
+            TabsEvents.CloseAll -> closeAllTabs()
+            is TabsEvents.CloseOthers -> closeOthers(event.index)
+            is TabsEvents.CloseLeft -> closeLeft(event.index)
+            is TabsEvents.CloseRight -> closeRight(event.index)
         }
     }
 
@@ -144,6 +148,73 @@ class TabsViewModel(
         )
         _tabs.value = listOf(newTab) + _tabs.value
         _selectedTabIndex.value = 0
+    }
+
+    private fun closeAllTabs() {
+        val currentTabs = _tabs.value
+        // Clear state for all existing tabs
+        currentTabs.forEach { stateManager.clearTabState(it.destination.tabId) }
+
+        // Create a fresh default tab
+        val destination = TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())
+        val newTab = TabItem(
+            id = _nextTabId++,
+            title = getTabTitle(destination),
+            destination = destination,
+            tabType = TabType.SEARCH
+        )
+        _tabs.value = listOf(newTab)
+        _selectedTabIndex.value = 0
+        System.gc()
+    }
+
+    private fun closeOthers(index: Int) {
+        val currentTabs = _tabs.value
+        if (index !in 0..currentTabs.lastIndex) return
+
+        // Clear all other tabs' state
+        currentTabs.forEachIndexed { i, tab -> if (i != index) stateManager.clearTabState(tab.destination.tabId) }
+
+        val keep = currentTabs[index]
+        _tabs.value = listOf(keep)
+        _selectedTabIndex.value = 0
+        System.gc()
+    }
+
+    private fun closeLeft(index: Int) {
+        val currentTabs = _tabs.value
+        if (index !in 0..currentTabs.lastIndex) return
+
+        // Clear state for all tabs strictly to the left of index
+        currentTabs.take(index).forEach { tab -> stateManager.clearTabState(tab.destination.tabId) }
+
+        val newTabs = currentTabs.drop(index)
+        _tabs.value = newTabs
+
+        // Adjust selection: preserve selection if still present; otherwise select the first (which is the original index tab)
+        val s = _selectedTabIndex.value
+        _selectedTabIndex.value = if (s >= index) {
+            (s - index).coerceIn(0, newTabs.lastIndex)
+        } else {
+            0
+        }
+        System.gc()
+    }
+
+    private fun closeRight(index: Int) {
+        val currentTabs = _tabs.value
+        if (index !in 0..currentTabs.lastIndex) return
+
+        // Clear state for all tabs strictly to the right of index
+        currentTabs.drop(index + 1).forEach { tab -> stateManager.clearTabState(tab.destination.tabId) }
+
+        val newTabs = currentTabs.take(index + 1)
+        _tabs.value = newTabs
+
+        // Adjust selection: if the previous selected was to the right, clamp to last (which is index)
+        val s = _selectedTabIndex.value
+        _selectedTabIndex.value = if (s <= index) s else newTabs.lastIndex
+        System.gc()
     }
 
     /**

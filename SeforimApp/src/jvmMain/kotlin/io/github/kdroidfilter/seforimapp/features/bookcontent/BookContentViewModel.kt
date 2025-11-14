@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
@@ -31,10 +32,7 @@ class BookContentViewModel(
     private val repository: SeforimRepository,
     private val titleUpdateManager: TabTitleUpdateManager,
     private val tabsViewModel: TabsViewModel
-) : TabAwareViewModel(
-    tabId = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: "",
-    stateManager = tabStateManager
-) {
+) : ViewModel() {
     private val currentTabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
 
     // State Manager centralisé
@@ -147,7 +145,8 @@ class BookContentViewModel(
                     // Vérifier s'il y a une ligne sélectionnée sauvegardée à restaurer
                     val savedLineId = tabStateManager.getState<Long>(currentTabId, StateKeys.SELECTED_LINE_ID)
                     if (savedLineId != null) {
-                        loadBookById(restoredBook.id, savedLineId)
+                        // Cold boot restoration: don't trigger scroll animation, use saved scroll position
+                        loadBookById(restoredBook.id, savedLineId, triggerScroll = false)
                     } else {
                         // Cas Home/Reference: livre choisi sans TOC (pas de lineId). Ouvrir le TOC (type-safe source).
                         val openSource: io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource? =
@@ -157,6 +156,11 @@ class BookContentViewModel(
                             openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.SEARCH_RESULT ||
                             openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.COMMENTARY_OR_TARGUM) {
                             ensureTocVisibleOnFirstOpen()
+                        }
+                        // Reset anchorId BEFORE loadBookData for cold boot restoration
+                        // (anchorId centers the pager, but we want to use the saved scrollIndex/Offset instead)
+                        stateManager.updateContent(save = false) {
+                            copy(anchorId = -1L, anchorIndex = 0)
                         }
                         loadBookData(restoredBook)
                     }
@@ -327,7 +331,7 @@ class BookContentViewModel(
     }
 
     /** Charge un livre par ID */
-    private suspend fun loadBookById(bookId: Long, lineId: Long? = null) {
+    private suspend fun loadBookById(bookId: Long, lineId: Long? = null, triggerScroll: Boolean = true) {
         stateManager.setLoading(true)
         try {
             repository.getBook(bookId)?.let { book ->
@@ -345,22 +349,38 @@ class BookContentViewModel(
                 }
 
                 if (lineId != null) {
-                    stateManager.updateContent {
-                        copy(
-                            anchorId = lineId,
-                            scrollIndex = 0,
-                            scrollOffset = 0
-                        )
-                    }
-                    loadBookData(book, lineId)
-
-                    repository.getLine(lineId)?.let { line ->
-                        selectLine(line)
+                    if (triggerScroll) {
+                        // Normal navigation: center pager on line and trigger scroll animation
                         stateManager.updateContent {
-                            copy(scrollToLineTimestamp = System.currentTimeMillis())
+                            copy(
+                                anchorId = lineId,
+                                scrollIndex = 0,
+                                scrollOffset = 0
+                            )
                         }
-                        // Expand TOC to the line's TOC entry so the branch is visible
-                        runCatching { tocUseCase.expandPathToLine(line.id) }
+                        loadBookData(book, lineId)
+
+                        repository.getLine(lineId)?.let { line ->
+                            selectLine(line)
+                            stateManager.updateContent {
+                                copy(scrollToLineTimestamp = System.currentTimeMillis())
+                            }
+                            // Expand TOC to the line's TOC entry so the branch is visible
+                            runCatching { tocUseCase.expandPathToLine(line.id) }
+                        }
+                    } else {
+                        // Cold boot restore: don't center pager, use saved scroll position
+                        // Reset anchorId BEFORE loadBookData to use scrollIndex/scrollOffset
+                        stateManager.updateContent(save = false) {
+                            copy(anchorId = -1L, anchorIndex = 0)
+                        }
+                        loadBookData(book)  // No forceAnchorId to use saved scrollIndex/scrollOffset
+
+                        repository.getLine(lineId)?.let { line ->
+                            selectLine(line)
+                            // Expand TOC to the line's TOC entry so the branch is visible
+                            runCatching { tocUseCase.expandPathToLine(line.id) }
+                        }
                     }
                 } else {
                     loadBook(book)

@@ -3,8 +3,8 @@
 package io.github.kdroidfilter.seforimapp.features.search
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.seforim.tabs.TabAwareViewModel
 import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
@@ -86,10 +86,8 @@ class SearchResultViewModel(
     private val lucene: LuceneSearchService,
     private val titleUpdateManager: TabTitleUpdateManager,
     private val tabsViewModel: TabsViewModel
-) : TabAwareViewModel(
-    tabId = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: "",
-    stateManager = stateManager
-) {
+) : ViewModel() {
+    private val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
     private val getBreadcrumbPieces = GetBreadcrumbPiecesUseCase(repository)
     private val buildSearchTreeUseCase = BuildSearchTreeUseCase(repository)
     // MVI events for SearchResultViewModel
@@ -188,7 +186,6 @@ class SearchResultViewModel(
         currentCount < STAGE8_LIMIT -> STAGE8_BATCH
         else -> STAGE9_BATCH
     }
-    private val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
 
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()

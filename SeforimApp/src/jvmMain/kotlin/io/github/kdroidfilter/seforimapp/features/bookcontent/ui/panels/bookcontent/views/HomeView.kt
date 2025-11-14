@@ -114,8 +114,8 @@ fun HomeView(
 
         Row (
             Modifier
-                .widthIn(min = 125.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         ) {
             CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.TANAKH, onEvent = onEvent, popupWidthMultiplier = 1.50f)
             CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.MISHNA, onEvent = onEvent)

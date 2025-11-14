@@ -26,6 +26,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -66,6 +68,9 @@ import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
+import io.github.kdroidfilter.seforimapp.icons.CloseAll
+import io.github.kdroidfilter.seforimapp.icons.Tab_close
+import io.github.kdroidfilter.seforimapp.icons.Tab_close_right
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.add_tab
 import seforimapp.seforimapp.generated.resources.close_tab
@@ -668,13 +673,14 @@ private fun RtlAwareTab(
                         .background(JewelTheme.globalColors.panelBackground, shape)
                         .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
                 ) {
-                    val items = buildList<Pair<String, () -> Unit>> {
-                        add(stringResource(Res.string.close_all_tabs) to onCloseAll)
-                        if (tabCount > 1) add(stringResource(Res.string.close_other_tabs) to onCloseOthers)
-                        if (tabIndex > 0) add(stringResource(Res.string.close_tabs_left) to onCloseLeft)
-                        if (tabIndex < tabCount - 1) add(stringResource(Res.string.close_tabs_right) to onCloseRight)
+                    data class CtxItem(val title: String, val icon: ImageVector, val mirror: Boolean = false, val action: () -> Unit)
+                    val items = buildList<CtxItem> {
+                        add(CtxItem(stringResource(Res.string.close_all_tabs), CloseAll, false, onCloseAll))
+                        if (tabCount > 1) add(CtxItem(stringResource(Res.string.close_other_tabs), Tab_close, false, onCloseOthers))
+                        if (tabIndex > 0) add(CtxItem(stringResource(Res.string.close_tabs_left), Tab_close_right, false, onCloseLeft))
+                        if (tabIndex < tabCount - 1) add(CtxItem(stringResource(Res.string.close_tabs_right), Tab_close_right, true, onCloseRight))
                     }
-                    items.forEachIndexed { i, (title, action) ->
+                    items.forEach { item ->
                         val hover = remember { MutableInteractionSource() }
                         val isHovered by hover.collectIsHoveredAsState()
                         Box(
@@ -685,11 +691,19 @@ private fun RtlAwareTab(
                                 .pointerHoverIcon(PointerIcon.Hand)
                                 .clickable(onClick = {
                                     contextMenuOpen = false
-                                    action()
+                                    item.action()
                                 })
                                 .padding(horizontal = 12.dp, vertical = 8.dp)
                         ) {
-                            Text(title)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(
+                                    imageVector = item.icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp).let { m -> if (item.mirror) m.graphicsLayer(scaleX = -1f) else m },
+                                    tint = JewelTheme.globalColors.text.normal
+                                )
+                                Text(item.title)
+                            }
                         }
                     }
                 }

@@ -209,6 +209,10 @@ fun main() {
                                 if (isCtrlOrCmd && keyEvent.key == Key.T) {
                                     tabsVm.onEvent(TabsEvents.onAdd)
                                     true
+                                } else if (isCtrlOrCmd && keyEvent.key == Key.W) {
+                                    // Close current tab with Ctrl/Cmd + W
+                                    tabsVm.onEvent(TabsEvents.onClose(selectedIndex))
+                                    true
                                 } else if (isCtrlOrCmd && keyEvent.key == Key.Tab) {
                                     val count = tabs.size
                                     if (count > 0) {
@@ -276,6 +280,11 @@ fun main() {
                                 if (keyEvent.type == KeyEventType.KeyDown) {
                                     val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
                                     when {
+                                        // Ctrl/Cmd + W => close current tab
+                                        isCtrlOrCmd && keyEvent.key == Key.W -> {
+                                            tabsVm.onEvent(TabsEvents.onClose(selectedIndex))
+                                            true
+                                        }
                                         // Ctrl/Cmd + Shift + Tab => previous tab
                                         isCtrlOrCmd && keyEvent.key == Key.Tab && keyEvent.isShiftPressed -> {
                                             val count = tabs.size

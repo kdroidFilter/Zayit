@@ -20,6 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.isPrimaryPressed
@@ -311,7 +314,7 @@ fun BookContentView(
         }
     }
 
-    // Global preview handler: ensures Ctrl/Cmd+F opens find bar regardless of focus
+    // Global preview handler: handle basic navigation keys regardless of inner focus
     val previewKeyHandler = remember(onEvent) {
         { keyEvent: androidx.compose.ui.input.key.KeyEvent ->
             // Ctrl/Cmd+F handled globally at window level; do not intercept here
@@ -337,6 +340,10 @@ fun BookContentView(
         }
     }
 
+    // Request initial focus so arrow keys work as soon as the view appears
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(book.id) { focusRequester.requestFocus() }
+
     // Workaround for Compose selection crash when extending selection with Shift+Click across
     // multiple selectables in a virtualized list. We intercept Shift+primary mouse presses at
     // the container level to avoid the extend-selection path, while preserving normal drag
@@ -344,6 +351,9 @@ fun BookContentView(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .focusRequester(focusRequester)
+            .focusable()
+            .onPreviewKeyEvent(previewKeyHandler)
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -356,7 +366,7 @@ fun BookContentView(
             }
     ) {
         SelectionContainer {
-            Box(modifier = Modifier.fillMaxSize().padding(bottom = 8.dp).onPreviewKeyEvent(previewKeyHandler)) {
+            Box(modifier = Modifier.fillMaxSize().padding(bottom = 8.dp)) {
             // Content list. Avoid a single SelectionContainer around the entire
             // paged list to prevent cross-item selection spanning unloaded pages,
             // which can crash when paging composes/uncomposes items.

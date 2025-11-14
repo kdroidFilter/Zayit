@@ -26,6 +26,14 @@ import org.jetbrains.compose.resources.stringResource
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.max_commentators_limit
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppToaster
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 
 /**
  * Composable function to display the book content screen.
@@ -101,7 +109,36 @@ fun BookContentView(
         onDispose { onEvent(BookContentEvent.SaveState) }
     }
 
-    Row(modifier = Modifier.fillMaxSize()) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .onPreviewKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                    when {
+                        isCtrlOrCmd && keyEvent.key == Key.B -> {
+                            if (keyEvent.isShiftPressed) {
+                                onEvent(BookContentEvent.ToggleToc)
+                            } else {
+                                onEvent(BookContentEvent.ToggleBookTree)
+                            }
+                            true
+                        }
+                        isCtrlOrCmd && keyEvent.key == Key.K -> {
+                            if (keyEvent.isShiftPressed) {
+                                onEvent(BookContentEvent.ToggleTargum)
+                            } else {
+                                onEvent(BookContentEvent.ToggleCommentaries)
+                            }
+                            true
+                        }
+                        else -> false
+                    }
+                } else {
+                    false
+                }
+            }
+    ) {
         StartVerticalBar(uiState = uiState, onEvent = onEvent)
 
         EnhancedHorizontalSplitPane(

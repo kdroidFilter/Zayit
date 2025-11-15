@@ -585,6 +585,7 @@ private fun ReferenceByCategorySection(
                         },
                         onSubmit = onSubmit,
                         submitOnEnterIfSelection = submitOnEnterIfSelection,
+                        autoFocus = false,
                         parentScale = parentScale
                     )
                 }

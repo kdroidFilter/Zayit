@@ -1,4 +1,5 @@
 import io.github.kdroidfilter.buildsrc.RenameMacPkgTask
+import io.github.kdroidfilter.buildsrc.RenameMsiTask
 import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
@@ -267,4 +268,26 @@ val renameMacPkg = tasks.register<RenameMacPkgTask>("renameMacPkg") {
 // Exclude the renamer itself to avoid circular finalizer
 tasks.matching { it.name.endsWith("Pkg") && it.name != "renameMacPkg" }.configureEach {
     finalizedBy(renameMacPkg)
+}
+
+// --- Windows: rename generated .msi to include architecture suffix (_arm64 or _x64)
+val isWindowsHost: Boolean = System.getProperty("os.name").lowercase().contains("windows")
+val windowsArchSuffix: String = run {
+    val arch = System.getProperty("os.arch").lowercase()
+    if (arch.contains("aarch64") || arch.contains("arm")) "_arm64" else "_x64"
+}
+
+// Finds all .msi files under build/compose/binaries and appends arch suffix if missing
+val renameMsi = tasks.register<RenameMsiTask>("renameMsi") {
+    enabled = isWindowsHost
+    group = "distribution"
+    description = "Rename generated Windows .msi files to include architecture suffix (e.g., _arm64 or _x64)."
+    archSuffix.set(windowsArchSuffix)
+}
+
+// Ensure the rename runs after any Compose Desktop task that produces an MSI
+// This covers tasks like `packageReleaseMsi`, `packageDebugMsi`, etc.
+// Exclude the renamer itself to avoid circular finalizer
+tasks.matching { it.name.endsWith("Msi") && it.name != "renameMsi" }.configureEach {
+    finalizedBy(renameMsi)
 }

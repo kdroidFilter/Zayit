@@ -13,6 +13,7 @@ import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -624,13 +625,14 @@ private fun RtlAwareTab(
                 properties = PopupProperties(focusable = true),
                 onDismissRequest = { contextMenuOpen = false }
             ) {
-                val shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
+                val shape = RoundedCornerShape(6.dp)
                 Column(
                     Modifier
-                        .width(200.dp)
+                        .width(192.dp)
                         .clip(shape)
                         .background(JewelTheme.globalColors.panelBackground)
                         .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                        .padding(6.dp)
                 ) {
                     data class CtxItem(val title: String, val icon: ImageVector, val mirror: Boolean = false, val action: () -> Unit)
                     val items = buildList<CtxItem> {
@@ -645,6 +647,7 @@ private fun RtlAwareTab(
                         Box(
                             Modifier
                                 .fillMaxWidth()
+                                .clip(shape)
                                 .background(if (isHovered) AppColors.HOVER_HIGHLIGHT else androidx.compose.ui.graphics.Color.Transparent)
                                 .hoverable(hover)
                                 .pointerHoverIcon(PointerIcon.Hand)
@@ -654,7 +657,10 @@ private fun RtlAwareTab(
                                 })
                                 .padding(horizontal = 12.dp, vertical = 8.dp)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
                                 Icon(
                                     imageVector = item.icon,
                                     contentDescription = null,

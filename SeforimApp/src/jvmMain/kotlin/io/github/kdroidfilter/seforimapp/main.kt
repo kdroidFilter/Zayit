@@ -110,6 +110,8 @@ fun main() {
         val appGraph = remember { createGraph<AppGraph>() }
         // Ensure AppSettings uses the DI-provided Settings immediately
         AppSettings.initialize(appGraph.settings)
+        // Restore previously selected theme (Light/Dark/System) from settings
+        MainAppState.setTheme(AppSettings.getThemeMode())
 
         CompositionLocalProvider(LocalAppGraph provides appGraph) {
             val themeDefinition = ThemeUtils.buildThemeDefinition()

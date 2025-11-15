@@ -68,8 +68,6 @@ import org.jetbrains.skiko.Cursor
 import seforimapp.seforimapp.generated.resources.*
 import kotlin.math.roundToInt
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
-import io.github.kdroidfilter.seforimapp.catalog.MultiCategoryDropdownSpec
-import io.github.kdroidfilter.seforimapp.catalog.CategoryDropdownSpec
 
 // SearchFilter moved to features.search.SearchFilter per architecture guidelines.
 
@@ -143,6 +141,7 @@ fun HomeView(
             val searchState = remember { TextFieldState() }
             val referenceSearchState = remember { TextFieldState() }
             val tocSearchState = remember { TextFieldState() }
+            var skipNextTocQuery by remember { mutableStateOf(false) }
             // Shared focus requester so Tab from the first field can move focus to the TOC field
             val tocFieldFocusRequester = remember { FocusRequester() }
             // Shared focus requester for the MAIN search bar so other UI (e.g., level changes)
@@ -157,7 +156,13 @@ fun HomeView(
             // Forward toc input changes to the ViewModel (ignored until a book is selected)
             LaunchedEffect(Unit) {
                 snapshotFlow { tocSearchState.text.toString() }
-                    .collect { qRaw -> searchVm.onTocQueryChanged(qRaw) }
+                    .collect { qRaw ->
+                        if (skipNextTocQuery) {
+                            skipNextTocQuery = false
+                        } else {
+                            searchVm.onTocQueryChanged(qRaw)
+                        }
+                    }
             }
             fun launchSearch() {
                 val query = searchState.text.toString().trim()
@@ -350,6 +355,7 @@ fun HomeView(
                                     val dedup = dedupAdjacent(picked.path)
                                     val stripped = stripBookPrefixFromTocPath(searchUi.selectedScopeBook, dedup)
                                     val display = stripped.joinToString(breadcrumbSeparator)
+                                    skipNextTocQuery = true
                                     tocSearchState.edit { replace(0, length, display) }
                                 },
                                 parentScale = homeScale

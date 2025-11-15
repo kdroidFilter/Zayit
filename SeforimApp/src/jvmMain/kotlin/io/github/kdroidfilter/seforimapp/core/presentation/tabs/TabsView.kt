@@ -340,9 +340,10 @@ private fun RtlAwareTabStripContent(
             val TabsOnly: @Composable RowScope.() -> Unit = {
                 val reorderingEnabled = closingKeys.isEmpty()
                 val rowModifier = if (shrinkToFitActive) Modifier.fillMaxWidth() else Modifier
+                val tabEntriesByKey = remember(tabs) { tabs.associateBy { it.key } }
 
                 ReorderableRow(
-                    list = tabs,
+                    list = currentKeys,
                     onSettle = { fromIdx, toIdx ->
                         if (!reorderingEnabled) return@ReorderableRow
                         onReorder(fromIdx, toIdx)
@@ -350,17 +351,22 @@ private fun RtlAwareTabStripContent(
                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = rowModifier
-                ) { index, tabEntry, isBeingDragged ->
-                    key(tabEntry.key) {
+                ) { index, key, isBeingDragged ->
+                    val tabEntry = tabEntriesByKey[key] ?: return@ReorderableRow
+                    key(key) {
                         val isClosing = closingKeys.contains(tabEntry.key)
                         val isNew = !knownKeys.contains(tabEntry.key)
 
-                        ReorderableItem {
-                            Box(
-                                modifier = Modifier.draggableHandle(
-                                    enabled = reorderingEnabled && !isClosing
-                                )
-                            ) {
+	                        ReorderableItem {
+	                            Box(
+	                                modifier = Modifier.draggableHandle(
+	                                    enabled = reorderingEnabled && !isClosing,
+	                                    onDragStarted = {
+	                                        // Chrome-like behavior: selecting a tab when starting to drag it
+	                                        tabEntry.onClick()
+	                                    },
+	                                )
+	                            ) {
                                 var visible by remember(isClosing) { mutableStateOf(!isClosing) }
                                 LaunchedEffect(isClosing) {
                                     if (isClosing) visible = false else visible = true

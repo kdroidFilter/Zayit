@@ -1,9 +1,7 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 
-// (keep existing LayoutDirection import above; avoid duplicate)
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.*
@@ -68,6 +66,7 @@ import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import seforimapp.seforimapp.generated.resources.*
+import sh.calvin.reorderable.ReorderableRow
 import kotlin.math.roundToInt
 import kotlin.ranges.coerceAtLeast
 import kotlin.ranges.coerceAtMost
@@ -230,7 +229,14 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
         tabs = tabs,
         style = JewelTheme.defaultTabStyle,
         isRtl = isRtl,
-        newTabAdded = newTabAdded
+        newTabAdded = newTabAdded,
+        onReorder = { fromIndex, toIndex ->
+            // For RTL, indices are already in visual order (reversed list),
+            // so we need to convert back to actual indices
+            val actualFrom = if (isRtl) state.tabs.size - 1 - fromIndex else fromIndex
+            val actualTo = if (isRtl) state.tabs.size - 1 - toIndex else toIndex
+            onEvents(TabsEvents.OnReorder(actualFrom, actualTo))
+        }
     ) {
         onEvents(TabsEvents.onAdd)
     }
@@ -242,6 +248,7 @@ private fun RtlAwareTabStripWithAddButton(
     style: TabStyle,
     isRtl: Boolean,
     newTabAdded: Boolean,
+    onReorder: (Int, Int) -> Unit,
     onAddClick: () -> Unit
 ) {
     // Shrink-to-fit mode: no horizontal scroll, tabs adjust width.
@@ -254,6 +261,7 @@ private fun RtlAwareTabStripWithAddButton(
             tabs = tabs,
             style = style,
             onAddClick = onAddClick,
+            onReorder = onReorder,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -266,6 +274,7 @@ private fun RtlAwareTabStripContent(
     tabs: List<TabEntry>,
     style: TabStyle,
     onAddClick: () -> Unit,
+    onReorder: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -310,52 +319,74 @@ private fun RtlAwareTabStripContent(
                 }
             }
 
-            // Helper to render all tab items with animations
+            // Helper to render all tab items with animations and reordering support
             val TabsOnly: @Composable RowScope.() -> Unit = {
-                tabs.forEachIndexed { index, entry ->
-                    // Wrap each tab in visibility animation to mimic Chrome open/close
-                    val isClosing = closingKeys.contains(entry.key)
-                    // Exit shrinks towards start. For enter, we handle width growth manually from a small width.
-                    val exitShrinkTowards = Alignment.Start
-                    val isNew = !knownKeys.contains(entry.key)
+                val reorderingEnabled = closingKeys.isEmpty()
+                val rowModifier = if (shrinkToFitActive) Modifier.fillMaxWidth() else Modifier
 
-                    key(entry.key) {
-                        AnimatedVisibility(
-                            visible = !isClosing,
-                            // Enter is only a soft fade; width growth is handled inside the tab to avoid double motion
-                            enter = fadeIn(animationSpec = tween(enterDurationMs, easing = LinearEasing)),
-                            exit = shrinkHorizontally(
-                                animationSpec = tween(durationMillis = exitDurationMs),
-                                shrinkTowards = exitShrinkTowards
-                            ) + fadeOut(animationSpec = tween(exitDurationMs, easing = LinearEasing))
-                        ) {
-                            RtlAwareTab(
-                                isActive = isActive,
-                                tabData = entry.data,
-                                tabStyle = style,
-                                tabIndex = index,
-                                tabCount = tabs.size,
-                                tabWidth = tabWidth,
-                                labelProvider = entry.labelProvider,
-                                onClick = entry.onClick,
-                                onClose = {
-                                    // Trigger exit animation first, then actually remove
-                                    closingKeys = closingKeys + entry.key
-                                    // After exit animation completes, notify VM and clear from closing set
-                                    scope.launch {
-                                        delay(exitDurationMs.toLong())
-                                        entry.onClose()
-                                        closingKeys = closingKeys - entry.key
+                ReorderableRow(
+                    list = tabs,
+                    onSettle = { fromIdx, toIdx ->
+                        if (!reorderingEnabled) return@ReorderableRow
+                        onReorder(fromIdx, toIdx)
+                    },
+                    horizontalArrangement = Arrangement.spacedBy(0.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = rowModifier
+                ) { index, tabEntry, isBeingDragged ->
+                    key(tabEntry.key) {
+                        val isClosing = closingKeys.contains(tabEntry.key)
+                        val isNew = !knownKeys.contains(tabEntry.key)
+
+                        ReorderableItem {
+                            Box(
+                                modifier = Modifier.draggableHandle(
+                                    enabled = reorderingEnabled && !isClosing
+                                )
+                            ) {
+                                var visible by remember(isClosing) { mutableStateOf(!isClosing) }
+                                LaunchedEffect(isClosing) {
+                                    if (isClosing) visible = false else visible = true
+                                }
+                                Row {
+                                    AnimatedVisibility(
+                                        visible = visible,
+                                        exit = shrinkHorizontally(
+                                            animationSpec = tween(durationMillis = exitDurationMs),
+                                            shrinkTowards = Alignment.Start
+                                        ) + fadeOut(animationSpec = tween(exitDurationMs, easing = LinearEasing))
+                                    ) {
+                                        RtlAwareTab(
+                                            isActive = isActive,
+                                            tabData = tabEntry.data,
+                                            tabStyle = style,
+                                            tabIndex = index,
+                                            tabCount = tabs.size,
+                                            tabWidth = tabWidth,
+                                            labelProvider = tabEntry.labelProvider,
+                                            onClick = tabEntry.onClick,
+                                            onClose = {
+                                                if (!closingKeys.contains(tabEntry.key)) {
+                                                    closingKeys = closingKeys + tabEntry.key
+                                                    scope.launch {
+                                                        delay(exitDurationMs.toLong())
+                                                        tabEntry.onClose()
+                                                        closingKeys = closingKeys - tabEntry.key
+                                                    }
+                                                }
+                                            },
+                                            onCloseAll = tabEntry.onCloseAll,
+                                            onCloseOthers = tabEntry.onCloseOthers,
+                                            onCloseLeft = tabEntry.onCloseLeft,
+                                            onCloseRight = tabEntry.onCloseRight,
+                                            animateWidth = !isNew,
+                                            enterFromSmall = isNew,
+                                            enterDurationMs = enterDurationMs,
+                                            isDragging = isBeingDragged
+                                        )
                                     }
-                                },
-                                onCloseAll = entry.onCloseAll,
-                                onCloseOthers = entry.onCloseOthers,
-                                onCloseLeft = entry.onCloseLeft,
-                                onCloseRight = entry.onCloseRight,
-                                animateWidth = !isNew,
-                                enterFromSmall = isNew,
-                                enterDurationMs = enterDurationMs
-                            )
+                                }
+                            }
                         }
                     }
                 }
@@ -446,6 +477,7 @@ private fun RtlAwareTab(
     animateWidth: Boolean = true,
     enterFromSmall: Boolean = false,
     enterDurationMs: Int = 200,
+    isDragging: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -506,6 +538,7 @@ private fun RtlAwareTab(
                 .height(tabStyle.metrics.tabHeight)
                 .width(widthForThisTab)
                 .background(backgroundColor)
+                .alpha(if (isDragging) 0.7f else 1f) // Visual feedback when dragging
                 .onGloballyPositioned { coords ->
                     val pos = coords.positionInWindow()
                     anchorOffset = IntOffset(pos.x.roundToInt(), pos.y.roundToInt())

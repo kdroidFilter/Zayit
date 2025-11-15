@@ -4,11 +4,9 @@ package io.github.kdroidfilter.seforim.tabs
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import java.util.UUID
+import java.util.*
 import kotlin.math.max
 
 data class TabItem(
@@ -53,6 +51,7 @@ class TabsViewModel(
             is TabsEvents.onClose -> closeTab(event.index)
             is TabsEvents.onSelected -> selectTab(event.index)
             TabsEvents.onAdd -> addTab()
+            is TabsEvents.OnReorder -> reorderTabs(event.fromIndex, event.toIndex)
             TabsEvents.CloseAll -> closeAllTabs()
             is TabsEvents.CloseOthers -> closeOthers(event.index)
             is TabsEvents.CloseLeft -> closeLeft(event.index)
@@ -112,6 +111,26 @@ class TabsViewModel(
         val currentTabs = _tabs.value
         if (index in 0..currentTabs.lastIndex && index != _selectedTabIndex.value) {
             _selectedTabIndex.value = index
+        }
+    }
+
+    private fun reorderTabs(fromIndex: Int, toIndex: Int) {
+        val currentTabs = _tabs.value
+        if (fromIndex !in 0..currentTabs.lastIndex || toIndex !in 0..currentTabs.lastIndex) return
+        if (fromIndex == toIndex) return
+
+        val newTabs = currentTabs.toMutableList()
+        val movedTab = newTabs.removeAt(fromIndex)
+        newTabs.add(toIndex, movedTab)
+        _tabs.value = newTabs
+
+        // Adjust selected index: track which tab was selected by its identity
+        val selectedTab = currentTabs.getOrNull(_selectedTabIndex.value)
+        if (selectedTab != null) {
+            val newSelectedIndex = newTabs.indexOfFirst { it.id == selectedTab.id }
+            if (newSelectedIndex != -1) {
+                _selectedTabIndex.value = newSelectedIndex
+            }
         }
     }
 

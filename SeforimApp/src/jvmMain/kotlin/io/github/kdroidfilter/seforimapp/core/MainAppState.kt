@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.core
 
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,6 +13,7 @@ object MainAppState {
 
     fun setTheme(theme: IntUiThemes) {
         _theme.value = theme
+        AppSettings.setThemeMode(theme)
     }
 
     private val _showOnboarding = MutableStateFlow<Boolean?>(null)

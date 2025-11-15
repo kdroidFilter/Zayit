@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.core.settings
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
 import com.russhwolf.settings.set
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,6 +59,9 @@ object AppSettings {
     private const val KEY_USER_FIRST_NAME = "user_first_name"
     private const val KEY_USER_LAST_NAME = "user_last_name"
     private const val KEY_USER_COMMUNITY = "user_community" // stores a stable code (e.g., "SEPHARADE")
+
+    // Theme configuration
+    private const val KEY_THEME_MODE = "theme_mode"
 
     // Backing Settings storage (can be replaced at startup if needed)
     @Volatile
@@ -330,6 +334,20 @@ object AppSettings {
 
     fun setUserCommunityCode(value: String?) {
         settings[KEY_USER_COMMUNITY] = value?.takeIf { it.isNotBlank() } ?: ""
+    }
+
+    // Theme mode (Light/Dark/System) setting
+    fun getThemeMode(): IntUiThemes {
+        val storedValue: String = settings[KEY_THEME_MODE, IntUiThemes.System.name]
+        return try {
+            IntUiThemes.valueOf(storedValue)
+        } catch (_: IllegalArgumentException) {
+            IntUiThemes.System
+        }
+    }
+
+    fun setThemeMode(theme: IntUiThemes) {
+        settings[KEY_THEME_MODE] = theme.name
     }
 
     fun setSavedSessionJson(json: String?) {

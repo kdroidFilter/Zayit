@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
@@ -285,6 +286,7 @@ private fun RtlAwareTabStripContent(
     var closingKeys by remember { mutableStateOf(setOf<String>()) }
     val exitDurationMs = 200
     val enterDurationMs = 200
+    val containerTransitionDurationMs = enterDurationMs + 80
 
     // Track which tabs already existed to avoid double width + expand animation on new entries
     var knownKeys by remember { mutableStateOf(tabs.map { it.key }.toSet()) }
@@ -317,6 +319,21 @@ private fun RtlAwareTabStripContent(
                 } else if (shrinkToFitActive && naturalTabWidth > (maxTabWidth + hysteresis)) {
                     shrinkToFitActive = false
                 }
+            }
+
+            // Only animate the tabs container size when shrink-to-fit mode toggles,
+            // so we keep the + button fixed while the bar is full, and avoid extra motion
+            // when closing tabs in non-shrink mode.
+            var lastShrinkToFitActive by remember { mutableStateOf(shrinkToFitActive) }
+            val shouldAnimateTabsContainer = shrinkToFitActive != lastShrinkToFitActive
+            val tabsContainerAnimationSpec: FiniteAnimationSpec<IntSize> =
+                if (shouldAnimateTabsContainer) {
+                    tween(durationMillis = containerTransitionDurationMs, easing = FastOutSlowInEasing)
+                } else {
+                    snap()
+                }
+            SideEffect {
+                lastShrinkToFitActive = shrinkToFitActive
             }
 
             // Helper to render all tab items with animations and reordering support
@@ -392,55 +409,42 @@ private fun RtlAwareTabStripContent(
                 }
             }
 
-            if (shrinkToFitActive) {
-                // Keep plus fixed at trailing edge during shrink-to-fit
-                Row(modifier = Modifier.weight(1f).hoverable(interactionSource), verticalAlignment = Alignment.CenterVertically) {
-                    TabsOnly()
-                }
-
-                Divider(
-                    orientation = Orientation.Vertical,
-                    modifier = Modifier
-                        .fillMaxHeight(0.8f)
-                        .padding(horizontal = 4.dp)
-                        .width(1.dp),
-                    color = JewelTheme.globalColors.borders.disabled
-                )
-
-                val os = getOperatingSystem()
-                val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
-                TitleBarActionButton(
-                    onClick = onAddClick,
-                    key = AllIconsKeys.General.Add,
-                    contentDescription = stringResource(Res.string.add_tab),
-                    tooltipText = stringResource(Res.string.add_tab),
-                    shortcutHint = shortcutHint
-                )
-            } else {
-                // Before shrink-to-fit, keep plus flowing with tabs
-                Row(modifier = Modifier.hoverable(interactionSource), verticalAlignment = Alignment.CenterVertically) {
-                    TabsOnly()
-
-                    Divider(
-                        orientation = Orientation.Vertical,
-                        modifier = Modifier
-                            .fillMaxHeight(0.8f)
-                            .padding(horizontal = 4.dp)
-                            .width(1.dp),
-                        color = JewelTheme.globalColors.borders.disabled
-                    )
-
-                    val os = getOperatingSystem()
-                    val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
-                    TitleBarActionButton(
-                        onClick = onAddClick,
-                        key = AllIconsKeys.General.Add,
-                        contentDescription = stringResource(Res.string.add_tab),
-                        tooltipText = stringResource(Res.string.add_tab),
-                        shortcutHint = shortcutHint
-                    )
-                }
+            // Tabs container: fills available width when shrink-to-fit is active,
+            // so the + button stays fixed at the trailing edge.
+            Row(
+                modifier = Modifier
+                    .let { baseModifier ->
+                        if (shrinkToFitActive) {
+                            baseModifier.weight(1f)
+                        } else {
+                            baseModifier
+                        }
+                    }
+                    .hoverable(interactionSource)
+                    .animateContentSize(animationSpec = tabsContainerAnimationSpec),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TabsOnly()
             }
+
+            Divider(
+                orientation = Orientation.Vertical,
+                modifier = Modifier
+                    .fillMaxHeight(0.8f)
+                    .padding(horizontal = 4.dp)
+                    .width(1.dp),
+                color = JewelTheme.globalColors.borders.disabled
+            )
+
+            val os = getOperatingSystem()
+            val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
+            TitleBarActionButton(
+                onClick = onAddClick,
+                key = AllIconsKeys.General.Add,
+                contentDescription = stringResource(Res.string.add_tab),
+                tooltipText = stringResource(Res.string.add_tab),
+                shortcutHint = shortcutHint
+            )
 
             // Reserved draggable area — intentionally empty/non-interactive
             Spacer(modifier = Modifier.width(reservedDragArea).fillMaxHeight())

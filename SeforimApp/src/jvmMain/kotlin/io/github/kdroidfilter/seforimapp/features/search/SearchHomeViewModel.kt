@@ -264,25 +264,6 @@ class SearchHomeViewModel(
                 }
         }
 
-        // Precompute a small set of (book, toc) pairs for synchronized placeholders
-        viewModelScope.launch {
-            val pairs = try {
-                withContext(Dispatchers.IO) {
-                    val out = mutableListOf<Pair<String, String>>()
-                    val books = repository.getAllBooks()
-                    for (b in books) {
-                        val toc = try { repository.getBookToc(b.id) } catch (_: Exception) { emptyList() }
-                        val first = toc.firstOrNull { it.text.isNotBlank() }?.text
-                        if (first != null && out.none { it.first == b.title }) {
-                            out += b.title to first
-                        }
-                        if (out.size >= 5) break
-                    }
-                    out
-                }
-            } catch (_: Exception) { emptyList() }
-            _uiState.value = _uiState.value.copy(pairedReferenceHints = pairs)
-        }
     }
 
     fun onReferenceQueryChanged(query: String) {

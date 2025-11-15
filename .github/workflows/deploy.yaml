@@ -25,6 +25,12 @@ jobs:
           # Windows x64
           - os: windows-latest
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-windows-x64-b1163.69.zip"
+            arch: amd64
+
+          # Windows ARM64
+          - os: windows-11-arm
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-windows-aarch64-b1163.69.zip"
+            arch: arm64
 
           # macOS Apple Silicon (ARM64)
           - os: macos-latest  # runner Apple Silicon (ARM64)
@@ -56,7 +62,7 @@ jobs:
           echo "JAVA_HOME=$JBR_DIR" >> "$GITHUB_ENV"
           echo "$JBR_DIR/bin" >> "$GITHUB_PATH"
 
-      # Windows JDK Install
+      # Windows JDK Install (x64 + ARM64)
       - name: Install JBR on Windows
         if: runner.os == 'Windows'
         shell: pwsh
@@ -94,7 +100,7 @@ jobs:
           ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseDeb
 
       - name: Build Windows .msi
-        if: matrix.os == 'windows-latest'
+        if: startsWith(matrix.os, 'windows')
         shell: pwsh
         run: .\gradlew.bat :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseMsi
 
@@ -114,11 +120,11 @@ jobs:
           path: SeforimApp/build/compose/binaries/main-release/deb/*.deb
           if-no-files-found: error
 
-      - name: Upload Windows .msi
-        if: matrix.os == 'windows-latest'
+      - name: Upload Windows .msi (amd64/arm64)
+        if: startsWith(matrix.os, 'windows')
         uses: actions/upload-artifact@v4
         with:
-          name: windows-msi
+          name: windows-msi-${{ matrix.arch }}
           path: SeforimApp/build/compose/binaries/main-release/msi/*.msi
           if-no-files-found: error
 
@@ -149,10 +155,11 @@ jobs:
           pattern: linux-deb-*
           merge-multiple: true
 
-      - name: Download Windows artifact
+      - name: Download Windows artefacts (amd64 + arm64)
         uses: actions/download-artifact@v4
         with:
-          name: windows-msi
+          pattern: windows-msi-*
+          merge-multiple: true
 
       - name: Download macOS artifacts
         uses: actions/download-artifact@v4

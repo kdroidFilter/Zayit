@@ -1,9 +1,8 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 
-// (keep existing LayoutDirection import above; avoid duplicate)
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.*
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.*
@@ -13,6 +12,7 @@ import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -67,6 +67,7 @@ import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import seforimapp.seforimapp.generated.resources.*
+import sh.calvin.reorderable.ReorderableRow
 import kotlin.math.roundToInt
 import kotlin.ranges.coerceAtLeast
 import kotlin.ranges.coerceAtMost
@@ -229,7 +230,14 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
         tabs = tabs,
         style = JewelTheme.defaultTabStyle,
         isRtl = isRtl,
-        newTabAdded = newTabAdded
+        newTabAdded = newTabAdded,
+        onReorder = { fromIndex, toIndex ->
+            // For RTL, indices are already in visual order (reversed list),
+            // so we need to convert back to actual indices
+            val actualFrom = if (isRtl) state.tabs.size - 1 - fromIndex else fromIndex
+            val actualTo = if (isRtl) state.tabs.size - 1 - toIndex else toIndex
+            onEvents(TabsEvents.OnReorder(actualFrom, actualTo))
+        }
     ) {
         onEvents(TabsEvents.onAdd)
     }
@@ -241,6 +249,7 @@ private fun RtlAwareTabStripWithAddButton(
     style: TabStyle,
     isRtl: Boolean,
     newTabAdded: Boolean,
+    onReorder: (Int, Int) -> Unit,
     onAddClick: () -> Unit
 ) {
     // Shrink-to-fit mode: no horizontal scroll, tabs adjust width.
@@ -253,6 +262,7 @@ private fun RtlAwareTabStripWithAddButton(
             tabs = tabs,
             style = style,
             onAddClick = onAddClick,
+            onReorder = onReorder,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -265,6 +275,7 @@ private fun RtlAwareTabStripContent(
     tabs: List<TabEntry>,
     style: TabStyle,
     onAddClick: () -> Unit,
+    onReorder: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -275,6 +286,7 @@ private fun RtlAwareTabStripContent(
     var closingKeys by remember { mutableStateOf(setOf<String>()) }
     val exitDurationMs = 200
     val enterDurationMs = 200
+    val containerTransitionDurationMs = enterDurationMs + 80
 
     // Track which tabs already existed to avoid double width + expand animation on new entries
     var knownKeys by remember { mutableStateOf(tabs.map { it.key }.toSet()) }
@@ -309,106 +321,130 @@ private fun RtlAwareTabStripContent(
                 }
             }
 
-            // Helper to render all tab items with animations
-            val TabsOnly: @Composable RowScope.() -> Unit = {
-                tabs.forEachIndexed { index, entry ->
-                    // Wrap each tab in visibility animation to mimic Chrome open/close
-                    val isClosing = closingKeys.contains(entry.key)
-                    // Exit shrinks towards start. For enter, we handle width growth manually from a small width.
-                    val exitShrinkTowards = Alignment.Start
-                    val isNew = !knownKeys.contains(entry.key)
+            // Only animate the tabs container size when shrink-to-fit mode toggles,
+            // so we keep the + button fixed while the bar is full, and avoid extra motion
+            // when closing tabs in non-shrink mode.
+            var lastShrinkToFitActive by remember { mutableStateOf(shrinkToFitActive) }
+            val shouldAnimateTabsContainer = shrinkToFitActive != lastShrinkToFitActive
+            val tabsContainerAnimationSpec: FiniteAnimationSpec<IntSize> =
+                if (shouldAnimateTabsContainer) {
+                    tween(durationMillis = containerTransitionDurationMs, easing = FastOutSlowInEasing)
+                } else {
+                    snap()
+                }
+            SideEffect {
+                lastShrinkToFitActive = shrinkToFitActive
+            }
 
-                    key(entry.key) {
-                        AnimatedVisibility(
-                            visible = !isClosing,
-                            // Enter is only a soft fade; width growth is handled inside the tab to avoid double motion
-                            enter = fadeIn(animationSpec = tween(enterDurationMs, easing = LinearEasing)),
-                            exit = shrinkHorizontally(
-                                animationSpec = tween(durationMillis = exitDurationMs),
-                                shrinkTowards = exitShrinkTowards
-                            ) + fadeOut(animationSpec = tween(exitDurationMs, easing = LinearEasing))
-                        ) {
-                            RtlAwareTab(
-                                isActive = isActive,
-                                tabData = entry.data,
-                                tabStyle = style,
-                                tabIndex = index,
-                                tabCount = tabs.size,
-                                tabWidth = tabWidth,
-                                labelProvider = entry.labelProvider,
-                                onClick = entry.onClick,
-                                onClose = {
-                                    // Trigger exit animation first, then actually remove
-                                    closingKeys = closingKeys + entry.key
-                                    // After exit animation completes, notify VM and clear from closing set
-                                    scope.launch {
-                                        delay(exitDurationMs.toLong())
-                                        entry.onClose()
-                                        closingKeys = closingKeys - entry.key
+            // Helper to render all tab items with animations and reordering support
+            val TabsOnly: @Composable RowScope.() -> Unit = {
+                val reorderingEnabled = closingKeys.isEmpty()
+                val rowModifier = if (shrinkToFitActive) Modifier.fillMaxWidth() else Modifier
+
+                ReorderableRow(
+                    list = tabs,
+                    onSettle = { fromIdx, toIdx ->
+                        if (!reorderingEnabled) return@ReorderableRow
+                        onReorder(fromIdx, toIdx)
+                    },
+                    horizontalArrangement = Arrangement.spacedBy(0.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = rowModifier
+                ) { index, tabEntry, isBeingDragged ->
+                    key(tabEntry.key) {
+                        val isClosing = closingKeys.contains(tabEntry.key)
+                        val isNew = !knownKeys.contains(tabEntry.key)
+
+                        ReorderableItem {
+                            Box(
+                                modifier = Modifier.draggableHandle(
+                                    enabled = reorderingEnabled && !isClosing
+                                )
+                            ) {
+                                var visible by remember(isClosing) { mutableStateOf(!isClosing) }
+                                LaunchedEffect(isClosing) {
+                                    if (isClosing) visible = false else visible = true
+                                }
+                                Row {
+                                    AnimatedVisibility(
+                                        visible = visible,
+                                        exit = shrinkHorizontally(
+                                            animationSpec = tween(durationMillis = exitDurationMs),
+                                            shrinkTowards = Alignment.Start
+                                        ) + fadeOut(animationSpec = tween(exitDurationMs, easing = LinearEasing))
+                                    ) {
+                                        RtlAwareTab(
+                                            isActive = isActive,
+                                            tabData = tabEntry.data,
+                                            tabStyle = style,
+                                            tabIndex = index,
+                                            tabCount = tabs.size,
+                                            tabWidth = tabWidth,
+                                            labelProvider = tabEntry.labelProvider,
+                                            onClick = tabEntry.onClick,
+                                            onClose = {
+                                                if (!closingKeys.contains(tabEntry.key)) {
+                                                    closingKeys = closingKeys + tabEntry.key
+                                                    scope.launch {
+                                                        delay(exitDurationMs.toLong())
+                                                        tabEntry.onClose()
+                                                        closingKeys = closingKeys - tabEntry.key
+                                                    }
+                                                }
+                                            },
+                                            onCloseAll = tabEntry.onCloseAll,
+                                            onCloseOthers = tabEntry.onCloseOthers,
+                                            onCloseLeft = tabEntry.onCloseLeft,
+                                            onCloseRight = tabEntry.onCloseRight,
+                                            animateWidth = !isNew,
+                                            enterFromSmall = isNew,
+                                            enterDurationMs = enterDurationMs,
+                                            isDragging = isBeingDragged
+                                        )
                                     }
-                                },
-                                onCloseAll = entry.onCloseAll,
-                                onCloseOthers = entry.onCloseOthers,
-                                onCloseLeft = entry.onCloseLeft,
-                                onCloseRight = entry.onCloseRight,
-                                animateWidth = !isNew,
-                                enterFromSmall = isNew,
-                                enterDurationMs = enterDurationMs
-                            )
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            if (shrinkToFitActive) {
-                // Keep plus fixed at trailing edge during shrink-to-fit
-                Row(modifier = Modifier.weight(1f).hoverable(interactionSource), verticalAlignment = Alignment.CenterVertically) {
-                    TabsOnly()
-                }
-
-                Divider(
-                    orientation = Orientation.Vertical,
-                    modifier = Modifier
-                        .fillMaxHeight(0.8f)
-                        .padding(horizontal = 4.dp)
-                        .width(1.dp),
-                    color = JewelTheme.globalColors.borders.disabled
-                )
-
-                val os = getOperatingSystem()
-                val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
-                TitleBarActionButton(
-                    onClick = onAddClick,
-                    key = AllIconsKeys.General.Add,
-                    contentDescription = stringResource(Res.string.add_tab),
-                    tooltipText = stringResource(Res.string.add_tab),
-                    shortcutHint = shortcutHint
-                )
-            } else {
-                // Before shrink-to-fit, keep plus flowing with tabs
-                Row(modifier = Modifier.hoverable(interactionSource), verticalAlignment = Alignment.CenterVertically) {
-                    TabsOnly()
-
-                    Divider(
-                        orientation = Orientation.Vertical,
-                        modifier = Modifier
-                            .fillMaxHeight(0.8f)
-                            .padding(horizontal = 4.dp)
-                            .width(1.dp),
-                        color = JewelTheme.globalColors.borders.disabled
-                    )
-
-                    val os = getOperatingSystem()
-                    val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
-                    TitleBarActionButton(
-                        onClick = onAddClick,
-                        key = AllIconsKeys.General.Add,
-                        contentDescription = stringResource(Res.string.add_tab),
-                        tooltipText = stringResource(Res.string.add_tab),
-                        shortcutHint = shortcutHint
-                    )
-                }
+            // Tabs container: fills available width when shrink-to-fit is active,
+            // so the + button stays fixed at the trailing edge.
+            Row(
+                modifier = Modifier
+                    .let { baseModifier ->
+                        if (shrinkToFitActive) {
+                            baseModifier.weight(1f)
+                        } else {
+                            baseModifier
+                        }
+                    }
+                    .hoverable(interactionSource)
+                    .animateContentSize(animationSpec = tabsContainerAnimationSpec),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TabsOnly()
             }
+
+            Divider(
+                orientation = Orientation.Vertical,
+                modifier = Modifier
+                    .fillMaxHeight(0.8f)
+                    .padding(horizontal = 4.dp)
+                    .width(1.dp),
+                color = JewelTheme.globalColors.borders.disabled
+            )
+
+            val os = getOperatingSystem()
+            val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
+            TitleBarActionButton(
+                onClick = onAddClick,
+                key = AllIconsKeys.General.Add,
+                contentDescription = stringResource(Res.string.add_tab),
+                tooltipText = stringResource(Res.string.add_tab),
+                shortcutHint = shortcutHint
+            )
 
             // Reserved draggable area — intentionally empty/non-interactive
             Spacer(modifier = Modifier.width(reservedDragArea).fillMaxHeight())
@@ -445,6 +481,7 @@ private fun RtlAwareTab(
     animateWidth: Boolean = true,
     enterFromSmall: Boolean = false,
     enterDurationMs: Int = 200,
+    isDragging: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -505,6 +542,7 @@ private fun RtlAwareTab(
                 .height(tabStyle.metrics.tabHeight)
                 .width(widthForThisTab)
                 .background(backgroundColor)
+                .alpha(if (isDragging) 0.7f else 1f) // Visual feedback when dragging
                 .onGloballyPositioned { coords ->
                     val pos = coords.positionInWindow()
                     anchorOffset = IntOffset(pos.x.roundToInt(), pos.y.roundToInt())
@@ -624,13 +662,14 @@ private fun RtlAwareTab(
                 properties = PopupProperties(focusable = true),
                 onDismissRequest = { contextMenuOpen = false }
             ) {
-                val shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
+                val shape = RoundedCornerShape(6.dp)
                 Column(
                     Modifier
-                        .width(200.dp)
+                        .width(192.dp)
                         .clip(shape)
                         .background(JewelTheme.globalColors.panelBackground)
                         .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                        .padding(6.dp)
                 ) {
                     data class CtxItem(val title: String, val icon: ImageVector, val mirror: Boolean = false, val action: () -> Unit)
                     val items = buildList<CtxItem> {
@@ -645,6 +684,7 @@ private fun RtlAwareTab(
                         Box(
                             Modifier
                                 .fillMaxWidth()
+                                .clip(shape)
                                 .background(if (isHovered) AppColors.HOVER_HIGHLIGHT else androidx.compose.ui.graphics.Color.Transparent)
                                 .hoverable(hover)
                                 .pointerHoverIcon(PointerIcon.Hand)
@@ -654,7 +694,10 @@ private fun RtlAwareTab(
                                 })
                                 .padding(horizontal = 12.dp, vertical = 8.dp)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
                                 Icon(
                                     imageVector = item.icon,
                                     contentDescription = null,

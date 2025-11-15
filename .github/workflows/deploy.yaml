@@ -1,4 +1,5 @@
 name: Build and Release Compose Desktop App (Linux deb, Windows msi, macOS pkg with JBR)
+
 on:
   push:
     tags:
@@ -11,13 +12,26 @@ jobs:
     strategy:
       matrix:
         include:
+          # Linux x64
           - os: ubuntu-latest
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-linux-x64-b895.147.tar.gz"
+            arch: amd64
+
+          # Linux ARM64
+          - os: ubuntu-24.04-arm
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-linux-aarch64-b895.147.tar.gz"
+            arch: arm64
+
+          # Windows x64
           - os: windows-latest
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-windows-x64-b1163.69.zip"
+
+          # macOS Apple Silicon (ARM64)
           - os: macos-latest  # runner Apple Silicon (ARM64)
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-osx-aarch64-b895.147.pkg"
             jdk_arch: aarch64
+
+          # macOS Intel (x64)
           - os: macos-13      # runner MacIntel (x64)
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-osx-x64-b895.147.pkg"
             jdk_arch: x64
@@ -29,7 +43,7 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      # Linux JDK Install
+      # Linux JDK Install (x64 + ARM64)
       - name: Install JBR on Linux
         if: runner.os == 'Linux'
         shell: bash
@@ -74,7 +88,7 @@ jobs:
 
       # Builds
       - name: Build Linux .deb
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.os, 'ubuntu')
         run: |
           chmod +x ./gradlew
           ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseDeb
@@ -92,11 +106,11 @@ jobs:
           ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleasePkg
 
       # Upload Artifacts
-      - name: Upload Linux .deb
-        if: matrix.os == 'ubuntu-latest'
+      - name: Upload Linux .deb (amd64/arm64)
+        if: startsWith(matrix.os, 'ubuntu')
         uses: actions/upload-artifact@v4
         with:
-          name: linux-deb
+          name: linux-deb-${{ matrix.arch }}
           path: SeforimApp/build/compose/binaries/main-release/deb/*.deb
           if-no-files-found: error
 
@@ -129,10 +143,11 @@ jobs:
           fetch-depth: 0
 
       # Download Artifacts
-      - name: Download Linux artifact
+      - name: Download Linux artefacts (amd64 + arm64)
         uses: actions/download-artifact@v4
         with:
-          name: linux-deb
+          pattern: linux-deb-*
+          merge-multiple: true
 
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
@@ -142,7 +157,7 @@ jobs:
       - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: macos-pkg-* 
+          pattern: macos-pkg-*
           merge-multiple: true
 
       # List files

@@ -1,4 +1,4 @@
-name: Build and Release Compose Desktop App (Linux deb, Windows msi, macOS pkg with JBR)
+name: Build and Release Compose Desktop App (Linux deb/rpm, Windows msi, macOS pkg with JBR)
 
 on:
   push:
@@ -12,15 +12,29 @@ jobs:
     strategy:
       matrix:
         include:
-          # Linux x64
+          # Linux x64 (DEB)
           - os: ubuntu-latest
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-linux-x64-b895.147.tar.gz"
             arch: amd64
+            pkg: deb
 
-          # Linux ARM64
+          # Linux ARM64 (DEB)
           - os: ubuntu-24.04-arm
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-linux-aarch64-b895.147.tar.gz"
             arch: arm64
+            pkg: deb
+
+          # Linux x64 (RPM)
+          - os: ubuntu-latest
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-linux-x64-b895.147.tar.gz"
+            arch: amd64
+            pkg: rpm
+
+          # Linux ARM64 (RPM)
+          - os: ubuntu-24.04-arm
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-linux-aarch64-b895.147.tar.gz"
+            arch: arm64
+            pkg: rpm
 
           # Windows x64
           - os: windows-latest
@@ -48,6 +62,13 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
+
+      # Install RPM tools on Ubuntu (for .rpm builds)
+      - name: Install RPM tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm rpm2cpio alien
 
       # Linux JDK Install (x64 + ARM64)
       - name: Install JBR on Linux
@@ -94,10 +115,16 @@ jobs:
 
       # Builds
       - name: Build Linux .deb
-        if: startsWith(matrix.os, 'ubuntu')
+        if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'deb'
         run: |
           chmod +x ./gradlew
           ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseDeb
+
+      - name: Build Linux .rpm
+        if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'rpm'
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseRpm
 
       - name: Build Windows .msi
         if: startsWith(matrix.os, 'windows')
@@ -113,11 +140,19 @@ jobs:
 
       # Upload Artifacts
       - name: Upload Linux .deb (amd64/arm64)
-        if: startsWith(matrix.os, 'ubuntu')
+        if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'deb'
         uses: actions/upload-artifact@v4
         with:
           name: linux-deb-${{ matrix.arch }}
           path: SeforimApp/build/compose/binaries/main-release/deb/*.deb
+          if-no-files-found: error
+
+      - name: Upload Linux .rpm (amd64/arm64)
+        if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'rpm'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-rpm-${{ matrix.arch }}
+          path: SeforimApp/build/compose/binaries/main-release/rpm/*.rpm
           if-no-files-found: error
 
       - name: Upload Windows .msi (amd64/arm64)
@@ -149,10 +184,16 @@ jobs:
           fetch-depth: 0
 
       # Download Artifacts
-      - name: Download Linux artefacts (amd64 + arm64)
+      - name: Download Linux DEB artefacts (amd64 + arm64)
         uses: actions/download-artifact@v4
         with:
           pattern: linux-deb-*
+          merge-multiple: true
+
+      - name: Download Linux RPM artefacts (amd64 + arm64)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: linux-rpm-*
           merge-multiple: true
 
       - name: Download Windows artefacts (amd64 + arm64)
@@ -185,6 +226,7 @@ jobs:
           tag_name: ${{ env.TAG }}
           files: |
             *.deb
+            *.rpm
             *.msi
             *.pkg
         env:

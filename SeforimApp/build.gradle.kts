@@ -1,5 +1,6 @@
 import io.github.kdroidfilter.buildsrc.RenameMacPkgTask
 import io.github.kdroidfilter.buildsrc.RenameMsiTask
+import io.github.kdroidfilter.buildsrc.Versioning
 import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
@@ -16,11 +17,7 @@ plugins {
     alias(libs.plugins.linux.deps)
 }
 
-val ref = System.getenv("GITHUB_REF") ?: ""
-val version = if (ref.startsWith("refs/tags/")) {
-    val tag = ref.removePrefix("refs/tags/")
-    if (tag.startsWith("v")) tag.substring(1) else tag
-} else "0.3.6"
+val version = Versioning.resolveVersion(project)
 
 // Turn 0.x[.y] into 1.x[.y] for macOS (DMG/PKG require MAJOR > 0)
 fun macSafeVersion(ver: String): String {

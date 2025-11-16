@@ -30,6 +30,7 @@ paging = "3.3.6"
 platformtools = "0.7.4"
 composenativetray = "1.0.4"
 kotlinx-coroutines = "1.10.2"
+reorderable = "3.0.0"
 slf4j = "2.0.17"
 maven-publish = "0.34.0"
 sqlDelight = "2.1.0"
@@ -96,6 +97,7 @@ composenativetray = { module = "io.github.kdroidfilter:composenativetray", versi
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 adaptive-layout = { module = "org.jetbrains.compose.material3.adaptive:adaptive-layout", version.ref = "adaptiveNavigation" }
 adaptive-navigation = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation", version.ref = "adaptiveNavigation" }

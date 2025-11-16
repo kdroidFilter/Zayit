@@ -144,7 +144,7 @@ kotlin {
             implementation(libs.zstd.jni)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.lucene.core)
-            implementation("sh.calvin.reorderable:reorderable:3.0.0")
+            implementation(libs.reorderable)
 
             implementation(libs.commons.compress)
 

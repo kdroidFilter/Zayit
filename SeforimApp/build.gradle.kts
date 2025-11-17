@@ -191,6 +191,8 @@ compose.desktop {
                 "-XX:MaxGCPauseMillis=50",
                 )
 
+
+
             modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility", "jdk.incubator.vector")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm)
             vendor = "KDroidFilter"
@@ -217,6 +219,7 @@ compose.desktop {
                 packageName = "זית"
             }
             buildTypes.release.proguard {
+                version.set("7.8.1")
                 isEnabled = true
                 obfuscate.set(false)
                 optimize.set(true)

@@ -104,9 +104,18 @@ jobs:
           curl -L -o jbr.tar.gz "${{ matrix.jdk_url }}"
           mkdir -p "$RUNNER_TEMP/jbr"
           tar -xzf jbr.tar.gz -C "$RUNNER_TEMP/jbr"
-          JBR_DIR=$(find "$RUNNER_TEMP/jbr" -mindepth 1 -maxdepth 1 -type d -name "jbr*" -o -name "jbrsdk*" | head -n 1)
+          
+          JBR_DIR=$(find "$RUNNER_TEMP/jbr" -mindepth 1 -maxdepth 1 -type d \( -name "jbr*" -o -name "jbrsdk*" \) | head -n 1)
+          
+          echo "JBR_DIR=$JBR_DIR"
+          if [ ! -d "$JBR_DIR" ]; then
+            echo "ERROR: JBR directory not found!"
+            exit 1
+          fi
+          
           echo "JAVA_HOME=$JBR_DIR" >> "$GITHUB_ENV"
           echo "$JBR_DIR/bin" >> "$GITHUB_PATH"
+      
 
       # Gradle Setup
       - name: Set up Gradle

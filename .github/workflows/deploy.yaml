@@ -14,46 +14,46 @@ jobs:
         include:
           # Linux x64 (DEB)
           - os: ubuntu-latest
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-linux-x64-b895.147.tar.gz"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-linux-x64-b176.4.tar.gz"
             arch: amd64
             pkg: deb
 
           # Linux ARM64 (DEB)
           - os: ubuntu-24.04-arm
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-linux-aarch64-b895.147.tar.gz"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-linux-aarch64-b176.4.tar.gz"
             arch: arm64
             pkg: deb
 
           # Linux x64 (RPM)
           - os: ubuntu-latest
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-linux-x64-b895.147.tar.gz"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-linux-x64-b176.4.tar.gz"
             arch: amd64
             pkg: rpm
 
           # Linux ARM64 (RPM)
           - os: ubuntu-24.04-arm
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-linux-aarch64-b895.147.tar.gz"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-linux-aarch64-b176.4.tar.gz"
             arch: arm64
             pkg: rpm
 
           # Windows x64
           - os: windows-latest
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-windows-x64-b1163.69.zip"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-windows-x64-b176.4.zip"
             arch: amd64
 
           # Windows ARM64
           - os: windows-11-arm
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-windows-aarch64-b1163.69.zip"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-windows-aarch64-b176.4.zip"
             arch: arm64
 
           # macOS Apple Silicon (ARM64)
           - os: macos-latest  # runner Apple Silicon (ARM64)
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-osx-aarch64-b895.147.pkg"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-osx-aarch64-b176.4.tar.gz"
             jdk_arch: aarch64
 
           # macOS Intel (x64)
           - os: macos-13      # runner MacIntel (x64)
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.9-osx-x64-b895.147.pkg"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-osx-x64-b176.4.tar.gz"
             jdk_arch: x64
 
     steps:
@@ -69,7 +69,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y rpm rpm2cpio alien
-
       # Linux JDK Install (x64 + ARM64)
       - name: Install JBR on Linux
         if: runner.os == 'Linux'
@@ -79,10 +78,9 @@ jobs:
           curl -L -o jbr.tar.gz "${{ matrix.jdk_url }}"
           mkdir -p "$RUNNER_TEMP/jbr"
           tar -xzf jbr.tar.gz -C "$RUNNER_TEMP/jbr"
-          JBR_DIR=$(find "$RUNNER_TEMP/jbr" -mindepth 1 -maxdepth 1 -type d -name "jbr*" | head -n 1)
+          JBR_DIR=$(find "$RUNNER_TEMP/jbr" -mindepth 1 -maxdepth 1 -type d -name "jbr*" -o -name "jbrsdk*" | head -n 1)
           echo "JAVA_HOME=$JBR_DIR" >> "$GITHUB_ENV"
           echo "$JBR_DIR/bin" >> "$GITHUB_PATH"
-
       # Windows JDK Install (x64 + ARM64)
       - name: Install JBR on Windows
         if: runner.os == 'Windows'
@@ -94,18 +92,22 @@ jobs:
           $jbrDir = Get-ChildItem "$env:RUNNER_TEMP\jbr" | Where-Object { $_.PSIsContainer } | Select-Object -First 1
           "$([string]::Format('JAVA_HOME={0}', $jbrDir.FullName))" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "$($jbrDir.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-
-      # macOS JDK Install
+      # macOS JDK Install via tar.gz
       - name: Install JBR on macOS
         if: runner.os == 'macOS'
         shell: bash
         run: |
           set -euo pipefail
-          curl -L -o jbr.pkg "${{ matrix.jdk_url }}"
-          sudo installer -pkg jbr.pkg -target /
-          export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+          curl -L -o jbr.tar.gz "${{ matrix.jdk_url }}"
+          mkdir -p "$RUNNER_TEMP/jbr"
+          tar -xzf jbr.tar.gz -C "$RUNNER_TEMP/jbr"
+          ROOT_DIR=$(find "$RUNNER_TEMP/jbr" -mindepth 1 -maxdepth 1 -type d | head -n 1)
+          JAVA_HOME="$ROOT_DIR/Contents/Home"
           echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
           echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
+          echo "Detected JBR at: $JAVA_HOME"
+      
+      
 
       # Gradle Setup
       - name: Set up Gradle
@@ -119,13 +121,11 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseDeb
-
       - name: Build Linux .rpm
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'rpm'
         run: |
           chmod +x ./gradlew
           ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseRpm
-
       - name: Build Windows .msi
         if: startsWith(matrix.os, 'windows')
         shell: pwsh
@@ -137,7 +137,6 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleasePkg
-
       # Upload Artifacts
       - name: Upload Linux .deb (amd64/arm64)
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'deb'
@@ -218,7 +217,6 @@ jobs:
         run: |
           tag=$(git describe --tags --abbrev=0)
           echo "TAG=$tag" >> $GITHUB_ENV
-
       # Upload to latest release (attach to the correct tag)
       - name: Upload to Latest Release
         uses: softprops/action-gh-release@v1

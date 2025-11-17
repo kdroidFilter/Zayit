@@ -176,7 +176,7 @@ fun BookContentView(
             debugln { "Top-anchor target $topAnchorLineId not yet in snapshot; waiting" }
             withTimeoutOrNull(1500L) {
                 snapshotFlow { lazyPagingItems.itemSnapshotList.items }
-                    .map { items -> items.indices.firstOrNull { items[it]?.id == topAnchorLineId } }
+                    .map { items -> items.indices.firstOrNull { items[it].id == topAnchorLineId } }
                     .filterNotNull()
                     .first().also { idx -> targetIndex = idx }
             }
@@ -316,7 +316,7 @@ fun BookContentView(
 
     // Global preview handler: handle basic navigation keys regardless of inner focus
     val previewKeyHandler = remember(onEvent) {
-        { keyEvent: androidx.compose.ui.input.key.KeyEvent ->
+        { keyEvent: KeyEvent ->
             // Ctrl/Cmd+F handled globally at window level; do not intercept here
             if (keyEvent.type == KeyEventType.KeyDown) {
                 when (keyEvent.key) {
@@ -444,7 +444,6 @@ fun BookContentView(
                     var total = 0
                     // Count non-overlapping occurrences per visible/loaded line
                     for (ln in snapshotItems) {
-                        if (ln == null) continue
                         val text = try {
                             buildAnnotatedFromHtml(ln.content, textSize).text
                         } catch (_: Throwable) {

@@ -1,11 +1,11 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.extract
 
-import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
@@ -73,7 +73,7 @@ fun ExtractView(
             // Error banner with retry
             if (state.errorMessage != null) {
                 val generic = stringResource(Res.string.onboarding_error_occurred)
-                val detail = state.errorMessage?.takeIf { it.isNotBlank() }
+                val detail = state.errorMessage.takeIf { it.isNotBlank() }
                 val message = detail?.let { stringResource(Res.string.onboarding_error_with_detail, it) } ?: generic
                 val retryLabel = stringResource(Res.string.retry_button)
                 DefaultErrorBanner(

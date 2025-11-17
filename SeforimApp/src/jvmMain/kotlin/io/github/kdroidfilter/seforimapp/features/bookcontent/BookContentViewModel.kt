@@ -62,16 +62,16 @@ class BookContentViewModel(
             val selectedCommentators: Set<Long> = when {
                 lineId != null -> {
                     val perLine = state.content.selectedCommentatorsByLine[lineId].orEmpty()
-                    if (perLine.isNotEmpty()) perLine else state.content.selectedCommentatorsByBook[bookId]?.orEmpty() ?: emptySet()
+                    perLine.ifEmpty { state.content.selectedCommentatorsByBook[bookId].orEmpty() }
                 }
-                else -> state.content.selectedCommentatorsByBook[bookId]?.orEmpty() ?: emptySet()
+                else -> state.content.selectedCommentatorsByBook[bookId].orEmpty()
             }
             val selectedLinks: Set<Long> = when {
                 lineId != null -> {
                     val perLine = state.content.selectedLinkSourcesByLine[lineId].orEmpty()
-                    if (perLine.isNotEmpty()) perLine else state.content.selectedLinkSourcesByBook[bookId]?.orEmpty() ?: emptySet()
+                    perLine.ifEmpty { state.content.selectedLinkSourcesByBook[bookId].orEmpty() }
                 }
-                else -> state.content.selectedLinkSourcesByBook[bookId]?.orEmpty() ?: emptySet()
+                else -> state.content.selectedLinkSourcesByBook[bookId].orEmpty()
             }
             state.copy(
                 providers = Providers(
@@ -97,16 +97,16 @@ class BookContentViewModel(
                 val selectedCommentators: Set<Long> = when {
                     lineId != null -> {
                         val perLine = s.content.selectedCommentatorsByLine[lineId].orEmpty()
-                        if (perLine.isNotEmpty()) perLine else s.content.selectedCommentatorsByBook[bookId]?.orEmpty() ?: emptySet()
+                        perLine.ifEmpty { s.content.selectedCommentatorsByBook[bookId].orEmpty() }
                     }
-                    else -> s.content.selectedCommentatorsByBook[bookId]?.orEmpty() ?: emptySet()
+                    else -> s.content.selectedCommentatorsByBook[bookId].orEmpty()
                 }
                 val selectedLinks: Set<Long> = when {
                     lineId != null -> {
                         val perLine = s.content.selectedLinkSourcesByLine[lineId].orEmpty()
-                        if (perLine.isNotEmpty()) perLine else s.content.selectedLinkSourcesByBook[bookId]?.orEmpty() ?: emptySet()
+                        perLine.ifEmpty { s.content.selectedLinkSourcesByBook[bookId].orEmpty() }
                     }
-                    else -> s.content.selectedLinkSourcesByBook[bookId]?.orEmpty() ?: emptySet()
+                    else -> s.content.selectedLinkSourcesByBook[bookId].orEmpty()
                 }
                 s.copy(
                     providers = Providers(
@@ -472,7 +472,7 @@ class BookContentViewModel(
                 val resolvedInitialLineId: Long? = when {
                     forceAnchorId != null -> forceAnchorId
                     shouldUseAnchor -> state.content.anchorId
-                    state.content.selectedLine != null -> state.content.selectedLine?.id
+                    state.content.selectedLine != null -> state.content.selectedLine.id
                     else -> {
                         // Compute from TOC: take the first root TOC entry (or its first leaf) and
                         // select its first associated line. Fallback to the very first line of the book.
@@ -480,7 +480,7 @@ class BookContentViewModel(
                             val root = repository.getBookRootToc(book.id)
                             val first = root.firstOrNull()
                             val targetEntryId = if (first == null) null else findFirstLeafTocId(first)
-                                ?: first?.id
+                                ?: first.id
                             val fromToc = targetEntryId?.let { id ->
                                 repository.getLineIdsForTocEntry(id).firstOrNull()
                             }

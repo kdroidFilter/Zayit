@@ -149,7 +149,7 @@ fun OnlineUpdateScreen(
                         }
                         
                         val etaSeconds = if (speedBps > 0L) {
-                            val remaining = (totalBytes!! - downloadState.downloadedBytes).coerceAtLeast(0)
+                            val remaining = (totalBytes - downloadState.downloadedBytes).coerceAtLeast(0)
                             ((remaining + speedBps - 1) / speedBps)
                         } else null
                         

@@ -107,16 +107,10 @@ object SessionManager {
         val titleUpdateManager: TabTitleUpdateManager = appGraph.tabTitleUpdateManager
 
         if (saved.tabs.isEmpty()) return
+        val targetIndex = saved.selectedIndex.coerceIn(0, saved.tabs.lastIndex)
 
-        // Close the initial default tab BEFORE opening restored tabs
-        // (opening a tab adds it at index 0, so we need to close the default first)
-        tabsVm.onEvent(TabsEvents.onClose(0))
-
-        // Open all restored tabs in REVERSE order because openTab() adds at index 0
-        // This ensures tabs are restored in the correct order
-        saved.tabs.reversed().forEach { dest ->
-            runBlocking { tabsVm.openTab(dest) }
-        }
+        // Replace current tabs with the restored destinations in one shot
+        tabsVm.restoreTabs(saved.tabs, targetIndex)
 
         // Update tab titles immediately based on restored state (e.g., Book.title),
         // so users don't see raw IDs before the screen composes.
@@ -127,9 +121,7 @@ object SessionManager {
             }
         }
 
-        // Select saved index (bounds-safe)
-        val targetIndex = saved.selectedIndex.coerceIn(0, saved.tabs.lastIndex)
-        tabsVm.onEvent(TabsEvents.onSelected(targetIndex))
+        // Selected index already applied in restoreTabs()
     }
 
     // --- Encoding/Decoding helpers for known state keys ---

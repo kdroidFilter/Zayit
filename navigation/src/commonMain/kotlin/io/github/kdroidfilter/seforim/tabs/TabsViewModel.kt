@@ -327,6 +327,32 @@ class TabsViewModel(
         )
         _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
     }
+
+    /**
+     * Replaces the current tab list with the provided destinations.
+     * Used for session restoration to avoid keeping the initial placeholder tab.
+     */
+    fun restoreTabs(destinations: List<TabsDestination>, selectedIndex: Int) {
+        if (destinations.isEmpty()) return
+
+        val newTabs = destinations.mapIndexed { index, destination ->
+            TabItem(
+                id = index + 1,
+                title = getTabTitle(destination),
+                destination = destination,
+                tabType = when (destination) {
+                    is TabsDestination.Home -> TabType.SEARCH
+                    is TabsDestination.Search -> TabType.SEARCH
+                    is TabsDestination.BookContent -> if (destination.bookId > 0) TabType.BOOK else TabType.SEARCH
+                }
+            )
+        }
+
+        _tabs.value = newTabs
+        _selectedTabIndex.value = selectedIndex.coerceIn(0, newTabs.lastIndex)
+        _nextTabId = newTabs.size + 1
+    }
+
     private fun getTabTitle(destination: TabsDestination): String {
         return when (destination) {
             // For Home, return empty so UI can localize via resources

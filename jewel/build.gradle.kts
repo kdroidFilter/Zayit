@@ -7,7 +7,9 @@ plugins {
 
 kotlin {
     jvmToolchain(libs.versions.jvmToolchain.get().toInt())
-    jvm()
+    jvm{
+
+    }
 
     sourceSets {
         commonMain.dependencies {

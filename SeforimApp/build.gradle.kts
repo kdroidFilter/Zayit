@@ -185,6 +185,11 @@ compose.desktop {
                 "--enable-native-access=ALL-UNNAMED",
                 "--add-modules=jdk.incubator.vector"
             )
+            jvmArgs += listOf(
+                "-XX:+UseCompactObjectHeaders",
+                "-XX:+UseStringDeduplication",
+                "-XX:MaxGCPauseMillis=50",
+                )
 
             modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility", "jdk.incubator.vector")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm)

@@ -19,6 +19,7 @@ kotlin {
     }
 
     jvm()
+    jvmToolchain(libs.versions.jvmToolchain.get().toInt())
 
     sourceSets {
         commonMain.dependencies {

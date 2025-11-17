@@ -6,7 +6,7 @@ plugins {
 
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(libs.versions.jvmToolchain.get().toInt())
     jvm()
 
     sourceSets {

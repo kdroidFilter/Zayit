@@ -103,10 +103,9 @@ jobs:
           set -euo pipefail
           curl -L -o jbr.pkg "${{ matrix.jdk_url }}"
           sudo installer -pkg jbr.pkg -target /
-          export JAVA_HOME=$(/usr/libexec/java_home -v 25)
+          export JAVA_HOME=$(/usr/libexec/java_home -v 21)
           echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
           echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
-      
 
       # Gradle Setup
       - name: Set up Gradle

@@ -191,7 +191,7 @@ compose.desktop {
             )
 
             jvmArgs += listOf(
-                "-XX:+UseCompactObjectHeaders",
+//                "-XX:+UseCompactObjectHeaders",
                 "-XX:+UseStringDeduplication",
                 "-XX:MaxGCPauseMillis=70",
             )

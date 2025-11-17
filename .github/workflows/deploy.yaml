@@ -38,7 +38,7 @@ jobs:
 
           # Windows x64
           - os: windows-latest
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-windows-x64-b176.4.tar.gz"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-windows-x64-b176.4.zip"
             arch: amd64
 
           # Windows ARM64

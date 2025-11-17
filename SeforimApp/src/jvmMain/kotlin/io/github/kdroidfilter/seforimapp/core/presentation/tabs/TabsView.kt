@@ -671,7 +671,7 @@ private fun RtlAwareTab(
                 val shape = RoundedCornerShape(6.dp)
                 Column(
                     Modifier
-                        .width(192.dp)
+                        .width(200.dp)
                         .clip(shape)
                         .background(JewelTheme.globalColors.panelBackground)
                         .border(1.dp, JewelTheme.globalColors.borders.normal, shape)

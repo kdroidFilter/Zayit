@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
-
 plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.kotlinx.serialization)
@@ -7,6 +5,7 @@ plugins {
 
 kotlin {
     jvm()
+    jvmToolchain(libs.versions.jvmToolchain.get().toInt())
 
     sourceSets {
         jvmMain.dependencies {

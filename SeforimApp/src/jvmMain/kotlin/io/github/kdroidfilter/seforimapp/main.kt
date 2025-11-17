@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.DpSize
@@ -56,8 +57,8 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 
@@ -282,64 +283,64 @@ fun main() {
                         }
                         // Intercept key combos early to avoid focus traversal consuming Tab
                         Box(
-                            modifier = Modifier.onPreviewKeyEvent { keyEvent ->
-                                if (keyEvent.type == KeyEventType.KeyDown) {
-                                    val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                                    when {
-                                        // Ctrl/Cmd + W => close current tab
-                                        isCtrlOrCmd && keyEvent.key == Key.W -> {
-                                            tabsVm.onEvent(TabsEvents.onClose(selectedIndex))
-                                            true
-                                        }
-                                        // Ctrl/Cmd + Shift + Tab => previous tab
-                                        isCtrlOrCmd && keyEvent.key == Key.Tab && keyEvent.isShiftPressed -> {
-                                            val count = tabs.size
-                                            if (count > 0) {
-                                                val newIndex = (selectedIndex - 1 + count) % count
-                                                tabsVm.onEvent(TabsEvents.onSelected(newIndex))
-                                            }
-                                            true
-                                        }
-                                        // Ctrl/Cmd + Tab => next tab
-                                        isCtrlOrCmd && keyEvent.key == Key.Tab -> {
-                                            val count = tabs.size
-                                            if (count > 0) {
-                                                val newIndex = (selectedIndex + 1) % count
-                                                tabsVm.onEvent(TabsEvents.onSelected(newIndex))
-                                            }
-                                            true
-                                        }
-                                        // Ctrl/Cmd + T => new tab
-                                        isCtrlOrCmd && keyEvent.key == Key.T -> {
-                                            tabsVm.onEvent(TabsEvents.onAdd)
-                                            true
-                                        }
-                                        // Alt + Home (Windows) or Cmd + Shift + H (macOS) => go Home on current tab
-                                        (keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
-                                                (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H) -> {
-                                            val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
-                                            if (currentTabId != null) {
-                                                tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .onPreviewKeyEvent { keyEvent ->
+                                    if (keyEvent.type == KeyEventType.KeyDown) {
+                                        val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                                        when {
+                                            // Ctrl/Cmd + W => close current tab
+                                            isCtrlOrCmd && keyEvent.key == Key.W -> {
+                                                tabsVm.onEvent(TabsEvents.onClose(selectedIndex))
                                                 true
-                                            } else false
+                                            }
+                                            // Ctrl/Cmd + Shift + Tab => previous tab
+                                            isCtrlOrCmd && keyEvent.key == Key.Tab && keyEvent.isShiftPressed -> {
+                                                val count = tabs.size
+                                                if (count > 0) {
+                                                    val newIndex = (selectedIndex - 1 + count) % count
+                                                    tabsVm.onEvent(TabsEvents.onSelected(newIndex))
+                                                }
+                                                true
+                                            }
+                                            // Ctrl/Cmd + Tab => next tab
+                                            isCtrlOrCmd && keyEvent.key == Key.Tab -> {
+                                                val count = tabs.size
+                                                if (count > 0) {
+                                                    val newIndex = (selectedIndex + 1) % count
+                                                    tabsVm.onEvent(TabsEvents.onSelected(newIndex))
+                                                }
+                                                true
+                                            }
+                                            // Ctrl/Cmd + T => new tab
+                                            isCtrlOrCmd && keyEvent.key == Key.T -> {
+                                                tabsVm.onEvent(TabsEvents.onAdd)
+                                                true
+                                            }
+                                            // Alt + Home (Windows) or Cmd + Shift + H (macOS) => go Home on current tab
+                                            (keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
+                                                    (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H) -> {
+                                                val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
+                                                if (currentTabId != null) {
+                                                    tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
+                                                    true
+                                                } else false
+                                            }
+                                            // Ctrl/Cmd + Comma => open settings
+                                            isCtrlOrCmd && keyEvent.key == Key.Comma -> {
+                                                appGraph.settingsWindowViewModel.onEvent(io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents.onOpen)
+                                                true
+                                            }
+                                            // Cmd + M => minimize window (macOS only)
+                                            getOperatingSystem() == OperatingSystem.MACOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
+                                                windowState.isMinimized = true
+                                                true
+                                            }
+                                            else -> false
                                         }
-                                        // Ctrl/Cmd + Comma => open settings
-                                        isCtrlOrCmd && keyEvent.key == Key.Comma -> {
-                                            appGraph.settingsWindowViewModel.onEvent(io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents.onOpen)
-                                            true
-                                        }
-                                        // Cmd + M => minimize window (macOS only)
-                                        getOperatingSystem() == OperatingSystem.MACOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
-                                            windowState.isMinimized = true
-                                            true
-                                        }
-                                        else -> false
-                                    }
-                                } else false
-                            }
-                        ) {
-                            TabsNavHost()
-                        }
+                                    } else false
+                                }
+                        ) { TabsNavHost() }
                     }
                 } // else (null) -> render nothing until decision made
             }

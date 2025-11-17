@@ -7,7 +7,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
@@ -24,6 +23,7 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchShellActions
 import io.github.kdroidfilter.seforimapp.features.search.SearchUiState
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 
@@ -35,6 +35,7 @@ fun TabsNavHost() {
     val tabs by tabsViewModel.tabs.collectAsState()
     val selectedTabIndex by tabsViewModel.selectedTabIndex.collectAsState()
     val ramSaverEnabled by AppSettings.ramSaverEnabledFlow.collectAsState()
+    val isRestoringSession by SessionManager.isRestoringSession.collectAsState()
 
     val registry: TabNavControllerRegistry = appGraph.tabNavControllerRegistry
 
@@ -84,7 +85,7 @@ fun TabsNavHost() {
                 val viewModel = remember(appGraph, destination.tabId) {
                     appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
                 }
-                BookContentScreen(viewModel)
+                BookContentScreen(viewModel, isRestoringSession = isRestoringSession)
             }
             nonAnimatedComposable<TabsDestination.Search> { backStackEntry ->
                 val destination = backStackEntry.toRoute<TabsDestination.Search>()
@@ -149,7 +150,7 @@ fun TabsNavHost() {
                 val viewModel = remember(appGraph, destination.tabId) {
                     appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
                 }
-                BookContentScreen(viewModel)
+                BookContentScreen(viewModel, isRestoringSession = isRestoringSession)
             }
         }
     } else {
@@ -190,7 +191,7 @@ fun TabsNavHost() {
                             val viewModel = remember(appGraph, destination.tabId) {
                                 appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
                             }
-                            BookContentScreen(viewModel)
+                            BookContentScreen(viewModel, isRestoringSession = isRestoringSession)
                         }
                         nonAnimatedComposable<TabsDestination.Search> { backStackEntry ->
                             val destination = backStackEntry.toRoute<TabsDestination.Search>()
@@ -258,11 +259,11 @@ fun TabsNavHost() {
                             val viewModel = remember(appGraph, destination.tabId) {
                                 appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
                             }
-                            BookContentScreen(viewModel)
-                        }
+                        BookContentScreen(viewModel, isRestoringSession = isRestoringSession)
                     }
                 }
             }
+        }
         }
     }
 }

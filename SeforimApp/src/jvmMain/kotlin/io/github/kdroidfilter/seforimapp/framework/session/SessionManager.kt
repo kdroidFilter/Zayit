@@ -1,11 +1,8 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package io.github.kdroidfilter.seforimapp.framework.session
 
-import io.github.kdroidfilter.seforim.tabs.TabStateManager
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforim.tabs.TabsEvents
-import io.github.kdroidfilter.seforim.tabs.TabsViewModel
-import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
-import io.github.kdroidfilter.seforim.tabs.TabType
+import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys
@@ -13,18 +10,25 @@ import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.*
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.SetSerializer
+import kotlinx.serialization.builtins.nullable
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
-import java.util.Base64
+import java.util.*
 
 /**
  * Persists and restores the navigation session (open tabs + per-tab state) when enabled in settings.
  */
 object SessionManager {
+
+    private val _isRestoringSession = MutableStateFlow(hasSavedSessionToRestore())
+    val isRestoringSession: StateFlow<Boolean> = _isRestoringSession
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -76,60 +80,62 @@ object SessionManager {
         if (!AppSettings.isPersistSessionEnabled()) return
         val blob = AppSettings.getSavedSessionJson() ?: return
 
-        // Try to decode as base64(ProtoBuf) first, then legacy JSON fallback
-        val savedFromProto = runCatching {
-            val bytes = Base64.getDecoder().decode(blob)
-            proto.decodeFromByteArray(SavedSession.serializer(), bytes)
-        }.getOrNull()
-        val saved = savedFromProto ?: runCatching {
-            json.decodeFromString(SavedSession.serializer(), blob)
-        }.getOrNull() ?: return
-        if (savedFromProto == null) {
-            // Migrate legacy JSON session to ProtoBuf for next time
-            runCatching {
-                val bytes = proto.encodeToByteArray(SavedSession.serializer(), saved)
-                val b64 = Base64.getEncoder().encodeToString(bytes)
-                AppSettings.setSavedSessionJson(b64)
+        _isRestoringSession.value = true
+        try {
+            // Try to decode as base64(ProtoBuf) first, then legacy JSON fallback
+            val savedFromProto = runCatching {
+                val bytes = Base64.getDecoder().decode(blob)
+                proto.decodeFromByteArray(SavedSession.serializer(), bytes)
+            }.getOrNull()
+            val saved = savedFromProto ?: runCatching {
+                json.decodeFromString(SavedSession.serializer(), blob)
+            }.getOrNull() ?: return
+            if (savedFromProto == null) {
+                // Migrate legacy JSON session to ProtoBuf for next time
+                runCatching {
+                    val bytes = proto.encodeToByteArray(SavedSession.serializer(), saved)
+                    val b64 = Base64.getEncoder().encodeToString(bytes)
+                    AppSettings.setSavedSessionJson(b64)
+                }
             }
-        }
 
-        val decodedStates: Map<String, Map<String, Any>> = saved.tabStates.mapValues { (_, stateMap) ->
-            stateMap.mapNotNull { (key, encoded) ->
-                decodeValue(key, encoded)?.let { decoded -> key to decoded }
-            }.toMap()
-        }
-
-        // Restore TabStateManager state first, so screens can pick it up when tabs open
-        appGraph.tabStateManager.restore(decodedStates)
-
-        // Recreate tabs and selection via navigator/tabs VM
-        val tabsVm: TabsViewModel = appGraph.tabsViewModel
-        val titleUpdateManager: TabTitleUpdateManager = appGraph.tabTitleUpdateManager
-
-        if (saved.tabs.isEmpty()) return
-
-        // Close the initial default tab BEFORE opening restored tabs
-        // (opening a tab adds it at index 0, so we need to close the default first)
-        tabsVm.onEvent(TabsEvents.onClose(0))
-
-        // Open all restored tabs in REVERSE order because openTab() adds at index 0
-        // This ensures tabs are restored in the correct order
-        saved.tabs.reversed().forEach { dest ->
-            runBlocking { tabsVm.openTab(dest) }
-        }
-
-        // Update tab titles immediately based on restored state (e.g., Book.title),
-        // so users don't see raw IDs before the screen composes.
-        saved.tabs.forEach { dest ->
-            val tabId = dest.tabId
-            (decodedStates[tabId]?.get(StateKeys.SELECTED_BOOK) as? io.github.kdroidfilter.seforimlibrary.core.models.Book)?.let { book ->
-                titleUpdateManager.updateTabTitle(tabId, book.title, TabType.BOOK)
+            val decodedStates: Map<String, Map<String, Any>> = saved.tabStates.mapValues { (_, stateMap) ->
+                stateMap.mapNotNull { (key, encoded) ->
+                    decodeValue(key, encoded)?.let { decoded -> key to decoded }
+                }.toMap()
             }
-        }
 
-        // Select saved index (bounds-safe)
-        val targetIndex = saved.selectedIndex.coerceIn(0, saved.tabs.lastIndex)
-        tabsVm.onEvent(TabsEvents.onSelected(targetIndex))
+            // Restore TabStateManager state first, so screens can pick it up when tabs open
+            appGraph.tabStateManager.restore(decodedStates)
+
+            // Recreate tabs and selection via navigator/tabs VM
+            val tabsVm: TabsViewModel = appGraph.tabsViewModel
+            val titleUpdateManager: TabTitleUpdateManager = appGraph.tabTitleUpdateManager
+
+            if (saved.tabs.isEmpty()) return
+
+            // Replace the initial default tab list with the restored tabs to avoid an extra blank tab
+            tabsVm.restoreTabs(saved.tabs, saved.selectedIndex)
+
+            // Update tab titles immediately based on restored state (e.g., Book.title),
+            // so users don't see raw IDs before the screen composes.
+            saved.tabs.forEach { dest ->
+                val tabId = dest.tabId
+                (decodedStates[tabId]?.get(StateKeys.SELECTED_BOOK) as? io.github.kdroidfilter.seforimlibrary.core.models.Book)?.let { book ->
+                    titleUpdateManager.updateTabTitle(tabId, book.title, TabType.BOOK)
+                }
+            }
+
+            // Select saved index (bounds-safe)
+            val targetIndex = saved.selectedIndex.coerceIn(0, saved.tabs.lastIndex)
+            tabsVm.onEvent(TabsEvents.onSelected(targetIndex))
+        } finally {
+            _isRestoringSession.value = false
+        }
+    }
+
+    private fun hasSavedSessionToRestore(): Boolean {
+        return AppSettings.isPersistSessionEnabled() && AppSettings.getSavedSessionJson() != null
     }
 
     // --- Encoding/Decoding helpers for known state keys ---

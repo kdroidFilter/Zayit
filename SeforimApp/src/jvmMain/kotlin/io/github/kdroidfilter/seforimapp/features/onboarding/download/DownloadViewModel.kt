@@ -25,17 +25,37 @@ class DownloadViewModel(
     private val _error = MutableStateFlow<String?>(null)
     private val _completed = MutableStateFlow(false)
 
+    private data class DownloadProgressSnapshot(
+        val inProgress: Boolean,
+        val progress: Float,
+        val downloadedBytes: Long,
+        val totalBytes: Long?,
+        val speedBytesPerSec: Long,
+    )
+
+    private val progressSnapshot = combine(
+        _inProgress,
+        _progress,
+        _downloaded,
+        _total,
+        _speed
+    ) { inProgress, progress, downloaded, total, speed ->
+        DownloadProgressSnapshot(inProgress, progress, downloaded, total, speed)
+    }
+
     val state: StateFlow<DownloadState> = combine(
-        _inProgress, _progress, _downloaded, _total, _speed, _error, _completed
-    ) { values ->
+        progressSnapshot,
+        _error,
+        _completed
+    ) { snapshot, error, completed ->
         DownloadState(
-            inProgress = values[0] as Boolean,
-            progress = values[1] as Float,
-            downloadedBytes = values[2] as Long,
-            totalBytes = values[3] as Long?,
-            speedBytesPerSec = values[4] as Long,
-            errorMessage = values[5] as String?,
-            completed = values[6] as Boolean
+            inProgress = snapshot.inProgress,
+            progress = snapshot.progress,
+            downloadedBytes = snapshot.downloadedBytes,
+            totalBytes = snapshot.totalBytes,
+            speedBytesPerSec = snapshot.speedBytesPerSec,
+            errorMessage = error,
+            completed = completed
         )
     }.stateIn(
         scope = viewModelScope,

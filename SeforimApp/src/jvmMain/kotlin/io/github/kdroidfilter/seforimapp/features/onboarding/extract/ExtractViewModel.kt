@@ -27,13 +27,16 @@ class ExtractViewModel(
     private var job: Job? = null
 
     val state: StateFlow<ExtractState> = combine(
-        _inProgress, _progress, _error, _completed
-    ) { values ->
+        _inProgress,
+        _progress,
+        _error,
+        _completed
+    ) { inProgress, progress, error, completed ->
         ExtractState(
-            inProgress = values[0] as Boolean,
-            progress = values[1] as Float,
-            errorMessage = values[2] as String?,
-            completed = values[3] as Boolean
+            inProgress = inProgress,
+            progress = progress,
+            errorMessage = error,
+            completed = completed
         )
     }.stateIn(
         scope = viewModelScope,
@@ -75,4 +78,3 @@ class ExtractViewModel(
         }
     }
 }
-

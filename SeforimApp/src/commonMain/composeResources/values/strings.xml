@@ -62,9 +62,9 @@
     <string name="close_all_tabs">סגור את כל הלשוניות</string>
     <string name="close_other_tabs">סגור לשוניות אחרות</string>
     <!-- Reworded to "close towards the right" for consistency with RTL wording -->
-    <string name="close_tabs_left">סגור לשוניות ימינה</string>
+    <string name="close_tabs_left">סגור את הלשוניות מימין</string>
     <!-- Reworded to "close towards the left" per UX preference -->
-    <string name="close_tabs_right">סגור לשוניות שמאלה</string>
+    <string name="close_tabs_right">סגור את הלשוניות משמאל</string>
 
     <!-- Book Content Screen - Start Vertical Bar -->
     <string name="navigation">ניווט</string>

@@ -44,12 +44,16 @@ import androidx.compose.ui.input.key.type
  * `BookContentView`.
  */
 @Composable
-fun BookContentScreen(viewModel: BookContentViewModel) {
+fun BookContentScreen(
+    viewModel: BookContentViewModel,
+    isRestoringSession: Boolean = false
+) {
     val uiState by viewModel.uiState.collectAsState()
 
     BookContentView(
         uiState = uiState,
-        onEvent = viewModel::onEvent
+        onEvent = viewModel::onEvent,
+        isRestoringSession = isRestoringSession
     )
 }
 
@@ -63,7 +67,8 @@ fun BookContentScreen(viewModel: BookContentViewModel) {
 @Composable
 fun BookContentView(
     uiState: BookContentState,
-    onEvent: (BookContentEvent) -> Unit
+    onEvent: (BookContentEvent) -> Unit,
+    isRestoringSession: Boolean = false
 ) {
     // Toaster for transient messages (e.g., selection limits)
     val toaster = rememberToasterState()
@@ -160,7 +165,11 @@ fun BookContentView(
                         }
                     },
                     secondContent = {
-                        BookContentPanel(uiState = uiState, onEvent = onEvent)
+                        BookContentPanel(
+                            uiState = uiState,
+                            onEvent = onEvent,
+                            isRestoringSession = isRestoringSession
+                        )
                     },
                     showSplitter = uiState.toc.isVisible
                 )

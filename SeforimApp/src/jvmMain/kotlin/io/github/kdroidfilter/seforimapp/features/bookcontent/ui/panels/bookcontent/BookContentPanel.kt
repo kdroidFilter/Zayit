@@ -1,18 +1,12 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
@@ -31,7 +25,8 @@ import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 fun BookContentPanel(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isRestoringSession: Boolean = false
 ) {
 
     // Preserve LazyListState across recompositions
@@ -40,7 +35,7 @@ fun BookContentPanel(
     if (uiState.navigation.selectedBook == null) {
         // If we're actively loading a book for this tab, avoid flashing the Home screen.
         // Show a minimal loader until the selected book is ready.
-        if (uiState.isLoading) {
+        if (uiState.isLoading || isRestoringSession) {
             LoaderPanel(modifier = modifier)
         } else {
             HomeView(uiState = uiState, onEvent = onEvent, modifier = modifier)
@@ -50,9 +45,9 @@ fun BookContentPanel(
 
     // Use providers from uiState for paging data and builder functions
     val providers = uiState.providers
-    if (providers == null) {
-        // Book is selected but providers are not ready yet (initialization in progress).
-        // Show a centered loader to avoid blank content or Home flicker.
+    if (providers == null || uiState.isLoading) {
+        // Book is selected but providers are not ready yet (initialization in progress)
+        // Show a centered loader to avoid flash of partial content.
         LoaderPanel(modifier = modifier)
         return
     }

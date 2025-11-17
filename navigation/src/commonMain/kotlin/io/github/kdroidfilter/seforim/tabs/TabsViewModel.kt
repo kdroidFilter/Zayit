@@ -140,7 +140,7 @@ class TabsViewModel(
             id = _nextTabId++,
             title = getTabTitle(destination),
             destination = destination,
-            tabType = TabType.SEARCH
+            tabType = tabTypeFor(destination)
         )
         _tabs.value = listOf(newTab) + _tabs.value
         _selectedTabIndex.value = 0
@@ -160,11 +160,7 @@ class TabsViewModel(
             id = _nextTabId++,
             title = getTabTitle(newDestination),
             destination = newDestination,
-            tabType = when (newDestination) {
-                is TabsDestination.Home -> TabType.SEARCH
-                is TabsDestination.Search -> TabType.SEARCH
-                is TabsDestination.BookContent -> if (newDestination.bookId > 0) TabType.BOOK else TabType.SEARCH
-            }
+            tabType = tabTypeFor(newDestination)
         )
         _tabs.value = listOf(newTab) + _tabs.value
         _selectedTabIndex.value = 0
@@ -274,11 +270,7 @@ class TabsViewModel(
         val updated = current.copy(
             title = getTabTitle(newDestination),
             destination = newDestination,
-            tabType = when (newDestination) {
-                is TabsDestination.Home -> TabType.SEARCH
-                is TabsDestination.Search -> TabType.SEARCH
-                is TabsDestination.BookContent -> if (newDestination.bookId > 0) TabType.BOOK else TabType.SEARCH
-            }
+            tabType = tabTypeFor(newDestination)
         )
         _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
     }
@@ -319,13 +311,36 @@ class TabsViewModel(
         val updated = current.copy(
             title = getTabTitle(newDestination),
             destination = newDestination,
-            tabType = when (newDestination) {
-                is TabsDestination.Home -> TabType.SEARCH
-                is TabsDestination.Search -> TabType.SEARCH
-                is TabsDestination.BookContent -> if (newDestination.bookId > 0) TabType.BOOK else TabType.SEARCH
-            }
+            tabType = tabTypeFor(newDestination)
         )
         _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
+    }
+
+    /**
+     * Replaces the entire tab list with the provided destinations.
+     * Used for cold-boot session restore to avoid keeping the default tab alive.
+     */
+    fun restoreTabs(destinations: List<TabsDestination>, selectedIndex: Int) {
+        if (destinations.isEmpty()) return
+
+        val restoredTabs = destinations.mapIndexed { index, destination ->
+            TabItem(
+                id = index + 1,
+                title = getTabTitle(destination),
+                destination = destination,
+                tabType = tabTypeFor(destination)
+            )
+        }
+
+        _tabs.value = restoredTabs
+        _selectedTabIndex.value = selectedIndex.coerceIn(0, restoredTabs.lastIndex)
+        _nextTabId = (restoredTabs.maxOfOrNull { it.id } ?: 0) + 1
+    }
+
+    private fun tabTypeFor(destination: TabsDestination): TabType = when (destination) {
+        is TabsDestination.Home -> TabType.SEARCH
+        is TabsDestination.Search -> TabType.SEARCH
+        is TabsDestination.BookContent -> if (destination.bookId > 0) TabType.BOOK else TabType.SEARCH
     }
     private fun getTabTitle(destination: TabsDestination): String {
         return when (destination) {

@@ -1,6 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.settings.ui
 
-import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -22,6 +21,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfig
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.component.SpeedSearchArea
@@ -53,6 +53,7 @@ fun RegionSettingsScreen() {
     )
 }
 
+@OptIn(ExperimentalJewelApi::class)
 @Composable
 private fun RegionSettingsView(
     state: RegionConfigState,

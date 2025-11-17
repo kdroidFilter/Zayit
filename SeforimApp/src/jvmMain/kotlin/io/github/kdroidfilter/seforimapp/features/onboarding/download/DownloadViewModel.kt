@@ -2,14 +2,9 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.download
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class DownloadViewModel(
@@ -25,19 +20,34 @@ class DownloadViewModel(
     private val _error = MutableStateFlow<String?>(null)
     private val _completed = MutableStateFlow(false)
 
-    val state: StateFlow<DownloadState> = combine(
-        _inProgress, _progress, _downloaded, _total, _speed, _error, _completed
-    ) { values ->
-        DownloadState(
-            inProgress = values[0] as Boolean,
-            progress = values[1] as Float,
-            downloadedBytes = values[2] as Long,
-            totalBytes = values[3] as Long?,
-            speedBytesPerSec = values[4] as Long,
-            errorMessage = values[5] as String?,
-            completed = values[6] as Boolean
+    val state: StateFlow<DownloadState> = combine(_inProgress, _progress) { inProgress, progress ->
+        DlAggregate(
+            inProgress = inProgress,
+            progress = progress,
+            downloaded = _downloaded.value,
+            total = _total.value,
+            speed = _speed.value,
+            error = _error.value,
+            completed = _completed.value
         )
-    }.stateIn(
+    }
+        .combine(_downloaded) { agg, downloaded -> agg.copy(downloaded = downloaded) }
+        .combine(_total) { agg, total -> agg.copy(total = total) }
+        .combine(_speed) { agg, speed -> agg.copy(speed = speed) }
+        .combine(_error) { agg, error -> agg.copy(error = error) }
+        .combine(_completed) { agg, completed -> agg.copy(completed = completed) }
+        .map { agg ->
+            DownloadState(
+                inProgress = agg.inProgress,
+                progress = agg.progress,
+                downloadedBytes = agg.downloaded,
+                totalBytes = agg.total,
+                speedBytesPerSec = agg.speed,
+                errorMessage = agg.error,
+                completed = agg.completed
+            )
+        }
+        .stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = DownloadState(
@@ -49,6 +59,16 @@ class DownloadViewModel(
             errorMessage = null,
             completed = false
         )
+    )
+
+    private data class DlAggregate(
+        val inProgress: Boolean,
+        val progress: Float,
+        val downloaded: Long,
+        val total: Long?,
+        val speed: Long,
+        val error: String?,
+        val completed: Boolean,
     )
 
     fun onEvent(event: DownloadEvents) {

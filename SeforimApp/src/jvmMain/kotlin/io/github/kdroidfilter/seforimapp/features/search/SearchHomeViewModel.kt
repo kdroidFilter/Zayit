@@ -26,6 +26,7 @@ import kotlinx.coroutines.coroutineScope
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import kotlinx.coroutines.FlowPreview
 
 data class CategorySuggestionDto(val category: Category, val path: List<String>)
 data class BookSuggestionDto(val book: Book, val path: List<String>)
@@ -49,6 +50,7 @@ data class SearchHomeUiState(
     val pairedReferenceHints: List<Pair<String, String>> = emptyList()
 )
 
+@OptIn(FlowPreview::class)
 class SearchHomeViewModel(
     private val tabsViewModel: TabsViewModel,
     private val stateManager: TabStateManager,

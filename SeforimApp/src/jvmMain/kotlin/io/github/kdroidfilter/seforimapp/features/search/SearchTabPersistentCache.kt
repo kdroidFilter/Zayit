@@ -1,8 +1,11 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package io.github.kdroidfilter.seforimapp.features.search
 
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
+import kotlinx.serialization.ExperimentalSerializationApi
 import java.io.File
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf

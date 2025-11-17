@@ -2,16 +2,10 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.extract
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class ExtractViewModel(
@@ -28,12 +22,12 @@ class ExtractViewModel(
 
     val state: StateFlow<ExtractState> = combine(
         _inProgress, _progress, _error, _completed
-    ) { values ->
+    ) { inProgress: Boolean, progress: Float, error: String?, completed: Boolean ->
         ExtractState(
-            inProgress = values[0] as Boolean,
-            progress = values[1] as Float,
-            errorMessage = values[2] as String?,
-            completed = values[3] as Boolean
+            inProgress = inProgress,
+            progress = progress,
+            errorMessage = error,
+            completed = completed
         )
     }.stateIn(
         scope = viewModelScope,

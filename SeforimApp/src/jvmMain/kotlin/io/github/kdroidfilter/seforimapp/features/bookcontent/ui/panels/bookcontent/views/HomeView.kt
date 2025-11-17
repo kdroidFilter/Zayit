@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
@@ -1365,7 +1366,7 @@ private fun SearchLevelCard(
 }
 
 
-@androidx.compose.desktop.ui.tooling.preview.Preview
+@Preview
 @Composable
 fun HomeViewPreview() {
     PreviewContainer {

@@ -1,11 +1,8 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package io.github.kdroidfilter.seforimapp.framework.session
 
-import io.github.kdroidfilter.seforim.tabs.TabStateManager
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforim.tabs.TabsEvents
-import io.github.kdroidfilter.seforim.tabs.TabsViewModel
-import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
-import io.github.kdroidfilter.seforim.tabs.TabType
+import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.search.SearchStateKeys
@@ -13,13 +10,16 @@ import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.*
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.SetSerializer
+import kotlinx.serialization.builtins.nullable
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
-import java.util.Base64
+import java.util.*
 
 /**
  * Persists and restores the navigation session (open tabs + per-tab state) when enabled in settings.

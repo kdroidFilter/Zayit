@@ -147,6 +147,7 @@ kotlin {
 
             // HTML sanitization for search snippets
             implementation(libs.jsoup)
+
         }
     }
 }
@@ -173,7 +174,11 @@ kotlin {
 //}
 
 compose.desktop {
+
     application {
+        buildTypes.release.proguard {
+            version.set("7.8.1")
+        }
         mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
         nativeDistributions {
             // Package-time resources root; include files under OS-specific subfolders (common, macos, windows, linux)
@@ -185,6 +190,10 @@ compose.desktop {
                 "--add-modules=jdk.incubator.vector"
             )
 
+            jvmArgs += listOf(
+                "-XX:+UseStringDeduplication",
+                "-XX:MaxGCPauseMillis=70",
+            )
             modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility", "jdk.incubator.vector")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm)
             vendor = "KDroidFilter"
@@ -198,8 +207,7 @@ compose.desktop {
                 iconFile.set(project.file("desktopAppIcons/WindowsIcon.ico"))
                 packageVersion = version
                 packageName = "Zayit"
-                dirChooser = true
-                menuGroup = "start-menu-group"
+                dirChooser = false
                 shortcut = true
                 upgradeUuid = "d9f21975-4359-4818-a623-6e9a3f0a07ca"
                 perUserInstall = true
@@ -288,3 +296,4 @@ val renameMsi = tasks.register<RenameMsiTask>("renameMsi") {
 tasks.matching { it.name.endsWith("Msi") && it.name != "renameMsi" }.configureEach {
     finalizedBy(renameMsi)
 }
+

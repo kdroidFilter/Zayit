@@ -1,23 +1,13 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.region
 
-import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -30,21 +20,9 @@ import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.DefaultButton
-import org.jetbrains.jewel.ui.component.DefaultInformationBanner
-import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.InlineInformationBanner
-import org.jetbrains.jewel.ui.component.ListComboBox
-import org.jetbrains.jewel.ui.component.SpeedSearchArea
-import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.theme.defaultBannerStyle
+import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.theme.inlineBannerStyle
-import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.next_button
-import seforimapp.seforimapp.generated.resources.onboarding_region_city_label
-import seforimapp.seforimapp.generated.resources.onboarding_region_country_label
-import seforimapp.seforimapp.generated.resources.onboarding_region_description
-import seforimapp.seforimapp.generated.resources.onboarding_region_title
+import seforimapp.seforimapp.generated.resources.*
 
 @Composable
 fun RegionConfigScreen(

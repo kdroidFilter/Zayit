@@ -1,7 +1,6 @@
 import io.github.kdroidfilter.buildsrc.RenameMacPkgTask
 import io.github.kdroidfilter.buildsrc.RenameMsiTask
 import io.github.kdroidfilter.buildsrc.Versioning
-import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
 
@@ -44,14 +43,15 @@ kotlin {
 //    }
 
     jvm()
+    jvmToolchain(25)
 
     sourceSets {
         commonMain.dependencies {
             // Compose
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
+            implementation(libs.runtime)
+            implementation(libs.foundation)
+            implementation(libs.components.resources)
+            implementation(libs.ui.tooling.preview)
 
             // Ktor
             implementation(libs.ktor.client.core)
@@ -115,8 +115,6 @@ kotlin {
 
         commonTest.dependencies {
             implementation(kotlin("test"))
-            @OptIn(ExperimentalComposeLibrary::class)
-            implementation(compose.uiTest)
         }
 //
 //        androidMain.dependencies {
@@ -196,7 +194,13 @@ compose.desktop {
                 "-XX:MaxGCPauseMillis=70",
             )
             modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility", "jdk.incubator.vector")
-            targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm)
+            targetFormats(
+                TargetFormat.Pkg,
+                TargetFormat.Dmg,
+                TargetFormat.Msi,
+                TargetFormat.Deb,
+                TargetFormat.Rpm
+            )
             vendor = "KDroidFilter"
 
             linux {
@@ -297,4 +301,3 @@ val renameMsi = tasks.register<RenameMsiTask>("renameMsi") {
 tasks.matching { it.name.endsWith("Msi") && it.name != "renameMsi" }.configureEach {
     finalizedBy(renameMsi)
 }
-

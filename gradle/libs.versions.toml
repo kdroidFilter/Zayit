@@ -31,12 +31,14 @@ platformtools = "0.7.4"
 composenativetray = "1.0.4"
 kotlinx-coroutines = "1.10.2"
 reorderable = "3.0.0"
+runtime = "1.10.0-beta01"
 slf4j = "2.0.17"
 maven-publish = "0.34.0"
 sqlDelight = "2.2.1"
 adaptiveNavigation = "1.2.0"
 navigationCompose = "2.9.1"
 sqliteDriver = "2.2.1"
+uiToolingPreview = "1.10.0-beta01"
 zstdJni = "1.5.7-6"
 metro = "0.7.5"
 lucene = "10.3.1"
@@ -47,11 +49,13 @@ androidx-activityCompose = { module = "androidx.activity:activity-compose", vers
 androidx-uitest-testManifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "androidx-uiTest" }
 androidx-uitest-junit4 = { module = "androidx.compose.ui:ui-test-junit4", version.ref = "androidx-uiTest" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commonsCompress" }
+components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
 compose-sonner = { module = "io.github.brdominguez:compose-sonner", version.ref = "composeSonner" }
 confettikit = { module = "io.github.vinceglb:confettikit", version.ref = "confettikit" }
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekitCore" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekitCore" }
 filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekitCore" }
+foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
 jdbc-driver = { module = "app.cash.sqldelight:jdbc-driver", version.ref = "sqliteDriver" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 jvm-native-trusted-roots = { module = "org.jetbrains.nativecerts:jvm-native-trusted-roots", version.ref = "jvmNativeTrustedRoots" }
@@ -98,12 +102,14 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
+runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "runtime" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 adaptive-layout = { module = "org.jetbrains.compose.material3.adaptive:adaptive-layout", version.ref = "adaptiveNavigation" }
 adaptive-navigation = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation", version.ref = "adaptiveNavigation" }
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 split-pane-desktop = { module = "org.jetbrains.compose.components:components-splitpane-desktop", version.ref = "compose"}
 sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqliteDriver" }
+ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "uiToolingPreview" }
 zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstdJni" }
 lucene-core = { module = "org.apache.lucene:lucene-core", version.ref = "lucene" }
 lucene-analysis-common = { module = "org.apache.lucene:lucene-analysis-common", version.ref = "lucene" }

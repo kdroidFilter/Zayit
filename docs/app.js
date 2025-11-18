@@ -412,7 +412,7 @@ async function renderApp() {
       mainDownloadBlock = renderWindowsArchOptions(archGroups);
     }
   } else if (platform.os === "linux") {
-    // Linux - show both DEB and RPM
+    // Linux - show curl command as primary, with download links as secondary
     const linuxAssets = filterAssetsByPlatform(assets, platform);
     const debAssets = linuxAssets.filter(a => a.name.toLowerCase().endsWith('.deb'));
     const rpmAssets = linuxAssets.filter(a => a.name.toLowerCase().endsWith('.rpm'));
@@ -420,36 +420,61 @@ async function renderApp() {
     mainDownloadBlock = `
       <div class="section section-box">
         <h2 class="section-title">
-          <span class="material-symbols-outlined">download</span>
-          <span>הורדת התוכנה עבור Linux</span>
+          <span class="material-symbols-outlined">terminal</span>
+          <span>התקנה אוטומטית עבור Linux</span>
         </h2>
-
-        ${debAssets.length > 0 ? `
-          <div class="linux-distro-section">
-            <h3 style="color:var(--text-main);font-size:1rem;margin:0 0 0.75rem 0;display:flex;align-items:center;gap:0.4rem;">
-              <span class="material-symbols-outlined">package_2</span>
-              Debian/Ubuntu (.deb)
-            </h3>
-            ${renderLinuxArchOptions(debAssets, 'deb')}
-          </div>
-        ` : ''}
-
-        ${rpmAssets.length > 0 ? `
-          <div class="linux-distro-section" style="margin-top:1.5rem;">
-            <h3 style="color:var(--text-main);font-size:1rem;margin:0 0 0.75rem 0;display:flex;align-items:center;gap:0.4rem;">
-              <span class="material-symbols-outlined">package_2</span>
-              Fedora/RHEL/openSUSE (.rpm)
-            </h3>
-            ${renderLinuxArchOptions(rpmAssets, 'rpm')}
-          </div>
-        ` : ''}
-
-        ${debAssets.length === 0 && rpmAssets.length === 0 ? `
-          <p style="color:var(--gold-soft);text-align:center;margin:0;">
-            לא נמצאו קבצי Linux זמינים בגרסה זו
-          </p>
-        ` : ''}
+        <p style="color:var(--gold-soft);margin:0 0 1rem 0;font-size:0.95rem;">
+          העתק והרץ את הפקודה הבאה בטרמינל:
+        </p>
+        <div class="command-box">
+          <code id="linux-command">curl -L https://raw.githubusercontent.com/kdroidFilter/SeforimApp/refs/heads/master/launch.linux | bash</code>
+          <button class="copy-btn" onclick="copyLinuxCommand()">
+            <span class="material-symbols-outlined">content_copy</span>
+          </button>
+        </div>
+        <p style="color:var(--gold-muted);margin:1rem 0 0 0;font-size:0.85rem;">
+          <span class="material-symbols-outlined" style="font-size:0.95rem;vertical-align:middle;">info</span>
+          הסקריפט יזהה אוטומטית את ההפצה (DEB/RPM) והארכיטקטורה שלך
+        </p>
       </div>
+
+      ${(debAssets.length > 0 || rpmAssets.length > 0) ? `
+        <div class="section section-box">
+          <h2 class="section-title">
+            <span class="material-symbols-outlined">download</span>
+            <span>הורדה ידנית</span>
+          </h2>
+
+          <button class="toggle-button" onclick="setState({showAllAssets: !appState.showAllAssets})" style="margin-bottom:1rem;">
+            <span class="material-symbols-outlined">
+              ${appState.showAllAssets ? 'expand_less' : 'expand_more'}
+            </span>
+            <span>${appState.showAllAssets ? 'הסתר' : 'הצג'} אפשרויות הורדה ידנית</span>
+          </button>
+
+          ${appState.showAllAssets ? `
+            ${debAssets.length > 0 ? `
+              <div class="linux-distro-section">
+                <h3 style="color:var(--text-main);font-size:1rem;margin:0 0 0.75rem 0;display:flex;align-items:center;gap:0.4rem;">
+                  <span class="material-symbols-outlined">package_2</span>
+                  Debian/Ubuntu (.deb)
+                </h3>
+                ${renderLinuxArchOptions(debAssets, 'deb')}
+              </div>
+            ` : ''}
+
+            ${rpmAssets.length > 0 ? `
+              <div class="linux-distro-section" style="margin-top:1.5rem;">
+                <h3 style="color:var(--text-main);font-size:1rem;margin:0 0 0.75rem 0;display:flex;align-items:center;gap:0.4rem;">
+                  <span class="material-symbols-outlined">package_2</span>
+                  Fedora/RHEL/openSUSE (.rpm)
+                </h3>
+                ${renderLinuxArchOptions(rpmAssets, 'rpm')}
+              </div>
+            ` : ''}
+          ` : ''}
+        </div>
+      ` : ''}
     `;
   }
 
@@ -732,9 +757,21 @@ function renderDbSection() {
   `;
 }
 
-// Global function for copying Mac command
+// Global functions for copying commands
 window.copyMacCommand = function() {
   const command = document.getElementById('mac-command').textContent;
+  navigator.clipboard.writeText(command).then(() => {
+    const btn = event.target.closest('.copy-btn');
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<span class="material-symbols-outlined">check</span>';
+    setTimeout(() => {
+      btn.innerHTML = originalContent;
+    }, 2000);
+  });
+};
+
+window.copyLinuxCommand = function() {
+  const command = document.getElementById('linux-command').textContent;
   navigator.clipboard.writeText(command).then(() => {
     const btn = event.target.closest('.copy-btn');
     const originalContent = btn.innerHTML;
@@ -843,6 +880,19 @@ async function fetchDbAssets() {
 }
 
 window.addEventListener("DOMContentLoaded", async function () {
+  // Register service worker for cache control (optional)
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.register('/service-worker.js');
+      console.log('Service Worker registered:', registration);
+
+      // Check for updates every page load
+      registration.update();
+    } catch (error) {
+      console.log('Service Worker registration failed:', error);
+    }
+  }
+
   renderApp(); // Render loading state
 
   // Start platform detection early

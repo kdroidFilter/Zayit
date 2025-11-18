@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-REPO="kdroidFilter/SeforimApp"
+REPO="kdroidFilter/Zayit"
 API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 
 # Detect package system

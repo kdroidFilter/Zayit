@@ -3,12 +3,14 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import kotlinx.coroutines.launch
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
@@ -33,17 +35,27 @@ fun TypeOfInstallationScreen(navController: NavController, progressBarState: Pro
         progressBarState.setProgress(0.3f)
     }
     val viewModel: TypeOfInstallationViewModel = LocalAppGraph.current.typeOfInstallationViewModel
+    val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
+    val scope = rememberCoroutineScope()
     TypeOfInstallationView(
         onOnlineInstallation = {
-            // Move forward and clear all previous onboarding steps so back is disabled
-            navController.navigate(OnBoardingDestination.DatabaseOnlineInstallerScreen) {
-                popUpTo(0) { inclusive = true }
+            scope.launch {
+                // Clean existing database and related files before online installation
+                cleanupUseCase.cleanupDatabaseFiles()
+                // Move forward and clear all previous onboarding steps so back is disabled
+                navController.navigate(OnBoardingDestination.DatabaseOnlineInstallerScreen) {
+                    popUpTo(0) { inclusive = true }
+                }
             }
         },
         onOfflineInstallation = { 
-            // Move forward and clear all previous onboarding steps so back is disabled
-            navController.navigate(OnBoardingDestination.OfflineFileSelectionScreen) {
-                popUpTo(0) { inclusive = true }
+            scope.launch {
+                // Clean existing database and related files before offline installation
+                cleanupUseCase.cleanupDatabaseFiles()
+                // Move forward and clear all previous onboarding steps so back is disabled
+                navController.navigate(OnBoardingDestination.OfflineFileSelectionScreen) {
+                    popUpTo(0) { inclusive = true }
+                }
             }
         }
     )

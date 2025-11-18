@@ -2,8 +2,7 @@ const GITHUB_OWNER = "kdroidFilter";
 const GITHUB_REPO = "Zayit";
 const DB_OWNER = "kdroidFilter";
 const DB_REPO = "SeforimLibrary";
-const BRAND_ICON =
-  "https://raw.githubusercontent.com/kdroidFilter/Zayit/master/Zayit/desktopAppIcons/LinuxIcon.png";
+const BRAND_ICON ="icon.png";
 
 // Enhanced platform and architecture detection
 async function detectPlatform() {

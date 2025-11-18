@@ -38,7 +38,11 @@ fun BookContentPanel(
         if (uiState.isLoading || isRestoringSession) {
             LoaderPanel(modifier = modifier)
         } else {
-            HomeView(uiState = uiState, onEvent = onEvent, modifier = modifier)
+            HomeView(
+                uiState = uiState,
+                onEvent = onEvent,
+                modifier = modifier
+            )
         }
         return
     }

@@ -63,6 +63,15 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Normalize version for manual runs
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=$(git describe --tags --abbrev=0)
+          echo "Using latest tag for version: $tag"
+          echo "GITHUB_REF=refs/tags/$tag" >> "$GITHUB_ENV"
+
       # Install RPM tools on Ubuntu (for .rpm builds)
       - name: Install RPM tools
         if: runner.os == 'Linux'

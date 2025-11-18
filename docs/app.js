@@ -5,61 +5,143 @@ const DB_REPO = "SeforimLibrary";
 const BRAND_ICON =
   "https://raw.githubusercontent.com/kdroidFilter/SeforimApp/master/SeforimApp/desktopAppIcons/LinuxIcon.png";
 
-function detectPlatform() {
+// Enhanced platform and architecture detection
+async function detectPlatform() {
   if (typeof navigator === "undefined") {
-    return { os: "deb", arch: "amd64" };
+    return { os: "unknown", arch: "unknown", isMobile: false };
   }
 
   const ua = navigator.userAgent || "";
   const uaData = navigator.userAgentData || {};
   const platform = (uaData.platform || navigator.platform || "").toLowerCase();
-  const archHint = (uaData.architecture || ua).toLowerCase();
-  const isArm = /arm64|aarch64|arm/.test(archHint);
 
-  if (/win/i.test(platform) || /windows/i.test(ua)) {
-    return { os: "windows", arch: isArm ? "arm64" : "x64" };
-  }
-
-  if (/mac/i.test(platform) || /macintosh|mac os x/i.test(ua)) {
-    return { os: "mac", arch: isArm ? "arm64" : "x64" };
-  }
-
-  if (/linux/i.test(platform) || /linux/i.test(ua)) {
+  // Check for mobile devices first
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+  if (isMobile) {
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
     return {
-      os: /fedora|centos|redhat|rhel|opensuse|suse/i.test(ua) ? "rpm" : "deb",
-      arch: isArm ? "arm64" : "amd64",
+      os: isIOS ? "ios" : isAndroid ? "android" : "mobile",
+      arch: "mobile",
+      isMobile: true
     };
   }
 
-  return { os: "deb", arch: "amd64" };
+  // Try to use Chrome's UserAgentData API for accurate architecture detection
+  let arch = "unknown";
+  if (uaData && uaData.getHighEntropyValues) {
+    try {
+      const highEntropy = await uaData.getHighEntropyValues(["architecture", "bitness"]);
+      if (highEntropy.architecture) {
+        const archMap = {
+          "arm": "arm64",
+          "x86": highEntropy.bitness === "64" ? "x64" : "x86"
+        };
+        arch = archMap[highEntropy.architecture] || highEntropy.architecture;
+      }
+    } catch (e) {
+      // Fallback to UA string detection
+      console.log("Could not get high entropy values:", e);
+    }
+  }
+
+  // Fallback architecture detection from UA string
+  if (arch === "unknown") {
+    const archHint = (uaData.architecture || ua).toLowerCase();
+    if (/arm64|aarch64/.test(archHint)) {
+      arch = "arm64";
+    } else if (/arm/.test(archHint)) {
+      arch = "arm";
+    } else if (/x64|x86_64|amd64|win64/.test(archHint) || /WOW64|Win64/.test(ua)) {
+      arch = "x64";
+    } else if (/i[3-6]86|x86/.test(archHint)) {
+      arch = "x86";
+    }
+  }
+
+  // OS Detection
+  if (/win/i.test(platform) || /windows/i.test(ua)) {
+    return { os: "windows", arch: arch === "unknown" ? null : arch, isMobile: false };
+  }
+
+  if (/mac/i.test(platform) || /macintosh|mac os x/i.test(ua)) {
+    // For Mac, try to detect Apple Silicon vs Intel
+    if (arch === "unknown") {
+      // Check for Apple Silicon indicators
+      if (/Apple/.test(navigator.vendor) && navigator.maxTouchPoints > 0) {
+        arch = "arm64"; // Likely Apple Silicon
+      } else {
+        arch = null; // Will show both options
+      }
+    }
+    return { os: "mac", arch, isMobile: false };
+  }
+
+  if (/linux/i.test(platform) || /linux/i.test(ua)) {
+    // Detect Linux distribution type
+    const distro = /ubuntu|debian/i.test(ua) ? "deb" :
+                   /fedora|centos|redhat|rhel|opensuse|suse/i.test(ua) ? "rpm" :
+                   "both"; // Show both if unknown
+    return {
+      os: "linux",
+      distro,
+      arch: arch === "unknown" ? null : arch,
+      isMobile: false
+    };
+  }
+
+  return { os: "unknown", arch: "unknown", isMobile: false };
 }
 
-function osLabelHebrew(osCode) {
+function osLabelHebrew(platform) {
   const labels = {
-    windows: "ווינדוס",
-    mac: "מק (macOS)",
-    deb: "לינוקס (deb)",
-    rpm: "לינוקס (rpm)",
+    windows: "Windows",
+    mac: "macOS",
+    linux: "Linux",
+    ios: "iOS",
+    android: "Android",
+    mobile: "מכשיר נייד",
+    unknown: "לא מזוהה"
   };
-  return labels[osCode] || osCode;
+  return labels[platform.os] || platform.os;
 }
 
 function archLabelHebrew(arch) {
   const labels = {
-    x64: "x64",
-    amd64: "x64",
-    arm64: "ARM64",
+    x64: "Intel/AMD 64-bit",
+    x86: "Intel/AMD 32-bit",
+    arm64: "ARM64 / Apple Silicon",
     arm: "ARM",
+    mobile: "נייד",
+    unknown: "לא מזוהה"
   };
   return labels[arch] || arch;
 }
 
-function inferArchFromName(name, fallback) {
-  const lname = (name || "").toLowerCase();
-  if (/arm64|aarch64/.test(lname)) return "arm64";
-  if (/x86_64|amd64|x64/.test(lname)) return "x64";
-  if (/arm/.test(lname)) return "arm";
-  return fallback;
+function getArchIcon(arch) {
+  const icons = {
+    x64: "memory",
+    x86: "memory_alt",
+    arm64: "developer_board",
+    arm: "developer_board",
+    unknown: "help_outline"
+  };
+  return icons[arch] || "help_outline";
+}
+
+function getOSIcon(os) {
+  const icons = {
+    windows: "desktop_windows",
+    mac: "laptop_mac",
+    linux: "computer",
+    deb: "computer",
+    rpm: "computer",
+    ios: "phone_iphone",
+    android: "phone_android",
+    mobile: "smartphone",
+    unknown: "devices"
+  };
+  return icons[os] || "devices";
 }
 
 function formatFileSize(bytes) {
@@ -68,47 +150,72 @@ function formatFileSize(bytes) {
   return mb > 0 ? mb + " מ״ב" : "< 1 מ״ב";
 }
 
-function pickBestAsset(assets) {
-  if (!assets || assets.length === 0) return null;
-  const { os, arch } = detectPlatform();
+function filterAssetsByPlatform(assets, platform) {
+  if (!assets || assets.length === 0) return [];
+
   const list = assets.map((a) => ({
     ...a,
     lname: (a.name || "").toLowerCase(),
   }));
 
-  if (os === "windows") {
-    const tries = [/x64.*\.msi$/, /x64.*\.exe$/, /_x64\.msi$/, /_x64\.exe$/];
-    for (const r of tries) {
-      const f = list.find((a) => r.test(a.lname));
-      if (f) return f;
+  if (platform.os === "windows") {
+    // Filter Windows installers
+    return list.filter(a => /\.(msi|exe)$/i.test(a.name))
+      .sort((a, b) => {
+        // Prioritize MSI over EXE
+        if (a.lname.endsWith('.msi') && !b.lname.endsWith('.msi')) return -1;
+        if (!a.lname.endsWith('.msi') && b.lname.endsWith('.msi')) return 1;
+        return 0;
+      });
+  }
+
+  if (platform.os === "linux") {
+    // Filter based on distribution
+    if (platform.distro === "deb") {
+      return list.filter(a => /\.deb$/i.test(a.name));
+    } else if (platform.distro === "rpm") {
+      return list.filter(a => /\.rpm$/i.test(a.name));
+    } else {
+      // Show both deb and rpm
+      return list.filter(a => /\.(deb|rpm)$/i.test(a.name))
+        .sort((a, b) => {
+          // Group by type
+          if (a.lname.endsWith('.deb') && !b.lname.endsWith('.deb')) return -1;
+          if (!a.lname.endsWith('.deb') && b.lname.endsWith('.deb')) return 1;
+          return 0;
+        });
     }
   }
 
-  if (os === "mac") {
-    const f = list.find((a) => /\.(pkg|dmg)$/.test(a.lname));
-    if (f) return f;
+  if (platform.os === "mac") {
+    // For macOS, we'll show the install command, but still filter DMG/PKG if needed
+    return list.filter(a => /\.(dmg|pkg)$/i.test(a.name));
   }
 
-  if (os === "rpm") {
-    const archMarker = arch === "arm64" ? "aarch64|arm64" : "x86_64|amd64|x64";
-    const re = new RegExp(archMarker + ".*\\.rpm|\\." + arch + "\\.rpm");
-    const f = list.find((a) => re.test(a.lname));
-    if (f) return f;
-  }
+  return [];
+}
 
-  if (os === "deb") {
-    const archMarker = arch === "arm64" ? "arm64|aarch64" : "amd64|x86_64|x64";
-    const re = new RegExp(archMarker + ".*\\.deb|\\." + arch + "\\.deb");
-    const f = list.find((a) => re.test(a.lname));
-    if (f) return f;
-  }
+function groupAssetsByArch(assets) {
+  const groups = {
+    x64: [],
+    arm64: [],
+    unknown: []
+  };
 
-  const preferred = [".msi", ".exe", ".pkg", ".dmg", ".deb", ".rpm"];
-  for (const ext of preferred) {
-    const f = list.find((a) => a.lname.endsWith(ext));
-    if (f) return f;
-  }
-  return list[0] || null;
+  assets.forEach(asset => {
+    const name = asset.name.toLowerCase();
+    if (/arm64|aarch64/.test(name)) {
+      groups.arm64.push(asset);
+    } else if (/x64|x86_64|amd64/.test(name) || (name.includes('64') && !name.includes('arm'))) {
+      groups.x64.push(asset);
+    } else if (/arm/.test(name)) {
+      groups.arm64.push(asset);
+    } else {
+      groups.unknown.push(asset);
+    }
+  });
+
+  return groups;
 }
 
 let appState = {
@@ -120,6 +227,7 @@ let appState = {
   dbAssets: [],
   showAllAssets: false,
   includeDb: false,
+  platform: null
 };
 
 function setState(patch) {
@@ -127,7 +235,7 @@ function setState(patch) {
   renderApp();
 }
 
-function renderApp() {
+async function renderApp() {
   const root = document.getElementById("zayit-root");
   if (!root) return;
 
@@ -147,12 +255,83 @@ function renderApp() {
     return;
   }
 
-  const detected = detectPlatform();
+  const platform = appState.platform || await detectPlatform();
+  if (!appState.platform) {
+    appState.platform = platform;
+  }
+
   const release = appState.release;
   const assets = release ? release.assets || [] : [];
-  const best = release ? pickBestAsset(assets) : null;
-  const displayArch =
-    best && best.name ? inferArchFromName(best.name, detected.arch) : detected.arch;
+
+  // Handle mobile devices
+  if (platform.isMobile) {
+    root.innerHTML = `
+      <div class="card">
+        <div class="card-inner">
+          <div class="center" style="margin-bottom:1.8rem;">
+            <img src="${BRAND_ICON}" alt="Zayit logo" class="header-logo" />
+            <h1 class="title">זית</h1>
+            <p class="subtitle">
+              <span class="material-symbols-outlined">${getOSIcon(platform.os)}</span>
+              ${osLabelHebrew(platform)}
+            </p>
+          </div>
+
+          <div class="section section-box" style="text-align:center;">
+            <span class="material-symbols-outlined" style="font-size:3rem;color:var(--gold-muted);margin-bottom:1rem;display:block;">
+              mobile_off
+            </span>
+            <h2 style="color:var(--text-main);margin:0 0 0.5rem 0;">
+              לא נתמך במכשירים ניידים
+            </h2>
+            <p style="color:var(--gold-soft);margin:0;font-size:0.95rem;">
+              זית הוא יישום שולחני בלבד.<br/>
+              אנא גש מהמחשב שלך כדי להוריד את התוכנה.
+            </p>
+          </div>
+
+          <div class="footer">
+            נוצר על ידי Elyahou Gambache
+          </div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // Handle unknown OS
+  if (platform.os === "unknown") {
+    root.innerHTML = `
+      <div class="card">
+        <div class="card-inner">
+          <div class="center" style="margin-bottom:1.8rem;">
+            <img src="${BRAND_ICON}" alt="Zayit logo" class="header-logo" />
+            <h1 class="title">זית — הורדה</h1>
+          </div>
+
+          <div class="section section-box" style="text-align:center;">
+            <span class="material-symbols-outlined" style="font-size:3rem;color:var(--gold-muted);margin-bottom:1rem;display:block;">
+              help_outline
+            </span>
+            <h2 style="color:var(--text-main);margin:0 0 0.5rem 0;">
+              מערכת הפעלה לא מזוהה
+            </h2>
+            <p style="color:var(--gold-soft);margin:0 0 1.5rem 0;font-size:0.95rem;">
+              לא הצלחנו לזהות את מערכת ההפעלה שלך.<br/>
+              בחר ידנית את הקובץ המתאים:
+            </p>
+            ${renderManualDownloadLinks(assets)}
+          </div>
+
+          <div class="footer">
+            נוצר על ידי Elyahou Gambache
+          </div>
+        </div>
+      </div>
+    `;
+    attachEventHandlers();
+    return;
+  }
 
   const errorBlock = appState.error
     ? `
@@ -166,123 +345,303 @@ function renderApp() {
     : "";
 
   let mainDownloadBlock = "";
-  let noAssetsBlock = "";
-  if (!appState.error && best) {
+
+  // Special handling for macOS - show curl command
+  if (platform.os === "mac") {
+    mainDownloadBlock = `
+      <div class="section section-box">
+        <h2 class="section-title">
+          <span class="material-symbols-outlined">terminal</span>
+          <span>התקנה אוטומטית עבור macOS</span>
+        </h2>
+        <p style="color:var(--gold-soft);margin:0 0 1rem 0;font-size:0.95rem;">
+          העתק והרץ את הפקודה הבאה בטרמינל:
+        </p>
+        <div class="command-box">
+          <code id="mac-command">curl -L https://raw.githubusercontent.com/kdroidFilter/SeforimApp/refs/heads/master/launch.mac | bash</code>
+          <button class="copy-btn" onclick="copyMacCommand()">
+            <span class="material-symbols-outlined">content_copy</span>
+          </button>
+        </div>
+        <p style="color:var(--gold-muted);margin:1rem 0 0 0;font-size:0.85rem;">
+          <span class="material-symbols-outlined" style="font-size:0.95rem;vertical-align:middle;">info</span>
+          הסקריפט יוריד ויתקין את הגרסה המתאימה למחשב שלך אוטומטית
+        </p>
+      </div>
+    `;
+  } else if (platform.os === "windows") {
+    // Windows - show architecture options if unknown
+    const windowsAssets = filterAssetsByPlatform(assets, platform);
+    const archGroups = groupAssetsByArch(windowsAssets);
+
+    if (platform.arch && archGroups[platform.arch]?.length > 0) {
+      // Known architecture with matching assets
+      const recommended = archGroups[platform.arch][0];
+      mainDownloadBlock = `
+        <div class="section section-box">
+          <h2 class="section-title">
+            <span class="material-symbols-outlined">download</span>
+            <span>הורדת התוכנה</span>
+          </h2>
+          <p style="color:var(--gold-soft);margin:0 0 1rem 0;font-size:0.95rem;">
+            קובץ מומלץ בשבילך:
+            <strong>${recommended.name}</strong>
+            (${recommended.size})
+          </p>
+          <div class="btn-row">
+            <a href="${recommended.url}" target="_blank" class="btn btn-primary">
+              <span class="material-symbols-outlined">download</span>
+              <span>הורד עכשיו</span>
+            </a>
+          </div>
+          ${archGroups[platform.arch === 'x64' ? 'arm64' : 'x64']?.length > 0 ? `
+            <div style="margin-top:1rem;text-align:center;">
+              <button class="toggle-button" onclick="setState({showAllAssets: !appState.showAllAssets})">
+                <span class="material-symbols-outlined">
+                  ${appState.showAllAssets ? 'expand_less' : 'expand_more'}
+                </span>
+                <span>${appState.showAllAssets ? 'הסתר' : 'הצג'} ארכיטקטורות אחרות</span>
+              </button>
+            </div>
+            ${appState.showAllAssets ? renderArchitectureOptions(archGroups, platform.arch) : ''}
+          ` : ''}
+        </div>
+      `;
+    } else {
+      // Unknown architecture or no matching assets - show both options
+      mainDownloadBlock = renderWindowsArchOptions(archGroups);
+    }
+  } else if (platform.os === "linux") {
+    // Linux - show both DEB and RPM
+    const linuxAssets = filterAssetsByPlatform(assets, platform);
+    const debAssets = linuxAssets.filter(a => a.name.toLowerCase().endsWith('.deb'));
+    const rpmAssets = linuxAssets.filter(a => a.name.toLowerCase().endsWith('.rpm'));
+
     mainDownloadBlock = `
       <div class="section section-box">
         <h2 class="section-title">
           <span class="material-symbols-outlined">download</span>
-          <span>הורדת התוכנה</span>
+          <span>הורדת התוכנה עבור Linux</span>
         </h2>
-        <p style="color:var(--gold-soft);margin:0 0 1rem 0;font-size:0.9rem;">
-          קובץ מומלץ בשבילך:
-          <strong>${best.name}</strong>
-          (${best.size})
-        </p>
-        <div class="btn-row">
-          <a href="${best.url}" target="_blank" class="btn btn-primary">
-            <span class="material-symbols-outlined">download</span>
-            <span>הורד עכשיו</span>
-          </a>
+
+        ${debAssets.length > 0 ? `
+          <div class="linux-distro-section">
+            <h3 style="color:var(--text-main);font-size:1rem;margin:0 0 0.75rem 0;display:flex;align-items:center;gap:0.4rem;">
+              <span class="material-symbols-outlined">package_2</span>
+              Debian/Ubuntu (.deb)
+            </h3>
+            ${renderLinuxArchOptions(debAssets, 'deb')}
+          </div>
+        ` : ''}
+
+        ${rpmAssets.length > 0 ? `
+          <div class="linux-distro-section" style="margin-top:1.5rem;">
+            <h3 style="color:var(--text-main);font-size:1rem;margin:0 0 0.75rem 0;display:flex;align-items:center;gap:0.4rem;">
+              <span class="material-symbols-outlined">package_2</span>
+              Fedora/RHEL/openSUSE (.rpm)
+            </h3>
+            ${renderLinuxArchOptions(rpmAssets, 'rpm')}
+          </div>
+        ` : ''}
+
+        ${debAssets.length === 0 && rpmAssets.length === 0 ? `
+          <p style="color:var(--gold-soft);text-align:center;margin:0;">
+            לא נמצאו קבצי Linux זמינים בגרסה זו
+          </p>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  // Database section
+  const dbSection = renderDbSection();
+
+  root.innerHTML = `
+    <div class="card">
+      <div class="card-inner">
+        <div class="center" style="margin-bottom:1.8rem;">
+          <img src="${BRAND_ICON}" alt="Zayit logo" class="header-logo" />
+          <h1 class="title">זית — הורדה מהירה</h1>
+          <p class="subtitle">
+            <span class="material-symbols-outlined">${getOSIcon(platform.os)}</span>
+            זוהה: <strong>${osLabelHebrew(platform)}</strong>
+            ${platform.arch && platform.arch !== 'unknown' ? `
+              •
+              <span class="material-symbols-outlined" style="font-size:1rem;">${getArchIcon(platform.arch)}</span>
+              <strong>${archLabelHebrew(platform.arch)}</strong>
+            ` : ''}
+          </p>
+          ${release ? `<p class="version-text">גרסה ${release.tag_name}</p>` : ""}
+        </div>
+
+        ${errorBlock}
+        ${mainDownloadBlock}
+        ${dbSection}
+
+        <div class="footer">
+          נוצר על ידי Elyahou Gambache
         </div>
       </div>
-    `;
-  } else if (!appState.error && !best) {
-    noAssetsBlock = `
-      <div class="section section-box" style="text-align:center;">
-        <p style="margin:0;color:var(--gold-soft);font-size:0.9rem;">
-          לא נמצאו קבצים זמינים להורדה לגרסה זו.
-        </p>
+    </div>
+  `;
+
+  attachEventHandlers();
+}
+
+function renderWindowsArchOptions(archGroups) {
+  return `
+    <div class="section section-box">
+      <h2 class="section-title">
+        <span class="material-symbols-outlined">download</span>
+        <span>בחר את הארכיטקטורה שלך</span>
+      </h2>
+      <p style="color:var(--gold-soft);margin:0 0 1.5rem 0;font-size:0.9rem;">
+        לא הצלחנו לזהות את הארכיטקטורה. בחר את האפשרות המתאימה:
+      </p>
+
+      <div class="arch-options">
+        ${archGroups.x64?.length > 0 ? `
+          <div class="arch-option">
+            <div class="arch-header">
+              <span class="material-symbols-outlined">${getArchIcon('x64')}</span>
+              <h3>${archLabelHebrew('x64')}</h3>
+            </div>
+            <p class="arch-desc">רוב המחשבים המודרניים</p>
+            ${archGroups.x64.map(asset => `
+              <a href="${asset.url}" target="_blank" class="btn btn-primary" style="width:100%;margin-top:0.5rem;">
+                <span class="material-symbols-outlined">download</span>
+                <span>${asset.name} (${asset.size})</span>
+              </a>
+            `).join('')}
+          </div>
+        ` : ''}
+
+        ${archGroups.arm64?.length > 0 ? `
+          <div class="arch-option">
+            <div class="arch-header">
+              <span class="material-symbols-outlined">${getArchIcon('arm64')}</span>
+              <h3>${archLabelHebrew('arm64')}</h3>
+            </div>
+            <p class="arch-desc">מחשבי Surface וכדומה</p>
+            ${archGroups.arm64.map(asset => `
+              <a href="${asset.url}" target="_blank" class="btn btn-primary" style="width:100%;margin-top:0.5rem;">
+                <span class="material-symbols-outlined">download</span>
+                <span>${asset.name} (${asset.size})</span>
+              </a>
+            `).join('')}
+          </div>
+        ` : ''}
       </div>
-    `;
-  }
+    </div>
+  `;
+}
 
-  const otherAssets = assets.filter((a) => a !== best);
-  const showAll = appState.showAllAssets;
-  let assetsList = "";
-  if (otherAssets.length > 0 || (!best && assets.length > 0)) {
-    const listSource = best && !showAll ? [] : otherAssets;
-    const listToRender = !best ? assets : listSource;
-    const shouldRenderList = listToRender.length > 0;
+function renderLinuxArchOptions(assets, type) {
+  const archGroups = groupAssetsByArch(assets);
 
-    const toggleButton =
-      best && otherAssets.length > 0
-        ? `
-            <button class="toggle-button inline" id="zayit-toggle-assets">
-              <span class="material-symbols-outlined">
-                ${showAll ? "expand_less" : "expand_more"}
-              </span>
-              <span>${showAll ? "הסתר" : "הצג ארכיטקטורות נוספות"}</span>
-            </button>
-          `
-        : "";
-
-    const listHtml = shouldRenderList
-      ? `
-          <div class="assets-list compact">
-            ${listToRender
-              .map(
-                (a) => `
-                  <div class="asset-item compact">
-                    <div class="asset-line">
-                      <div class="asset-meta">
-                        <p class="asset-name" style="margin:0;">${a.name}</p>
-                        <p class="asset-size" style="margin:0.1rem 0 0 0;">גודל: ${a.size}</p>
-                      </div>
-                      <a href="${a.url}" target="_blank" class="btn btn-secondary">
-                        <span class="material-symbols-outlined">download</span>
-                        <span>הורדה</span>
-                      </a>
-                    </div>
-                  </div>
-                `
-              )
-              .join("")}
+  return `
+    <div class="arch-options compact">
+      ${archGroups.x64?.length > 0 ? `
+        <div class="download-item">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+            <span class="material-symbols-outlined" style="font-size:1rem;color:var(--gold-soft);">${getArchIcon('x64')}</span>
+            <span style="color:var(--gold-soft);font-size:0.9rem;">${archLabelHebrew('x64')}</span>
           </div>
-        `
-      : "";
-
-    assetsList = `
-      <div class="section section-box">
-        <div class="section-header">
-          <div class="section-title">
-            <span class="material-symbols-outlined">folder_open</span>
-            <span>ארכיטקטורות אחרות</span>
-          </div>
-          ${toggleButton}
+          ${archGroups.x64.map(asset => `
+            <a href="${asset.url}" target="_blank" class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;">
+              <span class="material-symbols-outlined">download</span>
+              <span>${asset.name} (${asset.size})</span>
+            </a>
+          `).join('')}
         </div>
-        ${listHtml}
-      </div>
-    `;
+      ` : ''}
+
+      ${archGroups.arm64?.length > 0 ? `
+        <div class="download-item">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+            <span class="material-symbols-outlined" style="font-size:1rem;color:var(--gold-soft);">${getArchIcon('arm64')}</span>
+            <span style="color:var(--gold-soft);font-size:0.9rem;">${archLabelHebrew('arm64')}</span>
+          </div>
+          ${archGroups.arm64.map(asset => `
+            <a href="${asset.url}" target="_blank" class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;">
+              <span class="material-symbols-outlined">download</span>
+              <span>${asset.name} (${asset.size})</span>
+            </a>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      ${archGroups.unknown?.length > 0 ? `
+        <div class="download-item">
+          ${archGroups.unknown.map(asset => `
+            <a href="${asset.url}" target="_blank" class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;">
+              <span class="material-symbols-outlined">download</span>
+              <span>${asset.name} (${asset.size})</span>
+            </a>
+          `).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderArchitectureOptions(archGroups, currentArch) {
+  const otherArch = currentArch === 'x64' ? 'arm64' : 'x64';
+  if (!archGroups[otherArch]?.length) return '';
+
+  return `
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,215,0,0.1);">
+      <p style="color:var(--gold-soft);font-size:0.9rem;margin:0 0 0.75rem 0;">
+        ארכיטקטורות אחרות:
+      </p>
+      ${archGroups[otherArch].map(asset => `
+        <a href="${asset.url}" target="_blank" class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;">
+          <span class="material-symbols-outlined">${getArchIcon(otherArch)}</span>
+          <span>${asset.name} (${asset.size})</span>
+        </a>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderManualDownloadLinks(assets) {
+  if (!assets || assets.length === 0) {
+    return `<p style="color:var(--gold-soft);">לא נמצאו קבצים זמינים</p>`;
   }
 
-  const assetsToggleBlock = assetsList;
+  return `
+    <div class="assets-list compact">
+      ${assets.map(asset => `
+        <div class="asset-item compact">
+          <div class="asset-line">
+            <div class="asset-meta">
+              <p class="asset-name">${asset.name}</p>
+              <p class="asset-size">גודל: ${asset.size}</p>
+            </div>
+            <a href="${asset.url}" target="_blank" class="btn btn-secondary">
+              <span class="material-symbols-outlined">download</span>
+              <span>הורדה</span>
+            </a>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
 
-  let noAssetsAllBlock = "";
-  if (!appState.error && assets.length === 0) {
-    noAssetsAllBlock = `
-      <div class="section section-box" style="text-align:center;">
-        <p style="margin:0;color:var(--gold-soft);font-size:0.9rem;">
-          לא נמצאו קבצים זמינים עבור הגרסה העדכנית.
-        </p>
-      </div>
-    `;
-  }
-
-  const resolvedNoAssetsBlock = noAssetsBlock || noAssetsAllBlock;
-
+function renderDbSection() {
   const showDbLinks = appState.includeDb;
-  const dbToggleButton =
-    appState.dbAssets.length > 0
-      ? `
-          <button class="toggle-button inline" id="zayit-toggle-db">
-            <span class="material-symbols-outlined">
-              ${showDbLinks ? "expand_less" : "expand_more"}
-            </span>
-            <span>${showDbLinks ? "הסתר קבצי DB" : "הצג קבצי DB"}</span>
-          </button>
-        `
-      : "";
+  const dbToggleButton = appState.dbAssets.length > 0
+    ? `
+        <button class="toggle-button inline" id="zayit-toggle-db">
+          <span class="material-symbols-outlined">
+            ${showDbLinks ? "expand_less" : "expand_more"}
+          </span>
+          <span>${showDbLinks ? "הסתר קבצי DB" : "הצג קבצי DB"}</span>
+        </button>
+      `
+    : "";
+
   let dbInner = "";
   if (appState.dbLoading) {
     dbInner = `
@@ -358,7 +717,7 @@ function renderApp() {
     }
   }
 
-  const dbSection = `
+  return `
     <div class="section section-db">
       <div class="section-header">
         <div class="section-title">
@@ -371,42 +730,20 @@ function renderApp() {
       </div>
     </div>
   `;
-
-  root.innerHTML = `
-    <div class="card">
-      <div class="card-inner">
-        <div class="center" style="margin-bottom:1.8rem;">
-          <img src="${BRAND_ICON}" alt="Zayit logo" class="header-logo" />
-          <h1 class="title">זית — הורדה מהירה</h1>
-          <p class="subtitle">
-            <span class="material-symbols-outlined">desktop_windows</span>
-            זוהה:
-            <strong>${osLabelHebrew(detected.os)}</strong>
-            •
-            <strong>${archLabelHebrew(displayArch)}</strong>
-          </p>
-          ${
-            release
-              ? `<p class="version-text">גרסה ${release.tag_name}</p>`
-              : ""
-          }
-        </div>
-
-        ${errorBlock}
-        ${mainDownloadBlock}
-        ${resolvedNoAssetsBlock}
-        ${assetsToggleBlock}
-        ${dbSection}
-
-        <div class="footer">
-          נוצר על ידי Elyahou Gambache
-        </div>
-      </div>
-    </div>
-  `;
-
-  attachEventHandlers();
 }
+
+// Global function for copying Mac command
+window.copyMacCommand = function() {
+  const command = document.getElementById('mac-command').textContent;
+  navigator.clipboard.writeText(command).then(() => {
+    const btn = event.target.closest('.copy-btn');
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<span class="material-symbols-outlined">check</span>';
+    setTimeout(() => {
+      btn.innerHTML = originalContent;
+    }, 2000);
+  });
+};
 
 function attachEventHandlers() {
   const toggleBtn = document.getElementById("zayit-toggle-assets");
@@ -422,24 +759,13 @@ function attachEventHandlers() {
       setState({ includeDb: !appState.includeDb });
     });
   }
-
-  const includeDbCheckbox = document.getElementById("zayit-include-db");
-  if (includeDbCheckbox) {
-    includeDbCheckbox.addEventListener("change", function (e) {
-      setState({ includeDb: e.target.checked });
-    });
-  }
 }
 
 async function fetchLatestRelease() {
   try {
     const headers = {};
     const resp = await fetch(
-      "https://api.github.com/repos/" +
-        GITHUB_OWNER +
-        "/" +
-        GITHUB_REPO +
-        "/releases/latest",
+      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`,
       { headers }
     );
     if (!resp.ok) {
@@ -478,11 +804,7 @@ async function fetchDbAssets() {
   try {
     const headers = {};
     const resp = await fetch(
-      "https://api.github.com/repos/" +
-        DB_OWNER +
-        "/" +
-        DB_REPO +
-        "/releases/latest",
+      `https://api.github.com/repos/${DB_OWNER}/${DB_REPO}/releases/latest`,
       { headers }
     );
     if (!resp.ok) {
@@ -520,8 +842,16 @@ async function fetchDbAssets() {
   }
 }
 
-window.addEventListener("DOMContentLoaded", function () {
+window.addEventListener("DOMContentLoaded", async function () {
   renderApp(); // Render loading state
-  fetchLatestRelease();
-  fetchDbAssets();
+
+  // Start platform detection early
+  const platform = await detectPlatform();
+  appState.platform = platform;
+
+  // Fetch data in parallel
+  await Promise.all([
+    fetchLatestRelease(),
+    fetchDbAssets()
+  ]);
 });

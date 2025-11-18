@@ -424,6 +424,140 @@ body {
   color: var(--gold-muted);
 }
 
+/* Command box for macOS */
+.command-box {
+  position: relative;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin: 0.75rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.command-box code {
+  flex: 1;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  color: var(--gold);
+  font-size: 0.9rem;
+  word-break: break-all;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.copy-btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.08));
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--gold);
+}
+
+.copy-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 215, 0, 0.15));
+  transform: translateY(-1px);
+}
+
+.copy-btn:active {
+  transform: translateY(0);
+}
+
+/* Architecture options */
+.arch-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.arch-options.compact {
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.arch-option {
+  background: rgba(10, 10, 20, 0.7);
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  transition: all var(--transition-fast);
+}
+
+.arch-option:hover {
+  border-color: rgba(255, 215, 0, 0.3);
+  background: rgba(12, 12, 24, 0.8);
+}
+
+.arch-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.arch-header span {
+  color: var(--gold);
+  font-size: 1.5rem;
+}
+
+.arch-header h3 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.arch-desc {
+  color: var(--gold-soft);
+  font-size: 0.85rem;
+  margin: 0 0 1rem 0;
+}
+
+.linux-distro-section {
+  background: rgba(10, 10, 18, 0.5);
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 215, 0, 0.08);
+}
+
+.download-item {
+  margin-bottom: 1rem;
+}
+
+.download-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Error box */
+.error-box {
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.error-text {
+  color: var(--danger);
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+}
+
+.error-help {
+  color: var(--text-muted);
+  margin: 0;
+  font-size: 0.85rem;
+}
+
 .checkbox-row {
   display: flex;
   align-items: center;

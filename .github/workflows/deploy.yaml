@@ -52,7 +52,7 @@ jobs:
             jdk_arch: aarch64
 
           # macOS Intel (x64)
-          - os: macos-13      # runner MacIntel (x64)
+          - os: macos-15-intel      # runner MacIntel (x64)
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-osx-x64-b176.4.tar.gz"
             jdk_arch: x64
 

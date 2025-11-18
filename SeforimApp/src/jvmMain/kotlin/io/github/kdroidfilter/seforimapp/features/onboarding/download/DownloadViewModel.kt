@@ -96,12 +96,13 @@ class DownloadViewModel(
                     _speed.value = speed
                 }
 
+                // Make the result available to the extraction step before marking as completed
+                processRepository.setPendingZstPath(path)
+
                 _inProgress.value = false
                 _speed.value = 0L
                 _progress.value = 1f
                 _completed.value = true
-                // Make the result available to the extraction step
-                processRepository.setPendingZstPath(path)
             }.onFailure {
                 _inProgress.value = false
                 _speed.value = 0L

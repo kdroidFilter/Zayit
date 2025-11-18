@@ -49,7 +49,6 @@ fun DownloadScreen(
     navController: NavController, progressBarState: ProgressBarState = ProgressBarState
 ) {
     val viewModel: DownloadViewModel = LocalAppGraph.current.downloadViewModel
-    val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
     val state by viewModel.state.collectAsState()
 
     // Update top progress indicator baseline for this step
@@ -61,11 +60,11 @@ fun DownloadScreen(
         progressBarState.setProgress(anchored)
     }
 
-    // Trigger cleanup and download once when entering this screen
+    // Trigger download once when entering this screen
     LaunchedEffect(Unit) {
-        // Clean up old database files before starting the download
-        cleanupUseCase.cleanupDatabaseFiles()
-        viewModel.onEvent(DownloadEvents.Start)
+        if (!state.inProgress && !state.completed) {
+            viewModel.onEvent(DownloadEvents.Start)
+        }
     }
 
     // Clear back stack once download starts to prevent going back

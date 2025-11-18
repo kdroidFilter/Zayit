@@ -47,7 +47,7 @@ import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.icons.*
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
@@ -82,6 +82,24 @@ data class SearchFilterCard(
     val explanation: StringResource
 )
 
+/**
+ * Callbacks used by [HomeView] to delegate all search-related
+ * interactions to the SearchHomeViewModel without referencing it
+ * directly inside UI code.
+ */
+data class HomeSearchCallbacks(
+    val onReferenceQueryChanged: (String) -> Unit,
+    val onTocQueryChanged: (String) -> Unit,
+    val onFilterChange: (SearchFilter) -> Unit,
+    val onLevelIndexChange: (Int) -> Unit,
+    val onGlobalExtendedChange: (Boolean) -> Unit,
+    val onSubmitTextSearch: (String) -> Unit,
+    val onOpenReference: () -> Unit,
+    val onPickCategory: (Category) -> Unit,
+    val onPickBook: (BookModel) -> Unit,
+    val onPickToc: (TocEntry) -> Unit
+)
+
 @OptIn(ExperimentalJewelApi::class, ExperimentalLayoutApi::class)
 @Composable
 /**
@@ -95,6 +113,8 @@ data class SearchFilterCard(
 fun HomeView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
+    searchUi: SearchHomeUiState,
+    searchCallbacks: HomeSearchCallbacks,
     modifier: Modifier = Modifier
 ) {
     // Global zoom level from AppSettings; used to scale Home view uniformly
@@ -237,52 +257,49 @@ fun HomeView(
                     .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
-            // Keep state outside LazyColumn so it persists across item recompositions
-            val appGraph = LocalAppGraph.current
-            val searchVm = remember { appGraph.searchHomeViewModel }
-            val searchUi = searchVm.uiState.collectAsState().value
-            val scope = rememberCoroutineScope()
-            val searchState = remember { TextFieldState() }
-            val referenceSearchState = remember { TextFieldState() }
-            val tocSearchState = remember { TextFieldState() }
-            var skipNextReferenceQuery by remember { mutableStateOf(false) }
-            var skipNextTocQuery by remember { mutableStateOf(false) }
-            // Shared focus requester so Tab from the first field can move focus to the TOC field
-            val tocFieldFocusRequester = remember { FocusRequester() }
-            // Shared focus requester for the MAIN search bar so other UI (e.g., level changes)
-            // can reliably return focus to it, allowing immediate Enter to submit.
-            val mainSearchFocusRequester = remember { FocusRequester() }
-            var scopeExpanded by remember { mutableStateOf(false) }
-            // Forward reference input changes to the ViewModel (VM handles debouncing and suggestions)
-            LaunchedEffect(Unit) {
-                snapshotFlow { referenceSearchState.text.toString() }
-                    .collect { qRaw ->
-                        if (skipNextReferenceQuery) {
-                            skipNextReferenceQuery = false
-                        } else {
-                            searchVm.onReferenceQueryChanged(qRaw)
+                // Keep state outside LazyColumn so it persists across item recompositions
+                val scope = rememberCoroutineScope()
+                val searchState = remember { TextFieldState() }
+                val referenceSearchState = remember { TextFieldState() }
+                val tocSearchState = remember { TextFieldState() }
+                var skipNextReferenceQuery by remember { mutableStateOf(false) }
+                var skipNextTocQuery by remember { mutableStateOf(false) }
+                // Shared focus requester so Tab from the first field can move focus to the TOC field
+                val tocFieldFocusRequester = remember { FocusRequester() }
+                // Shared focus requester for the MAIN search bar so other UI (e.g., level changes)
+                // can reliably return focus to it, allowing immediate Enter to submit.
+                val mainSearchFocusRequester = remember { FocusRequester() }
+                var scopeExpanded by remember { mutableStateOf(false) }
+                // Forward reference input changes to the ViewModel (VM handles debouncing and suggestions)
+                LaunchedEffect(Unit) {
+                    snapshotFlow { referenceSearchState.text.toString() }
+                        .collect { qRaw ->
+                            if (skipNextReferenceQuery) {
+                                skipNextReferenceQuery = false
+                            } else {
+                                searchCallbacks.onReferenceQueryChanged(qRaw)
+                            }
                         }
-                    }
-            }
-            // Forward toc input changes to the ViewModel (ignored until a book is selected)
-            LaunchedEffect(Unit) {
-                snapshotFlow { tocSearchState.text.toString() }
-                    .collect { qRaw ->
-                        if (skipNextTocQuery) {
-                            skipNextTocQuery = false
-                        } else {
-                            searchVm.onTocQueryChanged(qRaw)
+                }
+                // Forward toc input changes to the ViewModel (ignored until a book is selected)
+                LaunchedEffect(Unit) {
+                    snapshotFlow { tocSearchState.text.toString() }
+                        .collect { qRaw ->
+                            if (skipNextTocQuery) {
+                                skipNextTocQuery = false
+                            } else {
+                                searchCallbacks.onTocQueryChanged(qRaw)
+                            }
                         }
-                    }
-            }
-            fun launchSearch() {
-                val query = searchState.text.toString().trim()
-                if (query.isBlank() || searchUi.selectedFilter != SearchFilter.TEXT) return
-                scope.launch { searchVm.submitSearch(query) }
-            }
-            fun openReference() {
-                scope.launch { searchVm.openSelectedReferenceInCurrentTab() }
-            }
+                }
+                fun launchSearch() {
+                    val query = searchState.text.toString().trim()
+                    if (query.isBlank() || searchUi.selectedFilter != SearchFilter.TEXT) return
+                    searchCallbacks.onSubmitTextSearch(query)
+                }
+                fun openReference() {
+                    searchCallbacks.onOpenReference()
+                }
 
             // Book-only placeholder hints for the first field (reference mode)
             val bookOnlyHintsGlobal = listOf(
@@ -357,7 +374,7 @@ fun HomeView(
                             SearchBar(
                                 state = if (isReferenceMode) referenceSearchState else searchState,
                                 selectedFilter = searchUi.selectedFilter,
-                                onFilterChange = { searchVm.onFilterChange(it) },
+                                onFilterChange = { searchCallbacks.onFilterChange(it) },
                                 onSubmit = if (isReferenceMode) { { openReference() } } else { { launchSearch() } },
                                 onTab = {
                                     if (isReferenceMode) {
@@ -383,18 +400,18 @@ fun HomeView(
                                 placeholderText = null,
                                 submitOnEnterInReference = isReferenceMode,
                                 globalExtended = searchUi.globalExtended,
-                                onGlobalExtendedChange = { searchVm.onGlobalExtendedChange(it) },
+                                onGlobalExtendedChange = { searchCallbacks.onGlobalExtendedChange(it) },
                                 parentScale = homeScale,
                                 onPickCategory = { picked ->
                                     // Update VM and reflect breadcrumb in the bar input
-                                    searchVm.onPickCategory(picked.category)
+                                    searchCallbacks.onPickCategory(picked.category)
                                     val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparatorTop)
                                     skipNextReferenceQuery = true
                                     referenceSearchState.edit { replace(0, length, full) }
                                 },
                                 onPickBook = { picked ->
                                     // Update VM and reflect breadcrumb in the bar input
-                                    searchVm.onPickBook(picked.book)
+                                    searchCallbacks.onPickBook(picked.book)
                                     val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparatorTop)
                                     skipNextReferenceQuery = true
                                     referenceSearchState.edit { replace(0, length, full) }
@@ -455,19 +472,19 @@ fun HomeView(
                                     tocPreviewHints = searchUi.tocPreviewHints,
                                     showHeader = !isReferenceMode,
                                     onPickCategory = { picked ->
-                                        searchVm.onPickCategory(picked.category)
+                                        searchCallbacks.onPickCategory(picked.category)
                                         val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparator)
                                         skipNextReferenceQuery = true
                                         referenceSearchState.edit { replace(0, length, full) }
                                     },
                                     onPickBook = { picked ->
-                                        searchVm.onPickBook(picked.book)
+                                        searchCallbacks.onPickBook(picked.book)
                                         val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparator)
                                         skipNextReferenceQuery = true
                                         referenceSearchState.edit { replace(0, length, full) }
                                     },
                                     onPickToc = { picked ->
-                                        searchVm.onPickToc(picked.toc)
+                                        searchCallbacks.onPickToc(picked.toc)
                                         val dedup = dedupAdjacent(picked.path)
                                         val stripped = stripBookPrefixFromTocPath(searchUi.selectedScopeBook, dedup)
                                         val display = stripped.joinToString(breadcrumbSeparator)
@@ -481,7 +498,7 @@ fun HomeView(
                                     SearchLevelsPanel(
                                         selectedIndex = searchUi.selectedLevelIndex,
                                         onSelectedIndexChange = {
-                                            searchVm.onLevelIndexChange(it)
+                                            searchCallbacks.onLevelIndexChange(it)
                                             // After changing search level, return focus to the main field
                                             // so the user can immediately press Enter to search.
                                             mainSearchFocusRequester.requestFocus()
@@ -1089,8 +1106,16 @@ private fun SearchBar(
     val totalCatBook = categoriesCount + bookSuggestions.size
     val totalToc = tocSuggestions.size
     val usingToc = totalToc > 0 || tocSuggestionsVisible
-    LaunchedEffect(selectedFilter, suggestionsVisible, tocSuggestionsVisible, categorySuggestions, bookSuggestions, tocSuggestions) {
-        val shouldOpen = selectedFilter == SearchFilter.REFERENCE &&
+    LaunchedEffect(
+        selectedFilter,
+        suggestionsVisible,
+        tocSuggestionsVisible,
+        categorySuggestions,
+        bookSuggestions,
+        tocSuggestions
+    ) {
+        val shouldOpen =
+            selectedFilter == SearchFilter.REFERENCE &&
             ((suggestionsVisible && totalCatBook > 0) || (tocSuggestionsVisible && totalToc > 0))
         popupVisible = shouldOpen
         focusedIndex = if (shouldOpen) 0 else -1
@@ -1486,9 +1511,25 @@ private fun SearchLevelCard(
 @Composable
 fun HomeViewPreview() {
     PreviewContainer {
+        // Minimal stub state for preview; SearchHomeViewModel is not used here.
+        val stubSearchUi = SearchHomeUiState()
+        val stubCallbacks = HomeSearchCallbacks(
+            onReferenceQueryChanged = {},
+            onTocQueryChanged = {},
+            onFilterChange = {},
+            onLevelIndexChange = {},
+            onGlobalExtendedChange = {},
+            onSubmitTextSearch = {},
+            onOpenReference = {},
+            onPickCategory = {},
+            onPickBook = {},
+            onPickToc = {}
+        )
         HomeView(
             uiState = BookContentState(),
             onEvent = {},
+            searchUi = stubSearchUi,
+            searchCallbacks = stubCallbacks,
             modifier = Modifier
         )
     }

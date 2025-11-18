@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -15,6 +16,7 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForHorizontalResize
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForVerticalResize
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -34,6 +36,19 @@ fun EnhancedHorizontalSplitPane(
         if (secondContent == null) {
             splitPaneState.positionPercentage = 1f
         }
+    }
+
+    // Quantize splitter position to 2 decimal places to avoid layout jitter from
+    // floating-point noise, especially on small or non-integer pixel widths.
+    LaunchedEffect(splitPaneState) {
+        snapshotFlow { splitPaneState.positionPercentage }
+            .collect { rawPosition ->
+                val clamped = rawPosition.coerceIn(0f, 1f)
+                val quantized = (clamped * 100f).roundToInt() / 100f
+                if (quantized != rawPosition) {
+                    splitPaneState.positionPercentage = quantized
+                }
+            }
     }
 
     HorizontalSplitPane(
@@ -99,6 +114,19 @@ fun EnhancedVerticalSplitPane(
         if (secondContent == null) {
             splitPaneState.positionPercentage = 1f
         }
+    }
+
+    // Quantize splitter position to 2 decimal places to avoid layout jitter from
+    // floating-point noise, especially on small or non-integer pixel widths.
+    LaunchedEffect(splitPaneState) {
+        snapshotFlow { splitPaneState.positionPercentage }
+            .collect { rawPosition ->
+                val clamped = rawPosition.coerceIn(0f, 1f)
+                val quantized = (clamped * 100f).roundToInt() / 100f
+                if (quantized != rawPosition) {
+                    splitPaneState.positionPercentage = quantized
+                }
+            }
     }
 
     VerticalSplitPane(

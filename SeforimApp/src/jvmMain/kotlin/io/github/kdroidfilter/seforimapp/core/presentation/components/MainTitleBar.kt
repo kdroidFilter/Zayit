@@ -1,15 +1,12 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.components
 
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.times
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsView
@@ -23,20 +20,30 @@ fun DecoratedWindowScope.MainTitleBar() {
         BoxWithConstraints {
             val windowWidth = maxWidth
             val iconsNumber = 4
-            val iconWidth = 40
+            val iconWidth: Dp = 40.dp
+            val density = LocalDensity.current
+
+            // Compute the available width for the tab strip in pixel space and then
+            // quantize to an integer number of pixels before converting back to Dp.
+            // This avoids subtle 1px oscillations on small or non-integer window sizes.
+            val tabsAreaWidth: Dp = with(density) {
+                val windowWidthPx = windowWidth.toPx()
+                val iconsAreaWidthDp = when (getOperatingSystem()) {
+                    OperatingSystem.MACOS -> iconWidth * (iconsNumber + 2)
+                    OperatingSystem.WINDOWS -> iconWidth * (iconsNumber + 3.5f)
+                    else -> iconWidth * iconsNumber
+                }
+                val iconsAreaWidthPx = iconsAreaWidthDp.toPx()
+                val availablePx = (windowWidthPx - iconsAreaWidthPx).coerceAtLeast(0f)
+                val quantizedPx = availablePx.toInt()
+                quantizedPx.toDp()
+            }
             Row {
                 Row(
                     modifier = Modifier
                         .padding(start = 0.dp)
                         .align(Alignment.Start)
-                        .width(
-                            windowWidth -
-                                    when (getOperatingSystem()) {
-                                        OperatingSystem.MACOS -> iconWidth * (iconsNumber + 2).dp
-                                        OperatingSystem.WINDOWS -> iconWidth * (iconsNumber + 3.5).dp
-                                        else -> (iconWidth * iconsNumber).dp
-                                    }
-                        )
+                        .width(tabsAreaWidth)
                 ) {
                     TabsView()
                 }

@@ -424,6 +424,36 @@ body {
   color: var(--gold-muted);
 }
 
+.footer p {
+  margin: 0 0 0.5rem 0;
+}
+
+.github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--gold-soft);
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  background: rgba(255, 215, 0, 0.04);
+  transition: all var(--transition-fast);
+  font-size: 0.9rem;
+}
+
+.github-link:hover {
+  background: rgba(255, 215, 0, 0.12);
+  border-color: rgba(255, 215, 0, 0.3);
+  color: var(--gold);
+  transform: translateY(-1px);
+}
+
+.github-icon {
+  width: 20px;
+  height: 20px;
+}
+
 /* Command box for macOS */
 .command-box {
   position: relative;

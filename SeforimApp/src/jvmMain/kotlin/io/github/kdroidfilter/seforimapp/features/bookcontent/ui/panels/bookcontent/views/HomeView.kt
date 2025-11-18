@@ -5,7 +5,6 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcon
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -101,55 +100,143 @@ fun HomeView(
     // Global zoom level from AppSettings; used to scale Home view uniformly
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     // Apply a gentler zoom curve on the Home screen only: keep default size identical,
-    // but soften +/- zoom steps so they feel less strong here than globally. Animate
-    // the scale so that HomeView appears stable even when settings update shortly
-    // after startup.
-    val targetHomeScale = remember(rawTextSize) {
+    // but soften +/- zoom steps so they feel less strong here than globally.
+    val homeScale = remember(rawTextSize) {
         val ratio = rawTextSize / AppSettings.DEFAULT_TEXT_SIZE
         val softenFactor = 0.3f
         1f + (ratio - 1f) * softenFactor
     }
-    val homeScale by animateFloatAsState(
-        targetValue = targetHomeScale,
-        animationSpec = tween(durationMillis = 220, easing = LinearEasing),
-        label = "homeScaleAnimation"
-    )
-    // Use a more aggressive curve for the top padding so content does not overlap the catalog bar.
-    // Animate this as well to avoid a visible jump on first composition.
-    val targetHomePaddingScale = remember(targetHomeScale) {
-        val delta = targetHomeScale - 1f
-        1f + delta * 6f
-    }
-    val homePaddingScale by animateFloatAsState(
-        targetValue = targetHomePaddingScale,
-        animationSpec = tween(durationMillis = 220, easing = LinearEasing),
-        label = "homePaddingScaleAnimation"
-    )
     Box(modifier = Modifier.fillMaxSize().zIndex(1f).padding(16.dp), contentAlignment = Alignment.TopStart) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val buttonWidth = 130.dp
+            val spacing = 8.dp
+            val totalButtons = 7
+            // Compute how many catalog buttons we can show fully without overflow.
+            val maxVisible = run {
+                var count = totalButtons
+                while (count > 1) {
+                    val required = buttonWidth * count + spacing * (count - 1)
+                    if (required <= maxWidth) break
+                    count--
+                }
+                count
+            }
 
-        Row (
-            Modifier
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        ) {
-            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.TANAKH, onEvent = onEvent, popupWidthMultiplier = 1.50f)
-            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.MISHNA, onEvent = onEvent)
-            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.BAVLI, onEvent = onEvent, popupWidthMultiplier = 1.1f)
-            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.YERUSHALMI, onEvent = onEvent, popupWidthMultiplier = 1.1f)
-            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.MISHNE_TORAH, onEvent = onEvent, popupWidthMultiplier = 1.5f)
-            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.TUR_QUICK_LINKS, onEvent = onEvent, maxPopupHeight = 130.dp)
-            CatalogDropdown(spec = PrecomputedCatalog.Dropdowns.SHULCHAN_ARUCH, onEvent = onEvent, maxPopupHeight = 130.dp, popupWidthMultiplier = 1.1f)
+            var rendered = 0
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(spacing, Alignment.CenterHorizontally),
+            ) {
+                if (rendered < maxVisible) {
+                    CatalogDropdown(
+                        spec = PrecomputedCatalog.Dropdowns.TANAKH,
+                        onEvent = onEvent,
+                        modifier = Modifier.widthIn(max = buttonWidth),
+                        popupWidthMultiplier = 1.50f
+                    )
+                    rendered++
+                }
+                if (rendered < maxVisible) {
+                    CatalogDropdown(
+                        spec = PrecomputedCatalog.Dropdowns.MISHNA,
+                        onEvent = onEvent,
+                        modifier = Modifier.widthIn(max = buttonWidth)
+                    )
+                    rendered++
+                }
+                if (rendered < maxVisible) {
+                    CatalogDropdown(
+                        spec = PrecomputedCatalog.Dropdowns.BAVLI,
+                        onEvent = onEvent,
+                        modifier = Modifier.widthIn(max = buttonWidth),
+                        popupWidthMultiplier = 1.1f
+                    )
+                    rendered++
+                }
+                if (rendered < maxVisible) {
+                    CatalogDropdown(
+                        spec = PrecomputedCatalog.Dropdowns.YERUSHALMI,
+                        onEvent = onEvent,
+                        modifier = Modifier.widthIn(max = buttonWidth),
+                        popupWidthMultiplier = 1.1f
+                    )
+                    rendered++
+                }
+                if (rendered < maxVisible) {
+                    CatalogDropdown(
+                        spec = PrecomputedCatalog.Dropdowns.MISHNE_TORAH,
+                        onEvent = onEvent,
+                        modifier = Modifier.widthIn(max = buttonWidth),
+                        popupWidthMultiplier = 1.5f
+                    )
+                    rendered++
+                }
+                if (rendered < maxVisible) {
+                    CatalogDropdown(
+                        spec = PrecomputedCatalog.Dropdowns.TUR_QUICK_LINKS,
+                        onEvent = onEvent,
+                        modifier = Modifier.widthIn(max = buttonWidth),
+                        maxPopupHeight = 130.dp
+                    )
+                    rendered++
+                }
+                if (rendered < maxVisible) {
+                    CatalogDropdown(
+                        spec = PrecomputedCatalog.Dropdowns.SHULCHAN_ARUCH,
+                        onEvent = onEvent,
+                        modifier = Modifier.widthIn(max = buttonWidth),
+                        maxPopupHeight = 130.dp,
+                        popupWidthMultiplier = 1.1f
+                    )
+                }
+            }
         }
     }
 
     val listState = rememberLazyListState()
+    // Delay the first render of the Home content slightly so that
+    // layout constraints and zoom are settled before it appears.
+    var showHomeContent by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        // A small delay avoids the visual jump when the 600.dp container
+        // is first centered and scaled.
+        delay(10)
+        showHomeContent = true
+    }
+
     VerticallyScrollableContainer(
         scrollState = listState as ScrollableState,
     ) {
-        Box(
-            modifier = modifier.padding(top = 56.dp * homePaddingScale).fillMaxSize().padding(8.dp), // Keep top padding relative to zoom to avoid overlap
+        if (!showHomeContent) {
+            // Reserve space but do not draw the Home content yet.
+            Box(modifier = Modifier.fillMaxSize())
+            return@VerticallyScrollableContainer
+        }
+
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
+            // Keep a fixed logical width for the Home content (600.dp) and clamp the
+            // scale if the window is too narrow so that the scaled content never
+            // overflows horizontally. Padding is derived from the effective scale so
+            // it stops growing once the layout itself is clamped.
+            val baseWidth = 600.dp
+            val maxScaleForWidth = (maxWidth.value / baseWidth.value).coerceAtLeast(0f)
+            val clampedScale = homeScale
+                .coerceAtMost(maxScaleForWidth)
+                .coerceAtLeast(0f)
+            val paddingScale = (1f + (clampedScale - 1f) * 5f)
+                .coerceAtLeast(0.2f)
+
+            Box(
+                modifier = modifier
+                    .padding(top = 56.dp * paddingScale)
+                    .fillMaxSize()
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center
+            ) {
             // Keep state outside LazyColumn so it persists across item recompositions
             val appGraph = LocalAppGraph.current
             val searchVm = remember { appGraph.searchHomeViewModel }
@@ -201,34 +288,15 @@ fun HomeView(
 
             // Main search field focus handled inside SearchBar via autoFocus
 
-            BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                // Ensure the scaled Home content never overflows the available width by
-                // adapting the base width in response to zoom and window size.
-                val density = LocalDensity.current
-                val contentWidth = remember(maxWidth, homeScale) {
-                    with(density) {
-                        val baseWidthPx = 600.dp.roundToPx()
-                        val maxWidthPx = maxWidth.roundToPx()
-                        val scaledBasePx = (baseWidthPx * homeScale).roundToInt()
-                        val targetBasePx =
-                            if (scaledBasePx <= maxWidthPx) {
-                                baseWidthPx
-                            } else {
-                                (maxWidthPx / homeScale).roundToInt()
-                            }
-                        targetBasePx.toDp()
-                    }
-                }
-
-                LazyColumn(
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    // Keep aspect ratio by applying uniform scale to the whole Home content,
-                    // while keeping it responsive to the available width.
-                    modifier = Modifier
-                        .width(contentWidth)
-                        .graphicsLayer(scaleX = homeScale, scaleY = homeScale)
-                ) {
+            LazyColumn(
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                // Keep aspect ratio by applying uniform scale to the whole Home content,
+                // while keeping it within the available width.
+                modifier = Modifier
+                    .width(baseWidth)
+                    .graphicsLayer(scaleX = clampedScale, scaleY = clampedScale)
+            ) {
                     item {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             WelcomeUser(username = searchUi.userDisplayName)
@@ -503,32 +571,19 @@ private fun SearchLevelsPanel(
     val maxIndex = (filterCards.size - 1).coerceAtLeast(0)
     val coercedSelected = sliderPosition.coerceIn(0f, maxIndex.toFloat()).toInt()
 
-    // On very small widths there is not enough room to show
-    // all five cards side by side. In that case, hide the cards
-    // and keep only the slider to avoid horizontal overflow.
-    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val canShowCards = remember(maxWidth) {
-            val minCardWidth = 96.dp
-            val requiredWidth = minCardWidth * filterCards.size
-            maxWidth >= requiredWidth
-        }
-
-        if (canShowCards) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                filterCards.forEachIndexed { index, filterCard ->
-                    SearchLevelCard(
-                        data = filterCard,
-                        selected = index == coercedSelected,
-                        onClick = {
-                            sliderPosition = index.toFloat()
-                            onSelectedIndexChange(index)
-                        }
-                    )
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        filterCards.forEachIndexed { index, filterCard ->
+            SearchLevelCard(
+                data = filterCard,
+                selected = index == coercedSelected,
+                onClick = {
+                    sliderPosition = index.toFloat()
+                    onSelectedIndexChange(index)
                 }
-            }
+            )
         }
     }
 

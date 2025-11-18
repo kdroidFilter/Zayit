@@ -15,6 +15,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentS
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedVerticalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.*
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
@@ -26,7 +28,20 @@ fun BookContentPanel(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier,
-    isRestoringSession: Boolean = false
+    isRestoringSession: Boolean = false,
+    searchUi: SearchHomeUiState = SearchHomeUiState(),
+    searchCallbacks: HomeSearchCallbacks = HomeSearchCallbacks(
+        onReferenceQueryChanged = {},
+        onTocQueryChanged = {},
+        onFilterChange = {},
+        onLevelIndexChange = {},
+        onGlobalExtendedChange = {},
+        onSubmitTextSearch = {},
+        onOpenReference = {},
+        onPickCategory = {},
+        onPickBook = {},
+        onPickToc = {}
+    )
 ) {
 
     // Preserve LazyListState across recompositions
@@ -38,7 +53,13 @@ fun BookContentPanel(
         if (uiState.isLoading || isRestoringSession) {
             LoaderPanel(modifier = modifier)
         } else {
-            HomeView(uiState = uiState, onEvent = onEvent, modifier = modifier)
+            HomeView(
+                uiState = uiState,
+                onEvent = onEvent,
+                searchUi = searchUi,
+                searchCallbacks = searchCallbacks,
+                modifier = modifier
+            )
         }
         return
     }

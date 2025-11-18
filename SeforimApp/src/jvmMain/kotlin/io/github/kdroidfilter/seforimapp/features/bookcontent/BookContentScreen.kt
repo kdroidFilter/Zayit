@@ -34,6 +34,10 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import kotlinx.coroutines.launch
 
 /**
  * Composable function to display the book content screen.
@@ -50,10 +54,37 @@ fun BookContentScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // Bridge SearchHomeViewModel (global) into BookContent so that
+    // HomeView only consumes state + callbacks, not the ViewModel.
+    val appGraph = LocalAppGraph.current
+    val searchHomeViewModel = appGraph.searchHomeViewModel
+    val searchUi: SearchHomeUiState by remember(searchHomeViewModel) { searchHomeViewModel.uiState }.collectAsState()
+    val scope = rememberCoroutineScope()
+    val homeSearchCallbacks = remember(searchHomeViewModel, scope) {
+        HomeSearchCallbacks(
+            onReferenceQueryChanged = searchHomeViewModel::onReferenceQueryChanged,
+            onTocQueryChanged = searchHomeViewModel::onTocQueryChanged,
+            onFilterChange = searchHomeViewModel::onFilterChange,
+            onLevelIndexChange = searchHomeViewModel::onLevelIndexChange,
+            onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
+            onSubmitTextSearch = { query ->
+                scope.launch { searchHomeViewModel.submitSearch(query) }
+            },
+            onOpenReference = {
+                scope.launch { searchHomeViewModel.openSelectedReferenceInCurrentTab() }
+            },
+            onPickCategory = searchHomeViewModel::onPickCategory,
+            onPickBook = searchHomeViewModel::onPickBook,
+            onPickToc = searchHomeViewModel::onPickToc
+        )
+    }
+
     BookContentView(
         uiState = uiState,
         onEvent = viewModel::onEvent,
-        isRestoringSession = isRestoringSession
+        isRestoringSession = isRestoringSession,
+        searchUi = searchUi,
+        searchCallbacks = homeSearchCallbacks
     )
 }
 
@@ -68,7 +99,9 @@ fun BookContentScreen(
 fun BookContentView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    isRestoringSession: Boolean = false
+    isRestoringSession: Boolean = false,
+    searchUi: SearchHomeUiState,
+    searchCallbacks: HomeSearchCallbacks
 ) {
     // Toaster for transient messages (e.g., selection limits)
     val toaster = rememberToasterState()
@@ -168,7 +201,9 @@ fun BookContentView(
                         BookContentPanel(
                             uiState = uiState,
                             onEvent = onEvent,
-                            isRestoringSession = isRestoringSession
+                            isRestoringSession = isRestoringSession,
+                            searchUi = searchUi,
+                            searchCallbacks = searchCallbacks
                         )
                     },
                     showSplitter = uiState.toc.isVisible

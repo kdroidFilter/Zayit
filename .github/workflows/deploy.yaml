@@ -139,16 +139,17 @@ jobs:
           chmod +x ./gradlew
           ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleasePkg
           APP_DIR="SeforimApp/build/compose/binaries/main-release/app"
-          APP_BUNDLE=$(ls "$APP_DIR"/*.app | head -n 1 || true)
+          APP_BUNDLE=$(find "$APP_DIR" -mindepth 1 -maxdepth 1 -type d -name '*.app' | head -n 1 || true)
           if [ -z "$APP_BUNDLE" ]; then
             echo "No .app bundle found in $APP_DIR"
             exit 1
           fi
+          echo "Found app bundle at: $APP_BUNDLE"
           ARCH="${{ matrix.jdk_arch }}"
           BASENAME="$(basename "$APP_BUNDLE" .app)"
           ZIP_NAME="${BASENAME}-${ARCH}.zip"
-          echo "Creating ZIP $ZIP_NAME from $APP_BUNDLE"
-          (cd "$APP_DIR" && zip -r "$ZIP_NAME" "$(basename "$APP_BUNDLE")")
+          echo "Creating ZIP $ZIP_NAME from $(basename "$APP_BUNDLE") in $(dirname "$APP_BUNDLE")"
+          (cd "$(dirname "$APP_BUNDLE")" && zip -r "$ZIP_NAME" "$(basename "$APP_BUNDLE")")
       # Upload Artifacts
       - name: Upload Linux .deb (amd64/arm64)
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'deb'

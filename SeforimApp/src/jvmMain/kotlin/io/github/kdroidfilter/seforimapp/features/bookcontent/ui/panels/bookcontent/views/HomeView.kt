@@ -245,6 +245,7 @@ fun HomeView(
             val searchState = remember { TextFieldState() }
             val referenceSearchState = remember { TextFieldState() }
             val tocSearchState = remember { TextFieldState() }
+            var skipNextReferenceQuery by remember { mutableStateOf(false) }
             var skipNextTocQuery by remember { mutableStateOf(false) }
             // Shared focus requester so Tab from the first field can move focus to the TOC field
             val tocFieldFocusRequester = remember { FocusRequester() }
@@ -255,7 +256,13 @@ fun HomeView(
             // Forward reference input changes to the ViewModel (VM handles debouncing and suggestions)
             LaunchedEffect(Unit) {
                 snapshotFlow { referenceSearchState.text.toString() }
-                    .collect { qRaw -> searchVm.onReferenceQueryChanged(qRaw) }
+                    .collect { qRaw ->
+                        if (skipNextReferenceQuery) {
+                            skipNextReferenceQuery = false
+                        } else {
+                            searchVm.onReferenceQueryChanged(qRaw)
+                        }
+                    }
             }
             // Forward toc input changes to the ViewModel (ignored until a book is selected)
             LaunchedEffect(Unit) {
@@ -382,12 +389,14 @@ fun HomeView(
                                     // Update VM and reflect breadcrumb in the bar input
                                     searchVm.onPickCategory(picked.category)
                                     val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparatorTop)
+                                    skipNextReferenceQuery = true
                                     referenceSearchState.edit { replace(0, length, full) }
                                 },
                                 onPickBook = { picked ->
                                     // Update VM and reflect breadcrumb in the bar input
                                     searchVm.onPickBook(picked.book)
                                     val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparatorTop)
+                                    skipNextReferenceQuery = true
                                     referenceSearchState.edit { replace(0, length, full) }
                                 }
                             )
@@ -448,11 +457,13 @@ fun HomeView(
                                     onPickCategory = { picked ->
                                         searchVm.onPickCategory(picked.category)
                                         val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparator)
+                                        skipNextReferenceQuery = true
                                         referenceSearchState.edit { replace(0, length, full) }
                                     },
                                     onPickBook = { picked ->
                                         searchVm.onPickBook(picked.book)
                                         val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparator)
+                                        skipNextReferenceQuery = true
                                         referenceSearchState.edit { replace(0, length, full) }
                                     },
                                     onPickToc = { picked ->

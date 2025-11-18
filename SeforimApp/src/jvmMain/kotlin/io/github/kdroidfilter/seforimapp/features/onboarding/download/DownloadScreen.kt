@@ -61,23 +61,11 @@ fun DownloadScreen(
         progressBarState.setProgress(anchored)
     }
 
-    // Trigger download once when entering this screen
-    var started by remember { mutableStateOf(false) }
-    var cleanupCompleted by remember { mutableStateOf(false) }
-    
+    // Trigger cleanup and download once when entering this screen
     LaunchedEffect(Unit) {
-        // Nettoyer les anciens fichiers de base de données avant de commencer
-        if (!cleanupCompleted) {
-            cleanupUseCase.cleanupDatabaseFiles()
-            cleanupCompleted = true
-        }
-    }
-    
-    LaunchedEffect(state.inProgress, state.completed) {
-        if (!started && !state.inProgress && !state.completed && cleanupCompleted) {
-            started = true
-            viewModel.onEvent(DownloadEvents.Start)
-        }
+        // Clean up old database files before starting the download
+        cleanupUseCase.cleanupDatabaseFiles()
+        viewModel.onEvent(DownloadEvents.Start)
     }
 
     // Clear back stack once download starts to prevent going back

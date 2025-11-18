@@ -147,7 +147,7 @@ jobs:
           echo "Found app bundle at: $APP_BUNDLE"
           ARCH="${{ matrix.jdk_arch }}"
           BASENAME="$(basename "$APP_BUNDLE" .app)"
-          ZIP_NAME="${BASENAME}-${ARCH}.zip"
+          ZIP_NAME="${BASENAME}-mac-${ARCH}.zip"
           echo "Creating ZIP $ZIP_NAME from $(basename "$APP_BUNDLE") in $(dirname "$APP_BUNDLE")"
           (cd "$(dirname "$APP_BUNDLE")" && zip -r "$ZIP_NAME" "$(basename "$APP_BUNDLE")")
       # Upload Artifacts

@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO="kdroidFilter/SeforimApp"
+API_URL="https://api.github.com/repos/${REPO}/releases/latest"
+
+# Detect package system
+pkg_type=""
+if command -v dpkg >/dev/null 2>&1; then
+  pkg_type="deb"
+elif command -v rpm >/dev/null 2>&1; then
+  pkg_type="rpm"
+else
+  echo "Neither dpkg nor rpm found on this system. Unsupported distribution."
+  exit 1
+fi
+
+arch="$(uname -m)"
+case "$arch" in
+  x86_64)
+    deb_arch="amd64"
+    rpm_arch="x86_64"
+    ;;
+  aarch64|arm64)
+    deb_arch="arm64"
+    rpm_arch="aarch64"
+    ;;
+  *)
+    echo "Unsupported CPU architecture: ${arch}"
+    exit 1
+    ;;
+esac
+
+echo "Detected package system: ${pkg_type}, architecture: ${arch}"
+
+echo "Querying latest release metadata from GitHub..."
+release_json="$(curl -fsSL "${API_URL}")"
+
+if [ "${pkg_type}" = "deb" ]; then
+  echo "Looking for .deb asset for architecture: ${deb_arch}..."
+  asset_url="$(printf '%s\n' "${release_json}" \
+    | grep -Eo "https://github.com/${REPO}/releases/download/[^\" ]*zayit_[0-9.]+_${deb_arch}\\.deb" \
+    | head -n 1 || true)"
+else
+  echo "Looking for .rpm asset for architecture: ${rpm_arch}..."
+  asset_url="$(printf '%s\n' "${release_json}" \
+    | grep -Eo "https://github.com/${REPO}/releases/download/[^\" ]*zayit-[0-9.]+-1\\.${rpm_arch}\\.rpm" \
+    | head -n 1 || true)"
+fi
+
+if [ -z "${asset_url}" ]; then
+  echo "Could not find a suitable ${pkg_type} asset for this architecture in the latest release."
+  exit 1
+fi
+
+tmpdir="$(mktemp -d -t zayit-pkg.XXXXXX)"
+tmpfile="${tmpdir}/zayit.${pkg_type}"
+
+cleanup() {
+  rm -rf "${tmpdir}"
+}
+trap cleanup EXIT
+
+echo "Downloading: ${asset_url}"
+curl -fL --progress-bar -o "${tmpfile}" "${asset_url}"
+
+if [ "${pkg_type}" = "deb" ]; then
+  echo "Installing .deb package (sudo dpkg -i)..."
+  sudo dpkg -i "${tmpfile}" || {
+    echo "dpkg reported errors; attempting to fix dependencies with apt-get."
+    if command -v apt-get >/dev/null 2>&1; then
+      sudo apt-get install -f
+    fi
+  }
+else
+  echo "Installing .rpm package..."
+  if command -v dnf >/dev/null 2>&1; then
+    sudo dnf install -y "${tmpfile}"
+  elif command -v yum >/dev/null 2>&1; then
+    sudo yum localinstall -y "${tmpfile}"
+  elif command -v zypper >/dev/null 2>&1; then
+    sudo zypper install --no-confirm "${tmpfile}"
+  else
+    echo "No high-level package manager (dnf/yum/zypper) found; falling back to rpm -Uvh."
+    sudo rpm -Uvh "${tmpfile}"
+  fi
+fi
+
+echo "Installation complete."

@@ -188,10 +188,13 @@ fun TabsNavHost() {
                             val destination = backStackEntry.toRoute<TabsDestination.Home>()
                             backStackEntry.savedStateHandle["tabId"] = destination.tabId
                             // Use tabId as key to keep ViewModel stable across destination changes
-                            val viewModel = remember(appGraph, destination.tabId) {
-                                appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
-                            }
-                            BookContentScreen(viewModel, isRestoringSession = isRestoringSession)
+	                            val viewModel = remember(appGraph, destination.tabId) {
+	                                appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
+	                            }
+	                            BookContentScreen(
+	                                viewModel,
+	                                isRestoringSession = isRestoringSession
+	                            )
                         }
                         nonAnimatedComposable<TabsDestination.Search> { backStackEntry ->
                             val destination = backStackEntry.toRoute<TabsDestination.Search>()
@@ -259,7 +262,10 @@ fun TabsNavHost() {
                             val viewModel = remember(appGraph, destination.tabId) {
                                 appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
                             }
-                        BookContentScreen(viewModel, isRestoringSession = isRestoringSession)
+                            BookContentScreen(
+                                viewModel,
+                                isRestoringSession = isRestoringSession
+                            )
                     }
                 }
             }

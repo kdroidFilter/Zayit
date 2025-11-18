@@ -116,6 +116,25 @@ class SearchHomeViewModel(
                     _uiState.value = _uiState.value.copy(userDisplayName = displayName)
                 }
         }
+        // Track currently selected destination; when the active tab is not on Home,
+        // ensure Home predictive popups are closed so they cannot linger above
+        // other screens.
+        viewModelScope.launch {
+            tabsViewModel.tabs
+                .combine(tabsViewModel.selectedTabIndex) { tabs, index ->
+                    tabs.getOrNull(index)?.destination
+                }
+                .distinctUntilChanged()
+                .collect { dest ->
+                    val isHome = dest is TabsDestination.Home
+                    if (!isHome) {
+                        _uiState.value = _uiState.value.copy(
+                            suggestionsVisible = false,
+                            tocSuggestionsVisible = false
+                        )
+                    }
+                }
+        }
         // Debounced suggestions based on reference query
         viewModelScope.launch {
             referenceQuery

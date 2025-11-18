@@ -1089,8 +1089,16 @@ private fun SearchBar(
     val totalCatBook = categoriesCount + bookSuggestions.size
     val totalToc = tocSuggestions.size
     val usingToc = totalToc > 0 || tocSuggestionsVisible
-    LaunchedEffect(selectedFilter, suggestionsVisible, tocSuggestionsVisible, categorySuggestions, bookSuggestions, tocSuggestions) {
-        val shouldOpen = selectedFilter == SearchFilter.REFERENCE &&
+    LaunchedEffect(
+        selectedFilter,
+        suggestionsVisible,
+        tocSuggestionsVisible,
+        categorySuggestions,
+        bookSuggestions,
+        tocSuggestions
+    ) {
+        val shouldOpen =
+            selectedFilter == SearchFilter.REFERENCE &&
             ((suggestionsVisible && totalCatBook > 0) || (tocSuggestionsVisible && totalToc > 0))
         popupVisible = shouldOpen
         focusedIndex = if (shouldOpen) 0 else -1

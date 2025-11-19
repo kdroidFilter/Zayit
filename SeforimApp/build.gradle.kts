@@ -194,7 +194,7 @@ compose.desktop {
 
 
             modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility", "jdk.incubator.vector")
-            targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm)
+            targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Dmg)
             vendor = "KDroidFilter"
 
             linux {
@@ -268,10 +268,13 @@ val renameMacPkg = tasks.register<RenameMacPkgTask>("renameMacPkg") {
     archSuffix.set(macArchSuffix)
 }
 
-// Ensure the rename runs after any Compose Desktop task that produces a PKG
-// This covers tasks like `packageReleasePkg`, `packageDebugPkg`, etc.
+// Ensure the rename runs after any Compose Desktop task that produces a PKG or DMG
+// This covers tasks like `packageReleasePkg`, `packageDebugPkg`, `packageReleaseDmg`, etc.
 // Exclude the renamer itself to avoid circular finalizer
 tasks.matching { it.name.endsWith("Pkg") && it.name != "renameMacPkg" }.configureEach {
+    finalizedBy(renameMacPkg)
+}
+tasks.matching { it.name.endsWith("Dmg") && it.name != "renameMacPkg" }.configureEach {
     finalizedBy(renameMacPkg)
 }
 

@@ -23,22 +23,29 @@ abstract class RenameMacPkgTask @Inject constructor() : DefaultTask() {
             logger.lifecycle("[renameMacPkg] No compose/binaries directory found, skipping.")
             return
         }
-        val pkgs = binariesDir.walkTopDown().filter { it.isFile && it.extension == "pkg" }.toList()
-        if (pkgs.isEmpty()) {
-            logger.lifecycle("[renameMacPkg] No .pkg files found, skipping.")
-            return
-        }
         val suffix = archSuffix.get()
-        pkgs.forEach { pkg ->
-            val nameNoExt = pkg.name.removeSuffix(".pkg")
-            if (nameNoExt.endsWith(suffix)) return@forEach
-            val newName = nameNoExt + suffix + ".pkg"
-            val target = pkg.parentFile.resolve(newName)
-            pkg.copyTo(target, overwrite = true)
-            if (!pkg.delete()) {
-                logger.warn("[renameMacPkg] Could not delete original file: ${pkg.absolutePath}")
+
+        fun renameWithExtension(ext: String) {
+            val files = binariesDir.walkTopDown().filter { it.isFile && it.extension == ext }.toList()
+            if (files.isEmpty()) {
+                logger.lifecycle("[renameMacPkg] No .$ext files found, skipping.")
+                return
             }
-            logger.lifecycle("[renameMacPkg] Renamed ${pkg.name} -> ${target.name}")
+            files.forEach { file ->
+                val nameNoExt = file.name.removeSuffix(".$ext")
+                if (nameNoExt.endsWith(suffix)) return@forEach
+                val newName = nameNoExt + suffix + ".$ext"
+                val target = file.parentFile.resolve(newName)
+                file.copyTo(target, overwrite = true)
+                if (!file.delete()) {
+                    logger.warn("[renameMacPkg] Could not delete original file: ${file.absolutePath}")
+                }
+                logger.lifecycle("[renameMacPkg] Renamed ${file.name} -> ${target.name}")
+            }
         }
+
+        // Handle both PKG and DMG artifacts on macOS
+        renameWithExtension("pkg")
+        renameWithExtension("dmg")
     }
 }

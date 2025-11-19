@@ -2,7 +2,8 @@ const GITHUB_OWNER = "kdroidFilter";
 const GITHUB_REPO = "Zayit";
 const DB_OWNER = "kdroidFilter";
 const DB_REPO = "SeforimLibrary";
-const BRAND_ICON ="icon.png";
+const BRAND_ICON =
+  "icon.png";
 
 // Enhanced platform and architecture detection
 async function detectPlatform() {
@@ -226,7 +227,9 @@ let appState = {
   dbAssets: [],
   showAllAssets: false,
   includeDb: false,
-  platform: null
+  platform: null,
+  showCrossPlatform: false,
+  selectedOS: 'windows'
 };
 
 function setState(patch) {
@@ -291,12 +294,20 @@ async function renderApp() {
 
           <div class="footer">
             <p style="margin:0 0 0.5rem 0;">נוצר על ידי אליהו גמבש</p>
-            <a href="https://github.com/kdroidFilter/Zayit" target="_blank" class="github-link">
-              <svg class="github-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-              </svg>
-              <span>GitHub</span>
-            </a>
+            <div class="footer-links">
+              <a href="https://github.com/kdroidFilter/Zayit" target="_blank" class="footer-link" data-tooltip="קוד מקור">
+                <svg class="footer-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                <span>GitHub</span>
+              </a>
+              <a href="https://ko-fi.com/lomityaesh" target="_blank" class="footer-link footer-link-donate" data-tooltip="תמיכה">
+                <svg class="footer-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <span>תמיכה</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -330,12 +341,20 @@ async function renderApp() {
 
           <div class="footer">
             <p style="margin:0 0 0.5rem 0;">נוצר על ידי אליהו גמבש</p>
-            <a href="https://github.com/kdroidFilter/Zayit" target="_blank" class="github-link">
-              <svg class="github-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-              </svg>
-              <span>GitHub</span>
-            </a>
+            <div class="footer-links">
+              <a href="https://github.com/kdroidFilter/Zayit" target="_blank" class="footer-link" data-tooltip="קוד מקור">
+                <svg class="footer-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                <span>GitHub</span>
+              </a>
+              <a href="https://ko-fi.com/lomityaesh" target="_blank" class="footer-link footer-link-donate" data-tooltip="תמיכה">
+                <svg class="footer-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <span>תמיכה</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -492,6 +511,9 @@ async function renderApp() {
   // Database section
   const dbSection = renderDbSection();
 
+  // Cross-platform downloads section
+  const crossPlatformSection = renderCrossPlatformSection(assets);
+
   root.innerHTML = `
     <div class="card">
       <div class="card-inner">
@@ -512,16 +534,25 @@ async function renderApp() {
 
         ${errorBlock}
         ${mainDownloadBlock}
+        ${crossPlatformSection}
         ${dbSection}
 
         <div class="footer">
           <p style="margin:0 0 0.5rem 0;">נוצר על ידי אליהו גמבש</p>
-          <a href="https://github.com/kdroidFilter/Zayit" target="_blank" class="github-link">
-            <svg class="github-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-            </svg>
-            <span>GitHub</span>
-          </a>
+          <div class="footer-links">
+            <a href="https://github.com/kdroidFilter/Zayit" target="_blank" class="footer-link" data-tooltip="קוד מקור">
+              <svg class="footer-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+              </svg>
+              <span>GitHub</span>
+            </a>
+            <a href="https://ko-fi.com/lomityaesh" target="_blank" class="footer-link footer-link-donate" data-tooltip="תמיכה">
+              <svg class="footer-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+              <span>תמיכה</span>
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -671,6 +702,184 @@ function renderManualDownloadLinks(assets) {
   `;
 }
 
+function renderCrossPlatformSection(allAssets) {
+  if (!allAssets || allAssets.length === 0) return '';
+
+  // Group assets by platform
+  const windowsAssets = allAssets.filter(a => /\.(msi|exe)$/i.test(a.name));
+  const macAssets = allAssets.filter(a => /\.(dmg|pkg)$/i.test(a.name));
+  const debAssets = allAssets.filter(a => /\.deb$/i.test(a.name));
+  const rpmAssets = allAssets.filter(a => /\.rpm$/i.test(a.name));
+
+  // Don't show section if no cross-platform assets
+  if (windowsAssets.length === 0 && macAssets.length === 0 && debAssets.length === 0 && rpmAssets.length === 0) {
+    return '';
+  }
+
+  return `
+    <div class="section section-box section-cross-platform">
+      <div class="section-header">
+        <h2 class="section-title">
+          <span class="material-symbols-outlined">devices</span>
+          <span>הורדה למערכות הפעלה אחרות</span>
+        </h2>
+        <button class="toggle-button inline" onclick="setState({showCrossPlatform: !appState.showCrossPlatform})">
+          <span class="material-symbols-outlined">
+            ${appState.showCrossPlatform ? 'expand_less' : 'expand_more'}
+          </span>
+          <span>${appState.showCrossPlatform ? 'הסתר' : 'הצג'} מערכות אחרות</span>
+        </button>
+      </div>
+
+      ${appState.showCrossPlatform ? `
+        <div class="os-tabs">
+          <div class="tab-buttons">
+            ${windowsAssets.length > 0 ? `
+              <button class="tab-button ${appState.selectedOS === 'windows' ? 'active' : ''}"
+                      onclick="setState({selectedOS: 'windows'})" data-tooltip="Windows">
+                <span class="material-symbols-outlined">desktop_windows</span>
+                <span>Windows</span>
+              </button>
+            ` : ''}
+            ${macAssets.length > 0 ? `
+              <button class="tab-button ${appState.selectedOS === 'mac' ? 'active' : ''}"
+                      onclick="setState({selectedOS: 'mac'})" data-tooltip="macOS">
+                <span class="material-symbols-outlined">laptop_mac</span>
+                <span>macOS</span>
+              </button>
+            ` : ''}
+            ${(debAssets.length > 0 || rpmAssets.length > 0) ? `
+              <button class="tab-button ${appState.selectedOS === 'linux' ? 'active' : ''}"
+                      onclick="setState({selectedOS: 'linux'})" data-tooltip="Linux">
+                <span class="material-symbols-outlined">computer</span>
+                <span>Linux</span>
+              </button>
+            ` : ''}
+          </div>
+
+          <div class="tab-content">
+            ${appState.selectedOS === 'windows' && windowsAssets.length > 0 ? `
+              <div class="platform-downloads">
+                <h3 class="platform-title">
+                  <span class="material-symbols-outlined">desktop_windows</span>
+                  Windows
+                </h3>
+                ${renderPlatformAssets(windowsAssets, 'windows')}
+              </div>
+            ` : ''}
+
+            ${appState.selectedOS === 'mac' && macAssets.length > 0 ? `
+              <div class="platform-downloads">
+                <h3 class="platform-title">
+                  <span class="material-symbols-outlined">laptop_mac</span>
+                  macOS
+                </h3>
+                <div class="command-box" style="margin-bottom:1rem;">
+                  <code>curl -L https://raw.githubusercontent.com/kdroidFilter/Zayit/refs/heads/master/launch.mac | bash</code>
+                  <button class="copy-btn" onclick="copyCommand('curl -L https://raw.githubusercontent.com/kdroidFilter/Zayit/refs/heads/master/launch.mac | bash')">
+                    <span class="material-symbols-outlined">content_copy</span>
+                  </button>
+                </div>
+                <p style="color:var(--gold-muted);font-size:0.85rem;margin-bottom:1rem;">או הורד ידנית:</p>
+                ${renderPlatformAssets(macAssets, 'mac')}
+              </div>
+            ` : ''}
+
+            ${appState.selectedOS === 'linux' && (debAssets.length > 0 || rpmAssets.length > 0) ? `
+              <div class="platform-downloads">
+                <h3 class="platform-title">
+                  <span class="material-symbols-outlined">computer</span>
+                  Linux
+                </h3>
+                <div class="command-box" style="margin-bottom:1rem;">
+                  <code>curl -L https://raw.githubusercontent.com/kdroidFilter/Zayit/refs/heads/master/launch.linux | bash</code>
+                  <button class="copy-btn" onclick="copyCommand('curl -L https://raw.githubusercontent.com/kdroidFilter/Zayit/refs/heads/master/launch.linux | bash')">
+                    <span class="material-symbols-outlined">content_copy</span>
+                  </button>
+                </div>
+                <p style="color:var(--gold-muted);font-size:0.85rem;margin-bottom:1rem;">או הורד ידנית:</p>
+                ${debAssets.length > 0 ? `
+                  <div class="distro-group">
+                    <h4 class="distro-title">
+                      <span class="material-symbols-outlined">package_2</span>
+                      Debian/Ubuntu (.deb)
+                    </h4>
+                    ${renderPlatformAssets(debAssets, 'deb')}
+                  </div>
+                ` : ''}
+                ${rpmAssets.length > 0 ? `
+                  <div class="distro-group">
+                    <h4 class="distro-title">
+                      <span class="material-symbols-outlined">package_2</span>
+                      Fedora/RHEL (.rpm)
+                    </h4>
+                    ${renderPlatformAssets(rpmAssets, 'rpm')}
+                  </div>
+                ` : ''}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderPlatformAssets(assets, type) {
+  const archGroups = groupAssetsByArch(assets);
+
+  return `
+    <div class="platform-assets">
+      ${archGroups.x64?.length > 0 ? `
+        <div class="arch-group">
+          <div class="arch-label">
+            <span class="material-symbols-outlined">${getArchIcon('x64')}</span>
+            <span>${archLabelHebrew('x64')}</span>
+          </div>
+          <div class="arch-downloads">
+            ${archGroups.x64.map(asset => `
+              <a href="${asset.url}" target="_blank" class="download-chip" data-tooltip="${asset.size}">
+                <span class="material-symbols-outlined">download</span>
+                <span>${asset.name}</span>
+              </a>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      ${archGroups.arm64?.length > 0 ? `
+        <div class="arch-group">
+          <div class="arch-label">
+            <span class="material-symbols-outlined">${getArchIcon('arm64')}</span>
+            <span>${archLabelHebrew('arm64')}</span>
+          </div>
+          <div class="arch-downloads">
+            ${archGroups.arm64.map(asset => `
+              <a href="${asset.url}" target="_blank" class="download-chip" data-tooltip="${asset.size}">
+                <span class="material-symbols-outlined">download</span>
+                <span>${asset.name}</span>
+              </a>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      ${archGroups.unknown?.length > 0 ? `
+        <div class="arch-group">
+          <div class="arch-downloads">
+            ${archGroups.unknown.map(asset => `
+              <a href="${asset.url}" target="_blank" class="download-chip" data-tooltip="${asset.size}">
+                <span class="material-symbols-outlined">download</span>
+                <span>${asset.name}</span>
+              </a>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
 function renderDbSection() {
   const showDbLinks = appState.includeDb;
   const dbToggleButton = appState.dbAssets.length > 0
@@ -775,8 +984,7 @@ function renderDbSection() {
 }
 
 // Global functions for copying commands
-window.copyMacCommand = function() {
-  const command = document.getElementById('mac-command').textContent;
+window.copyCommand = function(command) {
   navigator.clipboard.writeText(command).then(() => {
     const btn = event.target.closest('.copy-btn');
     const originalContent = btn.innerHTML;
@@ -787,16 +995,14 @@ window.copyMacCommand = function() {
   });
 };
 
+window.copyMacCommand = function() {
+  const command = document.getElementById('mac-command').textContent;
+  copyCommand(command);
+};
+
 window.copyLinuxCommand = function() {
   const command = document.getElementById('linux-command').textContent;
-  navigator.clipboard.writeText(command).then(() => {
-    const btn = event.target.closest('.copy-btn');
-    const originalContent = btn.innerHTML;
-    btn.innerHTML = '<span class="material-symbols-outlined">check</span>';
-    setTimeout(() => {
-      btn.innerHTML = originalContent;
-    }, 2000);
-  });
+  copyCommand(command);
 };
 
 function attachEventHandlers() {

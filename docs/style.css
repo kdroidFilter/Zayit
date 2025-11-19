@@ -1,6 +1,6 @@
 :root {
   --bg-main: #050509;
-  --bg-gradient-top: #050509;
+  --bg-gradient-top: #1a1a22;
   --bg-gradient-bottom: #111118;
   --card-bg: rgba(16, 16, 24, 0.92);
   --card-border: rgba(255, 215, 0, 0.12);
@@ -41,7 +41,7 @@ body {
   padding: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     "Noto Sans Hebrew", sans-serif;
-  background: radial-gradient(circle at top, #1a1a22 0%, #050509 55%);
+  background: radial-gradient(circle at top, var(--bg-gradient-top) 0%, var(--bg-main) 55%);
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -50,10 +50,10 @@ body {
 body {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
   padding: 1.5rem;
-  background: radial-gradient(circle at top, #1a1a22 0%, #050509 55%);
+  background: radial-gradient(circle at top, var(--bg-gradient-top) 0%, var(--bg-main) 55%);
 }
 
 /* Global scrollbars (WebKit + Firefox) */
@@ -84,6 +84,22 @@ body {
 .page {
   width: 100%;
   max-width: 720px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+#zayit-root {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.page-footer {
+  margin-top: 1.2rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--gold-muted);
 }
 
 .card {
@@ -470,11 +486,6 @@ body {
 
 .footer-link-donate .footer-icon {
   color: #ff8888;
-}
-
-.footer-icon {
-  width: 20px;
-  height: 20px;
 }
 
 /* Tooltips */

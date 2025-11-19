@@ -379,6 +379,8 @@ async function renderApp() {
 
   // Special handling for macOS - show curl command
   if (platform.os === "mac") {
+    const macAssets = filterAssetsByPlatform(assets, platform);
+
     mainDownloadBlock = `
       <div class="section section-box">
         <h2 class="section-title">
@@ -399,6 +401,24 @@ async function renderApp() {
           הסקריפט יוריד ויתקין את הגרסה המתאימה למחשב שלך אוטומטית
         </p>
       </div>
+
+      ${macAssets.length > 0 ? `
+        <div class="section section-box">
+          <h2 class="section-title">
+            <span class="material-symbols-outlined">download</span>
+            <span>הורדה ידנית</span>
+          </h2>
+
+          <button class="toggle-button" onclick="setState({showAllAssets: !appState.showAllAssets})" style="margin-bottom:1rem;">
+            <span class="material-symbols-outlined">
+              ${appState.showAllAssets ? 'expand_less' : 'expand_more'}
+            </span>
+            <span>${appState.showAllAssets ? 'הסתר' : 'הצג'} אפשרויות הורדה ידנית</span>
+          </button>
+
+          ${appState.showAllAssets ? renderPlatformAssets(macAssets, 'mac') : ''}
+        </div>
+      ` : ''}
     `;
   } else if (platform.os === "windows") {
     // Windows - show architecture options if unknown

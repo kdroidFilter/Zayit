@@ -188,8 +188,12 @@ function filterAssetsByPlatform(assets, platform) {
   }
 
   if (platform.os === "mac") {
-    // For macOS, we'll show the install command, but still filter DMG/PKG if needed
-    return list.filter(a => /\.(dmg|pkg)$/i.test(a.name));
+    // For macOS, prefer DMG for manual installation; fall back to PKG if no DMG exists
+    const dmgAssets = list.filter(a => /\.dmg$/i.test(a.name));
+    if (dmgAssets.length > 0) {
+      return dmgAssets;
+    }
+    return list.filter(a => /\.pkg$/i.test(a.name));
   }
 
   return [];
@@ -707,7 +711,10 @@ function renderCrossPlatformSection(allAssets) {
 
   // Group assets by platform
   const windowsAssets = allAssets.filter(a => /\.(msi|exe)$/i.test(a.name));
-  const macAssets = allAssets.filter(a => /\.(dmg|pkg)$/i.test(a.name));
+  // For macOS, prefer DMG for manual installation; fall back to PKG if no DMG exists
+  const macCandidateAssets = allAssets.filter(a => /\.(dmg|pkg)$/i.test(a.name));
+  const macDmgAssets = macCandidateAssets.filter(a => /\.dmg$/i.test(a.name));
+  const macAssets = macDmgAssets.length > 0 ? macDmgAssets : macCandidateAssets.filter(a => /\.pkg$/i.test(a.name));
   const debAssets = allAssets.filter(a => /\.deb$/i.test(a.name));
   const rpmAssets = allAssets.filter(a => /\.rpm$/i.test(a.name));
 

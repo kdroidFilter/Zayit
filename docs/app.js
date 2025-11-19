@@ -154,6 +154,18 @@ function getOSIcon(os) {
   return icons[os] || "devices";
 }
 
+function getLaunchScriptUrl(kind) {
+  const path = kind === "mac" ? "/launch.mac" : "/launch.linux";
+  if (typeof window === "undefined" || !window.location || !window.location.origin) {
+    return path;
+  }
+  return window.location.origin + path;
+}
+
+function getLaunchCommand(kind) {
+  return "curl -L " + getLaunchScriptUrl(kind) + " | bash";
+}
+
 function formatFileSize(bytes) {
   if (!bytes) return "?";
   const mb = Math.round(bytes / 1024 / 1024);
@@ -366,7 +378,7 @@ async function renderApp() {
           העתק והרץ את הפקודה הבאה בטרמינל:
         </p>
         <div class="command-box">
-          <code id="mac-command">curl -L https://raw.githubusercontent.com/kdroidFilter/Zayit/refs/heads/master/launch.mac | bash</code>
+          <code id="mac-command">${getLaunchCommand('mac')}</code>
           <button class="copy-btn" onclick="copyMacCommand(this)">
             <span class="material-symbols-outlined">content_copy</span>
           </button>
@@ -435,7 +447,7 @@ async function renderApp() {
           העתק והרץ את הפקודה הבאה בטרמינל:
         </p>
         <div class="command-box">
-          <code id="linux-command">curl -L https://raw.githubusercontent.com/kdroidFilter/Zayit/refs/heads/master/launch.linux | bash</code>
+          <code id="linux-command">${getLaunchCommand('linux')}</code>
           <button class="copy-btn" onclick="copyLinuxCommand(this)">
             <span class="material-symbols-outlined">content_copy</span>
           </button>
@@ -757,8 +769,8 @@ function renderCrossPlatformSection(allAssets) {
                   מק
                 </h3>
                 <div class="command-box" style="margin-bottom:1rem;">
-                  <code>curl -L https://raw.githubusercontent.com/kdroidFilter/Zayit/refs/heads/master/launch.mac | bash</code>
-                  <button class="copy-btn" onclick="copyCommand('curl -L https://raw.githubusercontent.com/kdroidFilter/Zayit/refs/heads/master/launch.mac | bash', this)">
+                  <code>${getLaunchCommand('mac')}</code>
+                  <button class="copy-btn" onclick="copyCommand('${getLaunchCommand('mac')}', this)">
                     <span class="material-symbols-outlined">content_copy</span>
                   </button>
                 </div>
@@ -774,8 +786,8 @@ function renderCrossPlatformSection(allAssets) {
                   לינוקס
                 </h3>
                 <div class="command-box" style="margin-bottom:1rem;">
-                  <code>curl -L https://raw.githubusercontent.com/kdroidFilter/Zayit/refs/heads/master/launch.linux | bash</code>
-                  <button class="copy-btn" onclick="copyCommand('curl -L https://raw.githubusercontent.com/kdroidFilter/Zayit/refs/heads/master/launch.linux | bash', this)">
+                  <code>${getLaunchCommand('linux')}</code>
+                  <button class="copy-btn" onclick="copyCommand('${getLaunchCommand('linux')}', this)">
                     <span class="material-symbols-outlined">content_copy</span>
                   </button>
                 </div>

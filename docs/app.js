@@ -155,11 +155,22 @@ function getOSIcon(os) {
 }
 
 function getLaunchScriptUrl(kind) {
-  const path = kind === "mac" ? "/launch.mac" : "/launch.linux";
-  if (typeof window === "undefined" || !window.location || !window.location.origin) {
-    return path;
+  const file = kind === "mac" ? "launch.mac" : "launch.linux";
+
+  if (typeof window === "undefined" || !window.location) {
+    return file;
   }
-  return window.location.origin + path;
+
+  const loc = window.location;
+  const origin = loc.origin || "";
+  const segments = (loc.pathname || "").split("/").filter(Boolean);
+
+  let base = origin;
+  if (segments.length > 0) {
+    base += "/" + segments[0];
+  }
+
+  return base + "/" + file;
 }
 
 function getLaunchCommand(kind) {

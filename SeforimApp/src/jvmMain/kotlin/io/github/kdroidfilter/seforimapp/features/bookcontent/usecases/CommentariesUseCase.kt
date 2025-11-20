@@ -70,7 +70,9 @@ class CommentariesUseCase(
         return try {
             val headingToc = repository.getHeadingTocEntryByLineId(lineId)
             val baseIds = if (headingToc != null) {
-                repository.getLineIdsForTocEntry(headingToc.id).filter { it != lineId }
+                val tocLines = repository.getLineIdsForTocEntry(headingToc.id)
+                // If TOC has multiple lines, use all; otherwise use the line itself
+                if (tocLines.size > 1) tocLines else listOf(lineId)
             } else listOf(lineId)
 
             val commentaries = repository.getCommentariesForLines(baseIds)

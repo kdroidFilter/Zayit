@@ -35,7 +35,9 @@ class CommentsForLineOrTocPagingSource(
             if (resolvedLineIds == null) {
                 val headingToc = repository.getHeadingTocEntryByLineId(baseLineId)
                 resolvedLineIds = if (headingToc != null) {
-                    repository.getLineIdsForTocEntry(headingToc.id).filter { it != baseLineId }
+                    val tocLines = repository.getLineIdsForTocEntry(headingToc.id)
+                    // If TOC has multiple lines, use all; otherwise use the line itself
+                    if (tocLines.size > 1) tocLines else listOf(baseLineId)
                 } else listOf(baseLineId)
             }
 

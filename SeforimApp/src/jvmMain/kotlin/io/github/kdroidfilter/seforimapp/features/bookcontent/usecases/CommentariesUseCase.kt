@@ -28,7 +28,7 @@ class CommentariesUseCase(
     private companion object {
         private const val MAX_COMMENTATORS = 4
     }
-    
+
     /**
      * Construit un Pager pour les commentaires d'une ligne
      */
@@ -45,7 +45,7 @@ class CommentariesUseCase(
             }
         ).flow.cachedIn(scope)
     }
-    
+
     /**
      * Construit un Pager pour les liens/targum d'une ligne
      */
@@ -54,7 +54,7 @@ class CommentariesUseCase(
         sourceBookId: Long? = null
     ): Flow<PagingData<CommentaryWithText>> {
         val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
-        
+
         return Pager(
             config = PagingDefaults.COMMENTS.config(placeholders = false),
             pagingSourceFactory = {
@@ -62,12 +62,29 @@ class CommentariesUseCase(
             }
         ).flow.cachedIn(scope)
     }
-    
+
     /**
      * Récupère les commentateurs disponibles pour une ligne
      */
     suspend fun getAvailableCommentators(lineId: Long): Map<String, Long> {
-        return try {
+        val currentState = stateManager.state.first()
+        val currentBookId = currentState.navigation.selectedBook?.id
+        val currentBookTitle = currentState.navigation.selectedBook?.title?.trim().orEmpty()
+
+        fun toDisplayMap(commentaries: List<CommentaryWithText>): Map<String, Long> {
+            val map = LinkedHashMap<String, Long>()
+            commentaries.forEach { commentary ->
+                val raw = commentary.targetBookTitle
+                val display = sanitizeCommentatorName(raw, currentBookTitle)
+                if (!map.containsKey(display)) {
+                    map[display] = commentary.link.targetBookId
+                }
+            }
+            return map
+        }
+
+        // 1) Try per-line resolution (preferred to show only relevant commentators)
+        val perLineMap = runCatching {
             val headingToc = repository.getHeadingTocEntryByLineId(lineId)
             val baseIds = if (headingToc != null) {
                 val tocLines = repository.getLineIdsForTocEntry(headingToc.id)
@@ -77,22 +94,21 @@ class CommentariesUseCase(
 
             val commentaries = repository.getCommentariesForLines(baseIds)
                 .filter { it.link.connectionType == ConnectionType.COMMENTARY }
+            toDisplayMap(commentaries)
+        }.getOrDefault(emptyMap())
 
-            val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
+        if (perLineMap.isNotEmpty()) return perLineMap
 
-            // Map display name -> bookId with sanitization, preserving order
-            val map = LinkedHashMap<String, Long>()
-            commentaries.forEach { commentary ->
-                val raw = commentary.targetBookTitle
-                val display = sanitizeCommentatorName(raw, currentBookTitle)
-                if (!map.containsKey(display)) {
-                    map[display] = commentary.link.targetBookId
-                }
-            }
-            map
-        } catch (e: Exception) {
-            emptyMap()
+        // 2) Fallback: show commentators known for the whole book (helps when per-line lookup fails)
+        if (currentBookId != null) {
+            val byBook = runCatching {
+                repository.getAvailableCommentators(currentBookId)
+                    .associate { sanitizeCommentatorName(it.title, currentBookTitle) to it.bookId }
+            }.getOrDefault(emptyMap())
+            if (byBook.isNotEmpty()) return byBook
         }
+
+        return emptyMap()
     }
 
     private fun sanitizeCommentatorName(raw: String, currentBookTitle: String): String {
@@ -104,7 +120,7 @@ class CommentariesUseCase(
             .replace(" על $t", "")
             .trim()
     }
-    
+
     /**
      * Récupère les sources de liens disponibles pour une ligne
      */
@@ -128,7 +144,7 @@ class CommentariesUseCase(
             emptyMap()
         }
     }
-    
+
     /**
      * Met à jour les commentateurs sélectionnés pour une ligne
      */
@@ -161,14 +177,14 @@ class CommentariesUseCase(
             )
         }
     }
-    
+
     /**
      * Met à jour les sources de liens sélectionnées pour une ligne
      */
     suspend fun updateSelectedLinkSources(lineId: Long, selectedIds: Set<Long>) {
         val currentContent = stateManager.state.first().content
         val bookId = stateManager.state.first().navigation.selectedBook?.id ?: return
-        
+
         // Mettre à jour par ligne
         val byLine = currentContent.selectedLinkSourcesByLine.toMutableMap()
         if (selectedIds.isEmpty()) {
@@ -176,7 +192,7 @@ class CommentariesUseCase(
         } else {
             byLine[lineId] = selectedIds
         }
-        
+
         // Mettre à jour par livre
         val byBook = currentContent.selectedLinkSourcesByBook.toMutableMap()
         if (selectedIds.isEmpty()) {
@@ -184,7 +200,7 @@ class CommentariesUseCase(
         } else {
             byBook[bookId] = selectedIds
         }
-        
+
         stateManager.updateContent {
             copy(
                 selectedLinkSourcesByLine = byLine,
@@ -192,7 +208,7 @@ class CommentariesUseCase(
             )
         }
     }
-    
+
     /**
      * Réapplique les commentateurs sélectionnés pour une nouvelle ligne
      */
@@ -229,7 +245,7 @@ class CommentariesUseCase(
             copy(selectedCommentatorsByLine = byLine)
         }
     }
-    
+
     /**
      * Réapplique les sources de liens sélectionnées pour une nouvelle ligne
      */
@@ -237,14 +253,14 @@ class CommentariesUseCase(
         val currentState = stateManager.state.first()
         val bookId = currentState.navigation.selectedBook?.id ?: line.bookId
         val remembered = currentState.content.selectedLinkSourcesByBook[bookId] ?: emptySet()
-        
+
         if (remembered.isEmpty()) return
-        
+
         try {
             val available = getAvailableLinks(line.id)
             val availableIds = available.values.toSet()
             val intersection = remembered.intersect(availableIds)
-            
+
             if (intersection.isNotEmpty()) {
                 updateSelectedLinkSources(line.id, intersection)
             }
@@ -252,7 +268,7 @@ class CommentariesUseCase(
             // Ignorer les erreurs silencieusement
         }
     }
-    
+
     /**
      * Met à jour l'onglet sélectionné des commentaires
      */
@@ -263,7 +279,7 @@ class CommentariesUseCase(
             )
         }
     }
-    
+
     /**
      * Met à jour la position de scroll des commentaires
      */
@@ -275,7 +291,7 @@ class CommentariesUseCase(
             )
         }
     }
-    
+
     /**
      * Met à jour la position de scroll de la liste des commentateurs
      */
@@ -287,7 +303,7 @@ class CommentariesUseCase(
             )
         }
     }
-    
+
     /**
      * Met à jour la position de scroll d'une colonne de commentaires (par commentateur)
      */

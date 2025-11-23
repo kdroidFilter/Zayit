@@ -242,7 +242,7 @@ object AppSettings {
 
     // Session persistence preference
     fun isPersistSessionEnabled(): Boolean {
-        return settings[KEY_PERSIST_SESSION, false]
+        return settings[KEY_PERSIST_SESSION, true]
     }
 
     fun setPersistSessionEnabled(enabled: Boolean) {
@@ -398,7 +398,7 @@ object AppSettings {
         _lineHeightFlow.value = DEFAULT_LINE_HEIGHT
         _closeTreeOnNewBookFlow.value = false
         _databasePathFlow.value = null
-        _persistSessionFlow.value = false
+        _persistSessionFlow.value = true
         _bookFontCodeFlow.value = "notoserifhebrew"
         _commentaryFontCodeFlow.value = "notorashihebrew"
         _targumFontCodeFlow.value = "notorashihebrew"

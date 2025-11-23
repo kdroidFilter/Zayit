@@ -6,7 +6,7 @@ import androidx.compose.runtime.Immutable
 data class GeneralSettingsState(
     val databasePath: String? = null,
     val closeTreeOnNewBook: Boolean = false,
-    val persistSession: Boolean = false,
+    val persistSession: Boolean = true,
     val ramSaver: Boolean = false,
     val resetDone: Boolean = false,
 ) {

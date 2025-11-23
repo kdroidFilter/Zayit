@@ -170,6 +170,10 @@ fun BookContentView(
                             }
                             true
                         }
+                        isCtrlOrCmd && keyEvent.key == Key.J -> {
+                            onEvent(BookContentEvent.ToggleNikud)
+                            true
+                        }
                         else -> false
                     }
                 } else {

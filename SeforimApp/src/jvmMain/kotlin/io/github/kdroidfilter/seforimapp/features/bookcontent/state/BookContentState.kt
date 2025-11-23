@@ -89,6 +89,8 @@ data class ContentState(
     // Visibility
     val showCommentaries: Boolean = false,
     val showTargum: Boolean = false,
+    val hasNikud: Boolean = false,
+    val showNikud: Boolean = true,
 
     // Scroll positions
     val paragraphScrollPosition: Int = 0,

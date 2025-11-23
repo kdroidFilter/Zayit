@@ -278,6 +278,11 @@ class BookContentViewModel(
                 BookContentEvent.ToggleTargum ->
                     contentUseCase.toggleTargum()
 
+                BookContentEvent.ToggleNikud ->
+                    contentUseCase.toggleNikud()
+
+
+
                 is BookContentEvent.ContentScrolled ->
                     contentUseCase.updateContentScrollPosition(
                         event.anchorId, event.anchorIndex, event.scrollIndex, event.scrollOffset
@@ -496,6 +501,11 @@ class BookContentViewModel(
 
                 // Load TOC after pager creation
                 tocUseCase.loadRootToc(book.id)
+
+                // Detect nikud in book
+                viewModelScope.launch {
+                    contentUseCase.detectNikud(book.id)
+                }
 
                 // If we have an explicit forced anchor, always select it to ensure correct scroll/selection.
                 // Otherwise, when opening with no prior anchor and no selection, select the computed initial line.

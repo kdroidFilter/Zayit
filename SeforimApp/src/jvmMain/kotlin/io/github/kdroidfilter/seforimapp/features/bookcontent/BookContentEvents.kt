@@ -21,7 +21,7 @@ sealed interface BookContentEvent {
     data class TocEntryExpanded(val entry: TocEntry) : BookContentEvent
     data object ToggleToc : BookContentEvent
     data class TocScrolled(val index: Int, val offset: Int) : BookContentEvent
-    
+
     // Book tree events
     data class BookTreeScrolled(val index: Int, val offset: Int) : BookContentEvent
 
@@ -34,6 +34,7 @@ sealed interface BookContentEvent {
     data class OpenBookById(val bookId: Long) : BookContentEvent
     data object ToggleCommentaries : BookContentEvent
     data object ToggleTargum : BookContentEvent
+    data object ToggleNikud : BookContentEvent
     data class ContentScrolled(
         val anchorId: Long,
         val anchorIndex: Int,
@@ -42,7 +43,7 @@ sealed interface BookContentEvent {
     ) : BookContentEvent
     data object NavigateToPreviousLine : BookContentEvent
     data object NavigateToNextLine : BookContentEvent
-    
+
     // Commentaries events
     data class CommentariesTabSelected(val index: Int) : BookContentEvent
     data class CommentariesScrolled(val index: Int, val offset: Int) : BookContentEvent

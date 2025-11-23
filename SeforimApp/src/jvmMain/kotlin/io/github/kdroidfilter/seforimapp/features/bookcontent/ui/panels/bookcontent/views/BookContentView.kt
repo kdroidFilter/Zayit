@@ -46,6 +46,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOr
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.bookcontent.utils.NikudDetector
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -75,6 +76,7 @@ fun BookContentView(
     anchorIndex: Int = 0,
     topAnchorLineId: Long = -1L,
     topAnchorTimestamp: Long = 0L,
+    showNikud: Boolean = true,
     onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> }
 ) {
     // Collect paging data
@@ -279,6 +281,12 @@ fun BookContentView(
     var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
     var currentMatchStart by remember { mutableIntStateOf(-1) }
 
+    // Fix for search index out-of-bounds when toggling Nikud
+    LaunchedEffect(showNikud) {
+        currentMatchStart = -1
+        currentMatchLineId = null
+    }
+
     // Helper: recompute total matches across loaded snapshot (approximate)
     fun recomputeMatchesCount(query: String) { /* removed: no counter needed */
     }
@@ -299,7 +307,8 @@ fun BookContentView(
         while (guard++ < size) {
             i = (i + step + size) % size
             val line = snapshot[i] ?: continue
-            val text = buildAnnotatedFromHtml(line.content, textSize).text
+            val content = if (showNikud) line.content else NikudDetector.stripNikud(line.content)
+            val text = buildAnnotatedFromHtml(content, textSize).text
             val start = findAllMatchesOriginal(text, query).firstOrNull()?.first ?: -1
             if (start >= 0) {
                 currentHitLineIndex = i
@@ -392,7 +401,8 @@ fun BookContentView(
                             onLineSelected = onLineSelected,
                             scrollToLineTimestamp = scrollToLineTimestamp,
                             highlightQuery = findState.text.toString().takeIf { showFind },
-                            currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null
+                            currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
+                            showNikud = showNikud
                         )
                     } else {
                         // Placeholder while loading
@@ -439,16 +449,17 @@ fun BookContentView(
             // Compute total matches across currently loaded snapshot (approximate)
             val queryText = findState.text.toString()
             val snapshotItems = lazyPagingItems.itemSnapshotList.items
-            val matchCount = remember(queryText, snapshotItems) {
+            val matchCount = remember(queryText, snapshotItems, showNikud) {
                 if (queryText.length < 2) 0 else {
                     var total = 0
                     // Count non-overlapping occurrences per visible/loaded line
                     for (ln in snapshotItems) {
                         if (ln == null) continue
+                        val content = if (showNikud) ln.content else NikudDetector.stripNikud(ln.content)
                         val text = try {
-                            buildAnnotatedFromHtml(ln.content, textSize).text
+                            buildAnnotatedFromHtml(content, textSize).text
                         } catch (_: Throwable) {
-                            ln.content
+                            content
                         }
                         total += findAllMatchesOriginal(text, queryText).size
                     }
@@ -513,12 +524,14 @@ private fun LineItem(
     onLineSelected: (Line) -> Unit,
     scrollToLineTimestamp: Long,
     highlightQuery: String? = null,
-    currentMatchStart: Int? = null
+    currentMatchStart: Int? = null,
+    showNikud: Boolean = true
 ) {
     // Memoize the annotated string with proper keys
-    val annotated = remember(line.id, line.content, baseTextSize, boldScale) {
+    val annotated = remember(line.id, line.content, baseTextSize, boldScale, showNikud) {
+        val content = if (showNikud) line.content else NikudDetector.stripNikud(line.content)
         buildAnnotatedFromHtml(
-            line.content,
+            content,
             baseTextSize,
             boldScale = if (boldScale < 1f) 1f else boldScale
         )

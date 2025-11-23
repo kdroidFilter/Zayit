@@ -11,6 +11,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLa
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.icons.Kamatz
 import io.github.kdroidfilter.seforimapp.icons.*
 import org.jetbrains.compose.resources.stringResource
 import seforimapp.seforimapp.generated.resources.*
@@ -137,6 +138,18 @@ fun EndVerticalBar(
 
             // Hide both buttons on Home (no book selected)
             if (!noBookSelected) {
+                if (uiState.content.hasNikud) {
+                    SelectableIconButtonWithToolip(
+                        toolTipText = stringResource(Res.string.toggle_nikud_tooltip),
+                        onClick = { onEvent(BookContentEvent.ToggleNikud) },
+                        isSelected = uiState.content.showNikud,
+                        icon = Kamatz,
+                        iconDescription = stringResource(Res.string.toggle_nikud),
+                        label = stringResource(Res.string.nikud),
+                        shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "J+⌘" else "J+Ctrl"
+                    )
+                }
+
                 // Show Targum only when available for the book
                 if (targumEnabled) {
                     SelectableIconButtonWithToolip(

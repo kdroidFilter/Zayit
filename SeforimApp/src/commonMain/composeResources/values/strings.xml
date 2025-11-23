@@ -84,6 +84,9 @@
     <string name="zoom_in">הגדל</string>
     <string name="zoom_out_tooltip">הקטן גודל הטקסט</string>
     <string name="zoom_out">הקטן</string>
+    <string name="toggle_nikud_tooltip">הצג/הסתר ניקוד</string>
+    <string name="toggle_nikud">ניקוד</string>
+    <string name="nikud">ניקוד</string>
     <string name="add_bookmark_tooltip">הוסף סימנייה</string>
     <string name="add_bookmark">הוסף סימנייה</string>
     <string name="search_in_page_tooltip">חפש בתוך העמוד</string>
@@ -112,7 +115,7 @@
     <string name="paragraph">פסקה %1$d מפרק %2$d</string>
     <string name="select_book">בחר ספר כדי לצפות בתוכן</string>
     <string name="select_book_for_toc">בחר ספר כדי לצפות בתוכן העניינים שלו</string>
-    
+
     <!-- Line Comments View -->
     <string name="select_line_for_commentaries">בחר שורה כדי לצפות בפירושים שלה</string>
     <string name="no_commentaries_for_line">אין פירושים זמינים לפסקה זו</string>
@@ -346,7 +349,7 @@
 
     <!-- Database Update Window -->
     <string name="db_update_title_bar">עדכון מסד הנתונים</string>
-    
+
     <!-- Version Check Screen -->
     <string name="db_update_version_check_title">יש לעדכן את מסד הנתונים</string>
     <string name="db_update_reinstall_title">יש להתקין מחדש את מסד הנתונים</string>
@@ -357,7 +360,7 @@
     <string name="db_update_need_to_update">מסד הנתונים שלכם דורש עדכון כדי להיות תואם לגרסה זו של היישום. ניתן להוריד אותו מהאינטרנט או להשתמש בקובץ מקומי.</string>
     <string name="db_update_database_missing_error">חלה תקלה במסד הנתונים וכעת עליכם להתקין אותו מחדש. ניתן להוריד אותו מהאינטרנט או להשתמש בקובץ מקומי.</string>
     <string name="db_update_continue">המשך</string>
-    
+
     <!-- Update Options Screen -->
     <string name="db_update_options_title">אפשרויות עדכון</string>
     <string name="db_update_local_file_title">קובץ מקומי</string>
@@ -366,7 +369,7 @@
     <string name="db_update_download_title">הורדה</string>
     <string name="db_update_download_desc">הורידו באופן אוטומטי את הגרסה העדכנית ביותר של מסד הנתונים מהאינטרנט</string>
     <string name="db_update_download_button">הורדה</string>
-    
+
     <!-- Online Update Screen -->
     <string name="db_update_downloading_title">הורדת מאגר</string>
     <string name="db_update_preparing_download">מתכונן להורדה...</string>
@@ -377,7 +380,7 @@
     <string name="db_update_download_error_unknown">שגיאה לא ידועה</string>
     <string name="db_update_back">חזור</string>
     <string name="db_update_retry">נסה שוב</string>
-    
+
     <!-- Offline Update Screen -->
     <string name="db_update_offline_title">עדכון מקובץ מקומי</string>
     <string name="db_update_file_selection">בחירת קבצים</string>
@@ -387,7 +390,7 @@
     <string name="db_update_extracting">מחלץ מאגר...</string>
     <string name="db_update_extraction_completed">החילוץ הושלם!</string>
     <string name="db_update_extraction_error">שגיאה בחילוץ</string>
-    
+
     <!-- Completion Screen -->
     <string name="db_update_completion_title">העדכון הושלם</string>
     <string name="db_update_success_title">העדכון בוצע בהצלחה!</string>

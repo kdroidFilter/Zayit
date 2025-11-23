@@ -5,17 +5,19 @@ plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose)
-    id("com.android.library")
+    id("com.android.kotlin.multiplatform.library")
 }
 
 kotlin {
-    androidTarget {
-        //https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-test.html
-        instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
+    jvmToolchain(libs.versions.jvmToolchain.get().toInt())
+
+    androidLibrary {
+        namespace = "io.github.kdroidfilter.seforimapp"
+        compileSdk = 35
+        minSdk = 21
     }
 
     jvm()
-    jvmToolchain(libs.versions.jvmToolchain.get().toInt())
 
     sourceSets {
         commonMain.dependencies {
@@ -32,30 +34,6 @@ kotlin {
 
     }
 }
-
-android {
-    namespace = "io.github.kdroidfilter.seforimapp"
-    compileSdk = 35
-
-    defaultConfig {
-        minSdk = 21
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-    // targetSdk is deprecated for library modules; set test and lint target SDKs instead
-    testOptions {
-        targetSdk = 35
-    }
-    lint {
-        targetSdk = 35
-    }
-}
-
-//https://developer.android.com/develop/ui/compose/testing#setup
-dependencies {
-    androidTestImplementation(libs.androidx.uitest.junit4)
-    debugImplementation(libs.androidx.uitest.testManifest)
-}
-
 
 tasks.withType<ComposeHotRun>().configureEach {
     mainClass.set("MainKt")

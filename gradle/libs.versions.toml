@@ -8,12 +8,12 @@ jsoup = "1.21.2"
 jvmNativeTrustedRoots = "1.1.7"
 jvmToolchain = "25"
 koalaplotCore = "0.10.2"
-kotlin = "2.3.0-Beta2"
-compose = "1.10.0-beta01"
+kotlin = "2.3.0-RC"
+compose = "1.10.0-beta02"
 agp = "8.12.3"
-androidx-activityCompose = "1.11.0"
-androidx-uiTest = "1.9.4"
-hotReload = "1.0.0-rc03"
+androidx-activityCompose = "1.12.0"
+androidx-uiTest = "1.9.5"
+hotReload = "1.0.0-rc04"
 kermit = "2.0.8"
 kotlinpoet = "2.2.0"
 ktor = "3.3.2"
@@ -22,9 +22,9 @@ androidx-navigation = "2.9.1"
 kotlinx-serialization = "1.9.0"
 multiplatformSettings = "1.3.0"
 kotlinx-datetime = "0.7.1"
-buildConfig = "5.7.1"
-materialKolor = "4.0.4"
-jewel = "0.31.0-253.28086.58"
+buildConfig = "6.0.1"
+materialKolor = "4.0.5"
+jewel = "0.32.0-253.28294.205"
 jna = "5.18.1"
 oshiCore = "6.9.1"
 paging = "3.3.6"
@@ -36,9 +36,8 @@ slf4j = "2.0.17"
 maven-publish = "0.35.0"
 sqlDelight = "2.1.0"
 adaptiveNavigation = "1.2.0"
-navigationCompose = "2.9.1"
 zstdJni = "1.5.7-6"
-metro = "0.7.5"
+metro = "0.7.7"
 lucene = "10.3.2"
 
 [libraries]
@@ -72,7 +71,7 @@ ktor-client-curl = { module = "io.ktor:ktor-client-curl", version.ref = "ktor" }
 ktor-client-winhttp = { module = "io.ktor:ktor-client-winhttp", version.ref = "ktor" }
 androidx-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtime = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
-androidx-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "androidx-navigation" }
+navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "androidx-navigation" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 
 multiplatformSettings = { module = "com.russhwolf:multiplatform-settings-no-arg", version.ref = "multiplatformSettings" }
@@ -101,7 +100,6 @@ reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reo
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 adaptive-layout = { module = "org.jetbrains.compose.material3.adaptive:adaptive-layout", version.ref = "adaptiveNavigation" }
 adaptive-navigation = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation", version.ref = "adaptiveNavigation" }
-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 split-pane-desktop = { module = "org.jetbrains.compose.components:components-splitpane-desktop", version.ref = "compose"}
 sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqlDelight" }
 zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstdJni" }
@@ -124,7 +122,7 @@ kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", vers
 buildConfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildConfig" }
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
 sqlDelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
-android-library = { id = "com.android.library", version.ref = "agp" }
+android-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 caupain =  { id = "com.deezer.caupain", version = "1.6.1"}
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 linux-deps = { id = "io.github.kdroidfilter.compose.linux.packagedeps", version = "0.2.4"}

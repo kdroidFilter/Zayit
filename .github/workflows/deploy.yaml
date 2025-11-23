@@ -265,7 +265,7 @@ jobs:
           echo "TAG=$tag" >> $GITHUB_ENV
       # Upload to latest release (attach to the correct tag)
       - name: Upload to Latest Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           files: |

@@ -122,7 +122,7 @@ kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", vers
 buildConfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildConfig" }
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
 sqlDelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
-android-library = { id = "com.android.library", version.ref = "agp" }
+android-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 caupain =  { id = "com.deezer.caupain", version = "1.6.1"}
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 linux-deps = { id = "io.github.kdroidfilter.compose.linux.packagedeps", version = "0.2.4"}

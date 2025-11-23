@@ -39,6 +39,7 @@ data class VisibleTocEntry(
  */
 @Stable
 data class BookContentState @OptIn(ExperimentalSplitPaneApi::class) constructor(
+    val tabId: String = "",
     val navigation: NavigationState = NavigationState(),
     val toc: TocState = TocState(),
     val content: ContentState = ContentState(),

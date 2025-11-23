@@ -1,14 +1,6 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.utils
 
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isAltPressed
-import androidx.compose.ui.input.key.isCtrlPressed
-import androidx.compose.ui.input.key.isMetaPressed
-import androidx.compose.ui.input.key.isShiftPressed
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
@@ -29,7 +21,11 @@ fun getCenteredWindowState(width: Int, height: Int): WindowState {
 }
 
 
-fun processKeyShortcuts(keyEvent: KeyEvent, onNavigateTo: (String) -> Unit): Boolean {
+fun processKeyShortcuts(
+    keyEvent: KeyEvent,
+    onNavigateTo: (String) -> Unit,
+    tabId: String = ""
+): Boolean {
     // Only process key down events
     if (keyEvent.type != KeyEventType.KeyDown) return false
     
@@ -41,8 +37,8 @@ fun processKeyShortcuts(keyEvent: KeyEvent, onNavigateTo: (String) -> Unit): Boo
     if (isCtrlOrCmdPressed) {
         when (keyEvent.key) {
             Key.F -> {
-                // Toggle global Find-in-page bar regardless of current focus
-                if (AppSettings.findBarOpenFlow.value) AppSettings.closeFindBar() else AppSettings.openFindBar()
+                // Toggle Find-in-page bar scoped to the current tab
+                if (AppSettings.findBarOpenFlow(tabId).value) AppSettings.closeFindBar(tabId) else AppSettings.openFindBar(tabId)
                 return true
             }
             Key.Plus, Key.NumPadAdd -> {

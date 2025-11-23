@@ -5,55 +5,71 @@ package io.github.kdroidfilter.seforimapp.features.search
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.seforim.tabs.TabStateManager
-import io.github.kdroidfilter.seforim.tabs.TabType
-import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
-import io.github.kdroidfilter.seforim.tabs.TabsViewModel
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
-import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
-import io.github.kdroidfilter.seforimlibrary.core.models.Category
-import io.github.kdroidfilter.seforimlibrary.core.models.Book
-import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
-import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.take
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-import java.util.UUID
-import java.util.PriorityQueue
-import java.util.Arrays
-import org.jsoup.Jsoup
-import org.jsoup.safety.Safelist
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.search.domain.BuildSearchTreeUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.GetBreadcrumbPiecesUseCase
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
+import io.github.kdroidfilter.seforimlibrary.core.models.Category
+import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
+import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.jsoup.Jsoup
+import org.jsoup.safety.Safelist
+import java.util.Arrays
+import java.util.UUID
+import kotlin.collections.ArrayDeque
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
+import kotlin.collections.List
+import kotlin.collections.Map
+import kotlin.collections.MutableList
+import kotlin.collections.MutableMap
+import kotlin.collections.MutableSet
+import kotlin.collections.Set
+import kotlin.collections.any
+import kotlin.collections.asReversed
+import kotlin.collections.associate
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.copyOf
+import kotlin.collections.emptyList
+import kotlin.collections.emptyMap
+import kotlin.collections.emptySet
+import kotlin.collections.filter
+import kotlin.collections.filterValues
+import kotlin.collections.first
+import kotlin.collections.flatMap
+import kotlin.collections.flatten
+import kotlin.collections.forEach
+import kotlin.collections.getOrNull
+import kotlin.collections.getOrPut
+import kotlin.collections.groupBy
+import kotlin.collections.isNotEmpty
+import kotlin.collections.iterator
+import kotlin.collections.joinToString
+import kotlin.collections.lastOrNull
+import kotlin.collections.map
+import kotlin.collections.mapNotNull
+import kotlin.collections.mapTo
+import kotlin.collections.mapValues
+import kotlin.collections.minus
+import kotlin.collections.mutableListOf
+import kotlin.collections.mutableMapOf
+import kotlin.collections.mutableSetOf
+import kotlin.collections.orEmpty
+import kotlin.collections.plus
+import kotlin.collections.plusAssign
+import kotlin.collections.set
+import kotlin.collections.sortedWith
+import kotlin.collections.toList
+import kotlin.collections.toMap
 
 private const val PARALLEL_FILTER_THRESHOLD = 2_000
 
@@ -87,7 +103,7 @@ class SearchResultViewModel(
     private val titleUpdateManager: TabTitleUpdateManager,
     private val tabsViewModel: TabsViewModel
 ) : ViewModel() {
-    private val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
+    internal val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
     private val getBreadcrumbPieces = GetBreadcrumbPiecesUseCase(repository)
     private val buildSearchTreeUseCase = BuildSearchTreeUseCase(repository)
     // MVI events for SearchResultViewModel
@@ -189,7 +205,7 @@ class SearchResultViewModel(
 
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
-    private var currentJob: kotlinx.coroutines.Job? = null
+    private var currentJob: Job? = null
 
     // Pagination cursors/state
     private var currentKey: SearchParamsKey? = null
@@ -379,7 +395,7 @@ class SearchResultViewModel(
             .flatMapLatest {
                 // Show overlay until visible results emission changes either size or identity
                 val initial = Pair(visibleResultsFlow.value.size, System.identityHashCode(visibleResultsFlow.value))
-                kotlinx.coroutines.flow.flow {
+                flow {
                     emit(true)
                     visibleResultsFlow
                         .map { Pair(it.size, System.identityHashCode(it)) }
@@ -622,8 +638,8 @@ class SearchResultViewModel(
         val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
         if (total < PARALLEL_FILTER_THRESHOLD || cores == 1) return@run this.fastFilterByBookSequential(allowed)
         val chunk = (total + cores - 1) / cores
-        kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.Default) {
-            val tasks = ArrayList<kotlinx.coroutines.Deferred<List<SearchResult>>>(cores)
+        runBlocking(Dispatchers.Default) {
+            val tasks = ArrayList<Deferred<List<SearchResult>>>(cores)
             var start = 0
             while (start < total) {
                 val s = start
@@ -854,7 +870,7 @@ class SearchResultViewModel(
         // Drop any cached snapshot for this tab to avoid restoring stale results
         SearchTabCache.clear(tabId)
         SearchTabPersistentCache.clear(tabId)
-        currentJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+        currentJob = viewModelScope.launch(Dispatchers.Default) {
             _uiState.value = _uiState.value.copy(isLoading = true, results = emptyList(), hasMore = false, progressCurrent = 0, progressTotal = null)
             // Reset aggregates and counts for a clean run
             countsMutex.withLock {
@@ -944,7 +960,7 @@ class SearchResultViewModel(
                 }
 
                 when {
-                    fetchTocId != null && fetchTocId > 0 -> {
+                    fetchTocId != null -> {
                         val toc = repository.getTocEntry(fetchTocId)
                     if (toc != null) {
                         // Bulk: compute allowed lineIds using preloaded caches for this book
@@ -974,7 +990,7 @@ class SearchResultViewModel(
                         }
                         }
                     }
-                    fetchBookId != null && fetchBookId > 0 -> {
+                    fetchBookId != null -> {
                         var offset = 0
                         var hits = lucene.searchInBook(q, near, fetchBookId, limit = batchSizeFor(acc.size), offset = offset)
                         while (hits.isNotEmpty()) {
@@ -992,7 +1008,7 @@ class SearchResultViewModel(
                             hits = nextDeferred.await()
                         }
                     }
-                    fetchCategoryId != null && fetchCategoryId > 0 -> {
+                    fetchCategoryId != null -> {
                         // Expand to all books under the category tree
                         val bookIdsUnder = collectBookIdsUnderCategory(fetchCategoryId)
                         if (bookIdsUnder.isEmpty()) {
@@ -1062,7 +1078,7 @@ class SearchResultViewModel(
                 // to the pre-stream empty list reference).
                 runCatching {
                     val initial = Pair(visibleResultsFlow.value.size, System.identityHashCode(visibleResultsFlow.value))
-                    kotlinx.coroutines.withTimeoutOrNull(300) {
+                    withTimeoutOrNull(300) {
                         visibleResultsFlow
                             .map { Pair(it.size, System.identityHashCode(it)) }
                             .distinctUntilChanged()
@@ -1555,7 +1571,7 @@ class SearchResultViewModel(
      * the original HTML line content from SQLite via the repository.
      */
     private suspend fun toResultsWithDbSnippets(
-        hits: List<io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService.LineHit>,
+        hits: List<LuceneSearchService.LineHit>,
         rawQuery: String,
         near: Int
     ): List<SearchResult> {
@@ -1781,11 +1797,4 @@ class SearchResultViewModel(
         // Rebuild TOC aggregates only if a book scope is selected
         uiState.value.scopeBook?.id?.let { recomputeTocCountsForBook(it, results) }
     }
-}
-
-// In-file helpers for efficient parallel filtering on CPU cores
-private suspend fun <T> List<T>.parallelFilterCores(predicate: (T) -> Boolean): List<T> {
-    // Disable multithreading for filtering: use simple sequential filter to reduce
-    // CPU spikes and memory pressure at startup.
-    return this.filter(predicate)
 }

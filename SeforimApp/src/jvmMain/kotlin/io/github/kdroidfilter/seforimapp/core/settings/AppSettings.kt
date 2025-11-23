@@ -119,17 +119,29 @@ object AppSettings {
     private val _targumFontCodeFlow = MutableStateFlow(getTargumFontCode())
     val targumFontCodeFlow: StateFlow<String> = _targumFontCodeFlow.asStateFlow()
 
-    // Find-in-page transient query (not persisted)
-    private val _findQueryFlow = MutableStateFlow("")
-    val findQueryFlow: StateFlow<String> = _findQueryFlow.asStateFlow()
-    fun setFindQuery(q: String) { _findQueryFlow.value = q }
+    // Find-in-page state (scoped per tab, not persisted)
+    private val findQueryFlowByTab = mutableMapOf<String, MutableStateFlow<String>>()
+    private val findBarOpenFlowByTab = mutableMapOf<String, MutableStateFlow<Boolean>>()
 
-    // Find-in-page open state (global toggle, not persisted)
-    private val _findBarOpenFlow = MutableStateFlow(false)
-    val findBarOpenFlow: StateFlow<Boolean> = _findBarOpenFlow.asStateFlow()
-    fun openFindBar() { _findBarOpenFlow.value = true }
-    fun closeFindBar() { _findBarOpenFlow.value = false }
-    fun toggleFindBar() { _findBarOpenFlow.value = !_findBarOpenFlow.value }
+    private fun queryFlowFor(tabId: String): MutableStateFlow<String> =
+        findQueryFlowByTab.getOrPut(tabId) { MutableStateFlow("") }
+
+    private fun findOpenFlowFor(tabId: String): MutableStateFlow<Boolean> =
+        findBarOpenFlowByTab.getOrPut(tabId) { MutableStateFlow(false) }
+
+    fun findQueryFlow(tabId: String): StateFlow<String> = queryFlowFor(tabId).asStateFlow()
+    fun setFindQuery(tabId: String, q: String) { queryFlowFor(tabId).value = q }
+
+    fun findBarOpenFlow(tabId: String): StateFlow<Boolean> = findOpenFlowFor(tabId).asStateFlow()
+    fun openFindBar(tabId: String) { findOpenFlowFor(tabId).value = true }
+    fun closeFindBar(tabId: String) { findOpenFlowFor(tabId).value = false }
+    fun toggleFindBar(tabId: String) {
+        val flow = findOpenFlowFor(tabId)
+        flow.value = !flow.value
+        if (!flow.value) {
+            queryFlowFor(tabId).value = ""
+        }
+    }
 
     fun getTextSize(): Float {
         return settings[KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE]

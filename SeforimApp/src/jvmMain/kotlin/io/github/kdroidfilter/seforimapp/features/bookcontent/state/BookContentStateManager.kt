@@ -32,6 +32,7 @@ class BookContentStateManager(
         val targumPos = getState<Float>(StateKeys.TARGUM_SPLIT_PANE_POSITION) ?: 0.8f
 
         return BookContentState(
+            tabId = tabId,
             navigation = NavigationState(
                 expandedCategories = getState(StateKeys.EXPANDED_CATEGORIES) ?: emptySet(),
                 categoryChildren = getState(StateKeys.CATEGORY_CHILDREN) ?: emptyMap(),

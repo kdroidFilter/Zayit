@@ -66,6 +66,7 @@ fun BookContentView(
     selectedLine: Line?,
     onLineSelected: (Line) -> Unit,
     onEvent: (BookContentEvent) -> Unit,
+    tabId: String,
     modifier: Modifier = Modifier,
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
@@ -176,7 +177,7 @@ fun BookContentView(
             debugln { "Top-anchor target $topAnchorLineId not yet in snapshot; waiting" }
             withTimeoutOrNull(1500L) {
                 snapshotFlow { lazyPagingItems.itemSnapshotList.items }
-                    .map { items -> items.indices.firstOrNull { items[it]?.id == topAnchorLineId } }
+                    .map { items -> items.indices.firstOrNull { items[it].id == topAnchorLineId } }
                     .filterNotNull()
                     .first().also { idx -> targetIndex = idx }
             }
@@ -272,16 +273,19 @@ fun BookContentView(
             }
     }
 
-    // Find-in-page UI state
-    val showFind by AppSettings.findBarOpenFlow.collectAsState()
-    val findState = remember { TextFieldState() }
+    // Find-in-page UI state (scoped per tab)
+    val showFind by AppSettings.findBarOpenFlow(tabId).collectAsState()
+    val persistedFindQuery by AppSettings.findQueryFlow(tabId).collectAsState("")
+    val findState = remember(tabId) { TextFieldState() }
+    LaunchedEffect(persistedFindQuery) {
+        val current = findState.text.toString()
+        if (current != persistedFindQuery) {
+            findState.edit { replace(0, length, persistedFindQuery) }
+        }
+    }
     var currentHitLineIndex by remember { mutableIntStateOf(-1) }
     var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
     var currentMatchStart by remember { mutableIntStateOf(-1) }
-
-    // Helper: recompute total matches across loaded snapshot (approximate)
-    fun recomputeMatchesCount(query: String) { /* removed: no counter needed */
-    }
 
     // Navigate to next/previous line containing the query (wrap-around)
     val scope = rememberCoroutineScope()
@@ -289,7 +293,7 @@ fun BookContentView(
         val query = findState.text.toString()
         if (query.length < 2) return
         val snapshot = lazyPagingItems.itemSnapshotList
-        if (snapshot.size == 0) return
+        if (snapshot.isEmpty()) return
         val startIndex =
             if (currentHitLineIndex in snapshot.indices) currentHitLineIndex else listState.firstVisibleItemIndex
         val step = if (next) 1 else -1
@@ -316,7 +320,7 @@ fun BookContentView(
 
     // Global preview handler: handle basic navigation keys regardless of inner focus
     val previewKeyHandler = remember(onEvent) {
-        { keyEvent: androidx.compose.ui.input.key.KeyEvent ->
+        { keyEvent: KeyEvent ->
             // Ctrl/Cmd+F handled globally at window level; do not intercept here
             if (keyEvent.type == KeyEventType.KeyDown) {
                 when (keyEvent.key) {
@@ -330,7 +334,7 @@ fun BookContentView(
 
                     Key.Escape -> {
                         if (showFind) {
-                            AppSettings.closeFindBar(); true
+                            AppSettings.closeFindBar(tabId); true
                         } else false
                     }
 
@@ -343,6 +347,11 @@ fun BookContentView(
     // Request initial focus so arrow keys work as soon as the view appears
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(book.id) { focusRequester.requestFocus() }
+    LaunchedEffect(showFind) {
+        if (!showFind) {
+            focusRequester.requestFocus()
+        }
+    }
 
     // Workaround for Compose selection crash when extending selection with Shift+Click across
     // multiple selectables in a virtualized list. We intercept Shift+primary mouse presses at
@@ -444,7 +453,6 @@ fun BookContentView(
                     var total = 0
                     // Count non-overlapping occurrences per visible/loaded line
                     for (ln in snapshotItems) {
-                        if (ln == null) continue
                         val text = try {
                             buildAnnotatedFromHtml(ln.content, textSize).text
                         } catch (_: Throwable) {
@@ -480,11 +488,11 @@ fun BookContentView(
                     state = findState,
                     onEnterNext = { navigateToMatch(true) },
                     onEnterPrev = { navigateToMatch(false) },
-                    onClose = { AppSettings.closeFindBar(); AppSettings.setFindQuery("") }
+                    onClose = { AppSettings.closeFindBar(tabId) }
                 )
                 LaunchedEffect(findState.text, showFind) {
                     val q = findState.text.toString()
-                    AppSettings.setFindQuery(if (showFind && q.length >= 2) q else "")
+                    AppSettings.setFindQuery(tabId, if (q.length >= 2) q else "")
                 }
             }
         }

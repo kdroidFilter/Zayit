@@ -33,10 +33,10 @@ class BookContentViewModel(
     private val titleUpdateManager: TabTitleUpdateManager,
     private val tabsViewModel: TabsViewModel
 ) : ViewModel() {
-    private val currentTabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
+    internal val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
 
     // State Manager centralisé
-    private val stateManager = BookContentStateManager(currentTabId, tabStateManager)
+    private val stateManager = BookContentStateManager(tabId, tabStateManager)
 
     // UseCases
     private val navigationUseCase = NavigationUseCase(repository, stateManager)
@@ -62,16 +62,16 @@ class BookContentViewModel(
             val selectedCommentators: Set<Long> = when {
                 lineId != null -> {
                     val perLine = state.content.selectedCommentatorsByLine[lineId].orEmpty()
-                    if (perLine.isNotEmpty()) perLine else state.content.selectedCommentatorsByBook[bookId]?.orEmpty() ?: emptySet()
+                    perLine.ifEmpty { state.content.selectedCommentatorsByBook[bookId].orEmpty() }
                 }
-                else -> state.content.selectedCommentatorsByBook[bookId]?.orEmpty() ?: emptySet()
+                else -> state.content.selectedCommentatorsByBook[bookId].orEmpty()
             }
             val selectedLinks: Set<Long> = when {
                 lineId != null -> {
                     val perLine = state.content.selectedLinkSourcesByLine[lineId].orEmpty()
-                    if (perLine.isNotEmpty()) perLine else state.content.selectedLinkSourcesByBook[bookId]?.orEmpty() ?: emptySet()
+                    perLine.ifEmpty { state.content.selectedLinkSourcesByBook[bookId].orEmpty() }
                 }
-                else -> state.content.selectedLinkSourcesByBook[bookId]?.orEmpty() ?: emptySet()
+                else -> state.content.selectedLinkSourcesByBook[bookId].orEmpty()
             }
             state.copy(
                 providers = Providers(
@@ -97,16 +97,16 @@ class BookContentViewModel(
                 val selectedCommentators: Set<Long> = when {
                     lineId != null -> {
                         val perLine = s.content.selectedCommentatorsByLine[lineId].orEmpty()
-                        if (perLine.isNotEmpty()) perLine else s.content.selectedCommentatorsByBook[bookId]?.orEmpty() ?: emptySet()
+                        perLine.ifEmpty { s.content.selectedCommentatorsByBook[bookId].orEmpty() }
                     }
-                    else -> s.content.selectedCommentatorsByBook[bookId]?.orEmpty() ?: emptySet()
+                    else -> s.content.selectedCommentatorsByBook[bookId].orEmpty()
                 }
                 val selectedLinks: Set<Long> = when {
                     lineId != null -> {
                         val perLine = s.content.selectedLinkSourcesByLine[lineId].orEmpty()
-                        if (perLine.isNotEmpty()) perLine else s.content.selectedLinkSourcesByBook[bookId]?.orEmpty() ?: emptySet()
+                        perLine.ifEmpty { s.content.selectedLinkSourcesByBook[bookId].orEmpty() }
                     }
-                    else -> s.content.selectedLinkSourcesByBook[bookId]?.orEmpty() ?: emptySet()
+                    else -> s.content.selectedLinkSourcesByBook[bookId].orEmpty()
                 }
                 s.copy(
                     providers = Providers(
@@ -143,14 +143,14 @@ class BookContentViewModel(
                     loadBookById(restoredBook.id, requestedLineId)
                 } else {
                     // Vérifier s'il y a une ligne sélectionnée sauvegardée à restaurer
-                    val savedLineId = tabStateManager.getState<Long>(currentTabId, StateKeys.SELECTED_LINE_ID)
+                    val savedLineId = tabStateManager.getState<Long>(tabId, StateKeys.SELECTED_LINE_ID)
                     if (savedLineId != null) {
                         // Cold boot restoration: don't trigger scroll animation, use saved scroll position
                         loadBookById(restoredBook.id, savedLineId, triggerScroll = false)
                     } else {
                         // Cas Home/Reference: livre choisi sans TOC (pas de lineId). Ouvrir le TOC (type-safe source).
                         val openSource: io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource? =
-                            tabStateManager.getState(currentTabId, StateKeys.OPEN_SOURCE)
+                            tabStateManager.getState(tabId, StateKeys.OPEN_SOURCE)
                         if (openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE ||
                             openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.CATEGORY_TREE_NEW_TAB ||
                             openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.SEARCH_RESULT ||
@@ -187,7 +187,7 @@ class BookContentViewModel(
                 .filter { it.isNotEmpty() }
                 .distinctUntilChanged()
                 .collect { combined ->
-                    titleUpdateManager.updateTabTitle(currentTabId, combined, TabType.BOOK)
+                    titleUpdateManager.updateTabTitle(tabId, combined, TabType.BOOK)
                 }
         }
     }
@@ -340,7 +340,7 @@ class BookContentViewModel(
                 runCatching { navigationUseCase.expandPathToBook(book) }
                 // Afficher le TOC pour certaines origines d'ouverture (type-safe)
                 val openSource: io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource? =
-                    tabStateManager.getState(currentTabId, StateKeys.OPEN_SOURCE)
+                    tabStateManager.getState(tabId, StateKeys.OPEN_SOURCE)
                 if (openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE ||
                     openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.CATEGORY_TREE_NEW_TAB ||
                     openSource == io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.SEARCH_RESULT ||
@@ -472,7 +472,7 @@ class BookContentViewModel(
                 val resolvedInitialLineId: Long? = when {
                     forceAnchorId != null -> forceAnchorId
                     shouldUseAnchor -> state.content.anchorId
-                    state.content.selectedLine != null -> state.content.selectedLine?.id
+                    state.content.selectedLine != null -> state.content.selectedLine.id
                     else -> {
                         // Compute from TOC: take the first root TOC entry (or its first leaf) and
                         // select its first associated line. Fallback to the very first line of the book.
@@ -480,7 +480,7 @@ class BookContentViewModel(
                             val root = repository.getBookRootToc(book.id)
                             val first = root.firstOrNull()
                             val targetEntryId = if (first == null) null else findFirstLeafTocId(first)
-                                ?: first?.id
+                                ?: first.id
                             val fromToc = targetEntryId?.let { id ->
                                 repository.getLineIdsForTocEntry(id).firstOrNull()
                             }
@@ -548,11 +548,11 @@ class BookContentViewModel(
     }
 
     /** Ouvre un livre dans un nouvel onglet */
-    private suspend fun openBookInNewTab(book: Book) {
+    private fun openBookInNewTab(book: Book) {
         val newTabId = java.util.UUID.randomUUID().toString()
 
         // Copier l'état de navigation vers le nouvel onglet
-        stateManager.copyNavigationState(currentTabId, newTabId, tabStateManager)
+        stateManager.copyNavigationState(tabId, newTabId, tabStateManager)
 
         // Pré-initialiser le nouvel onglet avec le livre sélectionné pour éviter
         // l'affichage de la page d'accueil avant le chargement.

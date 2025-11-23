@@ -89,6 +89,7 @@ fun BookContentPanel(
                                 onEvent(BookContentEvent.LineSelected(line))
                             },
                             onEvent = onEvent,
+                            tabId = uiState.tabId,
                             modifier = Modifier,
                             preservedListState = bookListState,
                             scrollIndex = uiState.content.scrollIndex,
@@ -149,7 +150,7 @@ private fun LoaderPanel(modifier: Modifier = Modifier) {
 @Composable
 private fun CommentsPane(
     uiState: BookContentState,
-    onEvent: (BookContentEvent) -> Unit,
+    onEvent: (BookContentEvent) -> Unit
 ) {
     LineCommentsView(
         uiState = uiState,
@@ -160,7 +161,7 @@ private fun CommentsPane(
 @Composable
 private fun TargumPane(
     uiState: BookContentState,
-    onEvent: (BookContentEvent) -> Unit,
+    onEvent: (BookContentEvent) -> Unit
 ) {
     LineTargumView(
         uiState = uiState,

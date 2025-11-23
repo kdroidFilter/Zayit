@@ -246,7 +246,8 @@ fun main() {
                                 } else {
                                     processKeyShortcuts(
                                         keyEvent = keyEvent,
-                                        onNavigateTo = { /* no-op: legacy shortcuts not used here */ }
+                                        onNavigateTo = { /* no-op: legacy shortcuts not used here */ },
+                                        tabId = tabs.getOrNull(selectedIndex)?.destination?.tabId ?: ""
                                     )
                                 }
                             } else {

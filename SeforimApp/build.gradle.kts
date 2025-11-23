@@ -65,7 +65,7 @@ kotlin {
             // AndroidX (multiplatform-friendly artifacts)
             implementation(libs.androidx.lifecycle.runtime)
             implementation(libs.androidx.lifecycle.viewmodel)
-            implementation(libs.androidx.navigation.compose)
+            implementation(libs.navigation.compose)
 
             // KotlinX
             implementation(libs.kotlinx.coroutines.core)

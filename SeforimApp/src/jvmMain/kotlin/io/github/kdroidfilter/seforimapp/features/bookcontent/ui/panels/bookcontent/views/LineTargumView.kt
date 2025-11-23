@@ -3,12 +3,12 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcon
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,8 +16,8 @@ import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -27,6 +27,7 @@ import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -35,13 +36,14 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
-import seforimapp.seforimapp.generated.resources.*
-import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
+import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.links
+import seforimapp.seforimapp.generated.resources.no_links_for_line
+import seforimapp.seforimapp.generated.resources.select_line_for_links
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -55,7 +57,8 @@ fun LineTargumView(
     onSelectedSourcesChange: (Set<Long>) -> Unit = {},
     onLinkClick: (CommentaryWithText) -> Unit = {},
     onScroll: (Int, Int) -> Unit = { _, _ -> },
-    onHide: () -> Unit = {}
+    onHide: () -> Unit = {},
+    highlightQuery: String = ""
 ) {
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val commentTextSize by animateFloatAsState(
@@ -160,7 +163,8 @@ fun LineTargumView(
                                             commentTextSize = commentTextSize,
                                             lineHeight = lineHeight,
                                             fontFamily = targumFontFamily,
-                                            boldScale = boldScaleForPlatform
+                                            boldScale = boldScaleForPlatform,
+                                            highlightQuery = highlightQuery
                                         )
 
                                         Spacer(modifier = Modifier.height(8.dp))
@@ -184,6 +188,9 @@ fun LineTargumView(
     val providers = uiState.providers ?: return
     val contentState = uiState.content
     val windowInfo = LocalWindowInfo.current
+    val findQuery by AppSettings.findQueryFlow(uiState.tabId).collectAsState("")
+    val showFind by AppSettings.findBarOpenFlow(uiState.tabId).collectAsState()
+    val activeQuery = if (showFind) findQuery else ""
 
     val onSelectedSourcesChange = remember(contentState.selectedLine) {
         { ids: Set<Long> ->
@@ -228,7 +235,8 @@ fun LineTargumView(
         onSelectedSourcesChange = onSelectedSourcesChange,
         onLinkClick = onLinkClick,
         onScroll = onScroll,
-        onHide = onHide
+        onHide = onHide,
+        highlightQuery = activeQuery
     )
 }
 
@@ -254,6 +262,7 @@ private fun PagedLinksList(
     lineHeight: Float,
     fontFamily: FontFamily,
     boldScale: Float = 1.0f,
+    highlightQuery: String = "",
 ) {
     val pagerFlow: Flow<PagingData<CommentaryWithText>> = remember(lineId, sourceBookId) {
         buildLinksPagerFor(lineId, sourceBookId).distinctUntilChanged()
@@ -288,6 +297,7 @@ private fun PagedLinksList(
                         lineHeight = lineHeight,
                         fontFamily = fontFamily,
                         boldScale = boldScale,
+                        highlightQuery = highlightQuery,
                         onLinkClick = onLinkClick
                     )
                 }
@@ -318,6 +328,7 @@ private fun LinkItem(
     lineHeight: Float,
     fontFamily: FontFamily,
     boldScale: Float = 1.0f,
+    highlightQuery: String,
     onLinkClick: (CommentaryWithText) -> Unit
 ) {
     // Optimisation : mémorisation du callback pour éviter recréation
@@ -341,10 +352,9 @@ private fun LinkItem(
             )
         }
 
-        // Highlight occurrences using global find-in-page query
-        val findQuery by AppSettings.findQueryFlow.collectAsState()
-        val display: AnnotatedString = remember(annotated, findQuery) {
-            io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated(annotated, findQuery)
+        // Highlight occurrences using the current tab's find-in-page query
+        val display: AnnotatedString = remember(annotated, highlightQuery) {
+            io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated(annotated, highlightQuery)
         }
 
         Text(

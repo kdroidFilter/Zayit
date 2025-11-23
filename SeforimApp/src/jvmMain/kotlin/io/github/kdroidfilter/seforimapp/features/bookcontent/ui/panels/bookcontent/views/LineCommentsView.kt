@@ -17,8 +17,8 @@ import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -34,9 +35,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.Pane
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.debounce
-import org.jetbrains.compose.resources.Font
+import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.rememberSplitPaneState
@@ -44,7 +44,6 @@ import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
-import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import seforimapp.seforimapp.generated.resources.*
 
 private const val MAX_COMMENTATORS = 4
@@ -61,6 +60,9 @@ fun LineCommentsView(
 
     // Animation settings with stable memorization
     val textSizes = rememberAnimatedTextSettings()
+    val findQuery by AppSettings.findQueryFlow(uiState.tabId).collectAsState("")
+    val showFind by AppSettings.findBarOpenFlow(uiState.tabId).collectAsState()
+    val activeQuery = if (showFind) findQuery else ""
 
     val paneInteractionSource = remember { MutableInteractionSource() }
 
@@ -79,7 +81,8 @@ fun LineCommentsView(
                     uiState = uiState,
                     onEvent = onEvent,
                     textSizes = textSizes,
-                    onShowMaxLimit = { onEvent(BookContentEvent.CommentatorsSelectionLimitExceeded) }
+                    onShowMaxLimit = { onEvent(BookContentEvent.CommentatorsSelectionLimitExceeded) },
+                    findQueryText = activeQuery
                 )
             }
         }
@@ -93,7 +96,8 @@ private fun CommentariesContent(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
-    onShowMaxLimit: () -> Unit
+    onShowMaxLimit: () -> Unit,
+    findQueryText: String
 ) {
     val providers = uiState.providers ?: return
     val contentState = uiState.content
@@ -158,7 +162,8 @@ private fun CommentariesContent(
                 selectedLine = selectedLine,
                 uiState = uiState,
                 onEvent = onEvent,
-                textSizes = textSizes
+                textSizes = textSizes,
+                findQueryText = findQueryText
             )
         }
     )
@@ -227,7 +232,8 @@ private fun CommentariesDisplay(
     selectedLine: Line,
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    textSizes: AnimatedTextSizes
+    textSizes: AnimatedTextSizes,
+    findQueryText: String
 ) {
     val contentState = uiState.content
 
@@ -258,7 +264,8 @@ private fun CommentariesDisplay(
         contentState.commentariesScrollOffset,
         textSizes,
         commentaryFontFamily,
-        boldScaleForPlatform
+        boldScaleForPlatform,
+        findQueryText
     ) {
         CommentariesLayoutConfig(
             selectedCommentators = selectedCommentators,
@@ -282,7 +289,8 @@ private fun CommentariesDisplay(
             },
             textSizes = textSizes,
             fontFamily = commentaryFontFamily,
-            boldScale = boldScaleForPlatform
+            boldScale = boldScaleForPlatform,
+            highlightQuery = findQueryText
         )
     }
 
@@ -306,7 +314,7 @@ private fun CommentariesLayout(
 private fun CommentatorsGridView(
     config: CommentariesLayoutConfig,
     uiState: BookContentState,
-    onEvent: (BookContentEvent) -> Unit,
+    onEvent: (BookContentEvent) -> Unit
 ) {
     // Cache the calculation of lines
     val rows = remember(config.selectedCommentators) {
@@ -351,7 +359,8 @@ private fun CommentatorsGridView(
                                 ?: uiState.content.commentariesScrollOffset,
                             onScroll = { i, o ->
                                 onEvent(BookContentEvent.CommentaryColumnScrolled(id, i, o))
-                            }
+                            },
+                            highlightQuery = config.highlightQuery
                         )
                     }
                 }
@@ -381,6 +390,7 @@ private fun CommentaryListView(
     initialIndex: Int,
     initialOffset: Int,
     onScroll: (Int, Int) -> Unit,
+    highlightQuery: String
 ) {
     val providers = uiState.providers ?: return
 
@@ -431,6 +441,7 @@ private fun CommentaryListView(
                         textSizes = config.textSizes,
                         fontFamily = config.fontFamily,
                         boldScale = config.boldScale,
+                        highlightQuery = highlightQuery,
                         onClick = { config.onCommentClick(commentary) }
                     )
                 }
@@ -454,6 +465,7 @@ private fun CommentaryItem(
     textSizes: AnimatedTextSizes,
     fontFamily: FontFamily,
     boldScale: Float = 1.0f,
+    highlightQuery: String,
     onClick: () -> Unit
 ) {
     // Memorizes the pointerInput to avoid recreating it
@@ -479,9 +491,8 @@ private fun CommentaryItem(
         }
 
         // Highlight occurrences from global find-in-page query
-        val findQuery by AppSettings.findQueryFlow.collectAsState()
-        val display: AnnotatedString = remember(annotated, findQuery) {
-            io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated(annotated, findQuery)
+        val display: AnnotatedString = remember(annotated, highlightQuery) {
+            io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated(annotated, highlightQuery)
         }
 
         Text(
@@ -667,4 +678,5 @@ private data class CommentariesLayoutConfig(
     val textSizes: AnimatedTextSizes,
     val fontFamily: FontFamily,
     val boldScale: Float,
+    val highlightQuery: String,
 )

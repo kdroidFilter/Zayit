@@ -2,7 +2,6 @@ package io.github.kdroidfilter.seforimapp.core.presentation.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
@@ -73,7 +72,6 @@ fun TitleBarActionsButtonsView() {
         onClick = {
             // Replace current tab destination with Home, preserving tabId
             val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
-            val tabStateManager: TabStateManager = appGraph.tabStateManager
 
             val tabs = tabsViewModel.tabs.value
             val selectedIndex = tabsViewModel.selectedTabIndex.value
@@ -91,10 +89,13 @@ fun TitleBarActionsButtonsView() {
         key = AllIconsKeys.Actions.Find,
         contentDescription = stringResource(Res.string.find),
         onClick = {
-            // Toggle the global Find-in-Page bar regardless of current focus
-            val isOpen = AppSettings.findBarOpenFlow.value
-            if (isOpen) AppSettings.closeFindBar()
-            else AppSettings.openFindBar()
+            val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
+            val tabs = tabsViewModel.tabs.value
+            val selectedIndex = tabsViewModel.selectedTabIndex.value
+            val tabId = tabs.getOrNull(selectedIndex)?.destination?.tabId ?: return@TitleBarActionButton
+            // Toggle the Find-in-Page bar for the current tab only
+            val isOpen = AppSettings.findBarOpenFlow(tabId).value
+            if (isOpen) AppSettings.closeFindBar(tabId) else AppSettings.openFindBar(tabId)
         },
         tooltipText = if (findEnabled) stringResource(Res.string.search_in_page_tooltip) else stringResource(Res.string.find_disabled_tooltip),
         shortcutHint = findShortcutHint,

@@ -187,6 +187,7 @@ fun SearchResultInBookShellMvi(
     tocTree: SearchResultViewModel.TocTree?,
     actions: SearchShellActions,
 ) {
+    val tabId = bookUiState.tabId
     val splitPaneConfigs = listOf(
         SplitPaneConfig(
         splitState = bookUiState.layout.mainSplitState,
@@ -264,7 +265,8 @@ fun SearchResultInBookShellMvi(
                                 visibleResults = visibleResults,
                                 isFiltering = isFiltering,
                                 breadcrumbs = breadcrumbs,
-                                actions = actions
+                                actions = actions,
+                                tabId = tabId
                             )
                         }
                     },
@@ -288,10 +290,13 @@ private fun SearchResultContentMvi(
     visibleResults: List<SearchResult>,
     isFiltering: Boolean,
     breadcrumbs: Map<Long, List<String>>,
-    actions: SearchShellActions
+    actions: SearchShellActions,
+    tabId: String
 ) {
     val listState = rememberLazyListState()
-    val findQuery by AppSettings.findQueryFlow.collectAsState()
+    val findQuery by AppSettings.findQueryFlow(tabId).collectAsState("")
+    val showFind by AppSettings.findBarOpenFlow(tabId).collectAsState()
+    val activeFindQuery = if (showFind) findQuery else ""
     val scope = rememberCoroutineScope()
     // Match BookContent main text font settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -338,9 +343,13 @@ private fun SearchResultContentMvi(
         }
     }
 
-    // Find-in-page state (global open state)
-    val showFind by AppSettings.findBarOpenFlow.collectAsState()
-    val findState = remember { TextFieldState() }
+    val findState = remember(tabId) { TextFieldState() }
+    LaunchedEffect(findQuery) {
+        val current = findState.text.toString()
+        if (current != findQuery) {
+            findState.edit { replace(0, length, findQuery) }
+        }
+    }
     var currentHitIndex by remember { mutableStateOf(-1) }
     var currentMatchStart by remember { mutableStateOf(-1) }
 
@@ -444,7 +453,7 @@ private fun SearchResultContentMvi(
                                     textSize = mainTextSize,
                                     lineHeight = mainLineHeight,
                                     fontFamily = hebrewFontFamily,
-                                    findQuery = findQuery,
+                                    findQuery = activeFindQuery,
                                     currentMatchStart = if (idx == currentHitIndex) currentMatchStart else null,
                                     onClick = {
                                         val mods = windowInfo.keyboardModifiers
@@ -512,15 +521,17 @@ private fun SearchResultContentMvi(
         // Find bar overlay
         if (showFind) {
             LaunchedEffect(findState.text, showFind) {
-                val q = findState.text.toString()
-                AppSettings.setFindQuery(if (showFind && q.length >= 2) q else "")
+                if (showFind) {
+                    val q = findState.text.toString()
+                    AppSettings.setFindQuery(tabId, if (q.length >= 2) q else "")
+                }
             }
             Box(modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).zIndex(2f)) {
                 FindInPageBar(
                     state = findState,
                     onEnterNext = { navigateTo(true) },
                     onEnterPrev = { navigateTo(false) },
-                    onClose = { AppSettings.closeFindBar(); AppSettings.setFindQuery("") })
+                    onClose = { AppSettings.closeFindBar(tabId) })
             }
         }
     }

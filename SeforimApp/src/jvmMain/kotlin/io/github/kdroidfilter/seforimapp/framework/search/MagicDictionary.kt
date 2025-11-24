@@ -5,6 +5,7 @@ import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.PreparedStatement
+import io.github.kdroidfilter.seforimapp.logger.debugln
 
 /**
  * Streaming dictionary index backed by SQLite (tables: surface, variant, base).
@@ -159,7 +160,7 @@ class MagicDictionaryIndex private constructor(
                 }
             }
         }.onFailure {
-            println("[MagicDictionary] Failed to fetch expansions for '$rawToken' : ${it.message}")
+            debugln { "[MagicDictionary] Failed to fetch expansions for '$rawToken' : ${it.message}" }
         }
 
         return expansions
@@ -176,7 +177,7 @@ class MagicDictionaryIndex private constructor(
         fun load(norm: (String) -> String, candidate: Path?): MagicDictionaryIndex? {
             val file = candidate?.takeIf { Files.isRegularFile(it) && hasRequiredTables(it) } ?: run {
                 if (candidate != null) {
-                    println("[MagicDictionary] Ignoring candidate $candidate because required tables are missing")
+                    debugln { "[MagicDictionary] Ignoring candidate $candidate because required tables are missing" }
                 }
                 return null
             }
@@ -187,10 +188,10 @@ class MagicDictionaryIndex private constructor(
                         stmt.execute("SELECT 1")
                     }
                 }
-                println("[MagicDictionary] Streaming lexical db from $file (lazy on-demand)")
+                debugln { "[MagicDictionary] Streaming lexical db from $file (lazy on-demand)" }
                 MagicDictionaryIndex(norm, file)
             }.onFailure {
-                println("[MagicDictionary] Failed to load from $file : ${it.message}")
+                debugln { "[MagicDictionary] Failed to load from $file : ${it.message}" }
             }.getOrNull()
         }
 
@@ -201,7 +202,7 @@ class MagicDictionaryIndex private constructor(
             candidates.firstOrNull { candidate ->
                 Files.isRegularFile(candidate) && hasRequiredTables(candidate)
             }?.also {
-                println("[MagicDictionary] Using validated lexical db at $it")
+                debugln { "[MagicDictionary] Using validated lexical db at $it" }
             }
 
         private fun hasRequiredTables(file: Path): Boolean = runCatching {

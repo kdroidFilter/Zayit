@@ -337,7 +337,12 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     ): Query? {
         if (tokens.isEmpty()) return null
         val outer = BooleanQuery.Builder()
-        val expansionByToken = expansions.associateBy { it.surface.firstOrNull() }
+        val expansionByToken = mutableMapOf<String, MagicDictionaryIndex.Expansion>()
+        for (exp in expansions) {
+            for (t in exp.surface + exp.variants + exp.base) {
+                if (!expansionByToken.containsKey(t)) expansionByToken[t] = exp
+            }
+        }
         for (t in tokens) {
             val exact = TermQuery(Term("text", t))
             val expanded = expansionByToken[t]

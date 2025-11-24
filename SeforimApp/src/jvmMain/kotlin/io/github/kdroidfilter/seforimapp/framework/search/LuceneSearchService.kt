@@ -175,10 +175,11 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         if (norm.isBlank()) return null
 
         val analyzedStd = analyzeToTerms(stdAnalyzer, norm) ?: emptyList()
-        val highlightTerms = analyzedStd
+        val expansions = magicDict.expansionsFor(analyzedStd)
+        val expandedTerms = expansions.flatMap { it.surface + it.variants + it.base }
+        val highlightTerms = (analyzedStd + expandedTerms).distinct()
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
 
-        val expansions = magicDict?.expansionsFor(analyzedStd).orEmpty()
         val rankedQuery = buildExpandedQuery(norm, near, expansions)
         val mustAllTokensQuery: Query? = buildPresenceFilterForTokens(analyzedStd, near, expansions)
         val phraseQuery: Query? = QueryBuilder(stdAnalyzer).createPhraseQuery("text", norm, near)

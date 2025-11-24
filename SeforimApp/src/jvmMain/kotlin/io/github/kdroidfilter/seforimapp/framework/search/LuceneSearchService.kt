@@ -42,9 +42,9 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             indexDir.resolveSibling("seforim.db").resolveSibling("lexical.db"),
             Path.of("SeforimLibrary/SeforimMagicIndexer/magicindexer/build/db/lexical.db")
         )
-        val firstExisting = candidates.firstOrNull { java.nio.file.Files.isRegularFile(it) }
+        val firstExisting = MagicDictionaryIndex.findValidDictionary(candidates)
         require(firstExisting != null) {
-            "[MagicDictionary] No lexical.db found. Provide -DmagicDict=/path/lexical.db or SEFORIM_MAGIC_DICT. Tried: ${candidates.joinToString()}"
+            "[MagicDictionary] No valid lexical.db found. Provide -DmagicDict=/path/lexical.db or SEFORIM_MAGIC_DICT. Tried (existing but invalid skipped): ${candidates.joinToString()}"
         }
         println("[MagicDictionary] Loading lexical db from $firstExisting")
         MagicDictionaryIndex.load(::normalizeHebrew, firstExisting)

@@ -26,29 +26,65 @@ class MagicDictionaryIndex(
         val base: List<String>
     )
 
-    private val byToken: Map<String, Expansion>
+    private val byToken: Map<String, List<Expansion>>
 
     init {
-        val map = mutableMapOf<String, Expansion>()
+        // Group all entries by their normalized base form
+        val termsByBase = mutableMapOf<String, MutableSet<String>>()
+
         for (e in entries) {
             val surfaceN = norm(e.surface)
             if (surfaceN.isEmpty()) continue
             val variantsN = e.variants.mapNotNull { v -> norm(v).takeIf { it.isNotEmpty() } }
-            val baseN = norm(e.base)
+            val baseN = norm(e.base).takeIf { it.isNotEmpty() } ?: surfaceN
+
+            // Collect all terms (surface + variants + base) under this base
+            val allTerms = termsByBase.getOrPut(baseN) { mutableSetOf() }
+            allTerms.add(surfaceN)
+            allTerms.addAll(variantsN)
+            allTerms.add(baseN)
+        }
+
+        // Build map: term -> list of expansions (one per base it belongs to)
+        val map = mutableMapOf<String, MutableList<Expansion>>()
+
+        for ((baseN, allTerms) in termsByBase) {
+            val termsList = allTerms.toList()
+
+            // Create expansion for this base group
             val exp = Expansion(
-                surface = listOf(surfaceN),
-                variants = variantsN.distinct(),
-                base = if (baseN.isNotEmpty()) listOf(baseN) else emptyList()
+                surface = termsList,
+                variants = emptyList(),
+                base = listOf(baseN)
             )
-            for (token in exp.surface + exp.variants + exp.base) {
-                map[token] = exp
+
+            // Map every term in this group to this expansion
+            for (term in allTerms) {
+                map.getOrPut(term) { mutableListOf() }.add(exp)
             }
         }
-        byToken = map.toMap()
+
+        byToken = map.mapValues { it.value.toList() }.toMap()
+
+        println("[MagicDictionary] Loaded ${termsByBase.size} base groups with ${map.size} total terms")
     }
 
     fun expansionsFor(tokens: List<String>): List<Expansion> =
-        tokens.mapNotNull { byToken[it] }
+        tokens.flatMap { byToken[it] ?: emptyList() }.distinct()
+
+    fun expansionFor(token: String): Expansion? {
+        val expansions = byToken[token] ?: return null
+        if (expansions.isEmpty()) return null
+
+        // Strategy: prefer the expansion whose base matches the token
+        val matchingBase = expansions.firstOrNull { exp ->
+            exp.base.any { it == token }
+        }
+        if (matchingBase != null) return matchingBase
+
+        // Otherwise, prefer the largest expansion (more terms = more complete paradigm)
+        return expansions.maxByOrNull { it.surface.size }
+    }
 
     companion object {
         /**

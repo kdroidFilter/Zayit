@@ -175,14 +175,28 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         if (norm.isBlank()) return null
 
         val analyzedStd = analyzeToTerms(stdAnalyzer, norm) ?: emptyList()
-        val expansions = magicDict.expansionsFor(analyzedStd)
-        val expandedTerms = expansions.flatMap { it.surface + it.variants + it.base }
+        println("[DEBUG] Analyzed tokens: $analyzedStd")
+
+        // Get all possible expansions for each token (a token can belong to multiple bases)
+        val tokenExpansions: Map<String, List<MagicDictionaryIndex.Expansion>> =
+            analyzedStd.associateWith { token ->
+                // Get best expansion (prefers matching base, then largest)
+                listOfNotNull(magicDict.expansionFor(token))
+            }
+        tokenExpansions.forEach { (token, exps) ->
+            exps.forEach { exp ->
+                println("[DEBUG] Token '$token' -> expansion: surface=${exp.surface.take(10)}..., variants=${exp.variants.take(10)}..., base=${exp.base}")
+            }
+        }
+
+        val allExpansions = tokenExpansions.values.flatten()
+        val expandedTerms = allExpansions.flatMap { it.surface + it.variants + it.base }.distinct()
         val highlightTerms = (analyzedStd + expandedTerms).distinct()
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
 
-        val rankedQuery = buildExpandedQuery(norm, near, expansions)
-        val mustAllTokensQuery: Query? = buildPresenceFilterForTokens(analyzedStd, near, expansions)
-        val phraseQuery: Query? = QueryBuilder(stdAnalyzer).createPhraseQuery("text", norm, near)
+        val rankedQuery = buildExpandedQuery(norm, near, analyzedStd, tokenExpansions)
+        val mustAllTokensQuery: Query? = buildPresenceFilterForTokens(analyzedStd, near, tokenExpansions)
+        val phraseQuery: Query? = buildSynonymPhraseQuery(analyzedStd, tokenExpansions, near)
 
         val builder = BooleanQuery.Builder()
         builder.add(TermQuery(Term("type", "line")), BooleanClause.Occur.FILTER)
@@ -340,27 +354,25 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     private fun buildPresenceFilterForTokens(
         tokens: List<String>,
         near: Int,
-        expansions: List<MagicDictionaryIndex.Expansion>
+        expansionsByToken: Map<String, List<MagicDictionaryIndex.Expansion>>
     ): Query? {
         if (tokens.isEmpty()) return null
         val outer = BooleanQuery.Builder()
-        val expansionByToken = mutableMapOf<String, MagicDictionaryIndex.Expansion>()
-        for (exp in expansions) {
-            for (t in exp.surface + exp.variants + exp.base) {
-                if (!expansionByToken.containsKey(t)) expansionByToken[t] = exp
-            }
-        }
         for (t in tokens) {
-            val exact = TermQuery(Term("text", t))
-            val expanded = expansionByToken[t]
+            val expansions = expansionsByToken[t] ?: emptyList()
             val ngram = if (near > 0) buildNgramPresenceForToken(t) else null
             val clause = BooleanQuery.Builder().apply {
-                add(exact, BooleanClause.Occur.SHOULD)
+                // Add the original token
+                add(TermQuery(Term("text", t)), BooleanClause.Occur.SHOULD)
                 if (ngram != null) add(ngram, BooleanClause.Occur.SHOULD)
-                expanded?.let {
-                    for (s in it.surface) add(TermQuery(Term("text", s)), BooleanClause.Occur.SHOULD)
-                    for (v in it.variants) add(TermQuery(Term("text", v)), BooleanClause.Occur.SHOULD)
-                    for (b in it.base) add(TermQuery(Term("text", b)), BooleanClause.Occur.SHOULD)
+                // Add all expansion terms from all possible expansions
+                for (exp in expansions) {
+                    val allTerms = (exp.surface + exp.variants + exp.base).distinct()
+                    for (term in allTerms) {
+                        if (term != t) {  // Avoid duplicating the original token
+                            add(TermQuery(Term("text", term)), BooleanClause.Occur.SHOULD)
+                        }
+                    }
                 }
             }.build()
             outer.add(clause, BooleanClause.Occur.MUST)
@@ -388,6 +400,70 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         return b.build()
     }
 
+    private fun buildSynonymBoostQuery(expansions: List<MagicDictionaryIndex.Expansion>): Query? {
+        if (expansions.isEmpty()) return null
+        val b = BooleanQuery.Builder()
+        for (exp in expansions) {
+            for (s in exp.surface) b.add(TermQuery(Term("text", s)), BooleanClause.Occur.SHOULD)
+            for (v in exp.variants) b.add(TermQuery(Term("text", v)), BooleanClause.Occur.SHOULD)
+            for (ba in exp.base) b.add(TermQuery(Term("text", ba)), BooleanClause.Occur.SHOULD)
+        }
+        return b.build()
+    }
+
+    private fun buildSynonymPhrases(
+        tokens: List<String>,
+        expansionsByToken: Map<String, List<MagicDictionaryIndex.Expansion>>
+    ): List<Pair<Query, Float>> {
+        if (tokens.isEmpty()) return emptyList()
+        val termExpansions = tokens.map { t ->
+            val expansions = expansionsByToken[t] ?: emptyList()
+            val allTerms = expansions.flatMap { it.surface + it.variants + it.base }.distinct()
+            if (allTerms.isNotEmpty()) allTerms else listOf(t)
+        }
+        println("[DEBUG] buildSynonymPhrases - termExpansions sizes: ${termExpansions.map { it.size }}")
+        fun buildMultiPhrase(slop: Int): Query {
+            val builder = org.apache.lucene.search.MultiPhraseQuery.Builder()
+            builder.setSlop(slop)
+            var pos = 0
+            for (alts in termExpansions) {
+                builder.add(alts.map { Term("text", it) }.toTypedArray(), pos)
+                pos++
+            }
+            return builder.build()
+        }
+        return listOf(
+            buildMultiPhrase(0) to 8.0f,
+            buildMultiPhrase(3) to 5.0f,
+            buildMultiPhrase(8) to 2.5f
+        )
+    }
+
+    /**
+     * Build a phrase query that treats each token as a synonym set of surface/variant/base.
+     * This allows a query token (e.g., הלך) to match a surface form (e.g., וילך) in a phrase with slop.
+     */
+    private fun buildSynonymPhraseQuery(
+        tokens: List<String>,
+        expansionsByToken: Map<String, List<MagicDictionaryIndex.Expansion>>,
+        near: Int
+    ): Query? {
+        if (tokens.isEmpty()) return null
+        val termExpansions = tokens.map { t ->
+            val expansions = expansionsByToken[t] ?: emptyList()
+            val allTerms = expansions.flatMap { it.surface + it.variants + it.base }.distinct()
+            if (allTerms.isNotEmpty()) allTerms else listOf(t)
+        }
+        val builder = org.apache.lucene.search.MultiPhraseQuery.Builder()
+        builder.setSlop(near)
+        var position = 0
+        for (alts in termExpansions) {
+            builder.add(alts.map { Term("text", it) }.toTypedArray(), position)
+            position++
+        }
+        return builder.build()
+    }
+
     private fun buildNgram4Query(norm: String): Query? {
         // Build MUST query over 4-gram terms on field 'text_ng4'
         val tokens = norm.split("\\s+".toRegex()).map { it.trim() }.filter { it.length >= 4 }
@@ -411,22 +487,28 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         return b.build()
     }
 
-    private fun buildExpandedQuery(norm: String, near: Int, expansions: List<MagicDictionaryIndex.Expansion>): Query {
+    private fun buildExpandedQuery(
+        norm: String,
+        near: Int,
+        tokens: List<String>,
+        expansionsByToken: Map<String, List<MagicDictionaryIndex.Expansion>>
+    ): Query {
         val base = buildHebrewStdQuery(norm, near)
-        // In precise mode (near == 0), enforce strict contiguous phrase matching
-        // with exact term order and no fallbacks. This prevents partial, fuzzy,
-        // or out-of-order matches from leaking into results.
-        if (near == 0) return base
-
-        // For relaxed modes (near > 0), include n-gram + fuzzy as scoring signals (SHOULD).
+        val allExpansions = expansionsByToken.values.flatten()
+        val synonymPhrases = buildSynonymPhrases(tokens, expansionsByToken)
         val ngram = buildNgram4Query(norm)
         val fuzzy = buildFuzzyQuery(norm, near)
         val builder = BooleanQuery.Builder()
         builder.add(base, BooleanClause.Occur.SHOULD)
+        for ((query, boost) in synonymPhrases) {
+            builder.add(BoostQuery(query, boost), BooleanClause.Occur.SHOULD)
+        }
         if (ngram != null) builder.add(ngram, BooleanClause.Occur.SHOULD)
         if (fuzzy != null) builder.add(fuzzy, BooleanClause.Occur.SHOULD)
-        val magic = buildMagicBoostQuery(expansions)
+        val magic = buildMagicBoostQuery(allExpansions)
         if (magic != null) builder.add(magic, BooleanClause.Occur.SHOULD)
+        val synonymBoost = buildSynonymBoostQuery(allExpansions)
+        if (synonymBoost != null) builder.add(synonymBoost, BooleanClause.Occur.SHOULD)
         return builder.build()
     }
 

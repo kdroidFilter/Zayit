@@ -57,6 +57,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import io.github.kdroidfilter.seforimapp.logger.debugln
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -545,9 +546,9 @@ private fun SearchResultItemGoogleStyle(
     val boldColor = JewelTheme.globalColors.outlines.focused
     val annotated: AnnotatedString = remember(result.snippet, textSize, boldScaleForPlatform, boldColor) {
         // Log the snippet with bold tags for debugging
-        println("[SearchResult] Book: ${result.bookTitle}, LineId: ${result.lineId}")
-        println("[SearchResult] Snippet with bold tags: ${result.snippet}")
-        println("[SearchResult] ---")
+        debugln { "[SearchResult] Book: ${result.bookTitle}, LineId: ${result.lineId}" }
+        debugln { "[SearchResult] Snippet with bold tags: ${result.snippet}" }
+        debugln { "[SearchResult] ---" }
         // Keep keyword emphasis without oversized glyphs (slight scale on mac for non-bold fonts)
         buildAnnotatedFromHtml(result.snippet, textSize, boldScale = boldScaleForPlatform, boldColor = boldColor)
     }

@@ -62,6 +62,8 @@ class MagicDictionaryIndex(
                     val entries = fetchEntries(conn)
                     MagicDictionaryIndex(norm, entries)
                 }
+            }.onFailure {
+                println("[MagicDictionary] Failed to load from $file : ${it.message}")
             }.getOrNull()
         }
 

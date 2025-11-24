@@ -42,7 +42,13 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             Path.of("SeforimLibrary/SeforimMagicIndexer/magicindexer/build/db/lexical.db")
         )
         val firstExisting = candidates.firstOrNull { java.nio.file.Files.isRegularFile(it) }
-        MagicDictionaryIndex.load(::normalizeHebrew, firstExisting)
+        if (firstExisting == null) {
+            println("[MagicDictionary] No lexical.db found in candidates: ${candidates.joinToString()}")
+            null
+        } else {
+            println("[MagicDictionary] Loading lexical db from $firstExisting")
+            MagicDictionaryIndex.load(::normalizeHebrew, firstExisting)
+        }
     }
 
     private inline fun <T> withSearcher(block: (IndexSearcher) -> T): T {
@@ -346,18 +352,16 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         for (t in tokens) {
             val exact = TermQuery(Term("text", t))
             val expanded = expansionByToken[t]
-            val clause = if (near > 0) {
-                val ngram = buildNgramPresenceForToken(t)
-                val opt = BooleanQuery.Builder().apply {
-                    add(exact, BooleanClause.Occur.SHOULD)
-                    if (ngram != null) add(ngram, BooleanClause.Occur.SHOULD)
-                    if (expanded != null) {
-                        for (v in expanded.variants) add(TermQuery(Term("text", v)), BooleanClause.Occur.SHOULD)
-                        for (b in expanded.base) add(TermQuery(Term("text", b)), BooleanClause.Occur.SHOULD)
-                    }
-                }.build()
-                opt
-            } else exact
+            val ngram = if (near > 0) buildNgramPresenceForToken(t) else null
+            val clause = BooleanQuery.Builder().apply {
+                add(exact, BooleanClause.Occur.SHOULD)
+                if (ngram != null) add(ngram, BooleanClause.Occur.SHOULD)
+                expanded?.let {
+                    for (s in it.surface) add(TermQuery(Term("text", s)), BooleanClause.Occur.SHOULD)
+                    for (v in it.variants) add(TermQuery(Term("text", v)), BooleanClause.Occur.SHOULD)
+                    for (b in it.base) add(TermQuery(Term("text", b)), BooleanClause.Occur.SHOULD)
+                }
+            }.build()
             outer.add(clause, BooleanClause.Occur.MUST)
         }
         return outer.build()

@@ -198,11 +198,11 @@ class SearchHomeViewModel(
                                     } else {
                                         val bookIds = lookup.searchBooksPrefix(qNorm, limit = 50)
                                         val lookupBooks = withContext(Dispatchers.IO) {
-                                            bookIds.mapNotNull { id -> runCatching { repository.getBook(id) }.getOrNull() }
+                                            bookIds.mapNotNull { id -> runCatching { repository.getBookCore(id) }.getOrNull() }
                                         }
                                         val likeBooks = withContext(Dispatchers.IO) {
                                             runCatching {
-                                                repository.findBooksByTitleLike("%$q%", limit = 50)
+                                                repository.findBooksByTitleLikeCore("%$q%", limit = 50)
                                                     .filter { it.title.isNotBlank() }
                                             }.getOrDefault(emptyList())
                                         }
@@ -431,7 +431,7 @@ class SearchHomeViewModel(
         // Resolve book and optional line anchor
         val book = when {
             selectedBook != null -> selectedBook
-            selectedToc != null -> runCatching { repository.getBook(selectedToc.bookId) }.getOrNull()
+            selectedToc != null -> runCatching { repository.getBookCore(selectedToc.bookId) }.getOrNull()
             else -> null
         } ?: return
 
@@ -502,7 +502,7 @@ class SearchHomeViewModel(
     }
 
     private suspend fun buildTocPathTitles(entry: TocEntry): List<String> {
-        val bookTitle = runCatching { repository.getBook(entry.bookId)?.title }.getOrNull()
+        val bookTitle = runCatching { repository.getBookCore(entry.bookId)?.title }.getOrNull()
         val tocTitles = mutableListOf<String>()
         var current: TocEntry? = entry
         val safety = 128

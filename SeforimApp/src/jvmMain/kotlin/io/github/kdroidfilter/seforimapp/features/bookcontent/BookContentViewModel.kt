@@ -239,7 +239,7 @@ class BookContentViewModel(
                         loadAndSelectLine(event.lineId)
                     } else {
                         // Load the target book and force-anchor to the requested line
-                        val book = repository.getBook(event.bookId)
+                        val book = repository.getBookCore(event.bookId)
                         if (book != null) {
                             // Select the book in navigation and open TOC on first open
                             navigationUseCase.selectBook(book)
@@ -250,7 +250,7 @@ class BookContentViewModel(
                 }
 
                 is BookContentEvent.OpenBookById -> {
-                    val book = repository.getBook(event.bookId)
+                    val book = repository.getBookCore(event.bookId)
                     if (book != null) {
                         loadBook(book)
                     }
@@ -334,7 +334,7 @@ class BookContentViewModel(
     private suspend fun loadBookById(bookId: Long, lineId: Long? = null, triggerScroll: Boolean = true) {
         stateManager.setLoading(true)
         try {
-            repository.getBook(bookId)?.let { book ->
+            repository.getBookCore(bookId)?.let { book ->
                 navigationUseCase.selectBook(book)
                 // Expand navigation tree up to the selected book's category
                 runCatching { navigationUseCase.expandPathToBook(book) }
@@ -580,7 +580,7 @@ class BookContentViewModel(
         val newTabId = java.util.UUID.randomUUID().toString()
 
         // Preload the Book object so that the screen does not display the Home by default
-        repository.getBook(bookId)?.let { book ->
+        repository.getBookCore(bookId)?.let { book ->
             tabStateManager.saveState(newTabId, StateKeys.SELECTED_BOOK, book)
         }
         // Optional: indicate the initial anchor for a center scroll upon loading

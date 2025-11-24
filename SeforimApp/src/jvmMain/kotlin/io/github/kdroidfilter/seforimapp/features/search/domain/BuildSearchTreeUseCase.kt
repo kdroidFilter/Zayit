@@ -22,7 +22,7 @@ class BuildSearchTreeUseCase(
 
         suspend fun resolveBook(bookId: Long): Book? {
             bookCache[bookId]?.let { return it }
-            val b = repository.getBook(bookId)
+            val b = repository.getBookCore(bookId)
             if (b != null) bookCache[bookId] = b
             return b
         }
@@ -82,4 +82,3 @@ class BuildSearchTreeUseCase(
         return path.asReversed()
     }
 }
-

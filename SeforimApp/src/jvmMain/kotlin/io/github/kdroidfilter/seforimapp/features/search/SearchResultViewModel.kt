@@ -629,14 +629,14 @@ class SearchResultViewModel(
         when {
             initialFilterBookId != null && initialFilterBookId > 0 -> {
                 viewModelScope.launch {
-                    val book = repository.getBook(initialFilterBookId)
+                    val book = repository.getBookCore(initialFilterBookId)
                     _uiState.value = _uiState.value.copy(scopeBook = book)
                 }
             }
             initialFilterTocId != null && initialFilterTocId > 0 -> {
                 viewModelScope.launch {
                     val toc = repository.getTocEntry(initialFilterTocId)
-                    val book = toc?.let { repository.getBook(it.bookId) }
+                    val book = toc?.let { repository.getBookCore(it.bookId) }
                     _uiState.value = _uiState.value.copy(scopeBook = book)
                 }
             }
@@ -828,10 +828,10 @@ class SearchResultViewModel(
                     else -> emptyList()
                 }
                 val persistedScopeBook = when {
-                    stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)?.let { it > 0 } == true -> repository.getBook(stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)!!)
+                    stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)?.let { it > 0 } == true -> repository.getBookCore(stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)!!)
                     else -> null
                 }
-                val resolvedScopeBook = persistedScopeBook ?: fetchBookId?.let { runCatching { repository.getBook(it) }.getOrNull() }
+                val resolvedScopeBook = persistedScopeBook ?: fetchBookId?.let { runCatching { repository.getBookCore(it) }.getOrNull() }
                 _uiState.value = _uiState.value.copy(
                     scopeCategoryPath = initialScopePath,
                     scopeBook = resolvedScopeBook
@@ -1074,7 +1074,7 @@ class SearchResultViewModel(
             stateManager.saveState(tabId, SearchStateKeys.FILTER_CATEGORY_ID, 0L)
             stateManager.saveState(tabId, SearchStateKeys.FILTER_BOOK_ID, bookId)
             stateManager.saveState(tabId, SearchStateKeys.FILTER_TOC_ID, 0L)
-            val book = runCatching { repository.getBook(bookId) }.getOrNull()
+            val book = runCatching { repository.getBookCore(bookId) }.getOrNull()
             _uiState.value = _uiState.value.copy(
                 scopeBook = book,
                 scopeCategoryPath = emptyList(),
@@ -1105,7 +1105,7 @@ class SearchResultViewModel(
                 stateManager.saveState(tabId, SearchStateKeys.FILTER_BOOK_ID, bookIdFromToc)
             }
 
-            val scopeBook = if (bookIdFromToc != null) runCatching { repository.getBook(bookIdFromToc) }.getOrNull() else null
+            val scopeBook = if (bookIdFromToc != null) runCatching { repository.getBookCore(bookIdFromToc) }.getOrNull() else null
             _uiState.value = _uiState.value.copy(
                 scopeBook = scopeBook,
                 scopeTocId = tocId,
@@ -1234,7 +1234,7 @@ class SearchResultViewModel(
      */
     fun ensureScopeBookForToc(bookId: Long) {
         viewModelScope.launch {
-            val book = runCatching { repository.getBook(bookId) }.getOrNull() ?: return@launch
+            val book = runCatching { repository.getBookCore(bookId) }.getOrNull() ?: return@launch
             if (uiState.value.scopeBook?.id == book.id) return@launch
             _uiState.value = _uiState.value.copy(scopeBook = book)
             if (currentTocBookId != book.id) {
@@ -1330,7 +1330,7 @@ class SearchResultViewModel(
         viewModelScope.launch {
             // Pre-initialize new BookContent tab with selected book and anchor to reduce flicker
             val newTabId = UUID.randomUUID().toString()
-            repository.getBook(result.bookId)?.let { book ->
+            repository.getBookCore(result.bookId)?.let { book ->
                 stateManager.saveState(newTabId, StateKeys.SELECTED_BOOK, book)
             }
             stateManager.saveState(newTabId, StateKeys.CONTENT_ANCHOR_ID, result.lineId)
@@ -1363,7 +1363,7 @@ class SearchResultViewModel(
         }
         viewModelScope.launch {
             // Prepare current tab for BookContent with anchor to avoid flicker
-            repository.getBook(result.bookId)?.let { book ->
+            repository.getBookCore(result.bookId)?.let { book ->
                 stateManager.saveState(tabId, StateKeys.SELECTED_BOOK, book)
             }
             stateManager.saveState(tabId, StateKeys.CONTENT_ANCHOR_ID, result.lineId)
@@ -1419,7 +1419,7 @@ class SearchResultViewModel(
     private suspend fun updateAggregatesForPage(page: List<SearchResult>) {
         countsMutex.withLock {
             for (res in page) {
-                val book = bookCache[res.bookId] ?: repository.getBook(res.bookId)?.also { bookCache[res.bookId] = it } ?: continue
+                val book = bookCache[res.bookId] ?: repository.getBookCore(res.bookId)?.also { bookCache[res.bookId] = it } ?: continue
                 bookCountsAcc[book.id] = (bookCountsAcc[book.id] ?: 0) + 1
                 val path = categoryPathCache[book.categoryId] ?: buildCategoryPath(book.categoryId).also { categoryPathCache[book.categoryId] = it }
                 for (cat in path) {

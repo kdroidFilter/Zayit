@@ -65,11 +65,6 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
     setMacOsAdaptiveTitleBar()
-    //    val enableLogs = System.getenv("ENABLE_LOGS")
-    //    if (enableLogs == null) {
-    //        SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)
-    //    }
-
 
     val appId = "io.github.kdroidfilter.seforimapp"
     SingleInstanceManager.configuration = SingleInstanceManager.Configuration(

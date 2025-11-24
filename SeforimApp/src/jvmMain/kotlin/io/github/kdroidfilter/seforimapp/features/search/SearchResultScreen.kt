@@ -542,9 +542,14 @@ private fun SearchResultItemGoogleStyle(
         val lacksBold = bookFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
         if (isMac && lacksBold) 1.08f else 1.0f
     }
-    val annotated: AnnotatedString = remember(result.snippet, textSize, boldScaleForPlatform) {
+    val boldColor = JewelTheme.globalColors.outlines.focused
+    val annotated: AnnotatedString = remember(result.snippet, textSize, boldScaleForPlatform, boldColor) {
+        // Log the snippet with bold tags for debugging
+        println("[SearchResult] Book: ${result.bookTitle}, LineId: ${result.lineId}")
+        println("[SearchResult] Snippet with bold tags: ${result.snippet}")
+        println("[SearchResult] ---")
         // Keep keyword emphasis without oversized glyphs (slight scale on mac for non-bold fonts)
-        buildAnnotatedFromHtml(result.snippet, textSize, boldScale = boldScaleForPlatform)
+        buildAnnotatedFromHtml(result.snippet, textSize, boldScale = boldScaleForPlatform, boldColor = boldColor)
     }
     // Softer overlays for better legibility
     val baseHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.12f)

@@ -5,12 +5,21 @@ import org.apache.lucene.analysis.TokenStream
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 import org.apache.lucene.index.DirectoryReader
-import org.apache.lucene.index.Term
 import org.apache.lucene.index.StoredFields
-import org.apache.lucene.search.*
+import org.apache.lucene.index.Term
+import org.apache.lucene.search.BooleanClause
+import org.apache.lucene.search.BooleanQuery
+import org.apache.lucene.search.BoostQuery
+import org.apache.lucene.search.FuzzyQuery
+import org.apache.lucene.search.IndexSearcher
+import org.apache.lucene.search.PrefixQuery
+import org.apache.lucene.search.Query
+import org.apache.lucene.search.ScoreDoc
+import org.apache.lucene.search.TermQuery
 import org.apache.lucene.util.QueryBuilder
 import org.apache.lucene.store.FSDirectory
 import org.apache.lucene.document.IntPoint
+import java.io.Closeable
 import java.nio.file.Path
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
@@ -20,12 +29,21 @@ import org.jsoup.safety.Safelist
  * Supports book title suggestions and full-text queries (future extension).
  */
 class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = StandardAnalyzer()) {
-    private val indexRoot: Path = indexDir
     // Open Lucene directory lazily to avoid any I/O at app startup
     private val dir by lazy { FSDirectory.open(indexDir) }
 
 
-    private val stdAnalyzer: Analyzer by lazy { StandardAnalyzer() }
+    private val stdAnalyzer: Analyzer by lazy { analyzer }
+    private val magicDict: MagicDictionaryIndex? by lazy {
+        val candidates = listOfNotNull(
+            System.getProperty("magicDict")?.let { Path.of(it) },
+            System.getenv("SEFORIM_MAGIC_DICT")?.let { Path.of(it) },
+            indexDir.resolveSibling("lexical.db"),
+            Path.of("SeforimLibrary/SeforimMagicIndexer/magicindexer/build/db/lexical.db")
+        )
+        val firstExisting = candidates.firstOrNull { java.nio.file.Files.isRegularFile(it) }
+        MagicDictionaryIndex.load(::normalizeHebrew, firstExisting)
+    }
 
     private inline fun <T> withSearcher(block: (IndexSearcher) -> T): T {
         DirectoryReader.open(dir).use { reader ->
@@ -74,8 +92,143 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val lineId: Long,
         val lineIndex: Int,
         val snippet: String,
-        val score: Float
+        val score: Float,
+        val rawText: String
     )
+
+    data class SearchPage(
+        val hits: List<LineHit>,
+        val totalHits: Long,
+        val isLastPage: Boolean
+    )
+
+    inner class SearchSession internal constructor(
+        private val query: Query,
+        private val anchorTerms: List<String>,
+        private val highlightTerms: List<String>,
+        private val reader: DirectoryReader
+    ) : Closeable {
+        private val searcher = IndexSearcher(reader)
+        private var after: ScoreDoc? = null
+        private var finished = false
+        private var totalHitsValue: Long? = null
+
+        fun nextPage(limit: Int): SearchPage? {
+            if (finished) return null
+            val top = searcher.searchAfter(after, query, limit)
+            if (totalHitsValue == null) totalHitsValue = top.totalHits?.value
+            if (top.scoreDocs.isEmpty()) {
+                finished = true
+                return null
+            }
+            val stored = searcher.storedFields()
+            val hits = mapScoreDocs(stored, top.scoreDocs.toList(), anchorTerms, highlightTerms)
+            after = top.scoreDocs.last()
+            val isLast = top.scoreDocs.size < limit
+            if (isLast) finished = true
+            return SearchPage(
+                hits = hits,
+                totalHits = totalHitsValue ?: hits.size.toLong(),
+                isLastPage = isLast
+            )
+        }
+
+        override fun close() {
+            reader.close()
+        }
+    }
+
+    fun openSearchSession(
+        rawQuery: String,
+        near: Int,
+        bookFilter: Long? = null,
+        categoryFilter: Long? = null,
+        bookIds: Collection<Long>? = null,
+        lineIds: Collection<Long>? = null
+    ): SearchSession? {
+        val context = buildSearchContext(rawQuery, near, bookFilter, categoryFilter, bookIds, lineIds) ?: return null
+        val reader = DirectoryReader.open(dir)
+        return SearchSession(context.query, context.anchorTerms, context.highlightTerms, reader)
+    }
+
+    private data class SearchContext(
+        val query: Query,
+        val anchorTerms: List<String>,
+        val highlightTerms: List<String>
+    )
+
+    private fun buildSearchContext(
+        rawQuery: String,
+        near: Int,
+        bookFilter: Long?,
+        categoryFilter: Long?,
+        bookIds: Collection<Long>?,
+        lineIds: Collection<Long>?
+    ): SearchContext? {
+        val norm = normalizeHebrew(rawQuery)
+        if (norm.isBlank()) return null
+
+        val analyzedStd = analyzeToTerms(stdAnalyzer, norm) ?: emptyList()
+        val highlightTerms = analyzedStd
+        val anchorTerms = buildAnchorTerms(norm, highlightTerms)
+
+        val expansions = magicDict?.expansionsFor(analyzedStd).orEmpty()
+        val rankedQuery = buildExpandedQuery(norm, near, expansions)
+        val mustAllTokensQuery: Query? = buildPresenceFilterForTokens(analyzedStd, near, expansions)
+        val phraseQuery: Query? = QueryBuilder(stdAnalyzer).createPhraseQuery("text", norm, near)
+
+        val builder = BooleanQuery.Builder()
+        builder.add(TermQuery(Term("type", "line")), BooleanClause.Occur.FILTER)
+        if (bookFilter != null) builder.add(IntPoint.newExactQuery("book_id", bookFilter.toInt()), BooleanClause.Occur.FILTER)
+        if (categoryFilter != null) builder.add(IntPoint.newExactQuery("category_id", categoryFilter.toInt()), BooleanClause.Occur.FILTER)
+        val bookIdsArray = bookIds?.map { it.toInt() }?.toIntArray()
+        if (bookIdsArray != null && bookIdsArray.isNotEmpty()) {
+            builder.add(IntPoint.newSetQuery("book_id", *bookIdsArray), BooleanClause.Occur.FILTER)
+        }
+        val lineIdsArray = lineIds?.map { it.toInt() }?.toIntArray()
+        if (lineIdsArray != null && lineIdsArray.isNotEmpty()) {
+            builder.add(IntPoint.newSetQuery("line_id", *lineIdsArray), BooleanClause.Occur.FILTER)
+        }
+        if (mustAllTokensQuery != null) builder.add(mustAllTokensQuery, BooleanClause.Occur.FILTER)
+        val analyzedCount = analyzedStd.size
+        if (phraseQuery != null && analyzedCount >= 2) {
+            val occur = if (near == 0) BooleanClause.Occur.MUST else BooleanClause.Occur.SHOULD
+            builder.add(phraseQuery, occur)
+        }
+        builder.add(rankedQuery, BooleanClause.Occur.SHOULD)
+        return SearchContext(
+            query = builder.build(),
+            anchorTerms = anchorTerms,
+            highlightTerms = highlightTerms
+        )
+    }
+
+    private fun mapScoreDocs(
+        stored: StoredFields,
+        scoreDocs: List<ScoreDoc>,
+        anchorTerms: List<String>,
+        highlightTerms: List<String>
+    ): List<LineHit> {
+        if (scoreDocs.isEmpty()) return emptyList()
+        return scoreDocs.map { sd ->
+            val doc = stored.document(sd.doc)
+            val bid = doc.getField("book_id").numericValue().toLong()
+            val btitle = doc.getField("book_title").stringValue() ?: ""
+            val lid = doc.getField("line_id").numericValue().toLong()
+            val lidx = doc.getField("line_index").numericValue().toInt()
+            val raw = doc.getField("text_raw")?.stringValue() ?: ""
+            val snippet = buildSnippet(raw, anchorTerms, highlightTerms)
+            LineHit(
+                bookId = bid,
+                bookTitle = btitle,
+                lineId = lid,
+                lineIndex = lidx,
+                snippet = snippet,
+                score = sd.score,
+                rawText = raw
+            )
+        }
+    }
 
     fun searchAllText(rawQuery: String, near: Int = 5, limit: Int, offset: Int = 0): List<LineHit> =
         doSearch(rawQuery, near, limit, offset, bookFilter = null, categoryFilter = null)
@@ -113,59 +266,12 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         bookFilter: Long?,
         categoryFilter: Long?
     ): List<LineHit> {
-        val norm = normalizeHebrew(rawQuery)
-        if (norm.isBlank()) return emptyList()
-
-        val analyzedStd = (analyzeToTerms(stdAnalyzer, norm) ?: emptyList())
-        val highlightTerms = analyzedStd
-        val anchorTerms = buildAnchorTerms(norm, highlightTerms)
-
-        val rankedQuery = buildExpandedQuery(norm, near)
-        // Enforce that all analyzed tokens from the query are present in a matching document
-        // (AND semantics). Use as FILTER so it restricts recall without affecting score.
-        val mustAllTokensQuery: Query? = buildPresenceFilterForTokens(analyzedStd, near)
-        // Build a phrase query with slop=near so the NEAR level meaningfully controls proximity.
-        val phraseQuery: Query? = QueryBuilder(stdAnalyzer).createPhraseQuery("text", norm, near)
-
+        val context = buildSearchContext(rawQuery, near, bookFilter, categoryFilter, null, null) ?: return emptyList()
         return withSearcher { searcher ->
-            val b = BooleanQuery.Builder()
-            b.add(TermQuery(Term("type", "line")), BooleanClause.Occur.FILTER)
-            if (bookFilter != null) b.add(IntPoint.newExactQuery("book_id", bookFilter.toInt()), BooleanClause.Occur.FILTER)
-            if (categoryFilter != null) b.add(IntPoint.newExactQuery("category_id", categoryFilter.toInt()), BooleanClause.Occur.FILTER)
-            // Apply mandatory presence (AND) as a filter
-            if (mustAllTokensQuery != null) b.add(mustAllTokensQuery, BooleanClause.Occur.FILTER)
-            // Enforce proximity via phrase slop when we have a multi-term query
-            val analyzedCount = analyzedStd.size
-            if (phraseQuery != null && analyzedCount >= 2) {
-                // NEAR=0: enforce strict phrase; NEAR>0: use as ranking signal
-                val occur = if (near == 0) BooleanClause.Occur.MUST else BooleanClause.Occur.SHOULD
-                b.add(phraseQuery, occur)
-            }
-            // Keep expanded components for scoring only, not recall expansion.
-            b.add(rankedQuery, BooleanClause.Occur.SHOULD)
-            val query = b.build()
-
-            // Apply offset by fetching up to offset+limit and then subList
-            val top = searcher.search(query, offset + limit)
+            val top = searcher.search(context.query, offset + limit)
             val stored: StoredFields = searcher.storedFields()
-            val hits = top.scoreDocs.drop(offset)
-            hits.map { sd ->
-                val doc = stored.document(sd.doc)
-                val bid = doc.getField("book_id").numericValue().toLong()
-                val btitle = doc.getField("book_title").stringValue()
-                val lid = doc.getField("line_id").numericValue().toLong()
-                val lidx = doc.getField("line_index").numericValue().toInt()
-                val raw = doc.getField("text_raw")?.stringValue() ?: ""
-                val snippet = buildSnippet(raw, anchorTerms, highlightTerms)
-                LineHit(
-                    bookId = bid,
-                    bookTitle = btitle ?: "",
-                    lineId = lid,
-                    lineIndex = lidx,
-                    snippet = snippet,
-                    score = sd.score
-                )
-            }
+            val sliced = top.scoreDocs.drop(offset)
+            mapScoreDocs(stored, sliced, context.anchorTerms, context.highlightTerms)
         }
     }
 
@@ -176,52 +282,13 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         offset: Int,
         bookIds: Collection<Long>
     ): List<LineHit> {
-        val norm = normalizeHebrew(rawQuery)
-        if (norm.isBlank()) return emptyList()
-
-        val analyzedStd = (analyzeToTerms(stdAnalyzer, norm) ?: emptyList())
-        val highlightTerms = analyzedStd
-        val anchorTerms = buildAnchorTerms(norm, highlightTerms)
-        val rankedQuery = buildExpandedQuery(norm, near)
-        val mustAllTokensQuery: Query? = buildPresenceFilterForTokens(analyzedStd, near)
-        val phraseQuery: Query? = QueryBuilder(stdAnalyzer).createPhraseQuery("text", norm, near)
-
-        val bookIdInts = bookIds.asSequence().map { it.toInt() }.toList().toIntArray()
-        if (bookIdInts.isEmpty()) return emptyList()
-
+        if (bookIds.isEmpty()) return emptyList()
+        val context = buildSearchContext(rawQuery, near, bookFilter = null, categoryFilter = null, bookIds = bookIds, lineIds = null) ?: return emptyList()
         return withSearcher { searcher ->
-            val b = BooleanQuery.Builder()
-            b.add(TermQuery(Term("type", "line")), BooleanClause.Occur.FILTER)
-            b.add(IntPoint.newSetQuery("book_id", *bookIdInts), BooleanClause.Occur.FILTER)
-            if (mustAllTokensQuery != null) b.add(mustAllTokensQuery, BooleanClause.Occur.FILTER)
-            val analyzedCount = analyzedStd.size
-            if (phraseQuery != null && analyzedCount >= 2) {
-                val occur = if (near == 0) BooleanClause.Occur.MUST else BooleanClause.Occur.SHOULD
-                b.add(phraseQuery, occur)
-            }
-            b.add(rankedQuery, BooleanClause.Occur.SHOULD)
-            val query = b.build()
-
-            val top = searcher.search(query, offset + limit)
+            val top = searcher.search(context.query, offset + limit)
             val stored: StoredFields = searcher.storedFields()
-            val hits = top.scoreDocs.drop(offset)
-            hits.map { sd ->
-                val doc = stored.document(sd.doc)
-                val bid = doc.getField("book_id").numericValue().toLong()
-                val btitle = doc.getField("book_title").stringValue()
-                val lid = doc.getField("line_id").numericValue().toLong()
-                val lidx = doc.getField("line_index").numericValue().toInt()
-                val raw = doc.getField("text_raw")?.stringValue() ?: ""
-                val snippet = buildSnippet(raw, anchorTerms, highlightTerms)
-                LineHit(
-                    bookId = bid,
-                    bookTitle = btitle ?: "",
-                    lineId = lid,
-                    lineIndex = lidx,
-                    snippet = snippet,
-                    score = sd.score
-                )
-            }
+            val sliced = top.scoreDocs.drop(offset)
+            mapScoreDocs(stored, sliced, context.anchorTerms, context.highlightTerms)
         }
     }
 
@@ -263,19 +330,28 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
      * Presence filter (AND across tokens). For NEAR>0, each token may be satisfied by
      * either exact term in 'text' OR by its 4-gram presence in 'text_ng4'.
      */
-    private fun buildPresenceFilterForTokens(tokens: List<String>, near: Int): Query? {
+    private fun buildPresenceFilterForTokens(
+        tokens: List<String>,
+        near: Int,
+        expansions: List<MagicDictionaryIndex.Expansion>
+    ): Query? {
         if (tokens.isEmpty()) return null
         val outer = BooleanQuery.Builder()
+        val expansionByToken = expansions.associateBy { it.surface.firstOrNull() }
         for (t in tokens) {
             val exact = TermQuery(Term("text", t))
+            val expanded = expansionByToken[t]
             val clause = if (near > 0) {
                 val ngram = buildNgramPresenceForToken(t)
-                if (ngram != null) {
-                    BooleanQuery.Builder().apply {
-                        add(exact, BooleanClause.Occur.SHOULD)
-                        add(ngram, BooleanClause.Occur.SHOULD)
-                    }.build()
-                } else exact
+                val opt = BooleanQuery.Builder().apply {
+                    add(exact, BooleanClause.Occur.SHOULD)
+                    if (ngram != null) add(ngram, BooleanClause.Occur.SHOULD)
+                    if (expanded != null) {
+                        for (v in expanded.variants) add(TermQuery(Term("text", v)), BooleanClause.Occur.SHOULD)
+                        for (b in expanded.base) add(TermQuery(Term("text", b)), BooleanClause.Occur.SHOULD)
+                    }
+                }.build()
+                opt
             } else exact
             outer.add(clause, BooleanClause.Occur.MUST)
         }
@@ -289,6 +365,17 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         if (phrase != null) return phrase
         val bool = qb.createBooleanQuery("text", norm, BooleanClause.Occur.MUST)
         return bool ?: BooleanQuery.Builder().build()
+    }
+
+    private fun buildMagicBoostQuery(expansions: List<MagicDictionaryIndex.Expansion>): Query? {
+        if (expansions.isEmpty()) return null
+        val b = BooleanQuery.Builder()
+        for (exp in expansions) {
+            for (s in exp.surface) b.add(BoostQuery(TermQuery(Term("text", s)), 4.0f), BooleanClause.Occur.SHOULD)
+            for (v in exp.variants) b.add(BoostQuery(TermQuery(Term("text", v)), 2.5f), BooleanClause.Occur.SHOULD)
+            for (ba in exp.base) b.add(BoostQuery(TermQuery(Term("text", ba)), 1.4f), BooleanClause.Occur.SHOULD)
+        }
+        return b.build()
     }
 
     private fun buildNgram4Query(norm: String): Query? {
@@ -314,7 +401,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         return b.build()
     }
 
-    private fun buildExpandedQuery(norm: String, near: Int): Query {
+    private fun buildExpandedQuery(norm: String, near: Int, expansions: List<MagicDictionaryIndex.Expansion>): Query {
         val base = buildHebrewStdQuery(norm, near)
         // In precise mode (near == 0), enforce strict contiguous phrase matching
         // with exact term order and no fallbacks. This prevents partial, fuzzy,
@@ -328,6 +415,8 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         builder.add(base, BooleanClause.Occur.SHOULD)
         if (ngram != null) builder.add(ngram, BooleanClause.Occur.SHOULD)
         if (fuzzy != null) builder.add(fuzzy, BooleanClause.Occur.SHOULD)
+        val magic = buildMagicBoostQuery(expansions)
+        if (magic != null) builder.add(magic, BooleanClause.Occur.SHOULD)
         return builder.build()
     }
 

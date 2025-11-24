@@ -191,7 +191,9 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
 
         val allExpansions = tokenExpansions.values.flatten()
         val expandedTerms = allExpansions.flatMap { it.surface + it.variants + it.base }.distinct()
-        val highlightTerms = (analyzedStd + expandedTerms).distinct()
+        // Filter out single-letter and common Hebrew prefixes from highlighting
+        val filteredExpandedTerms = filterTermsForHighlight(expandedTerms)
+        val highlightTerms = (analyzedStd + filteredExpandedTerms).distinct()
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
 
         val rankedQuery = buildExpandedQuery(norm, near, analyzedStd, tokenExpansions)
@@ -545,8 +547,8 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         fun useful(t: String): Boolean {
             val s = t.trim()
             if (s.isEmpty()) return false
-            // Drop single-letter clitics and one-char tokens to avoid noisy bold letters
-            if (s.length < 2) return false
+            // Drop single-letter tokens (but 2-char terms are OK now, handled by word boundary logic)
+            if (s.length < 1) return false
             // Must contain at least one letter or digit
             if (s.none { it.isLetterOrDigit() }) return false
             if (s in hebrewSingleLetters) return false
@@ -593,6 +595,14 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val pool = (highlightTerms + highlightTerms.map { it.trimEnd('$') }).distinct().filter { it.isNotBlank() }
         val intervals = mutableListOf<IntRange>()
         val basePlainLower = basePlainSearch.lowercase()
+
+        // Helper to check if a character is a word boundary (whitespace or punctuation)
+        fun isWordBoundary(text: String, index: Int): Boolean {
+            if (index < 0 || index >= text.length) return true
+            val ch = text[index]
+            return ch.isWhitespace() || !ch.isLetterOrDigit()
+        }
+
         for (term in pool) {
             if (term.isEmpty()) continue
             val t = term.lowercase()
@@ -600,10 +610,21 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             while (from <= basePlainLower.length - t.length && t.isNotEmpty()) {
                 val idx = basePlainLower.indexOf(t, startIndex = from)
                 if (idx == -1) break
-                val startOrig = mapToOrigIndex(baseMap, idx)
-                val endOrig = mapToOrigIndex(baseMap, (idx + t.length - 1)) + 1
-                if (startOrig in 0 until endOrig && endOrig <= base.length) {
-                    intervals += (startOrig until endOrig)
+
+                // Check if this is a word-internal match for a short term
+                val isAtWordStart = isWordBoundary(basePlainLower, idx - 1)
+                val isAtWordEnd = isWordBoundary(basePlainLower, idx + t.length)
+                val isWholeWord = isAtWordStart && isAtWordEnd
+
+                // For short terms (< 3 chars), only highlight if it's a whole word
+                val shouldHighlight = if (t.length < 3) isWholeWord else true
+
+                if (shouldHighlight) {
+                    val startOrig = mapToOrigIndex(baseMap, idx)
+                    val endOrig = mapToOrigIndex(baseMap, (idx + t.length - 1)) + 1
+                    if (startOrig in 0 until endOrig && endOrig <= base.length) {
+                        intervals += (startOrig until endOrig)
+                    }
                 }
                 from = idx + t.length
             }

@@ -23,6 +23,7 @@ import java.io.Closeable
 import java.nio.file.Path
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
+import io.github.kdroidfilter.seforimapp.logger.debugln
 
 /**
  * Minimal Lucene search service for JVM runtime.
@@ -46,7 +47,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         require(firstExisting != null) {
             "[MagicDictionary] No valid lexical.db found. Provide -DmagicDict=/path/lexical.db or SEFORIM_MAGIC_DICT. Tried (existing but invalid skipped): ${candidates.joinToString()}"
         }
-        println("[MagicDictionary] Loading lexical db from $firstExisting")
+        debugln { "[MagicDictionary] Loading lexical db from $firstExisting" }
         MagicDictionaryIndex.load(::normalizeHebrew, firstExisting)
             ?: error("[MagicDictionary] Failed to load lexical db at $firstExisting")
     }
@@ -192,8 +193,8 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             )
         }
 
-        println("[DEBUG] Original query had Hashem (ה׳): $hasHashem")
-        println("[DEBUG] Analyzed tokens: $analyzedStd")
+        debugln { "[DEBUG] Original query had Hashem (ה׳): $hasHashem" }
+        debugln { "[DEBUG] Analyzed tokens: $analyzedStd" }
 
         // Get all possible expansions for each token (a token can belong to multiple bases)
         // BUT exclude "ה" from dictionary expansion (even when it's Hashem) because the dictionary
@@ -217,7 +218,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
                 }
 
                 if (hasProblematicTerms) {
-                    println("[DEBUG] Rejecting expansion for '$token' due to problematic terms")
+                    debugln { "[DEBUG] Rejecting expansion for '$token' due to problematic terms" }
                     emptyList()
                 } else {
                     listOf(expansion)
@@ -225,10 +226,10 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             }
         tokenExpansions.forEach { (token, exps) ->
             if (exps.isEmpty() && token == "ה") {
-                println("[DEBUG] Token 'ה' -> NO expansion (kept as-is to avoid number pollution)")
+                debugln { "[DEBUG] Token 'ה' -> NO expansion (kept as-is to avoid number pollution)" }
             } else {
                 exps.forEach { exp ->
-                    println("[DEBUG] Token '$token' -> expansion: surface=${exp.surface.take(10)}..., variants=${exp.variants.take(10)}..., base=${exp.base}")
+                    debugln { "[DEBUG] Token '$token' -> expansion: surface=${exp.surface.take(10)}..., variants=${exp.variants.take(10)}..., base=${exp.base}" }
                 }
             }
         }
@@ -258,19 +259,19 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         }
         if (mustAllTokensQuery != null) {
             builder.add(mustAllTokensQuery, BooleanClause.Occur.FILTER)
-            println("[DEBUG] Added mustAllTokensQuery as FILTER")
+            debugln { "[DEBUG] Added mustAllTokensQuery as FILTER" }
         }
         val analyzedCount = analyzedStd.size
         if (phraseQuery != null && analyzedCount >= 2) {
             val occur = if (near == 0) BooleanClause.Occur.MUST else BooleanClause.Occur.SHOULD
             builder.add(phraseQuery, occur)
-            println("[DEBUG] Added phraseQuery with occur=$occur, near=$near")
+            debugln { "[DEBUG] Added phraseQuery with occur=$occur, near=$near" }
         }
         builder.add(rankedQuery, BooleanClause.Occur.SHOULD)
-        println("[DEBUG] Added rankedQuery as SHOULD")
+        debugln { "[DEBUG] Added rankedQuery as SHOULD" }
 
         val finalQuery = builder.build()
-        println("[DEBUG] Final query: $finalQuery")
+        debugln { "[DEBUG] Final query: $finalQuery" }
 
         return SearchContext(
             query = finalQuery,
@@ -493,9 +494,9 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val termExpansions = tokens.map { t ->
             val expansions = expansionsByToken[t] ?: emptyList()
             val allTerms = expansions.flatMap { it.surface + it.variants + it.base }.distinct()
-            if (allTerms.isNotEmpty()) allTerms else listOf(t)
+            allTerms.ifEmpty { listOf(t) }
         }
-        println("[DEBUG] buildSynonymPhrases - termExpansions sizes: ${termExpansions.map { it.size }}")
+        debugln { "[DEBUG] buildSynonymPhrases - termExpansions sizes: ${termExpansions.map { it.size }}" }
         fun buildMultiPhrase(slop: Int): Query {
             val builder = org.apache.lucene.search.MultiPhraseQuery.Builder()
             builder.setSlop(slop)
@@ -526,7 +527,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val termExpansions = tokens.map { t ->
             val expansions = expansionsByToken[t] ?: emptyList()
             val allTerms = expansions.flatMap { it.surface + it.variants + it.base }.distinct()
-            if (allTerms.isNotEmpty()) allTerms else listOf(t)
+            allTerms.ifEmpty { listOf(t) }
         }
         val builder = org.apache.lucene.search.MultiPhraseQuery.Builder()
         builder.setSlop(near)
@@ -544,11 +545,10 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         if (tokens.isEmpty()) return null
         val grams = mutableListOf<String>()
         for (t in tokens) {
-            val s = t
-            val L = s.length
+            val L = t.length
             var i = 0
             while (i + 4 <= L) {
-                grams += s.substring(i, i + 4)
+                grams += t.substring(i, i + 4)
                 i += 1
             }
         }
@@ -610,7 +610,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val filtered = filterTermsForHighlight(combined)
         if (filtered.isNotEmpty()) return filtered
         val qFiltered = filterTermsForHighlight(qTokens)
-        return if (qFiltered.isNotEmpty()) qFiltered else qTokens
+        return qFiltered.ifEmpty { qTokens }
     }
 
     private fun filterTermsForHighlight(terms: List<String>): List<String> {
@@ -685,7 +685,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         // Compute basePlain and its map to baseOriginal-local indices
         val basePlain = plain.substring(plainStart, plainEnd)
         val basePlainSearch = replaceFinalsWithBase(basePlain)
-        val baseMap: IntArray = IntArray(plainEnd - plainStart) { idx ->
+        val baseMap = IntArray(plainEnd - plainStart) { idx ->
             (mapToOrig[plainStart + idx] - origStart).coerceIn(0, base.length.coerceAtLeast(1) - 1)
         }
 

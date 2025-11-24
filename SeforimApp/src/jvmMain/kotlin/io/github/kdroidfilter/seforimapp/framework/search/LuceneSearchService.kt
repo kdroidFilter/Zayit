@@ -34,21 +34,21 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
 
 
     private val stdAnalyzer: Analyzer by lazy { analyzer }
-    private val magicDict: MagicDictionaryIndex? by lazy {
+    private val magicDict: MagicDictionaryIndex by lazy {
         val candidates = listOfNotNull(
             System.getProperty("magicDict")?.let { Path.of(it) },
             System.getenv("SEFORIM_MAGIC_DICT")?.let { Path.of(it) },
             indexDir.resolveSibling("lexical.db"),
+            indexDir.resolveSibling("seforim.db").resolveSibling("lexical.db"),
             Path.of("SeforimLibrary/SeforimMagicIndexer/magicindexer/build/db/lexical.db")
         )
         val firstExisting = candidates.firstOrNull { java.nio.file.Files.isRegularFile(it) }
-        if (firstExisting == null) {
-            println("[MagicDictionary] No lexical.db found in candidates: ${candidates.joinToString()}")
-            null
-        } else {
-            println("[MagicDictionary] Loading lexical db from $firstExisting")
-            MagicDictionaryIndex.load(::normalizeHebrew, firstExisting)
+        require(firstExisting != null) {
+            "[MagicDictionary] No lexical.db found. Provide -DmagicDict=/path/lexical.db or SEFORIM_MAGIC_DICT. Tried: ${candidates.joinToString()}"
         }
+        println("[MagicDictionary] Loading lexical db from $firstExisting")
+        MagicDictionaryIndex.load(::normalizeHebrew, firstExisting)
+            ?: error("[MagicDictionary] Failed to load lexical db at $firstExisting")
     }
 
     private inline fun <T> withSearcher(block: (IndexSearcher) -> T): T {

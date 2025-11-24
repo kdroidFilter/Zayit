@@ -65,8 +65,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.*
 
 data class SearchShellActions(
-    val onSubmit: (query: String, near: Int) -> Unit,
-    val onNearChange: (Int) -> Unit,
+    val onSubmit: (query: String) -> Unit,
     val onQueryChange: (String) -> Unit,
     val onGlobalExtendedChange: (Boolean) -> Unit,
     val onScroll: (anchorId: Long, anchorIndex: Int, index: Int, offset: Int) -> Unit,
@@ -84,16 +83,11 @@ data class SearchShellActions(
 @Composable
 private fun SearchToolbar(
     initialQuery: String,
-    near: Int,
-    onSubmit: (query: String, near: Int) -> Unit,
-    onNearChange: (Int) -> Unit,
+    onSubmit: (query: String) -> Unit,
     onQueryChange: (String) -> Unit,
     globalExtended: Boolean,
     onGlobalExtendedChange: (Boolean) -> Unit,
 ) {
-    var currentNear by remember { mutableStateOf(near) }
-    LaunchedEffect(near) { currentNear = near }
-
     val searchState = remember { TextFieldState() }
     // Keep the field in sync with initial/current query
     LaunchedEffect(initialQuery) {
@@ -118,13 +112,13 @@ private fun SearchToolbar(
             state = searchState, modifier = Modifier.weight(1f).height(36.dp).onPreviewKeyEvent { ev ->
                 if ((ev.key == androidx.compose.ui.input.key.Key.Enter || ev.key == androidx.compose.ui.input.key.Key.NumPadEnter) && ev.type == androidx.compose.ui.input.key.KeyEventType.KeyUp) {
                     val q = searchState.text.toString()
-                    onSubmit(q, currentNear)
+                    onSubmit(q)
                     true
                 } else false
             }, placeholder = { Text(stringResource(Res.string.search_placeholder)) }, leadingIcon = {
             IconButton(modifier = Modifier.pointerHoverIcon(PointerIcon.Hand), onClick = {
                 val q = searchState.text.toString()
-                onSubmit(q, currentNear)
+                onSubmit(q)
             }) {
                 Icon(
                     key = AllIconsKeys.Actions.Find,
@@ -133,31 +127,6 @@ private fun SearchToolbar(
             }
         }, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
         )
-
-        // NEAR selector
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            // Mirror HomeView's semantic levels → NEAR values mapping
-            val nearValues = remember { listOf(0, 3, 5, 10, 20) }
-            val labels = listOf(
-                stringResource(Res.string.search_level_1_value),
-                stringResource(Res.string.search_level_2_value),
-                stringResource(Res.string.search_level_3_value),
-                stringResource(Res.string.search_level_4_value),
-                stringResource(Res.string.search_level_5_value),
-            )
-            val selectedIndex = nearValues.indexOf(currentNear).let { if (it >= 0) it else 2 }
-            ListComboBox(
-                items = labels,
-                selectedIndex = selectedIndex,
-                modifier = Modifier.width(160.dp).height(36.dp),
-                onSelectedItemChange = { idx ->
-                    val newNear = nearValues.getOrNull(idx) ?: return@ListComboBox
-                    if (newNear != currentNear) {
-                        currentNear = newNear
-                        onNearChange(newNear)
-                    }
-                })
-        }
 
         // Global extended toggle (default off → base books only)
         CustomToggleableChip(
@@ -385,9 +354,7 @@ private fun SearchResultContentMvi(
             // Top persistent search toolbar
             SearchToolbar(
                 initialQuery = state.query,
-                near = state.near,
                 onSubmit = actions.onSubmit,
-                onNearChange = actions.onNearChange,
                 onQueryChange = actions.onQueryChange,
                 globalExtended = state.globalExtended,
                 onGlobalExtendedChange = actions.onGlobalExtendedChange

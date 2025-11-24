@@ -91,7 +91,6 @@ data class HomeSearchCallbacks(
     val onReferenceQueryChanged: (String) -> Unit,
     val onTocQueryChanged: (String) -> Unit,
     val onFilterChange: (SearchFilter) -> Unit,
-    val onLevelIndexChange: (Int) -> Unit,
     val onGlobalExtendedChange: (Boolean) -> Unit,
     val onSubmitTextSearch: (String) -> Unit,
     val onOpenReference: () -> Unit,
@@ -494,17 +493,7 @@ fun HomeView(
                                     parentScale = homeScale
                                 )
 
-                                if (!isReferenceMode) {
-                                    SearchLevelsPanel(
-                                        selectedIndex = searchUi.selectedLevelIndex,
-                                        onSelectedIndexChange = {
-                                            searchCallbacks.onLevelIndexChange(it)
-                                            // After changing search level, return focus to the main field
-                                            // so the user can immediately press Enter to search.
-                                            mainSearchFocusRequester.requestFocus()
-                                        }
-                                    )
-                                } else {
+                                if (isReferenceMode) {
                                     val canOpen = searchUi.selectedScopeBook != null || searchUi.selectedScopeToc != null
                                     Row(
                                         horizontalArrangement = Arrangement.Center,
@@ -1514,15 +1503,14 @@ fun HomeViewPreview() {
         // Minimal stub state for preview; SearchHomeViewModel is not used here.
         val stubSearchUi = SearchHomeUiState()
         val stubCallbacks = HomeSearchCallbacks(
-            onReferenceQueryChanged = {},
-            onTocQueryChanged = {},
-            onFilterChange = {},
-            onLevelIndexChange = {},
-            onGlobalExtendedChange = {},
-            onSubmitTextSearch = {},
-            onOpenReference = {},
-            onPickCategory = {},
-            onPickBook = {},
+        onReferenceQueryChanged = {},
+        onTocQueryChanged = {},
+        onFilterChange = {},
+        onGlobalExtendedChange = {},
+        onSubmitTextSearch = {},
+        onOpenReference = {},
+        onPickCategory = {},
+        onPickBook = {},
             onPickToc = {}
         )
         HomeView(

@@ -28,7 +28,6 @@ private const val PARALLEL_FILTER_THRESHOLD = 2_000
 
 data class SearchUiState(
     val query: String = "",
-    val near: Int = 5,
     val globalExtended: Boolean = false,
     val isLoading: Boolean = false,
     val results: List<SearchResult> = emptyList(),
@@ -70,7 +69,6 @@ class SearchResultViewModel(
         data class FilterByBookId(val bookId: Long) : SearchResultEvents()
         data class FilterByCategoryId(val categoryId: Long) : SearchResultEvents()
         data class SetQuery(val query: String) : SearchResultEvents()
-        data class SetNear(val near: Int) : SearchResultEvents()
         data object ExecuteSearch : SearchResultEvents()
         data object CancelSearch : SearchResultEvents()
         data class OnScroll(val anchorId: Long, val anchorIndex: Int, val index: Int, val offset: Int) : SearchResultEvents()
@@ -93,7 +91,6 @@ class SearchResultViewModel(
             is SearchResultEvents.FilterByBookId -> filterByBookId(event.bookId)
             is SearchResultEvents.FilterByCategoryId -> filterByCategoryId(event.categoryId)
             is SearchResultEvents.SetQuery -> setQuery(event.query)
-            is SearchResultEvents.SetNear -> setNear(event.near)
             is SearchResultEvents.ExecuteSearch -> executeSearch()
             is SearchResultEvents.CancelSearch -> cancelSearch()
             is SearchResultEvents.OnScroll -> onScroll(event.anchorId, event.anchorIndex, event.index, event.offset)
@@ -114,7 +111,6 @@ class SearchResultViewModel(
     // Key representing the current search parameters (no result caching).
     private data class SearchParamsKey(
         val query: String,
-        val near: Int,
         val filterCategoryId: Long?,
         val filterBookId: Long?,
         val filterTocId: Long?
@@ -124,6 +120,7 @@ class SearchResultViewModel(
     // - then 100 until 500
     // - then 5,000; then 10,000; then double each step up to 200,000
     private companion object {
+        private const val DEFAULT_NEAR = 5
         private const val STAGE1_LIMIT = 100
         private const val STAGE2_LIMIT = 500
         private const val STAGE3_LIMIT = 5_000
@@ -608,7 +605,6 @@ class SearchResultViewModel(
         val initialQuery = stateManager.getState<String>(tabId, SearchStateKeys.QUERY)
             ?: savedStateHandle.get<String>("searchQuery")
             ?: ""
-        val initialNear = stateManager.getState<Int>(tabId, SearchStateKeys.NEAR) ?: 5
         val initialScrollIndex = stateManager.getState<Int>(tabId, SearchStateKeys.SCROLL_INDEX) ?: 0
         val initialScrollOffset = stateManager.getState<Int>(tabId, SearchStateKeys.SCROLL_OFFSET) ?: 0
         val initialAnchorId = stateManager.getState<Long>(tabId, SearchStateKeys.ANCHOR_ID) ?: -1L
@@ -621,7 +617,6 @@ class SearchResultViewModel(
         val fetchTocId = stateManager.getState<Long>(tabId, SearchStateKeys.FETCH_TOC_ID)
         _uiState.value = _uiState.value.copy(
             query = initialQuery,
-            near = initialNear,
             scrollIndex = initialScrollIndex,
             scrollOffset = initialScrollOffset,
             anchorId = initialAnchorId,
@@ -691,7 +686,6 @@ class SearchResultViewModel(
             // Reconstruct currentKey from dataset fetch scope (not view filters)
             currentKey = SearchParamsKey(
                 query = _uiState.value.query,
-                near = _uiState.value.near,
                 filterCategoryId = fetchCategoryId?.takeIf { datasetScope == "category" && it > 0 },
                 filterBookId = fetchBookId?.takeIf { (datasetScope == "book" || datasetScope == "toc") && it > 0 },
                 filterTocId = fetchTocId?.takeIf { datasetScope == "toc" && it > 0 }
@@ -760,11 +754,6 @@ class SearchResultViewModel(
 
     // Caching continuation removed: searches are executed fresh.
 
-    fun setNear(near: Int) {
-        _uiState.value = _uiState.value.copy(near = near)
-        stateManager.saveState(tabId, SearchStateKeys.NEAR, near)
-    }
-
     /**
      * Update the search query in UI state and persist it for this tab.
      * Does not trigger a search by itself; callers should invoke [executeSearch].
@@ -812,7 +801,7 @@ class SearchResultViewModel(
             }
             stateManager.saveState(tabId, SearchStateKeys.QUERY, q)
             try {
-                val near = _uiState.value.near
+                val near = DEFAULT_NEAR
                 // Use dataset fetch scope for DB queries; view filters are applied client-side
                 val datasetScope = stateManager.getState<String>(tabId, SearchStateKeys.DATASET_SCOPE) ?: "global"
                 val fetchCategoryId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_CATEGORY_ID)?.takeIf { it > 0 }
@@ -826,7 +815,6 @@ class SearchResultViewModel(
 
                 currentKey = SearchParamsKey(
                     query = q,
-                    near = near,
                     filterCategoryId = fetchCategoryId,
                     filterBookId = fetchBookId,
                     filterTocId = fetchTocId
@@ -859,7 +847,7 @@ class SearchResultViewModel(
                     ensureTocCountingCaches(book.id)
                 }
 
-                val sessionInfo = prepareSearchSession(q, near, fetchCategoryId, fetchBookId, fetchTocId)
+                val sessionInfo = prepareSearchSession(q, fetchCategoryId, fetchBookId, fetchTocId)
                 if (sessionInfo == null) {
                     _uiState.value = _uiState.value.copy(results = emptyList(), progressCurrent = 0, progressTotal = 0)
                     return@launch
@@ -923,7 +911,6 @@ class SearchResultViewModel(
 
     private suspend fun prepareSearchSession(
         query: String,
-        near: Int,
         fetchCategoryId: Long?,
         fetchBookId: Long?,
         fetchTocId: Long?
@@ -935,20 +922,20 @@ class SearchResultViewModel(
                 ensureTocCountingCaches(toc.bookId)
                 val lineIds = collectLineIdsForTocSubtree(toc.id, toc.bookId)
                 tocAllowedLineIds = lineIds
-                lucene.openSearchSession(query, near, lineIds = lineIds)
+                lucene.openSearchSession(query, DEFAULT_NEAR, lineIds = lineIds)
             }
-            fetchBookId != null -> lucene.openSearchSession(query, near, bookIds = listOf(fetchBookId))
+            fetchBookId != null -> lucene.openSearchSession(query, DEFAULT_NEAR, bookIds = listOf(fetchBookId))
             fetchCategoryId != null -> {
                 val books = collectBookIdsUnderCategory(fetchCategoryId)
-                lucene.openSearchSession(query, near, bookIds = books)
+                lucene.openSearchSession(query, DEFAULT_NEAR, bookIds = books)
             }
             else -> {
                 val extendedGlobal = _uiState.value.globalExtended
                 val baseOnlyBookIds: List<Long>? = if (!extendedGlobal) runCatching { repository.getBaseBookIds() }.getOrNull() else null
                 when {
                     baseOnlyBookIds != null && baseOnlyBookIds.isEmpty() -> null
-                    baseOnlyBookIds != null -> lucene.openSearchSession(query, near, bookIds = baseOnlyBookIds)
-                    else -> lucene.openSearchSession(query, near)
+                    baseOnlyBookIds != null -> lucene.openSearchSession(query, DEFAULT_NEAR, bookIds = baseOnlyBookIds)
+                    else -> lucene.openSearchSession(query, DEFAULT_NEAR)
                 }
             }
         }

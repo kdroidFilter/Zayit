@@ -33,7 +33,6 @@ data class TocSuggestionDto(val toc: TocEntry, val path: List<String>)
 
 data class SearchHomeUiState(
     val selectedFilter: SearchFilter = SearchFilter.TEXT,
-    val selectedLevelIndex: Int = 2,
     val globalExtended: Boolean = false,
     val suggestionsVisible: Boolean = false,
     val categorySuggestions: List<CategorySuggestionDto> = emptyList(),
@@ -44,7 +43,6 @@ data class SearchHomeUiState(
     val selectedScopeBook: Book? = null,
     val selectedScopeToc: TocEntry? = null,
     val userDisplayName: String = "",
-    // Hints for the 2nd field placeholder when a book is selected
     val tocPreviewHints: List<String> = emptyList(),
     val pairedReferenceHints: List<Pair<String, String>> = emptyList()
 )
@@ -64,7 +62,6 @@ class SearchHomeViewModel(
     private val referenceQuery = MutableStateFlow("")
     private val tocQuery = MutableStateFlow("")
 
-    private val NEAR_LEVELS = listOf(0, 3, 5, 10, 20)
     private val MIN_PREFIX_LEN = 2 // minimum characters before triggering predictive queries
 
     // Lightweight, thread-safe LRU caches to avoid repeated DB hits when typing fast
@@ -354,11 +351,6 @@ class SearchHomeViewModel(
     }
 
 
-    fun onLevelIndexChange(index: Int) {
-        val coerced = index.coerceIn(0, NEAR_LEVELS.lastIndex)
-        _uiState.value = _uiState.value.copy(selectedLevelIndex = coerced)
-    }
-
     fun onGlobalExtendedChange(extended: Boolean) { _uiState.value = _uiState.value.copy(globalExtended = extended) }
 
     suspend fun submitSearch(query: String) {
@@ -404,7 +396,6 @@ class SearchHomeViewModel(
 
         // Persist search params for this tab to restore state
         stateManager.saveState(currentTabId, SearchStateKeys.QUERY, query)
-        stateManager.saveState(currentTabId, SearchStateKeys.NEAR, NEAR_LEVELS[_uiState.value.selectedLevelIndex])
         stateManager.saveState(currentTabId, SearchStateKeys.GLOBAL_EXTENDED, _uiState.value.globalExtended)
 
         // Clear any previous cached search snapshot for this tab to avoid

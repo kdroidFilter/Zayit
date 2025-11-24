@@ -65,7 +65,6 @@ fun BookContentScreen(
             onReferenceQueryChanged = searchHomeViewModel::onReferenceQueryChanged,
             onTocQueryChanged = searchHomeViewModel::onTocQueryChanged,
             onFilterChange = searchHomeViewModel::onFilterChange,
-            onLevelIndexChange = searchHomeViewModel::onLevelIndexChange,
             onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
             onSubmitTextSearch = { query ->
                 scope.launch { searchHomeViewModel.submitSearch(query) }

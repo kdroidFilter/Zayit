@@ -544,6 +544,21 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     private fun filterTermsForHighlight(terms: List<String>): List<String> {
         if (terms.isEmpty()) return emptyList()
         val hebrewSingleLetters = setOf("ד", "ה", "ו", "ב", "ל", "מ", "כ", "ש")
+
+        // Hebrew function words and particles that shouldn't be highlighted
+        val hebrewStopWords = setOf(
+            // Particles
+            "את", "אותו", "אותה", "אותי", "אותכ", "אותמ", "אותנו",
+            // Prepositions
+            "של", "על", "אל", "מנ", "עד", "עמ", "כמו", "אצל",
+            // Conjunctions
+            "כי", "אמ", "או", "גמ", "אבל", "אכ", "רק",
+            // Common pronouns
+            "זה", "זו", "זאת", "אלה", "אלו",
+            // Existential
+            "יש", "אינ", "הנה"
+        )
+
         fun useful(t: String): Boolean {
             val s = t.trim()
             if (s.isEmpty()) return false
@@ -552,6 +567,8 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             // Must contain at least one letter or digit
             if (s.none { it.isLetterOrDigit() }) return false
             if (s in hebrewSingleLetters) return false
+            // Filter out function words
+            if (s in hebrewStopWords) return false
             return true
         }
         return terms

@@ -362,27 +362,58 @@ private fun SearchResultContentMvi(
             )
 
             Spacer(Modifier.height(12.dp))
-            // Header row: results count + classic separator + optional cancel
+            val showProgress = state.isLoading || state.isLoadingMore
+            val hasTotal = (state.progressTotal ?: 0L) > 0L
+            val progressFraction by animateFloatAsState(
+                targetValue = if (showProgress && hasTotal) {
+                    val total = (state.progressTotal ?: 1L).coerceAtLeast(1L)
+                    (state.progressCurrent.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+                } else 0f,
+                animationSpec = tween(durationMillis = 250, easing = LinearEasing),
+                label = "searchProgress"
+            )
+
+            // Header row: results count + inline loader + optional cancel (space reserved to avoid width jitter)
             Row(
                 modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
             ) {
-                GroupHeader(
+                Text(
                     text = stringResource(Res.string.search_result_count, visibleResults.size),
-                    modifier = Modifier.padding(end = 12.dp)
+                    modifier = Modifier.padding(end = 12.dp),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    maxLines = 1
                 )
 
-                // Classic thin separator line
                 Box(
-                    modifier = Modifier.weight(1f).height(1.dp).background(JewelTheme.globalColors.borders.disabled)
-                )
+                    modifier = Modifier
+                        .height(4.dp)
+                        .weight(1f)
+                        .clip(RoundedCornerShape(percent = 50))
+                        .background(JewelTheme.globalColors.borders.disabled.copy(alpha = 0.6f))
+                ) {
+                    if (showProgress && progressFraction > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(progressFraction)
+                                .background(JewelTheme.globalColors.outlines.focused)
+                        )
+                    }
+                }
 
-                if (state.isLoading || state.isLoadingMore) {
-                    Spacer(Modifier.width(8.dp))
-                    IconActionButton(
-                        key = AllIconsKeys.Windows.Close,
-                        onClick = actions.onCancelSearch,
-                        contentDescription = "Cancel search"
-                    )
+                // Reserve space for the cancel button to prevent width jumps
+                Box(
+                    modifier = Modifier.width(40.dp).height(28.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (state.isLoading || state.isLoadingMore) {
+                        IconActionButton(
+                            key = AllIconsKeys.Windows.Close,
+                            onClick = actions.onCancelSearch,
+                            contentDescription = stringResource(Res.string.search_stop)
+                        )
+                    }
                 }
             }
 

@@ -1,26 +1,28 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="SeforimApp [jvm]" type="GradleRunConfiguration" factoryName="Gradle">
+  <configuration default="false" name="SeforimApp [run]" type="GradleRunConfiguration" factoryName="Gradle">
     <ExternalSystemSettings>
       <option name="env">
         <map>
-          <entry key="seforim_db" value="$USER_HOME$/Documents/SeforimDB/160825/otzaria.db" />
+          <entry key="SEFORIMAPP_DATABASE_PATH" value="$USER_HOME$/Downloads/seforim.db" />
+          <entry key="SEFORIMAPP_LOGGING" value="true" />
+          <entry key="SEFORIMAPP_REPOSITORY_LOGGIN" value="true" />
         </map>
       </option>
       <option name="executionName" />
       <option name="externalProjectPath" value="$PROJECT_DIR$/SeforimApp" />
       <option name="externalSystemIdString" value="GRADLE" />
-      <option name="scriptParameters" value="-DmainClass=io.github.kdroidfilter.seforimapp.MainKt --quiet" />
+      <option name="scriptParameters" value="" />
       <option name="taskDescriptions">
         <list />
       </option>
       <option name="taskNames">
         <list>
-          <option value="jvmRun" />
+          <option value="run" />
         </list>
       </option>
       <option name="vmOptions" />
     </ExternalSystemSettings>
-    <ExternalSystemDebugServerProcess>false</ExternalSystemDebugServerProcess>
+    <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
     <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
     <DebugAllEnabled>false</DebugAllEnabled>
     <RunAsTest>false</RunAsTest>

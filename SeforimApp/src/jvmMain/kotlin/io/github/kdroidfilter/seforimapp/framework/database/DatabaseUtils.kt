@@ -6,23 +6,24 @@ import io.github.kdroidfilter.seforimlibrary.dao.CatalogLoader
 import java.io.File
 
 /**
- * Gets the database path from AppSettings. No environment variable usage.
+ * Gets the database path, preferring an environment variable if present,
+ * and falling back to AppSettings otherwise.
  */
-//fun getDatabasePath(): String {
-//    val dbPath = AppSettings.getDatabasePath()
-//        ?: throw IllegalStateException("Database path is not configured in settings")
-//
-//    // Check if the database file exists
-//    val dbFile = File(dbPath)
-//    if (!dbFile.exists()) {
-//        throw IllegalStateException("Database file not found at $dbPath")
-//    }
-//
-//    return dbPath
-//}
+fun getDatabasePath(): String {
+    // 1) Prefer an explicit environment variable override if provided
+    val envDbPath = System.getenv("SEFORIMAPP_DATABASE_PATH")?.takeIf { it.isNotBlank() }
+    val dbPath = envDbPath ?: AppSettings.getDatabasePath()
+        ?: throw IllegalStateException("Database path is not configured (environment or settings)")
 
+    // Check if the database file exists
+    val dbFile = File(dbPath)
+    if (!dbFile.exists()) {
+        throw IllegalStateException("Database file not found at $dbPath")
+    }
 
-fun getDatabasePath() = "/Users/eliegambache/Downloads/seforim.db"
+    return dbPath
+}
+
 
 /**
  * Singleton holder for the precomputed catalog.

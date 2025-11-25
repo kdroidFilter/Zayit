@@ -185,11 +185,12 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val analyzedStd = analyzedRaw.filter { token ->
             // Special case: if query has ה׳, keep "ה" token
             if (token == "ה" && hasHashem) return@filter true
+            // Preserve numeric tokens (e.g., "6") so they can expand via MagicDictionary
+            if (token.any { it.isDigit() }) return@filter true
 
             token.length >= 2 && token !in setOf(
                 "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט", "י", "כ", "ל", "מ",
                 "נ", "ס", "ע", "פ", "צ", "ק", "ר", "ש", "ת",
-                "את", "של", "על", "אל", "מנ", "עד", "כי", "אמ", "או", "גמ", "זה"
             )
         }
 
@@ -197,40 +198,15 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         debugln { "[DEBUG] Analyzed tokens: $analyzedStd" }
 
         // Get all possible expansions for each token (a token can belong to multiple bases)
-        // BUT exclude "ה" from dictionary expansion (even when it's Hashem) because the dictionary
-        // incorrectly maps it to numbers, polluting the query
         val tokenExpansions: Map<String, List<MagicDictionaryIndex.Expansion>> =
             analyzedStd.associateWith { token ->
-                // Special case: never expand "ה" via dictionary (it has bad mappings to numbers)
-                if (token == "ה") {
-                    return@associateWith emptyList()
-                }
-
                 // Get best expansion (prefers matching base, then largest)
                 val expansion = magicDict.expansionFor(token) ?: return@associateWith emptyList()
-
-                // Validate expansion: reject if it contains problematic terms
-                val allTerms = expansion.surface + expansion.variants + expansion.base
-                val hasProblematicTerms = allTerms.any { term ->
-                    term.length == 1 ||  // Single-letter terms (ל, ה, ב, etc.)
-                    term.all { it.isDigit() } ||  // Pure numbers (35, 10, etc.)
-                    term in setOf("ליה", "להנ", "להמ", "איהו")  // Aramaic pronouns that pollute Hebrew search
-                }
-
-                if (hasProblematicTerms) {
-                    debugln { "[DEBUG] Rejecting expansion for '$token' due to problematic terms" }
-                    emptyList()
-                } else {
-                    listOf(expansion)
-                }
+                listOf(expansion)
             }
         tokenExpansions.forEach { (token, exps) ->
-            if (exps.isEmpty() && token == "ה") {
-                debugln { "[DEBUG] Token 'ה' -> NO expansion (kept as-is to avoid number pollution)" }
-            } else {
-                exps.forEach { exp ->
-                    debugln { "[DEBUG] Token '$token' -> expansion: surface=${exp.surface.take(10)}..., variants=${exp.variants.take(10)}..., base=${exp.base}" }
-                }
+            exps.forEach { exp ->
+                debugln { "[DEBUG] Token '$token' -> expansion: surface=${exp.surface.take(10)}..., variants=${exp.variants.take(10)}..., base=${exp.base}" }
             }
         }
 
@@ -633,9 +609,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             // Common pronouns
             "זה", "זו", "זאת", "אלה", "אלו",
             // Existential
-            "יש", "אינ", "הנה",
-            // Common short numbers (will also be handled by word-boundary logic, but safer to exclude)
-            "אחד", "שני", "שתי", "עשר", "עשרימ"
+            "יש", "אינ", "הנה"
         )
 
         fun useful(t: String): Boolean {
@@ -648,8 +622,6 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             if (s in hebrewSingleLetters) return false
             // Filter out function words
             if (s in hebrewStopWords) return false
-            // Filter out pure numeric tokens (like "10", "20")
-            if (s.all { it.isDigit() }) return false
             return true
         }
         return terms
@@ -799,9 +771,6 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         if (input.isBlank()) return ""
         var s = input.trim()
 
-        // Convert Arabic numerals to Hebrew number words BEFORE other normalization
-        s = convertArabicNumeralsToHebrew(s)
-
         // Remove biblical cantillation marks (teamim) U+0591–U+05AF
         s = s.replace("[\u0591-\u05AF]".toRegex(), "")
         // Remove nikud signs including meteg and qamatz qatan
@@ -815,74 +784,6 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         // Collapse whitespace
         s = s.replace("\\s+".toRegex(), " ").trim()
         return s
-    }
-
-    /**
-     * Convert Arabic numerals (1-20) and Hebrew letter numerals to Hebrew number words.
-     * E.g., "יום 1" -> "יום אחד", "יום א" -> "יום אחד", "3 ימים" -> "שלושה ימים"
-     */
-    private fun convertArabicNumeralsToHebrew(text: String): String {
-        val numberToHebrew = mapOf(
-            "1" to "אחד",
-            "2" to "שנים",
-            "3" to "שלושה",
-            "4" to "ארבעה",
-            "5" to "חמשה",
-            "6" to "שש ה",
-            "7" to "שבעה",
-            "8" to "שמונה",
-            "9" to "תשעה",
-            "10" to "עשר ה",
-            "11" to "אחד עשר",
-            "12" to "שנים עשר",
-            "13" to "שלושה עשר",
-            "14" to "ארבעה עשר",
-            "15" to "חמשה עשר",
-            "16" to "שש ה עשר",
-            "17" to "שבעה עשר",
-            "18" to "שמונה עשר",
-            "19" to "תשעה עשר",
-            "20" to "עשרים"
-        )
-
-        // Hebrew letter numerals (gematria-style)
-        val hebrewLetterToWord = mapOf(
-            "א" to "אחד",      // 1
-            "ב" to "שנים",     // 2
-            "ג" to "שלושה",    // 3
-            "ד" to "ארבעה",    // 4
-            "ה" to "חמשה",     // 5
-            "ו" to "שש ה",     // 6
-            "ז" to "שבעה",     // 7
-            "ח" to "שמונה",    // 8
-            "ט" to "תשעה",     // 9
-            "י" to "עשר ה",    // 10
-            "יא" to "אחד עשר", // 11
-            "יב" to "שנים עשר", // 12
-            "יג" to "שלושה עשר", // 13
-            "יד" to "ארבעה עשר", // 14
-            "טו" to "חמשה עשר", // 15 (special case, not יה)
-            "טז" to "שש ה עשר", // 16
-            "יז" to "שבעה עשר", // 17
-            "יח" to "שמונה עשר", // 18
-            "יט" to "תשעה עשר", // 19
-            "כ" to "עשרים"    // 20
-        )
-
-        var result = text
-
-        // First, convert Arabic numerals
-        for ((arabic, hebrew) in numberToHebrew.entries.sortedByDescending { it.key.toInt() }) {
-            result = result.replace(Regex("\\b$arabic\\b"), hebrew)
-        }
-
-        // Then, convert Hebrew letter numerals (process longer ones first to avoid partial matches)
-        for ((letter, word) in hebrewLetterToWord.entries.sortedByDescending { it.key.length }) {
-            // Match when preceded/followed by whitespace or start/end of string
-            result = result.replace(Regex("(?<=\\s|^)$letter(?=\\s|$)"), word)
-        }
-
-        return result
     }
 
     private fun replaceFinalsWithBase(text: String): String = text

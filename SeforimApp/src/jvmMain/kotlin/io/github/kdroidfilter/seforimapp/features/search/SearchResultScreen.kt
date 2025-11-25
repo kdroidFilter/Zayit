@@ -362,8 +362,18 @@ private fun SearchResultContentMvi(
             )
 
             Spacer(Modifier.height(12.dp))
+            val loadedResults = maxOf(state.progressCurrent, visibleResults.size)
+            val totalResults = maxOf(
+                loadedResults,
+                (state.progressTotal ?: loadedResults.toLong()).coerceAtLeast(loadedResults.toLong()).toInt()
+            )
             val showProgress = state.isLoading || state.isLoadingMore
             val hasTotal = (state.progressTotal ?: 0L) > 0L
+            val headerText = if (showProgress && hasTotal) {
+                stringResource(Res.string.search_result_count, loadedResults, totalResults)
+            } else {
+                stringResource(Res.string.search_result_count_complete, totalResults)
+            }
             val progressFraction by animateFloatAsState(
                 targetValue = if (showProgress && hasTotal) {
                     val total = (state.progressTotal ?: 1L).coerceAtLeast(1L)
@@ -378,7 +388,7 @@ private fun SearchResultContentMvi(
                 modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(Res.string.search_result_count, visibleResults.size),
+                    text = headerText,
                     modifier = Modifier.padding(end = 12.dp),
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,

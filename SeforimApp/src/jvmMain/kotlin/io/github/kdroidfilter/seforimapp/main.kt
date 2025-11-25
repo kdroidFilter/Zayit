@@ -66,7 +66,8 @@ import io.github.kdroidfilter.seforimapp.logger.allowLogging
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
     setMacOsAdaptiveTitleBar()
-    allowLogging = false
+    val loggingEnv = System.getenv("SEFORIMAPP_LOGGING")?.lowercase()
+    allowLogging = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"
 
     val appId = "io.github.kdroidfilter.seforimapp"
     SingleInstanceManager.configuration = SingleInstanceManager.Configuration(

@@ -34,7 +34,6 @@ fun BookContentPanel(
         onReferenceQueryChanged = {},
         onTocQueryChanged = {},
         onFilterChange = {},
-        onLevelIndexChange = {},
         onGlobalExtendedChange = {},
         onSubmitTextSearch = {},
         onOpenReference = {},

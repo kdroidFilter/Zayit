@@ -57,6 +57,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import io.github.kdroidfilter.seforimapp.logger.debugln
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -65,8 +66,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.*
 
 data class SearchShellActions(
-    val onSubmit: (query: String, near: Int) -> Unit,
-    val onNearChange: (Int) -> Unit,
+    val onSubmit: (query: String) -> Unit,
     val onQueryChange: (String) -> Unit,
     val onGlobalExtendedChange: (Boolean) -> Unit,
     val onScroll: (anchorId: Long, anchorIndex: Int, index: Int, offset: Int) -> Unit,
@@ -84,16 +84,11 @@ data class SearchShellActions(
 @Composable
 private fun SearchToolbar(
     initialQuery: String,
-    near: Int,
-    onSubmit: (query: String, near: Int) -> Unit,
-    onNearChange: (Int) -> Unit,
+    onSubmit: (query: String) -> Unit,
     onQueryChange: (String) -> Unit,
     globalExtended: Boolean,
     onGlobalExtendedChange: (Boolean) -> Unit,
 ) {
-    var currentNear by remember { mutableStateOf(near) }
-    LaunchedEffect(near) { currentNear = near }
-
     val searchState = remember { TextFieldState() }
     // Keep the field in sync with initial/current query
     LaunchedEffect(initialQuery) {
@@ -118,13 +113,13 @@ private fun SearchToolbar(
             state = searchState, modifier = Modifier.weight(1f).height(36.dp).onPreviewKeyEvent { ev ->
                 if ((ev.key == androidx.compose.ui.input.key.Key.Enter || ev.key == androidx.compose.ui.input.key.Key.NumPadEnter) && ev.type == androidx.compose.ui.input.key.KeyEventType.KeyUp) {
                     val q = searchState.text.toString()
-                    onSubmit(q, currentNear)
+                    onSubmit(q)
                     true
                 } else false
             }, placeholder = { Text(stringResource(Res.string.search_placeholder)) }, leadingIcon = {
             IconButton(modifier = Modifier.pointerHoverIcon(PointerIcon.Hand), onClick = {
                 val q = searchState.text.toString()
-                onSubmit(q, currentNear)
+                onSubmit(q)
             }) {
                 Icon(
                     key = AllIconsKeys.Actions.Find,
@@ -133,31 +128,6 @@ private fun SearchToolbar(
             }
         }, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
         )
-
-        // NEAR selector
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            // Mirror HomeView's semantic levels → NEAR values mapping
-            val nearValues = remember { listOf(0, 3, 5, 10, 20) }
-            val labels = listOf(
-                stringResource(Res.string.search_level_1_value),
-                stringResource(Res.string.search_level_2_value),
-                stringResource(Res.string.search_level_3_value),
-                stringResource(Res.string.search_level_4_value),
-                stringResource(Res.string.search_level_5_value),
-            )
-            val selectedIndex = nearValues.indexOf(currentNear).let { if (it >= 0) it else 2 }
-            ListComboBox(
-                items = labels,
-                selectedIndex = selectedIndex,
-                modifier = Modifier.width(160.dp).height(36.dp),
-                onSelectedItemChange = { idx ->
-                    val newNear = nearValues.getOrNull(idx) ?: return@ListComboBox
-                    if (newNear != currentNear) {
-                        currentNear = newNear
-                        onNearChange(newNear)
-                    }
-                })
-        }
 
         // Global extended toggle (default off → base books only)
         CustomToggleableChip(
@@ -385,9 +355,7 @@ private fun SearchResultContentMvi(
             // Top persistent search toolbar
             SearchToolbar(
                 initialQuery = state.query,
-                near = state.near,
                 onSubmit = actions.onSubmit,
-                onNearChange = actions.onNearChange,
                 onQueryChange = actions.onQueryChange,
                 globalExtended = state.globalExtended,
                 onGlobalExtendedChange = actions.onGlobalExtendedChange
@@ -575,9 +543,14 @@ private fun SearchResultItemGoogleStyle(
         val lacksBold = bookFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
         if (isMac && lacksBold) 1.08f else 1.0f
     }
-    val annotated: AnnotatedString = remember(result.snippet, textSize, boldScaleForPlatform) {
+    val boldColor = JewelTheme.globalColors.outlines.focused
+    val annotated: AnnotatedString = remember(result.snippet, textSize, boldScaleForPlatform, boldColor) {
+        // Log the snippet with bold tags for debugging
+        debugln { "[SearchResult] Book: ${result.bookTitle}, LineId: ${result.lineId}" }
+        debugln { "[SearchResult] Snippet with bold tags: ${result.snippet}" }
+        debugln { "[SearchResult] ---" }
         // Keep keyword emphasis without oversized glyphs (slight scale on mac for non-bold fonts)
-        buildAnnotatedFromHtml(result.snippet, textSize, boldScale = boldScaleForPlatform)
+        buildAnnotatedFromHtml(result.snippet, textSize, boldScale = boldScaleForPlatform, boldColor = boldColor)
     }
     // Softer overlays for better legibility
     val baseHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.12f)

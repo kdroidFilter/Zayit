@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforim.htmlparser
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -14,7 +15,8 @@ import androidx.compose.ui.unit.sp
 fun buildAnnotatedFromHtml(
     html: String,
     baseTextSize: Float,
-    boldScale: Float = 1f
+    boldScale: Float = 1f,
+    boldColor: Color? = null
 ): AnnotatedString {
     val parsedElements = HtmlParser().parse(html)
 
@@ -44,7 +46,12 @@ fun buildAnnotatedFromHtml(
 
             // Optimization: we only add styles if necessary
             if (e.isBold) {
-                addStyle(SpanStyle(fontWeight = FontWeight.Bold), start, end)
+                val boldStyle = if (boldColor != null) {
+                    SpanStyle(fontWeight = FontWeight.Bold, color = boldColor)
+                } else {
+                    SpanStyle(fontWeight = FontWeight.Bold)
+                }
+                addStyle(boldStyle, start, end)
             }
             if (e.isItalic) {
                 addStyle(SpanStyle(fontStyle = FontStyle.Italic), start, end)

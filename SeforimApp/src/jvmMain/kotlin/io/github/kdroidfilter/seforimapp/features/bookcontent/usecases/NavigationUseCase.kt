@@ -143,7 +143,7 @@ class NavigationUseCase(
      * present so the book row can render.
      */
     suspend fun expandPathToBookId(bookId: Long) {
-        val book = runCatching { repository.getBook(bookId) }.getOrNull() ?: return
+        val book = runCatching { repository.getBookCore(bookId) }.getOrNull() ?: return
         expandPathToBook(book)
     }
 

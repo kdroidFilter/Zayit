@@ -80,7 +80,7 @@ fun CatalogDropdown(
                                     ) {
                                         close()
                                         scope.launch {
-                                            val b: BookModel? = runCatching { repo.getBook(bookRef.id) }.getOrNull()
+                                            val b: BookModel? = runCatching { repo.getBookCore(bookRef.id) }.getOrNull()
                                             if (b != null) onEvent(BookContentEvent.BookSelected(b))
                                         }
                                     }
@@ -154,7 +154,7 @@ fun CatalogDropdown(
                                         ) {
                                             close()
                                             scope.launch {
-                                                val b: BookModel? = runCatching { repo.getBook(bookRef.id) }.getOrNull()
+                                                val b: BookModel? = runCatching { repo.getBookCore(bookRef.id) }.getOrNull()
                                                 if (b != null) onEvent(BookContentEvent.BookSelected(b))
                                             }
                                         }

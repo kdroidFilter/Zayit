@@ -5,27 +5,52 @@ import org.apache.lucene.analysis.TokenStream
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 import org.apache.lucene.index.DirectoryReader
-import org.apache.lucene.index.Term
 import org.apache.lucene.index.StoredFields
-import org.apache.lucene.search.*
+import org.apache.lucene.index.Term
+import org.apache.lucene.search.BooleanClause
+import org.apache.lucene.search.BooleanQuery
+import org.apache.lucene.search.BoostQuery
+import org.apache.lucene.search.FuzzyQuery
+import org.apache.lucene.search.IndexSearcher
+import org.apache.lucene.search.PrefixQuery
+import org.apache.lucene.search.Query
+import org.apache.lucene.search.ScoreDoc
+import org.apache.lucene.search.TermQuery
 import org.apache.lucene.util.QueryBuilder
 import org.apache.lucene.store.FSDirectory
 import org.apache.lucene.document.IntPoint
+import java.io.Closeable
 import java.nio.file.Path
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
+import io.github.kdroidfilter.seforimapp.logger.debugln
 
 /**
  * Minimal Lucene search service for JVM runtime.
  * Supports book title suggestions and full-text queries (future extension).
  */
 class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = StandardAnalyzer()) {
-    private val indexRoot: Path = indexDir
     // Open Lucene directory lazily to avoid any I/O at app startup
     private val dir by lazy { FSDirectory.open(indexDir) }
 
 
-    private val stdAnalyzer: Analyzer by lazy { StandardAnalyzer() }
+    private val stdAnalyzer: Analyzer by lazy { analyzer }
+    private val magicDict: MagicDictionaryIndex by lazy {
+        val candidates = listOfNotNull(
+            System.getProperty("magicDict")?.let { Path.of(it) },
+            System.getenv("SEFORIM_MAGIC_DICT")?.let { Path.of(it) },
+            indexDir.resolveSibling("lexical.db"),
+            indexDir.resolveSibling("seforim.db").resolveSibling("lexical.db"),
+            Path.of("SeforimLibrary/SeforimMagicIndexer/magicindexer/build/db/lexical.db")
+        )
+        val firstExisting = MagicDictionaryIndex.findValidDictionary(candidates)
+        require(firstExisting != null) {
+            "[MagicDictionary] No valid lexical.db found. Provide -DmagicDict=/path/lexical.db or SEFORIM_MAGIC_DICT. Tried (existing but invalid skipped): ${candidates.joinToString()}"
+        }
+        debugln { "[MagicDictionary] Loading lexical db from $firstExisting" }
+        MagicDictionaryIndex.load(::normalizeHebrew, firstExisting)
+            ?: error("[MagicDictionary] Failed to load lexical db at $firstExisting")
+    }
 
     private inline fun <T> withSearcher(block: (IndexSearcher) -> T): T {
         DirectoryReader.open(dir).use { reader ->
@@ -74,8 +99,231 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val lineId: Long,
         val lineIndex: Int,
         val snippet: String,
-        val score: Float
+        val score: Float,
+        val rawText: String
     )
+
+    data class SearchPage(
+        val hits: List<LineHit>,
+        val totalHits: Long,
+        val isLastPage: Boolean
+    )
+
+    inner class SearchSession internal constructor(
+        private val query: Query,
+        private val anchorTerms: List<String>,
+        private val highlightTerms: List<String>,
+        private val reader: DirectoryReader
+    ) : Closeable {
+        private val searcher = IndexSearcher(reader)
+        private var after: ScoreDoc? = null
+        private var finished = false
+        private var totalHitsValue: Long? = null
+
+        fun nextPage(limit: Int): SearchPage? {
+            if (finished) return null
+            val top = searcher.searchAfter(after, query, limit)
+            if (totalHitsValue == null) totalHitsValue = top.totalHits?.value
+            if (top.scoreDocs.isEmpty()) {
+                finished = true
+                return null
+            }
+            val stored = searcher.storedFields()
+            val hits = mapScoreDocs(stored, top.scoreDocs.toList(), anchorTerms, highlightTerms)
+            after = top.scoreDocs.last()
+            val isLast = top.scoreDocs.size < limit
+            if (isLast) finished = true
+            return SearchPage(
+                hits = hits,
+                totalHits = totalHitsValue ?: hits.size.toLong(),
+                isLastPage = isLast
+            )
+        }
+
+        override fun close() {
+            reader.close()
+        }
+    }
+
+    fun openSearchSession(
+        rawQuery: String,
+        near: Int,
+        bookFilter: Long? = null,
+        categoryFilter: Long? = null,
+        bookIds: Collection<Long>? = null,
+        lineIds: Collection<Long>? = null
+    ): SearchSession? {
+        val context = buildSearchContext(rawQuery, near, bookFilter, categoryFilter, bookIds, lineIds) ?: return null
+        val reader = DirectoryReader.open(dir)
+        return SearchSession(context.query, context.anchorTerms, context.highlightTerms, reader)
+    }
+
+    private data class SearchContext(
+        val query: Query,
+        val anchorTerms: List<String>,
+        val highlightTerms: List<String>
+    )
+
+    private fun buildSearchContext(
+        rawQuery: String,
+        near: Int,
+        bookFilter: Long?,
+        categoryFilter: Long?,
+        bookIds: Collection<Long>?,
+        lineIds: Collection<Long>?
+    ): SearchContext? {
+        val norm = normalizeHebrew(rawQuery)
+        if (norm.isBlank()) return null
+
+        val analyzedRaw = analyzeToTerms(stdAnalyzer, norm) ?: emptyList()
+
+        // Check if the original query contained ה׳ (Hashem) before normalization
+        val hasHashem = rawQuery.contains("ה׳") || rawQuery.contains("ה'")
+
+        // Filter out single Hebrew letters and stop words BEFORE dictionary expansion
+        // BUT preserve "ה" if the original query had "ה׳" (Hashem)
+        val analyzedStd = analyzedRaw.filter { token ->
+            // Special case: if query has ה׳, keep "ה" token
+            if (token == "ה" && hasHashem) return@filter true
+
+            token.length >= 2 && token !in setOf(
+                "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט", "י", "כ", "ל", "מ",
+                "נ", "ס", "ע", "פ", "צ", "ק", "ר", "ש", "ת",
+                "את", "של", "על", "אל", "מנ", "עד", "כי", "אמ", "או", "גמ", "זה"
+            )
+        }
+
+        debugln { "[DEBUG] Original query had Hashem (ה׳): $hasHashem" }
+        debugln { "[DEBUG] Analyzed tokens: $analyzedStd" }
+
+        // Get all possible expansions for each token (a token can belong to multiple bases)
+        // BUT exclude "ה" from dictionary expansion (even when it's Hashem) because the dictionary
+        // incorrectly maps it to numbers, polluting the query
+        val tokenExpansions: Map<String, List<MagicDictionaryIndex.Expansion>> =
+            analyzedStd.associateWith { token ->
+                // Special case: never expand "ה" via dictionary (it has bad mappings to numbers)
+                if (token == "ה") {
+                    return@associateWith emptyList()
+                }
+
+                // Get best expansion (prefers matching base, then largest)
+                val expansion = magicDict.expansionFor(token) ?: return@associateWith emptyList()
+
+                // Validate expansion: reject if it contains problematic terms
+                val allTerms = expansion.surface + expansion.variants + expansion.base
+                val hasProblematicTerms = allTerms.any { term ->
+                    term.length == 1 ||  // Single-letter terms (ל, ה, ב, etc.)
+                    term.all { it.isDigit() } ||  // Pure numbers (35, 10, etc.)
+                    term in setOf("ליה", "להנ", "להמ", "איהו")  // Aramaic pronouns that pollute Hebrew search
+                }
+
+                if (hasProblematicTerms) {
+                    debugln { "[DEBUG] Rejecting expansion for '$token' due to problematic terms" }
+                    emptyList()
+                } else {
+                    listOf(expansion)
+                }
+            }
+        tokenExpansions.forEach { (token, exps) ->
+            if (exps.isEmpty() && token == "ה") {
+                debugln { "[DEBUG] Token 'ה' -> NO expansion (kept as-is to avoid number pollution)" }
+            } else {
+                exps.forEach { exp ->
+                    debugln { "[DEBUG] Token '$token' -> expansion: surface=${exp.surface.take(10)}..., variants=${exp.variants.take(10)}..., base=${exp.base}" }
+                }
+            }
+        }
+
+        val allExpansions = tokenExpansions.values.flatten()
+        val expandedTerms = allExpansions.flatMap { it.surface + it.variants + it.base }.distinct()
+        // Filter out single-letter and common Hebrew prefixes from highlighting
+        val filteredExpandedTerms = filterTermsForHighlight(expandedTerms)
+        val highlightTerms = (analyzedStd + filteredExpandedTerms).distinct()
+        val anchorTerms = buildAnchorTerms(norm, highlightTerms)
+
+        val rankedQuery = buildExpandedQuery(norm, near, analyzedStd, tokenExpansions)
+        val mustAllTokensQuery: Query? = buildPresenceFilterForTokens(analyzedStd, near, tokenExpansions)
+        val phraseQuery: Query? = buildSynonymPhraseQuery(analyzedStd, tokenExpansions, near)
+
+        val builder = BooleanQuery.Builder()
+        builder.add(TermQuery(Term("type", "line")), BooleanClause.Occur.FILTER)
+        if (bookFilter != null) builder.add(IntPoint.newExactQuery("book_id", bookFilter.toInt()), BooleanClause.Occur.FILTER)
+        if (categoryFilter != null) builder.add(IntPoint.newExactQuery("category_id", categoryFilter.toInt()), BooleanClause.Occur.FILTER)
+        val bookIdsArray = bookIds?.map { it.toInt() }?.toIntArray()
+        if (bookIdsArray != null && bookIdsArray.isNotEmpty()) {
+            builder.add(IntPoint.newSetQuery("book_id", *bookIdsArray), BooleanClause.Occur.FILTER)
+        }
+        val lineIdsArray = lineIds?.map { it.toInt() }?.toIntArray()
+        if (lineIdsArray != null && lineIdsArray.isNotEmpty()) {
+            builder.add(IntPoint.newSetQuery("line_id", *lineIdsArray), BooleanClause.Occur.FILTER)
+        }
+        if (mustAllTokensQuery != null) {
+            builder.add(mustAllTokensQuery, BooleanClause.Occur.FILTER)
+            debugln { "[DEBUG] Added mustAllTokensQuery as FILTER" }
+        }
+        val analyzedCount = analyzedStd.size
+        if (phraseQuery != null && analyzedCount >= 2) {
+            val occur = if (near == 0) BooleanClause.Occur.MUST else BooleanClause.Occur.SHOULD
+            builder.add(phraseQuery, occur)
+            debugln { "[DEBUG] Added phraseQuery with occur=$occur, near=$near" }
+        }
+        builder.add(rankedQuery, BooleanClause.Occur.SHOULD)
+        debugln { "[DEBUG] Added rankedQuery as SHOULD" }
+
+        val finalQuery = builder.build()
+        debugln { "[DEBUG] Final query: $finalQuery" }
+
+        return SearchContext(
+            query = finalQuery,
+            anchorTerms = anchorTerms,
+            highlightTerms = highlightTerms
+        )
+    }
+
+    private fun mapScoreDocs(
+        stored: StoredFields,
+        scoreDocs: List<ScoreDoc>,
+        anchorTerms: List<String>,
+        highlightTerms: List<String>
+    ): List<LineHit> {
+        if (scoreDocs.isEmpty()) return emptyList()
+        val hits = scoreDocs.map { sd ->
+            val doc = stored.document(sd.doc)
+            val bid = doc.getField("book_id").numericValue().toLong()
+            val btitle = doc.getField("book_title").stringValue() ?: ""
+            val lid = doc.getField("line_id").numericValue().toLong()
+            val lidx = doc.getField("line_index").numericValue().toInt()
+            val raw = doc.getField("text_raw")?.stringValue() ?: ""
+
+            // Apply boost for base books based on orderIndex
+            val isBaseBook = doc.getField("is_base_book")?.numericValue()?.toInt() == 1
+            val orderIndex = doc.getField("order_index")?.numericValue()?.toInt() ?: 999
+            val baseScore = sd.score
+
+            // Calculate boost: lower orderIndex = higher boost (only for base books)
+            val boostedScore = if (isBaseBook) {
+                // Formula: boost = baseScore * (1 + (100 - orderIndex) / 100)
+                // orderIndex 1 gets ~2x boost, orderIndex 50 gets ~1.5x boost, orderIndex 100+ gets ~1x boost
+                val boostFactor = 1.0f + (100 - orderIndex).coerceAtLeast(0) / 100.0f
+                baseScore * boostFactor
+            } else {
+                baseScore
+            }
+
+            val snippet = buildSnippet(raw, anchorTerms, highlightTerms)
+            LineHit(
+                bookId = bid,
+                bookTitle = btitle,
+                lineId = lid,
+                lineIndex = lidx,
+                snippet = snippet,
+                score = boostedScore,
+                rawText = raw
+            )
+        }
+        // Re-sort by boosted score (descending)
+        return hits.sortedByDescending { it.score }
+    }
 
     fun searchAllText(rawQuery: String, near: Int = 5, limit: Int, offset: Int = 0): List<LineHit> =
         doSearch(rawQuery, near, limit, offset, bookFilter = null, categoryFilter = null)
@@ -113,59 +361,12 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         bookFilter: Long?,
         categoryFilter: Long?
     ): List<LineHit> {
-        val norm = normalizeHebrew(rawQuery)
-        if (norm.isBlank()) return emptyList()
-
-        val analyzedStd = (analyzeToTerms(stdAnalyzer, norm) ?: emptyList())
-        val highlightTerms = analyzedStd
-        val anchorTerms = buildAnchorTerms(norm, highlightTerms)
-
-        val rankedQuery = buildExpandedQuery(norm, near)
-        // Enforce that all analyzed tokens from the query are present in a matching document
-        // (AND semantics). Use as FILTER so it restricts recall without affecting score.
-        val mustAllTokensQuery: Query? = buildPresenceFilterForTokens(analyzedStd, near)
-        // Build a phrase query with slop=near so the NEAR level meaningfully controls proximity.
-        val phraseQuery: Query? = QueryBuilder(stdAnalyzer).createPhraseQuery("text", norm, near)
-
+        val context = buildSearchContext(rawQuery, near, bookFilter, categoryFilter, null, null) ?: return emptyList()
         return withSearcher { searcher ->
-            val b = BooleanQuery.Builder()
-            b.add(TermQuery(Term("type", "line")), BooleanClause.Occur.FILTER)
-            if (bookFilter != null) b.add(IntPoint.newExactQuery("book_id", bookFilter.toInt()), BooleanClause.Occur.FILTER)
-            if (categoryFilter != null) b.add(IntPoint.newExactQuery("category_id", categoryFilter.toInt()), BooleanClause.Occur.FILTER)
-            // Apply mandatory presence (AND) as a filter
-            if (mustAllTokensQuery != null) b.add(mustAllTokensQuery, BooleanClause.Occur.FILTER)
-            // Enforce proximity via phrase slop when we have a multi-term query
-            val analyzedCount = analyzedStd.size
-            if (phraseQuery != null && analyzedCount >= 2) {
-                // NEAR=0: enforce strict phrase; NEAR>0: use as ranking signal
-                val occur = if (near == 0) BooleanClause.Occur.MUST else BooleanClause.Occur.SHOULD
-                b.add(phraseQuery, occur)
-            }
-            // Keep expanded components for scoring only, not recall expansion.
-            b.add(rankedQuery, BooleanClause.Occur.SHOULD)
-            val query = b.build()
-
-            // Apply offset by fetching up to offset+limit and then subList
-            val top = searcher.search(query, offset + limit)
+            val top = searcher.search(context.query, offset + limit)
             val stored: StoredFields = searcher.storedFields()
-            val hits = top.scoreDocs.drop(offset)
-            hits.map { sd ->
-                val doc = stored.document(sd.doc)
-                val bid = doc.getField("book_id").numericValue().toLong()
-                val btitle = doc.getField("book_title").stringValue()
-                val lid = doc.getField("line_id").numericValue().toLong()
-                val lidx = doc.getField("line_index").numericValue().toInt()
-                val raw = doc.getField("text_raw")?.stringValue() ?: ""
-                val snippet = buildSnippet(raw, anchorTerms, highlightTerms)
-                LineHit(
-                    bookId = bid,
-                    bookTitle = btitle ?: "",
-                    lineId = lid,
-                    lineIndex = lidx,
-                    snippet = snippet,
-                    score = sd.score
-                )
-            }
+            val sliced = top.scoreDocs.drop(offset)
+            mapScoreDocs(stored, sliced, context.anchorTerms, context.highlightTerms)
         }
     }
 
@@ -176,52 +377,13 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         offset: Int,
         bookIds: Collection<Long>
     ): List<LineHit> {
-        val norm = normalizeHebrew(rawQuery)
-        if (norm.isBlank()) return emptyList()
-
-        val analyzedStd = (analyzeToTerms(stdAnalyzer, norm) ?: emptyList())
-        val highlightTerms = analyzedStd
-        val anchorTerms = buildAnchorTerms(norm, highlightTerms)
-        val rankedQuery = buildExpandedQuery(norm, near)
-        val mustAllTokensQuery: Query? = buildPresenceFilterForTokens(analyzedStd, near)
-        val phraseQuery: Query? = QueryBuilder(stdAnalyzer).createPhraseQuery("text", norm, near)
-
-        val bookIdInts = bookIds.asSequence().map { it.toInt() }.toList().toIntArray()
-        if (bookIdInts.isEmpty()) return emptyList()
-
+        if (bookIds.isEmpty()) return emptyList()
+        val context = buildSearchContext(rawQuery, near, bookFilter = null, categoryFilter = null, bookIds = bookIds, lineIds = null) ?: return emptyList()
         return withSearcher { searcher ->
-            val b = BooleanQuery.Builder()
-            b.add(TermQuery(Term("type", "line")), BooleanClause.Occur.FILTER)
-            b.add(IntPoint.newSetQuery("book_id", *bookIdInts), BooleanClause.Occur.FILTER)
-            if (mustAllTokensQuery != null) b.add(mustAllTokensQuery, BooleanClause.Occur.FILTER)
-            val analyzedCount = analyzedStd.size
-            if (phraseQuery != null && analyzedCount >= 2) {
-                val occur = if (near == 0) BooleanClause.Occur.MUST else BooleanClause.Occur.SHOULD
-                b.add(phraseQuery, occur)
-            }
-            b.add(rankedQuery, BooleanClause.Occur.SHOULD)
-            val query = b.build()
-
-            val top = searcher.search(query, offset + limit)
+            val top = searcher.search(context.query, offset + limit)
             val stored: StoredFields = searcher.storedFields()
-            val hits = top.scoreDocs.drop(offset)
-            hits.map { sd ->
-                val doc = stored.document(sd.doc)
-                val bid = doc.getField("book_id").numericValue().toLong()
-                val btitle = doc.getField("book_title").stringValue()
-                val lid = doc.getField("line_id").numericValue().toLong()
-                val lidx = doc.getField("line_index").numericValue().toInt()
-                val raw = doc.getField("text_raw")?.stringValue() ?: ""
-                val snippet = buildSnippet(raw, anchorTerms, highlightTerms)
-                LineHit(
-                    bookId = bid,
-                    bookTitle = btitle ?: "",
-                    lineId = lid,
-                    lineIndex = lidx,
-                    snippet = snippet,
-                    score = sd.score
-                )
-            }
+            val sliced = top.scoreDocs.drop(offset)
+            mapScoreDocs(stored, sliced, context.anchorTerms, context.highlightTerms)
         }
     }
 
@@ -263,20 +425,30 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
      * Presence filter (AND across tokens). For NEAR>0, each token may be satisfied by
      * either exact term in 'text' OR by its 4-gram presence in 'text_ng4'.
      */
-    private fun buildPresenceFilterForTokens(tokens: List<String>, near: Int): Query? {
+    private fun buildPresenceFilterForTokens(
+        tokens: List<String>,
+        near: Int,
+        expansionsByToken: Map<String, List<MagicDictionaryIndex.Expansion>>
+    ): Query? {
         if (tokens.isEmpty()) return null
         val outer = BooleanQuery.Builder()
         for (t in tokens) {
-            val exact = TermQuery(Term("text", t))
-            val clause = if (near > 0) {
-                val ngram = buildNgramPresenceForToken(t)
-                if (ngram != null) {
-                    BooleanQuery.Builder().apply {
-                        add(exact, BooleanClause.Occur.SHOULD)
-                        add(ngram, BooleanClause.Occur.SHOULD)
-                    }.build()
-                } else exact
-            } else exact
+            val expansions = expansionsByToken[t] ?: emptyList()
+            val ngram = if (near > 0) buildNgramPresenceForToken(t) else null
+            val clause = BooleanQuery.Builder().apply {
+                // Add the original token
+                add(TermQuery(Term("text", t)), BooleanClause.Occur.SHOULD)
+                if (ngram != null) add(ngram, BooleanClause.Occur.SHOULD)
+                // Add all expansion terms from all possible expansions
+                for (exp in expansions) {
+                    val allTerms = (exp.surface + exp.variants + exp.base).distinct()
+                    for (term in allTerms) {
+                        if (term != t) {  // Avoid duplicating the original token
+                            add(TermQuery(Term("text", term)), BooleanClause.Occur.SHOULD)
+                        }
+                    }
+                }
+            }.build()
             outer.add(clause, BooleanClause.Occur.MUST)
         }
         return outer.build()
@@ -291,17 +463,92 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         return bool ?: BooleanQuery.Builder().build()
     }
 
+    private fun buildMagicBoostQuery(expansions: List<MagicDictionaryIndex.Expansion>): Query? {
+        if (expansions.isEmpty()) return null
+        val b = BooleanQuery.Builder()
+        for (exp in expansions) {
+            // Reduced boosts to favor phrase matches over individual term matches
+            for (s in exp.surface) b.add(BoostQuery(TermQuery(Term("text", s)), 2.0f), BooleanClause.Occur.SHOULD)
+            for (v in exp.variants) b.add(BoostQuery(TermQuery(Term("text", v)), 1.5f), BooleanClause.Occur.SHOULD)
+            for (ba in exp.base) b.add(BoostQuery(TermQuery(Term("text", ba)), 1.0f), BooleanClause.Occur.SHOULD)
+        }
+        return b.build()
+    }
+
+    private fun buildSynonymBoostQuery(expansions: List<MagicDictionaryIndex.Expansion>): Query? {
+        if (expansions.isEmpty()) return null
+        val b = BooleanQuery.Builder()
+        for (exp in expansions) {
+            for (s in exp.surface) b.add(TermQuery(Term("text", s)), BooleanClause.Occur.SHOULD)
+            for (v in exp.variants) b.add(TermQuery(Term("text", v)), BooleanClause.Occur.SHOULD)
+            for (ba in exp.base) b.add(TermQuery(Term("text", ba)), BooleanClause.Occur.SHOULD)
+        }
+        return b.build()
+    }
+
+    private fun buildSynonymPhrases(
+        tokens: List<String>,
+        expansionsByToken: Map<String, List<MagicDictionaryIndex.Expansion>>
+    ): List<Pair<Query, Float>> {
+        if (tokens.isEmpty()) return emptyList()
+        val termExpansions = tokens.map { t ->
+            val expansions = expansionsByToken[t] ?: emptyList()
+            val allTerms = expansions.flatMap { it.surface + it.variants + it.base }.distinct()
+            allTerms.ifEmpty { listOf(t) }
+        }
+        debugln { "[DEBUG] buildSynonymPhrases - termExpansions sizes: ${termExpansions.map { it.size }}" }
+        fun buildMultiPhrase(slop: Int): Query {
+            val builder = org.apache.lucene.search.MultiPhraseQuery.Builder()
+            builder.setSlop(slop)
+            var pos = 0
+            for (alts in termExpansions) {
+                builder.add(alts.map { Term("text", it) }.toTypedArray(), pos)
+                pos++
+            }
+            return builder.build()
+        }
+        return listOf(
+            buildMultiPhrase(0) to 50.0f,   // Very high boost for exact phrase match
+            buildMultiPhrase(3) to 20.0f,   // High boost for near phrase match (within 3 words)
+            buildMultiPhrase(8) to 5.0f     // Lower boost for distant phrase match
+        )
+    }
+
+    /**
+     * Build a phrase query that treats each token as a synonym set of surface/variant/base.
+     * This allows a query token (e.g., הלך) to match a surface form (e.g., וילך) in a phrase with slop.
+     */
+    private fun buildSynonymPhraseQuery(
+        tokens: List<String>,
+        expansionsByToken: Map<String, List<MagicDictionaryIndex.Expansion>>,
+        near: Int
+    ): Query? {
+        if (tokens.isEmpty()) return null
+        val termExpansions = tokens.map { t ->
+            val expansions = expansionsByToken[t] ?: emptyList()
+            val allTerms = expansions.flatMap { it.surface + it.variants + it.base }.distinct()
+            allTerms.ifEmpty { listOf(t) }
+        }
+        val builder = org.apache.lucene.search.MultiPhraseQuery.Builder()
+        builder.setSlop(near)
+        var position = 0
+        for (alts in termExpansions) {
+            builder.add(alts.map { Term("text", it) }.toTypedArray(), position)
+            position++
+        }
+        return builder.build()
+    }
+
     private fun buildNgram4Query(norm: String): Query? {
         // Build MUST query over 4-gram terms on field 'text_ng4'
         val tokens = norm.split("\\s+".toRegex()).map { it.trim() }.filter { it.length >= 4 }
         if (tokens.isEmpty()) return null
         val grams = mutableListOf<String>()
         for (t in tokens) {
-            val s = t
-            val L = s.length
+            val L = t.length
             var i = 0
             while (i + 4 <= L) {
-                grams += s.substring(i, i + 4)
+                grams += t.substring(i, i + 4)
                 i += 1
             }
         }
@@ -314,20 +561,28 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         return b.build()
     }
 
-    private fun buildExpandedQuery(norm: String, near: Int): Query {
+    private fun buildExpandedQuery(
+        norm: String,
+        near: Int,
+        tokens: List<String>,
+        expansionsByToken: Map<String, List<MagicDictionaryIndex.Expansion>>
+    ): Query {
         val base = buildHebrewStdQuery(norm, near)
-        // In precise mode (near == 0), enforce strict contiguous phrase matching
-        // with exact term order and no fallbacks. This prevents partial, fuzzy,
-        // or out-of-order matches from leaking into results.
-        if (near == 0) return base
-
-        // For relaxed modes (near > 0), include n-gram + fuzzy as scoring signals (SHOULD).
+        val allExpansions = expansionsByToken.values.flatten()
+        val synonymPhrases = buildSynonymPhrases(tokens, expansionsByToken)
         val ngram = buildNgram4Query(norm)
         val fuzzy = buildFuzzyQuery(norm, near)
         val builder = BooleanQuery.Builder()
         builder.add(base, BooleanClause.Occur.SHOULD)
+        for ((query, boost) in synonymPhrases) {
+            builder.add(BoostQuery(query, boost), BooleanClause.Occur.SHOULD)
+        }
         if (ngram != null) builder.add(ngram, BooleanClause.Occur.SHOULD)
         if (fuzzy != null) builder.add(fuzzy, BooleanClause.Occur.SHOULD)
+        val magic = buildMagicBoostQuery(allExpansions)
+        if (magic != null) builder.add(magic, BooleanClause.Occur.SHOULD)
+        val synonymBoost = buildSynonymBoostQuery(allExpansions)
+        if (synonymBoost != null) builder.add(synonymBoost, BooleanClause.Occur.SHOULD)
         return builder.build()
     }
 
@@ -355,20 +610,46 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val filtered = filterTermsForHighlight(combined)
         if (filtered.isNotEmpty()) return filtered
         val qFiltered = filterTermsForHighlight(qTokens)
-        return if (qFiltered.isNotEmpty()) qFiltered else qTokens
+        return qFiltered.ifEmpty { qTokens }
     }
 
     private fun filterTermsForHighlight(terms: List<String>): List<String> {
         if (terms.isEmpty()) return emptyList()
-        val hebrewSingleLetters = setOf("ד", "ה", "ו", "ב", "ל", "מ", "כ", "ש")
+
+        // All Hebrew letters that could be prefixes or single-letter words
+        val hebrewSingleLetters = setOf(
+            "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט", "י", "כ", "ל", "מ",
+            "נ", "ס", "ע", "פ", "צ", "ק", "ר", "ש", "ת"
+        )
+
+        // Hebrew function words and particles that shouldn't be highlighted
+        val hebrewStopWords = setOf(
+            // Particles
+            "את", "אותו", "אותה", "אותי", "אותכ", "אותמ", "אותנו",
+            // Prepositions
+            "של", "על", "אל", "מנ", "עד", "עמ", "כמו", "אצל",
+            // Conjunctions
+            "כי", "אמ", "או", "גמ", "אבל", "אכ", "רק",
+            // Common pronouns
+            "זה", "זו", "זאת", "אלה", "אלו",
+            // Existential
+            "יש", "אינ", "הנה",
+            // Common short numbers (will also be handled by word-boundary logic, but safer to exclude)
+            "אחד", "שני", "שתי", "עשר", "עשרימ"
+        )
+
         fun useful(t: String): Boolean {
             val s = t.trim()
             if (s.isEmpty()) return false
-            // Drop single-letter clitics and one-char tokens to avoid noisy bold letters
+            // Drop single-letter tokens
             if (s.length < 2) return false
             // Must contain at least one letter or digit
             if (s.none { it.isLetterOrDigit() }) return false
             if (s in hebrewSingleLetters) return false
+            // Filter out function words
+            if (s in hebrewStopWords) return false
+            // Filter out pure numeric tokens (like "10", "20")
+            if (s.all { it.isDigit() }) return false
             return true
         }
         return terms
@@ -404,7 +685,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         // Compute basePlain and its map to baseOriginal-local indices
         val basePlain = plain.substring(plainStart, plainEnd)
         val basePlainSearch = replaceFinalsWithBase(basePlain)
-        val baseMap: IntArray = IntArray(plainEnd - plainStart) { idx ->
+        val baseMap = IntArray(plainEnd - plainStart) { idx ->
             (mapToOrig[plainStart + idx] - origStart).coerceIn(0, base.length.coerceAtLeast(1) - 1)
         }
 
@@ -412,6 +693,14 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val pool = (highlightTerms + highlightTerms.map { it.trimEnd('$') }).distinct().filter { it.isNotBlank() }
         val intervals = mutableListOf<IntRange>()
         val basePlainLower = basePlainSearch.lowercase()
+
+        // Helper to check if a character is a word boundary (whitespace or punctuation)
+        fun isWordBoundary(text: String, index: Int): Boolean {
+            if (index < 0 || index >= text.length) return true
+            val ch = text[index]
+            return ch.isWhitespace() || !ch.isLetterOrDigit()
+        }
+
         for (term in pool) {
             if (term.isEmpty()) continue
             val t = term.lowercase()
@@ -419,10 +708,21 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             while (from <= basePlainLower.length - t.length && t.isNotEmpty()) {
                 val idx = basePlainLower.indexOf(t, startIndex = from)
                 if (idx == -1) break
-                val startOrig = mapToOrigIndex(baseMap, idx)
-                val endOrig = mapToOrigIndex(baseMap, (idx + t.length - 1)) + 1
-                if (startOrig in 0 until endOrig && endOrig <= base.length) {
-                    intervals += (startOrig until endOrig)
+
+                // Check if this is a word-internal match for a short term
+                val isAtWordStart = isWordBoundary(basePlainLower, idx - 1)
+                val isAtWordEnd = isWordBoundary(basePlainLower, idx + t.length)
+                val isWholeWord = isAtWordStart && isAtWordEnd
+
+                // For short terms (< 3 chars), only highlight if it's a whole word
+                val shouldHighlight = if (t.length < 3) isWholeWord else true
+
+                if (shouldHighlight) {
+                    val startOrig = mapToOrigIndex(baseMap, idx)
+                    val endOrig = mapToOrigIndex(baseMap, (idx + t.length - 1)) + 1
+                    if (startOrig in 0 until endOrig && endOrig <= base.length) {
+                        intervals += (startOrig until endOrig)
+                    }
                 }
                 from = idx + t.length
             }
@@ -498,6 +798,10 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     private fun normalizeHebrew(input: String): String {
         if (input.isBlank()) return ""
         var s = input.trim()
+
+        // Convert Arabic numerals to Hebrew number words BEFORE other normalization
+        s = convertArabicNumeralsToHebrew(s)
+
         // Remove biblical cantillation marks (teamim) U+0591–U+05AF
         s = s.replace("[\u0591-\u05AF]".toRegex(), "")
         // Remove nikud signs including meteg and qamatz qatan
@@ -511,6 +815,74 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         // Collapse whitespace
         s = s.replace("\\s+".toRegex(), " ").trim()
         return s
+    }
+
+    /**
+     * Convert Arabic numerals (1-20) and Hebrew letter numerals to Hebrew number words.
+     * E.g., "יום 1" -> "יום אחד", "יום א" -> "יום אחד", "3 ימים" -> "שלושה ימים"
+     */
+    private fun convertArabicNumeralsToHebrew(text: String): String {
+        val numberToHebrew = mapOf(
+            "1" to "אחד",
+            "2" to "שנים",
+            "3" to "שלושה",
+            "4" to "ארבעה",
+            "5" to "חמשה",
+            "6" to "שש ה",
+            "7" to "שבעה",
+            "8" to "שמונה",
+            "9" to "תשעה",
+            "10" to "עשר ה",
+            "11" to "אחד עשר",
+            "12" to "שנים עשר",
+            "13" to "שלושה עשר",
+            "14" to "ארבעה עשר",
+            "15" to "חמשה עשר",
+            "16" to "שש ה עשר",
+            "17" to "שבעה עשר",
+            "18" to "שמונה עשר",
+            "19" to "תשעה עשר",
+            "20" to "עשרים"
+        )
+
+        // Hebrew letter numerals (gematria-style)
+        val hebrewLetterToWord = mapOf(
+            "א" to "אחד",      // 1
+            "ב" to "שנים",     // 2
+            "ג" to "שלושה",    // 3
+            "ד" to "ארבעה",    // 4
+            "ה" to "חמשה",     // 5
+            "ו" to "שש ה",     // 6
+            "ז" to "שבעה",     // 7
+            "ח" to "שמונה",    // 8
+            "ט" to "תשעה",     // 9
+            "י" to "עשר ה",    // 10
+            "יא" to "אחד עשר", // 11
+            "יב" to "שנים עשר", // 12
+            "יג" to "שלושה עשר", // 13
+            "יד" to "ארבעה עשר", // 14
+            "טו" to "חמשה עשר", // 15 (special case, not יה)
+            "טז" to "שש ה עשר", // 16
+            "יז" to "שבעה עשר", // 17
+            "יח" to "שמונה עשר", // 18
+            "יט" to "תשעה עשר", // 19
+            "כ" to "עשרים"    // 20
+        )
+
+        var result = text
+
+        // First, convert Arabic numerals
+        for ((arabic, hebrew) in numberToHebrew.entries.sortedByDescending { it.key.toInt() }) {
+            result = result.replace(Regex("\\b$arabic\\b"), hebrew)
+        }
+
+        // Then, convert Hebrew letter numerals (process longer ones first to avoid partial matches)
+        for ((letter, word) in hebrewLetterToWord.entries.sortedByDescending { it.key.length }) {
+            // Match when preceded/followed by whitespace or start/end of string
+            result = result.replace(Regex("(?<=\\s|^)$letter(?=\\s|$)"), word)
+        }
+
+        return result
     }
 
     private fun replaceFinalsWithBase(text: String): String = text

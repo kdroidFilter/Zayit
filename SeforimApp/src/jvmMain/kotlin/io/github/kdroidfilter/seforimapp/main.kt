@@ -61,15 +61,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
+import io.github.kdroidfilter.seforimapp.logger.allowLogging
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
     setMacOsAdaptiveTitleBar()
-    //    val enableLogs = System.getenv("ENABLE_LOGS")
-    //    if (enableLogs == null) {
-    //        SilenceLogs.everything(hardMuteStdout = true, hardMuteStderr = true)
-    //    }
-
+    allowLogging = false
 
     val appId = "io.github.kdroidfilter.seforimapp"
     SingleInstanceManager.configuration = SingleInstanceManager.Configuration(

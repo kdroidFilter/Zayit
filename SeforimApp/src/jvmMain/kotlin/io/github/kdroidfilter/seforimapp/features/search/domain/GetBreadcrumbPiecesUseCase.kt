@@ -15,7 +15,7 @@ class GetBreadcrumbPiecesUseCase(
     suspend operator fun invoke(result: SearchResult): List<String> {
         val pieces = mutableListOf<String>()
 
-        val book = bookCache[result.bookId] ?: repository.getBook(result.bookId)?.also {
+        val book = bookCache[result.bookId] ?: repository.getBookCore(result.bookId)?.also {
             bookCache[result.bookId] = it
         } ?: return emptyList()
 
@@ -63,4 +63,3 @@ class GetBreadcrumbPiecesUseCase(
         return path.asReversed()
     }
 }
-

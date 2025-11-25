@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.database.update
 
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
@@ -68,7 +69,7 @@ class DatabaseCleanupUseCase {
             
         } catch (e: Exception) {
             // Log error but don't fail the cleanup process
-            println("Warning: Error during database cleanup: ${e.message}")
+            debugln { "Warning: Error during database cleanup: ${e.message}" }
         }
     }
     

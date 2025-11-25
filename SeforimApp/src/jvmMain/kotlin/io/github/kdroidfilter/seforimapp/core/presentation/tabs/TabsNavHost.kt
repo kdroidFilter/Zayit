@@ -117,12 +117,10 @@ fun TabsNavHost() {
                     tocCounts = ss.tocCounts,
                     tocTree = ss.tocTree,
                     actions = SearchShellActions(
-                        onSubmit = { q, near ->
+                        onSubmit = { q ->
                             viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q))
-                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetNear(near))
                             viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
                         },
-                        onNearChange = { n -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetNear(n)) },
                         onQueryChange = { q -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
                         onGlobalExtendedChange = { extended ->
                             viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(extended))
@@ -228,12 +226,10 @@ fun TabsNavHost() {
                                 tocCounts = ss.tocCounts,
                                 tocTree = ss.tocTree,
                                 actions = SearchShellActions(
-                                    onSubmit = { q, near ->
+                                    onSubmit = { q ->
                                         viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q))
-                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetNear(near))
                                         viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
                                     },
-                                    onNearChange = { n -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetNear(n)) },
                                     onQueryChange = { q -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
                                     onGlobalExtendedChange = { extended ->
                                         viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(extended))

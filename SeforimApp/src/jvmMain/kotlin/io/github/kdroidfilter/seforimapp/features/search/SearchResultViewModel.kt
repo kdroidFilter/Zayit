@@ -861,11 +861,15 @@ class SearchResultViewModel(
                     while (page != null) {
                         progressTotal = page.totalHits
                         val filteredHits = if (tocAllowedLineIds.isEmpty()) page.hits else page.hits.filter { it.lineId in tocAllowedLineIds }
+
+                        if (filteredHits.isNotEmpty()) {
+                            updateAggregatesForHits(filteredHits)
+                            _uiState.value.scopeBook?.id?.let { updateTocCountsForHits(filteredHits, it) }
+                        }
+
                         val mapped = hitsToResults(filteredHits, q)
                         if (mapped.isNotEmpty()) {
                             acc += mapped
-                            updateAggregatesForPage(mapped)
-                            _uiState.value.scopeBook?.id?.let { updateTocCountsForPage(mapped, it) }
                         }
                         _uiState.value = _uiState.value.copy(
                             results = ArrayList(acc),
@@ -1414,6 +1418,44 @@ class SearchResultViewModel(
         }
         dfs(rootTocId)
         return result
+    }
+
+    private suspend fun updateAggregatesForHits(hits: List<LuceneSearchService.LineHit>) {
+        countsMutex.withLock {
+            for (hit in hits) {
+                val book = bookCache[hit.bookId] ?: repository.getBookCore(hit.bookId)?.also { bookCache[hit.bookId] = it } ?: continue
+                bookCountsAcc[book.id] = (bookCountsAcc[book.id] ?: 0) + 1
+                val path = categoryPathCache[book.categoryId] ?: buildCategoryPath(book.categoryId).also { categoryPathCache[book.categoryId] = it }
+                for (cat in path) {
+                    categoryCountsAcc[cat.id] = (categoryCountsAcc[cat.id] ?: 0) + 1
+                }
+                val set = booksForCategoryAcc.getOrPut(book.categoryId) { mutableSetOf() }
+                set += book
+            }
+            _categoryAgg.value = CategoryAgg(
+                categoryCounts = categoryCountsAcc.toMap(),
+                bookCounts = bookCountsAcc.toMap(),
+                booksForCategory = booksForCategoryAcc.mapValues { it.value.toList() }
+            )
+        }
+    }
+
+    private suspend fun updateTocCountsForHits(hits: List<LuceneSearchService.LineHit>, scopeBookId: Long) {
+        val subset = hits.filter { it.bookId == scopeBookId }
+        if (subset.isEmpty()) return
+        ensureTocCountingCaches(scopeBookId)
+        countsMutex.withLock {
+            for (hit in subset) {
+                val tocId = lineIdToTocId[hit.lineId] ?: continue
+                var current: Long? = tocId
+                var guard = 0
+                while (current != null && guard++ < 500) {
+                    tocCountsAcc[current] = (tocCountsAcc[current] ?: 0) + 1
+                    current = tocParentById[current]
+                }
+            }
+            _tocCounts.value = tocCountsAcc.toMap()
+        }
     }
 
     private suspend fun updateAggregatesForPage(page: List<SearchResult>) {

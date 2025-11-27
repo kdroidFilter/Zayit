@@ -200,7 +200,29 @@ class HtmlParser {
     }
 
     private fun needsSpaceBetween(a: String, b: String): Boolean {
-        return a.isNotEmpty() && !a.last().isWhitespace() &&
-                b.isNotEmpty() && !b.first().isWhitespace()
+        if (a.isEmpty() || b.isEmpty()) return false
+
+        val lastChar = a.last()
+        val firstChar = b.first()
+
+        // Don't add space if either side already has whitespace
+        if (lastChar.isWhitespace() || firstChar.isWhitespace()) return false
+
+        // Don't add space if we're dealing with Hebrew or other RTL/non-Latin text
+        // Hebrew Unicode range: U+0590 to U+05FF
+        // Hebrew Extended: U+FB1D to U+FB4F
+        if (isHebrewOrRTL(lastChar) || isHebrewOrRTL(firstChar)) return false
+
+        // Only add space for Latin text
+        return true
+    }
+
+    private fun isHebrewOrRTL(char: Char): Boolean {
+        val code = char.code
+        return (code in 0x0590..0x05FF) ||  // Hebrew
+                (code in 0xFB1D..0xFB4F) ||  // Hebrew Presentation Forms
+                (code in 0x0600..0x06FF) ||  // Arabic
+                (code in 0x0750..0x077F) ||  // Arabic Supplement
+                (code >= 0x0300 && code <= 0x036F)  // Combining Diacritical Marks (niqqud, etc.)
     }
 }

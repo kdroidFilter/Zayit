@@ -35,21 +35,32 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
 
 
     private val stdAnalyzer: Analyzer by lazy { analyzer }
-    private val magicDict: MagicDictionaryIndex by lazy {
+    private val magicDict: MagicDictionaryIndex? by lazy {
         val candidates = listOfNotNull(
             System.getProperty("magicDict")?.let { Path.of(it) },
             System.getenv("SEFORIM_MAGIC_DICT")?.let { Path.of(it) },
             indexDir.resolveSibling("lexical.db"),
             indexDir.resolveSibling("seforim.db").resolveSibling("lexical.db"),
             Path.of("SeforimLibrary/SeforimMagicIndexer/magicindexer/build/db/lexical.db")
-        )
+        ).distinct()
         val firstExisting = MagicDictionaryIndex.findValidDictionary(candidates)
-        require(firstExisting != null) {
-            "[MagicDictionary] No valid lexical.db found. Provide -DmagicDict=/path/lexical.db or SEFORIM_MAGIC_DICT. Tried (existing but invalid skipped): ${candidates.joinToString()}"
+        if (firstExisting == null) {
+            debugln {
+                "[MagicDictionary] Missing lexical.db; search will run without dictionary expansions. " +
+                    "Provide -DmagicDict=/path/lexical.db or SEFORIM_MAGIC_DICT. Checked: " +
+                    candidates.joinToString()
+            }
+            return@lazy null
         }
         debugln { "[MagicDictionary] Loading lexical db from $firstExisting" }
-        MagicDictionaryIndex.load(::normalizeHebrew, firstExisting)
-            ?: error("[MagicDictionary] Failed to load lexical db at $firstExisting")
+        val loaded = MagicDictionaryIndex.load(::normalizeHebrew, firstExisting)
+        if (loaded == null) {
+            debugln {
+                "[MagicDictionary] Failed to load lexical db at $firstExisting; " +
+                    "continuing without dictionary expansions"
+            }
+        }
+        loaded
     }
 
     private inline fun <T> withSearcher(block: (IndexSearcher) -> T): T {
@@ -201,7 +212,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val tokenExpansions: Map<String, List<MagicDictionaryIndex.Expansion>> =
             analyzedStd.associateWith { token ->
                 // Get best expansion (prefers matching base, then largest)
-                val expansion = magicDict.expansionFor(token) ?: return@associateWith emptyList()
+                val expansion = magicDict?.expansionFor(token) ?: return@associateWith emptyList()
                 listOf(expansion)
             }
         tokenExpansions.forEach { (token, exps) ->
@@ -212,9 +223,12 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
 
         val allExpansions = tokenExpansions.values.flatten()
         val expandedTerms = allExpansions.flatMap { it.surface + it.variants + it.base }.distinct()
-        // Filter out single-letter and common Hebrew prefixes from highlighting
-        val filteredExpandedTerms = filterTermsForHighlight(expandedTerms)
-        val highlightTerms = (analyzedStd + filteredExpandedTerms).distinct()
+        // Add 4-gram terms used in the query (matches text_ng4 clauses) so highlighting can
+        // reflect matches that were found via the n-gram branch.
+        val ngramTerms = buildNgramTerms(analyzedStd, gram = 4)
+        // For highlighting/snippets, use the actual query tokens plus the concrete
+        // terms that the search query uses (expansions + n-grams).
+        val highlightTerms = filterTermsForHighlight(analyzedStd + expandedTerms + ngramTerms)
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
 
         val rankedQuery = buildExpandedQuery(norm, near, analyzedStd, tokenExpansions)
@@ -324,7 +338,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         if (norm.isBlank()) return Jsoup.clean(raw, Safelist.none())
         val rawClean = Jsoup.clean(raw, Safelist.none())
         val analyzedStd = (analyzeToTerms(stdAnalyzer, norm) ?: emptyList())
-        val highlightTerms = filterTermsForHighlight(analyzedStd)
+        val highlightTerms = filterTermsForHighlight(analyzedStd + buildNgramTerms(analyzedStd, gram = 4))
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
         return buildSnippet(rawClean, anchorTerms, highlightTerms)
     }
@@ -563,7 +577,6 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     }
 
     private fun buildFuzzyQuery(norm: String, near: Int): Query? {
-        // Allow fuzzy (edit distance 1) only when overall query length >= 4 and near != 0
         if (near == 0) return null
         if (norm.length < 4) return null
         val tokens = analyzeToTerms(stdAnalyzer, norm)?.filter { it.length >= 4 } ?: emptyList()
@@ -592,26 +605,6 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     private fun filterTermsForHighlight(terms: List<String>): List<String> {
         if (terms.isEmpty()) return emptyList()
 
-        // All Hebrew letters that could be prefixes or single-letter words
-        val hebrewSingleLetters = setOf(
-            "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט", "י", "כ", "ל", "מ",
-            "נ", "ס", "ע", "פ", "צ", "ק", "ר", "ש", "ת"
-        )
-
-        // Hebrew function words and particles that shouldn't be highlighted
-        val hebrewStopWords = setOf(
-            // Particles
-            "את", "אותו", "אותה", "אותי", "אותכ", "אותמ", "אותנו",
-            // Prepositions
-            "של", "על", "אל", "מנ", "עד", "עמ", "כמו", "אצל",
-            // Conjunctions
-            "כי", "אמ", "או", "גמ", "אבל", "אכ", "רק",
-            // Common pronouns
-            "זה", "זו", "זאת", "אלה", "אלו",
-            // Existential
-            "יש", "אינ", "הנה"
-        )
-
         fun useful(t: String): Boolean {
             val s = t.trim()
             if (s.isEmpty()) return false
@@ -619,9 +612,6 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             if (s.length < 2) return false
             // Must contain at least one letter or digit
             if (s.none { it.isLetterOrDigit() }) return false
-            if (s in hebrewSingleLetters) return false
-            // Filter out function words
-            if (s in hebrewStopWords) return false
             return true
         }
         return terms
@@ -685,9 +675,8 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
                 val isAtWordStart = isWordBoundary(basePlainLower, idx - 1)
                 val isAtWordEnd = isWordBoundary(basePlainLower, idx + t.length)
                 val isWholeWord = isAtWordStart && isAtWordEnd
-
-                // For short terms (< 3 chars), only highlight if it's a whole word
-                val shouldHighlight = if (t.length < 3) isWholeWord else true
+                // Only highlight whole-word matches to avoid mid-word highlights.
+                val shouldHighlight = isWholeWord
 
                 if (shouldHighlight) {
                     val startOrig = mapToOrigIndex(baseMap, idx)
@@ -767,6 +756,22 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     }
 
     // --- Helpers ---
+    private fun buildNgramTerms(tokens: List<String>, gram: Int = 4): List<String> {
+        if (gram <= 0) return emptyList()
+        val out = mutableListOf<String>()
+        tokens.forEach { t ->
+            val trimmed = t.trim()
+            if (trimmed.length >= gram) {
+                var i = 0
+                while (i + gram <= trimmed.length) {
+                    out += trimmed.substring(i, i + gram)
+                    i += 1
+                }
+            }
+        }
+        return out.distinct()
+    }
+
     private fun normalizeHebrew(input: String): String {
         if (input.isBlank()) return ""
         var s = input.trim()

@@ -34,7 +34,11 @@ class MagicDictionaryIndex private constructor(
             // Enforce read-only queries without altering connection flags post-open
             createStatement().use { stmt -> stmt.execute("PRAGMA query_only=ON") }
         }
-        LookupContext(conn, conn.prepareStatement(LOOKUP_SQL))
+        LookupContext(
+            conn = conn,
+            stmt = conn.prepareStatement(LOOKUP_SQL),
+            variantSurfaceStmt = conn.prepareStatement(VARIANT_SURFACES_SQL)
+        )
     }
 
     /**
@@ -131,6 +135,8 @@ class MagicDictionaryIndex private constructor(
                     rs.getString("variant")?.let { bucket.variants += it }
                 }
 
+                appendVariantSurfaces(rawToken, normalizedToken, ctx, accum)
+
                 for ((baseId, bucket) in accum) {
                     val cached = synchronized(baseCache) { baseCache[baseId] }
                     if (cached != null) {
@@ -198,24 +204,32 @@ class MagicDictionaryIndex private constructor(
         /**
          * Find the first candidate path that exists and contains the required tables.
          */
-        fun findValidDictionary(candidates: List<Path>): Path? =
-            candidates.firstOrNull { candidate ->
-                Files.isRegularFile(candidate) && hasRequiredTables(candidate)
-            }?.also {
-                debugln { "[MagicDictionary] Using validated lexical db at $it" }
+        fun findValidDictionary(candidates: List<Path>): Path? {
+            for (candidate in candidates) {
+                if (!Files.isRegularFile(candidate)) continue
+                if (hasRequiredTables(candidate)) {
+                    debugln { "[MagicDictionary] Using validated lexical db at $candidate" }
+                    return candidate
+                } else {
+                    debugln {
+                        "[MagicDictionary] Candidate $candidate is present but missing required tables; skipping"
+                    }
+                }
             }
+            return null
+        }
 
         private fun hasRequiredTables(file: Path): Boolean = runCatching {
             DriverManager.getConnection("jdbc:sqlite:${file.toAbsolutePath()}").use { conn ->
                 val sql = """
-                    SELECT name FROM sqlite_master 
-                    WHERE type = 'table' AND name IN ('surface', 'variant', 'base')
+                    SELECT name FROM sqlite_master
+                    WHERE type = 'table' AND name IN ('surface', 'variant', 'base', 'surface_variant')
                 """.trimIndent()
                 conn.createStatement().use { stmt ->
                     val rs = stmt.executeQuery(sql)
                     val names = mutableSetOf<String>()
                     while (rs.next()) names += rs.getString("name") ?: ""
-                    names.containsAll(listOf("surface", "variant", "base"))
+                    names.containsAll(listOf("surface", "variant", "base", "surface_variant"))
                 }
             }
         }.getOrElse { false }
@@ -226,7 +240,10 @@ class MagicDictionaryIndex private constructor(
                 UNION
                 SELECT b.id FROM base b WHERE b.value = ?
                 UNION
-                SELECT s.base_id FROM variant v JOIN surface s ON v.surface_id = s.id WHERE v.value = ?
+                SELECT s.base_id FROM variant v
+                JOIN surface_variant sv ON sv.variant_id = v.id
+                JOIN surface s ON sv.surface_id = s.id
+                WHERE v.value = ?
             )
             SELECT b.id as base_id,
                    b.value as base,
@@ -235,13 +252,30 @@ class MagicDictionaryIndex private constructor(
             FROM base b
             JOIN matches m ON m.base_id = b.id
             LEFT JOIN surface s ON s.base_id = b.id
-            LEFT JOIN variant v ON v.surface_id = s.id
+            LEFT JOIN surface_variant sv ON sv.surface_id = s.id
+            LEFT JOIN variant v ON sv.variant_id = v.id
+        """
+
+        /**
+         * Retrieve sibling surfaces linked to a variant so variant tokens can expand
+         * to all surfaces associated with that variant.
+         */
+        private const val VARIANT_SURFACES_SQL = """
+            SELECT b.id AS base_id,
+                   b.value AS base,
+                   s.value AS surface
+            FROM variant v
+            JOIN surface_variant sv ON sv.variant_id = v.id
+            JOIN surface s ON sv.surface_id = s.id
+            JOIN base b ON b.id = s.base_id
+            WHERE v.value = ?
         """
     }
 
     private data class LookupContext(
         val conn: Connection,
-        val stmt: PreparedStatement
+        val stmt: PreparedStatement,
+        val variantSurfaceStmt: PreparedStatement
     )
 
     private data class BaseBucket(
@@ -249,6 +283,36 @@ class MagicDictionaryIndex private constructor(
         val surfaces: MutableSet<String>,
         val variants: MutableSet<String>
     )
+
+    private fun appendVariantSurfaces(
+        rawToken: String,
+        normalizedToken: String,
+        ctx: LookupContext,
+        accum: MutableMap<Long, BaseBucket>
+    ) {
+        fun queryVariant(value: String) {
+            if (value.isBlank()) return
+            ctx.variantSurfaceStmt.setString(1, value)
+            val rs = ctx.variantSurfaceStmt.executeQuery()
+            while (rs.next()) {
+                val baseId = rs.getLong("base_id")
+                val bucket = accum.getOrPut(baseId) {
+                    BaseBucket(
+                        baseRaw = rs.getString("base") ?: "",
+                        surfaces = linkedSetOf(),
+                        variants = linkedSetOf()
+                    )
+                }
+                rs.getString("surface")?.let { bucket.surfaces += it }
+                bucket.variants += value
+            }
+        }
+
+        queryVariant(rawToken)
+        if (normalizedToken != rawToken) {
+            queryVariant(normalizedToken)
+        }
+    }
 
     private fun buildLookupCandidates(rawToken: String, normalized: String): List<String> {
         val finalsMap = mapOf(

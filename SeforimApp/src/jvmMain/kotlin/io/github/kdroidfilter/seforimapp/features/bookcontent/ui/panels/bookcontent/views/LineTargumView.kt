@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.flow.StateFlow
 import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
@@ -37,6 +38,7 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
@@ -58,7 +60,11 @@ fun LineTargumView(
     onLinkClick: (CommentaryWithText) -> Unit = {},
     onScroll: (Int, Int) -> Unit = { _, _ -> },
     onHide: () -> Unit = {},
-    highlightQuery: String = ""
+    highlightQuery: String = "",
+    fontCodeFlow: StateFlow<String> = AppSettings.targumFontCodeFlow,
+    titleRes: StringResource = Res.string.links,
+    selectLineRes: StringResource = Res.string.select_line_for_links,
+    emptyRes: StringResource = Res.string.no_links_for_line
 ) {
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val commentTextSize by animateFloatAsState(
@@ -74,7 +80,7 @@ fun LineTargumView(
     )
 
     // Selected font for targumim
-    val targumFontCode by AppSettings.targumFontCodeFlow.collectAsState()
+    val targumFontCode by fontCodeFlow.collectAsState()
     val targumFontFamily = FontCatalog.familyFor(targumFontCode)
     val boldScaleForPlatform = remember(targumFontCode) {
         val isMac = System.getProperty("os.name")?.contains("Mac", ignoreCase = true) == true
@@ -91,7 +97,7 @@ fun LineTargumView(
     ) {
 
         PaneHeader(
-            label = stringResource(Res.string.links),
+            label = stringResource(titleRes),
             interactionSource = paneInteractionSource,
             onHide = onHide
         )
@@ -100,7 +106,7 @@ fun LineTargumView(
             when (selectedLine) {
                 null -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = stringResource(Res.string.select_line_for_links))
+                        Text(text = stringResource(selectLineRes))
                     }
                 }
 
@@ -115,7 +121,7 @@ fun LineTargumView(
 
                     if (titleToIdMap.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = stringResource(Res.string.no_links_for_line))
+                            Text(text = stringResource(emptyRes))
                         }
                     } else {
                         val availableSources by remember(titleToIdMap) {

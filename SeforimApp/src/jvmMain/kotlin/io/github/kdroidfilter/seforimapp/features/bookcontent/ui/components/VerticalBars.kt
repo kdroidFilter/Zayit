@@ -133,6 +133,7 @@ fun EndVerticalBar(
         bottomContent = {
             val targumEnabled = selectedBook?.hasTargumConnection == true
             val commentaryEnabled = selectedBook?.hasCommentaryConnection == true
+            val sourcesEnabled = selectedBook?.hasSourceConnection == true
             val linksEnabled = (selectedBook?.hasReferenceConnection == true) || (selectedBook?.hasOtherConnection == true)
 
             // Hide both buttons on Home (no book selected)
@@ -150,6 +151,20 @@ fun EndVerticalBar(
                         shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "K+⇧+⌘" else "K+Shift+Ctrl"
                     )
                 }
+
+                if (sourcesEnabled) {
+                    SelectableIconButtonWithToolip(
+                        toolTipText = stringResource(Res.string.show_sources_tooltip),
+                        onClick = { onEvent(BookContentEvent.ToggleSources) },
+                        isSelected = uiState.content.showSources,
+                        icon = AlignBottom,
+                        iconDescription = stringResource(Res.string.show_sources),
+                        label = stringResource(Res.string.show_sources),
+                        enabled = true,
+                        shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "K+⌥+⌘" else "K+Alt+Ctrl"
+                    )
+                }
+
                 // Show Commentaries only when available for the book
                 if (commentaryEnabled) {
                     SelectableIconButtonWithToolip(

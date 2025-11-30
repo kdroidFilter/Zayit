@@ -56,6 +56,7 @@ class BookContentStateManager(
                 selectedLine = getState(StateKeys.SELECTED_LINE),
                 showCommentaries = getState(StateKeys.SHOW_COMMENTARIES) ?: false,
                 showTargum = getState(StateKeys.SHOW_TARGUM) ?: false,
+                showSources = getState(StateKeys.SHOW_SOURCES) ?: false,
                 scrollIndex = getState(StateKeys.CONTENT_SCROLL_INDEX) ?: 0,
                 scrollOffset = getState(StateKeys.CONTENT_SCROLL_OFFSET) ?: 0,
                 anchorId = getState(StateKeys.CONTENT_ANCHOR_ID) ?: -1L,
@@ -73,7 +74,9 @@ class BookContentStateManager(
                 selectedCommentatorsByLine = getState(StateKeys.SELECTED_COMMENTATORS_BY_LINE) ?: emptyMap(),
                 selectedCommentatorsByBook = getState(StateKeys.SELECTED_COMMENTATORS_BY_BOOK) ?: emptyMap(),
                 selectedLinkSourcesByLine = getState(StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE) ?: emptyMap(),
-                selectedLinkSourcesByBook = getState(StateKeys.SELECTED_TARGUM_SOURCES_BY_BOOK) ?: emptyMap()
+                selectedLinkSourcesByBook = getState(StateKeys.SELECTED_TARGUM_SOURCES_BY_BOOK) ?: emptyMap(),
+                selectedSourcesByLine = getState(StateKeys.SELECTED_SOURCES_BY_LINE) ?: emptyMap(),
+                selectedSourcesByBook = getState(StateKeys.SELECTED_SOURCES_BY_BOOK) ?: emptyMap()
             ),
             layout = LayoutState(
                 mainSplitState = SplitPaneState(initialPositionPercentage = mainPos, moveEnabled = true),
@@ -152,10 +155,14 @@ class BookContentStateManager(
             copy(
                 selectedCommentatorsByLine = emptyMap(),
                 selectedLinkSourcesByLine = emptyMap(),
+                selectedSourcesByLine = emptyMap(),
+                selectedTargumSourceIds = emptySet(),
+                selectedSourceIds = emptySet(),
                 selectedLine = null,
                 anchorId = -1L,
                 scrollIndex = 0,
-                scrollOffset = 0
+                scrollOffset = 0,
+                showSources = false
             )
         }
         updateAltToc(save = false) { AltTocState() }
@@ -215,6 +222,7 @@ class BookContentStateManager(
         }
         saveState(StateKeys.SHOW_COMMENTARIES, currentState.content.showCommentaries)
         saveState(StateKeys.SHOW_TARGUM, currentState.content.showTargum)
+        saveState(StateKeys.SHOW_SOURCES, currentState.content.showSources)
         saveState(StateKeys.CONTENT_SCROLL_INDEX, currentState.content.scrollIndex)
         saveState(StateKeys.CONTENT_SCROLL_OFFSET, currentState.content.scrollOffset)
         saveState(StateKeys.CONTENT_ANCHOR_ID, currentState.content.anchorId)
@@ -235,6 +243,8 @@ class BookContentStateManager(
         saveState(StateKeys.SELECTED_COMMENTATORS_BY_BOOK, currentState.content.selectedCommentatorsByBook)
         saveState(StateKeys.SELECTED_TARGUM_SOURCES_BY_LINE, currentState.content.selectedLinkSourcesByLine)
         saveState(StateKeys.SELECTED_TARGUM_SOURCES_BY_BOOK, currentState.content.selectedLinkSourcesByBook)
+        saveState(StateKeys.SELECTED_SOURCES_BY_LINE, currentState.content.selectedSourcesByLine)
+        saveState(StateKeys.SELECTED_SOURCES_BY_BOOK, currentState.content.selectedSourcesByBook)
         
         // Layout
         saveState(StateKeys.SPLIT_PANE_POSITION, currentState.layout.mainSplitState.positionPercentage)

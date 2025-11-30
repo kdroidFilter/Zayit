@@ -13,16 +13,19 @@ class FontsSettingsViewModel : ViewModel() {
     private val bookFont = MutableStateFlow(AppSettings.getBookFontCode())
     private val commentaryFont = MutableStateFlow(AppSettings.getCommentaryFontCode())
     private val targumFont = MutableStateFlow(AppSettings.getTargumFontCode())
+    private val sourceFont = MutableStateFlow(AppSettings.getSourceFontCode())
 
     val state = combine(
         bookFont,
         commentaryFont,
-        targumFont
-    ) { b, c, t ->
+        targumFont,
+        sourceFont
+    ) { b, c, t, s ->
         FontsSettingsState(
             bookFontCode = b,
             commentaryFontCode = c,
-            targumFontCode = t
+            targumFontCode = t,
+            sourceFontCode = s
         )
     }.stateIn(
         viewModelScope,
@@ -31,6 +34,7 @@ class FontsSettingsViewModel : ViewModel() {
             bookFontCode = bookFont.value,
             commentaryFontCode = commentaryFont.value,
             targumFontCode = targumFont.value,
+            sourceFontCode = sourceFont.value
         )
     )
 
@@ -48,7 +52,10 @@ class FontsSettingsViewModel : ViewModel() {
                 AppSettings.setTargumFontCode(event.code)
                 targumFont.value = event.code
             }
+            is FontsSettingsEvents.SetSourceFont -> {
+                AppSettings.setSourceFontCode(event.code)
+                sourceFont.value = event.code
+            }
         }
     }
 }
-

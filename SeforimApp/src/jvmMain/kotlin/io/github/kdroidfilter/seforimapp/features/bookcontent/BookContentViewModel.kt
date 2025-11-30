@@ -75,17 +75,27 @@ class BookContentViewModel(
                 }
                 else -> state.content.selectedLinkSourcesByBook[bookId].orEmpty()
             }
+            val selectedSources: Set<Long> = when {
+                lineId != null -> {
+                    val perLine = state.content.selectedSourcesByLine[lineId].orEmpty()
+                    perLine.ifEmpty { state.content.selectedSourcesByBook[bookId].orEmpty() }
+                }
+                else -> state.content.selectedSourcesByBook[bookId].orEmpty()
+            }
             state.copy(
                 providers = Providers(
                     linesPagingData = linesPagingData,
                     buildCommentariesPagerFor = commentariesUseCase::buildCommentariesPager,
                     getAvailableCommentatorsForLine = commentariesUseCase::getAvailableCommentators,
                     buildLinksPagerFor = commentariesUseCase::buildLinksPager,
-                    getAvailableLinksForLine = commentariesUseCase::getAvailableLinks
+                    getAvailableLinksForLine = commentariesUseCase::getAvailableLinks,
+                    buildSourcesPagerFor = commentariesUseCase::buildSourcesPager,
+                    getAvailableSourcesForLine = commentariesUseCase::getAvailableSources
                 ),
                 content = state.content.copy(
                     selectedCommentatorIds = selectedCommentators,
-                    selectedTargumSourceIds = selectedLinks
+                    selectedTargumSourceIds = selectedLinks,
+                    selectedSourceIds = selectedSources
                 )
             )
         }
@@ -110,17 +120,27 @@ class BookContentViewModel(
                     }
                     else -> s.content.selectedLinkSourcesByBook[bookId].orEmpty()
                 }
+                val selectedSources: Set<Long> = when {
+                    lineId != null -> {
+                        val perLine = s.content.selectedSourcesByLine[lineId].orEmpty()
+                        perLine.ifEmpty { s.content.selectedSourcesByBook[bookId].orEmpty() }
+                    }
+                    else -> s.content.selectedSourcesByBook[bookId].orEmpty()
+                }
                 s.copy(
                     providers = Providers(
                         linesPagingData = linesPagingData,
                         buildCommentariesPagerFor = commentariesUseCase::buildCommentariesPager,
                         getAvailableCommentatorsForLine = commentariesUseCase::getAvailableCommentators,
                         buildLinksPagerFor = commentariesUseCase::buildLinksPager,
-                        getAvailableLinksForLine = commentariesUseCase::getAvailableLinks
+                        getAvailableLinksForLine = commentariesUseCase::getAvailableLinks,
+                        buildSourcesPagerFor = commentariesUseCase::buildSourcesPager,
+                        getAvailableSourcesForLine = commentariesUseCase::getAvailableSources
                     ),
                     content = s.content.copy(
                         selectedCommentatorIds = selectedCommentators,
-                        selectedTargumSourceIds = selectedLinks
+                        selectedTargumSourceIds = selectedLinks,
+                        selectedSourceIds = selectedSources
                     )
                 )
             }
@@ -277,6 +297,7 @@ class BookContentViewModel(
                     if (line != null) {
                         commentariesUseCase.reapplySelectedCommentators(line)
                         commentariesUseCase.reapplySelectedLinkSources(line)
+                        commentariesUseCase.reapplySelectedSources(line)
                     }
                 }
 
@@ -285,6 +306,7 @@ class BookContentViewModel(
                     if (line != null) {
                         commentariesUseCase.reapplySelectedCommentators(line)
                         commentariesUseCase.reapplySelectedLinkSources(line)
+                        commentariesUseCase.reapplySelectedSources(line)
                     }
                 }
 
@@ -293,6 +315,9 @@ class BookContentViewModel(
 
                 BookContentEvent.ToggleTargum ->
                     contentUseCase.toggleTargum()
+
+                BookContentEvent.ToggleSources ->
+                    contentUseCase.toggleSources()
 
                 is BookContentEvent.ContentScrolled ->
                     contentUseCase.updateContentScrollPosition(
@@ -338,6 +363,9 @@ class BookContentViewModel(
 
                 is BookContentEvent.SelectedTargumSourcesChanged ->
                     commentariesUseCase.updateSelectedLinkSources(event.lineId, event.selectedIds)
+
+                is BookContentEvent.SelectedSourcesChanged ->
+                    commentariesUseCase.updateSelectedSources(event.lineId, event.selectedIds)
 
                 // State
                 BookContentEvent.SaveState ->
@@ -547,6 +575,7 @@ class BookContentViewModel(
         contentUseCase.selectLine(line)
         commentariesUseCase.reapplySelectedCommentators(line)
         commentariesUseCase.reapplySelectedLinkSources(line)
+        commentariesUseCase.reapplySelectedSources(line)
     }
 
     /** Charge et sélectionne une ligne */
@@ -560,6 +589,7 @@ class BookContentViewModel(
 
                 commentariesUseCase.reapplySelectedCommentators(line)
                 commentariesUseCase.reapplySelectedLinkSources(line)
+                commentariesUseCase.reapplySelectedSources(line)
                 // Sync alternative TOC selection if applicable
                 altTocUseCase.selectAltEntryForLine(line.id)
             }

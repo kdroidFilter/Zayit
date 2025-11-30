@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
@@ -20,6 +21,10 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.no_sources_for_line
+import seforimapp.seforimapp.generated.resources.select_line_for_sources
+import seforimapp.seforimapp.generated.resources.sources
 
 
 @OptIn(ExperimentalSplitPaneApi::class)
@@ -118,14 +123,27 @@ fun BookContentPanel(
                     }
                 } else null)
             },
-            secondContent = if (uiState.content.showCommentaries) {
-                {
-                    CommentsPane(
-                        uiState = uiState,
-                        onEvent = onEvent
-                    )
+            secondContent = when {
+                uiState.content.showCommentaries -> {
+                    {
+                        CommentsPane(
+                            uiState = uiState,
+                            onEvent = onEvent
+                        )
+                    }
                 }
-            } else null)
+
+                uiState.content.showSources -> {
+                    {
+                        SourcesPane(
+                            uiState = uiState,
+                            onEvent = onEvent
+                        )
+                    }
+                }
+
+                else -> null
+            })
 
         BreadcrumbSection(
             uiState = uiState,
@@ -154,6 +172,39 @@ private fun CommentsPane(
     LineCommentsView(
         uiState = uiState,
         onEvent = onEvent
+    )
+}
+
+@Composable
+private fun SourcesPane(
+    uiState: BookContentState,
+    onEvent: (BookContentEvent) -> Unit
+) {
+    val providers = uiState.providers ?: return
+    LineTargumView(
+        selectedLine = uiState.content.selectedLine,
+        buildLinksPagerFor = providers.buildSourcesPagerFor,
+        getAvailableLinksForLine = providers.getAvailableSourcesForLine,
+        commentariesScrollIndex = uiState.content.commentariesScrollIndex,
+        commentariesScrollOffset = uiState.content.commentariesScrollOffset,
+        initiallySelectedSourceIds = uiState.content.selectedSourceIds,
+        onSelectedSourcesChange = { ids ->
+            uiState.content.selectedLine?.let { line ->
+                onEvent(BookContentEvent.SelectedSourcesChanged(line.id, ids))
+            }
+        },
+        onLinkClick = { commentary ->
+            onEvent(BookContentEvent.OpenBookAtLine(commentary.link.targetBookId, commentary.link.targetLineId))
+        },
+        onScroll = { index, offset ->
+            onEvent(BookContentEvent.CommentariesScrolled(index, offset))
+        },
+        onHide = { onEvent(BookContentEvent.ToggleSources) },
+        highlightQuery = "",
+        fontCodeFlow = AppSettings.sourceFontCodeFlow,
+        titleRes = Res.string.sources,
+        selectLineRes = Res.string.select_line_for_sources,
+        emptyRes = Res.string.no_sources_for_line
     )
 }
 

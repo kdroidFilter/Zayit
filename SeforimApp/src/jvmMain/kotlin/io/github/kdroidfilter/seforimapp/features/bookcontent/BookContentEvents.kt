@@ -38,6 +38,7 @@ sealed interface BookContentEvent {
     data class OpenBookById(val bookId: Long) : BookContentEvent
     data object ToggleCommentaries : BookContentEvent
     data object ToggleTargum : BookContentEvent
+    data object ToggleSources : BookContentEvent
     data class ContentScrolled(
         val anchorId: Long,
         val anchorIndex: Int,
@@ -57,6 +58,7 @@ sealed interface BookContentEvent {
     data object CommentatorsSelectionLimitExceeded : BookContentEvent
     // Targum events
     data class SelectedTargumSourcesChanged(val lineId: Long, val selectedIds: Set<Long>) : BookContentEvent
+    data class SelectedSourcesChanged(val lineId: Long, val selectedIds: Set<Long>) : BookContentEvent
 
     // Scroll events
     data class ParagraphScrolled(val position: Int) : BookContentEvent

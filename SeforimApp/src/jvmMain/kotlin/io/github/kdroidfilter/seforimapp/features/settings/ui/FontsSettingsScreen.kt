@@ -25,6 +25,7 @@ import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.settings_font_book_label
 import seforimapp.seforimapp.generated.resources.settings_font_commentary_label
+import seforimapp.seforimapp.generated.resources.settings_font_sources_label
 import seforimapp.seforimapp.generated.resources.settings_font_targum_label
 
 @Composable
@@ -72,6 +73,17 @@ private fun FontsSettingsView(state: FontsSettingsState, onEvent: (FontsSettings
                 items = optionLabels,
                 selectedIndex = selectedIndex,
                 onSelectedItemChange = { idx -> onEvent(FontsSettingsEvents.SetTargumFont(options[idx].code)) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = stringResource(Res.string.settings_font_sources_label))
+            val selectedIndex = options.indexOfFirst { it.code == state.sourceFontCode }.let { if (it >= 0) it else 0 }
+            ListComboBox(
+                items = optionLabels,
+                selectedIndex = selectedIndex,
+                onSelectedItemChange = { idx -> onEvent(FontsSettingsEvents.SetSourceFont(options[idx].code)) },
                 modifier = Modifier.weight(1f)
             )
         }

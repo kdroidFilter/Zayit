@@ -228,9 +228,40 @@ class ContentUseCase(
         }
         
         stateManager.updateContent {
-            copy(showCommentaries = !isVisible)
+            copy(showCommentaries = !isVisible, showSources = if (!isVisible) false else showSources)
         }
         
+        return !isVisible
+    }
+    
+    fun toggleSources(): Boolean {
+        val currentState = stateManager.state.value
+        val isVisible = currentState.content.showSources
+        val newPosition: Float
+
+        if (isVisible) {
+            val prev = currentState.layout.contentSplitState.positionPercentage
+            stateManager.updateLayout {
+                copy(
+                    previousPositions = previousPositions.copy(
+                        content = prev
+                    )
+                )
+            }
+            newPosition = 1f
+            currentState.layout.contentSplitState.positionPercentage = newPosition
+        } else {
+            newPosition = currentState.layout.previousPositions.content
+            currentState.layout.contentSplitState.positionPercentage = newPosition
+        }
+
+        stateManager.updateContent {
+            copy(
+                showSources = !isVisible,
+                showCommentaries = if (!isVisible) false else showCommentaries
+            )
+        }
+
         return !isVisible
     }
     

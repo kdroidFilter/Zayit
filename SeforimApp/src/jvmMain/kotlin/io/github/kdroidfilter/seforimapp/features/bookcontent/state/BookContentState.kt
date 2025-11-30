@@ -20,7 +20,9 @@ data class Providers(
     val buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     val getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
     val buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
-    val getAvailableLinksForLine: suspend (Long) -> Map<String, Long>
+    val getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
+    val buildSourcesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    val getAvailableSourcesForLine: suspend (Long) -> Map<String, Long>
 )
 
 /**
@@ -103,6 +105,7 @@ data class ContentState(
     // Visibility
     val showCommentaries: Boolean = false,
     val showTargum: Boolean = false,
+    val showSources: Boolean = false,
 
     // Scroll positions
     val paragraphScrollPosition: Int = 0,
@@ -128,12 +131,15 @@ data class ContentState(
     // Filters selected in UI (for current line)
     val selectedCommentatorIds: Set<Long> = emptySet(),
     val selectedTargumSourceIds: Set<Long> = emptySet(),
+    val selectedSourceIds: Set<Long> = emptySet(),
 
     // Business selections by line/book (kept for use cases)
     val selectedCommentatorsByLine: Map<Long, Set<Long>> = emptyMap(),
     val selectedCommentatorsByBook: Map<Long, Set<Long>> = emptyMap(),
     val selectedLinkSourcesByLine: Map<Long, Set<Long>> = emptyMap(),
     val selectedLinkSourcesByBook: Map<Long, Set<Long>> = emptyMap(),
+    val selectedSourcesByLine: Map<Long, Set<Long>> = emptyMap(),
+    val selectedSourcesByBook: Map<Long, Set<Long>> = emptyMap(),
 
     // Scrolling behavior control
     val shouldScrollToLine: Boolean = false,

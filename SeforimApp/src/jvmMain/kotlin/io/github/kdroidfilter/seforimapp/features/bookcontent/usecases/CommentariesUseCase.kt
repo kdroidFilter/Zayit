@@ -54,11 +54,25 @@ class CommentariesUseCase(
         sourceBookId: Long? = null
     ): Flow<PagingData<CommentaryWithText>> {
         val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
-        
+
         return Pager(
             config = PagingDefaults.COMMENTS.config(placeholders = false),
             pagingSourceFactory = {
-                LineTargumPagingSource(repository, lineId, ids)
+                LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.TARGUM))
+            }
+        ).flow.cachedIn(scope)
+    }
+
+    fun buildSourcesPager(
+        lineId: Long,
+        sourceBookId: Long? = null
+    ): Flow<PagingData<CommentaryWithText>> {
+        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+
+        return Pager(
+            config = PagingDefaults.COMMENTS.config(placeholders = false),
+            pagingSourceFactory = {
+                LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.SOURCE))
             }
         ).flow.cachedIn(scope)
     }
@@ -108,8 +122,31 @@ class CommentariesUseCase(
      */
     suspend fun getAvailableLinks(lineId: Long): Map<String, Long> {
         return try {
-            val links = repository.getCommentariesForLines(listOf(lineId))
+            val baseIds = resolveBaseLineIds(lineId)
+            val links = repository.getCommentariesForLines(baseIds)
                 .filter { it.link.connectionType == ConnectionType.TARGUM }
+
+            val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
+
+            val map = LinkedHashMap<String, Long>()
+            links.forEach { link ->
+                val raw = link.targetBookTitle
+                val display = sanitizeCommentatorName(raw, currentBookTitle)
+                if (!map.containsKey(display)) {
+                    map[display] = link.link.targetBookId
+                }
+            }
+            map
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    suspend fun getAvailableSources(lineId: Long): Map<String, Long> {
+        return try {
+            val baseIds = resolveBaseLineIds(lineId)
+            val links = repository.getCommentariesForLines(baseIds)
+                .filter { it.link.connectionType == ConnectionType.SOURCE }
 
             val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
 
@@ -159,6 +196,15 @@ class CommentariesUseCase(
             )
         }
     }
+
+    private suspend fun resolveBaseLineIds(lineId: Long): List<Long> {
+        val headingToc = repository.getHeadingTocEntryByLineId(lineId)
+        return if (headingToc != null) {
+            repository.getLineIdsForTocEntry(headingToc.id).filter { it != lineId }
+        } else {
+            listOf(lineId)
+        }
+    }
     
     /**
      * Met à jour les sources de liens sélectionnées pour une ligne
@@ -186,7 +232,35 @@ class CommentariesUseCase(
         stateManager.updateContent {
             copy(
                 selectedLinkSourcesByLine = byLine,
-                selectedLinkSourcesByBook = byBook
+                selectedLinkSourcesByBook = byBook,
+                selectedTargumSourceIds = selectedIds
+            )
+        }
+    }
+
+    suspend fun updateSelectedSources(lineId: Long, selectedIds: Set<Long>) {
+        val currentContent = stateManager.state.first().content
+        val bookId = stateManager.state.first().navigation.selectedBook?.id ?: return
+
+        val byLine = currentContent.selectedSourcesByLine.toMutableMap()
+        if (selectedIds.isEmpty()) {
+            byLine.remove(lineId)
+        } else {
+            byLine[lineId] = selectedIds
+        }
+
+        val byBook = currentContent.selectedSourcesByBook.toMutableMap()
+        if (selectedIds.isEmpty()) {
+            byBook.remove(bookId)
+        } else {
+            byBook[bookId] = selectedIds
+        }
+
+        stateManager.updateContent {
+            copy(
+                selectedSourcesByLine = byLine,
+                selectedSourcesByBook = byBook,
+                selectedSourceIds = selectedIds
             )
         }
     }
@@ -248,6 +322,25 @@ class CommentariesUseCase(
             }
         } catch (e: Exception) {
             // Ignorer les erreurs silencieusement
+        }
+    }
+
+    suspend fun reapplySelectedSources(line: Line) {
+        val currentState = stateManager.state.first()
+        val bookId = currentState.navigation.selectedBook?.id ?: line.bookId
+        val remembered = currentState.content.selectedSourcesByBook[bookId] ?: emptySet()
+
+        if (remembered.isEmpty()) return
+
+        try {
+            val available = getAvailableSources(line.id)
+            val availableIds = available.values.toSet()
+            val intersection = remembered.intersect(availableIds)
+
+            if (intersection.isNotEmpty()) {
+                updateSelectedSources(line.id, intersection)
+            }
+        } catch (_: Exception) {
         }
     }
     

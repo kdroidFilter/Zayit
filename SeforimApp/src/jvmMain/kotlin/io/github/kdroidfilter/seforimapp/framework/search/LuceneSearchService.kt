@@ -209,17 +209,19 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         debugln { "[DEBUG] Analyzed tokens: $analyzedStd" }
 
         // Get all possible expansions for each token (a token can belong to multiple bases)
-        val tokenExpansions: Map<String, List<MagicDictionaryIndex.Expansion>> =
+        val tokenExpansionsRaw: Map<String, List<MagicDictionaryIndex.Expansion>> =
             analyzedStd.associateWith { token ->
                 // Get best expansion (prefers matching base, then largest)
                 val expansion = magicDict?.expansionFor(token) ?: return@associateWith emptyList()
                 listOf(expansion)
             }
-        tokenExpansions.forEach { (token, exps) ->
+        tokenExpansionsRaw.forEach { (token, exps) ->
             exps.forEach { exp ->
                 debugln { "[DEBUG] Token '$token' -> expansion: surface=${exp.surface.take(10)}..., variants=${exp.variants.take(10)}..., base=${exp.base}" }
             }
         }
+
+        val tokenExpansions: Map<String, List<MagicDictionaryIndex.Expansion>> = tokenExpansionsRaw
 
         val allExpansions = tokenExpansions.values.flatten()
         val expandedTerms = allExpansions.flatMap { it.surface + it.variants + it.base }.distinct()
@@ -292,9 +294,9 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
 
             // Calculate boost: lower orderIndex = higher boost (only for base books)
             val boostedScore = if (isBaseBook) {
-                // Formula: boost = baseScore * (1 + (100 - orderIndex) / 100)
-                // orderIndex 1 gets ~2x boost, orderIndex 50 gets ~1.5x boost, orderIndex 100+ gets ~1x boost
-                val boostFactor = 1.0f + (100 - orderIndex).coerceAtLeast(0) / 100.0f
+                // Formula: boost = baseScore * (1 + (120 - orderIndex) / 60)
+                // orderIndex 1 gets ~3x boost, orderIndex 50 gets ~2.2x boost, orderIndex 100+ gets ~1.3x boost
+                val boostFactor = 1.0f + (120 - orderIndex).coerceAtLeast(0) / 60.0f
                 baseScore * boostFactor
             } else {
                 baseScore
@@ -771,6 +773,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         }
         return out.distinct()
     }
+
 
     private fun normalizeHebrew(input: String): String {
         if (input.isBlank()) return ""

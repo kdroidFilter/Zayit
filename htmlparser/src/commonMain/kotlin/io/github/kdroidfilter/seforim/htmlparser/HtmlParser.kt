@@ -120,8 +120,17 @@ class HtmlParser {
         // Normalizes multiple spaces into a single space, but preserves leading/trailing spaces
         val normalizedText = textRaw.replace(Regex("\\s+"), " ")
 
-        // Do not add empty segments (only spaces)
-        if (normalizedText.isBlank()) return
+        // Preserve whitespace-only nodes so inline tags do not collapse words
+        if (normalizedText.isBlank()) {
+            if (textRaw.isNotEmpty() && list.isNotEmpty()) {
+                val last = list.last()
+                if (!last.isLineBreak && !last.text.endsWith(" ")) {
+                    val updated = last.copy(text = last.text + " ")
+                    list[list.lastIndex] = updated
+                }
+            }
+            return
+        }
 
         // Determines whether to preserve leading and trailing spaces
         val hasLeadingSpace = textRaw.isNotEmpty() && textRaw.first().isWhitespace()

@@ -236,8 +236,11 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         // reflect matches that were found via the n-gram branch.
         val ngramTerms = buildNgramTerms(analyzedStd, gram = 4)
         // For highlighting/snippets, use the actual query tokens plus the concrete
-        // terms that the search query uses (expansions + n-grams).
-        val highlightTerms = filterTermsForHighlight(analyzedStd + expandedTerms + ngramTerms)
+        // terms that the search query uses (expansions + n-grams), and if the query
+        // mentions Hashem explicitly, also include dictionary-based variants of the
+        // divine name from the lexical DB
+        val hashemTerms = if (hasHashem) loadHashemHighlightTerms() else emptyList()
+        val highlightTerms = filterTermsForHighlight(analyzedStd + expandedTerms + ngramTerms + hashemTerms)
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
 
         val rankedQuery = buildExpandedQuery(norm, near, analyzedStd, tokenExpansions)
@@ -347,7 +350,11 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         if (norm.isBlank()) return Jsoup.clean(raw, Safelist.none())
         val rawClean = Jsoup.clean(raw, Safelist.none())
         val analyzedStd = (analyzeToTerms(stdAnalyzer, norm) ?: emptyList())
-        val highlightTerms = filterTermsForHighlight(analyzedStd + buildNgramTerms(analyzedStd, gram = 4))
+        val hasHashem = rawQuery.contains("ה׳") || rawQuery.contains("ה'")
+        val hashemTerms = if (hasHashem) loadHashemHighlightTerms() else emptyList()
+        val highlightTerms = filterTermsForHighlight(
+            analyzedStd + buildNgramTerms(analyzedStd, gram = 4) + hashemTerms
+        )
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
         return buildSnippet(rawClean, anchorTerms, highlightTerms)
     }
@@ -899,5 +906,47 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             val expansions = expansionsByToken[token] ?: emptyList()
             buildLimitedTermsForToken(token, expansions)
         }
+    }
+
+    /**
+     * Load dictionary-based variants of the divine name  using MagicDictionaryIndex.
+     * We pull all surface forms for base from the underlying SQLite DB  and also add diacritic-stripped variants so highlighting
+     * matches the snippet text after nikud/teamim removal.
+     */
+    private fun loadHashemHighlightTerms(): List<String> {
+        val dict = magicDict ?: return emptyList()
+        val raw = dict.loadHashemSurfaces()
+        if (raw.isEmpty()) return emptyList()
+
+        fun stripHebrewDiacritics(text: String): String {
+            if (text.isEmpty()) return text
+            val sb = StringBuilder(text.length)
+            for (ch in text) {
+                val code = ch.code
+                val isNikudOrTeamim =
+                    (code in 0x0591..0x05AF) || // teamim
+                        (code in 0x05B0..0x05BD) || // nikud + meteg
+                        (ch == '\u05C1') || (ch == '\u05C2') || (ch == '\u05C7')
+                if (!isNikudOrTeamim) {
+                    sb.append(ch)
+                }
+            }
+            return sb.toString()
+        }
+
+        val terms = linkedSetOf<String>()
+        raw.forEach { value ->
+            val trimmed = value.trim()
+            if (trimmed.isEmpty()) return@forEach
+            terms += trimmed
+            val stripped = stripHebrewDiacritics(trimmed).trim()
+            if (stripped.isNotEmpty()) terms += stripped
+            val normalized = normalizeHebrew(trimmed).trim()
+            if (normalized.isNotEmpty()) terms += normalized
+        }
+
+        val out = terms.toList()
+        debugln { "[DEBUG] Hashem highlight terms from lexical DB: ${out.take(20)}..." }
+        return out
     }
 }

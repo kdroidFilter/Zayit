@@ -289,4 +289,35 @@ class MagicDictionaryIndex private constructor(
             applyFinalForm(normalized)
         ).filter { it.isNotBlank() }.distinct()
     }
+
+    /**
+     * Load all surface forms whose base lemma directly from the underlying SQLite DB.
+     * This is used for snippet highlighting of Hashem names, independent of token-level expansions.
+     */
+    fun loadHashemSurfaces(): List<String> {
+        val terms = linkedSetOf<String>()
+        runCatching {
+            DriverManager.getConnection(url).use { conn ->
+                val sql = """
+                    SELECT s.value AS surface
+                    FROM surface s
+                    JOIN base b ON s.base_id = b.id
+                    WHERE b.value = 'יהוה'
+                """.trimIndent()
+                conn.createStatement().use { stmt ->
+                    val rs = stmt.executeQuery(sql)
+                    while (rs.next()) {
+                        val v = rs.getString("surface") ?: continue
+                        val trimmed = v.trim()
+                        if (trimmed.isNotEmpty()) {
+                            terms += trimmed
+                        }
+                    }
+                }
+            }
+        }.onFailure {
+            debugln { "[MagicDictionary] Failed to load Hashem surfaces: ${it.message}" }
+        }
+        return terms.toList()
+    }
 }

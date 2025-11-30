@@ -27,18 +27,24 @@ class NavigationUseCase(
      * Load the root categories and the full tree from the precomputed catalog.
      * The catalog MUST be available, otherwise nothing is loaded.
      */
-     fun loadRootCategories() {
+     suspend fun loadRootCategories() {
         val catalog = CatalogCache.getCatalog() ?: run {
             errorln { "ERROR: Precomputed catalog not available!" }
             return
         }
+
+        // Merge alt-structure flags from DB to ensure navigation tree knows about them
+        val altFlags = runCatching { repository.getAllBookAltFlags() }.getOrDefault(emptyMap())
+        val booksWithFlags: Set<Book> = catalog.extractAllBooks().map { book ->
+            altFlags[book.id]?.let { book.copy(hasAltStructures = it) } ?: book
+        }.toSet()
 
         debugln { "✓ Using precomputed catalog for navigation tree" }
         stateManager.updateNavigation {
             copy(
                 rootCategories = catalog.extractRootCategories(),
                 categoryChildren = catalog.extractCategoryChildren(),
-                booksInCategory = catalog.extractAllBooks()
+                booksInCategory = booksWithFlags
             )
         }
     }

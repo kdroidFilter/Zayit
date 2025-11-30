@@ -51,6 +51,7 @@ class BookContentStateManager(
                 scrollIndex = getState(StateKeys.TOC_SCROLL_INDEX) ?: 0,
                 scrollOffset = getState(StateKeys.TOC_SCROLL_OFFSET) ?: 0
             ),
+            altToc = AltTocState(),
             content = ContentState(
                 selectedLine = getState(StateKeys.SELECTED_LINE),
                 showCommentaries = getState(StateKeys.SHOW_COMMENTARIES) ?: false,
@@ -131,6 +132,16 @@ class BookContentStateManager(
     ) {
         update(save) { copy(content = content.transform()) }
     }
+
+    /**
+     * Met à jour uniquement l'état des TOC alternatifs
+     */
+    fun updateAltToc(
+        save: Boolean = true,
+        transform: AltTocState.() -> AltTocState
+    ) {
+        update(save) { copy(altToc = altToc.transform()) }
+    }
     
     /**
      * Réinitialise les sélections et positions de contenu lors d'un changement de livre
@@ -147,6 +158,7 @@ class BookContentStateManager(
                 scrollOffset = 0
             )
         }
+        updateAltToc(save = false) { AltTocState() }
     }
 
     /**

@@ -9,10 +9,17 @@ import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
+import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
+import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
+import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.ListComboBox
 import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.alt_table_of_contents
+import seforimapp.seforimapp.generated.resources.no_alt_toc_available
 import seforimapp.seforimapp.generated.resources.select_book_for_toc
+import seforimapp.seforimapp.generated.resources.select_structure_for_toc
 import seforimapp.seforimapp.generated.resources.table_of_contents
 
 @Composable
@@ -43,12 +50,23 @@ fun BookTocPanel(
                     }
                 }
                 else -> {
-                    Box(modifier = Modifier.fillMaxHeight()) {
+                    val hasAlt = uiState.navigation.selectedBook?.hasAltStructures == true
+                    Column(modifier = Modifier.fillMaxHeight()) {
                         BookTocView(
                             uiState = uiState,
                             onEvent = onEvent,
-                            modifier = Modifier.fillMaxHeight()
+                            modifier = if (hasAlt) Modifier.weight(1f) else Modifier.fillMaxHeight()
                         )
+                        if (hasAlt) {
+                            Box(modifier = Modifier.padding(vertical = 8.dp)) {
+                                HorizontalDivider()
+                            }
+                            AltBookTocSection(
+                                uiState = uiState,
+                                onEvent = onEvent,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             }
@@ -64,8 +82,8 @@ fun SearchBookTocPanel(
     tocTree: io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.TocTree?,
     tocCounts: Map<Long, Int>,
     selectedTocIds: Set<Long>,
-    onToggle: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry, Boolean) -> Unit,
-    onTocFilter: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry) -> Unit,
+    onToggle: (TocEntry, Boolean) -> Unit,
+    onTocFilter: (TocEntry) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val paneHoverSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -90,7 +108,7 @@ fun SearchBookTocPanel(
                             val withResults = tocCounts.keys
                             val targetToExpand = withResults.intersect(idsWithChildren) - expanded
                             if (targetToExpand.isNotEmpty()) {
-                                fun findEntryById(id: Long): io.github.kdroidfilter.seforimlibrary.core.models.TocEntry? {
+                                fun findEntryById(id: Long): TocEntry? {
                                     val tree = tocTree ?: return null
                                     if (tree.rootEntries.any { it.id == id }) {
                                         return tree.rootEntries.first { it.id == id }
@@ -151,3 +169,59 @@ fun SearchBookTocPanel(
         }
     }
 }
+
+@Composable
+private fun AltBookTocSection(
+    uiState: BookContentState,
+    onEvent: (BookContentEvent) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val altState = uiState.altToc
+    val bookId = uiState.navigation.selectedBook?.id ?: return
+    Column(modifier = modifier.fillMaxWidth()) {
+        val structures = altState.structures
+        if (structures.isEmpty()) {
+            Text(stringResource(Res.string.no_alt_toc_available))
+            return
+        }
+        val rootEntries = altState.entries
+            .map { it.toTocEntry(bookId) }
+
+        val childrenMap = altState.children.mapValues { (_, children) -> children.map { it.toTocEntry(bookId) } }
+        val altEntryById = remember(altState.entries, altState.children) {
+            (altState.entries + altState.children.values.flatten()).associateBy { it.id }
+        }
+        var displayEntries by remember(rootEntries, childrenMap) { mutableStateOf(rootEntries) }
+   
+
+        BookTocView(
+            tocEntries = displayEntries,
+            expandedEntries = altState.expandedEntries,
+            tocChildren = childrenMap,
+            scrollIndex = altState.scrollIndex,
+            scrollOffset = altState.scrollOffset,
+            onEntryClick = { entry ->
+                altEntryById[entry.id]?.let { onEvent(BookContentEvent.AltTocEntrySelected(it)) }
+            },
+            onEntryExpand = { entry ->
+                altEntryById[entry.id]?.let { onEvent(BookContentEvent.AltTocEntryExpanded(it)) }
+            },
+            onScroll = { index, offset -> onEvent(BookContentEvent.AltTocScrolled(index, offset)) },
+            selectedTocEntryId = altState.selectedEntryId,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+private fun AltTocEntry.toTocEntry(bookId: Long): TocEntry =
+    TocEntry(
+        id = id,
+        bookId = bookId,
+        parentId = parentId,
+        textId = textId,
+        text = text,
+        level = level,
+        lineId = lineId,
+        isLastChild = isLastChild,
+        hasChildren = hasChildren
+    )

@@ -397,6 +397,9 @@
     <string name="db_update_version_error_title">הגרסה אינה תואמת</string>
     <string name="db_update_version_error_message">מסד הנתונים שנבחר אינו תואם לגרסה זו של היישום. אנא בחרו קובץ אחר או הורידו את הגרסה העדכנית.</string>
     <string name="db_update_try_again">נסו שוב</string>
+    <string name="alt_table_of_contents">חלופות תוכן</string>
+    <string name="no_alt_toc_available">אין מבנים חלופיים זמינים</string>
+    <string name="select_structure_for_toc">בחרו מבנה חלופי</string>
 
 
 </resources>

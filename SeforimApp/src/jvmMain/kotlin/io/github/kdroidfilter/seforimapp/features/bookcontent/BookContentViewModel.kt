@@ -13,6 +13,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.Commentar
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.ContentUseCase
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.NavigationUseCase
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.TocUseCase
+import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.AltTocUseCase
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
@@ -42,6 +43,7 @@ class BookContentViewModel(
     private val navigationUseCase = NavigationUseCase(repository, stateManager)
     private val contentUseCase = ContentUseCase(repository, stateManager)
     private val tocUseCase = TocUseCase(repository, stateManager)
+    private val altTocUseCase = AltTocUseCase(repository, stateManager)
     private val commentariesUseCase = CommentariesUseCase(repository, stateManager, viewModelScope)
 
     // Paging pour les lignes
@@ -224,6 +226,20 @@ class BookContentViewModel(
 
                 is BookContentEvent.TocScrolled ->
                     tocUseCase.updateTocScrollPosition(event.index, event.offset)
+
+                is BookContentEvent.AltTocEntryExpanded ->
+                    altTocUseCase.toggleAltTocEntry(event.entry)
+
+                is BookContentEvent.AltTocScrolled ->
+                    altTocUseCase.updateAltTocScrollPosition(event.index, event.offset)
+
+                is BookContentEvent.AltTocStructureSelected ->
+                    altTocUseCase.selectStructure(event.structure)
+
+                is BookContentEvent.AltTocEntrySelected -> {
+                    val lineId = altTocUseCase.selectAltEntry(event.entry)
+                    lineId?.let { loadAndSelectLine(it) }
+                }
 
                 // Content
                 is BookContentEvent.LineSelected ->
@@ -496,6 +512,7 @@ class BookContentViewModel(
 
                 // Load TOC after pager creation
                 tocUseCase.loadRootToc(book.id)
+                altTocUseCase.loadStructures(book)
 
                 // If we have an explicit forced anchor, always select it to ensure correct scroll/selection.
                 // Otherwise, when opening with no prior anchor and no selection, select the computed initial line.
@@ -543,6 +560,8 @@ class BookContentViewModel(
 
                 commentariesUseCase.reapplySelectedCommentators(line)
                 commentariesUseCase.reapplySelectedLinkSources(line)
+                // Sync alternative TOC selection if applicable
+                altTocUseCase.selectAltEntryForLine(line.id)
             }
         }
     }

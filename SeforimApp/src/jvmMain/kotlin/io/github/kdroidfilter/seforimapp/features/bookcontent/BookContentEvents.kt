@@ -21,6 +21,10 @@ sealed interface BookContentEvent {
     data class TocEntryExpanded(val entry: TocEntry) : BookContentEvent
     data object ToggleToc : BookContentEvent
     data class TocScrolled(val index: Int, val offset: Int) : BookContentEvent
+    data class AltTocEntryExpanded(val entry: AltTocEntry) : BookContentEvent
+    data class AltTocScrolled(val index: Int, val offset: Int) : BookContentEvent
+    data class AltTocStructureSelected(val structure: AltTocStructure) : BookContentEvent
+    data class AltTocEntrySelected(val entry: AltTocEntry) : BookContentEvent
     
     // Book tree events
     data class BookTreeScrolled(val index: Int, val offset: Int) : BookContentEvent

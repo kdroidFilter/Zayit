@@ -34,6 +34,18 @@ data class VisibleTocEntry(
     val hasChildren: Boolean,
     val isLastChild: Boolean
 )
+
+@Immutable
+data class AltTocState(
+    val structures: List<AltTocStructure> = emptyList(),
+    val selectedStructureId: Long? = null,
+    val entries: List<AltTocEntry> = emptyList(),
+    val expandedEntries: Set<Long> = emptySet(),
+    val children: Map<Long, List<AltTocEntry>> = emptyMap(),
+    val selectedEntryId: Long? = null,
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0
+)
 /**
  * Unified state for BookContent (UI + Business)
  */
@@ -42,6 +54,7 @@ data class BookContentState @OptIn(ExperimentalSplitPaneApi::class) constructor(
     val tabId: String = "",
     val navigation: NavigationState = NavigationState(),
     val toc: TocState = TocState(),
+    val altToc: AltTocState = AltTocState(),
     val content: ContentState = ContentState(),
     val layout: LayoutState = LayoutState(),
     val isLoading: Boolean = false,

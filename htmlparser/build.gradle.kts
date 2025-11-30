@@ -26,6 +26,10 @@ kotlin {
             implementation(libs.jsoup)
         }
 
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
+
         androidMain.dependencies {
         }
 

@@ -36,8 +36,7 @@ class MagicDictionaryIndex private constructor(
         }
         LookupContext(
             conn = conn,
-            stmt = conn.prepareStatement(LOOKUP_SQL),
-            variantSurfaceStmt = conn.prepareStatement(VARIANT_SURFACES_SQL)
+            stmt = conn.prepareStatement(LOOKUP_SQL)
         )
     }
 
@@ -135,8 +134,6 @@ class MagicDictionaryIndex private constructor(
                     rs.getString("variant")?.let { bucket.variants += it }
                 }
 
-                appendVariantSurfaces(rawToken, normalizedToken, ctx, accum)
-
                 for ((baseId, bucket) in accum) {
                     val cached = synchronized(baseCache) { baseCache[baseId] }
                     if (cached != null) {
@@ -150,13 +147,14 @@ class MagicDictionaryIndex private constructor(
                         ?: surfaceN.firstOrNull()
                         ?: normalizedToken
 
-                    val allTerms = (surfaceN + variantsN + baseN).distinct()
+                    val baseTerms = listOfNotNull(baseN.takeIf { it.isNotEmpty() })
+                    val allTerms = (surfaceN + variantsN + baseTerms).distinct()
                     if (allTerms.isEmpty()) continue
 
                     val exp = Expansion(
                         surface = allTerms,
                         variants = emptyList(),
-                        base = listOf(baseN)
+                        base = baseTerms
                     )
 
                     synchronized(baseCache) {
@@ -255,27 +253,11 @@ class MagicDictionaryIndex private constructor(
             LEFT JOIN surface_variant sv ON sv.surface_id = s.id
             LEFT JOIN variant v ON sv.variant_id = v.id
         """
-
-        /**
-         * Retrieve sibling surfaces linked to a variant so variant tokens can expand
-         * to all surfaces associated with that variant.
-         */
-        private const val VARIANT_SURFACES_SQL = """
-            SELECT b.id AS base_id,
-                   b.value AS base,
-                   s.value AS surface
-            FROM variant v
-            JOIN surface_variant sv ON sv.variant_id = v.id
-            JOIN surface s ON sv.surface_id = s.id
-            JOIN base b ON b.id = s.base_id
-            WHERE v.value = ?
-        """
     }
 
     private data class LookupContext(
         val conn: Connection,
-        val stmt: PreparedStatement,
-        val variantSurfaceStmt: PreparedStatement
+        val stmt: PreparedStatement
     )
 
     private data class BaseBucket(
@@ -283,36 +265,6 @@ class MagicDictionaryIndex private constructor(
         val surfaces: MutableSet<String>,
         val variants: MutableSet<String>
     )
-
-    private fun appendVariantSurfaces(
-        rawToken: String,
-        normalizedToken: String,
-        ctx: LookupContext,
-        accum: MutableMap<Long, BaseBucket>
-    ) {
-        fun queryVariant(value: String) {
-            if (value.isBlank()) return
-            ctx.variantSurfaceStmt.setString(1, value)
-            val rs = ctx.variantSurfaceStmt.executeQuery()
-            while (rs.next()) {
-                val baseId = rs.getLong("base_id")
-                val bucket = accum.getOrPut(baseId) {
-                    BaseBucket(
-                        baseRaw = rs.getString("base") ?: "",
-                        surfaces = linkedSetOf(),
-                        variants = linkedSetOf()
-                    )
-                }
-                rs.getString("surface")?.let { bucket.surfaces += it }
-                bucket.variants += value
-            }
-        }
-
-        queryVariant(rawToken)
-        if (normalizedToken != rawToken) {
-            queryVariant(normalizedToken)
-        }
-    }
 
     private fun buildLookupCandidates(rawToken: String, normalized: String): List<String> {
         val finalsMap = mapOf(

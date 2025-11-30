@@ -30,6 +30,13 @@ import io.github.kdroidfilter.seforimapp.logger.debugln
  * Supports book title suggestions and full-text queries (future extension).
  */
 class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = StandardAnalyzer()) {
+    companion object {
+        // Hard cap on how many synonym/expansion terms we allow per token
+        private const val MAX_SYNONYM_TERMS_PER_TOKEN: Int = 32
+        // Global cap for boost queries built from dictionary expansions
+        private const val MAX_SYNONYM_BOOST_TERMS: Int = 256
+    }
+
     // Open Lucene directory lazily to avoid any I/O at app startup
     private val dir by lazy { FSDirectory.open(indexDir) }
 
@@ -209,17 +216,19 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         debugln { "[DEBUG] Analyzed tokens: $analyzedStd" }
 
         // Get all possible expansions for each token (a token can belong to multiple bases)
-        val tokenExpansions: Map<String, List<MagicDictionaryIndex.Expansion>> =
+        val tokenExpansionsRaw: Map<String, List<MagicDictionaryIndex.Expansion>> =
             analyzedStd.associateWith { token ->
                 // Get best expansion (prefers matching base, then largest)
                 val expansion = magicDict?.expansionFor(token) ?: return@associateWith emptyList()
                 listOf(expansion)
             }
-        tokenExpansions.forEach { (token, exps) ->
+        tokenExpansionsRaw.forEach { (token, exps) ->
             exps.forEach { exp ->
                 debugln { "[DEBUG] Token '$token' -> expansion: surface=${exp.surface.take(10)}..., variants=${exp.variants.take(10)}..., base=${exp.base}" }
             }
         }
+
+        val tokenExpansions: Map<String, List<MagicDictionaryIndex.Expansion>> = tokenExpansionsRaw
 
         val allExpansions = tokenExpansions.values.flatten()
         val expandedTerms = allExpansions.flatMap { it.surface + it.variants + it.base }.distinct()
@@ -292,9 +301,9 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
 
             // Calculate boost: lower orderIndex = higher boost (only for base books)
             val boostedScore = if (isBaseBook) {
-                // Formula: boost = baseScore * (1 + (100 - orderIndex) / 100)
-                // orderIndex 1 gets ~2x boost, orderIndex 50 gets ~1.5x boost, orderIndex 100+ gets ~1x boost
-                val boostFactor = 1.0f + (100 - orderIndex).coerceAtLeast(0) / 100.0f
+                // Formula: boost = baseScore * (1 + (120 - orderIndex) / 60)
+                // orderIndex 1 gets ~3x boost, orderIndex 50 gets ~2.2x boost, orderIndex 100+ gets ~1.3x boost
+                val boostFactor = 1.0f + (120 - orderIndex).coerceAtLeast(0) / 60.0f
                 baseScore * boostFactor
             } else {
                 baseScore
@@ -424,18 +433,16 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val outer = BooleanQuery.Builder()
         for (t in tokens) {
             val expansions = expansionsByToken[t] ?: emptyList()
+            val synonymTerms = buildLimitedTermsForToken(t, expansions)
             val ngram = if (near > 0) buildNgramPresenceForToken(t) else null
             val clause = BooleanQuery.Builder().apply {
                 // Add the original token
                 add(TermQuery(Term("text", t)), BooleanClause.Occur.SHOULD)
                 if (ngram != null) add(ngram, BooleanClause.Occur.SHOULD)
-                // Add all expansion terms from all possible expansions
-                for (exp in expansions) {
-                    val allTerms = (exp.surface + exp.variants + exp.base).distinct()
-                    for (term in allTerms) {
-                        if (term != t) {  // Avoid duplicating the original token
-                            add(TermQuery(Term("text", term)), BooleanClause.Occur.SHOULD)
-                        }
+                // Add capped set of expansion terms so we do not exceed Lucene's maxClauseCount.
+                for (term in synonymTerms) {
+                    if (term != t) {  // Avoid duplicating the original token
+                        add(TermQuery(Term("text", term)), BooleanClause.Occur.SHOULD)
                     }
                 }
             }.build()
@@ -455,23 +462,79 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
 
     private fun buildMagicBoostQuery(expansions: List<MagicDictionaryIndex.Expansion>): Query? {
         if (expansions.isEmpty()) return null
-        val b = BooleanQuery.Builder()
+        val surfaceTerms = LinkedHashSet<String>()
+        val variantTerms = LinkedHashSet<String>()
+        val baseTerms = LinkedHashSet<String>()
         for (exp in expansions) {
-            // Reduced boosts to favor phrase matches over individual term matches
-            for (s in exp.surface) b.add(BoostQuery(TermQuery(Term("text", s)), 2.0f), BooleanClause.Occur.SHOULD)
-            for (v in exp.variants) b.add(BoostQuery(TermQuery(Term("text", v)), 1.5f), BooleanClause.Occur.SHOULD)
-            for (ba in exp.base) b.add(BoostQuery(TermQuery(Term("text", ba)), 1.0f), BooleanClause.Occur.SHOULD)
+            surfaceTerms.addAll(exp.surface)
+            variantTerms.addAll(exp.variants)
+            baseTerms.addAll(exp.base)
+        }
+
+        val limitedSurfaces = surfaceTerms.take(MAX_SYNONYM_BOOST_TERMS)
+        val limitedVariants = variantTerms.take(MAX_SYNONYM_BOOST_TERMS)
+        val limitedBases = baseTerms.take(MAX_SYNONYM_BOOST_TERMS)
+        if (surfaceTerms.size > limitedSurfaces.size ||
+            variantTerms.size > limitedVariants.size ||
+            baseTerms.size > limitedBases.size
+        ) {
+            debugln {
+                "[DEBUG] Capped magic boost terms: " +
+                    "surface=${surfaceTerms.size}->${limitedSurfaces.size}, " +
+                    "variants=${variantTerms.size}->${limitedVariants.size}, " +
+                    "base=${baseTerms.size}->${limitedBases.size}"
+            }
+        }
+
+        val b = BooleanQuery.Builder()
+        // Reduced boosts to favor phrase matches over individual term matches
+        for (s in limitedSurfaces) {
+            b.add(BoostQuery(TermQuery(Term("text", s)), 2.0f), BooleanClause.Occur.SHOULD)
+        }
+        for (v in limitedVariants) {
+            b.add(BoostQuery(TermQuery(Term("text", v)), 1.5f), BooleanClause.Occur.SHOULD)
+        }
+        for (ba in limitedBases) {
+            b.add(BoostQuery(TermQuery(Term("text", ba)), 1.0f), BooleanClause.Occur.SHOULD)
         }
         return b.build()
     }
 
     private fun buildSynonymBoostQuery(expansions: List<MagicDictionaryIndex.Expansion>): Query? {
         if (expansions.isEmpty()) return null
-        val b = BooleanQuery.Builder()
+        val surfaceTerms = LinkedHashSet<String>()
+        val variantTerms = LinkedHashSet<String>()
+        val baseTerms = LinkedHashSet<String>()
         for (exp in expansions) {
-            for (s in exp.surface) b.add(TermQuery(Term("text", s)), BooleanClause.Occur.SHOULD)
-            for (v in exp.variants) b.add(TermQuery(Term("text", v)), BooleanClause.Occur.SHOULD)
-            for (ba in exp.base) b.add(TermQuery(Term("text", ba)), BooleanClause.Occur.SHOULD)
+            surfaceTerms.addAll(exp.surface)
+            variantTerms.addAll(exp.variants)
+            baseTerms.addAll(exp.base)
+        }
+
+        val limitedSurfaces = surfaceTerms.take(MAX_SYNONYM_BOOST_TERMS)
+        val limitedVariants = variantTerms.take(MAX_SYNONYM_BOOST_TERMS)
+        val limitedBases = baseTerms.take(MAX_SYNONYM_BOOST_TERMS)
+        if (surfaceTerms.size > limitedSurfaces.size ||
+            variantTerms.size > limitedVariants.size ||
+            baseTerms.size > limitedBases.size
+        ) {
+            debugln {
+                "[DEBUG] Capped synonym boost terms: " +
+                    "surface=${surfaceTerms.size}->${limitedSurfaces.size}, " +
+                    "variants=${variantTerms.size}->${limitedVariants.size}, " +
+                    "base=${baseTerms.size}->${limitedBases.size}"
+            }
+        }
+
+        val b = BooleanQuery.Builder()
+        for (s in limitedSurfaces) {
+            b.add(TermQuery(Term("text", s)), BooleanClause.Occur.SHOULD)
+        }
+        for (v in limitedVariants) {
+            b.add(TermQuery(Term("text", v)), BooleanClause.Occur.SHOULD)
+        }
+        for (ba in limitedBases) {
+            b.add(TermQuery(Term("text", ba)), BooleanClause.Occur.SHOULD)
         }
         return b.build()
     }
@@ -481,11 +544,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         expansionsByToken: Map<String, List<MagicDictionaryIndex.Expansion>>
     ): List<Pair<Query, Float>> {
         if (tokens.isEmpty()) return emptyList()
-        val termExpansions = tokens.map { t ->
-            val expansions = expansionsByToken[t] ?: emptyList()
-            val allTerms = expansions.flatMap { it.surface + it.variants + it.base }.distinct()
-            allTerms.ifEmpty { listOf(t) }
-        }
+        val termExpansions = buildTermAlternativesForTokens(tokens, expansionsByToken)
         debugln { "[DEBUG] buildSynonymPhrases - termExpansions sizes: ${termExpansions.map { it.size }}" }
         fun buildMultiPhrase(slop: Int): Query {
             val builder = org.apache.lucene.search.MultiPhraseQuery.Builder()
@@ -514,11 +573,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         near: Int
     ): Query? {
         if (tokens.isEmpty()) return null
-        val termExpansions = tokens.map { t ->
-            val expansions = expansionsByToken[t] ?: emptyList()
-            val allTerms = expansions.flatMap { it.surface + it.variants + it.base }.distinct()
-            allTerms.ifEmpty { listOf(t) }
-        }
+        val termExpansions = buildTermAlternativesForTokens(tokens, expansionsByToken)
         val builder = org.apache.lucene.search.MultiPhraseQuery.Builder()
         builder.setSlop(near)
         var position = 0
@@ -772,6 +827,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         return out.distinct()
     }
 
+
     private fun normalizeHebrew(input: String): String {
         if (input.isBlank()) return ""
         var s = input.trim()
@@ -799,4 +855,49 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         .replace('\u05E5', '\u05E6') // ץ -> צ
 
     // StandardAnalyzer only
+
+    /**
+     * Build a capped list of alternative terms for a single token using dictionary expansions.
+     * The resulting list always includes the original token and its base forms (when present),
+     * followed by additional surface/variant forms up to MAX_SYNONYM_TERMS_PER_TOKEN.
+     */
+    private fun buildLimitedTermsForToken(
+        token: String,
+        expansions: List<MagicDictionaryIndex.Expansion>
+    ): List<String> {
+        if (expansions.isEmpty()) return listOf(token)
+
+        val baseTerms = expansions.flatMap { it.base }.distinct()
+        val otherTerms = expansions.flatMap { it.surface + it.variants }.distinct()
+
+        val ordered = LinkedHashSet<String>()
+        if (token.isNotBlank()) {
+            ordered += token
+        }
+        baseTerms.forEach { ordered += it }
+        otherTerms.forEach { ordered += it }
+
+        val totalSize = ordered.size
+        val limited = ordered.take(MAX_SYNONYM_TERMS_PER_TOKEN)
+        if (totalSize > limited.size) {
+            debugln {
+                "[DEBUG] Capped synonym terms for token '$token' from $totalSize to ${limited.size}"
+            }
+        }
+        return limited
+    }
+
+    /**
+     * Build per-token synonym alternative lists for phrase queries, with per-token caps.
+     */
+    private fun buildTermAlternativesForTokens(
+        tokens: List<String>,
+        expansionsByToken: Map<String, List<MagicDictionaryIndex.Expansion>>
+    ): List<List<String>> {
+        if (tokens.isEmpty()) return emptyList()
+        return tokens.map { token ->
+            val expansions = expansionsByToken[token] ?: emptyList()
+            buildLimitedTermsForToken(token, expansions)
+        }
+    }
 }

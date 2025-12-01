@@ -4,12 +4,17 @@ import androidx.paging.Pager
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorGroup
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorItem
 import io.github.kdroidfilter.seforimapp.pagination.CommentsForLineOrTocPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.LineCommentsPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.LineTargumPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.PagingDefaults
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
+import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.core.models.PubDate
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.CoroutineScope
@@ -27,6 +32,7 @@ class CommentariesUseCase(
 
     private companion object {
         private const val MAX_COMMENTATORS = 4
+        private val YEAR_REGEX = Regex("""-?\d{3,4}""")
     }
     
     /**
@@ -82,29 +88,150 @@ class CommentariesUseCase(
      */
     suspend fun getAvailableCommentators(lineId: Long): Map<String, Long> {
         return try {
-            val headingToc = repository.getHeadingTocEntryByLineId(lineId)
-            val baseIds = if (headingToc != null) {
-                repository.getLineIdsForTocEntry(headingToc.id).filter { it != lineId }
-            } else listOf(lineId)
+            val groups = getCommentatorGroups(lineId)
+            if (groups.isEmpty()) return emptyMap()
 
-            val commentaries = repository.getCommentariesForLines(baseIds)
-                .filter { it.link.connectionType == ConnectionType.COMMENTARY }
-
-            val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
-
-            // Map display name -> bookId with sanitization, preserving order
             val map = LinkedHashMap<String, Long>()
-            commentaries.forEach { commentary ->
-                val raw = commentary.targetBookTitle
-                val display = sanitizeCommentatorName(raw, currentBookTitle)
-                if (!map.containsKey(display)) {
-                    map[display] = commentary.link.targetBookId
+            groups.forEach { group ->
+                group.commentators.forEach { item ->
+                    if (!map.containsKey(item.name)) {
+                        map[item.name] = item.bookId
+                    }
                 }
             }
             map
         } catch (e: Exception) {
             emptyMap()
         }
+    }
+
+    /**
+     * Regroupe les commentateurs par catégorie (type) et triés par date de publication (plus ancien d'abord).
+     */
+    suspend fun getCommentatorGroups(lineId: Long): List<CommentatorGroup> {
+        return try {
+            val entries = loadCommentatorEntries(lineId)
+            if (entries.isEmpty()) return emptyList()
+
+            // 1) Regrouper par label de catégorie (fusionne les catégories qui ont le même titre),
+            //    où le label est, si possible, l'ancêtre de type "ראשונים/אחרונים על התנ״ך"
+            val groupsByLabel = LinkedHashMap<String, MutableList<CommentatorEntry>>()
+            val categoryCache = mutableMapOf<Long, Category?>()
+
+            entries.forEach { entry ->
+                val label = resolveGroupLabel(entry.book, categoryCache)
+                val list = groupsByLabel.getOrPut(label) { mutableListOf() }
+                list.add(entry)
+            }
+
+            // 2) Pour chaque groupe, trier les commentateurs par pubDate puis nom,
+            //    et calculer l'année la plus ancienne du groupe pour trier les groupes
+            data class TempGroup(
+                val label: String,
+                val entries: List<CommentatorEntry>,
+                val earliestYear: Int
+            )
+
+            val tempGroups = groupsByLabel.map { (label, groupEntries) ->
+                val sortedEntries = groupEntries.sortedWith(
+                    compareBy<CommentatorEntry>(
+                        { entry -> entry.book?.pubDates?.let { extractEarliestYear(it) } ?: Int.MAX_VALUE },
+                        { entry -> entry.displayName }
+                    )
+                )
+                val groupEarliestYear = sortedEntries.firstOrNull()
+                    ?.book
+                    ?.pubDates
+                    ?.let { extractEarliestYear(it) }
+                    ?: Int.MAX_VALUE
+
+                TempGroup(
+                    label = label,
+                    entries = sortedEntries,
+                    earliestYear = groupEarliestYear
+                )
+            }
+
+            // 3) Trier les groupes par pubDate de leur premier livre, puis par label
+            tempGroups
+                .sortedWith(
+                    compareBy<TempGroup> { it.earliestYear }
+                        .thenBy { it.label }
+                )
+                .map { group ->
+                    CommentatorGroup(
+                        label = group.label,
+                        commentators = group.entries.map { entry ->
+                            CommentatorItem(
+                                name = entry.displayName,
+                                bookId = entry.bookId
+                            )
+                        }
+                    )
+                }
+                .filter { it.commentators.isNotEmpty() }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private suspend fun resolveGroupLabel(
+        book: Book?,
+        cache: MutableMap<Long, Category?>
+    ): String {
+        if (book == null) return ""
+
+        suspend fun loadCategory(id: Long): Category? {
+            cache[id]?.let { return it }
+            val loaded = runCatching { repository.getCategory(id) }.getOrNull()
+            cache[id] = loaded
+            return loaded
+        }
+
+        var currentId: Long? = book.categoryId
+        while (currentId != null) {
+            val category = loadCategory(currentId) ?: break
+            val title = category.title
+
+            // Prefer high-level "commentaries on ..." buckets
+            if (
+                title.contains("על התנ״ך") ||
+                title.contains("על התלמוד") ||
+                title.contains("על המשנה") ||
+                title.contains("על המשניות") ||
+                title.contains("על הש\"ס") ||
+                title.contains("על השס")
+            ) {
+                return title
+            }
+
+            // Broad families (e.g., חסידות, מילונים)
+            if (title == "חסידות" || title.contains("חסידות")) {
+                return title
+            }
+            if (title.contains("מילונים")) {
+                return title
+            }
+            if (title == "ראשונים") {
+                return title
+            }
+
+            // Generic "מפרשים" bucket (e.g., for משנה תורה)
+            if (title == "מפרשים") {
+                val parent = category.parentId?.let { parentId ->
+                    loadCategory(parentId)
+                }
+                if (parent != null && parent.title.isNotBlank()) {
+                    return "מפרשים על ${parent.title}"
+                }
+                return title
+            }
+
+            currentId = category.parentId
+        }
+
+        val baseCategory = loadCategory(book.categoryId)
+        return baseCategory?.title ?: ""
     }
 
     private fun sanitizeCommentatorName(raw: String, currentBookTitle: String): String {
@@ -115,6 +242,62 @@ class CommentariesUseCase(
             .replace(" על ספר $t", "")
             .replace(" על $t", "")
             .trim()
+    }
+
+    private data class CommentatorEntry(
+        val bookId: Long,
+        val displayName: String,
+        val book: Book?
+    )
+
+    private suspend fun loadCommentatorEntries(lineId: Long): List<CommentatorEntry> {
+        val headingToc = repository.getHeadingTocEntryByLineId(lineId)
+        val baseIds = if (headingToc != null) {
+            repository.getLineIdsForTocEntry(headingToc.id).filter { it != lineId }
+        } else listOf(lineId)
+
+        val commentaries = repository.getCommentariesForLines(baseIds)
+            .filter { it.link.connectionType == ConnectionType.COMMENTARY }
+
+        if (commentaries.isEmpty()) return emptyList()
+
+        val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
+
+        val displayNameByBookId = LinkedHashMap<Long, String>()
+
+        commentaries.forEach { commentary ->
+            val bookId = commentary.link.targetBookId
+            if (!displayNameByBookId.containsKey(bookId)) {
+                val raw = commentary.targetBookTitle
+                val display = sanitizeCommentatorName(raw, currentBookTitle)
+                displayNameByBookId[bookId] = display
+            }
+        }
+
+        val booksById: Map<Long, Book?> = displayNameByBookId.keys.associateWith { id ->
+            runCatching { repository.getBook(id) }.getOrNull()
+        }
+
+        return displayNameByBookId.map { (bookId, displayName) ->
+            CommentatorEntry(
+                bookId = bookId,
+                displayName = displayName,
+                book = booksById[bookId]
+            )
+        }
+    }
+
+    private fun extractEarliestYear(pubDates: List<PubDate>): Int? {
+        var best: Int? = null
+        for (pub in pubDates) {
+            val raw = pub.date
+            val candidate = YEAR_REGEX.find(raw)?.value?.toIntOrNull()
+                ?: if (raw.contains("Ancient", ignoreCase = true)) Int.MIN_VALUE else null
+            if (candidate != null) {
+                best = if (best == null || candidate < best!!) candidate else best
+            }
+        }
+        return best
     }
     
     /**

@@ -5,6 +5,7 @@ import androidx.compose.runtime.Stable
 import androidx.paging.PagingData
 import io.github.kdroidfilter.seforimlibrary.core.models.*
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorGroup
 import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
@@ -19,6 +20,7 @@ data class Providers(
     val linesPagingData: Flow<PagingData<Line>>,
     val buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     val getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
+    val getCommentatorGroupsForLine: suspend (Long) -> List<CommentatorGroup>,
     val buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     val getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
     val buildSourcesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,

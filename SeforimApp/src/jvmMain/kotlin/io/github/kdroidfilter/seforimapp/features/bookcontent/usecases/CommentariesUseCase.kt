@@ -163,6 +163,30 @@ class CommentariesUseCase(
             emptyMap()
         }
     }
+
+    /**
+     * Applique les commentateurs par défaut pour un livre donné, s'ils existent dans la base.
+     * Ne remplace pas une configuration déjà mémorisée pour ce livre.
+     */
+    suspend fun applyDefaultCommentatorsForBook(bookId: Long) {
+        val currentState = stateManager.state.first()
+        val existing = currentState.content.selectedCommentatorsByBook[bookId]
+        if (!existing.isNullOrEmpty()) return
+
+        val defaults = runCatching {
+            repository.getDefaultCommentatorIdsForBook(bookId)
+        }.getOrDefault(emptyList())
+
+        if (defaults.isEmpty()) return
+
+        val limited = defaults.take(MAX_COMMENTATORS).toSet()
+
+        stateManager.updateContent {
+            val byBook = selectedCommentatorsByBook.toMutableMap()
+            byBook[bookId] = limited
+            copy(selectedCommentatorsByBook = byBook)
+        }
+    }
     
     /**
      * Met à jour les commentateurs sélectionnés pour une ligne

@@ -507,6 +507,9 @@ class BookContentViewModel(
         viewModelScope.launch {
             stateManager.setLoading(true)
             try {
+                // Pré-appliquer les commentateurs par défaut pour ce livre (si définis en base)
+                runCatching { commentariesUseCase.applyDefaultCommentatorsForBook(book.id) }
+
                 val state = stateManager.state.value
                 // Always prefer an explicit anchor when present (e.g., opening from a commentary link)
                 val shouldUseAnchor = state.content.anchorId != -1L

@@ -213,7 +213,7 @@ fun EndVerticalBar(
                         toolTipText = sourcesTooltip,
                         onClick = { onEvent(BookContentEvent.ToggleSources) },
                         isSelected = uiState.content.showSources,
-                        icon = AlignBottom,
+                        icon = References,
                         iconDescription = stringResource(Res.string.show_sources),
                         label = stringResource(Res.string.show_sources),
                         enabled = !sourcesDisabledForLine,

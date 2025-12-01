@@ -2,14 +2,15 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcon
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.isCtrlPressed
@@ -137,7 +138,19 @@ fun LineTargumView(
                             }
                         }
 
-                        val outerScroll = rememberScrollState()
+                        val outerScroll = rememberSaveable(
+                            selectedLine.id,
+                            commentariesScrollIndex,
+                            saver = ScrollState.Saver
+                        ) {
+                            ScrollState(commentariesScrollOffset)
+                        }
+
+                        LaunchedEffect(outerScroll) {
+                            snapshotFlow { outerScroll.value }
+                                .distinctUntilChanged()
+                                .collect { offset -> onScroll(0, offset) }
+                        }
 
                         Column(
                             modifier = Modifier
@@ -145,7 +158,7 @@ fun LineTargumView(
                                 .verticalScroll(outerScroll),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            availableSources.forEachIndexed { index, source ->
+                            availableSources.forEach { source ->
                                 titleToIdMap[source]?.let { id ->
                                     key(id) {
                                         // Header: commentator name
@@ -161,10 +174,6 @@ fun LineTargumView(
                                             buildLinksPagerFor = buildLinksPagerFor,
                                             lineId = selectedLine.id,
                                             sourceBookId = id,
-                                            isPrimary = index == 0,
-                                            initialIndex = if (index == 0) commentariesScrollIndex else 0,
-                                            initialOffset = if (index == 0) commentariesScrollOffset else 0,
-                                            onScroll = onScroll,
                                             onLinkClick = onLinkClick,
                                             commentTextSize = commentTextSize,
                                             lineHeight = lineHeight,
@@ -259,10 +268,6 @@ private fun PagedLinksList(
     buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     lineId: Long,
     sourceBookId: Long,
-    isPrimary: Boolean,
-    initialIndex: Int,
-    initialOffset: Int,
-    onScroll: (Int, Int) -> Unit,
     onLinkClick: (CommentaryWithText) -> Unit,
     commentTextSize: Float,
     lineHeight: Float,
@@ -276,24 +281,10 @@ private fun PagedLinksList(
 
     val lazyPagingItems: LazyPagingItems<CommentaryWithText> = pagerFlow.collectAsLazyPagingItems()
 
-    val scrollState = rememberScrollState(initial = if (isPrimary) initialOffset else 0)
-
-    if (isPrimary) {
-        LaunchedEffect(scrollState) {
-            snapshotFlow { scrollState.value }
-                .distinctUntilChanged() // Évite appels répétés avec même valeur
-                .collect { o ->
-                    onScroll(0, o)
-                }
-        }
-    }
-
     SelectionContainer {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 0.dp, max = 480.dp)
-                .verticalScroll(scrollState)
         ) {
             for (index in 0 until lazyPagingItems.itemCount) {
                 lazyPagingItems[index]?.let { item ->

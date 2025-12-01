@@ -14,12 +14,9 @@ import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.ListComboBox
 import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.alt_table_of_contents
 import seforimapp.seforimapp.generated.resources.no_alt_toc_available
 import seforimapp.seforimapp.generated.resources.select_book_for_toc
-import seforimapp.seforimapp.generated.resources.select_structure_for_toc
 import seforimapp.seforimapp.generated.resources.table_of_contents
 
 @Composable
@@ -50,7 +47,7 @@ fun BookTocPanel(
                     }
                 }
                 else -> {
-                    val hasAlt = uiState.navigation.selectedBook?.hasAltStructures == true
+                    val hasAlt = uiState.navigation.selectedBook.hasAltStructures
                     Column(modifier = Modifier.fillMaxHeight()) {
                         BookTocView(
                             uiState = uiState,
@@ -184,27 +181,55 @@ private fun AltBookTocSection(
             Text(stringResource(Res.string.no_alt_toc_available))
             return
         }
-        val rootEntries = altState.entries
-            .map { it.toTocEntry(bookId) }
-
-        val childrenMap = altState.children.mapValues { (_, children) -> children.map { it.toTocEntry(bookId) } }
-        val altEntryById = remember(altState.entries, altState.children) {
-            (altState.entries + altState.children.values.flatten()).associateBy { it.id }
+        val rootEntries = remember(altState.entries, bookId) {
+            altState.entries.map { it.toTocEntry(bookId) }
         }
-        var displayEntries by remember(rootEntries, childrenMap) { mutableStateOf(rootEntries) }
-   
+        val cachedChildren = remember(bookId) { mutableMapOf<Long, List<TocEntry>>() }
+        val altTocUi = remember(altState.children, altState.entries, altState.entriesById, bookId, rootEntries) {
+            val mappedChildren = mutableMapOf<Long, List<TocEntry>>()
+
+            altState.children.forEach { (parentId, children) ->
+                val cached = cachedChildren[parentId]
+                val needsRefresh = if (cached == null) {
+                    true
+                } else if (cached.size != children.size) {
+                    true
+                } else {
+                    cached.zip(children).any { (toc, alt) -> toc.id != alt.id || toc.parentId != alt.parentId }
+                }
+
+                val convertedChildren = if (needsRefresh) {
+                    children.map { it.toTocEntry(bookId) }.also { cachedChildren[parentId] = it }
+                } else {
+                    cached
+                }
+
+                if (convertedChildren != null) {
+                    mappedChildren[parentId] = convertedChildren
+                }
+            }
+
+            val removedParents = cachedChildren.keys - altState.children.keys
+            removedParents.forEach { cachedChildren.remove(it) }
+
+            AltTocUi(
+                rootEntries = rootEntries,
+                childrenMap = mappedChildren,
+                altEntryById = altState.entriesById
+            )
+        }
 
         BookTocView(
-            tocEntries = displayEntries,
+            tocEntries = altTocUi.rootEntries,
             expandedEntries = altState.expandedEntries,
-            tocChildren = childrenMap,
+            tocChildren = altTocUi.childrenMap,
             scrollIndex = altState.scrollIndex,
             scrollOffset = altState.scrollOffset,
             onEntryClick = { entry ->
-                altEntryById[entry.id]?.let { onEvent(BookContentEvent.AltTocEntrySelected(it)) }
+                altTocUi.altEntryById[entry.id]?.let { onEvent(BookContentEvent.AltTocEntrySelected(it)) }
             },
             onEntryExpand = { entry ->
-                altEntryById[entry.id]?.let { onEvent(BookContentEvent.AltTocEntryExpanded(it)) }
+                altTocUi.altEntryById[entry.id]?.let { onEvent(BookContentEvent.AltTocEntryExpanded(it)) }
             },
             onScroll = { index, offset -> onEvent(BookContentEvent.AltTocScrolled(index, offset)) },
             selectedTocEntryId = altState.selectedEntryId,
@@ -212,6 +237,12 @@ private fun AltBookTocSection(
         )
     }
 }
+
+private data class AltTocUi(
+    val rootEntries: List<TocEntry>,
+    val childrenMap: Map<Long, List<TocEntry>>,
+    val altEntryById: Map<Long, AltTocEntry>
+)
 
 private fun AltTocEntry.toTocEntry(bookId: Long): TocEntry =
     TocEntry(

@@ -5,12 +5,9 @@ import androidx.compose.runtime.Stable
 import androidx.paging.PagingData
 import io.github.kdroidfilter.seforimlibrary.core.models.*
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorGroup
 import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 
 /**
  * Auxiliary models that are not part of the persistent state
@@ -49,7 +46,8 @@ data class AltTocState(
     val selectedEntryId: Long? = null,
     val scrollIndex: Int = 0,
     val scrollOffset: Int = 0,
-    val lineHeadingsByLineId: Map<Long, List<AltTocEntry>> = emptyMap()
+    val lineHeadingsByLineId: Map<Long, List<AltTocEntry>> = emptyMap(),
+    val entriesById: Map<Long, AltTocEntry> = emptyMap()
 )
 /**
  * Unified state for BookContent (UI + Business)

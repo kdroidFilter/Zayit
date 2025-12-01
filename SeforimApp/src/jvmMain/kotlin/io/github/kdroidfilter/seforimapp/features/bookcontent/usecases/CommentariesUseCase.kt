@@ -17,6 +17,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.PubDate
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -113,63 +114,8 @@ class CommentariesUseCase(
             val entries = loadCommentatorEntries(lineId)
             if (entries.isEmpty()) return emptyList()
 
-            // 1) Regrouper par label de catégorie (fusionne les catégories qui ont le même titre),
-            //    où le label est, si possible, l'ancêtre de type "ראשונים/אחרונים על התנ״ך"
-            val groupsByLabel = LinkedHashMap<String, MutableList<CommentatorEntry>>()
             val categoryCache = mutableMapOf<Long, Category?>()
-
-            entries.forEach { entry ->
-                val label = resolveGroupLabel(entry.book, categoryCache)
-                val list = groupsByLabel.getOrPut(label) { mutableListOf() }
-                list.add(entry)
-            }
-
-            // 2) Pour chaque groupe, trier les commentateurs par pubDate puis nom,
-            //    et calculer l'année la plus ancienne du groupe pour trier les groupes
-            data class TempGroup(
-                val label: String,
-                val entries: List<CommentatorEntry>,
-                val earliestYear: Int
-            )
-
-            val tempGroups = groupsByLabel.map { (label, groupEntries) ->
-                val sortedEntries = groupEntries.sortedWith(
-                    compareBy<CommentatorEntry>(
-                        { entry -> entry.book?.pubDates?.let { extractEarliestYear(it) } ?: Int.MAX_VALUE },
-                        { entry -> entry.displayName }
-                    )
-                )
-                val groupEarliestYear = sortedEntries.firstOrNull()
-                    ?.book
-                    ?.pubDates
-                    ?.let { extractEarliestYear(it) }
-                    ?: Int.MAX_VALUE
-
-                TempGroup(
-                    label = label,
-                    entries = sortedEntries,
-                    earliestYear = groupEarliestYear
-                )
-            }
-
-            // 3) Trier les groupes par pubDate de leur premier livre, puis par label
-            tempGroups
-                .sortedWith(
-                    compareBy<TempGroup> { it.earliestYear }
-                        .thenBy { it.label }
-                )
-                .map { group ->
-                    CommentatorGroup(
-                        label = group.label,
-                        commentators = group.entries.map { entry ->
-                            CommentatorItem(
-                                name = entry.displayName,
-                                bookId = entry.bookId
-                            )
-                        }
-                    )
-                }
-                .filter { it.commentators.isNotEmpty() }
+            groupCommentatorEntries(entries, categoryCache)
         } catch (e: Exception) {
             emptyList()
         }
@@ -250,19 +196,11 @@ class CommentariesUseCase(
         val book: Book?
     )
 
-    private suspend fun loadCommentatorEntries(lineId: Long): List<CommentatorEntry> {
-        val headingToc = repository.getHeadingTocEntryByLineId(lineId)
-        val baseIds = if (headingToc != null) {
-            repository.getLineIdsForTocEntry(headingToc.id).filter { it != lineId }
-        } else listOf(lineId)
-
-        val commentaries = repository.getCommentariesForLines(baseIds)
-            .filter { it.link.connectionType == ConnectionType.COMMENTARY }
-
-        if (commentaries.isEmpty()) return emptyList()
-
-        val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
-
+    private suspend fun buildCommentatorEntries(
+        commentaries: List<CommentaryWithText>,
+        currentBookTitle: String,
+        bookCache: MutableMap<Long, Book?>
+    ): List<CommentatorEntry> {
         val displayNameByBookId = LinkedHashMap<Long, String>()
 
         commentaries.forEach { commentary ->
@@ -275,7 +213,7 @@ class CommentariesUseCase(
         }
 
         val booksById: Map<Long, Book?> = displayNameByBookId.keys.associateWith { id ->
-            runCatching { repository.getBook(id) }.getOrNull()
+            bookCache.getOrPut(id) { runCatching { repository.getBook(id) }.getOrNull() }
         }
 
         return displayNameByBookId.map { (bookId, displayName) ->
@@ -287,6 +225,122 @@ class CommentariesUseCase(
         }
     }
 
+    private suspend fun groupCommentatorEntries(
+        entries: List<CommentatorEntry>,
+        categoryCache: MutableMap<Long, Category?>
+    ): List<CommentatorGroup> {
+        if (entries.isEmpty()) return emptyList()
+
+        val groupsByLabel = LinkedHashMap<String, MutableList<CommentatorEntry>>()
+        entries.forEach { entry ->
+            val label = resolveGroupLabel(entry.book, categoryCache)
+            val list = groupsByLabel.getOrPut(label) { mutableListOf() }
+            list.add(entry)
+        }
+
+        data class TempGroup(
+            val label: String,
+            val entries: List<CommentatorEntry>,
+            val earliestYear: Int
+        )
+
+        val tempGroups = groupsByLabel.map { (label, groupEntries) ->
+            val sortedEntries = groupEntries.sortedWith(
+                compareBy<CommentatorEntry>(
+                    { entry -> entry.book?.pubDates?.let { extractEarliestYear(it) } ?: Int.MAX_VALUE },
+                    { entry -> entry.displayName }
+                )
+            )
+            val groupEarliestYear = sortedEntries.firstOrNull()
+                ?.book
+                ?.pubDates
+                ?.let { extractEarliestYear(it) }
+                ?: Int.MAX_VALUE
+
+            TempGroup(
+                label = label,
+                entries = sortedEntries,
+                earliestYear = groupEarliestYear
+            )
+        }
+
+        return tempGroups
+            .sortedWith(
+                compareBy<TempGroup> { it.earliestYear }
+                    .thenBy { it.label }
+            )
+            .map { group ->
+                CommentatorGroup(
+                    label = group.label,
+                    commentators = group.entries.map { entry ->
+                        CommentatorItem(
+                            name = entry.displayName,
+                            bookId = entry.bookId
+                        )
+                    }
+                )
+            }
+            .filter { it.commentators.isNotEmpty() }
+    }
+
+    private fun buildSourceMap(
+        links: List<CommentaryWithText>,
+        currentBookTitle: String
+    ): Map<String, Long> {
+        if (links.isEmpty()) return emptyMap()
+
+        val map = LinkedHashMap<String, Long>()
+        links.forEach { link ->
+            val display = sanitizeCommentatorName(link.targetBookTitle, currentBookTitle)
+            if (!map.containsKey(display)) {
+                map[display] = link.link.targetBookId
+            }
+        }
+        return map
+    }
+
+    private suspend fun buildLineConnectionsSnapshot(
+        connections: List<CommentaryWithText>,
+        currentBookTitle: String,
+        bookCache: MutableMap<Long, Book?>,
+        categoryCache: MutableMap<Long, Category?>
+    ): LineConnectionsSnapshot {
+        if (connections.isEmpty()) return LineConnectionsSnapshot()
+
+        val commentaries = connections.filter { it.link.connectionType == ConnectionType.COMMENTARY }
+        val targumLinks = connections.filter { it.link.connectionType == ConnectionType.TARGUM }
+        val sourceLinks = connections.filter { it.link.connectionType == ConnectionType.SOURCE }
+
+        val commentatorGroups = if (commentaries.isNotEmpty()) {
+            val entries = buildCommentatorEntries(commentaries, currentBookTitle, bookCache)
+            groupCommentatorEntries(entries, categoryCache)
+        } else {
+            emptyList()
+        }
+
+        return LineConnectionsSnapshot(
+            commentatorGroups = commentatorGroups,
+            targumSources = buildSourceMap(targumLinks, currentBookTitle),
+            sources = buildSourceMap(sourceLinks, currentBookTitle)
+        )
+    }
+
+    private suspend fun loadCommentatorEntries(lineId: Long): List<CommentatorEntry> {
+        val headingToc = repository.getHeadingTocEntryByLineId(lineId)
+        val baseIds = if (headingToc != null) {
+            repository.getLineIdsForTocEntry(headingToc.id).filter { it != lineId }
+        } else listOf(lineId)
+
+        val commentaries = repository.getCommentariesForLines(baseIds)
+            .filter { it.link.connectionType == ConnectionType.COMMENTARY }
+
+        if (commentaries.isEmpty()) return emptyList()
+
+        val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
+        val bookCache = mutableMapOf<Long, Book?>()
+        return buildCommentatorEntries(commentaries, currentBookTitle, bookCache)
+    }
+
     private fun extractEarliestYear(pubDates: List<PubDate>): Int? {
         var best: Int? = null
         for (pub in pubDates) {
@@ -294,7 +348,7 @@ class CommentariesUseCase(
             val candidate = YEAR_REGEX.find(raw)?.value?.toIntOrNull()
                 ?: if (raw.contains("Ancient", ignoreCase = true)) Int.MIN_VALUE else null
             if (candidate != null) {
-                best = if (best == null || candidate < best!!) candidate else best
+                best = if (best == null || candidate < best) candidate else best
             }
         }
         return best
@@ -311,15 +365,7 @@ class CommentariesUseCase(
 
             val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
 
-            val map = LinkedHashMap<String, Long>()
-            links.forEach { link ->
-                val raw = link.targetBookTitle
-                val display = sanitizeCommentatorName(raw, currentBookTitle)
-                if (!map.containsKey(display)) {
-                    map[display] = link.link.targetBookId
-                }
-            }
-            map
+            buildSourceMap(links, currentBookTitle)
         } catch (e: Exception) {
             emptyMap()
         }
@@ -333,17 +379,37 @@ class CommentariesUseCase(
 
             val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
 
-            val map = LinkedHashMap<String, Long>()
-            links.forEach { link ->
-                val raw = link.targetBookTitle
-                val display = sanitizeCommentatorName(raw, currentBookTitle)
-                if (!map.containsKey(display)) {
-                    map[display] = link.link.targetBookId
-                }
-            }
-            map
+            buildSourceMap(links, currentBookTitle)
         } catch (e: Exception) {
             emptyMap()
+        }
+    }
+
+    suspend fun loadLineConnections(lineIds: List<Long>): Map<Long, LineConnectionsSnapshot> {
+        if (lineIds.isEmpty()) return emptyMap()
+
+        val distinctIds = lineIds.distinct()
+        val baseIdsCache = LinkedHashMap<Long, List<Long>>()
+        val tocLinesCache = mutableMapOf<Long, List<Long>>()
+
+        distinctIds.forEach { id ->
+            baseIdsCache[id] = resolveBaseLineIds(id, tocLinesCache)
+        }
+
+        val allBaseIds = baseIdsCache.values.flatten().distinct()
+        if (allBaseIds.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
+
+        val allConnections = repository.getCommentariesForLines(allBaseIds)
+        if (allConnections.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
+
+        val connectionsBySource = allConnections.groupBy { it.link.sourceLineId }
+        val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
+        val bookCache = mutableMapOf<Long, Book?>()
+        val categoryCache = mutableMapOf<Long, Category?>()
+
+        return baseIdsCache.mapValues { (_, baseIds) ->
+            val aggregated = baseIds.flatMap { baseId -> connectionsBySource[baseId].orEmpty() }
+            buildLineConnectionsSnapshot(aggregated, currentBookTitle, bookCache, categoryCache)
         }
     }
 
@@ -404,10 +470,18 @@ class CommentariesUseCase(
         }
     }
 
-    private suspend fun resolveBaseLineIds(lineId: Long): List<Long> {
+    private suspend fun resolveBaseLineIds(lineId: Long): List<Long> =
+        resolveBaseLineIds(lineId, mutableMapOf())
+
+    private suspend fun resolveBaseLineIds(
+        lineId: Long,
+        tocLinesCache: MutableMap<Long, List<Long>>
+    ): List<Long> {
         val headingToc = repository.getHeadingTocEntryByLineId(lineId)
         return if (headingToc != null) {
-            repository.getLineIdsForTocEntry(headingToc.id).filter { it != lineId }
+            tocLinesCache.getOrPut(headingToc.id) {
+                repository.getLineIdsForTocEntry(headingToc.id)
+            }.filter { it != lineId }
         } else {
             listOf(lineId)
         }

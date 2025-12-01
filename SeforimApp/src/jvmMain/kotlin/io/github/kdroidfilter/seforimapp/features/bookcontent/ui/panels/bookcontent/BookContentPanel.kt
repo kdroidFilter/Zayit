@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -13,11 +15,14 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.Horizontal
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedVerticalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.*
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
+import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
@@ -77,6 +82,22 @@ fun BookContentPanel(
         return
     }
 
+    val connectionsCache = remember(uiState.navigation.selectedBook?.id) {
+        mutableStateMapOf<Long, LineConnectionsSnapshot>()
+    }
+    val prefetchScope = rememberCoroutineScope()
+    val prefetchConnections = remember(providers, connectionsCache) {
+        { ids: List<Long> ->
+            if (ids.isEmpty()) return@remember
+            val missing = ids.filterNot { connectionsCache.containsKey(it) }.distinct()
+            if (missing.isEmpty()) return@remember
+            prefetchScope.launch {
+                runCatching { providers.loadLineConnections(missing) }
+                    .onSuccess { connectionsCache.putAll(it) }
+            }
+        }
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
 
         EnhancedVerticalSplitPane(
@@ -113,13 +134,16 @@ fun BookContentPanel(
                                     )
                                 )
                             },
-                            altHeadingsByLineId = uiState.altToc.lineHeadingsByLineId
+                            altHeadingsByLineId = uiState.altToc.lineHeadingsByLineId,
+                            lineConnections = connectionsCache,
+                            onPrefetchLineConnections = prefetchConnections
                         )
                 }, secondContent = if (uiState.content.showTargum) {
                     {
                         TargumPane(
                             uiState = uiState,
-                            onEvent = onEvent
+                            onEvent = onEvent,
+                            lineConnections = connectionsCache
                         )
                     }
                 } else null)
@@ -129,7 +153,8 @@ fun BookContentPanel(
                     {
                         CommentsPane(
                             uiState = uiState,
-                            onEvent = onEvent
+                            onEvent = onEvent,
+                            lineConnections = connectionsCache
                         )
                     }
                 }
@@ -138,7 +163,8 @@ fun BookContentPanel(
                     {
                         SourcesPane(
                             uiState = uiState,
-                            onEvent = onEvent
+                            onEvent = onEvent,
+                            lineConnections = connectionsCache
                         )
                     }
                 }
@@ -168,18 +194,21 @@ private fun LoaderPanel(modifier: Modifier = Modifier) {
 @Composable
 private fun CommentsPane(
     uiState: BookContentState,
-    onEvent: (BookContentEvent) -> Unit
+    onEvent: (BookContentEvent) -> Unit,
+    lineConnections: Map<Long, LineConnectionsSnapshot>
 ) {
     LineCommentsView(
         uiState = uiState,
-        onEvent = onEvent
+        onEvent = onEvent,
+        lineConnections = lineConnections
     )
 }
 
 @Composable
 private fun SourcesPane(
     uiState: BookContentState,
-    onEvent: (BookContentEvent) -> Unit
+    onEvent: (BookContentEvent) -> Unit,
+    lineConnections: Map<Long, LineConnectionsSnapshot>
 ) {
     val providers = uiState.providers ?: return
     LineTargumView(
@@ -189,6 +218,8 @@ private fun SourcesPane(
         commentariesScrollIndex = uiState.content.commentariesScrollIndex,
         commentariesScrollOffset = uiState.content.commentariesScrollOffset,
         initiallySelectedSourceIds = uiState.content.selectedSourceIds,
+        lineConnections = lineConnections,
+        availabilityType = ConnectionType.SOURCE,
         onSelectedSourcesChange = { ids ->
             uiState.content.selectedLine?.let { line ->
                 onEvent(BookContentEvent.SelectedSourcesChanged(line.id, ids))
@@ -212,11 +243,13 @@ private fun SourcesPane(
 @Composable
 private fun TargumPane(
     uiState: BookContentState,
-    onEvent: (BookContentEvent) -> Unit
+    onEvent: (BookContentEvent) -> Unit,
+    lineConnections: Map<Long, LineConnectionsSnapshot>
 ) {
     LineTargumView(
         uiState = uiState,
-        onEvent = onEvent
+        onEvent = onEvent,
+        lineConnections = lineConnections
     )
 }
 

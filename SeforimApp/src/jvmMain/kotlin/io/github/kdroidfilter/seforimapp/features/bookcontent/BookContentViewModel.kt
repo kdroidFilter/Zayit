@@ -88,6 +88,7 @@ class BookContentViewModel(
                     buildCommentariesPagerFor = commentariesUseCase::buildCommentariesPager,
                     getAvailableCommentatorsForLine = commentariesUseCase::getAvailableCommentators,
                     getCommentatorGroupsForLine = commentariesUseCase::getCommentatorGroups,
+                    loadLineConnections = commentariesUseCase::loadLineConnections,
                     buildLinksPagerFor = commentariesUseCase::buildLinksPager,
                     getAvailableLinksForLine = commentariesUseCase::getAvailableLinks,
                     buildSourcesPagerFor = commentariesUseCase::buildSourcesPager,
@@ -129,16 +130,17 @@ class BookContentViewModel(
                     else -> s.content.selectedSourcesByBook[bookId].orEmpty()
                 }
                 s.copy(
-                    providers = Providers(
-                        linesPagingData = linesPagingData,
-                        buildCommentariesPagerFor = commentariesUseCase::buildCommentariesPager,
-                        getAvailableCommentatorsForLine = commentariesUseCase::getAvailableCommentators,
-                        getCommentatorGroupsForLine = commentariesUseCase::getCommentatorGroups,
-                        buildLinksPagerFor = commentariesUseCase::buildLinksPager,
-                        getAvailableLinksForLine = commentariesUseCase::getAvailableLinks,
-                        buildSourcesPagerFor = commentariesUseCase::buildSourcesPager,
-                        getAvailableSourcesForLine = commentariesUseCase::getAvailableSources
-                    ),
+                providers = Providers(
+                    linesPagingData = linesPagingData,
+                    buildCommentariesPagerFor = commentariesUseCase::buildCommentariesPager,
+                    getAvailableCommentatorsForLine = commentariesUseCase::getAvailableCommentators,
+                    getCommentatorGroupsForLine = commentariesUseCase::getCommentatorGroups,
+                    loadLineConnections = commentariesUseCase::loadLineConnections,
+                    buildLinksPagerFor = commentariesUseCase::buildLinksPager,
+                    getAvailableLinksForLine = commentariesUseCase::getAvailableLinks,
+                    buildSourcesPagerFor = commentariesUseCase::buildSourcesPager,
+                    getAvailableSourcesForLine = commentariesUseCase::getAvailableSources
+                ),
                     content = s.content.copy(
                         selectedCommentatorIds = selectedCommentators,
                         selectedTargumSourceIds = selectedLinks,

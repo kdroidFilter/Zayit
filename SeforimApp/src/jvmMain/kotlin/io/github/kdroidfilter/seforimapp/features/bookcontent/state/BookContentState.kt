@@ -46,7 +46,8 @@ data class AltTocState(
     val children: Map<Long, List<AltTocEntry>> = emptyMap(),
     val selectedEntryId: Long? = null,
     val scrollIndex: Int = 0,
-    val scrollOffset: Int = 0
+    val scrollOffset: Int = 0,
+    val lineHeadingsByLineId: Map<Long, List<AltTocEntry>> = emptyMap()
 )
 /**
  * Unified state for BookContent (UI + Business)

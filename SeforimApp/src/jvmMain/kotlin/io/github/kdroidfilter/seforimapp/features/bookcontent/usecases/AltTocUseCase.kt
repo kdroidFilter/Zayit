@@ -63,6 +63,11 @@ class AltTocUseCase(
 
     suspend fun loadRoot(structureId: Long) {
         val root = repository.getAltRootToc(structureId)
+        val allEntries = repository.getAltTocEntriesForStructure(structureId)
+        val lineHeadings = allEntries
+            .filter { it.lineId != null }
+            .groupBy { it.lineId!! }
+
         stateManager.updateAltToc {
             copy(
                 selectedStructureId = structureId,
@@ -73,7 +78,8 @@ class AltTocUseCase(
                 },
                 selectedEntryId = null,
                 scrollIndex = 0,
-                scrollOffset = 0
+                scrollOffset = 0,
+                lineHeadingsByLineId = lineHeadings
             )
         }
 

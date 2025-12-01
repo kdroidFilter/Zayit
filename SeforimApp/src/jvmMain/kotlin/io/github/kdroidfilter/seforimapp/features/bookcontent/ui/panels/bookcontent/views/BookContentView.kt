@@ -49,6 +49,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -76,7 +77,8 @@ fun BookContentView(
     anchorIndex: Int = 0,
     topAnchorLineId: Long = -1L,
     topAnchorTimestamp: Long = 0L,
-    onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> }
+    onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> },
+    altHeadingsByLineId: Map<Long, List<AltTocEntry>> = emptyMap()
 ) {
     // Collect paging data
     val lazyPagingItems: LazyPagingItems<Line> = linesPagingData.collectAsLazyPagingItems()
@@ -391,18 +393,27 @@ fun BookContentView(
                     val line = lazyPagingItems[index]
 
                     if (line != null) {
-                        LineItem(
-                            line = line,
-                            isSelected = selectedLineId == line.id,
-                            baseTextSize = textSize,
-                            lineHeight = lineHeight,
-                            fontFamily = hebrewFontFamily,
-                            boldScale = boldScaleForPlatform,
-                            onLineSelected = onLineSelected,
-                            scrollToLineTimestamp = scrollToLineTimestamp,
-                            highlightQuery = findState.text.toString().takeIf { showFind },
-                            currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null
-                        )
+                        val altHeadings = altHeadingsByLineId[line.id].orEmpty()
+                        Column {
+                            altHeadings.forEach { entry ->
+                                AltHeadingItem(
+                                    entry = entry,
+                                    onClick = { onLineSelected(line) }
+                                )
+                            }
+                            LineItem(
+                                line = line,
+                                isSelected = selectedLineId == line.id,
+                                baseTextSize = textSize,
+                                lineHeight = lineHeight,
+                                fontFamily = hebrewFontFamily,
+                                boldScale = boldScaleForPlatform,
+                                onLineSelected = onLineSelected,
+                                scrollToLineTimestamp = scrollToLineTimestamp,
+                                highlightQuery = findState.text.toString().takeIf { showFind },
+                                currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null
+                            )
+                        }
                     } else {
                         // Placeholder while loading
                         LoadingPlaceholder()
@@ -508,6 +519,47 @@ private data class AnchorData(
     val scrollIndex: Int,
     val scrollOffset: Int
 )
+
+@Composable
+private fun AltHeadingItem(
+    entry: AltTocEntry,
+    onClick: () -> Unit
+) {
+    val fontSize = when (entry.level) {
+        0 -> 20.sp
+        1 -> 18.sp
+        else -> 16.sp
+    }
+    val paddingTop = if (entry.level == 0) 12.dp else 8.dp
+    val paddingBottom = 4.dp
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 8.dp, end = 8.dp, top = paddingTop, bottom = paddingBottom)
+            .pointerInput(entry.id) {
+                detectTapGestures(onTap = { onClick() })
+            }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = entry.text,
+                fontSize = fontSize,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

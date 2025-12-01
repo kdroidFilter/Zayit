@@ -35,7 +35,7 @@ fun BookContentPanel(
     modifier: Modifier = Modifier,
     isRestoringSession: Boolean = false,
     searchUi: SearchHomeUiState = SearchHomeUiState(),
-    searchCallbacks: HomeSearchCallbacks = HomeSearchCallbacks(
+        searchCallbacks: HomeSearchCallbacks = HomeSearchCallbacks(
         onReferenceQueryChanged = {},
         onTocQueryChanged = {},
         onFilterChange = {},
@@ -112,7 +112,8 @@ fun BookContentPanel(
                                         scrollOffset = scrollOffset
                                     )
                                 )
-                            }
+                            },
+                            altHeadingsByLineId = uiState.altToc.lineHeadingsByLineId
                         )
                 }, secondContent = if (uiState.content.showTargum) {
                     {

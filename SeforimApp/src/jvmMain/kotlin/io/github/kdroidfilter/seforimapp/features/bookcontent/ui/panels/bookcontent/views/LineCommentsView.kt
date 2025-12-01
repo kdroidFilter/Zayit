@@ -41,6 +41,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorGroup
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorItem
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
 import kotlinx.coroutines.FlowPreview
@@ -65,6 +66,7 @@ private const val SCROLL_DEBOUNCE_MS = 100L
 fun LineCommentsView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
+    lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap()
 ) {
     val contentState = uiState.content
     val selectedLine = contentState.selectedLine
@@ -101,7 +103,8 @@ fun LineCommentsView(
                     textSizes = textSizes,
                     onShowMaxLimit = { onEvent(BookContentEvent.CommentatorsSelectionLimitExceeded) },
                     findQueryText = activeQuery,
-                    isCommentatorsListVisible = showCommentatorsList
+                    isCommentatorsListVisible = showCommentatorsList,
+                    prefetchedGroups = selectedLine.let { lineConnections[it.id]?.commentatorGroups }
                 )
             }
         }
@@ -117,14 +120,16 @@ private fun CommentariesContent(
     textSizes: AnimatedTextSizes,
     onShowMaxLimit: () -> Unit,
     findQueryText: String,
-    isCommentatorsListVisible: Boolean
+    isCommentatorsListVisible: Boolean,
+    prefetchedGroups: List<CommentatorGroup>?
 ) {
     val providers = uiState.providers ?: return
     val contentState = uiState.content
 
     val commentatorSelection = rememberCommentarySelectionData(
         lineId = selectedLine.id,
-        getCommentatorGroupsForLine = providers.getCommentatorGroupsForLine
+        getCommentatorGroupsForLine = providers.getCommentatorGroupsForLine,
+        prefetchedGroups = prefetchedGroups
     )
 
     val titleToIdMap = commentatorSelection.titleToIdMap
@@ -645,20 +650,22 @@ private data class CommentatorSelectionData(
 @Composable
 private fun rememberCommentarySelectionData(
     lineId: Long,
-    getCommentatorGroupsForLine: suspend (Long) -> List<CommentatorGroup>
+    getCommentatorGroupsForLine: suspend (Long) -> List<CommentatorGroup>,
+    prefetchedGroups: List<CommentatorGroup>? = null
 ): CommentatorSelectionData {
-    var groups by remember(lineId) {
-        mutableStateOf<List<CommentatorGroup>>(emptyList())
+    var groups by remember(lineId, prefetchedGroups) {
+        mutableStateOf(prefetchedGroups ?: emptyList())
     }
 
-    LaunchedEffect(lineId) {
-        runCatching {
-            getCommentatorGroupsForLine(lineId)
-        }.onSuccess { loaded ->
-            groups = loaded
-        }.onFailure {
-            groups = emptyList()
+    LaunchedEffect(lineId, prefetchedGroups) {
+        if (prefetchedGroups != null) {
+            groups = prefetchedGroups
+            return@LaunchedEffect
         }
+
+        runCatching { getCommentatorGroupsForLine(lineId) }
+            .onSuccess { loaded -> groups = loaded }
+            .onFailure { groups = emptyList() }
     }
 
     val titleToIdMap = remember(groups) {

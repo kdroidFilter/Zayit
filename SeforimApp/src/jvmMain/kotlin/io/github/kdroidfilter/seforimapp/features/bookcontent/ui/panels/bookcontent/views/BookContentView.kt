@@ -50,6 +50,7 @@ import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -78,7 +79,9 @@ fun BookContentView(
     topAnchorLineId: Long = -1L,
     topAnchorTimestamp: Long = 0L,
     onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> },
-    altHeadingsByLineId: Map<Long, List<AltTocEntry>> = emptyMap()
+    altHeadingsByLineId: Map<Long, List<AltTocEntry>> = emptyMap(),
+    lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
+    onPrefetchLineConnections: (List<Long>) -> Unit = {}
 ) {
     // Collect paging data
     val lazyPagingItems: LazyPagingItems<Line> = linesPagingData.collectAsLazyPagingItems()
@@ -128,6 +131,32 @@ fun BookContentView(
 
     // Optimize selected line ID lookup
     val selectedLineId = remember(selectedLine) { selectedLine?.id }
+
+    // Prefetch connection data for visible lines to avoid per-line DB calls
+    LaunchedEffect(listState, lazyPagingItems, onPrefetchLineConnections) {
+        snapshotFlow {
+            if (lazyPagingItems.itemCount == 0) emptyList() else {
+                listState.layoutInfo.visibleItemsInfo.mapNotNull { info ->
+                    if (info.index < lazyPagingItems.itemCount) {
+                        lazyPagingItems.peek(info.index)?.id
+                    } else null
+                }.distinct()
+            }
+        }
+            .map { ids -> ids.distinct() }
+            .filter { it.isNotEmpty() }
+            .distinctUntilChanged()
+            .debounce(150)
+            .collect { ids -> onPrefetchLineConnections(ids) }
+    }
+
+    // Ensure the selected line is prefetched even if it is not visible yet
+    LaunchedEffect(selectedLineId, lineConnections) {
+        val id = selectedLineId ?: return@LaunchedEffect
+        if (lineConnections[id] == null) {
+            onPrefetchLineConnections(listOf(id))
+        }
+    }
 
     // Ensure the selected line is visible when explicitly requested (keyboard/nav)
     // without forcing it to the very top of the viewport.

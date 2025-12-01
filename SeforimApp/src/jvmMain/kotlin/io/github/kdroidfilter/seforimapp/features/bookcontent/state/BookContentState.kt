@@ -18,6 +18,7 @@ data class Providers(
     val buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     val getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
     val getCommentatorGroupsForLine: suspend (Long) -> List<CommentatorGroup>,
+    val loadLineConnections: suspend (List<Long>) -> Map<Long, LineConnectionsSnapshot>,
     val buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     val getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
     val buildSourcesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,

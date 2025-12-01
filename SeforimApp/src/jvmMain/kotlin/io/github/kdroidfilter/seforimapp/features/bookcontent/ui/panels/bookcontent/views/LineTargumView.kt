@@ -33,8 +33,10 @@ import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalo
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -62,6 +64,8 @@ fun LineTargumView(
     onScroll: (Int, Int) -> Unit = { _, _ -> },
     onHide: () -> Unit = {},
     highlightQuery: String = "",
+    lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
+    availabilityType: ConnectionType = ConnectionType.TARGUM,
     fontCodeFlow: StateFlow<String> = AppSettings.targumFontCodeFlow,
     titleRes: StringResource = Res.string.links,
     selectLineRes: StringResource = Res.string.select_line_for_links,
@@ -112,9 +116,31 @@ fun LineTargumView(
                 }
 
                 else -> {
-                    var titleToIdMap by remember(selectedLine.id) { mutableStateOf<Map<String, Long>>(emptyMap()) }
+                    val cachedSources = remember(selectedLine.id, lineConnections, availabilityType) {
+                        lineConnections[selectedLine.id]?.let { snapshot ->
+                            when (availabilityType) {
+                                ConnectionType.SOURCE -> snapshot.sources
+                                else -> snapshot.targumSources
+                            }
+                        }
+                    }
 
-                    LaunchedEffect(selectedLine.id) {
+                    var titleToIdMap by remember(selectedLine.id, cachedSources) {
+                        mutableStateOf<Map<String, Long>>(cachedSources ?: emptyMap())
+                    }
+
+                    LaunchedEffect(selectedLine.id, lineConnections) {
+                        val cached = lineConnections[selectedLine.id]?.let { snapshot ->
+                            when (availabilityType) {
+                                ConnectionType.SOURCE -> snapshot.sources
+                                else -> snapshot.targumSources
+                            }
+                        }
+                        if (cached != null) {
+                            titleToIdMap = cached
+                            return@LaunchedEffect
+                        }
+
                         runCatching { getAvailableLinksForLine(selectedLine.id) }
                             .onSuccess { map -> titleToIdMap = map }
                             .onFailure { titleToIdMap = emptyMap() }
@@ -199,6 +225,8 @@ fun LineTargumView(
 fun LineTargumView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
+    lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
+    availabilityType: ConnectionType = ConnectionType.TARGUM
 ) {
     val providers = uiState.providers ?: return
     val contentState = uiState.content
@@ -251,7 +279,9 @@ fun LineTargumView(
         onLinkClick = onLinkClick,
         onScroll = onScroll,
         onHide = onHide,
-        highlightQuery = activeQuery
+        highlightQuery = activeQuery,
+        lineConnections = lineConnections,
+        availabilityType = availabilityType
     )
 }
 

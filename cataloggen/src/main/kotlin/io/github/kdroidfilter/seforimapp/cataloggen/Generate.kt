@@ -44,43 +44,44 @@ fun main(args: Array<String>) {
     val driver = JdbcSqliteDriver("jdbc:sqlite:$dbPath")
     val repo = SeforimRepository(dbPath, driver)
 
-    // Only include categories used in the current UI
-    val baseCategoriesOfInterest = setOf<Long>(
-        1, 2, 3, 4, // Tanakh (root + children)
-        5, 6, 7, 8, 9, 10, 11, // Mishnah root + orders
-        12, 13, 14, 15, 16, 17, 18, // Bavli root + orders
-        19, 20, 21, 22, 23, 24, // Yerushalmi root + orders
-        43, // Mishneh Torah (root)
-        59, // Tur
-        60  // Shulchan Aruch
-    )
-    // Enrich categories to include Mishneh Torah's child categories so we can display all its books
-    val categoriesOfInterest = runBlocking {
-        val set = baseCategoriesOfInterest.toMutableSet()
-        // Fetch immediate child categories of Mishneh Torah (43)
-        // Exclude categories whose title starts with "מפרשים"
-        val mtChildren = runCatching { repo.getCategoryChildren(43) }
-            .getOrDefault(emptyList())
-            .filter { c -> !c.title.trimStart().startsWith("מפרשים") }
-        set.addAll(mtChildren.map { it.id })
-        set.toSet()
-    }
+    val resolvedIds = runBlocking { resolveCatalogIds(repo) }
+
+    // Only include categories used in the current UI (resolved dynamically from the DB)
+    val categoriesOfInterest: Set<Long> = resolvedIds.categoryIds.values
+        .plus(resolvedIds.mishnehTorahChildren)
+        .toSet()
     val categoryTitles: MutableMap<Long, String> = mutableMapOf()
     runBlocking {
         categoriesOfInterest.forEach { cid ->
             runCatching { repo.getCategory(cid) }.getOrNull()?.let { categoryTitles[cid] = it.title }
+        }
+        // Preserve legacy display labels for Talmud children (תלמוד בבלי / תלמוד ירושלמי)
+        val bavliId = resolvedIds.categoryIds["BAVLI"]
+        val yerushalmiId = resolvedIds.categoryIds["YERUSHALMI"]
+        if (bavliId != null || yerushalmiId != null) {
+            val bavliParentTitle = bavliId?.let { id -> runCatching { repo.getCategory(id)?.parentId?.let { pid -> repo.getCategory(pid)?.title } }.getOrNull() }
+            val prefix = bavliParentTitle?.takeIf { it.isNotBlank() } ?: "תלמוד"
+            bavliId?.let { id ->
+                val current = categoryTitles[id] ?: "בבלי"
+                categoryTitles[id] = "$prefix $current"
+            }
+            yerushalmiId?.let { id ->
+                val current = categoryTitles[id] ?: "ירושלמי"
+                categoryTitles[id] = "$prefix $current"
+            }
         }
     }
 
     // Collect books per category and book titles (strip display titles by category label)
     val bookTitles: MutableMap<Long, String> = mutableMapOf()
     val categoryBooks: MutableMap<Long, List<Pair<Long, String>>> = mutableMapOf()
+    val mishnehTorahId = resolvedIds.categoryIds.getValue("MISHNE_TORAH")
     runBlocking {
         categoryTitles.keys.forEach { cid ->
             var books = runCatching { repo.getBooksByCategory(cid) }.getOrDefault(emptyList())
-            // For Mishneh Torah (root 43 or its immediate children), exclude books starting with "מפרשים"
+            // For Mishneh Torah (root or its immediate children), exclude books starting with "מפרשים"
             val parentId = runCatching { repo.getCategory(cid) }.getOrNull()?.parentId
-            val isMishnehTorahContext = (cid == 43L) || (parentId == 43L)
+            val isMishnehTorahContext = (cid == mishnehTorahId) || (parentId == mishnehTorahId)
             if (isMishnehTorahContext) {
                 books = books.filter { b -> !b.title.trimStart().startsWith("מפרשים") }
             }
@@ -97,8 +98,8 @@ fun main(args: Array<String>) {
 
     // Collect per-book TOC-textId → (label, tocEntryId, firstLineId) for books we use in UI
     val tocByTocTextId: MutableMap<Long, Map<Long, Triple<String, Long, Long?>>> = mutableMapOf()
-    val booksOfInterest = setOf<Long>(410) // Tur
-    val tocTextIdsOfInterest = setOf<Long>(3455, 4098, 4099, 4100) // OC, YD, EH, CM
+    val booksOfInterest = resolvedIds.bookIds.values.toSet()
+    val tocTextIdsOfInterest = resolvedIds.tocTextIds.values.toSet()
     runBlocking {
         booksOfInterest.forEach { bookId ->
             val toc = runCatching { repo.getBookToc(bookId) }.getOrDefault(emptyList())
@@ -189,12 +190,7 @@ fun main(args: Array<String>) {
         .addType(multiCategorySpec)
         .addType(tocQuickLinksSpec)
 
-    val mishnehTorahChildrenIds: List<Long> = runBlocking {
-        runCatching { repo.getCategoryChildren(43) }
-            .getOrDefault(emptyList())
-            .filter { c -> !c.title.trimStart().startsWith("מפרשים") }
-            .map { it.id }
-    }
+    val mishnehTorahChildrenIds: List<Long> = resolvedIds.mishnehTorahChildren
 
     val catalogObject = buildCatalogType(
         pkg,
@@ -202,7 +198,8 @@ fun main(args: Array<String>) {
         categoryTitles,
         categoryBooks,
         tocByTocTextId,
-        mishnehTorahChildrenIds
+        mishnehTorahChildrenIds,
+        resolvedIds
     )
     val fileSpec = fileSpecBuilder.addType(catalogObject)
         .build()
@@ -252,8 +249,12 @@ private fun buildCatalogType(
     categoryBooks: Map<Long, List<Pair<Long, String>>>,
     tocByTocTextId: Map<Long, Map<Long, Triple<String, Long, Long?>>>,
     mishnehTorahChildrenIds: List<Long>,
+    resolvedIds: ResolvedCatalogIds,
 ): TypeSpec {
     val builder = TypeSpec.objectBuilder("PrecomputedCatalog")
+    val categoryIds = resolvedIds.categoryIds
+    val bookIds = resolvedIds.bookIds
+    val tocTextIds = resolvedIds.tocTextIds
 
     // BOOK_TITLES
     val btCode = CodeBlock.builder().add("mapOf(\n")
@@ -312,37 +313,9 @@ private fun buildCatalogType(
     val idsObj = TypeSpec.objectBuilder("Ids")
 
     // Categories
-    val categoriesPretty = linkedMapOf(
-        1L to "TANAKH",
-        2L to "TORAH",
-        3L to "NEVIIM",
-        4L to "KETUVIM",
-        5L to "MISHNA",
-        6L to "MISHNA_ZERAIM",
-        7L to "MISHNA_MOED",
-        8L to "MISHNA_NASHIM",
-        9L to "MISHNA_NEZIKIN",
-        10L to "MISHNA_KODASHIM",
-        11L to "MISHNA_TAHAROT",
-        12L to "BAVLI",
-        13L to "BAVLI_ZERAIM",
-        14L to "BAVLI_MOED",
-        15L to "BAVLI_NASHIM",
-        16L to "BAVLI_NEZIKIN",
-        17L to "BAVLI_KODASHIM",
-        18L to "BAVLI_TAHAROT",
-        19L to "YERUSHALMI",
-        20L to "YERUSHALMI_ZERAIM",
-        21L to "YERUSHALMI_MOED",
-        22L to "YERUSHALMI_NASHIM",
-        23L to "YERUSHALMI_NEZIKIN",
-        24L to "YERUSHALMI_TAHAROT",
-        43L to "MISHNE_TORAH",
-        59L to "TUR",
-        60L to "SHULCHAN_ARUCH",
-    )
+    val categoriesPretty = categoryIds
     val catObj = TypeSpec.objectBuilder("Categories")
-    categoriesPretty.forEach { (id, name) ->
+    categoriesPretty.forEach { (name, id) ->
         val he = categoryTitles[id] ?: ""
         catObj.addProperty(
             PropertySpec.builder(name, LONG)
@@ -355,11 +328,9 @@ private fun buildCatalogType(
     idsObj.addType(catObj.build())
 
     // Books (featured ones referenced in UI)
-    val booksPretty = linkedMapOf(
-        410L to "TUR", // טור
-    )
+    val booksPretty = bookIds
     val bookObj = TypeSpec.objectBuilder("Books")
-    booksPretty.forEach { (id, name) ->
+    booksPretty.forEach { (name, id) ->
         val he = bookTitles[id] ?: ""
         bookObj.addProperty(
             PropertySpec.builder(name, LONG)
@@ -372,17 +343,12 @@ private fun buildCatalogType(
     idsObj.addType(bookObj.build())
 
     // TocTexts (featured quick-jump entries)
-    val tocTextPretty = linkedMapOf(
-        3455L to "ORACH_CHAIM",
-        4098L to "YOREH_DEAH",
-        4099L to "EVEN_HAEZER",
-        4100L to "CHOSHEN_MISHPAT",
-    )
+    val tocTextPretty = tocTextIds
     val heByTocId: Map<Long, String> = tocByTocTextId.values
         .flatMap { it.entries }
         .associate { (tx, triple) -> tx to triple.first }
     val tocObj = TypeSpec.objectBuilder("TocTexts")
-    tocTextPretty.forEach { (id, name) ->
+    tocTextPretty.forEach { (name, id) ->
         val he = heByTocId[id] ?: ""
         tocObj.addProperty(
             PropertySpec.builder(name, LONG)
@@ -400,23 +366,61 @@ private fun buildCatalogType(
     val dropdownsObj = TypeSpec.objectBuilder("Dropdowns")
     val dropdownSpecClass = ClassName(pkg, "DropdownSpec")
     val listOfDropdownSpec = LIST.parameterizedBy(dropdownSpecClass)
+    val tanakhId = categoryIds.getValue("TANAKH")
+    val torahId = categoryIds.getValue("TORAH")
+    val neviimId = categoryIds.getValue("NEVIIM")
+    val ketuvimId = categoryIds.getValue("KETUVIM")
+    val mishnaId = categoryIds.getValue("MISHNA")
+    val mishnaOrders = listOf(
+        categoryIds.getValue("MISHNA_ZERAIM"),
+        categoryIds.getValue("MISHNA_MOED"),
+        categoryIds.getValue("MISHNA_NASHIM"),
+        categoryIds.getValue("MISHNA_NEZIKIN"),
+        categoryIds.getValue("MISHNA_KODASHIM"),
+        categoryIds.getValue("MISHNA_TAHAROT"),
+    )
+    val bavliId = categoryIds.getValue("BAVLI")
+    val bavliOrders = listOf(
+        categoryIds.getValue("BAVLI_ZERAIM"),
+        categoryIds.getValue("BAVLI_MOED"),
+        categoryIds.getValue("BAVLI_NASHIM"),
+        categoryIds.getValue("BAVLI_NEZIKIN"),
+        categoryIds.getValue("BAVLI_KODASHIM"),
+        categoryIds.getValue("BAVLI_TAHAROT"),
+    )
+    val yerushalmiId = categoryIds.getValue("YERUSHALMI")
+    val yerushalmiOrders = listOf(
+        categoryIds.getValue("YERUSHALMI_ZERAIM"),
+        categoryIds.getValue("YERUSHALMI_MOED"),
+        categoryIds.getValue("YERUSHALMI_NASHIM"),
+        categoryIds.getValue("YERUSHALMI_NEZIKIN"),
+        categoryIds.getValue("YERUSHALMI_TAHAROT"),
+    )
+    val shulchanAruchId = categoryIds.getValue("SHULCHAN_ARUCH")
+    val mishneTorahId = categoryIds.getValue("MISHNE_TORAH")
+    val turCategoryId = categoryIds.getValue("TUR")
+    val turBookId = bookIds.getValue("TUR")
+    val tocOc = tocTextIds.getValue("ORACH_CHAIM")
+    val tocYd = tocTextIds.getValue("YOREH_DEAH")
+    val tocEh = tocTextIds.getValue("EVEN_HAEZER")
+    val tocCm = tocTextIds.getValue("CHOSHEN_MISHPAT")
     val homeDropdowns = CodeBlock.builder().add("listOf(\n")
         // Tanakh combined like Yerushalmi: root label with child categories' books
-        .add("  MultiCategoryDropdownSpec(%LL, listOf(%LL, %LL, %LL)),\n", 1L, 2L, 3L, 4L)
+        .add("  MultiCategoryDropdownSpec(%LL, listOf(%LL, %LL, %LL)),\n", tanakhId, torahId, neviimId, ketuvimId)
         // Mishna
         .add("  MultiCategoryDropdownSpec(%LL, listOf(%LL, %LL, %LL, %LL, %LL, %LL)),\n",
-            5L, 6L, 7L, 8L, 9L, 10L, 11L)
+            mishnaId, mishnaOrders[0], mishnaOrders[1], mishnaOrders[2], mishnaOrders[3], mishnaOrders[4], mishnaOrders[5])
         // Bavli
         .add("  MultiCategoryDropdownSpec(%LL, listOf(%LL, %LL, %LL, %LL, %LL, %LL)),\n",
-            12L, 13L, 14L, 15L, 16L, 17L, 18L)
+            bavliId, bavliOrders[0], bavliOrders[1], bavliOrders[2], bavliOrders[3], bavliOrders[4], bavliOrders[5])
         // Yerushalmi
         .add("  MultiCategoryDropdownSpec(%LL, listOf(%LL, %LL, %LL, %LL, %LL)),\n",
-            19L, 20L, 21L, 22L, 23L, 24L)
+            yerushalmiId, yerushalmiOrders[0], yerushalmiOrders[1], yerushalmiOrders[2], yerushalmiOrders[3], yerushalmiOrders[4])
         // Shulchan Aruch
-        .add("  CategoryDropdownSpec(%LL),\n", 60L)
+        .add("  CategoryDropdownSpec(%LL),\n", shulchanAruchId)
         // Tur quick links
         .add("  TocQuickLinksSpec(%LL, listOf(%LL, %LL, %LL, %LL)),\n",
-            410L, 3455L, 4098L, 4099L, 4100L)
+            turBookId, tocOc, tocYd, tocEh, tocCm)
         .add(")")
         .build()
     dropdownsObj.addProperty(
@@ -428,46 +432,46 @@ private fun buildCatalogType(
     dropdownsObj.addProperty(
         PropertySpec.builder("TANAKH", dropdownSpecClass)
             .initializer("MultiCategoryDropdownSpec(%LL, listOf(%LL, %LL, %LL))",
-                1L, 2L, 3L, 4L)
+                tanakhId, torahId, neviimId, ketuvimId)
             .build()
     )
     // Conserver les presets historiques pour compatibilité éventuelle
     dropdownsObj.addProperty(
         PropertySpec.builder("TORAH", dropdownSpecClass)
-            .initializer("CategoryDropdownSpec(%LL)", 2L)
+            .initializer("CategoryDropdownSpec(%LL)", torahId)
             .build()
     )
     dropdownsObj.addProperty(
         PropertySpec.builder("NEVIIM", dropdownSpecClass)
-            .initializer("CategoryDropdownSpec(%LL)", 3L)
+            .initializer("CategoryDropdownSpec(%LL)", neviimId)
             .build()
     )
     dropdownsObj.addProperty(
         PropertySpec.builder("KETUVIM", dropdownSpecClass)
-            .initializer("CategoryDropdownSpec(%LL)", 4L)
+            .initializer("CategoryDropdownSpec(%LL)", ketuvimId)
             .build()
     )
     dropdownsObj.addProperty(
         PropertySpec.builder("MISHNA", dropdownSpecClass)
             .initializer("MultiCategoryDropdownSpec(%LL, listOf(%LL, %LL, %LL, %LL, %LL, %LL))",
-                5L, 6L, 7L, 8L, 9L, 10L, 11L)
+                mishnaId, mishnaOrders[0], mishnaOrders[1], mishnaOrders[2], mishnaOrders[3], mishnaOrders[4], mishnaOrders[5])
             .build()
     )
     dropdownsObj.addProperty(
         PropertySpec.builder("BAVLI", dropdownSpecClass)
             .initializer("MultiCategoryDropdownSpec(%LL, listOf(%LL, %LL, %LL, %LL, %LL, %LL))",
-                12L, 13L, 14L, 15L, 16L, 17L, 18L)
+                bavliId, bavliOrders[0], bavliOrders[1], bavliOrders[2], bavliOrders[3], bavliOrders[4], bavliOrders[5])
             .build()
     )
     dropdownsObj.addProperty(
         PropertySpec.builder("YERUSHALMI", dropdownSpecClass)
             .initializer("MultiCategoryDropdownSpec(%LL, listOf(%LL, %LL, %LL, %LL, %LL))",
-                19L, 20L, 21L, 22L, 23L, 24L)
+                yerushalmiId, yerushalmiOrders[0], yerushalmiOrders[1], yerushalmiOrders[2], yerushalmiOrders[3], yerushalmiOrders[4])
             .build()
     )
     dropdownsObj.addProperty(
         PropertySpec.builder("SHULCHAN_ARUCH", dropdownSpecClass)
-            .initializer("CategoryDropdownSpec(%LL)", 60L)
+            .initializer("CategoryDropdownSpec(%LL)", shulchanAruchId)
             .build()
     )
     // Mishneh Torah: display all books under its child categories
@@ -482,20 +486,217 @@ private fun buildCatalogType(
         }.build()
         dropdownsObj.addProperty(
             PropertySpec.builder("MISHNE_TORAH", dropdownSpecClass)
-                .initializer(CodeBlock.of("MultiCategoryDropdownSpec(%LL, %L)", 43L, listLiteral))
+                .initializer(CodeBlock.of("MultiCategoryDropdownSpec(%LL, %L)", mishneTorahId, listLiteral))
                 .build()
         )
     }
     dropdownsObj.addProperty(
         PropertySpec.builder("TUR_QUICK_LINKS", dropdownSpecClass)
             .initializer("TocQuickLinksSpec(%LL, listOf(%LL, %LL, %LL, %LL))",
-                410L, 3455L, 4098L, 4099L, 4100L)
+                turBookId, tocOc, tocYd, tocEh, tocCm)
             .build()
     )
     builder.addType(dropdownsObj.build())
 
     return builder.build()
 }
+
+private data class ResolvedCatalogIds(
+    val categoryIds: LinkedHashMap<String, Long>,
+    val bookIds: LinkedHashMap<String, Long>,
+    val tocTextIds: LinkedHashMap<String, Long>,
+    val mishnehTorahChildren: List<Long>,
+)
+
+private suspend fun resolveCatalogIds(repo: SeforimRepository): ResolvedCatalogIds {
+    val tanakhId = requireCategoryId(repo, "Tanakh root", listOf("תנ\"ך", "תנך", "תנ״ך"))
+    val torahId = requireCategoryId(repo, "Torah", listOf("תורה"), tanakhId)
+    val neviimId = requireCategoryId(repo, "Neviim", listOf("נביאים"), tanakhId)
+    val ketuvimId = requireCategoryId(repo, "Ketuvim", listOf("כתובים"), tanakhId)
+
+    val mishnaId = requireCategoryId(repo, "Mishna", listOf("משנה"))
+    val mishnaOrders = listOf(
+        "MISHNA_ZERAIM" to listOf("סדר זרעים"),
+        "MISHNA_MOED" to listOf("סדר מועד"),
+        "MISHNA_NASHIM" to listOf("סדר נשים"),
+        "MISHNA_NEZIKIN" to listOf("סדר נזיקין"),
+        "MISHNA_KODASHIM" to listOf("סדר קדשים"),
+        "MISHNA_TAHAROT" to listOf("סדר טהרות"),
+    ).associate { (key, titles) -> key to requireCategoryId(repo, key, titles, mishnaId) }
+
+    val talmudRootId = findCategoryId(repo, listOf("תלמוד"))
+    val bavliId = findCategoryId(repo, listOf("בבלי", "תלמוד בבלי"), talmudRootId)
+        ?: requireCategoryId(repo, "Talmud Bavli", listOf("בבלי", "תלמוד בבלי"))
+    val bavliOrders = listOf(
+        "BAVLI_ZERAIM" to listOf("סדר זרעים"),
+        "BAVLI_MOED" to listOf("סדר מועד"),
+        "BAVLI_NASHIM" to listOf("סדר נשים"),
+        "BAVLI_NEZIKIN" to listOf("סדר נזיקין"),
+        "BAVLI_KODASHIM" to listOf("סדר קדשים"),
+        "BAVLI_TAHAROT" to listOf("סדר טהרות"),
+    ).associate { (key, titles) -> key to requireCategoryId(repo, key, titles, bavliId) }
+
+    val yerushalmiId = findCategoryId(repo, listOf("ירושלמי", "תלמוד ירושלמי"), talmudRootId)
+        ?: requireCategoryId(repo, "Talmud Yerushalmi", listOf("ירושלמי", "תלמוד ירושלמי"))
+    val yerushalmiOrders = listOf(
+        "YERUSHALMI_ZERAIM" to listOf("סדר זרעים"),
+        "YERUSHALMI_MOED" to listOf("סדר מועד"),
+        "YERUSHALMI_NASHIM" to listOf("סדר נשים"),
+        "YERUSHALMI_NEZIKIN" to listOf("סדר נזיקין"),
+        "YERUSHALMI_TAHAROT" to listOf("סדר טהרות"),
+    ).associate { (key, titles) -> key to requireCategoryId(repo, key, titles, yerushalmiId) }
+
+    val halachaRootId = findCategoryId(repo, listOf("הלכה"))
+    val mishnehTorahId = findCategoryId(repo, listOf("משנה תורה"), halachaRootId)
+        ?: requireCategoryId(repo, "Mishneh Torah", listOf("משנה תורה"))
+    val turCategoryId = findCategoryId(repo, listOf("טור", "ארבעה טורים"), halachaRootId)
+        ?: requireCategoryId(repo, "Tur category", listOf("טור", "ארבעה טורים"))
+    val shulchanAruchId = findCategoryId(repo, listOf("שולחן ערוך"), halachaRootId)
+        ?: requireCategoryId(repo, "Shulchan Aruch", listOf("שולחן ערוך"))
+
+    val mishnehTorahChildren = runCatching { repo.getCategoryChildren(mishnehTorahId) }
+        .getOrDefault(emptyList())
+        .filter { !it.title.trimStart().startsWith("מפרשים") }
+        .map { it.id }
+
+    val turBookId = requireBookId(repo, "Tur", listOf("טור"))
+    val tocQuickLinks = resolveTurQuickLinks(repo, turBookId)
+
+    val categoryIds = linkedMapOf<String, Long>()
+    categoryIds["TANAKH"] = tanakhId
+    categoryIds["TORAH"] = torahId
+    categoryIds["NEVIIM"] = neviimId
+    categoryIds["KETUVIM"] = ketuvimId
+    categoryIds["MISHNA"] = mishnaId
+    categoryIds["MISHNA_ZERAIM"] = mishnaOrders.getValue("MISHNA_ZERAIM")
+    categoryIds["MISHNA_MOED"] = mishnaOrders.getValue("MISHNA_MOED")
+    categoryIds["MISHNA_NASHIM"] = mishnaOrders.getValue("MISHNA_NASHIM")
+    categoryIds["MISHNA_NEZIKIN"] = mishnaOrders.getValue("MISHNA_NEZIKIN")
+    categoryIds["MISHNA_KODASHIM"] = mishnaOrders.getValue("MISHNA_KODASHIM")
+    categoryIds["MISHNA_TAHAROT"] = mishnaOrders.getValue("MISHNA_TAHAROT")
+    categoryIds["BAVLI"] = bavliId
+    categoryIds["BAVLI_ZERAIM"] = bavliOrders.getValue("BAVLI_ZERAIM")
+    categoryIds["BAVLI_MOED"] = bavliOrders.getValue("BAVLI_MOED")
+    categoryIds["BAVLI_NASHIM"] = bavliOrders.getValue("BAVLI_NASHIM")
+    categoryIds["BAVLI_NEZIKIN"] = bavliOrders.getValue("BAVLI_NEZIKIN")
+    categoryIds["BAVLI_KODASHIM"] = bavliOrders.getValue("BAVLI_KODASHIM")
+    categoryIds["BAVLI_TAHAROT"] = bavliOrders.getValue("BAVLI_TAHAROT")
+    categoryIds["YERUSHALMI"] = yerushalmiId
+    categoryIds["YERUSHALMI_ZERAIM"] = yerushalmiOrders.getValue("YERUSHALMI_ZERAIM")
+    categoryIds["YERUSHALMI_MOED"] = yerushalmiOrders.getValue("YERUSHALMI_MOED")
+    categoryIds["YERUSHALMI_NASHIM"] = yerushalmiOrders.getValue("YERUSHALMI_NASHIM")
+    categoryIds["YERUSHALMI_NEZIKIN"] = yerushalmiOrders.getValue("YERUSHALMI_NEZIKIN")
+    categoryIds["YERUSHALMI_TAHAROT"] = yerushalmiOrders.getValue("YERUSHALMI_TAHAROT")
+    categoryIds["MISHNE_TORAH"] = mishnehTorahId
+    categoryIds["TUR"] = turCategoryId
+    categoryIds["SHULCHAN_ARUCH"] = shulchanAruchId
+
+    val bookIds = linkedMapOf("TUR" to turBookId)
+
+    return ResolvedCatalogIds(
+        categoryIds = categoryIds,
+        bookIds = bookIds,
+        tocTextIds = tocQuickLinks,
+        mishnehTorahChildren = mishnehTorahChildren
+    )
+}
+
+private suspend fun resolveTurQuickLinks(
+    repo: SeforimRepository,
+    turBookId: Long
+): LinkedHashMap<String, Long> {
+    val toc = runCatching { repo.getBookToc(turBookId) }.getOrDefault(emptyList())
+    if (toc.isEmpty()) error("Could not load TOC for Tur (bookId=$turBookId)")
+    val rootIds = toc.filter { it.parentId == null }.map { it.id }.toSet()
+    val scopedEntries = if (rootIds.isEmpty()) toc else toc.filter { it.parentId in rootIds }
+    val targets = linkedMapOf(
+        "ORACH_CHAIM" to listOf("אורח חיים"),
+        "YOREH_DEAH" to listOf("יורה דעה"),
+        "EVEN_HAEZER" to listOf("אבן העזר"),
+        "CHOSHEN_MISHPAT" to listOf("חושן משפט"),
+    )
+    val result = linkedMapOf<String, Long>()
+    for ((key, names) in targets) {
+        val match = scopedEntries.firstOrNull { entry ->
+            val normalized = normalizeTitle(entry.text)
+            names.any { normalizeTitle(it) == normalized }
+        }
+        if (match?.textId != null) {
+            result[key] = match.textId!!
+        }
+    }
+    val missing = targets.keys - result.keys
+    if (missing.isNotEmpty()) {
+        error("Missing TOC quick links for Tur (bookId=$turBookId): ${missing.joinToString()}")
+    }
+    return result
+}
+
+private suspend fun requireCategoryId(
+    repo: SeforimRepository,
+    label: String,
+    candidates: List<String>,
+    parentId: Long? = null
+): Long = findCategoryId(repo, candidates, parentId)
+    ?: error("Could not locate category '$label' (candidates=${candidates.joinToString()})")
+
+private suspend fun findCategoryId(
+    repo: SeforimRepository,
+    candidates: List<String>,
+    parentId: Long? = null
+): Long? {
+    if (candidates.isEmpty()) return null
+    val normalizedTargets = candidates.map(::normalizeTitle).toSet()
+    val scoped = runCatching {
+        if (parentId != null) repo.getCategoryChildren(parentId) else repo.getRootCategories()
+    }.getOrDefault(emptyList())
+    scoped.firstOrNull { normalizedTargets.contains(normalizeTitle(it.title)) }?.let { return it.id }
+
+    for (candidate in candidates) {
+        val match = runCatching { repo.findCategoryByTitlePreferExact(candidate) }.getOrNull()
+        if (match != null && (parentId == null || match.parentId == parentId)) {
+            return match.id
+        }
+    }
+
+    for (candidate in candidates) {
+        val matches = runCatching { repo.findCategoriesByTitleLike("%$candidate%", 10) }
+            .getOrDefault(emptyList())
+        val match = matches.firstOrNull { parentId == null || it.parentId == parentId }
+        if (match != null) return match.id
+    }
+    return null
+}
+
+private suspend fun requireBookId(
+    repo: SeforimRepository,
+    label: String,
+    candidates: List<String>
+): Long = findBookId(repo, candidates)
+    ?: error("Could not locate book '$label' (candidates=${candidates.joinToString()})")
+
+private suspend fun findBookId(
+    repo: SeforimRepository,
+    candidates: List<String>
+): Long? {
+    if (candidates.isEmpty()) return null
+    val normalizedTargets = candidates.map(::normalizeTitle).toSet()
+    for (candidate in candidates) {
+        val book = runCatching { repo.findBookByTitlePreferExact(candidate) }.getOrNull()
+        if (book != null && normalizedTargets.contains(normalizeTitle(book.title))) {
+            return book.id
+        }
+    }
+    for (candidate in candidates) {
+        val books = runCatching { repo.findBooksByTitleLike("%$candidate%", 10) }
+            .getOrDefault(emptyList())
+        val match = books.firstOrNull { normalizedTargets.contains(normalizeTitle(it.title)) }
+        if (match != null) return match.id
+    }
+    return null
+}
+
+private fun normalizeTitle(value: String): String = value.filter { it.isLetterOrDigit() }.lowercase()
 
 private val STRING = String::class.asClassName()
 private val LONG = Long::class.asClassName()

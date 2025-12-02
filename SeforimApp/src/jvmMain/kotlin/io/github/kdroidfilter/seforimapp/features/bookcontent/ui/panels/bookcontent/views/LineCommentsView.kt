@@ -529,21 +529,18 @@ private fun CommentaryItem(
     highlightQuery: String,
     onClick: () -> Unit
 ) {
-    // Memorizes the pointerInput to avoid recreating it
-    val clickModifier = remember {
-        Modifier.pointerInput(Unit) {
-            detectTapGestures(onTap = { onClick() })
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .then(clickModifier)
+            .clickable(onClick = onClick)
     ) {
-        // Cache the annotation to avoid rebuilding it
-        val annotated = remember(commentary.targetText, textSizes.commentTextSize, boldScale) {
+        val annotated = remember(
+            commentary.link.id,
+            commentary.targetText,
+            textSizes.commentTextSize,
+            boldScale
+        ) {
             buildAnnotatedFromHtml(
                 commentary.targetText,
                 textSizes.commentTextSize,
@@ -551,17 +548,19 @@ private fun CommentaryItem(
             )
         }
 
-        // Highlight occurrences from global find-in-page query
         val display: AnnotatedString = remember(annotated, highlightQuery) {
-            io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated(annotated, highlightQuery)
+            if (highlightQuery.isBlank()) annotated
+            else io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated(annotated, highlightQuery)
         }
 
-        Text(
-            text = display,
-            textAlign = TextAlign.Justify,
-            fontFamily = fontFamily,
-            lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp
-        )
+        SelectionContainer {
+            Text(
+                text = display,
+                textAlign = TextAlign.Justify,
+                fontFamily = fontFamily,
+                lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp
+            )
+        }
     }
 }
 

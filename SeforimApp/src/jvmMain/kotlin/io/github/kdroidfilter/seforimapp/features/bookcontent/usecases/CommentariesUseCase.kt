@@ -7,7 +7,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentS
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorGroup
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorItem
 import io.github.kdroidfilter.seforimapp.pagination.CommentsForLineOrTocPagingSource
-import io.github.kdroidfilter.seforimapp.pagination.LineCommentsPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.LineTargumPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.PagingDefaults
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -15,12 +14,16 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.PubDate
+import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentarySummary
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * UseCase pour gérer les commentaires et liens
@@ -34,6 +37,23 @@ class CommentariesUseCase(
     private companion object {
         private const val MAX_COMMENTATORS = 4
         private val YEAR_REGEX = Regex("""-?\d{3,4}""")
+        private const val MAX_BASE_LINES_PER_REQUEST = 128
+    }
+    private val commentatorBookCache: MutableMap<Long, Book> = ConcurrentHashMap()
+
+    private suspend fun loadBookMetadata(
+        bookId: Long,
+        localCache: MutableMap<Long, Book>
+    ): Book? {
+        localCache[bookId]?.let { return it }
+        commentatorBookCache[bookId]?.let { cached ->
+            localCache[bookId] = cached
+            return cached
+        }
+        val loaded = runCatching { repository.getBookWithPubDates(bookId) }.getOrNull() ?: return null
+        commentatorBookCache[bookId] = loaded
+        localCache[bookId] = loaded
+        return loaded
     }
     
     /**
@@ -197,9 +217,9 @@ class CommentariesUseCase(
     )
 
     private suspend fun buildCommentatorEntries(
-        commentaries: List<CommentaryWithText>,
+        commentaries: List<CommentarySummary>,
         currentBookTitle: String,
-        bookCache: MutableMap<Long, Book?>
+        bookCache: MutableMap<Long, Book>
     ): List<CommentatorEntry> {
         val displayNameByBookId = LinkedHashMap<Long, String>()
 
@@ -213,7 +233,7 @@ class CommentariesUseCase(
         }
 
         val booksById: Map<Long, Book?> = displayNameByBookId.keys.associateWith { id ->
-            bookCache.getOrPut(id) { runCatching { repository.getBook(id) }.getOrNull() }
+            loadBookMetadata(id, bookCache)
         }
 
         return displayNameByBookId.map { (bookId, displayName) ->
@@ -284,7 +304,7 @@ class CommentariesUseCase(
     }
 
     private fun buildSourceMap(
-        links: List<CommentaryWithText>,
+        links: List<CommentarySummary>,
         currentBookTitle: String
     ): Map<String, Long> {
         if (links.isEmpty()) return emptyMap()
@@ -300,9 +320,9 @@ class CommentariesUseCase(
     }
 
     private suspend fun buildLineConnectionsSnapshot(
-        connections: List<CommentaryWithText>,
+        connections: List<CommentarySummary>,
         currentBookTitle: String,
-        bookCache: MutableMap<Long, Book?>,
+        bookCache: MutableMap<Long, Book>,
         categoryCache: MutableMap<Long, Category?>
     ): LineConnectionsSnapshot {
         if (connections.isEmpty()) return LineConnectionsSnapshot()
@@ -326,18 +346,15 @@ class CommentariesUseCase(
     }
 
     private suspend fun loadCommentatorEntries(lineId: Long): List<CommentatorEntry> {
-        val headingToc = repository.getHeadingTocEntryByLineId(lineId)
-        val baseIds = if (headingToc != null) {
-            repository.getLineIdsForTocEntry(headingToc.id).filter { it != lineId }
-        } else listOf(lineId)
+        val baseIds = resolveBaseLineIds(lineId)
 
-        val commentaries = repository.getCommentariesForLines(baseIds)
+        val commentaries = repository.getCommentarySummariesForLines(baseIds)
             .filter { it.link.connectionType == ConnectionType.COMMENTARY }
 
         if (commentaries.isEmpty()) return emptyList()
 
         val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
-        val bookCache = mutableMapOf<Long, Book?>()
+        val bookCache = mutableMapOf<Long, Book>()
         return buildCommentatorEntries(commentaries, currentBookTitle, bookCache)
     }
 
@@ -360,7 +377,7 @@ class CommentariesUseCase(
     suspend fun getAvailableLinks(lineId: Long): Map<String, Long> {
         return try {
             val baseIds = resolveBaseLineIds(lineId)
-            val links = repository.getCommentariesForLines(baseIds)
+            val links = repository.getCommentarySummariesForLines(baseIds)
                 .filter { it.link.connectionType == ConnectionType.TARGUM }
 
             val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
@@ -374,7 +391,7 @@ class CommentariesUseCase(
     suspend fun getAvailableSources(lineId: Long): Map<String, Long> {
         return try {
             val baseIds = resolveBaseLineIds(lineId)
-            val links = repository.getCommentariesForLines(baseIds)
+            val links = repository.getCommentarySummariesForLines(baseIds)
                 .filter { it.link.connectionType == ConnectionType.SOURCE }
 
             val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
@@ -399,12 +416,12 @@ class CommentariesUseCase(
         val allBaseIds = baseIdsCache.values.flatten().distinct()
         if (allBaseIds.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
 
-        val allConnections = repository.getCommentariesForLines(allBaseIds)
+        val allConnections = repository.getCommentarySummariesForLines(allBaseIds)
         if (allConnections.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
 
         val connectionsBySource = allConnections.groupBy { it.link.sourceLineId }
         val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
-        val bookCache = mutableMapOf<Long, Book?>()
+        val bookCache = mutableMapOf<Long, Book>()
         val categoryCache = mutableMapOf<Long, Category?>()
 
         return baseIdsCache.mapValues { (_, baseIds) ->
@@ -479,9 +496,19 @@ class CommentariesUseCase(
     ): List<Long> {
         val headingToc = repository.getHeadingTocEntryByLineId(lineId)
         return if (headingToc != null) {
-            tocLinesCache.getOrPut(headingToc.id) {
+            val lines = tocLinesCache.getOrPut(headingToc.id) {
                 repository.getLineIdsForTocEntry(headingToc.id)
-            }.filter { it != lineId }
+            }
+            val idx = lines.indexOf(lineId)
+            val trimmed = if (idx >= 0) {
+                val halfWindow = MAX_BASE_LINES_PER_REQUEST / 2
+                val start = max(0, idx - halfWindow)
+                val end = min(lines.size, start + MAX_BASE_LINES_PER_REQUEST)
+                lines.subList(start, end)
+            } else {
+                lines.take(MAX_BASE_LINES_PER_REQUEST)
+            }
+            trimmed.filter { it != lineId }
         } else {
             listOf(lineId)
         }

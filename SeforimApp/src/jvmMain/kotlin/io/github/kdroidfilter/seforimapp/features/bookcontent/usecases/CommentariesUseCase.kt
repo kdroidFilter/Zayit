@@ -14,6 +14,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.PubDate
+import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentarySummary
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
@@ -40,6 +41,13 @@ class CommentariesUseCase(
         private const val MAX_BASE_LINES_PER_REQUEST = 128
     }
     private val commentatorBookCache: MutableMap<Long, Book> = ConcurrentHashMap()
+    private val defaultTargumCache: MutableMap<Long, List<Long>> = ConcurrentHashMap()
+
+    private data class BaseLineResolution(
+        val baseLineIds: List<Long>,
+        val headingTocEntryId: Long? = null,
+        val headingBookId: Long? = null
+    )
 
     private suspend fun loadBookMetadata(
         bookId: Long,
@@ -376,9 +384,17 @@ class CommentariesUseCase(
      */
     suspend fun getAvailableLinks(lineId: Long): Map<String, Long> {
         return try {
-            val baseIds = resolveBaseLineIds(lineId)
-            val links = repository.getCommentarySummariesForLines(baseIds)
+            val resolution = resolveBaseLineResolution(lineId)
+            val defaultTargumId = resolution.headingBookId?.let { bookId ->
+                loadDefaultTargumIds(bookId).firstOrNull()
+            }
+            val links = repository.getCommentarySummariesForLines(resolution.baseLineIds)
                 .filter { it.link.connectionType == ConnectionType.TARGUM }
+                .let { targumLinks ->
+                    if (resolution.headingTocEntryId != null && defaultTargumId != null) {
+                        targumLinks.filter { it.link.targetBookId == defaultTargumId }
+                    } else targumLinks
+                }
 
             val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
 
@@ -406,27 +422,37 @@ class CommentariesUseCase(
         if (lineIds.isEmpty()) return emptyMap()
 
         val distinctIds = lineIds.distinct()
-        val baseIdsCache = LinkedHashMap<Long, List<Long>>()
+        val resolutionCache = LinkedHashMap<Long, BaseLineResolution>()
         val tocLinesCache = mutableMapOf<Long, List<Long>>()
+        val headingCache = mutableMapOf<Long, TocEntry?>()
 
         distinctIds.forEach { id ->
-            baseIdsCache[id] = resolveBaseLineIds(id, tocLinesCache)
+            resolutionCache[id] = resolveBaseLineResolution(id, tocLinesCache, headingCache)
         }
 
-        val allBaseIds = baseIdsCache.values.flatten().distinct()
+        val allBaseIds = resolutionCache.values.flatMap { it.baseLineIds }.distinct()
         if (allBaseIds.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
 
         val allConnections = repository.getCommentarySummariesForLines(allBaseIds)
         if (allConnections.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
 
         val connectionsBySource = allConnections.groupBy { it.link.sourceLineId }
-        val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
+        val currentState = stateManager.state.first()
+        val currentBookTitle = currentState.navigation.selectedBook?.title?.trim().orEmpty()
         val bookCache = mutableMapOf<Long, Book>()
         val categoryCache = mutableMapOf<Long, Category?>()
 
-        return baseIdsCache.mapValues { (_, baseIds) ->
-            val aggregated = baseIds.flatMap { baseId -> connectionsBySource[baseId].orEmpty() }
-            buildLineConnectionsSnapshot(aggregated, currentBookTitle, bookCache, categoryCache)
+        val defaultTargumByBookId = mutableMapOf<Long, Long?>()
+        resolutionCache.values.mapNotNull { it.headingBookId }.distinct().forEach { bookId ->
+            val ids = loadDefaultTargumIds(bookId)
+            defaultTargumByBookId[bookId] = ids.firstOrNull()
+        }
+
+        return resolutionCache.mapValues { (_, resolution) ->
+            val aggregated = resolution.baseLineIds.flatMap { baseId -> connectionsBySource[baseId].orEmpty() }
+            val defaultTargumId = resolution.headingBookId?.let { defaultTargumByBookId[it] }
+            val filtered = filterTargumConnections(aggregated, resolution, defaultTargumId)
+            buildLineConnectionsSnapshot(filtered, currentBookTitle, bookCache, categoryCache)
         }
     }
 
@@ -488,14 +514,26 @@ class CommentariesUseCase(
     }
 
     private suspend fun resolveBaseLineIds(lineId: Long): List<Long> =
-        resolveBaseLineIds(lineId, mutableMapOf())
+        resolveBaseLineResolution(lineId).baseLineIds
 
     private suspend fun resolveBaseLineIds(
         lineId: Long,
-        tocLinesCache: MutableMap<Long, List<Long>>
-    ): List<Long> {
-        val headingToc = repository.getHeadingTocEntryByLineId(lineId)
-        return if (headingToc != null) {
+        tocLinesCache: MutableMap<Long, List<Long>>,
+        headingCache: MutableMap<Long, TocEntry?> = mutableMapOf()
+    ): List<Long> = resolveBaseLineResolution(lineId, tocLinesCache, headingCache).baseLineIds
+
+    private suspend fun resolveBaseLineResolution(lineId: Long): BaseLineResolution =
+        resolveBaseLineResolution(lineId, mutableMapOf(), mutableMapOf())
+
+    private suspend fun resolveBaseLineResolution(
+        lineId: Long,
+        tocLinesCache: MutableMap<Long, List<Long>>,
+        headingCache: MutableMap<Long, TocEntry?>
+    ): BaseLineResolution {
+        val headingToc = headingCache.getOrPut(lineId) {
+            repository.getHeadingTocEntryByLineId(lineId)
+        }
+        if (headingToc != null) {
             val lines = tocLinesCache.getOrPut(headingToc.id) {
                 repository.getLineIdsForTocEntry(headingToc.id)
             }
@@ -508,9 +546,31 @@ class CommentariesUseCase(
             } else {
                 lines.take(MAX_BASE_LINES_PER_REQUEST)
             }
-            trimmed.filter { it != lineId }
-        } else {
-            listOf(lineId)
+            return BaseLineResolution(
+                baseLineIds = trimmed.filter { it != lineId },
+                headingTocEntryId = headingToc.id,
+                headingBookId = headingToc.bookId
+            )
+        }
+        return BaseLineResolution(baseLineIds = listOf(lineId))
+    }
+
+    private suspend fun loadDefaultTargumIds(bookId: Long): List<Long> {
+        defaultTargumCache[bookId]?.let { return it }
+        val ids = runCatching { repository.getDefaultTargumIdsForBook(bookId) }
+            .getOrElse { emptyList() }
+        defaultTargumCache[bookId] = ids
+        return ids
+    }
+
+    private fun filterTargumConnections(
+        connections: List<CommentarySummary>,
+        resolution: BaseLineResolution,
+        defaultTargumId: Long?
+    ): List<CommentarySummary> {
+        if (resolution.headingTocEntryId == null || defaultTargumId == null) return connections
+        return connections.filter { summary ->
+            summary.link.connectionType != ConnectionType.TARGUM || summary.link.targetBookId == defaultTargumId
         }
     }
     

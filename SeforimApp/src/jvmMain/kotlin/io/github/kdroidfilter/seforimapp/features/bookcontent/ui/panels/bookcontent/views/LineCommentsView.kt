@@ -2,9 +2,9 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcon
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.ScrollableState
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -14,13 +14,11 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
-import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -29,33 +27,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
-import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
+import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorGroup
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorItem
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
+import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.rememberSplitPaneState
-import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.CheckboxRow
-import org.jetbrains.jewel.ui.component.CircularProgressIndicator
-import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import org.jetbrains.jewel.ui.component.*
 import seforimapp.seforimapp.generated.resources.*
 
 private const val MAX_COMMENTATORS = 4
@@ -550,7 +544,7 @@ private fun CommentaryItem(
 
         val display: AnnotatedString = remember(annotated, highlightQuery) {
             if (highlightQuery.isBlank()) annotated
-            else io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated(annotated, highlightQuery)
+            else highlightAnnotated(annotated, highlightQuery)
         }
 
         SelectionContainer {
@@ -785,19 +779,23 @@ private data class CommentariesLayoutConfig(
     val highlightQuery: String,
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CommentatorsSidebarToggleButton(
     isVisible: Boolean,
     onToggle: () -> Unit
 ) {
     val icon: ImageVector = if (isVisible) LayoutSidebarRight else LayoutSidebarRightOff
-    Icon(
-        icon,
-        contentDescription = "",
-        tint = JewelTheme.globalColors.text.normal,
-        modifier = Modifier
-            .size(16.dp)
-            .pointerHoverIcon(PointerIcon.Hand)
-            .clickable(onClick = onToggle)
+    val toggleText = if (isVisible) {
+        stringResource(Res.string.hide_commentators_sidebar)
+    } else {
+        stringResource(Res.string.show_commentators_sidebar)
+    }
+    IconActionButton(
+        painter = rememberVectorPainter(icon),
+        contentDescription = toggleText,
+        onClick = onToggle,
+        iconModifier = Modifier.size(16.dp),
+        tooltip = { Text(toggleText) }
     )
 }

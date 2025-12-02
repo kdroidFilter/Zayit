@@ -153,10 +153,12 @@ class HtmlParser {
 
             if (sameStyle) {
                 // Fusion avec le segment précédent du même style
+                val lastEndsWithWhitespace = last.text.lastOrNull()?.isWhitespace() == true
                 val separator = when {
-                    // Si le segment actuel a un espace au début ou le précédent à la fin
-                    hasLeadingSpace || last.text.lastOrNull()?.isWhitespace() == true -> ""
-                    // Sinon, vérifie si on a besoin d'un espace entre les deux
+                    // Préserve explicitement un espace de tête si le texte brut en contenait un
+                    hasLeadingSpace && !lastEndsWithWhitespace -> " "
+                    lastEndsWithWhitespace -> ""
+                    // Sinon, vérifie si on a besoin d'un espace entre les deux (texte latin uniquement)
                     needsSpaceBetween(last.text, trimmedText) -> " "
                     else -> ""
                 }

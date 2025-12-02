@@ -5,6 +5,8 @@ import androidx.paging.PagingState
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * PagingSource that loads commentaries for a single line, or if the line is a TOC heading,
@@ -31,11 +33,21 @@ class CommentsForLineOrTocPagingSource(
             val page = params.key ?: 0
             val limit = params.loadSize
             val offset = page * limit
+            val maxBatchSize = max(64, limit)
 
             if (resolvedLineIds == null) {
                 val headingToc = repository.getHeadingTocEntryByLineId(baseLineId)
                 resolvedLineIds = if (headingToc != null) {
-                    repository.getLineIdsForTocEntry(headingToc.id).filter { it != baseLineId }
+                    val lines = repository.getLineIdsForTocEntry(headingToc.id).filter { it != baseLineId }
+                    val idx = lines.indexOf(baseLineId)
+                    if (idx >= 0) {
+                        val half = maxBatchSize / 2
+                        val start = max(0, idx - half)
+                        val end = min(lines.size, start + maxBatchSize)
+                        lines.subList(start, end)
+                    } else {
+                        lines.take(maxBatchSize)
+                    }
                 } else listOf(baseLineId)
             }
 
@@ -61,4 +73,3 @@ class CommentsForLineOrTocPagingSource(
         }
     }
 }
-

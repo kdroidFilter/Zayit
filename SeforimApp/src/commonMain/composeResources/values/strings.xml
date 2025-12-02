@@ -103,6 +103,10 @@
     <string name="columns_gap">מבנה עמודות</string>
     <string name="filter_commentators_tooltip">סנן את הפרשנים</string>
     <string name="filter">סנן</string>
+    <!-- Toggle commentators sidebar (used for contentDescription and tooltip) -->
+    <string name="toggle_commentators_sidebar">הצג/הסתר סרגל הפרשנים</string>
+    <string name="show_commentators_sidebar">הצג סרגל הפרשנים</string>
+    <string name="hide_commentators_sidebar">הסתר סרגל הפרשנים</string>
     <string name="write_note_tooltip">כתוב הערה על שורה זאת</string>
     <string name="write_note">כתוב הערה</string>
     <string name="show_targumim_tooltip">הצג תרגומים</string>

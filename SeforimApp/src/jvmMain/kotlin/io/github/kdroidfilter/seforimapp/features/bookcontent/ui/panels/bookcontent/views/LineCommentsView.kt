@@ -49,6 +49,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.rememberSplitPaneState
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import seforimapp.seforimapp.generated.resources.*
 
@@ -791,11 +792,15 @@ private fun CommentatorsSidebarToggleButton(
     } else {
         stringResource(Res.string.show_commentators_sidebar)
     }
-    IconActionButton(
-        painter = rememberVectorPainter(icon),
-        contentDescription = toggleText,
-        onClick = onToggle,
-        iconModifier = Modifier.size(16.dp),
-        tooltip = { Text(toggleText) }
-    )
+    val painter = rememberVectorPainter(icon)
+    Tooltip({ Text(toggleText) }) {
+        IconButton(onClick = onToggle) { _ ->
+            Icon(
+                painter = painter,
+                contentDescription = toggleText,
+                modifier = Modifier.size(16.dp),
+                tint = JewelTheme.globalColors.text.normal
+            )
+        }
+    }
 }

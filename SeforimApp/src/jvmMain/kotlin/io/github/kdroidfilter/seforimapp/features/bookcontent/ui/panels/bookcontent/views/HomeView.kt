@@ -1496,7 +1496,7 @@ private fun SearchLevelCard(
 }
 
 
-@androidx.compose.desktop.ui.tooling.preview.Preview
+@androidx.compose.ui.tooling.preview.Preview
 @Composable
 fun HomeViewPreview() {
     PreviewContainer {

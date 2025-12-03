@@ -1,6 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.finish
 
-import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column

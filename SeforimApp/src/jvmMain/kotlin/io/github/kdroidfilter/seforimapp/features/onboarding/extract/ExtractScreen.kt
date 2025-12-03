@@ -73,7 +73,7 @@ fun ExtractView(
             // Error banner with retry
             if (state.errorMessage != null) {
                 val generic = stringResource(Res.string.onboarding_error_occurred)
-                val detail = state.errorMessage?.takeIf { it.isNotBlank() }
+                val detail = state.errorMessage.takeIf { it.isNotBlank() }
                 val message = detail?.let { stringResource(Res.string.onboarding_error_with_detail, it) } ?: generic
                 val retryLabel = stringResource(Res.string.retry_button)
                 DefaultErrorBanner(

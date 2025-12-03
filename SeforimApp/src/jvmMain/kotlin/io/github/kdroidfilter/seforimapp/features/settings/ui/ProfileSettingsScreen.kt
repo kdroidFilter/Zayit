@@ -26,6 +26,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserPro
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.component.SpeedSearchArea
@@ -60,6 +61,7 @@ fun ProfileSettingsScreen() {
     )
 }
 
+@OptIn(ExperimentalJewelApi::class)
 @Composable
 private fun ProfileSettingsView(
     state: UserProfileState,

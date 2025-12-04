@@ -35,9 +35,11 @@ data class SearchHomeUiState(
     val selectedFilter: SearchFilter = SearchFilter.TEXT,
     val globalExtended: Boolean = false,
     val suggestionsVisible: Boolean = false,
+    val isReferenceLoading: Boolean = false,
     val categorySuggestions: List<CategorySuggestionDto> = emptyList(),
     val bookSuggestions: List<BookSuggestionDto> = emptyList(),
     val tocSuggestionsVisible: Boolean = false,
+    val isTocLoading: Boolean = false,
     val tocSuggestions: List<TocSuggestionDto> = emptyList(),
     val selectedScopeCategory: Category? = null,
     val selectedScopeBook: Book? = null,
@@ -138,7 +140,9 @@ class SearchHomeViewModel(
                     if (!isHome) {
                         _uiState.value = _uiState.value.copy(
                             suggestionsVisible = false,
-                            tocSuggestionsVisible = false
+                            tocSuggestionsVisible = false,
+                            isReferenceLoading = false,
+                            isTocLoading = false
                         )
                     }
                 }
@@ -153,11 +157,17 @@ class SearchHomeViewModel(
                     val qNorm = sanitizeHebrewForAcronym(q)
                     if (q.isBlank()) {
                         _uiState.value = _uiState.value.copy(
+                            isReferenceLoading = false,
                             categorySuggestions = emptyList(),
                             bookSuggestions = emptyList(),
                             suggestionsVisible = false
                         )
                     } else {
+                        val startLoading = q.length >= MIN_BOOK_PREFIX_LEN
+                        _uiState.value = _uiState.value.copy(
+                            isReferenceLoading = startLoading,
+                            suggestionsVisible = true
+                        )
                         val result = withContext(Dispatchers.Default) {
                             coroutineScope {
                                 val pattern = "%$q%"
@@ -229,6 +239,7 @@ class SearchHomeViewModel(
 
                         val (catSuggestions, bookSuggestions) = result
                         _uiState.value = _uiState.value.copy(
+                            isReferenceLoading = false,
                             categorySuggestions = catSuggestions,
                             bookSuggestions = bookSuggestions,
                             suggestionsVisible = true
@@ -249,13 +260,16 @@ class SearchHomeViewModel(
                     when {
                         book == null -> _uiState.value = _uiState.value.copy(
                             tocSuggestions = emptyList(),
-                            tocSuggestionsVisible = false
+                            tocSuggestionsVisible = false,
+                            isTocLoading = false
                         )
                         q.length < MIN_TOC_PREFIX_LEN -> _uiState.value = _uiState.value.copy(
                             tocSuggestions = cached,
-                            tocSuggestionsVisible = cached.isNotEmpty()
+                            tocSuggestionsVisible = cached.isNotEmpty(),
+                            isTocLoading = false
                         )
                         else -> {
+                            _uiState.value = _uiState.value.copy(isTocLoading = true)
                             val suggestions = cached
                                 .asSequence()
                                 .filter { it.toc.text.contains(q, ignoreCase = true) }
@@ -267,7 +281,8 @@ class SearchHomeViewModel(
                                 .toList()
                             _uiState.value = _uiState.value.copy(
                                 tocSuggestions = suggestions,
-                                tocSuggestionsVisible = true
+                                tocSuggestionsVisible = true,
+                                isTocLoading = false
                             )
                         }
                     }
@@ -284,6 +299,7 @@ class SearchHomeViewModel(
                 selectedScopeBook = null,
                 selectedScopeToc = null,
                 tocPreviewHints = emptyList(),
+                isReferenceLoading = false
             )
         }
     }
@@ -293,7 +309,8 @@ class SearchHomeViewModel(
         if (query.isBlank()) {
             _uiState.value = _uiState.value.copy(
                 selectedScopeToc = null,
-                tocSuggestionsVisible = _uiState.value.tocSuggestions.isNotEmpty()
+                tocSuggestionsVisible = _uiState.value.tocSuggestions.isNotEmpty(),
+                isTocLoading = false
             )
         }
     }
@@ -306,7 +323,9 @@ class SearchHomeViewModel(
             suggestionsVisible = false,
             tocSuggestionsVisible = false,
             tocSuggestions = emptyList(),
-            tocPreviewHints = emptyList()
+            tocPreviewHints = emptyList(),
+            isReferenceLoading = false,
+            isTocLoading = false
         )
     }
 
@@ -319,7 +338,9 @@ class SearchHomeViewModel(
             suggestionsVisible = false,
             tocSuggestionsVisible = false,
             tocSuggestions = emptyList(),
-            tocPreviewHints = emptyList()
+            tocPreviewHints = emptyList(),
+            isReferenceLoading = false,
+            isTocLoading = true
         )
         // Load preview hints and initial TOC suggestions asynchronously
         viewModelScope.launch {
@@ -349,7 +370,8 @@ class SearchHomeViewModel(
             _uiState.value = _uiState.value.copy(
                 tocPreviewHints = preview,
                 tocSuggestions = initialSuggestions,
-                tocSuggestionsVisible = initialSuggestions.isNotEmpty()
+                tocSuggestionsVisible = initialSuggestions.isNotEmpty(),
+                isTocLoading = false
             )
         }
     }
@@ -357,7 +379,8 @@ class SearchHomeViewModel(
     fun onPickToc(toc: TocEntry) {
         _uiState.value = _uiState.value.copy(
             selectedScopeToc = toc,
-            tocSuggestionsVisible = false
+            tocSuggestionsVisible = false,
+            isTocLoading = false
         )
     }
 

@@ -424,6 +424,8 @@ fun HomeView(
                                 globalExtended = searchUi.globalExtended,
                                 onGlobalExtendedChange = { searchCallbacks.onGlobalExtendedChange(it) },
                                 parentScale = homeScale,
+                                isBookLoading = searchUi.isReferenceLoading && !isTocInTopBar,
+                                isTocLoading = searchUi.isTocLoading && isTocInTopBar,
                                 onPickBook = { picked ->
                                     searchCallbacks.onPickBook(picked.book)
                                     skipNextReferenceQuery = true
@@ -529,7 +531,9 @@ fun HomeView(
                                             referenceSearchState.edit { replace(0, length, "") }
                                             tocSearchState.edit { replace(0, length, "") }
                                         },
-                                        parentScale = homeScale
+                                        parentScale = homeScale,
+                                        isBookLoading = searchUi.isReferenceLoading,
+                                        isTocLoading = searchUi.isTocLoading
                                     )
                                 }
                             }
@@ -676,6 +680,8 @@ private fun ReferenceByCategorySection(
     onClearBook: () -> Unit = {},
     // Scale applied to Home content; forwarded to inner SearchBars
     parentScale: Float = 1f,
+    isBookLoading: Boolean = false,
+    isTocLoading: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -760,7 +766,9 @@ private fun ReferenceByCategorySection(
                 refState.edit { replace(0, length, "") }
                 tocTfState.edit { replace(0, length, "") }
             },
-            parentScale = parentScale
+            parentScale = parentScale,
+            isBookLoading = isBookLoading,
+            isTocLoading = isTocLoading
         )
     }
 }
@@ -775,7 +783,10 @@ private fun SuggestionsPanel(
     bookSuggestions: List<BookSuggestion>,
     onPickCategory: (CategorySuggestion) -> Unit,
     onPickBook: (BookSuggestion) -> Unit,
-    focusedIndex: Int = -1
+    focusedIndex: Int = -1,
+    emptyMessage: String? = null,
+    isLoading: Boolean = false,
+    loadingMessage: String? = null
 ) {
     val listState = rememberLazyListState()
     LaunchedEffect(focusedIndex, categorySuggestions.size, bookSuggestions.size) {
@@ -798,6 +809,7 @@ private fun SuggestionsPanel(
             }
         }
     }
+    val isEmpty = categorySuggestions.isEmpty() && bookSuggestions.isEmpty()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -812,26 +824,66 @@ private fun SuggestionsPanel(
             verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(categorySuggestions.size) { idx ->
-                val cat = categorySuggestions[idx]
-                val dedupPath = dedupAdjacent(cat.path)
-                SuggestionRow(
-                    parts = dedupPath,
-                    onClick = { onPickCategory(cat) },
-                    highlighted = idx == focusedIndex,
-                    showTabHint = idx == focusedIndex
-                )
-            }
-            items(bookSuggestions.size) { i ->
-                val rowIndex = categorySuggestions.size + i
-                val book = bookSuggestions[i]
-                val dedupPath = dedupAdjacent(book.path)
-                SuggestionRow(
-                    parts = dedupPath,
-                    onClick = { onPickBook(book) },
-                    highlighted = rowIndex == focusedIndex,
-                    showTabHint = rowIndex == focusedIndex
-                )
+            if (isLoading && !loadingMessage.isNullOrEmpty() && isEmpty) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = loadingMessage,
+                            color = JewelTheme.globalColors.text.disabled,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            } else if (isEmpty && !emptyMessage.isNullOrEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = emptyMessage,
+                            color = JewelTheme.globalColors.text.disabled,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            } else {
+                items(categorySuggestions.size) { idx ->
+                    val cat = categorySuggestions[idx]
+                    val dedupPath = dedupAdjacent(cat.path)
+                    SuggestionRow(
+                        parts = dedupPath,
+                        onClick = { onPickCategory(cat) },
+                        highlighted = idx == focusedIndex,
+                        showTabHint = idx == focusedIndex
+                    )
+                }
+                items(bookSuggestions.size) { i ->
+                    val rowIndex = categorySuggestions.size + i
+                    val book = bookSuggestions[i]
+                    val dedupPath = dedupAdjacent(book.path)
+                    SuggestionRow(
+                        parts = dedupPath,
+                        onClick = { onPickBook(book) },
+                        highlighted = rowIndex == focusedIndex,
+                        showTabHint = rowIndex == focusedIndex
+                    )
+                }
             }
         }
     }
@@ -846,7 +898,10 @@ private fun TocSuggestionsPanel(
     tocSuggestions: List<TocSuggestion>,
     onPickToc: (TocSuggestion) -> Unit,
     focusedIndex: Int = -1,
-    selectedBook: BookModel? = null
+    selectedBook: BookModel? = null,
+    emptyMessage: String? = null,
+    isLoading: Boolean = false,
+    loadingMessage: String? = null
 ) {
     val filteredSuggestions = remember(tocSuggestions, selectedBook) {
         tocSuggestions.mapNotNull { ts ->
@@ -855,6 +910,7 @@ private fun TocSuggestionsPanel(
             if (parts.isNotEmpty()) ts to parts else null
         }
     }
+    val isEmpty = filteredSuggestions.isEmpty()
     val listState = rememberLazyListState()
     LaunchedEffect(focusedIndex, filteredSuggestions.size) {
         if (focusedIndex >= 0 && filteredSuggestions.isNotEmpty()) {
@@ -884,14 +940,54 @@ private fun TocSuggestionsPanel(
             verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(filteredSuggestions.size) { index ->
-                val (ts, parts) = filteredSuggestions[index]
-                SuggestionRow(
-                    parts = parts,
-                    onClick = { onPickToc(ts) },
-                    highlighted = index == focusedIndex,
-                    showTabHint = index == focusedIndex
-                )
+            if (isLoading && !loadingMessage.isNullOrEmpty() && isEmpty) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = loadingMessage,
+                            color = JewelTheme.globalColors.text.disabled,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            } else if (isEmpty && !emptyMessage.isNullOrEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = emptyMessage,
+                            color = JewelTheme.globalColors.text.disabled,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            } else {
+                items(filteredSuggestions.size) { index ->
+                    val (ts, parts) = filteredSuggestions[index]
+                    SuggestionRow(
+                        parts = parts,
+                        onClick = { onPickToc(ts) },
+                        highlighted = index == focusedIndex,
+                        showTabHint = index == focusedIndex
+                    )
+                }
             }
         }
     }
@@ -1087,8 +1183,12 @@ private fun SearchBar(
     onGlobalExtendedChange: (Boolean) -> Unit = {},
     // Scale applied to Home content; used to keep the popup consistent
     parentScale: Float = 1f,
+    // Loading flags for predictive lists
+    isBookLoading: Boolean = false,
+    isTocLoading: Boolean = false,
 ) {
     val isReference = selectedFilter == SearchFilter.REFERENCE
+    val scope = rememberCoroutineScope()
     // Hints from string resources
     val referenceHints = listOf(
         stringResource(Res.string.reference_hint_1),
@@ -1136,6 +1236,10 @@ private fun SearchBar(
     }
 
     // Predictive suggestions management for REFERENCE mode while keeping TextField style
+    val hasUserText = state.text.isNotBlank()
+    val queryLength = state.text.length
+    val minBookPrefixLen = 2
+    val minTocPrefixLen = 1
     var focusedIndex by remember { mutableIntStateOf(-1) }
     var popupVisible by remember { mutableStateOf(false) }
     val categoriesCount = categorySuggestions.size
@@ -1144,6 +1248,10 @@ private fun SearchBar(
     val isTocMode = isReference && selectedBook != null
     val showCategorySuggestions = suggestionsVisible && totalCatBook > 0 && !isTocMode
     val showTocSuggestions = tocSuggestionsVisible && totalToc > 0 && isTocMode
+    val showBookLoading = isReference && !isTocMode && isBookLoading && hasUserText && queryLength >= minBookPrefixLen
+    val showTocLoading = isReference && isTocMode && isTocLoading && hasUserText && queryLength >= minTocPrefixLen
+    val showBookEmptyState = isReference && !isTocMode && suggestionsVisible && totalCatBook == 0 && hasUserText && queryLength >= minBookPrefixLen && !showBookLoading
+    val showTocEmptyState = isReference && isTocMode && tocSuggestionsVisible && totalToc == 0 && hasUserText && queryLength >= minTocPrefixLen && !showTocLoading
     LaunchedEffect(
         selectedFilter,
         suggestionsVisible,
@@ -1151,15 +1259,23 @@ private fun SearchBar(
         categorySuggestions,
         bookSuggestions,
         tocSuggestions,
-        isTocMode
+        isTocMode,
+        showBookEmptyState,
+        showTocEmptyState,
+        showBookLoading,
+        showTocLoading
     ) {
         val shouldOpen = when {
             showTocSuggestions -> true
             showCategorySuggestions -> true
+            showBookEmptyState -> true
+            showTocEmptyState -> true
+            showBookLoading -> true
+            showTocLoading -> true
             else -> false
         }
         popupVisible = shouldOpen
-        focusedIndex = if (shouldOpen) 0 else -1
+        focusedIndex = if (shouldOpen && (showTocSuggestions || showCategorySuggestions)) 0 else -1
     }
 
     var anchor by remember { mutableStateOf<AnchorBounds?>(null) }
@@ -1240,7 +1356,12 @@ private fun SearchBar(
                                 when {
                                     isTocMode && focusedIndex in 0 until totalToc -> {
                                         handlePickToc(tocSuggestions[focusedIndex])
-                                        if (submitOnEnterInReference) handleSubmit()
+                                        if (submitOnEnterInReference) {
+                                            scope.launch {
+                                                withFrameNanos { }
+                                                handleSubmit()
+                                            }
+                                        }
                                         true
                                     }
                                     !isTocMode && focusedIndex in 0 until totalCatBook -> {
@@ -1261,7 +1382,11 @@ private fun SearchBar(
                                         handleSubmit(); true
                                     }
                                     submitOnEnterInReference && selectedBook != null -> {
-                                        handleSubmit(); true
+                                        scope.launch {
+                                            withFrameNanos { }
+                                            handleSubmit()
+                                        }
+                                        true
                                     }
                                     else -> true
                                 }
@@ -1302,8 +1427,11 @@ private fun SearchBar(
                                     else -> false
                                 }
                                 if (handled) {
-                                    if (submitOnEnterInReference && (isTocMode || focusedIndex >= categoriesCount)) {
-                                        handleSubmit()
+                                    if (submitOnEnterInReference && isTocMode) {
+                                        scope.launch {
+                                            withFrameNanos { }
+                                            handleSubmit()
+                                        }
                                     }
                                     true
                                 } else {
@@ -1401,7 +1529,7 @@ private fun SearchBar(
         // Overlay suggestions anchored under the TextField
         val a = anchor
         val showOverlay = isReference && popupVisible && a != null &&
-            (showTocSuggestions || showCategorySuggestions)
+            (showTocSuggestions || showCategorySuggestions || showBookEmptyState || showTocEmptyState || showBookLoading || showTocLoading)
         if (showOverlay) {
             val provider = remember(a) {
                 object : PopupPositionProvider {
@@ -1446,20 +1574,26 @@ private fun SearchBar(
                             transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
                         )
                 ) {
-                    if (isTocMode && showTocSuggestions) {
+                    if (isTocMode && (showTocSuggestions || showTocEmptyState || showTocLoading)) {
                         TocSuggestionsPanel(
                             tocSuggestions = tocSuggestions,
                             onPickToc = ::handlePickToc,
                             focusedIndex = focusedIndex,
-                            selectedBook = selectedBook
+                            selectedBook = selectedBook,
+                            emptyMessage = if (showTocEmptyState) stringResource(Res.string.autocomplete_no_results) else null,
+                            isLoading = showTocLoading,
+                            loadingMessage = stringResource(Res.string.autocomplete_loading)
                         )
-                    } else if (showCategorySuggestions) {
+                    } else if (!isTocMode && (showCategorySuggestions || showBookEmptyState || showBookLoading)) {
                         SuggestionsPanel(
                             categorySuggestions = categorySuggestions,
                             bookSuggestions = bookSuggestions,
                             onPickCategory = ::handlePickCategory,
                             onPickBook = ::handlePickBook,
-                            focusedIndex = focusedIndex
+                            focusedIndex = focusedIndex,
+                            emptyMessage = if (showBookEmptyState) stringResource(Res.string.autocomplete_no_results) else null,
+                            isLoading = showBookLoading,
+                            loadingMessage = stringResource(Res.string.autocomplete_loading)
                         )
                     }
                 }

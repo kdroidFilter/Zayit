@@ -269,7 +269,10 @@ class SearchHomeViewModel(
                             isTocLoading = false
                         )
                         else -> {
-                            _uiState.value = _uiState.value.copy(isTocLoading = true)
+                            _uiState.value = _uiState.value.copy(
+                                isTocLoading = true,
+                                tocSuggestionsVisible = true
+                            )
                             val suggestions = cached
                                 .asSequence()
                                 .filter { it.toc.text.contains(q, ignoreCase = true) }

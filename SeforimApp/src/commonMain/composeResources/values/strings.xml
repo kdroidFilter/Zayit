@@ -173,6 +173,8 @@
     <string name="reference_toc_hint_4">דף ב עמוד א</string>
     <string name="reference_toc_hint_5">שער א</string>
     <string name="tab_hint_select">Tab ⇥</string>
+    <string name="autocomplete_no_results">לא נמצאו תוצאות</string>
+    <string name="autocomplete_loading">טוען…</string>
 
     <string name="text_hint_1">הכל בידי שמים חוץ מיראת שמים</string>
     <string name="text_hint_2">ואהבת לרעך כמוך</string>

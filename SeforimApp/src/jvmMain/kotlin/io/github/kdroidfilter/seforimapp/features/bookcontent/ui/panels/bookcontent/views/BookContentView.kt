@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -317,6 +318,10 @@ fun BookContentView(
     var currentHitLineIndex by remember { mutableIntStateOf(-1) }
     var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
     var currentMatchStart by remember { mutableIntStateOf(-1) }
+    val plainTextCache = remember(book.id) { mutableStateMapOf<Long, String>() }
+    val annotatedCache = remember(book.id, textSize, boldScaleForPlatform) {
+        mutableStateMapOf<Long, AnnotatedString>()
+    }
 
     // Navigate to next/previous line containing the query (wrap-around)
     val scope = rememberCoroutineScope()
@@ -334,7 +339,9 @@ fun BookContentView(
         while (guard++ < size) {
             i = (i + step + size) % size
             val line = snapshot[i] ?: continue
-            val text = buildAnnotatedFromHtml(line.content, textSize).text
+            val text = plainTextCache.getOrPut(line.id) {
+                buildAnnotatedFromHtml(line.content, textSize).text
+            }
             val start = findAllMatchesOriginal(text, query).firstOrNull()?.first ?: -1
             if (start >= 0) {
                 currentHitLineIndex = i
@@ -440,7 +447,8 @@ fun BookContentView(
                                 onLineSelected = onLineSelected,
                                 scrollToLineTimestamp = scrollToLineTimestamp,
                                 highlightQuery = findState.text.toString().takeIf { showFind },
-                                currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null
+                                currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
+                                annotatedCache = annotatedCache
                             )
                         }
                     } else {
@@ -602,11 +610,18 @@ private fun LineItem(
     onLineSelected: (Line) -> Unit,
     scrollToLineTimestamp: Long,
     highlightQuery: String? = null,
-    currentMatchStart: Int? = null
+    currentMatchStart: Int? = null,
+    annotatedCache: MutableMap<Long, AnnotatedString>? = null
 ) {
     // Memoize the annotated string with proper keys
-    val annotated = remember(line.id, line.content, baseTextSize, boldScale) {
-        buildAnnotatedFromHtml(
+    val annotated = remember(line.id, line.content, baseTextSize, boldScale, annotatedCache) {
+        annotatedCache?.getOrPut(line.id) {
+            buildAnnotatedFromHtml(
+                line.content,
+                baseTextSize,
+                boldScale = if (boldScale < 1f) 1f else boldScale
+            )
+        } ?: buildAnnotatedFromHtml(
             line.content,
             baseTextSize,
             boldScale = if (boldScale < 1f) 1f else boldScale

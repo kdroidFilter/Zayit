@@ -63,7 +63,6 @@ fun BookContentPanel(
             LoaderPanel(modifier = modifier)
         } else {
             HomeView(
-                uiState = uiState,
                 onEvent = onEvent,
                 searchUi = searchUi,
                 searchCallbacks = searchCallbacks,

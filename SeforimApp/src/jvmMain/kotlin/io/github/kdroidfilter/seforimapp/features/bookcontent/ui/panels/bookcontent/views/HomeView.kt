@@ -74,10 +74,7 @@ private data class TocSuggestion(val toc: TocEntry, val path: List<String>)
 private data class AnchorBounds(val windowOffset: IntOffset, val size: IntSize)
 
 data class SearchFilterCard(
-    val icons: ImageVector,
-    val label: StringResource,
-    val desc: StringResource,
-    val explanation: StringResource
+    val icons: ImageVector, val label: StringResource, val desc: StringResource, val explanation: StringResource
 )
 
 /**
@@ -110,11 +107,27 @@ fun HomeView(
 ) {
     CatalogRow(onEvent = onEvent)
 
-    HomeBody(
-        searchUi = searchUi,
-        searchCallbacks = searchCallbacks,
-        modifier = modifier
-    )
+    Row {
+
+
+        Box(
+            modifier = Modifier.weight(0.7f)
+        ) {
+            HomeBody(
+                searchUi = searchUi, searchCallbacks = searchCallbacks, modifier = modifier
+            )
+        }
+
+        Box(
+            modifier = Modifier.fillMaxHeight().padding(horizontal = 16.dp)
+                .weight(0.3f),
+            contentAlignment = Alignment.Center
+        ) {
+            HomeCelestialWidgets()
+
+        }
+
+    }
 }
 
 /**
@@ -128,9 +141,7 @@ fun HomeView(
 @OptIn(ExperimentalJewelApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun HomeBody(
-    searchUi: SearchHomeUiState,
-    searchCallbacks: HomeSearchCallbacks,
-    modifier: Modifier = Modifier
+    searchUi: SearchHomeUiState, searchCallbacks: HomeSearchCallbacks, modifier: Modifier = Modifier
 ) {
     // Global zoom level from AppSettings; used to scale Home view uniformly
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -163,8 +174,7 @@ private fun HomeBody(
         }
 
         BoxWithConstraints(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
         ) {
             // Keep a fixed logical width for the Home content (600.dp) and clamp the
             // scale if the window is too narrow so that the scaled content never
@@ -172,17 +182,11 @@ private fun HomeBody(
             // it stops growing once the layout itself is clamped.
             val baseWidth = 600.dp
             val maxScaleForWidth = (maxWidth.value / baseWidth.value).coerceAtLeast(0f)
-            val clampedScale = homeScale
-                .coerceAtMost(maxScaleForWidth)
-                .coerceAtLeast(0f)
-            val paddingScale = (1f + (clampedScale - 1f) * 5f)
-                .coerceAtLeast(0.2f)
+            val clampedScale = homeScale.coerceAtMost(maxScaleForWidth).coerceAtLeast(0f)
+            val paddingScale = (1f + (clampedScale - 1f) * 5f).coerceAtLeast(0.2f)
 
             Box(
-                modifier = modifier
-                    .padding(top = 56.dp * paddingScale)
-                    .fillMaxSize()
-                    .padding(8.dp),
+                modifier = modifier.padding(top = 56.dp * paddingScale).fillMaxSize().padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 // Keep state outside LazyColumn so it persists across item recompositions
@@ -199,8 +203,7 @@ private fun HomeBody(
                 var scopeExpanded by remember { mutableStateOf(false) }
                 // Forward reference input changes to the ViewModel (VM handles debouncing and suggestions)
                 LaunchedEffect(Unit) {
-                    snapshotFlow { referenceSearchState.text.toString() }
-                        .collect { qRaw ->
+                    snapshotFlow { referenceSearchState.text.toString() }.collect { qRaw ->
                             if (skipNextReferenceQuery) {
                                 skipNextReferenceQuery = false
                             } else {
@@ -210,8 +213,7 @@ private fun HomeBody(
                 }
                 // Forward toc input changes to the ViewModel (ignored until a book is selected)
                 LaunchedEffect(Unit) {
-                    snapshotFlow { tocSearchState.text.toString() }
-                        .collect { qRaw ->
+                    snapshotFlow { tocSearchState.text.toString() }.collect { qRaw ->
                             if (skipNextTocQuery) {
                                 skipNextTocQuery = false
                                 tocEditedSinceBook = qRaw.isNotBlank()
@@ -243,13 +245,10 @@ private fun HomeBody(
                 // Main search field focus handled inside SearchBar via autoFocus
 
                 LazyColumn(
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    state = listState, verticalArrangement = Arrangement.spacedBy(16.dp),
                     // Keep aspect ratio by applying uniform scale to the whole Home content,
                     // while keeping it within the available width.
-                    modifier = Modifier
-                        .width(baseWidth)
-                        .graphicsLayer(scaleX = clampedScale, scaleY = clampedScale)
+                    modifier = Modifier.width(baseWidth).graphicsLayer(scaleX = clampedScale, scaleY = clampedScale)
                 ) {
                     item {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -269,9 +268,7 @@ private fun HomeBody(
                             // When switching to REFERENCE mode, focus the first (top) text field
                             LaunchedEffect(searchUi.selectedFilter) {
                                 // When switching modes, always focus the top text field
-                                if (searchUi.selectedFilter == SearchFilter.REFERENCE ||
-                                    searchUi.selectedFilter == SearchFilter.TEXT
-                                ) {
+                                if (searchUi.selectedFilter == SearchFilter.REFERENCE || searchUi.selectedFilter == SearchFilter.TEXT) {
                                     // small delay to ensure composition is settled
                                     delay(100)
                                     mainSearchFocusRequester.requestFocus()
@@ -323,10 +320,10 @@ private fun HomeBody(
                             }
                             SearchBar(
                                 state = when {
-                                    isTocInTopBar -> tocSearchState
-                                    isReferenceMode -> referenceSearchState
-                                    else -> searchState
-                                },
+                                isTocInTopBar -> tocSearchState
+                                isReferenceMode -> referenceSearchState
+                                else -> searchState
+                            },
                                 selectedFilter = searchUi.selectedFilter,
                                 onFilterChange = { searchCallbacks.onFilterChange(it) },
                                 onSubmit = if (isReferenceMode) {
@@ -394,8 +391,7 @@ private fun HomeBody(
                                     skipNextTocQuery = false
                                     tocEditedSinceBook = false
                                 },
-                                canClearBookOnBackspace = { !tocEditedSinceBook }
-                            )
+                                canClearBookOnBackspace = { !tocEditedSinceBook })
                         }
                     }
                     item {
@@ -484,9 +480,7 @@ private fun HomeBody(
 @Composable
 private fun WelcomeUser(username: String) {
     Text(
-        stringResource(Res.string.home_welcome_user, username),
-        textAlign = TextAlign.Center,
-        fontSize = 36.sp
+        stringResource(Res.string.home_welcome_user, username), textAlign = TextAlign.Center, fontSize = 36.sp
     )
 }
 
@@ -494,9 +488,7 @@ private fun WelcomeUser(username: String) {
 @Composable
 private fun LogoImage(modifier: Modifier = Modifier) {
     Image(
-        painterResource(Res.drawable.zayit_transparent),
-        contentDescription = null,
-        modifier = modifier.size(256.dp)
+        painterResource(Res.drawable.zayit_transparent), contentDescription = null, modifier = modifier.size(256.dp)
     )
 }
 
@@ -510,9 +502,7 @@ private fun LogoImage(modifier: Modifier = Modifier) {
  * a slider. The slider and cards mirror the same selection index.
  */
 private fun SearchLevelsPanel(
-    modifier: Modifier = Modifier,
-    selectedIndex: Int,
-    onSelectedIndexChange: (Int) -> Unit
+    modifier: Modifier = Modifier, selectedIndex: Int, onSelectedIndexChange: (Int) -> Unit
 ) {
     val filterCards: List<SearchFilterCard> = listOf(
         SearchFilterCard(
@@ -520,26 +510,22 @@ private fun SearchLevelsPanel(
             Res.string.search_level_1_value,
             Res.string.search_level_1_description,
             Res.string.search_level_1_explanation
-        ),
-        SearchFilterCard(
+        ), SearchFilterCard(
             Link,
             Res.string.search_level_2_value,
             Res.string.search_level_2_description,
             Res.string.search_level_2_explanation
-        ),
-        SearchFilterCard(
+        ), SearchFilterCard(
             Format_letter_spacing,
             Res.string.search_level_3_value,
             Res.string.search_level_3_description,
             Res.string.search_level_3_explanation
-        ),
-        SearchFilterCard(
+        ), SearchFilterCard(
             Article,
             Res.string.search_level_4_value,
             Res.string.search_level_4_description,
             Res.string.search_level_4_explanation
-        ),
-        SearchFilterCard(
+        ), SearchFilterCard(
             Book,
             Res.string.search_level_5_value,
             Res.string.search_level_5_description,
@@ -559,13 +545,10 @@ private fun SearchLevelsPanel(
     ) {
         filterCards.forEachIndexed { index, filterCard ->
             SearchLevelCard(
-                data = filterCard,
-                selected = index == coercedSelected,
-                onClick = {
+                data = filterCard, selected = index == coercedSelected, onClick = {
                     sliderPosition = index.toFloat()
                     onSelectedIndexChange(index)
-                }
-            )
+                })
         }
     }
 
@@ -624,13 +607,10 @@ private fun ReferenceByCategorySection(
     if (showHeader) {
         GroupHeader(
             text = stringResource(Res.string.search_by_category_or_book),
-            modifier =
-                modifier
-                    .clickable(indication = null, interactionSource = interactionSource) {
-                        onExpandedChange(!isExpanded)
-                    }
-                    .hoverable(interactionSource)
-                    .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))),
+            modifier = modifier.clickable(indication = null, interactionSource = interactionSource) {
+                    onExpandedChange(!isExpanded)
+                }.hoverable(interactionSource)
+                .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))),
             startComponent = {
                 if (isExpanded) {
                     Icon(AllIconsKeys.General.ChevronDown, stringResource(Res.string.chevron_icon_description))
@@ -747,26 +727,18 @@ private fun SuggestionsPanel(
     }
     val isEmpty = categorySuggestions.isEmpty() && bookSuggestions.isEmpty()
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
             .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(8.dp))
-            .background(JewelTheme.globalColors.panelBackground)
-            .heightIn(max = 220.dp)
+            .background(JewelTheme.globalColors.panelBackground).heightIn(max = 220.dp)
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         LazyColumn(
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.fillMaxWidth()
+            state = listState, verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()
         ) {
             if (isLoading && !loadingMessage.isNullOrEmpty() && isEmpty) {
                 item {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = loadingMessage,
@@ -782,10 +754,7 @@ private fun SuggestionsPanel(
             } else if (isEmpty && !emptyMessage.isNullOrEmpty()) {
                 item {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = emptyMessage,
@@ -863,26 +832,17 @@ private fun TocSuggestionsPanel(
         }
     }
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
             .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(8.dp))
-            .background(JewelTheme.globalColors.panelBackground)
-            .heightIn(max = 220.dp)
-            .padding(8.dp)
+            .background(JewelTheme.globalColors.panelBackground).heightIn(max = 220.dp).padding(8.dp)
     ) {
         LazyColumn(
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.fillMaxWidth()
+            state = listState, verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()
         ) {
             if (isLoading && !loadingMessage.isNullOrEmpty() && isEmpty) {
                 item {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = loadingMessage,
@@ -898,10 +858,7 @@ private fun TocSuggestionsPanel(
             } else if (isEmpty && !emptyMessage.isNullOrEmpty()) {
                 item {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = emptyMessage,
@@ -992,10 +949,7 @@ private fun stripBookPrefixFromTocPath(selectedBook: BookModel?, parts: List<Str
 
 @Composable
 private fun SuggestionRow(
-    parts: List<String>,
-    onClick: () -> Unit,
-    highlighted: Boolean = false,
-    showTabHint: Boolean = false
+    parts: List<String>, onClick: () -> Unit, highlighted: Boolean = false, showTabHint: Boolean = false
 ) {
     val hScroll = rememberScrollState(0)
     val hoverSource = remember { MutableInteractionSource() }
@@ -1026,19 +980,12 @@ private fun SuggestionRow(
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
-            .background(if (active) AppColors.HOVER_HIGHLIGHT else Color.Transparent)
-            .clickable(onClick = onClick)
-            .pointerHoverIcon(PointerIcon.Hand)
-            .hoverable(hoverSource)
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp))
+            .background(if (active) AppColors.HOVER_HIGHLIGHT else Color.Transparent).clickable(onClick = onClick)
+            .pointerHoverIcon(PointerIcon.Hand).hoverable(hoverSource).padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         Box(
-            modifier = Modifier
-                .weight(1f)
-                .horizontalScroll(hScroll)
+            modifier = Modifier.weight(1f).horizontalScroll(hScroll)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 parts.forEachIndexed { index, text ->
@@ -1062,8 +1009,7 @@ private fun SuggestionRow(
         if (showTabHint && hasContent) {
             Spacer(Modifier.width(12.dp))
             Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
+                modifier = Modifier.clip(RoundedCornerShape(10.dp))
                     .border(1.dp, JewelTheme.globalColors.text.info, RoundedCornerShape(10.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
@@ -1250,22 +1196,16 @@ private fun SearchBar(
         }
         TextField(
             state = state,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp)
-                .onGloballyPositioned { coords ->
+            modifier = Modifier.fillMaxWidth().height(40.dp).onGloballyPositioned { coords ->
                     val pos = coords.positionInWindow()
                     anchor = AnchorBounds(
                         windowOffset = IntOffset(pos.x.roundToInt(), pos.y.roundToInt()),
                         size = IntSize(coords.size.width, coords.size.height)
                     )
-                }
-                .onPreviewKeyEvent { ev ->
+                }.onPreviewKeyEvent { ev ->
                     val isRef = isReference
                     when {
-                        isRef &&
-                                ev.key == Key.Backspace &&
-                                isTocMode -> {
+                        isRef && ev.key == Key.Backspace && isTocMode -> {
                             when (ev.type) {
                                 KeyEventType.KeyDown -> {
                                     backspaceStartedEmpty = state.text.isEmpty()
@@ -1273,10 +1213,8 @@ private fun SearchBar(
                                 }
 
                                 KeyEventType.KeyUp -> {
-                                    val shouldClear = backspaceStartedEmpty &&
-                                            state.text.isEmpty() &&
-                                            onClearBook != null &&
-                                            canClearBookOnBackspace()
+                                    val shouldClear =
+                                        backspaceStartedEmpty && state.text.isEmpty() && onClearBook != null && canClearBookOnBackspace()
                                     backspaceStartedEmpty = false
                                     if (shouldClear) {
                                         onClearBook()
@@ -1399,15 +1337,12 @@ private fun SearchBar(
 
                         else -> false
                     }
-                }
-                .focusRequester(effectiveFocusRequester),
+                }.focusRequester(effectiveFocusRequester),
             enabled = enabled,
             placeholder = {
                 if (placeholderText != null) {
                     Text(
-                        placeholderText,
-                        style = TextStyle(fontSize = 13.sp, color = Color(0xFF9AA0A6)),
-                        maxLines = 1
+                        placeholderText, style = TextStyle(fontSize = 13.sp, color = Color(0xFF9AA0A6)), maxLines = 1
                     )
                 } else {
                     key(filterVersion) {
@@ -1427,36 +1362,29 @@ private fun SearchBar(
             },
             trailingIcon = if (showToggle) ({
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Chip visible seulement en mode TEXT
                     if (selectedFilter == SearchFilter.TEXT) {
                         CustomToggleableChip(
-                            checked = globalExtended,
-                            onClick = { newChecked ->
+                            checked = globalExtended, onClick = { newChecked ->
                                 // Apply change and immediately return focus to the text field
                                 onGlobalExtendedChange(newChecked)
                                 effectiveFocusRequester.requestFocus()
-                            },
-                            tooltipText = stringResource(Res.string.search_extended_tooltip),
-                            withPadding = false
+                            }, tooltipText = stringResource(Res.string.search_extended_tooltip), withPadding = false
                         )
                     }
                     IntegratedSwitch(
-                        selectedFilter = selectedFilter,
-                        onFilterChange = { filter ->
+                        selectedFilter = selectedFilter, onFilterChange = { filter ->
                             // Switch mode and refocus the text field so Enter works right away
                             onFilterChange(filter)
                             effectiveFocusRequester.requestFocus()
-                        }
-                    )
+                        })
                 }
             }) else null,
             leadingIcon = {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (showIcon) {
                         IconButton({ handleSubmit() }) {
@@ -1469,12 +1397,10 @@ private fun SearchBar(
                     }
                     if (isReference && selectedBook != null && onClearBook != null) {
                         SelectedBookChip(
-                            title = selectedBook.title,
-                            onClear = {
+                            title = selectedBook.title, onClear = {
                                 onClearBook()
                                 effectiveFocusRequester.requestFocus()
-                            }
-                        )
+                            })
                         Spacer(Modifier.width(8.dp))
                     }
                 }
@@ -1484,8 +1410,8 @@ private fun SearchBar(
 
         // Overlay suggestions anchored under the TextField
         val a = anchor
-        val showOverlay = isReference && popupVisible && a != null &&
-                (showTocSuggestions || showCategorySuggestions || showBookEmptyState || showTocEmptyState || showBookLoading || showTocLoading)
+        val showOverlay =
+            isReference && popupVisible && a != null && (showTocSuggestions || showCategorySuggestions || showBookEmptyState || showTocEmptyState || showBookLoading || showTocLoading)
         if (showOverlay) {
             val provider = remember(a) {
                 object : PopupPositionProvider {
@@ -1513,18 +1439,14 @@ private fun SearchBar(
                 }
             }
             Popup(
-                popupPositionProvider = provider,
-                properties = PopupProperties(focusable = false)
+                popupPositionProvider = provider, properties = PopupProperties(focusable = false)
             ) {
                 val widthDp = with(LocalDensity.current) { a.size.width.toDp() }
                 // Scale popup content by the same factor as the Home view to keep
                 // typography and spacing consistent with the rest of the UI.
                 Box(
-                    Modifier
-                        .width(widthDp)
-                        .graphicsLayer(
-                            scaleX = parentScale,
-                            scaleY = parentScale,
+                    Modifier.width(widthDp).graphicsLayer(
+                            scaleX = parentScale, scaleY = parentScale,
                             // Ensure scaling originates from the top-left so the popup
                             // remains anchored under the TextField.
                             transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
@@ -1561,12 +1483,9 @@ private fun SearchBar(
 @Composable
 private fun SelectedBookChip(title: String, onClear: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(JewelTheme.globalColors.panelBackground)
+        modifier = modifier.clip(RoundedCornerShape(14.dp)).background(JewelTheme.globalColors.panelBackground)
             .border(1.dp, JewelTheme.globalColors.borders.disabled, RoundedCornerShape(14.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-            .pointerHoverIcon(PointerIcon.Hand),
+            .padding(horizontal = 10.dp, vertical = 6.dp).pointerHoverIcon(PointerIcon.Hand),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -1580,10 +1499,7 @@ private fun SelectedBookChip(title: String, onClear: () -> Unit, modifier: Modif
         Icon(
             key = AllIconsKeys.Windows.Close,
             contentDescription = stringResource(Res.string.remove_selected_book),
-            modifier = Modifier
-                .size(12.dp)
-                .clickable(onClick = onClear)
-                .pointerHoverIcon(PointerIcon.Hand),
+            modifier = Modifier.size(12.dp).clickable(onClick = onClear).pointerHoverIcon(PointerIcon.Hand),
             tint = JewelTheme.globalColors.text.disabled
         )
     }
@@ -1593,21 +1509,12 @@ private fun SelectedBookChip(title: String, onClear: () -> Unit, modifier: Modif
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun IntegratedSwitch(
-    selectedFilter: SearchFilter,
-    onFilterChange: (SearchFilter) -> Unit,
-    modifier: Modifier = Modifier
+    selectedFilter: SearchFilter, onFilterChange: (SearchFilter) -> Unit, modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(JewelTheme.globalColors.panelBackground)
-            .border(
-                width = 1.dp,
-                color = JewelTheme.globalColors.borders.disabled,
-                shape = RoundedCornerShape(20.dp)
-            )
-            .padding(2.dp),
-        horizontalArrangement = Arrangement.spacedBy(1.dp)
+        modifier = modifier.clip(RoundedCornerShape(20.dp)).background(JewelTheme.globalColors.panelBackground).border(
+                width = 1.dp, color = JewelTheme.globalColors.borders.disabled, shape = RoundedCornerShape(20.dp)
+            ).padding(2.dp), horizontalArrangement = Arrangement.spacedBy(1.dp)
     ) {
         SearchFilter.entries.forEach { filter ->
             Tooltip(
@@ -1616,19 +1523,14 @@ private fun IntegratedSwitch(
                         text = when (filter) {
                             SearchFilter.REFERENCE -> stringResource(Res.string.search_mode_reference_explicit)
                             SearchFilter.TEXT -> stringResource(Res.string.search_mode_text_explicit)
-                        },
-                        fontSize = 13.sp
+                        }, fontSize = 13.sp
                     )
-                }
-            ) {
+                }) {
                 FilterButton(
                     text = when (filter) {
                         SearchFilter.REFERENCE -> stringResource(Res.string.search_mode_reference)
                         SearchFilter.TEXT -> stringResource(Res.string.search_mode_text)
-                    },
-                    isSelected = selectedFilter == filter,
-                    onClick = { onFilterChange(filter) }
-                )
+                    }, isSelected = selectedFilter == filter, onClick = { onFilterChange(filter) })
             }
         }
     }
@@ -1637,10 +1539,7 @@ private fun IntegratedSwitch(
 
 @Composable
 private fun FilterButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    text: String, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier
 ) {
     val backgroundColor by animateColorAsState(
         targetValue = if (isSelected) Color(0xFF0E639C) else Color.Transparent,
@@ -1656,28 +1555,21 @@ private fun FilterButton(
 
     Text(
         text = text,
-        modifier = modifier
-            .pointerHoverIcon(PointerIcon.Hand)
-            .clip(RoundedCornerShape(18.dp))
+        modifier = modifier.pointerHoverIcon(PointerIcon.Hand).clip(RoundedCornerShape(18.dp))
             .background(backgroundColor)
             .clickable(indication = null, interactionSource = MutableInteractionSource()) { onClick() }
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-            .defaultMinSize(minWidth = 45.dp),
+            .padding(horizontal = 10.dp, vertical = 4.dp).defaultMinSize(minWidth = 45.dp),
         color = textColor,
         fontSize = 10.sp,
         fontWeight = FontWeight.Medium,
         textAlign = TextAlign.Center,
-        fontFamily = FontFamily.Monospace
-    )
+        fontFamily = FontFamily.Monospace)
 }
 
 
 @Composable
 private fun SearchLevelCard(
-    data: SearchFilterCard,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    data: SearchFilterCard, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(16.dp)
     val backgroundColor = if (selected) Color(0xFF0E639C) else Color.Transparent
@@ -1686,19 +1578,12 @@ private fun SearchLevelCard(
         if (selected) JewelTheme.globalColors.borders.focused else JewelTheme.globalColors.borders.disabled
 
     Box(
-        modifier = modifier
-            .width(96.dp)
-            .height(110.dp)
-            .clip(shape)
-            .background(backgroundColor)
+        modifier = modifier.width(96.dp).height(110.dp).clip(shape).background(backgroundColor)
             .border(width = if (selected) 2.dp else 1.dp, color = borderColor, shape = shape)
-            .clickable(onClick = onClick)
-            .pointerHoverIcon(PointerIcon.Hand),
-        contentAlignment = Alignment.Center
+            .clickable(onClick = onClick).pointerHoverIcon(PointerIcon.Hand), contentAlignment = Alignment.Center
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             val contentColor = if (selected) Color.White else JewelTheme.contentColor
             Icon(
@@ -1708,16 +1593,10 @@ private fun SearchLevelCard(
                 tint = contentColor
             )
             Text(
-                stringResource(data.label),
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center,
-                color = contentColor
+                stringResource(data.label), fontSize = 16.sp, textAlign = TextAlign.Center, color = contentColor
             )
             Text(
-                stringResource(data.desc),
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center,
-                color = contentColor
+                stringResource(data.desc), fontSize = 12.sp, textAlign = TextAlign.Center, color = contentColor
             )
         }
     }
@@ -1739,13 +1618,9 @@ fun HomeViewPreview() {
             onOpenReference = {},
             onPickCategory = {},
             onPickBook = {},
-            onPickToc = {}
-        )
+            onPickToc = {})
         HomeView(
-            onEvent = {},
-            searchUi = stubSearchUi,
-            searchCallbacks = stubCallbacks,
-            modifier = Modifier
+            onEvent = {}, searchUi = stubSearchUi, searchCallbacks = stubCallbacks, modifier = Modifier
         )
     }
 }

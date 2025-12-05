@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.search
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
+import kotlinx.serialization.ExperimentalSerializationApi
 import java.io.File
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
@@ -14,6 +15,7 @@ import kotlinx.serialization.protobuf.ProtoBuf
  * Previously JSON was used; we now use ProtoBuf for faster, smaller IO.
  * JSON fallback is kept for a smooth one-time migration from existing caches.
  */
+@OptIn(ExperimentalSerializationApi::class)
 object SearchTabPersistentCache {
     // JSON kept only for backward-compat load of existing cache files
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }

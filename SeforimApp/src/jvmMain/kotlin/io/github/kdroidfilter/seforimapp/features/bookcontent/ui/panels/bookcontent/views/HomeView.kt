@@ -107,26 +107,23 @@ fun HomeView(
 ) {
     CatalogRow(onEvent = onEvent)
 
-    Row {
-
-
+    Box(modifier = Modifier.fillMaxSize()) {
         Box(
-            modifier = Modifier.weight(0.7f)
-        ) {
-            HomeBody(
-                searchUi = searchUi, searchCallbacks = searchCallbacks, modifier = modifier
-            )
-        }
-
-        Box(
-            modifier = Modifier.fillMaxHeight().padding(horizontal = 16.dp)
-                .weight(0.3f),
-            contentAlignment = Alignment.Center
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .fillMaxHeight()
+                .padding(start = 16.dp, end = 16.dp, top = 75.dp)
+                .width(300.dp),
+            contentAlignment = Alignment.TopCenter
         ) {
             HomeCelestialWidgets()
-
         }
 
+        HomeBody(
+            searchUi = searchUi,
+            searchCallbacks = searchCallbacks,
+            modifier = modifier
+        )
     }
 }
 

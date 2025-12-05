@@ -69,6 +69,99 @@ import seforimapp.seforimapp.generated.resources.*
 import kotlin.math.roundToInt
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 
+@Composable
+private fun CatalogRow(
+    onEvent: (BookContentEvent) -> Unit,
+    modifier: Modifier = Modifier,
+    buttonWidth: Dp = 130.dp,
+    spacing: Dp = 8.dp,
+)
+{
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val totalButtons = 7
+        // Compute how many catalog buttons we can show fully without overflow.
+        val maxVisible = run {
+            var count = totalButtons
+            while (count > 1) {
+                val required = buttonWidth * count + spacing * (count - 1)
+                if (required <= maxWidth) break
+                count--
+            }
+            count
+        }
+
+        var rendered = 0
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(spacing, Alignment.CenterHorizontally),
+        ) {
+            if (rendered < maxVisible) {
+                CatalogDropdown(
+                    spec = PrecomputedCatalog.Dropdowns.TANAKH,
+                    onEvent = onEvent,
+                    modifier = Modifier.widthIn(max = buttonWidth),
+                    popupWidthMultiplier = 1.50f
+                )
+                rendered++
+            }
+            if (rendered < maxVisible) {
+                CatalogDropdown(
+                    spec = PrecomputedCatalog.Dropdowns.MISHNA,
+                    onEvent = onEvent,
+                    modifier = Modifier.widthIn(max = buttonWidth)
+                )
+                rendered++
+            }
+            if (rendered < maxVisible) {
+                CatalogDropdown(
+                    spec = PrecomputedCatalog.Dropdowns.BAVLI,
+                    onEvent = onEvent,
+                    modifier = Modifier.widthIn(max = buttonWidth),
+                    popupWidthMultiplier = 1.1f
+                )
+                rendered++
+            }
+            if (rendered < maxVisible) {
+                CatalogDropdown(
+                    spec = PrecomputedCatalog.Dropdowns.YERUSHALMI,
+                    onEvent = onEvent,
+                    modifier = Modifier.widthIn(max = buttonWidth),
+                    popupWidthMultiplier = 1.1f
+                )
+                rendered++
+            }
+            if (rendered < maxVisible) {
+                CatalogDropdown(
+                    spec = PrecomputedCatalog.Dropdowns.MISHNE_TORAH,
+                    onEvent = onEvent,
+                    modifier = Modifier.widthIn(max = buttonWidth),
+                    popupWidthMultiplier = 1.5f
+                )
+                rendered++
+            }
+            if (rendered < maxVisible) {
+                CatalogDropdown(
+                    spec = PrecomputedCatalog.Dropdowns.TUR_QUICK_LINKS,
+                    onEvent = onEvent,
+                    modifier = Modifier.widthIn(max = buttonWidth),
+                    maxPopupHeight = 130.dp
+                )
+                rendered++
+            }
+            if (rendered < maxVisible) {
+                CatalogDropdown(
+                    spec = PrecomputedCatalog.Dropdowns.SHULCHAN_ARUCH,
+                    onEvent = onEvent,
+                    modifier = Modifier.widthIn(max = buttonWidth),
+                    maxPopupHeight = 130.dp,
+                    popupWidthMultiplier = 1.1f
+                )
+            }
+        }
+    }
+}
+
 // Suggestion models for the scope picker
 private data class CategorySuggestion(val category: Category, val path: List<String>)
 private data class BookSuggestion(val book: BookModel, val path: List<String>)
@@ -101,14 +194,14 @@ data class HomeSearchCallbacks(
 
 @OptIn(ExperimentalJewelApi::class, ExperimentalLayoutApi::class)
 @Composable
-/**
- * Home screen for the Book Content feature.
- *
- * Renders the welcome header, the main search bar with a mode toggle (Text vs Reference),
- * and the Category/Book/TOC scope picker. State is sourced from the SearchHomeViewModel
- * through the Metro DI graph and kept outside of the LazyColumn to avoid losing focus or
- * field contents during recomposition.
- */
+        /**
+         * Home screen for the Book Content feature.
+         *
+         * Renders the welcome header, the main search bar with a mode toggle (Text vs Reference),
+         * and the Category/Book/TOC scope picker. State is sourced from the SearchHomeViewModel
+         * through the Metro DI graph and kept outside of the LazyColumn to avoid losing focus or
+         * field contents during recomposition.
+         */
 fun HomeView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
@@ -125,92 +218,14 @@ fun HomeView(
         val softenFactor = 0.3f
         1f + (ratio - 1f) * softenFactor
     }
-    Box(modifier = Modifier.fillMaxSize().zIndex(1f).padding(16.dp), contentAlignment = Alignment.TopStart) {
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val buttonWidth = 130.dp
-            val spacing = 8.dp
-            val totalButtons = 7
-            // Compute how many catalog buttons we can show fully without overflow.
-            val maxVisible = run {
-                var count = totalButtons
-                while (count > 1) {
-                    val required = buttonWidth * count + spacing * (count - 1)
-                    if (required <= maxWidth) break
-                    count--
-                }
-                count
-            }
-
-            var rendered = 0
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(spacing, Alignment.CenterHorizontally),
-            ) {
-                if (rendered < maxVisible) {
-                    CatalogDropdown(
-                        spec = PrecomputedCatalog.Dropdowns.TANAKH,
-                        onEvent = onEvent,
-                        modifier = Modifier.widthIn(max = buttonWidth),
-                        popupWidthMultiplier = 1.50f
-                    )
-                    rendered++
-                }
-                if (rendered < maxVisible) {
-                    CatalogDropdown(
-                        spec = PrecomputedCatalog.Dropdowns.MISHNA,
-                        onEvent = onEvent,
-                        modifier = Modifier.widthIn(max = buttonWidth)
-                    )
-                    rendered++
-                }
-                if (rendered < maxVisible) {
-                    CatalogDropdown(
-                        spec = PrecomputedCatalog.Dropdowns.BAVLI,
-                        onEvent = onEvent,
-                        modifier = Modifier.widthIn(max = buttonWidth),
-                        popupWidthMultiplier = 1.1f
-                    )
-                    rendered++
-                }
-                if (rendered < maxVisible) {
-                    CatalogDropdown(
-                        spec = PrecomputedCatalog.Dropdowns.YERUSHALMI,
-                        onEvent = onEvent,
-                        modifier = Modifier.widthIn(max = buttonWidth),
-                        popupWidthMultiplier = 1.1f
-                    )
-                    rendered++
-                }
-                if (rendered < maxVisible) {
-                    CatalogDropdown(
-                        spec = PrecomputedCatalog.Dropdowns.MISHNE_TORAH,
-                        onEvent = onEvent,
-                        modifier = Modifier.widthIn(max = buttonWidth),
-                        popupWidthMultiplier = 1.5f
-                    )
-                    rendered++
-                }
-                if (rendered < maxVisible) {
-                    CatalogDropdown(
-                        spec = PrecomputedCatalog.Dropdowns.TUR_QUICK_LINKS,
-                        onEvent = onEvent,
-                        modifier = Modifier.widthIn(max = buttonWidth),
-                        maxPopupHeight = 130.dp
-                    )
-                    rendered++
-                }
-                if (rendered < maxVisible) {
-                    CatalogDropdown(
-                        spec = PrecomputedCatalog.Dropdowns.SHULCHAN_ARUCH,
-                        onEvent = onEvent,
-                        modifier = Modifier.widthIn(max = buttonWidth),
-                        maxPopupHeight = 130.dp,
-                        popupWidthMultiplier = 1.1f
-                    )
-                }
-            }
-        }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(1f)
+            .padding(16.dp),
+        contentAlignment = Alignment.TopStart
+    ) {
+        CatalogRow(onEvent = onEvent)
     }
 
     val listState = rememberLazyListState()
@@ -257,13 +272,13 @@ fun HomeView(
                 contentAlignment = Alignment.Center
             ) {
                 // Keep state outside LazyColumn so it persists across item recompositions
-            val scope = rememberCoroutineScope()
-            val searchState = remember { TextFieldState() }
-            val referenceSearchState = remember { TextFieldState() }
-            val tocSearchState = remember { TextFieldState() }
-            var skipNextReferenceQuery by remember { mutableStateOf(false) }
-            var skipNextTocQuery by remember { mutableStateOf(false) }
-            var tocEditedSinceBook by remember { mutableStateOf(false) }
+                val scope = rememberCoroutineScope()
+                val searchState = remember { TextFieldState() }
+                val referenceSearchState = remember { TextFieldState() }
+                val tocSearchState = remember { TextFieldState() }
+                var skipNextReferenceQuery by remember { mutableStateOf(false) }
+                var skipNextTocQuery by remember { mutableStateOf(false) }
+                var tocEditedSinceBook by remember { mutableStateOf(false) }
                 // Shared focus requester for the MAIN search bar so other UI (e.g., level changes)
                 // can reliably return focus to it, allowing immediate Enter to submit.
                 val mainSearchFocusRequester = remember { FocusRequester() }
@@ -297,30 +312,31 @@ fun HomeView(
                     if (query.isBlank() || searchUi.selectedFilter != SearchFilter.TEXT) return
                     searchCallbacks.onSubmitTextSearch(query)
                 }
+
                 fun openReference() {
                     searchCallbacks.onOpenReference()
                 }
 
-            // Book-only placeholder hints for the first field (reference mode)
-            val bookOnlyHintsGlobal = listOf(
-                stringResource(Res.string.reference_book_hint_1),
-                stringResource(Res.string.reference_book_hint_2),
-                stringResource(Res.string.reference_book_hint_3),
-                stringResource(Res.string.reference_book_hint_4),
-                stringResource(Res.string.reference_book_hint_5)
-            )
+                // Book-only placeholder hints for the first field (reference mode)
+                val bookOnlyHintsGlobal = listOf(
+                    stringResource(Res.string.reference_book_hint_1),
+                    stringResource(Res.string.reference_book_hint_2),
+                    stringResource(Res.string.reference_book_hint_3),
+                    stringResource(Res.string.reference_book_hint_4),
+                    stringResource(Res.string.reference_book_hint_5)
+                )
 
-            // Main search field focus handled inside SearchBar via autoFocus
+                // Main search field focus handled inside SearchBar via autoFocus
 
-            LazyColumn(
-                state = listState,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                // Keep aspect ratio by applying uniform scale to the whole Home content,
-                // while keeping it within the available width.
-                modifier = Modifier
-                    .width(baseWidth)
-                    .graphicsLayer(scaleX = clampedScale, scaleY = clampedScale)
-            ) {
+                LazyColumn(
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    // Keep aspect ratio by applying uniform scale to the whole Home content,
+                    // while keeping it within the available width.
+                    modifier = Modifier
+                        .width(baseWidth)
+                        .graphicsLayer(scaleX = clampedScale, scaleY = clampedScale)
+                ) {
                     item {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             WelcomeUser(username = searchUi.userDisplayName)
@@ -340,7 +356,8 @@ fun HomeView(
                             LaunchedEffect(searchUi.selectedFilter) {
                                 // When switching modes, always focus the top text field
                                 if (searchUi.selectedFilter == SearchFilter.REFERENCE ||
-                                    searchUi.selectedFilter == SearchFilter.TEXT) {
+                                    searchUi.selectedFilter == SearchFilter.TEXT
+                                ) {
                                     // small delay to ensure composition is settled
                                     delay(100)
                                     mainSearchFocusRequester.requestFocus()
@@ -355,6 +372,7 @@ fun HomeView(
                                                 searchState.edit { replace(0, length, from) }
                                             }
                                         }
+
                                         SearchFilter.REFERENCE -> {
                                             val from = searchState.text.toString()
                                             if (from.isNotBlank() && referenceSearchState.text.isEmpty()) {
@@ -397,7 +415,11 @@ fun HomeView(
                                 },
                                 selectedFilter = searchUi.selectedFilter,
                                 onFilterChange = { searchCallbacks.onFilterChange(it) },
-                                onSubmit = if (isReferenceMode) { { openReference() } } else { { launchSearch() } },
+                                onSubmit = if (isReferenceMode) {
+                                    { openReference() }
+                                } else {
+                                    { launchSearch() }
+                                },
                                 onTab = {
                                     if (!isReferenceMode) {
                                         // Text mode: expand the scope section as before
@@ -1008,6 +1030,7 @@ private fun dedupAdjacent(parts: List<String>): List<String> {
         val ch = b[a.length]
         return ch == ',' || ch == ' ' || ch == ':' || ch == '-' || ch == '—'
     }
+
     val out = ArrayList<String>(parts.size)
     for (p in parts) {
         if (out.isEmpty()) {
@@ -1018,10 +1041,12 @@ private fun dedupAdjacent(parts: List<String>): List<String> {
                 p == last -> {
                     // exact duplicate, skip
                 }
+
                 extends(last, p) -> {
                     // Next is a refinement of previous; replace previous with next
                     out[out.lastIndex] = p
                 }
+
                 else -> out += p
             }
         }
@@ -1250,8 +1275,10 @@ private fun SearchBar(
     val showTocSuggestions = tocSuggestionsVisible && totalToc > 0 && isTocMode
     val showBookLoading = isReference && !isTocMode && isBookLoading && hasUserText && queryLength >= minBookPrefixLen
     val showTocLoading = isReference && isTocMode && isTocLoading && hasUserText && queryLength >= minTocPrefixLen
-    val showBookEmptyState = isReference && !isTocMode && suggestionsVisible && totalCatBook == 0 && hasUserText && queryLength >= minBookPrefixLen && !showBookLoading
-    val showTocEmptyState = isReference && isTocMode && tocSuggestionsVisible && totalToc == 0 && hasUserText && queryLength >= minTocPrefixLen && !showTocLoading
+    val showBookEmptyState =
+        isReference && !isTocMode && suggestionsVisible && totalCatBook == 0 && hasUserText && queryLength >= minBookPrefixLen && !showBookLoading
+    val showTocEmptyState =
+        isReference && isTocMode && tocSuggestionsVisible && totalToc == 0 && hasUserText && queryLength >= minTocPrefixLen && !showTocLoading
     LaunchedEffect(
         selectedFilter,
         suggestionsVisible,
@@ -1323,33 +1350,37 @@ private fun SearchBar(
                     val isRef = isReference
                     when {
                         isRef &&
-                            ev.key == Key.Backspace &&
-                            isTocMode -> {
+                                ev.key == Key.Backspace &&
+                                isTocMode -> {
                             when (ev.type) {
                                 KeyEventType.KeyDown -> {
                                     backspaceStartedEmpty = state.text.isEmpty()
                                     false
                                 }
+
                                 KeyEventType.KeyUp -> {
                                     val shouldClear = backspaceStartedEmpty &&
-                                        state.text.isEmpty() &&
-                                        onClearBook != null &&
-                                        canClearBookOnBackspace()
+                                            state.text.isEmpty() &&
+                                            onClearBook != null &&
+                                            canClearBookOnBackspace()
                                     backspaceStartedEmpty = false
                                     if (shouldClear) {
                                         onClearBook()
                                         true
                                     } else false
                                 }
+
                                 else -> false
                             }
                         }
                         // Alt toggles between Reference and Text modes
                         (ev.key == Key.AltLeft || ev.key == Key.AltRight) && ev.type == KeyEventType.KeyUp -> {
-                            val next = if (selectedFilter == SearchFilter.REFERENCE) SearchFilter.TEXT else SearchFilter.REFERENCE
+                            val next =
+                                if (selectedFilter == SearchFilter.REFERENCE) SearchFilter.TEXT else SearchFilter.REFERENCE
                             onFilterChange(next)
                             true
                         }
+
                         (ev.key == Key.Enter || ev.key == Key.NumPadEnter) && ev.type == KeyEventType.KeyUp -> {
                             if (isRef) {
                                 // Commit current suggestion, don't open
@@ -1364,6 +1395,7 @@ private fun SearchBar(
                                         }
                                         true
                                     }
+
                                     !isTocMode && focusedIndex in 0 until totalCatBook -> {
                                         if (focusedIndex < categoriesCount) {
                                             val picked = categorySuggestions[focusedIndex]
@@ -1378,9 +1410,11 @@ private fun SearchBar(
                                         }
                                         true
                                     }
+
                                     submitOnEnterIfSelection && (selectedBook != null || selectedCategory != null) -> {
                                         handleSubmit(); true
                                     }
+
                                     submitOnEnterInReference && selectedBook != null -> {
                                         scope.launch {
                                             withFrameNanos { }
@@ -1388,33 +1422,39 @@ private fun SearchBar(
                                         }
                                         true
                                     }
+
                                     else -> true
                                 }
                             } else {
                                 handleSubmit(); true
                             }
                         }
+
                         isRef && ev.key == Key.DirectionDown && ev.type == KeyEventType.KeyUp -> {
                             val total = if (isTocMode) totalToc else totalCatBook
                             if (total > 0) focusedIndex = (focusedIndex + 1).coerceAtMost(total - 1)
                             true
                         }
+
                         isRef && ev.key == Key.DirectionUp && ev.type == KeyEventType.KeyUp -> {
                             val total = if (isTocMode) totalToc else totalCatBook
                             if (total > 0) focusedIndex = (focusedIndex - 1).coerceAtLeast(0)
                             true
                         }
+
                         isRef && ev.key == Key.Escape && ev.type == KeyEventType.KeyUp -> {
                             popupVisible = false
                             onDismissSuggestions()
                             true
                         }
+
                         ev.key == Key.Tab && ev.type == KeyEventType.KeyUp -> {
                             if (isRef) {
                                 val handled = when {
                                     isTocMode && focusedIndex in 0 until totalToc -> {
                                         handlePickToc(tocSuggestions[focusedIndex]); true
                                     }
+
                                     !isTocMode && focusedIndex in 0 until totalCatBook -> {
                                         if (focusedIndex < categoriesCount) {
                                             handlePickCategory(categorySuggestions[focusedIndex])
@@ -1424,6 +1464,7 @@ private fun SearchBar(
                                         }
                                         true
                                     }
+
                                     else -> false
                                 }
                                 if (handled) {
@@ -1441,6 +1482,7 @@ private fun SearchBar(
                                 onTab?.invoke(); false
                             }
                         }
+
                         else -> false
                     }
                 }
@@ -1529,7 +1571,7 @@ private fun SearchBar(
         // Overlay suggestions anchored under the TextField
         val a = anchor
         val showOverlay = isReference && popupVisible && a != null &&
-            (showTocSuggestions || showCategorySuggestions || showBookEmptyState || showTocEmptyState || showBookLoading || showTocLoading)
+                (showTocSuggestions || showCategorySuggestions || showBookEmptyState || showTocEmptyState || showBookLoading || showTocLoading)
         if (showOverlay) {
             val provider = remember(a) {
                 object : PopupPositionProvider {
@@ -1775,14 +1817,14 @@ fun HomeViewPreview() {
         // Minimal stub state for preview; SearchHomeViewModel is not used here.
         val stubSearchUi = SearchHomeUiState()
         val stubCallbacks = HomeSearchCallbacks(
-        onReferenceQueryChanged = {},
-        onTocQueryChanged = {},
-        onFilterChange = {},
-        onGlobalExtendedChange = {},
-        onSubmitTextSearch = {},
-        onOpenReference = {},
-        onPickCategory = {},
-        onPickBook = {},
+            onReferenceQueryChanged = {},
+            onTocQueryChanged = {},
+            onFilterChange = {},
+            onGlobalExtendedChange = {},
+            onSubmitTextSearch = {},
+            onOpenReference = {},
+            onPickCategory = {},
+            onPickBook = {},
             onPickToc = {}
         )
         HomeView(

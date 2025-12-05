@@ -3,8 +3,10 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcon
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.ScrollableState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -18,6 +20,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
+import androidx.compose.ui.input.pointer.isPrimaryPressed
+import androidx.compose.ui.input.pointer.isShiftPressed
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -482,35 +488,43 @@ private fun CommentaryListView(
             }
     }
 
-    SelectionContainer {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(
-                count = lazyPagingItems.itemCount,
-                key = { index -> lazyPagingItems[index]?.link?.id ?: index } // Clé stable
-            ) { index ->
-                lazyPagingItems[index]?.let { commentary ->
-                    CommentaryItem(
-                        commentary = commentary,
-                        textSizes = config.textSizes,
-                        fontFamily = config.fontFamily,
-                        boldScale = config.boldScale,
-                        highlightQuery = highlightQuery,
-                        onClick = { config.onCommentClick(commentary) }
-                    )
+    LazyColumn(
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    val isShiftPrimaryPress = event.buttons.isPrimaryPressed && event.keyboardModifiers.isShiftPressed
+                    if (isShiftPrimaryPress) {
+                        event.changes.forEach { it.consume() }
+                    }
                 }
             }
+    ) {
+        items(
+            count = lazyPagingItems.itemCount,
+            key = { index -> lazyPagingItems[index]?.link?.id ?: index } // Clé stable
+        ) { index ->
+            lazyPagingItems[index]?.let { commentary ->
+                CommentaryItem(
+                    commentary = commentary,
+                    textSizes = config.textSizes,
+                    fontFamily = config.fontFamily,
+                    boldScale = config.boldScale,
+                    highlightQuery = highlightQuery,
+                    onClick = { config.onCommentClick(commentary) }
+                )
+            }
+        }
 
-            // Loading states
-            when (val loadState = lazyPagingItems.loadState.refresh) {
-                is LoadState.Loading -> item { LoadingIndicator() }
-                is LoadState.Error -> item {
-                    ErrorMessage(loadState.error)
-                }
-                else -> {}
+        // Loading states
+        when (val loadState = lazyPagingItems.loadState.refresh) {
+            is LoadState.Loading -> item { LoadingIndicator() }
+            is LoadState.Error -> item {
+                ErrorMessage(loadState.error)
             }
+            else -> {}
         }
     }
 }
@@ -527,8 +541,23 @@ private fun CommentaryItem(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .pointerInput(onClick) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val modifiers = currentEvent.keyboardModifiers
+                    val isCtrlMetaPrimary = (modifiers.isCtrlPressed || modifiers.isMetaPressed) &&
+                        currentEvent.buttons.isPrimaryPressed
+                    if (isCtrlMetaPrimary) {
+                        down.consume()
+                    }
+                    val up = waitForUpOrCancellation()
+                    if (isCtrlMetaPrimary && up != null) {
+                        up.consume()
+                        onClick()
+                    }
+                }
+            }
     ) {
         val annotated = remember(
             commentary.link.id,

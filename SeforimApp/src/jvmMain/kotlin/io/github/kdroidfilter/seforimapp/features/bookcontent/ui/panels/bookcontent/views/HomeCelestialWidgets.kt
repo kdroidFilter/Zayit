@@ -155,15 +155,24 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(contentSpacing)
         ) {
-            DayCycleCard(markers = markers)
-            LunarCycleCard(data = lunarCycle)
-            DayMomentsGrid(cards = momentCards, maxWidth = availableWidth, horizontalSpacing = contentSpacing)
-            VisibleStarsCard(
-                title = Res.string.home_widget_visible_stars_title,
-                time = "20:41",
-                subtitle = Res.string.home_widget_visible_stars_subtitle,
-                detail = Res.string.home_widget_visible_stars_detail
-            )
+//            DayCycleCard(markers = markers)
+
+            Column(verticalArrangement = Arrangement.spacedBy(contentSpacing)) {
+
+                DayMomentsGrid(
+                    cards = momentCards,
+                    maxWidth = availableWidth,
+                    horizontalSpacing = contentSpacing
+                )
+                VisibleStarsCard(
+                    title = Res.string.home_widget_visible_stars_title,
+                    time = "20:41",
+                    subtitle = Res.string.home_widget_visible_stars_subtitle,
+                    detail = Res.string.home_widget_visible_stars_detail
+                )
+                LunarCycleCard(data = lunarCycle)
+
+            }
         }
     }
 }
@@ -670,7 +679,7 @@ private fun DayMomentsGrid(
     horizontalSpacing: Dp,
     modifier: Modifier = Modifier
 ) {
-    val minCardWidth = 170.dp
+    val minCardWidth = 130.dp
     val twoColumnsMinWidth = minCardWidth * 2 + horizontalSpacing
     val columns = if (maxWidth >= twoColumnsMinWidth) 2 else 1
     Column(

@@ -38,9 +38,6 @@ import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
-import androidx.compose.ui.zIndex
-import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
-import io.github.kdroidfilter.seforimapp.core.presentation.components.CatalogDropdown
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -100,19 +97,37 @@ data class HomeSearchCallbacks(
     val onPickToc: (TocEntry) -> Unit
 )
 
+/**
+ * High-level Home surface that wires CatalogRow with the core Home body content.
+ */
 @OptIn(ExperimentalJewelApi::class, ExperimentalLayoutApi::class)
 @Composable
-        /**
-         * Home screen for the Book Content feature.
-         *
-         * Renders the welcome header, the main search bar with a mode toggle (Text vs Reference),
-         * and the Category/Book/TOC scope picker. State is sourced from the SearchHomeViewModel
-         * through the Metro DI graph and kept outside of the LazyColumn to avoid losing focus or
-         * field contents during recomposition.
-         */
 fun HomeView(
-    uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
+    searchUi: SearchHomeUiState,
+    searchCallbacks: HomeSearchCallbacks,
+    modifier: Modifier = Modifier
+) {
+    CatalogRow(onEvent = onEvent)
+
+    HomeBody(
+        searchUi = searchUi,
+        searchCallbacks = searchCallbacks,
+        modifier = modifier
+    )
+}
+
+/**
+ * Home screen for the Book Content feature.
+ *
+ * Renders the welcome header, the main search bar with a mode toggle (Text vs Reference),
+ * and the Category/Book/TOC scope picker. State is sourced from the SearchHomeViewModel
+ * through the Metro DI graph and kept outside of the LazyColumn to avoid losing focus or
+ * field contents during recomposition.
+ */
+@OptIn(ExperimentalJewelApi::class, ExperimentalLayoutApi::class)
+@Composable
+private fun HomeBody(
     searchUi: SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
     modifier: Modifier = Modifier
@@ -126,8 +141,6 @@ fun HomeView(
         val softenFactor = 0.3f
         1f + (ratio - 1f) * softenFactor
     }
-
-    CatalogRow(onEvent = onEvent)
 
     val listState = rememberLazyListState()
     // Delay the first render of the Home content slightly so that
@@ -1729,7 +1742,6 @@ fun HomeViewPreview() {
             onPickToc = {}
         )
         HomeView(
-            uiState = BookContentState(),
             onEvent = {},
             searchUi = stubSearchUi,
             searchCallbacks = stubCallbacks,

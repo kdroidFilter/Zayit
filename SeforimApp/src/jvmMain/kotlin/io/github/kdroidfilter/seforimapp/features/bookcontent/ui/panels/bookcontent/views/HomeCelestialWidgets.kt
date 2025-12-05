@@ -181,14 +181,32 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
 private fun LunarCycleCard(data: LunarCycleData, modifier: Modifier = Modifier) {
     val isDark = JewelTheme.isDark
     val shape = RoundedCornerShape(22.dp)
+    val panelBackground = JewelTheme.globalColors.panelBackground
     val background = if (isDark) {
-        Brush.verticalGradient(listOf(Color(0xFF0D142E), Color(0xFF0D1C36)))
+        Brush.verticalGradient(
+            listOf(
+                panelBackground.blendTowards(Color.White, 0.06f),
+                panelBackground.blendTowards(Color.Black, 0.18f)
+            )
+        )
     } else {
         Brush.verticalGradient(listOf(Color(0xFFF7FAFF), Color(0xFFEFF3FF)))
     }
-    val borderColor = if (isDark) Color.White.copy(alpha = 0.08f) else Color(0xFFE1E8F5)
-    val chipBackground = if (isDark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.9f)
-    val chipBorder = if (isDark) Color.White.copy(alpha = 0.12f) else Color(0xFFDCE4F6)
+    val borderColor = if (isDark) {
+        JewelTheme.globalColors.borders.disabled
+    } else {
+        Color(0xFFE1E8F5)
+    }
+    val chipBackground = if (isDark) {
+        panelBackground.blendTowards(Color.White, 0.16f)
+    } else {
+        Color.White.copy(alpha = 0.9f)
+    }
+    val chipBorder = if (isDark) {
+        JewelTheme.globalColors.borders.disabled
+    } else {
+        Color(0xFFDCE4F6)
+    }
     val textColor = JewelTheme.globalColors.text.normal
     val secondary = textColor.copy(alpha = 0.76f)
 
@@ -291,17 +309,33 @@ private fun LunarCycleCard(data: LunarCycleData, modifier: Modifier = Modifier) 
 
 @Composable
 private fun MoonIllustration(isDark: Boolean, modifier: Modifier = Modifier) {
+    val panelBackground = JewelTheme.globalColors.panelBackground
+    val accent = JewelTheme.globalColors.text.info
     val glowGradient = if (isDark) {
-        Brush.radialGradient(listOf(Color(0x33263A75), Color(0xFF0D142E)))
+        Brush.radialGradient(
+            listOf(
+                accent.copy(alpha = 0.2f),
+                panelBackground.blendTowards(Color.Black, 0.25f)
+            )
+        )
     } else {
         Brush.radialGradient(listOf(Color(0x33C7D9FF), Color(0xFFF6F8FF)))
     }
     val moonGradient = if (isDark) {
-        Brush.radialGradient(listOf(Color(0xFFBCC8FF), Color(0xFF6878A7)))
+        Brush.radialGradient(
+            listOf(
+                Color.White.copy(alpha = 0.85f),
+                panelBackground.blendTowards(Color.Black, 0.3f)
+            )
+        )
     } else {
         Brush.radialGradient(listOf(Color(0xFFE9EDF8), Color(0xFFA7B8D7)))
     }
-    val shadowColor = if (isDark) Color(0xFF0B1328) else Color(0xFFEEF1FB)
+    val shadowColor = if (isDark) {
+        panelBackground.blendTowards(Color.Black, 0.45f)
+    } else {
+        Color(0xFFEEF1FB)
+    }
 
     Box(
         modifier = modifier
@@ -364,9 +398,20 @@ private fun MoonIllustration(isDark: Boolean, modifier: Modifier = Modifier) {
 @Composable
 private fun IlluminationBar(progress: Float, isDark: Boolean, modifier: Modifier = Modifier) {
     val clamped = progress.coerceIn(0f, 1f)
-    val trackColor = if (isDark) Color.White.copy(alpha = 0.12f) else Color(0xFFE0E7FF)
+    val baseTrack = JewelTheme.globalColors.borders.disabled
+    val trackColor = if (isDark) {
+        baseTrack.copy(alpha = 0.8f)
+    } else {
+        Color(0xFFE0E7FF)
+    }
+    val accent = JewelTheme.globalColors.text.info
     val fillGradient = if (isDark) {
-        Brush.horizontalGradient(listOf(Color(0xFF8DA2FF), Color(0xFFB4C6FF)))
+        Brush.horizontalGradient(
+            listOf(
+                accent.blendTowards(Color.White, 0.25f),
+                accent
+            )
+        )
     } else {
         Brush.horizontalGradient(listOf(Color(0xFF7A98FF), Color(0xFFB7C9FF)))
     }
@@ -396,12 +441,22 @@ private fun MoonEventCard(
 ) {
     val isDark = JewelTheme.isDark
     val shape = RoundedCornerShape(16.dp)
+    val panelBackground = JewelTheme.globalColors.panelBackground
     val background = if (isDark) {
-        Brush.verticalGradient(listOf(Color(0xFF0F172E), Color(0xFF0D1935)))
+        Brush.verticalGradient(
+            listOf(
+                panelBackground.blendTowards(Color.White, 0.06f),
+                panelBackground.blendTowards(Color.Black, 0.18f)
+            )
+        )
     } else {
         Brush.verticalGradient(listOf(Color(0xFFF8FBFF), Color(0xFFEFF4FF)))
     }
-    val borderColor = if (isDark) Color.White.copy(alpha = 0.1f) else Color(0xFFE1E8F5)
+    val borderColor = if (isDark) {
+        JewelTheme.globalColors.borders.disabled
+    } else {
+        Color(0xFFE1E8F5)
+    }
     val textColor = JewelTheme.globalColors.text.normal
     val secondary = textColor.copy(alpha = 0.75f)
 
@@ -434,13 +489,28 @@ private fun MoonEventCard(
 @Composable
 private fun NextFullMoonBar(label: String, value: String, isDark: Boolean, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(14.dp)
+    val panelBackground = JewelTheme.globalColors.panelBackground
+    val accent = JewelTheme.globalColors.text.info
     val background = if (isDark) {
-        Brush.horizontalGradient(listOf(Color(0xFF1B1E4E), Color(0xFF232568)))
+        Brush.horizontalGradient(
+            listOf(
+                panelBackground.blendTowards(accent, 0.28f),
+                panelBackground.blendTowards(accent, 0.14f)
+            )
+        )
     } else {
         Brush.horizontalGradient(listOf(Color(0xFFE9E4FF), Color(0xFFD8D3FF)))
     }
-    val labelColor = if (isDark) Color(0xFFCBD4FF) else Color(0xFF4B5563)
-    val valueColor = if (isDark) Color(0xFFCED7FF) else Color(0xFF4C37D8)
+    val labelColor = if (isDark) {
+        JewelTheme.globalColors.text.normal.copy(alpha = 0.8f)
+    } else {
+        Color(0xFF4B5563)
+    }
+    val valueColor = if (isDark) {
+        accent
+    } else {
+        Color(0xFF4C37D8)
+    }
 
     Box(
         modifier = modifier
@@ -472,12 +542,23 @@ private fun NextFullMoonBar(label: String, value: String, isDark: Boolean, modif
 
 @Composable
 private fun MoonPhaseIcon(isDark: Boolean, modifier: Modifier = Modifier) {
+    val panelBackground = JewelTheme.globalColors.panelBackground
+    val accent = JewelTheme.globalColors.text.info
     val gradient = if (isDark) {
-        Brush.radialGradient(listOf(Color(0xFFCCD7FF), Color(0xFF6C7CB2)))
+        Brush.radialGradient(
+            listOf(
+                accent.blendTowards(Color.White, 0.3f),
+                panelBackground.blendTowards(accent, 0.6f)
+            )
+        )
     } else {
         Brush.radialGradient(listOf(Color(0xFFDDE6FF), Color(0xFF8AA9F7)))
     }
-    val shadow = if (isDark) Color(0xFF0F162E) else Color(0xFFF6F8FF)
+    val shadow = if (isDark) {
+        panelBackground.blendTowards(Color.Black, 0.5f)
+    } else {
+        Color(0xFFF6F8FF)
+    }
 
     Box(
         modifier = modifier
@@ -506,14 +587,32 @@ private fun DayCycleCard(markers: List<DayMarker>, modifier: Modifier = Modifier
     if (markers.isEmpty()) return
     val isDark = JewelTheme.isDark
     val shape = RoundedCornerShape(22.dp)
+    val panelBackground = JewelTheme.globalColors.panelBackground
     val background = if (isDark) {
-        Brush.verticalGradient(listOf(Color(0xFF0E132E), Color(0xFF0C1D34)))
+        Brush.verticalGradient(
+            listOf(
+                panelBackground.blendTowards(Color.White, 0.06f),
+                panelBackground.blendTowards(Color.Black, 0.18f)
+            )
+        )
     } else {
         Brush.verticalGradient(listOf(Color(0xFFF6F8FF), Color(0xFFE9F0FF)))
     }
-    val borderColor = if (isDark) Color.White.copy(alpha = 0.08f) else Color(0xFFE1E8F5)
-    val chipBackground = if (isDark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.8f)
-    val chipBorder = if (isDark) Color.White.copy(alpha = 0.12f) else Color(0xFFDCE4F6)
+    val borderColor = if (isDark) {
+        JewelTheme.globalColors.borders.disabled
+    } else {
+        Color(0xFFE1E8F5)
+    }
+    val chipBackground = if (isDark) {
+        panelBackground.blendTowards(Color.White, 0.16f)
+    } else {
+        Color.White.copy(alpha = 0.8f)
+    }
+    val chipBorder = if (isDark) {
+        JewelTheme.globalColors.borders.disabled
+    } else {
+        Color(0xFFDCE4F6)
+    }
     val barGradient = if (isDark) {
         Brush.horizontalGradient(
             listOf(
@@ -706,12 +805,22 @@ private fun DayMomentsGrid(
 private fun DayMomentCard(data: DayMomentCardData, modifier: Modifier = Modifier) {
     val isDark = JewelTheme.isDark
     val shape = RoundedCornerShape(18.dp)
+    val panelBackground = JewelTheme.globalColors.panelBackground
     val background = if (isDark) {
-        Brush.verticalGradient(listOf(Color(0xFF0F1B2F), Color(0xFF0B1827)))
+        Brush.verticalGradient(
+            listOf(
+                panelBackground.blendTowards(Color.White, 0.06f),
+                panelBackground.blendTowards(Color.Black, 0.18f)
+            )
+        )
     } else {
         Brush.verticalGradient(listOf(Color(0xFFF8FBFF), Color(0xFFEFF4FF)))
     }
-    val borderColor = if (isDark) Color.White.copy(alpha = 0.08f) else Color(0xFFE1E7F5)
+    val borderColor = if (isDark) {
+        JewelTheme.globalColors.borders.disabled
+    } else {
+        Color(0xFFE1E7F5)
+    }
     val labelColor = JewelTheme.globalColors.text.normal.copy(alpha = 0.75f)
 
     Box(
@@ -766,12 +875,14 @@ private fun VisibleStarsCard(
 ) {
     val isDark = JewelTheme.isDark
     val shape = RoundedCornerShape(18.dp)
+    val panelBackground = JewelTheme.globalColors.panelBackground
+    val accent = JewelTheme.globalColors.text.info
     val background = if (isDark) {
         Brush.horizontalGradient(
             listOf(
-                Color(0xFF0D1935),
-                Color(0xFF0F2D63),
-                Color(0xFF0B1F45)
+                panelBackground.blendTowards(accent, 0.3f),
+                panelBackground.blendTowards(accent, 0.2f),
+                panelBackground.blendTowards(accent, 0.1f)
             )
         )
     } else {
@@ -783,7 +894,11 @@ private fun VisibleStarsCard(
             )
         )
     }
-    val borderColor = if (isDark) Color.White.copy(alpha = 0.08f) else Color(0xFFE1E8F5)
+    val borderColor = if (isDark) {
+        JewelTheme.globalColors.borders.disabled
+    } else {
+        Color(0xFFE1E8F5)
+    }
     val textColor = JewelTheme.globalColors.text.normal
     val secondary = textColor.copy(alpha = 0.76f)
 
@@ -804,7 +919,7 @@ private fun VisibleStarsCard(
             )
             Text(
                 text = time,
-                color = Color(0xFFFCD34D),
+                color = if (isDark) accent else Color(0xFFFCD34D),
                 fontWeight = FontWeight.Bold,
                 fontSize = 26.sp
             )
@@ -816,9 +931,16 @@ private fun VisibleStarsCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    GradientDot(Color(0xFFFBBF24), Color(0xFFF59E0B), size = 12.dp)
-                    GradientDot(Color(0xFFFBBF24), Color(0xFFF59E0B), size = 12.dp)
-                    GradientDot(Color(0xFFFBBF24), Color(0xFFF59E0B), size = 12.dp)
+                    if (isDark) {
+                        val starOuter = accent.blendTowards(Color.White, 0.35f)
+                        GradientDot(starOuter, accent, size = 12.dp)
+                        GradientDot(starOuter, accent, size = 12.dp)
+                        GradientDot(starOuter, accent, size = 12.dp)
+                    } else {
+                        GradientDot(Color(0xFFFBBF24), Color(0xFFF59E0B), size = 12.dp)
+                        GradientDot(Color(0xFFFBBF24), Color(0xFFF59E0B), size = 12.dp)
+                        GradientDot(Color(0xFFFBBF24), Color(0xFFF59E0B), size = 12.dp)
+                    }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
@@ -882,6 +1004,17 @@ private fun GradientDot(
                 shape = CircleShape
             )
             .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+    )
+}
+
+private fun Color.blendTowards(target: Color, ratio: Float): Color {
+    val clamped = ratio.coerceIn(0f, 1f)
+    val inverse = 1f - clamped
+    return Color(
+        red = red * inverse + target.red * clamped,
+        green = green * inverse + target.green * clamped,
+        blue = blue * inverse + target.blue * clamped,
+        alpha = alpha * inverse + target.alpha * clamped
     )
 }
 

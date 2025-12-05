@@ -82,7 +82,7 @@ fun BookContentPanel(
         return
     }
 
-    val connectionsCache = remember(uiState.navigation.selectedBook?.id) {
+    val connectionsCache = remember(uiState.navigation.selectedBook.id) {
         mutableStateMapOf<Long, LineConnectionsSnapshot>()
     }
     val prefetchScope = rememberCoroutineScope()

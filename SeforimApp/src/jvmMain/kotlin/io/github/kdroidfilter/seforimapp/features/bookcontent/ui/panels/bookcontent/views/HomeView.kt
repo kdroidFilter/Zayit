@@ -46,6 +46,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.components.CatalogRow
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.icons.*
@@ -68,99 +69,6 @@ import org.jetbrains.skiko.Cursor
 import seforimapp.seforimapp.generated.resources.*
 import kotlin.math.roundToInt
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
-
-@Composable
-private fun CatalogRow(
-    onEvent: (BookContentEvent) -> Unit,
-    modifier: Modifier = Modifier,
-    buttonWidth: Dp = 130.dp,
-    spacing: Dp = 8.dp,
-)
-{
-    BoxWithConstraints(modifier.fillMaxWidth()) {
-        val totalButtons = 7
-        // Compute how many catalog buttons we can show fully without overflow.
-        val maxVisible = run {
-            var count = totalButtons
-            while (count > 1) {
-                val required = buttonWidth * count + spacing * (count - 1)
-                if (required <= maxWidth) break
-                count--
-            }
-            count
-        }
-
-        var rendered = 0
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(spacing, Alignment.CenterHorizontally),
-        ) {
-            if (rendered < maxVisible) {
-                CatalogDropdown(
-                    spec = PrecomputedCatalog.Dropdowns.TANAKH,
-                    onEvent = onEvent,
-                    modifier = Modifier.widthIn(max = buttonWidth),
-                    popupWidthMultiplier = 1.50f
-                )
-                rendered++
-            }
-            if (rendered < maxVisible) {
-                CatalogDropdown(
-                    spec = PrecomputedCatalog.Dropdowns.MISHNA,
-                    onEvent = onEvent,
-                    modifier = Modifier.widthIn(max = buttonWidth)
-                )
-                rendered++
-            }
-            if (rendered < maxVisible) {
-                CatalogDropdown(
-                    spec = PrecomputedCatalog.Dropdowns.BAVLI,
-                    onEvent = onEvent,
-                    modifier = Modifier.widthIn(max = buttonWidth),
-                    popupWidthMultiplier = 1.1f
-                )
-                rendered++
-            }
-            if (rendered < maxVisible) {
-                CatalogDropdown(
-                    spec = PrecomputedCatalog.Dropdowns.YERUSHALMI,
-                    onEvent = onEvent,
-                    modifier = Modifier.widthIn(max = buttonWidth),
-                    popupWidthMultiplier = 1.1f
-                )
-                rendered++
-            }
-            if (rendered < maxVisible) {
-                CatalogDropdown(
-                    spec = PrecomputedCatalog.Dropdowns.MISHNE_TORAH,
-                    onEvent = onEvent,
-                    modifier = Modifier.widthIn(max = buttonWidth),
-                    popupWidthMultiplier = 1.5f
-                )
-                rendered++
-            }
-            if (rendered < maxVisible) {
-                CatalogDropdown(
-                    spec = PrecomputedCatalog.Dropdowns.TUR_QUICK_LINKS,
-                    onEvent = onEvent,
-                    modifier = Modifier.widthIn(max = buttonWidth),
-                    maxPopupHeight = 130.dp
-                )
-                rendered++
-            }
-            if (rendered < maxVisible) {
-                CatalogDropdown(
-                    spec = PrecomputedCatalog.Dropdowns.SHULCHAN_ARUCH,
-                    onEvent = onEvent,
-                    modifier = Modifier.widthIn(max = buttonWidth),
-                    maxPopupHeight = 130.dp,
-                    popupWidthMultiplier = 1.1f
-                )
-            }
-        }
-    }
-}
 
 // Suggestion models for the scope picker
 private data class CategorySuggestion(val category: Category, val path: List<String>)
@@ -218,15 +126,8 @@ fun HomeView(
         val softenFactor = 0.3f
         1f + (ratio - 1f) * softenFactor
     }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .zIndex(1f)
-            .padding(16.dp),
-        contentAlignment = Alignment.TopStart
-    ) {
-        CatalogRow(onEvent = onEvent)
-    }
+
+    CatalogRow(onEvent = onEvent)
 
     val listState = rememberLazyListState()
     // Delay the first render of the Home content slightly so that

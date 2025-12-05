@@ -26,6 +26,7 @@ import kotlinx.coroutines.coroutineScope
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import kotlinx.coroutines.FlowPreview
 
 data class CategorySuggestionDto(val category: Category, val path: List<String>)
 data class BookSuggestionDto(val book: Book, val path: List<String>)
@@ -49,6 +50,7 @@ data class SearchHomeUiState(
     val pairedReferenceHints: List<Pair<String, String>> = emptyList()
 )
 
+@OptIn(FlowPreview::class)
 class SearchHomeViewModel(
     private val tabsViewModel: TabsViewModel,
     private val stateManager: TabStateManager,
@@ -66,8 +68,8 @@ class SearchHomeViewModel(
 
     private val MIN_BOOK_PREFIX_LEN = 2 // minimum characters before triggering book predictive queries
     private val MIN_TOC_PREFIX_LEN = 1  // minimum characters before triggering TOC predictive queries
-    private val MAX_BOOK_PREDICTIVE = 5_000 // high ceiling to avoid truncating results
-    private val MAX_TOC_PREDICTIVE = 5_000  // high ceiling to avoid truncating results
+    private val MAX_BOOK_PREDICTIVE = 120 // tighter ceiling to avoid heavy allocations
+    private val MAX_TOC_PREDICTIVE = 300  // TOC suggestions stay bounded
 
     // Lightweight, thread-safe LRU caches to avoid repeated DB hits when typing fast
     private class LruCache<K, V>(private val maxSize: Int) : LinkedHashMap<K, V>(maxSize, 0.75f, true) {
@@ -218,15 +220,21 @@ class SearchHomeViewModel(
                                         emptyList<BookSuggestionDto>()
                                     } else {
                                         val bookIds = lookup.searchBooksPrefix(qNorm, limit = MAX_BOOK_PREDICTIVE)
-                                        val books = withContext(Dispatchers.IO) {
-                                            bookIds.mapNotNull { id -> runCatching { repository.getBookCore(id) }.getOrNull() }
-                                        }
-                                        books
-                                            .sortedBy { matchRank(it.title, q) }
-                                            .take(MAX_BOOK_PREDICTIVE)
-                                            .map { b ->
-                                            val catPath = buildCategoryPathTitlesCached(b.categoryId)
-                                            BookSuggestionDto(b, catPath + b.title)
+                                    val bookHits = lookup.searchBooksPrefix(qNorm, limit = MAX_BOOK_PREDICTIVE)
+                                    bookHits
+                                        .sortedBy { matchRank(it.title, q) }
+                                        .take(MAX_BOOK_PREDICTIVE)
+                                        .map { hit ->
+                                            val book = Book(
+                                                id = hit.id,
+                                                categoryId = hit.categoryId,
+                                                sourceId = 0,
+                                                title = hit.title,
+                                                order = hit.orderIndex.toFloat(),
+                                                isBaseBook = hit.isBaseBook
+                                            )
+                                            val catPath = buildCategoryPathTitlesCached(book.categoryId)
+                                            BookSuggestionDto(book, catPath + book.title)
                                         }
                                     }
                                 }

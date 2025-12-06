@@ -108,17 +108,6 @@ fun HomeView(
     CatalogRow(onEvent = onEvent)
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .fillMaxHeight()
-                .padding(start = 16.dp, end = 16.dp, top = 75.dp)
-                .width(300.dp),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            HomeCelestialWidgets()
-        }
-
         HomeBody(
             searchUi = searchUi,
             searchCallbacks = searchCallbacks,
@@ -241,25 +230,34 @@ private fun HomeBody(
 
                 // Main search field focus handled inside SearchBar via autoFocus
 
+                val homeContentModifier = Modifier.width(baseWidth).graphicsLayer(
+                    scaleX = clampedScale,
+                    scaleY = clampedScale
+                )
+
                 LazyColumn(
-                    state = listState, verticalArrangement = Arrangement.spacedBy(16.dp),
-                    // Keep aspect ratio by applying uniform scale to the whole Home content,
-                    // while keeping it within the available width.
-                    modifier = Modifier.width(baseWidth).graphicsLayer(scaleX = clampedScale, scaleY = clampedScale)
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     item {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            WelcomeUser(username = searchUi.userDisplayName)
+                            Box(homeContentModifier, contentAlignment = Alignment.Center) {
+                                WelcomeUser(username = searchUi.userDisplayName)
+                            }
                         }
                     }
                     item {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            LogoImage()
+                            Box(homeContentModifier, contentAlignment = Alignment.Center) {
+                                LogoImage()
+                            }
                         }
                     }
                     item {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            // In REFERENCE mode, repurpose the first TextField as the predictive
+                            Box(homeContentModifier) {
+                                // In REFERENCE mode, repurpose the first TextField as the predictive
                             // Book picker (with Category/Book suggestions). Enter should NOT open.
                             val isReferenceMode = searchUi.selectedFilter == SearchFilter.REFERENCE
                             // When switching to REFERENCE mode, focus the first (top) text field
@@ -389,15 +387,17 @@ private fun HomeBody(
                                     tocEditedSinceBook = false
                                 },
                                 canClearBookOnBackspace = { !tocEditedSinceBook })
+                            }
                         }
                     }
                     item {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            if (searchUi.selectedFilter == SearchFilter.REFERENCE) {
-                                Spacer(Modifier.height(250.dp))
-                            } else {
-                                Column(
-                                    modifier = Modifier.heightIn(min = 250.dp),
+                            Box(homeContentModifier) {
+                                if (searchUi.selectedFilter == SearchFilter.REFERENCE) {
+                                    Spacer(Modifier.height(180.dp))
+                                } else {
+                                    Column(
+                                        modifier = Modifier.heightIn(min = 160.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
@@ -461,11 +461,24 @@ private fun HomeBody(
                                             tocSearchState.edit { replace(0, length, "") }
                                         },
                                         parentScale = homeScale,
-                                        isBookLoading = searchUi.isReferenceLoading,
-                                        isTocLoading = searchUi.isTocLoading
-                                    )
+                                            isBookLoading = searchUi.isReferenceLoading,
+                                            isTocLoading = searchUi.isTocLoading
+                                        )
+                                    }
                                 }
                             }
+                        }
+                    }
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp, bottom = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            HomeCelestialWidgets(
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
                 }

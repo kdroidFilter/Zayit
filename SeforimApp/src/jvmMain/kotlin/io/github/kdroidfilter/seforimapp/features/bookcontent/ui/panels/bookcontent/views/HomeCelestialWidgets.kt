@@ -147,31 +147,48 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
     )
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val availableWidth = maxWidth
         val contentSpacing = 12.dp
-        Column(
+        val maxContentWidth = 1000.dp
+        val effectiveWidth = maxContentWidth.coerceAtMost(maxWidth)
+        val columnWidth = (effectiveWidth - contentSpacing) / 2
+
+        Box(
             modifier = Modifier
                 .align(Alignment.Center)
                 .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(contentSpacing)
+            contentAlignment = Alignment.Center
         ) {
-//            DayCycleCard(markers = markers)
-
-            Column(verticalArrangement = Arrangement.spacedBy(contentSpacing)) {
-
-                DayMomentsGrid(
-                    cards = momentCards,
-                    maxWidth = availableWidth,
-                    horizontalSpacing = contentSpacing
-                )
-                VisibleStarsCard(
-                    title = Res.string.home_widget_visible_stars_title,
-                    time = "20:41",
-                    subtitle = Res.string.home_widget_visible_stars_subtitle,
-                    detail = Res.string.home_widget_visible_stars_detail
-                )
-                LunarCycleCard(data = lunarCycle)
-
+            Row(
+                modifier = Modifier.width(effectiveWidth),
+                horizontalArrangement = Arrangement.spacedBy(contentSpacing),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(contentSpacing)
+                ) {
+//                DayCycleCard(markers = markers)
+                    DayMomentsGrid(
+                        cards = momentCards,
+                        maxWidth = columnWidth,
+                        horizontalSpacing = contentSpacing
+                    )
+                    VisibleStarsCard(
+                        title = Res.string.home_widget_visible_stars_title,
+                        time = "20:41",
+                        subtitle = Res.string.home_widget_visible_stars_subtitle,
+                        detail = Res.string.home_widget_visible_stars_detail
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(contentSpacing)
+                ) {
+                    LunarCycleCard(
+                        data = lunarCycle,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     }
@@ -182,6 +199,7 @@ private fun LunarCycleCard(data: LunarCycleData, modifier: Modifier = Modifier) 
     val isDark = JewelTheme.isDark
     val shape = RoundedCornerShape(22.dp)
     val panelBackground = JewelTheme.globalColors.panelBackground
+    val accent = JewelTheme.globalColors.text.info
     val background = if (isDark) {
         Brush.verticalGradient(
             listOf(
@@ -190,22 +208,27 @@ private fun LunarCycleCard(data: LunarCycleData, modifier: Modifier = Modifier) 
             )
         )
     } else {
-        Brush.verticalGradient(listOf(Color(0xFFF7FAFF), Color(0xFFEFF3FF)))
+        Brush.verticalGradient(
+            listOf(
+                panelBackground.blendTowards(Color.White, 0.12f),
+                panelBackground.blendTowards(accent, 0.08f)
+            )
+        )
     }
     val borderColor = if (isDark) {
         JewelTheme.globalColors.borders.disabled
     } else {
-        Color(0xFFE1E8F5)
+        JewelTheme.globalColors.borders.normal
     }
     val chipBackground = if (isDark) {
         panelBackground.blendTowards(Color.White, 0.16f)
     } else {
-        Color.White.copy(alpha = 0.9f)
+        panelBackground.blendTowards(Color.White, 0.85f)
     }
     val chipBorder = if (isDark) {
         JewelTheme.globalColors.borders.disabled
     } else {
-        Color(0xFFDCE4F6)
+        JewelTheme.globalColors.borders.normal
     }
     val textColor = JewelTheme.globalColors.text.normal
     val secondary = textColor.copy(alpha = 0.76f)
@@ -319,7 +342,12 @@ private fun MoonIllustration(isDark: Boolean, modifier: Modifier = Modifier) {
             )
         )
     } else {
-        Brush.radialGradient(listOf(Color(0x33C7D9FF), Color(0xFFF6F8FF)))
+        Brush.radialGradient(
+            listOf(
+                accent.copy(alpha = 0.18f),
+                panelBackground.blendTowards(accent, 0.08f)
+            )
+        )
     }
     val moonGradient = if (isDark) {
         Brush.radialGradient(
@@ -329,12 +357,17 @@ private fun MoonIllustration(isDark: Boolean, modifier: Modifier = Modifier) {
             )
         )
     } else {
-        Brush.radialGradient(listOf(Color(0xFFE9EDF8), Color(0xFFA7B8D7)))
+        Brush.radialGradient(
+            listOf(
+                panelBackground.blendTowards(Color.White, 0.7f),
+                panelBackground.blendTowards(accent, 0.18f)
+            )
+        )
     }
     val shadowColor = if (isDark) {
         panelBackground.blendTowards(Color.Black, 0.45f)
     } else {
-        Color(0xFFEEF1FB)
+        panelBackground.blendTowards(Color.Black, 0.08f)
     }
 
     Box(
@@ -402,7 +435,7 @@ private fun IlluminationBar(progress: Float, isDark: Boolean, modifier: Modifier
     val trackColor = if (isDark) {
         baseTrack.copy(alpha = 0.8f)
     } else {
-        Color(0xFFE0E7FF)
+        JewelTheme.globalColors.borders.normal.copy(alpha = 0.45f)
     }
     val accent = JewelTheme.globalColors.text.info
     val fillGradient = if (isDark) {
@@ -413,7 +446,12 @@ private fun IlluminationBar(progress: Float, isDark: Boolean, modifier: Modifier
             )
         )
     } else {
-        Brush.horizontalGradient(listOf(Color(0xFF7A98FF), Color(0xFFB7C9FF)))
+        Brush.horizontalGradient(
+            listOf(
+                accent.blendTowards(Color.White, 0.35f),
+                accent
+            )
+        )
     }
     Box(
         modifier = modifier
@@ -450,12 +488,17 @@ private fun MoonEventCard(
             )
         )
     } else {
-        Brush.verticalGradient(listOf(Color(0xFFF8FBFF), Color(0xFFEFF4FF)))
+        Brush.verticalGradient(
+            listOf(
+                panelBackground.blendTowards(Color.White, 0.10f),
+                panelBackground.blendTowards(JewelTheme.globalColors.text.info, 0.05f)
+            )
+        )
     }
     val borderColor = if (isDark) {
         JewelTheme.globalColors.borders.disabled
     } else {
-        Color(0xFFE1E8F5)
+        JewelTheme.globalColors.borders.normal
     }
     val textColor = JewelTheme.globalColors.text.normal
     val secondary = textColor.copy(alpha = 0.75f)
@@ -499,17 +542,22 @@ private fun NextFullMoonBar(label: String, value: String, isDark: Boolean, modif
             )
         )
     } else {
-        Brush.horizontalGradient(listOf(Color(0xFFE9E4FF), Color(0xFFD8D3FF)))
+        Brush.horizontalGradient(
+            listOf(
+                panelBackground.blendTowards(accent, 0.18f),
+                panelBackground.blendTowards(accent, 0.08f)
+            )
+        )
     }
     val labelColor = if (isDark) {
         JewelTheme.globalColors.text.normal.copy(alpha = 0.8f)
     } else {
-        Color(0xFF4B5563)
+        JewelTheme.globalColors.text.normal.copy(alpha = 0.8f)
     }
     val valueColor = if (isDark) {
         accent
     } else {
-        Color(0xFF4C37D8)
+        accent
     }
 
     Box(
@@ -552,12 +600,17 @@ private fun MoonPhaseIcon(isDark: Boolean, modifier: Modifier = Modifier) {
             )
         )
     } else {
-        Brush.radialGradient(listOf(Color(0xFFDDE6FF), Color(0xFF8AA9F7)))
+        Brush.radialGradient(
+            listOf(
+                accent.blendTowards(Color.White, 0.4f),
+                panelBackground.blendTowards(accent, 0.5f)
+            )
+        )
     }
     val shadow = if (isDark) {
         panelBackground.blendTowards(Color.Black, 0.5f)
     } else {
-        Color(0xFFF6F8FF)
+        panelBackground.blendTowards(Color.Black, 0.12f)
     }
 
     Box(
@@ -596,22 +649,27 @@ private fun DayCycleCard(markers: List<DayMarker>, modifier: Modifier = Modifier
             )
         )
     } else {
-        Brush.verticalGradient(listOf(Color(0xFFF6F8FF), Color(0xFFE9F0FF)))
+        Brush.verticalGradient(
+            listOf(
+                panelBackground.blendTowards(Color.White, 0.10f),
+                panelBackground.blendTowards(JewelTheme.globalColors.text.info, 0.05f)
+            )
+        )
     }
     val borderColor = if (isDark) {
         JewelTheme.globalColors.borders.disabled
     } else {
-        Color(0xFFE1E8F5)
+        JewelTheme.globalColors.borders.normal
     }
     val chipBackground = if (isDark) {
         panelBackground.blendTowards(Color.White, 0.16f)
     } else {
-        Color.White.copy(alpha = 0.8f)
+        panelBackground.blendTowards(Color.White, 0.9f)
     }
     val chipBorder = if (isDark) {
         JewelTheme.globalColors.borders.disabled
     } else {
-        Color(0xFFDCE4F6)
+        JewelTheme.globalColors.borders.normal
     }
     val barGradient = if (isDark) {
         Brush.horizontalGradient(
@@ -626,11 +684,9 @@ private fun DayCycleCard(markers: List<DayMarker>, modifier: Modifier = Modifier
     } else {
         Brush.horizontalGradient(
             listOf(
-                Color(0xFFB5C7FF),
-                Color(0xFFFFE2A0),
-                Color(0xFFF9C07B),
-                Color(0xFF8EC5FF),
-                Color(0xFFDEE8FF)
+                panelBackground.blendTowards(Color.Black, 0.15f),
+                JewelTheme.globalColors.text.info,
+                panelBackground.blendTowards(Color.White, 0.35f)
             )
         )
     }
@@ -655,8 +711,8 @@ private fun DayCycleCard(markers: List<DayMarker>, modifier: Modifier = Modifier
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     GradientDot(
-                        colorStart = Color(0xFFF0A6FF),
-                        colorEnd = Color(0xFF7CD7F9),
+                        colorStart = JewelTheme.globalColors.text.info,
+                        colorEnd = panelBackground.blendTowards(JewelTheme.globalColors.text.info, 0.4f),
                         size = 12.dp
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -681,16 +737,16 @@ private fun DayCycleCard(markers: List<DayMarker>, modifier: Modifier = Modifier
                         text = stringResource(Res.string.home_cycle_chip_twilight, markers.first().time),
                         backgroundColor = chipBackground,
                         borderColor = chipBorder,
-                        dotStart = Color(0xFF9F7AEA),
-                        dotEnd = Color(0xFF60A5FA)
+                        dotStart = JewelTheme.globalColors.text.info,
+                        dotEnd = panelBackground.blendTowards(JewelTheme.globalColors.text.info, 0.4f)
                     )
                     val noonTime = markers.getOrNull(2)?.time ?: ""
                     PillChip(
                         text = stringResource(Res.string.home_cycle_chip_solar_noon, noonTime),
                         backgroundColor = chipBackground,
                         borderColor = chipBorder,
-                        dotStart = Color(0xFFFFB347),
-                        dotEnd = Color(0xFFFFD186)
+                        dotStart = JewelTheme.globalColors.text.info,
+                        dotEnd = panelBackground.blendTowards(Color.White, 0.7f)
                     )
                 }
             }
@@ -814,40 +870,56 @@ private fun DayMomentCard(data: DayMomentCardData, modifier: Modifier = Modifier
             )
         )
     } else {
-        Brush.verticalGradient(listOf(Color(0xFFF8FBFF), Color(0xFFEFF4FF)))
+        Brush.verticalGradient(
+            listOf(
+                panelBackground.blendTowards(Color.White, 0.10f),
+                panelBackground.blendTowards(JewelTheme.globalColors.text.info, 0.05f)
+            )
+        )
     }
     val borderColor = if (isDark) {
         JewelTheme.globalColors.borders.disabled
     } else {
-        Color(0xFFE1E7F5)
+        JewelTheme.globalColors.borders.normal
     }
     val labelColor = JewelTheme.globalColors.text.normal.copy(alpha = 0.75f)
 
     Box(
         modifier = modifier
-            .height(120.dp)
+            .height(90.dp)
             .clip(shape)
             .background(background)
             .border(1.dp, borderColor, shape)
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                text = stringResource(data.title),
-                color = labelColor,
-                fontSize = 12.sp
-            )
-            Text(
-                text = data.time,
-                color = JewelTheme.globalColors.text.normal,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.weight(0.45f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalAlignment = Alignment.Start
             ) {
-                GradientDot(data.accentStart, data.accentEnd)
+                Text(
+                    text = stringResource(data.title),
+                    color = labelColor,
+                    fontSize = 12.sp
+                )
+                Text(
+                    text = data.time,
+                    color = JewelTheme.globalColors.text.normal,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp
+                )
+            }
+            Row(
+                modifier = Modifier.weight(0.55f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                GradientDot(data.accentStart, data.accentEnd, size = 10.dp)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = stringResource(data.subtitle),
@@ -888,16 +960,16 @@ private fun VisibleStarsCard(
     } else {
         Brush.horizontalGradient(
             listOf(
-                Color(0xFFD7E4FF),
-                Color(0xFFB4CCFF),
-                Color(0xFF9AB8FF)
+                panelBackground.blendTowards(accent, 0.25f),
+                panelBackground.blendTowards(accent, 0.15f),
+                panelBackground.blendTowards(accent, 0.05f)
             )
         )
     }
     val borderColor = if (isDark) {
         JewelTheme.globalColors.borders.disabled
     } else {
-        Color(0xFFE1E8F5)
+        JewelTheme.globalColors.borders.normal
     }
     val textColor = JewelTheme.globalColors.text.normal
     val secondary = textColor.copy(alpha = 0.76f)
@@ -905,42 +977,48 @@ private fun VisibleStarsCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .height(90.dp)
             .clip(shape)
             .background(background)
             .border(1.dp, borderColor, shape)
-            .padding(16.dp)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = stringResource(title),
-                color = textColor,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = time,
-                color = if (isDark) accent else Color(0xFFFCD34D),
-                fontWeight = FontWeight.Bold,
-                fontSize = 26.sp
-            )
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.weight(0.45f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    text = stringResource(title),
+                    color = textColor,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = time,
+                    color = accent,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp
+                )
+            }
             Row(
+                modifier = Modifier.weight(0.55f),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (isDark) {
-                        val starOuter = accent.blendTowards(Color.White, 0.35f)
-                        GradientDot(starOuter, accent, size = 12.dp)
-                        GradientDot(starOuter, accent, size = 12.dp)
-                        GradientDot(starOuter, accent, size = 12.dp)
-                    } else {
-                        GradientDot(Color(0xFFFBBF24), Color(0xFFF59E0B), size = 12.dp)
-                        GradientDot(Color(0xFFFBBF24), Color(0xFFF59E0B), size = 12.dp)
-                        GradientDot(Color(0xFFFBBF24), Color(0xFFF59E0B), size = 12.dp)
-                    }
+                    val starOuter = accent.blendTowards(Color.White, 0.35f)
+                    GradientDot(starOuter, accent, size = 12.dp)
+                    GradientDot(starOuter, accent, size = 12.dp)
+                    GradientDot(starOuter, accent, size = 12.dp)
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(

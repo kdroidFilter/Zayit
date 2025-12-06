@@ -394,13 +394,13 @@ private fun HomeBody(
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             Box(homeContentModifier) {
                                 if (searchUi.selectedFilter == SearchFilter.REFERENCE) {
-                                    Spacer(Modifier.height(180.dp))
+                                    Spacer(Modifier.height(32.dp))
                                 } else {
                                     Column(
-                                        modifier = Modifier.heightIn(min = 160.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
+                                        modifier = Modifier.heightIn(min = 32.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                    ) {
                                     val breadcrumbSeparator = stringResource(Res.string.breadcrumb_separator)
                                     val mappedCategorySuggestions = searchUi.categorySuggestions.map { cs ->
                                         CategorySuggestion(cs.category, cs.path)
@@ -473,7 +473,7 @@ private fun HomeBody(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 12.dp, bottom = 8.dp),
+                                .padding(top = 16.dp, bottom = 8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             HomeCelestialWidgets(
@@ -498,7 +498,7 @@ private fun WelcomeUser(username: String) {
 @Composable
 private fun LogoImage(modifier: Modifier = Modifier) {
     Image(
-        painterResource(Res.drawable.zayit_transparent), contentDescription = null, modifier = modifier.size(256.dp)
+        painterResource(Res.drawable.zayit_transparent), contentDescription = null, modifier = modifier.size(220.dp)
     )
 }
 

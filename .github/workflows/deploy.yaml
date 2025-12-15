@@ -162,7 +162,7 @@ jobs:
       # Upload Artifacts
       - name: Upload Linux .deb (amd64/arm64)
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'deb'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: linux-deb-${{ matrix.arch }}
           path: SeforimApp/build/compose/binaries/main-release/deb/*.deb
@@ -170,7 +170,7 @@ jobs:
 
       - name: Upload Linux .rpm (amd64/arm64)
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'rpm'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: linux-rpm-${{ matrix.arch }}
           path: SeforimApp/build/compose/binaries/main-release/rpm/*.rpm
@@ -178,7 +178,7 @@ jobs:
 
       - name: Upload Windows .msi (amd64/arm64)
         if: startsWith(matrix.os, 'windows')
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: windows-msi-${{ matrix.arch }}
           path: SeforimApp/build/compose/binaries/main-release/msi/*.msi
@@ -186,21 +186,21 @@ jobs:
 
       - name: Upload macOS .pkg
         if: startsWith(matrix.os, 'macos')
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: macos-pkg-${{ matrix.jdk_arch }}
           path: SeforimApp/build/compose/binaries/main-release/pkg/*.pkg
           if-no-files-found: error
       - name: Upload macOS .dmg
         if: startsWith(matrix.os, 'macos')
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: macos-dmg-${{ matrix.jdk_arch }}
           path: SeforimApp/build/compose/binaries/main-release/dmg/*.dmg
           if-no-files-found: error
       - name: Upload macOS .zip
         if: startsWith(matrix.os, 'macos')
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: macos-zip-${{ matrix.jdk_arch }}
           path: SeforimApp/build/compose/binaries/main-release/app/*.zip

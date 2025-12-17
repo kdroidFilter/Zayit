@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,10 +19,17 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForHorizo
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForVerticalResize
 import kotlin.math.roundToInt
 
+@Stable
+@JvmInline
+value class StableSplitPaneState @OptIn(ExperimentalSplitPaneApi::class) constructor(val value: SplitPaneState)
+
+@OptIn(ExperimentalSplitPaneApi::class)
+fun SplitPaneState.asStable(): StableSplitPaneState = StableSplitPaneState(this)
+
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 fun EnhancedHorizontalSplitPane(
-    splitPaneState: SplitPaneState,
+    splitPaneState: StableSplitPaneState,
     modifier: Modifier = Modifier,
     firstMinSize: Float = 200f,
     secondMinSize: Float = 200f,
@@ -29,30 +37,31 @@ fun EnhancedHorizontalSplitPane(
     secondContent: (@Composable BoxScope.() -> Unit)?,
     showSplitter: Boolean = true
 ) {
+    val state = splitPaneState.value
     val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
 
     // When the second pane is hidden, expand the first to 100% to avoid blank space
     LaunchedEffect(secondContent == null) {
         if (secondContent == null) {
-            splitPaneState.positionPercentage = 1f
+            state.positionPercentage = 1f
         }
     }
 
     // Quantize splitter position to 2 decimal places to avoid layout jitter from
     // floating-point noise, especially on small or non-integer pixel widths.
-    LaunchedEffect(splitPaneState) {
-        snapshotFlow { splitPaneState.positionPercentage }
+    LaunchedEffect(state) {
+        snapshotFlow { state.positionPercentage }
             .collect { rawPosition ->
                 val clamped = rawPosition.coerceIn(0f, 1f)
                 val quantized = (clamped * 100f).roundToInt() / 100f
                 if (quantized != rawPosition) {
-                    splitPaneState.positionPercentage = quantized
+                    state.positionPercentage = quantized
                 }
             }
     }
 
     HorizontalSplitPane(
-        splitPaneState = splitPaneState,
+        splitPaneState = state,
         modifier = modifier
     ) {
         first(firstMinSize.dp) {
@@ -99,7 +108,7 @@ fun EnhancedHorizontalSplitPane(
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 fun EnhancedVerticalSplitPane(
-    splitPaneState: SplitPaneState,
+    splitPaneState: StableSplitPaneState,
     modifier: Modifier = Modifier,
     firstMinSize: Float = 200f,
     secondMinSize: Float = 200f,
@@ -107,30 +116,31 @@ fun EnhancedVerticalSplitPane(
     secondContent: (@Composable BoxScope.() -> Unit)?,
     showSplitter: Boolean = true
 ) {
+    val state = splitPaneState.value
     val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
 
     // When the second pane is hidden, expand the first to 100% to avoid blank space
     LaunchedEffect(secondContent == null) {
         if (secondContent == null) {
-            splitPaneState.positionPercentage = 1f
+            state.positionPercentage = 1f
         }
     }
 
     // Quantize splitter position to 2 decimal places to avoid layout jitter from
     // floating-point noise, especially on small or non-integer pixel widths.
-    LaunchedEffect(splitPaneState) {
-        snapshotFlow { splitPaneState.positionPercentage }
+    LaunchedEffect(state) {
+        snapshotFlow { state.positionPercentage }
             .collect { rawPosition ->
                 val clamped = rawPosition.coerceIn(0f, 1f)
                 val quantized = (clamped * 100f).roundToInt() / 100f
                 if (quantized != rawPosition) {
-                    splitPaneState.positionPercentage = quantized
+                    state.positionPercentage = quantized
                 }
             }
     }
 
     VerticalSplitPane(
-        splitPaneState = splitPaneState,
+        splitPaneState = state,
         modifier = modifier
     ) {
         first(firstMinSize.dp) {

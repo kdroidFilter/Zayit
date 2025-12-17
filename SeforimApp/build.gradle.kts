@@ -15,6 +15,7 @@ plugins {
     alias(libs.plugins.buildConfig)
     alias(libs.plugins.metro)
     alias(libs.plugins.linux.deps)
+    alias(libs.plugins.stability.analyzer)
 }
 
 val version = Versioning.resolveVersion(project)

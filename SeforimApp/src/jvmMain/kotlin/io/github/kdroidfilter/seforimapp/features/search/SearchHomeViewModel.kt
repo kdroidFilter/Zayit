@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.search
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
@@ -28,10 +29,16 @@ import com.russhwolf.settings.get
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import kotlinx.coroutines.FlowPreview
 
+@Immutable
 data class CategorySuggestionDto(val category: Category, val path: List<String>)
+
+@Immutable
 data class BookSuggestionDto(val book: Book, val path: List<String>)
+
+@Immutable
 data class TocSuggestionDto(val toc: TocEntry, val path: List<String>)
 
+@Immutable
 data class SearchHomeUiState(
     val selectedFilter: SearchFilter = SearchFilter.TEXT,
     val globalExtended: Boolean = false,

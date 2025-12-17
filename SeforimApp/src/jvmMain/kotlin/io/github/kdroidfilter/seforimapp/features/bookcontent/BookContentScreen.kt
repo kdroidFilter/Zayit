@@ -230,31 +230,6 @@ private fun composeKeyEventToSwingKeyStroke(event: KeyEvent): KeyStroke? {
     return KeyStroke.getKeyStroke(awtKeyCode, modifiers, false)
 }
 
-/**
- * Composable function to display the book content screen.
- *
- * This screen observes the `uiState` from the `BookContentViewModel` and passes
- * it to the `BookContentView` composable for rendering. It also provides the
- * `onEvent` lambda from the ViewModel to handle user interactions within the
- * `BookContentView`.
- */
-@Composable
-fun BookContentScreen(
-    viewModel: BookContentViewModel,
-    isRestoringSession: Boolean = false,
-    searchUi: SearchHomeUiState,
-    searchCallbacks: HomeSearchCallbacks,
-) {
-    val uiState by viewModel.uiState.collectAsState()
-
-    BookContentView(
-        uiState = uiState,
-        onEvent = viewModel::onEvent,
-        isRestoringSession = isRestoringSession,
-        searchUi = searchUi,
-        searchCallbacks = searchCallbacks
-    )
-}
 
 /**
  * Displays the content view of a book with multiple panels configured within split panes.
@@ -264,7 +239,7 @@ fun BookContentScreen(
  */
 @OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class, ExperimentalFoundationApi::class)
 @Composable
-fun BookContentView(
+fun BookContentScreen(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     isRestoringSession: Boolean = false,

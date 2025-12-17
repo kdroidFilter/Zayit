@@ -126,3 +126,4 @@ android-library = { id = "com.android.kotlin.multiplatform.library", version.ref
 caupain =  { id = "com.deezer.caupain", version = "1.6.1"}
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 linux-deps = { id = "io.github.kdroidfilter.compose.linux.packagedeps", version = "0.2.4"}
+stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version = "0.6.5" }

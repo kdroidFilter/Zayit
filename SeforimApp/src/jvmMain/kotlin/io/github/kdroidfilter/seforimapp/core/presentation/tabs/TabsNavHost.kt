@@ -52,6 +52,7 @@ fun TabsNavHost() {
     val appGraph = LocalAppGraph.current
     val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
     val searchHomeViewModel = appGraph.searchHomeViewModel
+    val persistedStore = appGraph.tabPersistedStateStore
 
     val tabs by tabsViewModel.tabs.collectAsState()
     val selectedTabIndex by tabsViewModel.selectedTabIndex.collectAsState()
@@ -84,7 +85,10 @@ fun TabsNavHost() {
     LaunchedEffect(tabs) {
         val activeTabIds = tabs.map { it.destination.tabId }.toSet()
         val removed = tabOwners.keys.toSet() - activeTabIds
-        removed.forEach { tabId -> tabOwners.remove(tabId)?.clear() }
+        removed.forEach { tabId ->
+            tabOwners.remove(tabId)?.clear()
+            persistedStore.remove(tabId)
+        }
     }
     DisposableEffect(Unit) {
         onDispose {

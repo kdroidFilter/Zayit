@@ -5,13 +5,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
+import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,7 +61,7 @@ data class SearchHomeUiState(
 @OptIn(FlowPreview::class)
 class SearchHomeViewModel(
     private val tabsViewModel: TabsViewModel,
-    private val stateManager: TabStateManager,
+    private val persistedStore: TabPersistedStateStore,
     private val repository: SeforimRepository,
     private val lucene: LuceneSearchService,
     private val lookup: LuceneLookupSearchService,
@@ -414,56 +415,84 @@ class SearchHomeViewModel(
         val currentIndex = tabsViewModel.selectedTabIndex.value
         val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: return
 
-        // Clear previous filters
-        stateManager.saveState(currentTabId, SearchStateKeys.FILTER_CATEGORY_ID, 0L)
-        stateManager.saveState(currentTabId, SearchStateKeys.FILTER_BOOK_ID, 0L)
-        stateManager.saveState(currentTabId, SearchStateKeys.FILTER_TOC_ID, 0L)
-
         // Apply selected scope only (view filters) and persist dataset scope for fetch
-        var datasetScope = "global"
-        _uiState.value.selectedScopeCategory?.let { cat ->
-            stateManager.saveState(currentTabId, SearchStateKeys.FILTER_CATEGORY_ID, cat.id)
-            stateManager.saveState(currentTabId, SearchStateKeys.DATASET_SCOPE, "category")
-            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_CATEGORY_ID, cat.id)
-            datasetScope = "category"
-        }
-        _uiState.value.selectedScopeBook?.let { book ->
-            stateManager.saveState(currentTabId, SearchStateKeys.FILTER_BOOK_ID, book.id)
-            stateManager.saveState(currentTabId, SearchStateKeys.DATASET_SCOPE, "book")
-            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_BOOK_ID, book.id)
-            datasetScope = "book"
-        }
-        _uiState.value.selectedScopeToc?.let { toc ->
-            // Ensure book filter matches toc's book as well
-            stateManager.saveState(currentTabId, SearchStateKeys.FILTER_BOOK_ID, toc.bookId)
-            stateManager.saveState(currentTabId, SearchStateKeys.FILTER_TOC_ID, toc.id)
-            stateManager.saveState(currentTabId, SearchStateKeys.DATASET_SCOPE, "toc")
-            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_BOOK_ID, toc.bookId)
-            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_TOC_ID, toc.id)
-            datasetScope = "toc"
-        }
-        if (datasetScope == "global") {
-            // clear any previous fetch-scope remnants
-            stateManager.saveState(currentTabId, SearchStateKeys.DATASET_SCOPE, "global")
-            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_CATEGORY_ID, 0L)
-            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_BOOK_ID, 0L)
-            stateManager.saveState(currentTabId, SearchStateKeys.FETCH_TOC_ID, 0L)
+        val selected = _uiState.value
+        val datasetScope: String
+        val filterCategoryId: Long
+        val filterBookId: Long
+        val filterTocId: Long
+        val fetchCategoryId: Long
+        val fetchBookId: Long
+        val fetchTocId: Long
+        when {
+            selected.selectedScopeToc != null -> {
+                val toc = selected.selectedScopeToc
+                datasetScope = "toc"
+                filterCategoryId = 0L
+                filterBookId = toc.bookId
+                filterTocId = toc.id
+                fetchCategoryId = 0L
+                fetchBookId = toc.bookId
+                fetchTocId = toc.id
+            }
+            selected.selectedScopeBook != null -> {
+                val book = selected.selectedScopeBook
+                datasetScope = "book"
+                filterCategoryId = 0L
+                filterBookId = book.id
+                filterTocId = 0L
+                fetchCategoryId = 0L
+                fetchBookId = book.id
+                fetchTocId = 0L
+            }
+            selected.selectedScopeCategory != null -> {
+                val cat = selected.selectedScopeCategory
+                datasetScope = "category"
+                filterCategoryId = cat.id
+                filterBookId = 0L
+                filterTocId = 0L
+                fetchCategoryId = cat.id
+                fetchBookId = 0L
+                fetchTocId = 0L
+            }
+            else -> {
+                datasetScope = "global"
+                filterCategoryId = 0L
+                filterBookId = 0L
+                filterTocId = 0L
+                fetchCategoryId = 0L
+                fetchBookId = 0L
+                fetchTocId = 0L
+            }
         }
 
-        // Persist search params for this tab to restore state
-        stateManager.saveState(currentTabId, SearchStateKeys.QUERY, query)
-        stateManager.saveState(currentTabId, SearchStateKeys.GLOBAL_EXTENDED, _uiState.value.globalExtended)
+        persistedStore.update(currentTabId) { current ->
+            val nextSearch = (current.search ?: SearchPersistedState()).copy(
+                query = query,
+                globalExtended = selected.globalExtended,
+                datasetScope = datasetScope,
+                filterCategoryId = filterCategoryId,
+                filterBookId = filterBookId,
+                filterTocId = filterTocId,
+                fetchCategoryId = fetchCategoryId,
+                fetchBookId = fetchBookId,
+                fetchTocId = fetchTocId,
+                selectedCategoryIds = emptySet(),
+                selectedBookIds = emptySet(),
+                selectedTocIds = emptySet(),
+                scrollIndex = 0,
+                scrollOffset = 0,
+                anchorId = -1L,
+                anchorIndex = 0,
+                snapshot = null,
+                breadcrumbs = emptyMap()
+            )
+            current.copy(search = nextSearch)
+        }
 
         // Clear any previous cached search snapshot for this tab to avoid
         // reusing stale results when a new search is submitted.
         SearchTabCache.clear(currentTabId)
-        SearchTabPersistentCache.clear(currentTabId)
-
-        // Also reset persisted scroll/anchor so the SearchResult screen starts at the top
-        stateManager.saveState(currentTabId, SearchStateKeys.SCROLL_INDEX, 0)
-        stateManager.saveState(currentTabId, SearchStateKeys.SCROLL_OFFSET, 0)
-        stateManager.saveState(currentTabId, SearchStateKeys.ANCHOR_ID, -1L)
-        stateManager.saveState(currentTabId, SearchStateKeys.ANCHOR_INDEX, 0)
 
         // Replace current tab destination to Search (no new tab)
         tabsViewModel.replaceCurrentTabDestination(
@@ -496,15 +525,10 @@ class SearchHomeViewModel(
             else -> runCatching { repository.getLineIdsForTocEntry(selectedToc.id).firstOrNull() }.getOrNull()
         }
 
-        // Pre-initialize minimal state so the BookContent shell does not flash Home
-        stateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys.SELECTED_BOOK, book)
-        anchorLineId?.let { stateManager.saveState(currentTabId, io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys.CONTENT_ANCHOR_ID, it) }
-        // Type-safe hint that this open came from Home/Reference predictive flow
-        stateManager.saveState(
-            currentTabId,
-            io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys.OPEN_SOURCE,
-            io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.HOME_REFERENCE
-        )
+        // Pre-seed minimal state so the BookContent shell can show a loader instead of flashing Home.
+        persistedStore.update(currentTabId) { current ->
+            current.copy(bookContent = current.bookContent.copy(selectedBookId = book.id))
+        }
 
         // Replace destination in-place to open the book
         tabsViewModel.replaceCurrentTabDestination(

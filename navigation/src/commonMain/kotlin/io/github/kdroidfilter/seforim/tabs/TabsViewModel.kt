@@ -20,7 +20,6 @@ data class TabItem(
 
 class TabsViewModel(
     private val titleUpdateManager: TabTitleUpdateManager,
-    private val stateManager: TabStateManager,
     startDestination: TabsDestination
 ) : ViewModel() {
 
@@ -78,9 +77,6 @@ class TabsViewModel(
         }
 
         // Capture tabId to clear any per-tab cached state
-        val tabIdToClose = currentTabs[index].destination.tabId
-        // Clear any state associated with this tab to free memory
-        stateManager.clearTabState(tabIdToClose)
 
         // Supprimer l'onglet à l'index donné
         val newTabs = currentTabs.toMutableList().apply { removeAt(index) }
@@ -151,7 +147,7 @@ class TabsViewModel(
     }
 
     private fun addTabWithDestination(destination: TabsDestination) {
-        // Preserve the provided tabId to allow callers to pre-initialize tab state (e.g., via TabStateManager).
+        // Preserve the provided tabId to allow callers to pre-initialize tab state.
         val newDestination = when (destination) {
             is TabsDestination.Home -> TabsDestination.Home(destination.tabId, destination.version)
             is TabsDestination.Search -> TabsDestination.Search(destination.searchQuery, destination.tabId)
@@ -170,8 +166,6 @@ class TabsViewModel(
 
     private fun closeAllTabs() {
         val currentTabs = _tabs.value
-        // Clear state for all existing tabs
-        currentTabs.forEach { stateManager.clearTabState(it.destination.tabId) }
 
         // Create a fresh default tab
         val destination = TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())
@@ -190,9 +184,6 @@ class TabsViewModel(
         val currentTabs = _tabs.value
         if (index !in 0..currentTabs.lastIndex) return
 
-        // Clear all other tabs' state
-        currentTabs.forEachIndexed { i, tab -> if (i != index) stateManager.clearTabState(tab.destination.tabId) }
-
         val keep = currentTabs[index]
         _tabs.value = listOf(keep)
         _selectedTabIndex.value = 0
@@ -202,9 +193,6 @@ class TabsViewModel(
     private fun closeLeft(index: Int) {
         val currentTabs = _tabs.value
         if (index !in 0..currentTabs.lastIndex) return
-
-        // Clear state for all tabs strictly to the left of index
-        currentTabs.take(index).forEach { tab -> stateManager.clearTabState(tab.destination.tabId) }
 
         val newTabs = currentTabs.drop(index).toList()
         _tabs.value = newTabs
@@ -222,9 +210,6 @@ class TabsViewModel(
     private fun closeRight(index: Int) {
         val currentTabs = _tabs.value
         if (index !in 0..currentTabs.lastIndex) return
-
-        // Clear state for all tabs strictly to the right of index
-        currentTabs.drop(index + 1).forEach { tab -> stateManager.clearTabState(tab.destination.tabId) }
 
         val newTabs = currentTabs.take(index + 1).toList()
         _tabs.value = newTabs
@@ -288,7 +273,6 @@ class TabsViewModel(
         if (index !in 0..currentTabs.lastIndex) return
 
         val current = currentTabs[index]
-        val oldTabId = current.destination.tabId
         val newTabId = UUID.randomUUID().toString()
 
         val newDestination = when (destination) {
@@ -306,9 +290,6 @@ class TabsViewModel(
                 lineId = destination.lineId
             )
         }
-
-        // Clear all state for the old tabId to free memory and avoid state bleed
-        stateManager.clearTabState(oldTabId)
 
         val updated = current.copy(
             title = getTabTitle(newDestination),

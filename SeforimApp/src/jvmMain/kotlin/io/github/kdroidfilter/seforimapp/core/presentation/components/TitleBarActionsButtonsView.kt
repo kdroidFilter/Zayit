@@ -15,8 +15,6 @@ import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
-import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.*
@@ -40,8 +38,7 @@ fun TitleBarActionsButtonsView() {
     val findEnabled = when (val dest = currentTab?.destination) {
         is TabsDestination.Search -> true
         is TabsDestination.BookContent -> {
-            val selectedBook: Book? = appGraph.tabStateManager.getState(dest.tabId, StateKeys.SELECTED_BOOK)
-            selectedBook != null
+            (appGraph.tabPersistedStateStore.get(dest.tabId)?.bookContent?.selectedBookId ?: -1L) > 0L
         }
         else -> false
     }

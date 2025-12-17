@@ -22,6 +22,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asSt
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.*
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
+import io.github.kdroidfilter.seforimapp.pagination.PagingDefaults
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -54,8 +55,17 @@ fun BookContentPanel(
     )
 ) {
 
-    // Preserve LazyListState across recompositions
-    val bookListState = remember(uiState.navigation.selectedBook?.id) { LazyListState() }
+    // Preserve LazyListState across recompositions.
+    // When restoring with an anchor, start away from index 0 to avoid triggering an early prepend
+    // before the explicit anchor-based restoration runs.
+    val bookListState = remember(uiState.navigation.selectedBook?.id) {
+        val hasAnchor = uiState.content.anchorId != -1L
+        val initialIndex = if (hasAnchor) PagingDefaults.LINES.INITIAL_LOAD_SIZE / 2 else uiState.content.scrollIndex
+        LazyListState(
+            firstVisibleItemIndex = initialIndex.coerceAtLeast(0),
+            firstVisibleItemScrollOffset = uiState.content.scrollOffset.coerceAtLeast(0)
+        )
+    }
 
     if (uiState.navigation.selectedBook == null) {
         // If we're actively loading a book for this tab, avoid flashing the Home screen.

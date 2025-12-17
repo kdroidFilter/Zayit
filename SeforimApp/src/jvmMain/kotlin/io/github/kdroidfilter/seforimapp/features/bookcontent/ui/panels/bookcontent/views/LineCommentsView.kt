@@ -45,6 +45,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorI
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -167,7 +168,7 @@ private fun CommentariesContent(
     }
 
     EnhancedHorizontalSplitPane(
-        splitPaneState = splitState,
+        splitPaneState = splitState.asStable(),
         firstMinSize = if (isCommentatorsListVisible) 150f else 0f,
         showSplitter = isCommentatorsListVisible,
         firstContent = {

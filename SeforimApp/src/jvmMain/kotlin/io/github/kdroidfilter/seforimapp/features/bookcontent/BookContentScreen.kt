@@ -24,6 +24,7 @@ import com.dokar.sonner.rememberToasterState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EndVerticalBar
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.StartVerticalBar
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.BookTocPanel
@@ -409,7 +410,7 @@ fun BookContentView(
             StartVerticalBar(uiState = uiState, onEvent = onEvent)
 
             EnhancedHorizontalSplitPane(
-                splitPaneState = uiState.layout.mainSplitState,
+                splitPaneState = uiState.layout.mainSplitState.asStable(),
                 modifier = Modifier.weight(1f),
                 firstMinSize = if (uiState.navigation.isVisible) SplitDefaults.MIN_MAIN else 0f,
                 firstContent = {
@@ -419,7 +420,7 @@ fun BookContentView(
                 },
                 secondContent = {
                     EnhancedHorizontalSplitPane(
-                        splitPaneState = uiState.layout.tocSplitState,
+                        splitPaneState = uiState.layout.tocSplitState.asStable(),
                         firstMinSize = if (uiState.toc.isVisible) SplitDefaults.MIN_TOC else 0f,
                         firstContent = {
                             if (uiState.toc.isVisible) {

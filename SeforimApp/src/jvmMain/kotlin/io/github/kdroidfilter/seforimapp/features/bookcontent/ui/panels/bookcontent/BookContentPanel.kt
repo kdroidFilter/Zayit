@@ -18,6 +18,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentS
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedVerticalSplitPane
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.*
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
@@ -100,11 +101,12 @@ fun BookContentPanel(
     Column(modifier = modifier.fillMaxSize()) {
 
         EnhancedVerticalSplitPane(
-            splitPaneState = uiState.layout.contentSplitState,
+            splitPaneState = uiState.layout.contentSplitState.asStable(),
             modifier = Modifier.weight(1f),
             firstContent = {
                 EnhancedHorizontalSplitPane(
-                    uiState.layout.targumSplitState, firstContent = {
+                    splitPaneState = uiState.layout.targumSplitState.asStable(),
+                    firstContent = {
                         BookContentView(
                             book = uiState.navigation.selectedBook,
                             linesPagingData = providers.linesPagingData,
@@ -137,15 +139,19 @@ fun BookContentPanel(
                             lineConnections = connectionsCache,
                             onPrefetchLineConnections = prefetchConnections
                         )
-                }, secondContent = if (uiState.content.showTargum) {
-                    {
-                        TargumPane(
-                            uiState = uiState,
-                            onEvent = onEvent,
-                            lineConnections = connectionsCache
-                        )
+                    },
+                    secondContent = if (uiState.content.showTargum) {
+                        {
+                            TargumPane(
+                                uiState = uiState,
+                                onEvent = onEvent,
+                                lineConnections = connectionsCache
+                            )
+                        }
+                    } else {
+                        null
                     }
-                } else null)
+                )
             },
             secondContent = when {
                 uiState.content.showCommentaries -> {

@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.launch
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
@@ -14,6 +15,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoa
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
@@ -32,7 +34,7 @@ fun OfflineFileSelectionScreen(
         progressBarState.setProgress(0.5f)
     }
     
-    val extractViewModel: ExtractViewModel = LocalAppGraph.current.extractViewModel
+    val extractViewModel: ExtractViewModel = metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val processRepository: OnboardingProcessRepository = LocalAppGraph.current.onboardingProcessRepository
     val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
     

@@ -2,12 +2,14 @@ package io.github.kdroidfilter.seforimapp.core.presentation.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
@@ -25,7 +27,8 @@ fun TitleBarActionsButtonsView() {
     val theme = themeViewModel.theme.collectAsState().value
 
     // Use ViewModel-driven settings window visibility to respect MVVM conventions
-    val settingsViewModel: SettingsWindowViewModel = LocalAppGraph.current.settingsWindowViewModel
+    val settingsViewModel: SettingsWindowViewModel =
+        metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val settingsState = settingsViewModel.state.collectAsState().value
 
     // Access app graph outside of callbacks to avoid reading CompositionLocals in non-composable contexts

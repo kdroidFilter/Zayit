@@ -13,11 +13,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsViewModel
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.ListComboBox
@@ -30,7 +31,8 @@ import seforimapp.seforimapp.generated.resources.settings_font_targum_label
 
 @Composable
 fun FontsSettingsScreen() {
-    val viewModel: FontsSettingsViewModel = LocalAppGraph.current.fontsSettingsViewModel
+    val viewModel: FontsSettingsViewModel =
+        metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
     FontsSettingsView(state = state, onEvent = viewModel::onEvent)
 }

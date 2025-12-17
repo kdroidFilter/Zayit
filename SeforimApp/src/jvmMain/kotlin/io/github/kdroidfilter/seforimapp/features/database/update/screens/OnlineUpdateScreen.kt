@@ -7,12 +7,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytesPerSec
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatEta
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
@@ -32,10 +34,12 @@ fun OnlineUpdateScreen(
     navController: NavController,
     onUpdateCompleted: () -> Unit
 ) {
-    val downloadViewModel: DownloadViewModel = LocalAppGraph.current.downloadViewModel
+    val downloadViewModel: DownloadViewModel =
+        metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val downloadState by downloadViewModel.state.collectAsState()
     val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
-    val extractViewModel: ExtractViewModel = LocalAppGraph.current.extractViewModel
+    val extractViewModel: ExtractViewModel =
+        metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val extractState by extractViewModel.state.collectAsState()
     
     var cleanupCompleted by remember { mutableStateOf(false) }

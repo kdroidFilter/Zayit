@@ -20,11 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Map
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
@@ -50,7 +51,8 @@ import seforimapp.seforimapp.generated.resources.onboarding_region_title
 fun RegionConfigScreen(
     navController: NavController, progressBarState: ProgressBarState = ProgressBarState
 ) {
-    val viewModel: RegionConfigViewModel = LocalAppGraph.current.regionConfigViewModel
+    val viewModel: RegionConfigViewModel =
+        metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
 
     LaunchedEffect(Unit) { progressBarState.setProgress(0.9f) }
@@ -67,7 +69,7 @@ fun RegionConfigScreen(
             }
             navController.navigate(OnBoardingDestination.FinishScreen)
         })
-}
+} 
 
 @OptIn(ExperimentalJewelApi::class)
 @Composable

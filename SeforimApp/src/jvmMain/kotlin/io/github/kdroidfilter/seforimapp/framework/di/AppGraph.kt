@@ -9,14 +9,7 @@ import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
-import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeOfInstallationViewModel
-import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
-import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
 
@@ -36,18 +29,9 @@ abstract class AppGraph : ViewModelGraph {
     abstract val repository: SeforimRepository
     abstract val luceneSearchService: LuceneSearchService
     abstract val tabsViewModel: TabsViewModel
-    abstract val settingsWindowViewModel: SettingsWindowViewModel
-    abstract val generalSettingsViewModel: io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsViewModel
-    abstract val fontsSettingsViewModel: io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsViewModel
     abstract val searchHomeViewModel: SearchHomeViewModel
 
-    abstract val typeOfInstallationViewModel: TypeOfInstallationViewModel
-    abstract val downloadViewModel: DownloadViewModel
-    abstract val extractViewModel: ExtractViewModel
     abstract val onboardingProcessRepository: OnboardingProcessRepository
-    abstract val availableDiskSpaceViewModel: AvailableDiskSpaceViewModel
-    abstract val regionConfigViewModel: RegionConfigViewModel
-    abstract val userProfileViewModel: UserProfileViewModel
     abstract val databaseCleanupUseCase: DatabaseCleanupUseCase
 
 }

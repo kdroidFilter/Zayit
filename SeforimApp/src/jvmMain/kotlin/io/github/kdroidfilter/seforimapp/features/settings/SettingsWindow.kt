@@ -4,6 +4,7 @@ package io.github.kdroidfilter.seforimapp.features.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -12,11 +13,14 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils.buildThemeDefinition
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsNavHost
 import io.github.kdroidfilter.seforimapp.features.settings.ui.SettingsSidebar
 import org.jetbrains.compose.resources.painterResource
@@ -67,80 +71,86 @@ private fun SettingsWindowView(
             val background = JewelTheme.globalColors.panelBackground
             LaunchedEffect(window, background) { window.background = java.awt.Color(background.toArgb()) }
 
-            val isMac = getOperatingSystem() == OperatingSystem.MACOS
-            val isWindows = getOperatingSystem() == OperatingSystem.WINDOWS
-            TitleBar(modifier = Modifier.newFullscreenControls()) {
-                Box(
-                    modifier = Modifier.fillMaxWidth(if (isMac) 0.9f else 1f)
-                        .padding(start = if (isWindows) 70.dp else 0.dp)
-                ) {
-                    val centerOffset = 40.dp
-                    Row(
-                        modifier = Modifier.align(Alignment.Center).offset(x = centerOffset),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            AllIconsKeys.General.Settings,
-                            contentDescription = null,
-                            tint = JewelTheme.globalColors.text.normal,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(stringResource(Res.string.settings))
-                    }
-                }
-            }
-            // IntelliJ-like layout: sidebar + content with header and bottom action bar
-            val navController = rememberNavController()
-            Column(
-                modifier = Modifier
-                    .trackActivation()
-                    .fillMaxSize()
-                    .background(JewelTheme.globalColors.panelBackground)
-                    .padding(16.dp)
+            val windowViewModelOwner = rememberWindowViewModelStoreOwner()
+            CompositionLocalProvider(
+                LocalWindowViewModelStoreOwner provides windowViewModelOwner,
+                LocalViewModelStoreOwner provides windowViewModelOwner,
             ) {
-                Row(modifier = Modifier.weight(1f)) {
-                    SettingsSidebar(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .width(120.dp),
-                        navController = navController
-                    )
-
-                    // Vertical separator between the menu and content
-                    Divider(
-                        orientation = Orientation.Vertical,
-                        color = JewelTheme.globalColors.borders.disabled,
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .padding(horizontal = 8.dp)
-                    )
-
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .padding(start = 16.dp)
+                val isMac = getOperatingSystem() == OperatingSystem.MACOS
+                val isWindows = getOperatingSystem() == OperatingSystem.WINDOWS
+                TitleBar(modifier = Modifier.newFullscreenControls()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(if (isMac) 0.9f else 1f)
+                            .padding(start = if (isWindows) 70.dp else 0.dp)
                     ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            SettingsNavHost(navController = navController)
+                        val centerOffset = 40.dp
+                        Row(
+                            modifier = Modifier.align(Alignment.Center).offset(x = centerOffset),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                AllIconsKeys.General.Settings,
+                                contentDescription = null,
+                                tint = JewelTheme.globalColors.text.normal,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(stringResource(Res.string.settings))
                         }
                     }
                 }
-
-                Spacer(Modifier.height(8.dp))
-                Divider(orientation = Orientation.Horizontal)
-                Spacer(Modifier.height(8.dp))
-
-                // Bottom action bar aligned to the end (Confirm applies)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                // IntelliJ-like layout: sidebar + content with header and bottom action bar
+                val navController = rememberNavController()
+                Column(
+                    modifier = Modifier
+                        .trackActivation()
+                        .fillMaxSize()
+                        .background(JewelTheme.globalColors.panelBackground)
+                        .padding(16.dp)
                 ) {
-                    OutlinedButton(onClick = onClose) { Text(stringResource(Res.string.settings_cancel)) }
-                    Spacer(Modifier.width(8.dp))
-                    DefaultButton(onClick = onClose) { Text(stringResource(Res.string.settings_ok)) }
+                    Row(modifier = Modifier.weight(1f)) {
+                        SettingsSidebar(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(120.dp),
+                            navController = navController
+                        )
+
+                        // Vertical separator between the menu and content
+                        Divider(
+                            orientation = Orientation.Vertical,
+                            color = JewelTheme.globalColors.borders.disabled,
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .padding(horizontal = 8.dp)
+                        )
+
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(start = 16.dp)
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                SettingsNavHost(navController = navController)
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Divider(orientation = Orientation.Horizontal)
+                    Spacer(Modifier.height(8.dp))
+
+                    // Bottom action bar aligned to the end (Confirm applies)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(onClick = onClose) { Text(stringResource(Res.string.settings_cancel)) }
+                        Spacer(Modifier.width(8.dp))
+                        DefaultButton(onClick = onClose) { Text(stringResource(Res.string.settings_ok)) }
+                    }
                 }
             }
         }

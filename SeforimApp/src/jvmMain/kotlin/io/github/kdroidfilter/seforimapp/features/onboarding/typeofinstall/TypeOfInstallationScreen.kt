@@ -34,7 +34,6 @@ fun TypeOfInstallationScreen(navController: NavController, progressBarState: Pro
     LaunchedEffect(Unit) {
         progressBarState.setProgress(0.3f)
     }
-    val viewModel: TypeOfInstallationViewModel = LocalAppGraph.current.typeOfInstallationViewModel
     val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
     val scope = rememberCoroutineScope()
     TypeOfInstallationView(

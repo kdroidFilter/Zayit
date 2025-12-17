@@ -2,8 +2,12 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.download
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
+import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -12,7 +16,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class DownloadViewModel(
+@ContributesIntoMap(AppScope::class)
+@ViewModelKey(DownloadViewModel::class)
+class DownloadViewModel @Inject constructor(
     private val useCase: DownloadUseCase,
     private val processRepository: OnboardingProcessRepository,
 ) : ViewModel() {

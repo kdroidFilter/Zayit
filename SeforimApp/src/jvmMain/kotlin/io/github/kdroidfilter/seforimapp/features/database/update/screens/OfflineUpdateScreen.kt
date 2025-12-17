@@ -8,9 +8,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
@@ -28,7 +30,8 @@ fun OfflineUpdateScreen(
     navController: NavController,
     onUpdateCompleted: () -> Unit
 ) {
-    val extractViewModel: ExtractViewModel = LocalAppGraph.current.extractViewModel
+    val extractViewModel: ExtractViewModel =
+        metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val extractState by extractViewModel.state.collectAsState()
     val processRepository: OnboardingProcessRepository = LocalAppGraph.current.onboardingProcessRepository
     val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase

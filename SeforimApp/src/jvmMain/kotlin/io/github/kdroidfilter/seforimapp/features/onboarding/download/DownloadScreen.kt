@@ -19,14 +19,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytesPerSec
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatEta
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.FileArrowDown
 import io.github.kdroidfilter.seforimapp.icons.Speed
 import io.github.kdroidfilter.seforimapp.icons.Timer
@@ -48,7 +49,7 @@ import seforimapp.seforimapp.generated.resources.retry_button
 fun DownloadScreen(
     navController: NavController, progressBarState: ProgressBarState = ProgressBarState
 ) {
-    val viewModel: DownloadViewModel = LocalAppGraph.current.downloadViewModel
+    val viewModel: DownloadViewModel = metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
 
     // Update top progress indicator baseline for this step

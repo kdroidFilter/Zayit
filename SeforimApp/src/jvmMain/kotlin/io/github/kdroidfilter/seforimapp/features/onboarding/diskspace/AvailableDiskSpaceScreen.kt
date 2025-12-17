@@ -12,11 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.koalaplot.core.pie.DefaultSlice
 import io.github.koalaplot.core.pie.PieChart
@@ -36,7 +37,8 @@ fun AvailableDiskSpaceScreen(
     navController: NavController,
     progressBarState: ProgressBarState = ProgressBarState
 ) {
-    val viewModel: AvailableDiskSpaceViewModel = LocalAppGraph.current.availableDiskSpaceViewModel
+    val viewModel: AvailableDiskSpaceViewModel =
+        metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
 
     LaunchedEffect(Unit) { progressBarState.setProgress(0.2f) }

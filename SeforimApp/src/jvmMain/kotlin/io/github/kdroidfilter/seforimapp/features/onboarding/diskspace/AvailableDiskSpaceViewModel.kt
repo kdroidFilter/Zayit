@@ -2,14 +2,20 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.diskspace
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metrox.viewmodel.ViewModelKey
+import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-class AvailableDiskSpaceViewModel(
-   private val useCase: AvailableDiskSpaceUseCase
+@ContributesIntoMap(AppScope::class)
+@ViewModelKey(AvailableDiskSpaceViewModel::class)
+class AvailableDiskSpaceViewModel @Inject constructor(
+    private val useCase: AvailableDiskSpaceUseCase
 ) : ViewModel() {
 
     private var _hasEnoughSpace = MutableStateFlow(useCase.hasAtLeast15GBFree())
@@ -48,7 +54,7 @@ class AvailableDiskSpaceViewModel(
         )
     )
 
-   private fun recheck() {
+    private fun recheck() {
         _hasEnoughSpace.value = useCase.hasAtLeast15GBFree()
         _availableDiskSpace.value = useCase.getAvailableDiskSpace()
         _totalDiskSpace.value = useCase.getTotalDiskSpace()

@@ -15,11 +15,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigState
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigViewModel
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
@@ -34,7 +35,8 @@ import seforimapp.seforimapp.generated.resources.save_button
 
 @Composable
 fun RegionSettingsScreen() {
-    val viewModel: RegionConfigViewModel = LocalAppGraph.current.regionConfigViewModel
+    val viewModel: RegionConfigViewModel =
+        metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
     val canSave = state.selectedCountryIndex >= 0 && state.selectedCityIndex >= 0
     RegionSettingsView(

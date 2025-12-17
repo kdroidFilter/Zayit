@@ -2,13 +2,19 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.userprofile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-class UserProfileViewModel(
+@ContributesIntoMap(AppScope::class)
+@ViewModelKey(UserProfileViewModel::class)
+class UserProfileViewModel @Inject constructor(
     private val useCase: UserProfileUseCase
 ) : ViewModel() {
 
@@ -47,4 +53,3 @@ class UserProfileViewModel(
         }
     }
 }
-

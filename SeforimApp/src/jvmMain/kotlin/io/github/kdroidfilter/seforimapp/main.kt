@@ -15,6 +15,7 @@ import androidx.compose.ui.window.rememberWindowState
 import com.kdroid.composetray.tray.api.ExperimentalTrayAppApi
 import com.kdroid.composetray.utils.SingleInstanceManager
 import dev.zacsweers.metro.createGraph
+import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.darkmodedetector.mac.setMacOsAdaptiveTitleBar
 import io.github.kdroidfilter.platformtools.getOperatingSystem
@@ -112,7 +113,10 @@ fun main() {
         // Restore previously selected theme (Light/Dark/System) from settings
         MainAppState.setTheme(AppSettings.getThemeMode())
 
-        CompositionLocalProvider(LocalAppGraph provides appGraph) {
+        CompositionLocalProvider(
+            LocalAppGraph provides appGraph,
+            LocalMetroViewModelFactory provides appGraph.metroViewModelFactory,
+        ) {
             val themeDefinition = ThemeUtils.buildThemeDefinition()
 
             IntUiTheme(

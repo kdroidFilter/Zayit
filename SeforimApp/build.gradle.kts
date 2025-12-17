@@ -68,6 +68,9 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.navigation.compose)
 
+            // MetroX (ViewModel integration)
+            implementation(libs.metrox.viewmodel.compose)
+
             // KotlinX
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)

@@ -7,15 +7,35 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.DEFAULT_ARGS_KEY
+import androidx.lifecycle.HasDefaultViewModelProviderFactory
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.SAVED_STATE_REGISTRY_OWNER_KEY
+import androidx.lifecycle.VIEW_MODEL_STORE_OWNER_KEY
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.enableSavedStateHandles
+import androidx.lifecycle.viewmodel.CreationExtras
+import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import androidx.savedstate.SavedState
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
+import androidx.savedstate.savedState
+import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import io.github.kdroidfilter.seforim.navigation.TabNavControllerRegistry
 import io.github.kdroidfilter.seforim.navigation.nonAnimatedComposable
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
+import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
@@ -59,6 +79,19 @@ fun TabsNavHost() {
     }
 
     val registry: TabNavControllerRegistry = appGraph.tabNavControllerRegistry
+    val tabOwners = remember { mutableMapOf<String, TabViewModelOwner>() }
+
+    LaunchedEffect(tabs) {
+        val activeTabIds = tabs.map { it.destination.tabId }.toSet()
+        val removed = tabOwners.keys.toSet() - activeTabIds
+        removed.forEach { tabId -> tabOwners.remove(tabId)?.clear() }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            tabOwners.values.forEach { it.clear() }
+            tabOwners.clear()
+        }
+    }
 
     if (ramSaverEnabled) {
         // RAM Saver: single NavHost shared across tabs, navigate on selection/destination change
@@ -102,10 +135,9 @@ fun TabsNavHost() {
             nonAnimatedComposable<TabsDestination.Home> { backStackEntry ->
                 val destination = backStackEntry.toRoute<TabsDestination.Home>()
                 backStackEntry.savedStateHandle["tabId"] = destination.tabId
-                // Use tabId as key to keep ViewModel stable across destination changes
-                val viewModel = remember(appGraph, destination.tabId) {
-                    appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
-                }
+                val tabOwner = tabOwners.getOrPut(destination.tabId) { TabViewModelOwner(destination.tabId) }
+                tabOwner.setDefaultArgs(savedState { putString(StateKeys.TAB_ID, destination.tabId) })
+                val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                 val uiState by viewModel.uiState.collectAsState()
                 BookContentScreen(
                     uiState = uiState,
@@ -119,11 +151,15 @@ fun TabsNavHost() {
                 val destination = backStackEntry.toRoute<TabsDestination.Search>()
                 backStackEntry.savedStateHandle["tabId"] = destination.tabId
                 backStackEntry.savedStateHandle["searchQuery"] = destination.searchQuery
-                // Use tabId as key to keep ViewModels stable
-                val viewModel = remember(appGraph, destination.tabId) { appGraph.searchResultViewModel(backStackEntry.savedStateHandle) }
-                val bookVm = remember(appGraph, destination.tabId) {
-                    appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
-                }
+                val tabOwner = tabOwners.getOrPut(destination.tabId) { TabViewModelOwner(destination.tabId) }
+                tabOwner.setDefaultArgs(
+                    savedState {
+                        putString(StateKeys.TAB_ID, destination.tabId)
+                        putString("searchQuery", destination.searchQuery)
+                    }
+                )
+                val viewModel: SearchResultViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
+                val bookVm: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                 // Mark Search UI as visible only while this destination is composed
                 DisposableEffect(destination.tabId) {
                     viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetUiVisible(true))
@@ -205,10 +241,15 @@ fun TabsNavHost() {
                 backStackEntry.savedStateHandle["tabId"] = destination.tabId
                 if (destination.bookId > 0) backStackEntry.savedStateHandle["bookId"] = destination.bookId
                 destination.lineId?.let { backStackEntry.savedStateHandle["lineId"] = it }
-                // Use tabId as key to keep ViewModel stable
-                val viewModel = remember(appGraph, destination.tabId) {
-                    appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
-                }
+                val tabOwner = tabOwners.getOrPut(destination.tabId) { TabViewModelOwner(destination.tabId) }
+                tabOwner.setDefaultArgs(
+                    savedState {
+                        putString(StateKeys.TAB_ID, destination.tabId)
+                        if (destination.bookId > 0) putLong(StateKeys.BOOK_ID, destination.bookId)
+                        destination.lineId?.let { putLong(StateKeys.LINE_ID, it) }
+                    }
+                )
+                val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                 val uiState by viewModel.uiState.collectAsState()
                 BookContentScreen(
                     uiState = uiState,
@@ -253,10 +294,9 @@ fun TabsNavHost() {
                         nonAnimatedComposable<TabsDestination.Home> { backStackEntry ->
                             val destination = backStackEntry.toRoute<TabsDestination.Home>()
                             backStackEntry.savedStateHandle["tabId"] = destination.tabId
-                            // Use tabId as key to keep ViewModel stable across destination changes
-                            val viewModel = remember(appGraph, destination.tabId) {
-                                appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
-                            }
+                            val tabOwner = tabOwners.getOrPut(destination.tabId) { TabViewModelOwner(destination.tabId) }
+                            tabOwner.setDefaultArgs(savedState { putString(StateKeys.TAB_ID, destination.tabId) })
+                            val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                             val uiState by viewModel.uiState.collectAsState()
                             BookContentScreen(
                                 uiState = uiState,
@@ -270,11 +310,15 @@ fun TabsNavHost() {
                             val destination = backStackEntry.toRoute<TabsDestination.Search>()
                             backStackEntry.savedStateHandle["tabId"] = destination.tabId
                             backStackEntry.savedStateHandle["searchQuery"] = destination.searchQuery
-                            // Use tabId as key to keep ViewModels stable
-                            val viewModel = remember(appGraph, destination.tabId) { appGraph.searchResultViewModel(backStackEntry.savedStateHandle) }
-                            val bookVm = remember(appGraph, destination.tabId) {
-                                appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
-                            }
+                            val tabOwner = tabOwners.getOrPut(destination.tabId) { TabViewModelOwner(destination.tabId) }
+                            tabOwner.setDefaultArgs(
+                                savedState {
+                                    putString(StateKeys.TAB_ID, destination.tabId)
+                                    putString("searchQuery", destination.searchQuery)
+                                }
+                            )
+                            val viewModel: SearchResultViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
+                            val bookVm: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                             // Keep tree computation disabled when tab is not selected
                             LaunchedEffect(isSelected) {
                                 viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetUiVisible(isSelected))
@@ -358,10 +402,15 @@ fun TabsNavHost() {
                             backStackEntry.savedStateHandle["tabId"] = destination.tabId
                             if (destination.bookId > 0) backStackEntry.savedStateHandle["bookId"] = destination.bookId
                             destination.lineId?.let { backStackEntry.savedStateHandle["lineId"] = it }
-                            // Use tabId as key to keep ViewModel stable
-                            val viewModel = remember(appGraph, destination.tabId) {
-                                appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
-                            }
+                            val tabOwner = tabOwners.getOrPut(destination.tabId) { TabViewModelOwner(destination.tabId) }
+                            tabOwner.setDefaultArgs(
+                                savedState {
+                                    putString(StateKeys.TAB_ID, destination.tabId)
+                                    if (destination.bookId > 0) putLong(StateKeys.BOOK_ID, destination.bookId)
+                                    destination.lineId?.let { putLong(StateKeys.LINE_ID, it) }
+                                }
+                            )
+                            val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                             val uiState by viewModel.uiState.collectAsState()
                             BookContentScreen(
                                 uiState = uiState,
@@ -375,5 +424,45 @@ fun TabsNavHost() {
             }
         }
         }
+    }
+}
+
+private class TabViewModelOwner(private val tabId: String) :
+    ViewModelStoreOwner,
+    SavedStateRegistryOwner,
+    HasDefaultViewModelProviderFactory {
+    override val viewModelStore: ViewModelStore = ViewModelStore()
+
+    private val lifecycleRegistry = LifecycleRegistry(this)
+    private val savedStateRegistryController = SavedStateRegistryController.create(this)
+    private val creationExtras = MutableCreationExtras()
+
+    init {
+        lifecycleRegistry.currentState = Lifecycle.State.INITIALIZED
+        savedStateRegistryController.performAttach()
+        savedStateRegistryController.performRestore(null)
+        enableSavedStateHandles()
+        lifecycleRegistry.currentState = Lifecycle.State.CREATED
+
+        creationExtras[SAVED_STATE_REGISTRY_OWNER_KEY] = this
+        creationExtras[VIEW_MODEL_STORE_OWNER_KEY] = this
+        creationExtras[DEFAULT_ARGS_KEY] = savedState { putString(StateKeys.TAB_ID, tabId) }
+    }
+
+    override val lifecycle: Lifecycle get() = lifecycleRegistry
+    override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
+
+    override val defaultViewModelProviderFactory: ViewModelProvider.Factory =
+        ViewModelProvider.NewInstanceFactory()
+
+    override val defaultViewModelCreationExtras: CreationExtras get() = creationExtras
+
+    fun setDefaultArgs(defaultArgs: SavedState) {
+        creationExtras[DEFAULT_ARGS_KEY] = defaultArgs
+    }
+
+    fun clear() {
+        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+        viewModelStore.clear()
     }
 }

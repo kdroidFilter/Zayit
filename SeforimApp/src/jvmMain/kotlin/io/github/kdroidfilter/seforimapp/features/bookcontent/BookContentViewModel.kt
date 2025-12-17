@@ -2,9 +2,17 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactory
+import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactoryKey
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -20,6 +28,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -27,13 +36,25 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 
 /** ViewModel simplifié pour l'écran de contenu du livre */
 @OptIn(ExperimentalSplitPaneApi::class)
+@AssistedInject
 class BookContentViewModel(
-    savedStateHandle: SavedStateHandle,
+    @Assisted savedStateHandle: SavedStateHandle,
     private val tabStateManager: TabStateManager,
     private val repository: SeforimRepository,
     private val titleUpdateManager: TabTitleUpdateManager,
     private val tabsViewModel: TabsViewModel
 ) : ViewModel() {
+    @AssistedFactory
+    @ViewModelAssistedFactoryKey(BookContentViewModel::class)
+    @ContributesIntoMap(AppScope::class)
+    fun interface Factory : ViewModelAssistedFactory {
+        override fun create(extras: CreationExtras): BookContentViewModel {
+            return create(extras.createSavedStateHandle())
+        }
+
+        fun create(@Assisted savedStateHandle: SavedStateHandle): BookContentViewModel
+    }
+
     internal val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
 
     // State Manager centralisé

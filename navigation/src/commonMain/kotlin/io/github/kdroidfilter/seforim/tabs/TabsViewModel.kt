@@ -1,6 +1,7 @@
 // tabs/TabsViewModel.kt
 package io.github.kdroidfilter.seforim.tabs
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,6 +10,7 @@ import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.math.max
 
+@Immutable
 data class TabItem(
     val id: Int,
     val title: String = "Default Tab",
@@ -82,7 +84,7 @@ class TabsViewModel(
 
         // Supprimer l'onglet à l'index donné
         val newTabs = currentTabs.toMutableList().apply { removeAt(index) }
-        _tabs.value = newTabs
+        _tabs.value = newTabs.toList()
 
         // Ajuster l'index sélectionné
         val currentSelectedIndex = _selectedTabIndex.value
@@ -122,7 +124,7 @@ class TabsViewModel(
         val newTabs = currentTabs.toMutableList()
         val movedTab = newTabs.removeAt(fromIndex)
         newTabs.add(toIndex, movedTab)
-        _tabs.value = newTabs
+        _tabs.value = newTabs.toList()
 
         // Adjust selected index: track which tab was selected by its identity
         val selectedTab = currentTabs.getOrNull(_selectedTabIndex.value)
@@ -204,7 +206,7 @@ class TabsViewModel(
         // Clear state for all tabs strictly to the left of index
         currentTabs.take(index).forEach { tab -> stateManager.clearTabState(tab.destination.tabId) }
 
-        val newTabs = currentTabs.drop(index)
+        val newTabs = currentTabs.drop(index).toList()
         _tabs.value = newTabs
 
         // Adjust selection: preserve selection if still present; otherwise select the first (which is the original index tab)
@@ -224,7 +226,7 @@ class TabsViewModel(
         // Clear state for all tabs strictly to the right of index
         currentTabs.drop(index + 1).forEach { tab -> stateManager.clearTabState(tab.destination.tabId) }
 
-        val newTabs = currentTabs.take(index + 1)
+        val newTabs = currentTabs.take(index + 1).toList()
         _tabs.value = newTabs
 
         // Adjust selection: if the previous selected was to the right, clamp to last (which is index)
@@ -272,7 +274,7 @@ class TabsViewModel(
             destination = newDestination,
             tabType = tabTypeFor(newDestination)
         )
-        _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
+        _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }.toList()
     }
 
     /**
@@ -313,7 +315,7 @@ class TabsViewModel(
             destination = newDestination,
             tabType = tabTypeFor(newDestination)
         )
-        _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
+        _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }.toList()
     }
 
     /**

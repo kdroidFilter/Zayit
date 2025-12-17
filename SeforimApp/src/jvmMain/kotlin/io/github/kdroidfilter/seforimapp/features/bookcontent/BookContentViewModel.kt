@@ -235,6 +235,16 @@ class BookContentViewModel(
                 is BookContentEvent.SearchTextChanged ->
                     navigationUseCase.updateSearchText(event.text)
 
+                is BookContentEvent.SearchInDatabase -> {
+                    val newTabId = java.util.UUID.randomUUID().toString()
+                    tabsViewModel.openTab(
+                        TabsDestination.Search(
+                            searchQuery = event.query,
+                            tabId = newTabId,
+                        )
+                    )
+                }
+
                 BookContentEvent.ToggleBookTree ->
                     navigationUseCase.toggleBookTree()
 

@@ -55,12 +55,8 @@ import androidx.compose.ui.input.key.type
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import kotlinx.coroutines.launch
 import seforimapp.seforimapp.generated.resources.context_menu_find_in_page
 import seforimapp.seforimapp.generated.resources.context_menu_search_selected_text
-import java.util.UUID
 import java.awt.event.InputEvent
 import javax.swing.KeyStroke
 import org.jetbrains.jewel.foundation.InternalJewelApi
@@ -244,42 +240,18 @@ private fun composeKeyEventToSwingKeyStroke(event: KeyEvent): KeyStroke? {
 @Composable
 fun BookContentScreen(
     viewModel: BookContentViewModel,
-    isRestoringSession: Boolean = false
+    isRestoringSession: Boolean = false,
+    searchUi: SearchHomeUiState,
+    searchCallbacks: HomeSearchCallbacks,
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    // Bridge SearchHomeViewModel (global) into BookContent so that
-    // HomeView only consumes state + callbacks, not the ViewModel.
-    val appGraph = LocalAppGraph.current
-    val searchHomeViewModel = appGraph.searchHomeViewModel
-    val tabsViewModel = appGraph.tabsViewModel
-    val searchUi: SearchHomeUiState by remember(searchHomeViewModel) { searchHomeViewModel.uiState }.collectAsState()
-    val scope = rememberCoroutineScope()
-    val homeSearchCallbacks = remember(searchHomeViewModel, scope) {
-        HomeSearchCallbacks(
-            onReferenceQueryChanged = searchHomeViewModel::onReferenceQueryChanged,
-            onTocQueryChanged = searchHomeViewModel::onTocQueryChanged,
-            onFilterChange = searchHomeViewModel::onFilterChange,
-            onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
-            onSubmitTextSearch = { query ->
-                scope.launch { searchHomeViewModel.submitSearch(query) }
-            },
-            onOpenReference = {
-                scope.launch { searchHomeViewModel.openSelectedReferenceInCurrentTab() }
-            },
-            onPickCategory = searchHomeViewModel::onPickCategory,
-            onPickBook = searchHomeViewModel::onPickBook,
-            onPickToc = searchHomeViewModel::onPickToc
-        )
-    }
 
     BookContentView(
         uiState = uiState,
         onEvent = viewModel::onEvent,
         isRestoringSession = isRestoringSession,
         searchUi = searchUi,
-        searchCallbacks = homeSearchCallbacks,
-        onOpenTab = tabsViewModel::openTab,
+        searchCallbacks = searchCallbacks
     )
 }
 
@@ -297,15 +269,15 @@ fun BookContentView(
     isRestoringSession: Boolean = false,
     searchUi: SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
-    onOpenTab: (TabsDestination) -> Unit,
 ) {
     // Toaster for transient messages (e.g., selection limits)
     val toaster = rememberToasterState()
     val searchSelectedLabel = stringResource(Res.string.context_menu_search_selected_text)
     val findInPageLabel = stringResource(Res.string.context_menu_find_in_page)
     val baseTextContextMenu = LocalTextContextMenu.current
+    val tabId = uiState.tabId
 
-    val textContextMenu = remember(baseTextContextMenu, onOpenTab, searchSelectedLabel, findInPageLabel) {
+    val textContextMenu = remember(baseTextContextMenu, tabId, onEvent, searchSelectedLabel, findInPageLabel) {
         object : TextContextMenu {
             @OptIn(ExperimentalFoundationApi::class)
             @Composable
@@ -324,12 +296,7 @@ fun BookContentView(
                                         icon = AllIconsKeys.Actions.Find,
                                         label = searchSelectedLabel
                                     ) {
-                                        onOpenTab(
-                                            TabsDestination.Search(
-                                                searchQuery = query,
-                                                tabId = UUID.randomUUID().toString()
-                                            )
-                                        )
+                                        onEvent(BookContentEvent.SearchInDatabase(query))
                                     }
                                 )
                             }
@@ -344,7 +311,6 @@ fun BookContentView(
                                         },
                                     label = findInPageLabel
                                 ) {
-                                    val tabId = uiState.tabId
                                     if (query.isNotBlank()) {
                                         AppSettings.setFindQuery(tabId, query)
                                     }

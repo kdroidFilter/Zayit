@@ -12,6 +12,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.*
 sealed interface BookContentEvent {
     // Navigation events
     data class SearchTextChanged(val text: String) : BookContentEvent
+    data class SearchInDatabase(val query: String) : BookContentEvent
     data class CategorySelected(val category: Category) : BookContentEvent
     data class BookSelected(val book: Book) : BookContentEvent
     data class BookSelectedInNewTab(val book: Book) : BookContentEvent

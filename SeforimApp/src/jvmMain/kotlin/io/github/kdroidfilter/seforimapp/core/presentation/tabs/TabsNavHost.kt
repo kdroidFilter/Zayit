@@ -17,6 +17,8 @@ import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchShellActions
@@ -24,6 +26,7 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchUiState
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultInBookShellMvi
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
+import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 
@@ -31,11 +34,32 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 fun TabsNavHost() {
     val appGraph = LocalAppGraph.current
     val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
+    val searchHomeViewModel = appGraph.searchHomeViewModel
 
     val tabs by tabsViewModel.tabs.collectAsState()
     val selectedTabIndex by tabsViewModel.selectedTabIndex.collectAsState()
     val ramSaverEnabled by AppSettings.ramSaverEnabledFlow.collectAsState()
     val isRestoringSession by SessionManager.isRestoringSession.collectAsState()
+
+    val searchUi: SearchHomeUiState by remember(searchHomeViewModel) { searchHomeViewModel.uiState }.collectAsState()
+    val scope = rememberCoroutineScope()
+    val homeSearchCallbacks = remember(searchHomeViewModel, scope) {
+        HomeSearchCallbacks(
+            onReferenceQueryChanged = searchHomeViewModel::onReferenceQueryChanged,
+            onTocQueryChanged = searchHomeViewModel::onTocQueryChanged,
+            onFilterChange = searchHomeViewModel::onFilterChange,
+            onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
+            onSubmitTextSearch = { query ->
+                scope.launch { searchHomeViewModel.submitSearch(query) }
+            },
+            onOpenReference = {
+                scope.launch { searchHomeViewModel.openSelectedReferenceInCurrentTab() }
+            },
+            onPickCategory = searchHomeViewModel::onPickCategory,
+            onPickBook = searchHomeViewModel::onPickBook,
+            onPickToc = searchHomeViewModel::onPickToc,
+        )
+    }
 
     val registry: TabNavControllerRegistry = appGraph.tabNavControllerRegistry
 
@@ -85,7 +109,12 @@ fun TabsNavHost() {
                 val viewModel = remember(appGraph, destination.tabId) {
                     appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
                 }
-                BookContentScreen(viewModel, isRestoringSession = isRestoringSession)
+                BookContentScreen(
+                    viewModel = viewModel,
+                    isRestoringSession = isRestoringSession,
+                    searchUi = searchUi,
+                    searchCallbacks = homeSearchCallbacks,
+                )
             }
             nonAnimatedComposable<TabsDestination.Search> { backStackEntry ->
                 val destination = backStackEntry.toRoute<TabsDestination.Search>()
@@ -148,7 +177,12 @@ fun TabsNavHost() {
                 val viewModel = remember(appGraph, destination.tabId) {
                     appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
                 }
-                BookContentScreen(viewModel, isRestoringSession = isRestoringSession)
+                BookContentScreen(
+                    viewModel = viewModel,
+                    isRestoringSession = isRestoringSession,
+                    searchUi = searchUi,
+                    searchCallbacks = homeSearchCallbacks,
+                )
             }
         }
     } else {
@@ -190,8 +224,10 @@ fun TabsNavHost() {
 	                                appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
 	                            }
 	                            BookContentScreen(
-	                                viewModel,
-	                                isRestoringSession = isRestoringSession
+	                                viewModel = viewModel,
+	                                isRestoringSession = isRestoringSession,
+	                                searchUi = searchUi,
+	                                searchCallbacks = homeSearchCallbacks,
 	                            )
                         }
                         nonAnimatedComposable<TabsDestination.Search> { backStackEntry ->
@@ -259,10 +295,12 @@ fun TabsNavHost() {
                                 appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
                             }
                             BookContentScreen(
-                                viewModel,
-                                isRestoringSession = isRestoringSession
+                                viewModel = viewModel,
+                                isRestoringSession = isRestoringSession,
+                                searchUi = searchUi,
+                                searchCallbacks = homeSearchCallbacks,
                             )
-                    }
+                        }
                 }
             }
         }

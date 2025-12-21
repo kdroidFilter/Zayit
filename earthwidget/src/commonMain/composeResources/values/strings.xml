@@ -1,0 +1,11 @@
+<resources>
+    <string name="earthwidget_rotation_label">סיבוב</string>
+    <string name="earthwidget_light_label">כיוון האור</string>
+    <string name="earthwidget_sun_elevation_label">גובה השמש</string>
+    <string name="earthwidget_tilt_label">הטיית ציר Y</string>
+    <string name="earthwidget_moon_orbit_label">מסלול הירח</string>
+    <string name="earthwidget_marker_latitude_label">קו רוחב</string>
+    <string name="earthwidget_marker_longitude_label">קו אורך</string>
+    <string name="earthwidget_show_background_label">הצגת רקע</string>
+    <string name="earthwidget_show_orbit_label">הצגת המסלול</string>
+</resources>

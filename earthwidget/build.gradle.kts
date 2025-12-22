@@ -24,13 +24,13 @@ kotlin {
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.components.resources)
-            implementation(compose.material)
         }
 
         androidMain.dependencies {
         }
 
         jvmMain.dependencies {
+            api(project(":jewel"))
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
             }
@@ -45,5 +45,5 @@ kotlin {
 }
 
 tasks.withType<ComposeHotRun>().configureEach {
-    mainClass.set("MainKt")
+    mainClass.set("io.github.kdroidfilter.seforimapp.earthwidget.MainKt")
 }

@@ -158,6 +158,12 @@ private const val ORBIT_ALPHA_BACK = 0x6C
 /** Orbit glow intensity multiplier. */
 private const val ORBIT_GLOW_INTENSITY = 0.42f
 
+/** Ghost outline alpha for fully invisible Moon (new moon / eclipse). */
+private const val GHOST_MOON_OUTLINE_ALPHA = 0x54
+
+/** Ghost outline RGB color for fully invisible Moon. */
+private const val GHOST_MOON_OUTLINE_RGB = 0x00C8C8C8
+
 /** Marker radius as fraction of sphere size. */
 private const val MARKER_RADIUS_FRACTION = 0.017f
 
@@ -1143,6 +1149,7 @@ internal fun renderEarthWithMoonArgb(
         atmosphereStrength = 0f,
         shadowAlphaStrength = 1f,
     )
+    drawGhostMoonOutline(argb = moon, sizePx = moonSizePx)
 
     // Composite Moon with depth sorting
     compositeMoonWithDepth(
@@ -1178,12 +1185,6 @@ private fun computeMoonLighting(
     lightDegrees: Float,
     sunElevationDegrees: Float,
 ): LightDirection? = when {
-    julianDay != null -> computeGeometricMoonIllumination(
-        julianDay = julianDay,
-        viewDirX = moonViewDirX,
-        viewDirY = moonViewDirY,
-        viewDirZ = moonViewDirZ,
-    )
     moonPhaseAngleDegrees != null -> {
         val sunReference = sunVectorFromAngles(lightDegrees, sunElevationDegrees)
         computeMoonLightFromPhase(
@@ -1196,6 +1197,12 @@ private fun computeMoonLighting(
             sunReferenceZ = sunReference.z,
         )
     }
+    julianDay != null -> computeGeometricMoonIllumination(
+        julianDay = julianDay,
+        viewDirX = moonViewDirX,
+        viewDirY = moonViewDirY,
+        viewDirZ = moonViewDirZ,
+    )
     else -> null
 }
 
@@ -1413,9 +1420,42 @@ internal fun renderMoonFromMarkerArgb(
         atmosphereStrength = 0f,
         shadowAlphaStrength = 1f,
     )
+    drawGhostMoonOutline(argb = moon, sizePx = outputSizePx)
 
     blitOver(dst = out, dstW = outputSizePx, src = moon, srcW = outputSizePx, left = 0, top = 0)
     return out
+}
+
+private fun drawGhostMoonOutline(argb: IntArray, sizePx: Int) {
+    if (sizePx <= 2) return
+    val center = (sizePx - 1) / 2f
+    val thickness = max(1.1f, sizePx * 0.0045f)
+    val radius = center - thickness - 0.5f
+    if (radius <= 0f) return
+
+    val innerRadius = (radius - thickness).coerceAtLeast(0f)
+    val outerRadius = radius + thickness
+    val inner2 = innerRadius * innerRadius
+    val outer2 = outerRadius * outerRadius
+    val outlineRgb = GHOST_MOON_OUTLINE_RGB and 0x00FFFFFF
+    val outlineColorStrong = (GHOST_MOON_OUTLINE_ALPHA shl 24) or outlineRgb
+    val outlineColorSoft = ((GHOST_MOON_OUTLINE_ALPHA * 0.22f).roundToInt().coerceIn(0, 255) shl 24) or outlineRgb
+
+    for (y in 0 until sizePx) {
+        val dy = y - center
+        val dy2 = dy * dy
+        val row = y * sizePx
+        for (x in 0 until sizePx) {
+            val dx = x - center
+            val d2 = dx * dx + dy2
+            if (d2 in inner2..outer2) {
+                val idx = row + x
+                val bgA = (argb[idx] ushr 24) and 0xFF
+                val outlineColor = if (bgA == 0) outlineColorStrong else outlineColorSoft
+                argb[idx] = alphaOver(outlineColor, argb[idx])
+            }
+        }
+    }
 }
 
 /**
@@ -1488,7 +1528,7 @@ private fun drawOrbitPath(
 
     val steps = (orbitRadius * 5.2f).roundToInt().coerceIn(420, 1600)
     val earthRadius2 = earthRadiusPx * earthRadiusPx
-    val moonRadiusClip2 = if (moonRadiusPx > 0f) (moonRadiusPx + 3.0f).let { it * it } else -1f
+    val moonRadiusClip2 = -1f
 
     var prevX = Int.MIN_VALUE
     var prevY = Int.MIN_VALUE
@@ -1961,4 +2001,60 @@ private fun smoothStep(edge0: Float, edge1: Float, x: Float): Float {
     if (edge0 == edge1) return if (x < edge0) 0f else 1f
     val t = ((x - edge0) / (edge1 - edge0)).coerceIn(0f, 1f)
     return t * t * (3f - 2f * t)
+}
+
+// ============================================================================
+// ORBIT SCREEN COORDINATES (UI OVERLAYS)
+// ============================================================================
+
+/**
+ * Screen-space orbit position in the same pixel coordinate system as the rendered image.
+ *
+ * @property x X coordinate in [0, outputSizePx).
+ * @property y Y coordinate in [0, outputSizePx).
+ * @property zCam Depth in camera space (positive = towards camera).
+ */
+internal data class OrbitScreenPosition(
+    val x: Float,
+    val y: Float,
+    val zCam: Float,
+)
+
+/**
+ * Computes the Moon orbit position projected into screen space, matching [drawOrbitPath].
+ *
+ * Intended for UI overlays (e.g., labels) that need to align with the rendered orbit path.
+ */
+internal fun computeOrbitScreenPosition(
+    outputSizePx: Int,
+    orbitDegrees: Float,
+): OrbitScreenPosition {
+    val sceneHalf = outputSizePx / 2f
+
+    val earthSizePx = (outputSizePx * EARTH_SIZE_FRACTION).roundToInt().coerceAtLeast(MIN_SPHERE_SIZE_PX)
+    val earthRadiusPx = (earthSizePx - 1) / 2f
+
+    val moonBaseSizePx = (earthSizePx * MOON_TO_EARTH_DIAMETER_RATIO).roundToInt()
+        .coerceAtLeast(MIN_SPHERE_SIZE_PX)
+    val moonRadiusWorldPx = (moonBaseSizePx - 1) / 2f
+
+    val edgeMarginPx = max(6f, outputSizePx * 0.02f)
+    val orbitRadius = (sceneHalf - moonRadiusWorldPx - edgeMarginPx).coerceAtLeast(0f)
+
+    val desiredSeparation = earthRadiusPx + moonRadiusWorldPx + 1.5f
+    val viewPitchRad = if (orbitRadius > EPSILON) {
+        asin((desiredSeparation / orbitRadius).coerceIn(0f, 0.999f))
+    } else {
+        0f
+    }
+
+    val orbit = transformMoonOrbitPosition(orbitDegrees, orbitRadius, viewPitchRad)
+    val cameraZ = outputSizePx * CAMERA_DISTANCE_FACTOR
+    val orbitScale = perspectiveScale(cameraZ, orbit.zCam)
+
+    return OrbitScreenPosition(
+        x = sceneHalf + orbit.x * orbitScale,
+        y = sceneHalf - orbit.yCam * orbitScale,
+        zCam = orbit.zCam,
+    )
 }

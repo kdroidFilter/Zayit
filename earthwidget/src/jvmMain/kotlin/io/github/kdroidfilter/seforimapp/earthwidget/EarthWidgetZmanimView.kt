@@ -1,42 +1,102 @@
 package io.github.kdroidfilter.seforimapp.earthwidget
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.Checkbox
-import androidx.compose.material.Slider
-import androidx.compose.material.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
+import com.kosherjava.zmanim.ComplexZmanimCalendar
+import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
 import com.kosherjava.zmanim.hebrewcalendar.JewishDate
+import com.kosherjava.zmanim.util.GeoLocation
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Checkbox
+import org.jetbrains.jewel.ui.component.DefaultButton
+import org.jetbrains.jewel.ui.component.Divider
+import org.jetbrains.jewel.ui.component.GroupHeader
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
+import org.jetbrains.jewel.ui.component.OutlinedButton
+import org.jetbrains.jewel.ui.component.SegmentedControl
+import org.jetbrains.jewel.ui.component.SegmentedControlButtonData
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.theme.segmentedControlButtonStyle
 import seforimapp.earthwidget.generated.resources.Res
-import seforimapp.earthwidget.generated.resources.earthwidget_date_offset_label
+import seforimapp.earthwidget.generated.resources.earthwidget_action_cancel
+import seforimapp.earthwidget.generated.resources.earthwidget_action_ok
+import seforimapp.earthwidget.generated.resources.earthwidget_calendar_mode_gregorian
+import seforimapp.earthwidget.generated.resources.earthwidget_calendar_mode_hebrew
+import seforimapp.earthwidget.generated.resources.earthwidget_city_jerusalem
+import seforimapp.earthwidget.generated.resources.earthwidget_city_london
+import seforimapp.earthwidget.generated.resources.earthwidget_city_los_angeles
+import seforimapp.earthwidget.generated.resources.earthwidget_city_moscow
+import seforimapp.earthwidget.generated.resources.earthwidget_city_new_york
+import seforimapp.earthwidget.generated.resources.earthwidget_city_paris
 import seforimapp.earthwidget.generated.resources.earthwidget_datetime_label
+import seforimapp.earthwidget.generated.resources.earthwidget_datetime_picker_title
+import seforimapp.earthwidget.generated.resources.earthwidget_display_section
+import seforimapp.earthwidget.generated.resources.earthwidget_location_section
 import seforimapp.earthwidget.generated.resources.earthwidget_marker_latitude_label
 import seforimapp.earthwidget.generated.resources.earthwidget_marker_longitude_label
+import seforimapp.earthwidget.generated.resources.earthwidget_moon_from_marker_label
+import seforimapp.earthwidget.generated.resources.earthwidget_next_month
+import seforimapp.earthwidget.generated.resources.earthwidget_prev_month
+import seforimapp.earthwidget.generated.resources.earthwidget_select_datetime_button
 import seforimapp.earthwidget.generated.resources.earthwidget_show_background_label
 import seforimapp.earthwidget.generated.resources.earthwidget_show_orbit_label
-import seforimapp.earthwidget.generated.resources.earthwidget_time_hour_label
-import seforimapp.earthwidget.generated.resources.earthwidget_time_minute_label
+import seforimapp.earthwidget.generated.resources.earthwidget_time_preset_chatzos_hayom
+import seforimapp.earthwidget.generated.resources.earthwidget_time_preset_chatzos_layla
+import seforimapp.earthwidget.generated.resources.earthwidget_time_preset_section
+import seforimapp.earthwidget.generated.resources.earthwidget_time_preset_sunrise
+import seforimapp.earthwidget.generated.resources.earthwidget_time_preset_sunset
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.roundToInt
+import org.jetbrains.jewel.ui.Orientation
+import androidx.compose.runtime.mutableFloatStateOf
 
 // ============================================================================
 // CONSTANTS
@@ -53,6 +113,9 @@ private const val DEFAULT_MARKER_ELEVATION = 800.0
 
 /** Default Earth axial tilt in degrees. */
 private const val DEFAULT_EARTH_TILT_DEGREES = 23.44f
+
+/** Starting orbit angle for day labels (day 1). */
+private const val ORBIT_DAY_LABEL_START_DEGREES = 90f
 
 /**
  * Lunar synodic month in milliseconds.
@@ -77,9 +140,6 @@ private const val MIN_GMT_OFFSET = -12
 /** Maximum GMT offset in hours. */
 private const val MAX_GMT_OFFSET = 14
 
-/** Maximum day offset for date slider. */
-private const val MAX_DAY_OFFSET = 30
-
 // ============================================================================
 // DATA CLASSES
 // ============================================================================
@@ -101,6 +161,21 @@ private data class ZmanimModel(
     val julianDay: Double,
 )
 
+private data class KnownLocation(
+    val name: StringResource,
+    val latitude: Double,
+    val longitude: Double,
+    val elevationMeters: Double,
+    val timeZoneId: String,
+)
+
+private data class ZmanimPresetTimes(
+    val sunrise: Date?,
+    val sunset: Date?,
+    val chatzosHayom: Date?,
+    val chatzosLayla: Date?,
+)
+
 // ============================================================================
 // MAIN COMPOSABLE
 // ============================================================================
@@ -120,46 +195,95 @@ private data class ZmanimModel(
 fun EarthWidgetZmanimView(
     modifier: Modifier = Modifier,
     sphereSize: Dp = 500.dp,
-    renderSizePx: Int = 600,
+    renderSizePx: Int = 520,
 ) {
     // Location state
-    var markerLatitudeDegrees by remember { mutableFloatStateOf(DEFAULT_MARKER_LAT.toFloat()) }
-    var markerLongitudeDegrees by remember { mutableFloatStateOf(DEFAULT_MARKER_LON.toFloat()) }
+    val knownLocations = remember {
+        listOf(
+            KnownLocation(
+                name = Res.string.earthwidget_city_jerusalem,
+                latitude = DEFAULT_MARKER_LAT,
+                longitude = DEFAULT_MARKER_LON,
+                elevationMeters = DEFAULT_MARKER_ELEVATION,
+                timeZoneId = "Asia/Jerusalem",
+            ),
+            KnownLocation(
+                name = Res.string.earthwidget_city_paris,
+                latitude = 48.8566,
+                longitude = 2.3522,
+                elevationMeters = 35.0,
+                timeZoneId = "Europe/Paris",
+            ),
+            KnownLocation(
+                name = Res.string.earthwidget_city_new_york,
+                latitude = 40.7128,
+                longitude = -74.0060,
+                elevationMeters = 10.0,
+                timeZoneId = "America/New_York",
+            ),
+            KnownLocation(
+                name = Res.string.earthwidget_city_london,
+                latitude = 51.5074,
+                longitude = -0.1278,
+                elevationMeters = 11.0,
+                timeZoneId = "Europe/London",
+            ),
+            KnownLocation(
+                name = Res.string.earthwidget_city_los_angeles,
+                latitude = 34.0522,
+                longitude = -118.2437,
+                elevationMeters = 71.0,
+                timeZoneId = "America/Los_Angeles",
+            ),
+            KnownLocation(
+                name = Res.string.earthwidget_city_moscow,
+                latitude = 55.7558,
+                longitude = 37.6173,
+                elevationMeters = 156.0,
+                timeZoneId = "Europe/Moscow",
+            ),
+        )
+    }
+
+    var selectedLocation by remember { mutableStateOf(knownLocations.first()) }
+    var markerLatitudeDegrees by remember { mutableFloatStateOf(selectedLocation.latitude.toFloat()) }
+    var markerLongitudeDegrees by remember { mutableFloatStateOf(selectedLocation.longitude.toFloat()) }
+    var markerElevationMeters by remember { mutableStateOf(selectedLocation.elevationMeters) }
+    var timeZone by remember { mutableStateOf(TimeZone.getTimeZone(selectedLocation.timeZoneId)) }
 
     // Display options
     var showBackground by remember { mutableStateOf(true) }
     var showOrbitPath by remember { mutableStateOf(true) }
+    var showMoonFromMarker by remember { mutableStateOf(true) }
 
-    // Calculate timezone based on location
-    val timeZone = remember(markerLatitudeDegrees, markerLongitudeDegrees) {
-        timeZoneForLocation(
-            latitude = markerLatitudeDegrees.toDouble(),
-            longitude = markerLongitudeDegrees.toDouble(),
+    // Date/time selection (in the computed timezone)
+    val initialCalendar = remember(timeZone) {
+        Calendar.getInstance(timeZone).apply { time = Date() }
+    }
+    var selectedDate by remember(timeZone) {
+        mutableStateOf(
+            LocalDate.of(
+                initialCalendar.get(Calendar.YEAR),
+                initialCalendar.get(Calendar.MONTH) + 1,
+                initialCalendar.get(Calendar.DAY_OF_MONTH),
+            ),
         )
     }
-
-    // Base time reference
-    val baseNow = remember(timeZone) { Date() }
-    val nowCalendar = remember(timeZone, baseNow) {
-        Calendar.getInstance(timeZone).apply { time = baseNow }
+    var selectedHour by remember(timeZone) {
+        mutableStateOf(initialCalendar.get(Calendar.HOUR_OF_DAY).coerceIn(0, 23))
     }
-
-    // Time adjustment state
-    var dayOffset by remember { mutableFloatStateOf(0f) }
-    var hourOfDay by remember(timeZone, nowCalendar) {
-        mutableFloatStateOf(nowCalendar.get(Calendar.HOUR_OF_DAY).toFloat())
+    var selectedMinute by remember(timeZone) {
+        mutableStateOf(initialCalendar.get(Calendar.MINUTE).coerceIn(0, 59))
     }
-    var minuteOfHour by remember(timeZone, nowCalendar) {
-        mutableFloatStateOf(nowCalendar.get(Calendar.MINUTE).toFloat())
-    }
+    var showDateTimePicker by remember { mutableStateOf(false) }
 
-    // Calculate reference time from adjustments
-    val referenceTime = remember(baseNow, dayOffset, hourOfDay, minuteOfHour, timeZone) {
+    val referenceTime = remember(selectedDate, selectedHour, selectedMinute, timeZone) {
         Calendar.getInstance(timeZone).apply {
-            time = baseNow
-            add(Calendar.DAY_OF_YEAR, dayOffset.roundToInt())
-            set(Calendar.HOUR_OF_DAY, hourOfDay.roundToInt().coerceIn(0, 23))
-            set(Calendar.MINUTE, minuteOfHour.roundToInt().coerceIn(0, 59))
+            set(Calendar.YEAR, selectedDate.year)
+            set(Calendar.MONTH, selectedDate.monthValue - 1)
+            set(Calendar.DAY_OF_MONTH, selectedDate.dayOfMonth)
+            set(Calendar.HOUR_OF_DAY, selectedHour.coerceIn(0, 23))
+            set(Calendar.MINUTE, selectedMinute.coerceIn(0, 59))
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }.time
@@ -170,16 +294,24 @@ fun EarthWidgetZmanimView(
         referenceTime,
         markerLatitudeDegrees,
         markerLongitudeDegrees,
+        markerElevationMeters,
         timeZone,
     ) {
         computeZmanimModel(
             referenceTime = referenceTime,
             latitude = markerLatitudeDegrees.toDouble(),
             longitude = markerLongitudeDegrees.toDouble(),
-            elevation = DEFAULT_MARKER_ELEVATION,
+            elevation = markerElevationMeters,
             timeZone = timeZone,
             earthRotationDegrees = 0f,
             earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
+        )
+    }
+
+    val orbitLabels = remember(referenceTime, timeZone) {
+        computeHebrewMonthOrbitLabels(
+            referenceTime = referenceTime,
+            timeZone = timeZone,
         )
     }
 
@@ -189,8 +321,47 @@ fun EarthWidgetZmanimView(
     }
     val formattedTime = remember(referenceTime, formatter) { formatter.format(referenceTime) }
 
+    val presetTimeFormatter = remember(timeZone) {
+        SimpleDateFormat("HH:mm").apply { this.timeZone = timeZone }
+    }
+
+    val zmanimPresets = remember(selectedDate, markerLatitudeDegrees, markerLongitudeDegrees, markerElevationMeters, timeZone) {
+        computeZmanimPresetTimes(
+            date = selectedDate,
+            latitude = markerLatitudeDegrees.toDouble(),
+            longitude = markerLongitudeDegrees.toDouble(),
+            elevationMeters = markerElevationMeters,
+            timeZone = timeZone,
+        )
+    }
+
+    fun applyPreset(date: Date) {
+        val cal = Calendar.getInstance(timeZone).apply { time = date }
+        selectedDate = LocalDate.of(
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH) + 1,
+            cal.get(Calendar.DAY_OF_MONTH),
+        )
+        selectedHour = cal.get(Calendar.HOUR_OF_DAY).coerceIn(0, 23)
+        selectedMinute = cal.get(Calendar.MINUTE).coerceIn(0, 59)
+    }
+
+    if (showDateTimePicker) {
+        DatePickerDialog(
+            initialDate = selectedDate,
+            onDismissRequest = { showDateTimePicker = false },
+            onConfirm = { date ->
+                selectedDate = date
+                showDateTimePicker = false
+            },
+        )
+    }
+
     LazyColumn(
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxSize()
+            .background(JewelTheme.globalColors.panelBackground)
+            .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -208,86 +379,166 @@ fun EarthWidgetZmanimView(
                 markerLongitudeDegrees = markerLongitudeDegrees,
                 showBackgroundStars = showBackground,
                 showOrbitPath = showOrbitPath,
+                orbitLabels = orbitLabels,
+                onOrbitLabelClick = { label ->
+                    val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
+                    val jewishCalendar = JewishCalendar().apply { setDate(calendar) }
+                    val targetDate = JewishDate().apply {
+                        setJewishDate(jewishCalendar.jewishYear, jewishCalendar.jewishMonth, label.dayOfMonth)
+                    }
+                    selectedDate = targetDate.localDate
+                },
+                showMoonFromMarker = showMoonFromMarker,
                 moonPhaseAngleDegrees = model.moonPhaseAngleDegrees,
                 julianDay = model.julianDay,
             )
         }
 
-        // Date/time display
         item {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(text = stringResource(Res.string.earthwidget_datetime_label))
-                Text(text = formattedTime)
+            val panelShape = RoundedCornerShape(10.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 560.dp)
+                    .background(JewelTheme.globalColors.toolwindowBackground, panelShape)
+                    .border(1.dp, JewelTheme.globalColors.borders.normal, panelShape)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                GroupHeader(text = stringResource(Res.string.earthwidget_datetime_label))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(text = formattedTime, modifier = Modifier.weight(1f))
+                    OutlinedButton(onClick = { showDateTimePicker = true }) {
+                        Text(text = stringResource(Res.string.earthwidget_select_datetime_button))
+                    }
+                }
+
+                Divider(orientation = Orientation.Horizontal)
+
+                GroupHeader(text = stringResource(Res.string.earthwidget_time_preset_section))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(
+                        onClick = { zmanimPresets.sunrise?.let(::applyPreset) },
+                        enabled = zmanimPresets.sunrise != null,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        TimePresetButtonLabel(
+                            label = stringResource(Res.string.earthwidget_time_preset_sunrise),
+                            time = zmanimPresets.sunrise,
+                            timeFormatter = presetTimeFormatter,
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { zmanimPresets.sunset?.let(::applyPreset) },
+                        enabled = zmanimPresets.sunset != null,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        TimePresetButtonLabel(
+                            label = stringResource(Res.string.earthwidget_time_preset_sunset),
+                            time = zmanimPresets.sunset,
+                            timeFormatter = presetTimeFormatter,
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(
+                        onClick = { zmanimPresets.chatzosHayom?.let(::applyPreset) },
+                        enabled = zmanimPresets.chatzosHayom != null,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        TimePresetButtonLabel(
+                            label = stringResource(Res.string.earthwidget_time_preset_chatzos_hayom),
+                            time = zmanimPresets.chatzosHayom,
+                            timeFormatter = presetTimeFormatter,
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { zmanimPresets.chatzosLayla?.let(::applyPreset) },
+                        enabled = zmanimPresets.chatzosLayla != null,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        TimePresetButtonLabel(
+                            label = stringResource(Res.string.earthwidget_time_preset_chatzos_layla),
+                            time = zmanimPresets.chatzosLayla,
+                            timeFormatter = presetTimeFormatter,
+                        )
+                    }
+                }
+
+                Divider(orientation = Orientation.Horizontal)
+
+                GroupHeader(text = stringResource(Res.string.earthwidget_location_section))
+                for (row in knownLocations.chunked(3)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        for (location in row) {
+                            val isSelected = location == selectedLocation
+                            val onSelect = {
+                                selectedLocation = location
+                                markerLatitudeDegrees = location.latitude.toFloat()
+                                markerLongitudeDegrees = location.longitude.toFloat()
+                                markerElevationMeters = location.elevationMeters
+                                timeZone = TimeZone.getTimeZone(location.timeZoneId)
+                            }
+
+                            if (isSelected) {
+                                DefaultButton(
+                                    onClick = onSelect,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(text = stringResource(location.name))
+                                }
+                            } else {
+                                OutlinedButton(
+                                    onClick = onSelect,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(text = stringResource(location.name))
+                                }
+                            }
+                        }
+                        repeat(3 - row.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+
+                Divider(orientation = Orientation.Horizontal)
+
+                GroupHeader(text = stringResource(Res.string.earthwidget_display_section))
+                LabeledCheckbox(
+                    checked = showBackground,
+                    onCheckedChange = { showBackground = it },
+                    label = stringResource(Res.string.earthwidget_show_background_label),
+                )
+                LabeledCheckbox(
+                    checked = showOrbitPath,
+                    onCheckedChange = { showOrbitPath = it },
+                    label = stringResource(Res.string.earthwidget_show_orbit_label),
+                )
+                LabeledCheckbox(
+                    checked = showMoonFromMarker,
+                    onCheckedChange = { showMoonFromMarker = it },
+                    label = stringResource(Res.string.earthwidget_moon_from_marker_label),
+                )
+
+                Spacer(modifier = Modifier.height(2.dp))
             }
-        }
-
-        // Date offset slider
-        item {
-            LabeledSlider(
-                label = stringResource(Res.string.earthwidget_date_offset_label),
-                value = dayOffset,
-                onValueChange = { dayOffset = it },
-                valueRange = -MAX_DAY_OFFSET.toFloat()..MAX_DAY_OFFSET.toFloat(),
-            )
-        }
-
-        // Hour slider
-        item {
-            LabeledSlider(
-                label = stringResource(Res.string.earthwidget_time_hour_label),
-                value = hourOfDay,
-                onValueChange = { hourOfDay = it },
-                valueRange = 0f..23f,
-            )
-        }
-
-        // Minute slider
-        item {
-            LabeledSlider(
-                label = stringResource(Res.string.earthwidget_time_minute_label),
-                value = minuteOfHour,
-                onValueChange = { minuteOfHour = it },
-                valueRange = 0f..59f,
-            )
-        }
-
-        // Latitude slider
-        item {
-            LabeledSlider(
-                label = stringResource(Res.string.earthwidget_marker_latitude_label),
-                value = markerLatitudeDegrees,
-                onValueChange = { markerLatitudeDegrees = it },
-                valueRange = -90f..90f,
-            )
-        }
-
-        // Longitude slider
-        item {
-            LabeledSlider(
-                label = stringResource(Res.string.earthwidget_marker_longitude_label),
-                value = markerLongitudeDegrees,
-                onValueChange = { markerLongitudeDegrees = it },
-                valueRange = -180f..180f,
-            )
-        }
-
-        // Background toggle
-        item {
-            LabeledCheckbox(
-                checked = showBackground,
-                onCheckedChange = { showBackground = it },
-                label = stringResource(Res.string.earthwidget_show_background_label),
-            )
-        }
-
-        // Orbit path toggle
-        item {
-            LabeledCheckbox(
-                checked = showOrbitPath,
-                onCheckedChange = { showOrbitPath = it },
-                label = stringResource(Res.string.earthwidget_show_orbit_label),
-            )
-            Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }
@@ -295,34 +546,6 @@ fun EarthWidgetZmanimView(
 // ============================================================================
 // REUSABLE UI COMPONENTS
 // ============================================================================
-
-/**
- * A slider with label and current value display.
- */
-@Composable
-private fun LabeledSlider(
-    label: String,
-    value: Float,
-    onValueChange: (Float) -> Unit,
-    valueRange: ClosedFloatingPointRange<Float>,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(text = label)
-            Text(text = value.roundToInt().toString())
-        }
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = valueRange,
-        )
-    }
-}
 
 /**
  * A checkbox with accompanying label.
@@ -342,6 +565,444 @@ private fun LabeledCheckbox(
         Checkbox(checked = checked, onCheckedChange = onCheckedChange)
         Text(text = label)
     }
+}
+
+@Composable
+private fun TimePresetButtonLabel(
+    label: String,
+    time: Date?,
+    timeFormatter: SimpleDateFormat,
+) {
+    val timeText = remember(time, timeFormatter) {
+        time?.let { "\u2066${timeFormatter.format(it)}\u2069" }
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = label)
+        if (timeText != null) {
+            Text(
+                text = timeText,
+                style = JewelTheme.defaultTextStyle.copy(fontWeight = FontWeight.SemiBold),
+                textAlign = TextAlign.End,
+            )
+        }
+    }
+}
+
+// ============================================================================
+// DATE/TIME PICKER
+// ============================================================================
+
+@Composable
+private fun DatePickerDialog(
+    initialDate: LocalDate,
+    onDismissRequest: () -> Unit,
+    onConfirm: (LocalDate) -> Unit,
+) {
+    var calendarMode by remember { mutableStateOf(CalendarMode.GREGORIAN) }
+    var displayedMonth by remember(initialDate) { mutableStateOf(YearMonth.from(initialDate)) }
+    var displayedHebrewMonth by remember(initialDate) {
+        mutableStateOf(hebrewYearMonthFromLocalDate(initialDate))
+    }
+    var selectedDate by remember(initialDate) { mutableStateOf(initialDate) }
+
+    val hebrewDateFormatter = remember {
+        HebrewDateFormatter().apply {
+            setHebrewFormat(true)
+            setUseGershGershayim(false)
+        }
+    }
+    val hebrewLocale = remember { Locale.forLanguageTag("he") }
+    val monthTitleFormatter = remember {
+        DateTimeFormatter.ofPattern("LLLL yyyy", hebrewLocale)
+    }
+    val weekDays = remember {
+        listOf(
+            DayOfWeek.SUNDAY,
+            DayOfWeek.MONDAY,
+            DayOfWeek.TUESDAY,
+            DayOfWeek.WEDNESDAY,
+            DayOfWeek.THURSDAY,
+            DayOfWeek.FRIDAY,
+            DayOfWeek.SATURDAY,
+        )
+    }
+
+    Dialog(
+        onDismissRequest = onDismissRequest,
+    ) {
+        val shape = RoundedCornerShape(12.dp)
+        Column(
+            modifier = Modifier
+                .widthIn(min = 420.dp, max = 560.dp)
+                .background(JewelTheme.globalColors.panelBackground, shape)
+                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+                Text(
+                    text = stringResource(Res.string.earthwidget_datetime_picker_title),
+                    style = JewelTheme.defaultTextStyle.copy(fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
+                )
+
+            SegmentedControl(
+                buttons = listOf(
+                    SegmentedControlButtonData(
+                        selected = calendarMode == CalendarMode.GREGORIAN,
+                        content = { Text(text = stringResource(Res.string.earthwidget_calendar_mode_gregorian)) },
+                        onSelect = {
+                            calendarMode = CalendarMode.GREGORIAN
+                            displayedMonth = YearMonth.from(selectedDate)
+                        },
+                    ),
+                    SegmentedControlButtonData(
+                        selected = calendarMode == CalendarMode.HEBREW,
+                        content = { Text(text = stringResource(Res.string.earthwidget_calendar_mode_hebrew)) },
+                        onSelect = {
+                            calendarMode = CalendarMode.HEBREW
+                            displayedHebrewMonth = hebrewYearMonthFromLocalDate(selectedDate)
+                        },
+                    ),
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                IconButton(
+                    onClick = {
+                        when (calendarMode) {
+                            CalendarMode.GREGORIAN -> displayedMonth = displayedMonth.minusMonths(1)
+                            CalendarMode.HEBREW -> displayedHebrewMonth = previousHebrewYearMonth(displayedHebrewMonth)
+                        }
+                    },
+                ) {
+                    Icon(
+                        key = AllIconsKeys.General.ChevronRight,
+                        contentDescription = stringResource(Res.string.earthwidget_prev_month),
+                    )
+                }
+                val monthShape = RoundedCornerShape(8.dp)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(JewelTheme.globalColors.toolwindowBackground, monthShape)
+                        .border(1.dp, JewelTheme.globalColors.borders.disabled, monthShape)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = when (calendarMode) {
+                            CalendarMode.GREGORIAN -> displayedMonth.format(monthTitleFormatter)
+                            CalendarMode.HEBREW -> formatHebrewMonthTitle(displayedHebrewMonth, hebrewDateFormatter)
+                        },
+                        textAlign = TextAlign.Center,
+                        style = JewelTheme.defaultTextStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        when (calendarMode) {
+                            CalendarMode.GREGORIAN -> displayedMonth = displayedMonth.plusMonths(1)
+                            CalendarMode.HEBREW -> displayedHebrewMonth = nextHebrewYearMonth(displayedHebrewMonth)
+                        }
+                    },
+                ) {
+                    Icon(
+                        key = AllIconsKeys.General.ChevronLeft,
+                        contentDescription = stringResource(Res.string.earthwidget_next_month),
+                    )
+                }
+            }
+
+            val weekHeaderShape = RoundedCornerShape(8.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(JewelTheme.globalColors.toolwindowBackground, weekHeaderShape)
+                    .border(1.dp, JewelTheme.globalColors.borders.disabled, weekHeaderShape)
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                ) {
+                    for (dayOfWeek in weekDays) {
+                        Text(
+                            text = dayOfWeek.getDisplayName(TextStyle.NARROW, hebrewLocale),
+                            modifier = Modifier.width(36.dp),
+                            textAlign = TextAlign.Center,
+                            style = JewelTheme.defaultTextStyle.copy(fontWeight = FontWeight.Medium),
+                        )
+                    }
+                }
+            }
+
+            when (calendarMode) {
+                CalendarMode.GREGORIAN -> MonthGrid(
+                    displayedMonth = displayedMonth,
+                    selectedDate = selectedDate,
+                    onDateSelected = { selectedDate = it },
+                )
+                CalendarMode.HEBREW -> HebrewMonthGrid(
+                    displayedMonth = displayedHebrewMonth,
+                    selectedDate = selectedDate,
+                    onDateSelected = { selectedDate = it },
+                    formatter = hebrewDateFormatter,
+                )
+            }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(onClick = onDismissRequest) {
+                        Text(text = stringResource(Res.string.earthwidget_action_cancel))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    DefaultButton(
+                        onClick = {
+                            onConfirm(selectedDate)
+                        },
+                    ) {
+                        Text(text = stringResource(Res.string.earthwidget_action_ok))
+                    }
+                }
+            }
+    }
+}
+
+private enum class CalendarMode {
+    GREGORIAN,
+    HEBREW,
+}
+
+private data class HebrewYearMonth(
+    val year: Int,
+    val month: Int,
+)
+
+private data class HebrewGridDay(
+    val localDate: LocalDate,
+    val label: String,
+)
+
+@Composable
+@OptIn(ExperimentalComposeUiApi::class)
+private fun MonthGrid(
+    displayedMonth: YearMonth,
+    selectedDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+) {
+    val weeks = remember(displayedMonth) { buildMonthGrid(displayedMonth) }
+    var hoveredDate by remember(displayedMonth) { mutableStateOf<LocalDate?>(null) }
+    val cellSize = 36.dp
+    val cellShape = RoundedCornerShape(6.dp)
+    val selectedBg = JewelTheme.segmentedControlButtonStyle.colors.backgroundSelected
+    val hoverBg = JewelTheme.segmentedControlButtonStyle.colors.backgroundHovered
+    val selectedTextColor = JewelTheme.globalColors.text.selected
+    val normalTextColor = JewelTheme.globalColors.text.normal
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        for (week in weeks) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+            ) {
+                for (day in week) {
+                    if (day == null) {
+                        Spacer(modifier = Modifier.size(cellSize))
+                        continue
+                    }
+
+                    val isSelected = day == selectedDate
+                    val isHovered = hoveredDate == day
+                    val bgBrush: Brush = when {
+                        isSelected -> selectedBg
+                        isHovered -> hoverBg
+                        else -> SolidColor(Color.Transparent)
+                    }
+                    val textColor = if (isSelected) selectedTextColor else normalTextColor
+                    val border = when {
+                        isSelected -> JewelTheme.globalColors.borders.focused
+                        isHovered -> JewelTheme.globalColors.borders.normal
+                        else -> Color.Transparent
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(cellSize)
+                            .border(1.dp, border, cellShape)
+                            .background(bgBrush, cellShape)
+                            .onPointerEvent(PointerEventType.Enter) { hoveredDate = day }
+                            .onPointerEvent(PointerEventType.Exit) { if (hoveredDate == day) hoveredDate = null }
+                            .clickable { onDateSelected(day) }
+                            .padding(4.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(text = day.dayOfMonth.toString(), color = textColor)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalComposeUiApi::class)
+private fun HebrewMonthGrid(
+    displayedMonth: HebrewYearMonth,
+    selectedDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    formatter: HebrewDateFormatter,
+) {
+    val weeks = remember(displayedMonth) { buildHebrewMonthGrid(displayedMonth, formatter) }
+    var hoveredDate by remember(displayedMonth) { mutableStateOf<LocalDate?>(null) }
+    val cellSize = 36.dp
+    val cellShape = RoundedCornerShape(6.dp)
+    val selectedBg = JewelTheme.segmentedControlButtonStyle.colors.backgroundSelected
+    val hoverBg = JewelTheme.segmentedControlButtonStyle.colors.backgroundHovered
+    val selectedTextColor = JewelTheme.globalColors.text.selected
+    val normalTextColor = JewelTheme.globalColors.text.normal
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        for (week in weeks) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+            ) {
+                for (day in week) {
+                    if (day == null) {
+                        Spacer(modifier = Modifier.size(cellSize))
+                        continue
+                    }
+
+                    val isSelected = day.localDate == selectedDate
+                    val isHovered = hoveredDate == day.localDate
+                    val bgBrush: Brush = when {
+                        isSelected -> selectedBg
+                        isHovered -> hoverBg
+                        else -> SolidColor(Color.Transparent)
+                    }
+                    val textColor = if (isSelected) selectedTextColor else normalTextColor
+                    val border = when {
+                        isSelected -> JewelTheme.globalColors.borders.focused
+                        isHovered -> JewelTheme.globalColors.borders.normal
+                        else -> Color.Transparent
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(cellSize)
+                            .border(1.dp, border, cellShape)
+                            .background(bgBrush, cellShape)
+                            .onPointerEvent(PointerEventType.Enter) { hoveredDate = day.localDate }
+                            .onPointerEvent(PointerEventType.Exit) { if (hoveredDate == day.localDate) hoveredDate = null }
+                            .clickable { onDateSelected(day.localDate) }
+                            .padding(4.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(text = day.label, color = textColor)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun buildMonthGrid(month: YearMonth): List<List<LocalDate?>> {
+    val firstOfMonth = month.atDay(1)
+    val daysInMonth = month.lengthOfMonth()
+    val startOffset = firstOfMonth.dayOfWeek.value % 7 // Sunday = 0
+
+    val cells = ArrayList<LocalDate?>(startOffset + daysInMonth + 7)
+    repeat(startOffset) { cells.add(null) }
+    for (day in 1..daysInMonth) {
+        cells.add(month.atDay(day))
+    }
+    while (cells.size % 7 != 0) {
+        cells.add(null)
+    }
+    return cells.chunked(7)
+}
+
+private fun hebrewYearMonthFromLocalDate(date: LocalDate): HebrewYearMonth {
+    val jewishDate = JewishDate(date)
+    return HebrewYearMonth(
+        year = jewishDate.jewishYear,
+        month = jewishDate.jewishMonth,
+    )
+}
+
+private fun previousHebrewYearMonth(yearMonth: HebrewYearMonth): HebrewYearMonth {
+    val jewishDate = JewishDate()
+    jewishDate.setJewishDate(yearMonth.year, yearMonth.month, 1)
+    jewishDate.back()
+    return HebrewYearMonth(
+        year = jewishDate.jewishYear,
+        month = jewishDate.jewishMonth,
+    )
+}
+
+private fun nextHebrewYearMonth(yearMonth: HebrewYearMonth): HebrewYearMonth {
+    val jewishDate = JewishDate()
+    jewishDate.setJewishDate(yearMonth.year, yearMonth.month, 1)
+    jewishDate.forward(Calendar.MONTH, 1)
+    return HebrewYearMonth(
+        year = jewishDate.jewishYear,
+        month = jewishDate.jewishMonth,
+    )
+}
+
+private fun formatHebrewMonthTitle(
+    yearMonth: HebrewYearMonth,
+    formatter: HebrewDateFormatter,
+): String {
+    val jewishDate = JewishDate()
+    jewishDate.setJewishDate(yearMonth.year, yearMonth.month, 1)
+    val monthName = formatter.formatMonth(jewishDate)
+    val yearName = formatter.formatHebrewNumber(jewishDate.jewishYear)
+    return "$monthName $yearName"
+}
+
+private fun buildHebrewMonthGrid(
+    yearMonth: HebrewYearMonth,
+    formatter: HebrewDateFormatter,
+): List<List<HebrewGridDay?>> {
+    val firstOfMonth = JewishDate()
+    firstOfMonth.setJewishDate(yearMonth.year, yearMonth.month, 1)
+
+    val startOffset = (firstOfMonth.dayOfWeek - 1).coerceIn(0, 6) // Sunday = 0
+    val daysInMonth = firstOfMonth.daysInJewishMonth
+
+    val cells = ArrayList<HebrewGridDay?>(startOffset + daysInMonth + 7)
+    repeat(startOffset) { cells.add(null) }
+
+    val current = JewishDate()
+    current.setJewishDate(yearMonth.year, yearMonth.month, 1)
+    for (day in 1..daysInMonth) {
+        cells.add(
+            HebrewGridDay(
+                localDate = current.localDate,
+                label = formatter.formatHebrewNumber(day),
+            ),
+        )
+        if (day != daysInMonth) {
+            current.forward(Calendar.DATE, 1)
+        }
+    }
+
+    while (cells.size % 7 != 0) {
+        cells.add(null)
+    }
+    return cells.chunked(7)
 }
 
 // ============================================================================
@@ -380,7 +1041,20 @@ private fun computeZmanimModel(
     // Calculate moon position
     val julianDay = computeJulianDayUtc(referenceTime)
     val phaseAngle = computeHalakhicPhaseAngle(referenceTime, timeZone)
-    val moonOrbitDegrees = normalizeOrbitDegrees(phaseAngle + 90f)
+    val moonOrbitDegrees = run {
+        val jewishCalendar = JewishCalendar()
+        val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
+        jewishCalendar.setDate(calendar)
+
+        val daysInMonth = jewishCalendar.daysInJewishMonth
+        val dayOfMonth = jewishCalendar.jewishDayOfMonth
+        if (daysInMonth > 0 && dayOfMonth in 1..daysInMonth) {
+            val stepDegrees = 360f / daysInMonth.toFloat()
+            normalizeOrbitDegrees(ORBIT_DAY_LABEL_START_DEGREES + (dayOfMonth - 1) * stepDegrees)
+        } else {
+            normalizeOrbitDegrees(phaseAngle + ORBIT_DAY_LABEL_START_DEGREES)
+        }
+    }
 
     return ZmanimModel(
         lightDegrees = sunDirection.lightDegrees,
@@ -388,6 +1062,65 @@ private fun computeZmanimModel(
         moonOrbitDegrees = moonOrbitDegrees,
         moonPhaseAngleDegrees = phaseAngle,
         julianDay = julianDay,
+    )
+}
+
+// ============================================================================
+// ORBIT LABELS (HEBREW CALENDAR)
+// ============================================================================
+
+private fun computeHebrewMonthOrbitLabels(
+    referenceTime: Date,
+    timeZone: TimeZone,
+): List<OrbitLabelData> {
+    val jewishCalendar = JewishCalendar()
+    val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
+    jewishCalendar.setDate(calendar)
+
+    val daysInMonth = jewishCalendar.daysInJewishMonth
+    if (daysInMonth <= 0) return emptyList()
+
+    val formatter = HebrewDateFormatter().apply {
+        setHebrewFormat(true)
+        setUseGershGershayim(false)
+    }
+
+    val stepDegrees = 360f / daysInMonth.toFloat()
+
+    return (1..daysInMonth).map { day ->
+        OrbitLabelData(
+            orbitDegrees = ORBIT_DAY_LABEL_START_DEGREES + (day - 1) * stepDegrees,
+            text = formatter.formatHebrewNumber(day),
+            dayOfMonth = day,
+        )
+    }
+}
+
+private fun computeZmanimPresetTimes(
+    date: LocalDate,
+    latitude: Double,
+    longitude: Double,
+    elevationMeters: Double,
+    timeZone: TimeZone,
+): ZmanimPresetTimes {
+    val geoLocation = GeoLocation("earthwidget", latitude, longitude, elevationMeters, timeZone)
+    val calendar = ComplexZmanimCalendar(geoLocation).apply {
+        this.calendar = Calendar.getInstance(timeZone).apply {
+            set(Calendar.YEAR, date.year)
+            set(Calendar.MONTH, date.monthValue - 1)
+            set(Calendar.DAY_OF_MONTH, date.dayOfMonth)
+            set(Calendar.HOUR_OF_DAY, 12)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+    }
+
+    return ZmanimPresetTimes(
+        sunrise = calendar.sunrise,
+        sunset = calendar.sunset,
+        chatzosHayom = calendar.chatzos,
+        chatzosLayla = calendar.solarMidnight,
     )
 }
 

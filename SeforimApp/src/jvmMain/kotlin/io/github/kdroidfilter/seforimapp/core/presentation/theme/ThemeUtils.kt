@@ -23,6 +23,8 @@ import seforimapp.seforimapp.generated.resources.notoserifhebrew
  * Utilities to build consistent Jewel theme definitions and related styling across the app.
  */
 object ThemeUtils {
+    private const val FORCE_DARK_THEME = true
+
     /**
      * Provides the app's default text style (centralized so callers don't repeat it).
      */
@@ -41,10 +43,14 @@ object ThemeUtils {
     @Composable
     fun buildThemeDefinition() = run {
         val theme = MainAppState.theme.collectAsState().value
-        val isDarkTheme = when (theme) {
-            IntUiThemes.Light -> false
-            IntUiThemes.Dark -> true
-            IntUiThemes.System -> isSystemInDarkMode()
+        val isDarkTheme = if (FORCE_DARK_THEME) {
+            true
+        } else {
+            when (theme) {
+                IntUiThemes.Light -> false
+                IntUiThemes.Dark -> true
+                IntUiThemes.System -> isSystemInDarkMode()
+            }
         }
         val disabledValues = if (isDarkTheme) DisabledAppearanceValues.dark() else DisabledAppearanceValues.light()
         if (isDarkTheme) {
@@ -66,6 +72,7 @@ object ThemeUtils {
      */
     @Composable
     fun pickTitleBarStyle(): TitleBarStyle {
+        if (FORCE_DARK_THEME) return TitleBarStyle.dark()
         val theme = MainAppState.theme.collectAsState().value
         return when (theme) {
             IntUiThemes.Light -> TitleBarStyle.lightWithLightHeader()

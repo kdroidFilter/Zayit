@@ -4,46 +4,42 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.Checkbox
-import androidx.compose.material.Slider
-import androidx.compose.material.Text
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.imageResource
-import org.jetbrains.compose.resources.stringResource
 import seforimapp.earthwidget.generated.resources.Res
 import seforimapp.earthwidget.generated.resources.earthmap1k
 import seforimapp.earthwidget.generated.resources.moonmap2k
-import seforimapp.earthwidget.generated.resources.earthwidget_light_label
-import seforimapp.earthwidget.generated.resources.earthwidget_marker_latitude_label
-import seforimapp.earthwidget.generated.resources.earthwidget_marker_longitude_label
-import seforimapp.earthwidget.generated.resources.earthwidget_moon_from_marker_label
-import seforimapp.earthwidget.generated.resources.earthwidget_moon_orbit_label
-import seforimapp.earthwidget.generated.resources.earthwidget_rotation_label
-import seforimapp.earthwidget.generated.resources.earthwidget_show_background_label
-import seforimapp.earthwidget.generated.resources.earthwidget_show_orbit_label
-import seforimapp.earthwidget.generated.resources.earthwidget_sun_elevation_label
-import seforimapp.earthwidget.generated.resources.earthwidget_tilt_label
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 // ============================================================================
 // DEFAULT VALUES
@@ -74,161 +70,6 @@ private const val MOON_RENDER_SIZE_RATIO = 0.5f
 private const val MIN_MOON_RENDER_SIZE_PX = 120
 
 // ============================================================================
-// MAIN WIDGET VIEW
-// ============================================================================
-
-/**
- * Interactive Earth widget with manual controls.
- *
- * Displays Earth and Moon with sliders to control rotation, lighting,
- * tilt, moon orbit position, and marker location.
- *
- * @param modifier Modifier for the widget container.
- * @param sphereSize Display size of the main sphere.
- * @param renderSizePx Internal render resolution.
- * @param initialMarkerLatitudeDegrees Starting marker latitude.
- * @param initialMarkerLongitudeDegrees Starting marker longitude.
- * @param initialRotationDegrees Starting Earth rotation.
- * @param initialLightDegrees Starting light direction.
- * @param initialSunElevationDegrees Starting sun elevation.
- * @param initialTiltDegrees Starting Earth tilt.
- * @param initialMoonOrbitDegrees Starting moon orbit position.
- */
-@Composable
-fun EarthWidgetView(
-    modifier: Modifier = Modifier,
-    sphereSize: Dp = 500.dp,
-    renderSizePx: Int = 600,
-    initialMarkerLatitudeDegrees: Float = DEFAULT_MARKER_LATITUDE,
-    initialMarkerLongitudeDegrees: Float = DEFAULT_MARKER_LONGITUDE,
-    initialRotationDegrees: Float = 0f,
-    initialLightDegrees: Float = DEFAULT_LIGHT_DEGREES,
-    initialSunElevationDegrees: Float = DEFAULT_SUN_ELEVATION,
-    initialTiltDegrees: Float = DEFAULT_EARTH_TILT,
-    initialMoonOrbitDegrees: Float = 0f,
-) {
-    // State for all controllable parameters
-    var rotationDegrees by remember { mutableFloatStateOf(initialRotationDegrees) }
-    var lightDegrees by remember { mutableFloatStateOf(initialLightDegrees) }
-    var sunElevationDegrees by remember { mutableFloatStateOf(initialSunElevationDegrees) }
-    var tiltDegrees by remember { mutableFloatStateOf(initialTiltDegrees) }
-    var moonOrbitDegrees by remember { mutableFloatStateOf(initialMoonOrbitDegrees) }
-    var markerLatitudeDegrees by remember {
-        mutableFloatStateOf(initialMarkerLatitudeDegrees.coerceIn(-90f, 90f))
-    }
-    var markerLongitudeDegrees by remember {
-        mutableFloatStateOf(initialMarkerLongitudeDegrees.coerceIn(-180f, 180f))
-    }
-    var showBackground by remember { mutableStateOf(true) }
-    var showOrbitPath by remember { mutableStateOf(true) }
-
-    LazyColumn(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // Main scene
-        item {
-            EarthWidgetScene(
-                sphereSize = sphereSize,
-                renderSizePx = renderSizePx,
-                earthRotationDegrees = rotationDegrees,
-                lightDegrees = lightDegrees,
-                sunElevationDegrees = sunElevationDegrees,
-                earthTiltDegrees = tiltDegrees,
-                moonOrbitDegrees = moonOrbitDegrees,
-                markerLatitudeDegrees = markerLatitudeDegrees,
-                markerLongitudeDegrees = markerLongitudeDegrees,
-                showBackgroundStars = showBackground,
-                showOrbitPath = showOrbitPath,
-            )
-        }
-
-        // Toggle controls
-        item {
-            LabeledCheckbox(
-                checked = showBackground,
-                onCheckedChange = { showBackground = it },
-                label = stringResource(Res.string.earthwidget_show_background_label),
-            )
-        }
-
-        item {
-            LabeledCheckbox(
-                checked = showOrbitPath,
-                onCheckedChange = { showOrbitPath = it },
-                label = stringResource(Res.string.earthwidget_show_orbit_label),
-            )
-        }
-
-        // Slider controls
-        item {
-            LabeledSlider(
-                label = stringResource(Res.string.earthwidget_rotation_label),
-                value = rotationDegrees,
-                onValueChange = { rotationDegrees = it },
-                valueRange = 0f..360f,
-            )
-        }
-
-        item {
-            LabeledSlider(
-                label = stringResource(Res.string.earthwidget_light_label),
-                value = lightDegrees,
-                onValueChange = { lightDegrees = it },
-                valueRange = -180f..180f,
-            )
-        }
-
-        item {
-            LabeledSlider(
-                label = stringResource(Res.string.earthwidget_sun_elevation_label),
-                value = sunElevationDegrees,
-                onValueChange = { sunElevationDegrees = it },
-                valueRange = -90f..90f,
-            )
-        }
-
-        item {
-            LabeledSlider(
-                label = stringResource(Res.string.earthwidget_tilt_label),
-                value = tiltDegrees,
-                onValueChange = { tiltDegrees = it },
-                valueRange = -60f..60f,
-            )
-        }
-
-        item {
-            LabeledSlider(
-                label = stringResource(Res.string.earthwidget_moon_orbit_label),
-                value = moonOrbitDegrees,
-                onValueChange = { moonOrbitDegrees = it },
-                valueRange = 0f..360f,
-            )
-        }
-
-        item {
-            LabeledSlider(
-                label = stringResource(Res.string.earthwidget_marker_latitude_label),
-                value = markerLatitudeDegrees,
-                onValueChange = { markerLatitudeDegrees = it },
-                valueRange = -90f..90f,
-            )
-        }
-
-        item {
-            LabeledSlider(
-                label = stringResource(Res.string.earthwidget_marker_longitude_label),
-                value = markerLongitudeDegrees,
-                onValueChange = { markerLongitudeDegrees = it },
-                valueRange = -180f..180f,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-        }
-    }
-}
-
-// ============================================================================
 // SCENE COMPOSABLE
 // ============================================================================
 
@@ -247,6 +88,7 @@ fun EarthWidgetView(
  * @param markerLongitudeDegrees Marker longitude.
  * @param showBackgroundStars Whether to show starfield.
  * @param showOrbitPath Whether to show orbit line.
+ * @param orbitLabels Labels to draw along the orbit path.
  * @param showMoonFromMarker Whether to show moon-from-marker view.
  * @param moonLightDegrees Override for moon light direction.
  * @param moonSunElevationDegrees Override for moon sun elevation.
@@ -267,6 +109,8 @@ fun EarthWidgetScene(
     markerLongitudeDegrees: Float,
     showBackgroundStars: Boolean,
     showOrbitPath: Boolean,
+    orbitLabels: List<OrbitLabelData> = emptyList(),
+    onOrbitLabelClick: ((OrbitLabelData) -> Unit)? = null,
     showMoonFromMarker: Boolean = true,
     moonLightDegrees: Float = lightDegrees,
     moonSunElevationDegrees: Float = sunElevationDegrees,
@@ -349,35 +193,69 @@ fun EarthWidgetScene(
         julianDay = julianDay,
     )
 
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Image(
-            bitmap = sphereImage,
-            contentDescription = null,
-            modifier = Modifier.size(sphereSize),
-        )
-
-        if (showMoonFromMarker) {
-            Text(text = stringResource(Res.string.earthwidget_moon_from_marker_label))
-            MoonFromMarkerWidgetView(
-                sphereSize = moonViewSize,
-                renderSizePx = moonRenderSizePx,
-                earthRotationDegrees = animatedEarthRotation,
-                lightDegrees = animatedLightDegrees,
-                sunElevationDegrees = animatedSunElevation,
-                earthTiltDegrees = animatedTiltDegrees,
-                moonOrbitDegrees = animatedMoonOrbit,
-                markerLatitudeDegrees = animatedMarkerLat,
-                markerLongitudeDegrees = animatedMarkerLon,
-                showBackgroundStars = showBackgroundStars,
-                moonLightDegrees = animatedMoonLightDegrees,
-                moonSunElevationDegrees = animatedMoonSunElevation,
-                moonPhaseAngleDegrees = animatedMoonPhaseAngle,
-                julianDay = julianDay,
+    val earthContent: @Composable () -> Unit = {
+        Box(modifier = Modifier.size(sphereSize)) {
+            Image(
+                bitmap = sphereImage,
+                contentDescription = null,
+                modifier = Modifier.size(sphereSize),
             )
+            if (showOrbitPath && orbitLabels.isNotEmpty()) {
+                OrbitDayLabelsOverlay(
+                    renderSizePx = renderSizePx,
+                    sphereSize = sphereSize,
+                    labels = orbitLabels,
+                    onLabelClick = onOrbitLabelClick,
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
+        }
+    }
+
+    val moonContent: @Composable () -> Unit = {
+        MoonFromMarkerWidgetView(
+            sphereSize = moonViewSize,
+            renderSizePx = moonRenderSizePx,
+            earthRotationDegrees = animatedEarthRotation,
+            lightDegrees = animatedLightDegrees,
+            sunElevationDegrees = animatedSunElevation,
+            earthTiltDegrees = animatedTiltDegrees,
+            moonOrbitDegrees = animatedMoonOrbit,
+            markerLatitudeDegrees = animatedMarkerLat,
+            markerLongitudeDegrees = animatedMarkerLon,
+            showBackgroundStars = showBackgroundStars,
+            moonLightDegrees = animatedMoonLightDegrees,
+            moonSunElevationDegrees = animatedMoonSunElevation,
+            moonPhaseAngleDegrees = animatedMoonPhaseAngle,
+            julianDay = julianDay,
+        )
+    }
+
+    val spacing = 16.dp
+    BoxWithConstraints(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center,
+    ) {
+        val showSideBySide = showMoonFromMarker && maxWidth >= sphereSize + moonViewSize + spacing
+
+        if (showSideBySide) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(spacing),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                earthContent()
+                moonContent()
+            }
+        } else {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                earthContent()
+                if (showMoonFromMarker) {
+                    moonContent()
+                }
+            }
         }
     }
 }
@@ -447,69 +325,6 @@ fun MoonFromMarkerWidgetView(
         contentDescription = null,
         modifier = modifier.size(sphereSize),
     )
-}
-
-// ============================================================================
-// REUSABLE UI COMPONENTS
-// ============================================================================
-
-/**
- * A slider with label and current value display.
- *
- * @param label Text label for the slider.
- * @param value Current slider value.
- * @param onValueChange Callback when value changes.
- * @param valueRange Range of valid values.
- * @param modifier Modifier for the container.
- */
-@Composable
-private fun LabeledSlider(
-    label: String,
-    value: Float,
-    onValueChange: (Float) -> Unit,
-    valueRange: ClosedFloatingPointRange<Float>,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(text = label)
-            Text(text = value.roundToInt().toString())
-        }
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = valueRange,
-        )
-    }
-}
-
-/**
- * A checkbox with accompanying label.
- *
- * @param checked Whether the checkbox is checked.
- * @param onCheckedChange Callback when check state changes.
- * @param label Text label for the checkbox.
- * @param modifier Modifier for the container.
- */
-@Composable
-private fun LabeledCheckbox(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
-        Text(text = label)
-    }
 }
 
 // ============================================================================
@@ -701,4 +516,87 @@ private fun rememberSmoothAnimatedAngle(
     }
 
     return normalize(animatable.value)
+}
+
+data class OrbitLabelData(
+    val orbitDegrees: Float,
+    val text: String,
+    val dayOfMonth: Int,
+)
+
+@Composable
+private fun OrbitDayLabelsOverlay(
+    renderSizePx: Int,
+    sphereSize: Dp,
+    labels: List<OrbitLabelData>,
+    onLabelClick: ((OrbitLabelData) -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    if (labels.isEmpty() || renderSizePx <= 0) return
+    val fontSize = (sphereSize.value * 0.025f).coerceIn(9f, 16f).sp
+    val textStyle = remember(fontSize) {
+        TextStyle(
+            color = Color.White,
+            fontSize = fontSize,
+            fontWeight = FontWeight.SemiBold,
+            shadow = Shadow(color = Color.Black, offset = Offset(1f, 1f), blurRadius = 3f),
+        )
+    }
+
+    val labelPositions = remember(labels, renderSizePx) {
+        val center = renderSizePx / 2f
+        val outwardPx = 12f
+
+        labels.map { label ->
+            val p = computeOrbitScreenPosition(
+                outputSizePx = renderSizePx,
+                orbitDegrees = label.orbitDegrees,
+            )
+            val dx = p.x - center
+            val dy = p.y - center
+            val len = sqrt(dx * dx + dy * dy)
+
+            val ox = if (len > 1e-3f) dx / len * outwardPx else 0f
+            val oy = if (len > 1e-3f) dy / len * outwardPx else 0f
+
+            Offset(x = p.x + ox, y = p.y + oy)
+        }
+    }
+
+    Layout(
+        modifier = modifier,
+        content = {
+            for (label in labels) {
+                key(label.dayOfMonth) {
+                    BasicText(
+                        text = label.text,
+                        style = textStyle,
+                        modifier = if (onLabelClick == null) {
+                            Modifier
+                        } else {
+                            Modifier.clickable { onLabelClick(label) }
+                        },
+                    )
+                }
+            }
+        },
+    ) { measurables, constraints ->
+        val width = constraints.maxWidth
+        val height = constraints.maxHeight
+        val scaleX = width / renderSizePx.toFloat()
+        val scaleY = height / renderSizePx.toFloat()
+        val placeables = measurables.map { measurable ->
+            measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+        }
+
+        layout(width, height) {
+            placeables.forEachIndexed { index, placeable ->
+                val p = labelPositions.getOrNull(index) ?: return@forEachIndexed
+                val x = (p.x * scaleX - placeable.width / 2f).roundToInt()
+                val y = (p.y * scaleY - placeable.height / 2f).roundToInt()
+                // Absolute pixel placement; do not mirror in RTL.
+                placeable.place(x, y)
+            }
+        }
+    }
 }

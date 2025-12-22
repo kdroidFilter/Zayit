@@ -1,5 +1,7 @@
 package io.github.kdroidfilter.seforimapp.earthwidget
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,6 +15,7 @@ import androidx.compose.material.Checkbox
 import androidx.compose.material.Slider
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -268,6 +271,60 @@ fun EarthWidgetScene(
     moonPhaseAngleDegrees: Float? = null,
     julianDay: Double? = null,
 ) {
+    val animationSpec = tween<Float>(durationMillis = 260)
+    val animatedEarthRotation = rememberAnimatedAngle(
+        targetValue = earthRotationDegrees,
+        durationMillis = 260,
+        normalize = ::normalizeAngle360,
+    )
+    val animatedLightDegrees = rememberAnimatedAngle(
+        targetValue = lightDegrees,
+        durationMillis = 260,
+        normalize = ::normalizeAngle180,
+    )
+    val animatedSunElevation by animateFloatAsState(
+        targetValue = sunElevationDegrees,
+        animationSpec = animationSpec,
+        label = "sunElevation",
+    )
+    val animatedTiltDegrees by animateFloatAsState(
+        targetValue = earthTiltDegrees,
+        animationSpec = animationSpec,
+        label = "tiltDegrees",
+    )
+    val animatedMoonOrbit = rememberAnimatedAngle(
+        targetValue = moonOrbitDegrees,
+        durationMillis = 260,
+        normalize = ::normalizeAngle360,
+    )
+    val animatedMarkerLat by animateFloatAsState(
+        targetValue = markerLatitudeDegrees,
+        animationSpec = animationSpec,
+        label = "markerLat",
+    )
+    val animatedMarkerLon = rememberAnimatedAngle(
+        targetValue = markerLongitudeDegrees,
+        durationMillis = 260,
+        normalize = ::normalizeAngle180,
+    )
+    val animatedMoonLightDegrees = rememberAnimatedAngle(
+        targetValue = moonLightDegrees,
+        durationMillis = 260,
+        normalize = ::normalizeAngle180,
+    )
+    val animatedMoonSunElevation by animateFloatAsState(
+        targetValue = moonSunElevationDegrees,
+        animationSpec = animationSpec,
+        label = "moonSunElevation",
+    )
+    val animatedMoonPhaseAngle = moonPhaseAngleDegrees?.let {
+        rememberAnimatedAngle(
+            targetValue = it,
+            durationMillis = 260,
+            normalize = ::normalizeAngle360,
+        )
+    }
+
     val earthTexture = rememberEarthTexture()
     val moonTexture = rememberMoonTexture()
 
@@ -280,18 +337,18 @@ fun EarthWidgetScene(
         earthTexture = earthTexture,
         moonTexture = moonTexture,
         renderSizePx = renderSizePx,
-        earthRotationDegrees = earthRotationDegrees,
-        lightDegrees = lightDegrees,
-        sunElevationDegrees = sunElevationDegrees,
-        earthTiltDegrees = earthTiltDegrees,
-        moonOrbitDegrees = moonOrbitDegrees,
-        markerLatitudeDegrees = markerLatitudeDegrees,
-        markerLongitudeDegrees = markerLongitudeDegrees,
+        earthRotationDegrees = animatedEarthRotation,
+        lightDegrees = animatedLightDegrees,
+        sunElevationDegrees = animatedSunElevation,
+        earthTiltDegrees = animatedTiltDegrees,
+        moonOrbitDegrees = animatedMoonOrbit,
+        markerLatitudeDegrees = animatedMarkerLat,
+        markerLongitudeDegrees = animatedMarkerLon,
         showBackgroundStars = showBackgroundStars,
         showOrbitPath = showOrbitPath,
-        moonLightDegrees = moonLightDegrees,
-        moonSunElevationDegrees = moonSunElevationDegrees,
-        moonPhaseAngleDegrees = moonPhaseAngleDegrees,
+        moonLightDegrees = animatedMoonLightDegrees,
+        moonSunElevationDegrees = animatedMoonSunElevation,
+        moonPhaseAngleDegrees = animatedMoonPhaseAngle,
         julianDay = julianDay,
     )
 
@@ -311,17 +368,17 @@ fun EarthWidgetScene(
             MoonFromMarkerWidgetView(
                 sphereSize = moonViewSize,
                 renderSizePx = moonRenderSizePx,
-                earthRotationDegrees = earthRotationDegrees,
-                lightDegrees = lightDegrees,
-                sunElevationDegrees = sunElevationDegrees,
-                earthTiltDegrees = earthTiltDegrees,
-                moonOrbitDegrees = moonOrbitDegrees,
-                markerLatitudeDegrees = markerLatitudeDegrees,
-                markerLongitudeDegrees = markerLongitudeDegrees,
+                earthRotationDegrees = animatedEarthRotation,
+                lightDegrees = animatedLightDegrees,
+                sunElevationDegrees = animatedSunElevation,
+                earthTiltDegrees = animatedTiltDegrees,
+                moonOrbitDegrees = animatedMoonOrbit,
+                markerLatitudeDegrees = animatedMarkerLat,
+                markerLongitudeDegrees = animatedMarkerLon,
                 showBackgroundStars = showBackgroundStars,
-                moonLightDegrees = moonLightDegrees,
-                moonSunElevationDegrees = moonSunElevationDegrees,
-                moonPhaseAngleDegrees = moonPhaseAngleDegrees,
+                moonLightDegrees = animatedMoonLightDegrees,
+                moonSunElevationDegrees = animatedMoonSunElevation,
+                moonPhaseAngleDegrees = animatedMoonPhaseAngle,
                 julianDay = julianDay,
             )
         }
@@ -600,4 +657,44 @@ private fun rememberEarthMoonImage(
         )
         imageBitmapFromArgb(argb, renderSizePx, renderSizePx)
     }
+}
+
+// ============================================================================
+// ANIMATION HELPERS
+// ============================================================================
+
+private fun normalizeAngle360(value: Float): Float {
+    val mod = value % 360f
+    return if (mod < 0f) mod + 360f else mod
+}
+
+private fun normalizeAngle180(value: Float): Float {
+    var wrapped = normalizeAngle360(value)
+    if (wrapped > 180f) wrapped -= 360f
+    return wrapped
+}
+
+@Composable
+private fun rememberAnimatedAngle(
+    targetValue: Float,
+    durationMillis: Int,
+    normalize: (Float) -> Float,
+): Float {
+    var unwrappedTarget by remember { mutableFloatStateOf(targetValue) }
+
+    val animated by animateFloatAsState(
+        targetValue = unwrappedTarget,
+        animationSpec = tween(durationMillis = durationMillis),
+        label = "animatedAngle",
+    )
+
+    LaunchedEffect(targetValue) {
+        val currentWrapped = normalize(animated)
+        var delta = targetValue - currentWrapped
+        if (delta > 180f) delta -= 360f
+        if (delta < -180f) delta += 360f
+        unwrappedTarget = animated + delta
+    }
+
+    return normalize(animated)
 }

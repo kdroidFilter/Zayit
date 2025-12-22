@@ -303,7 +303,7 @@ fun EarthWidgetZmanimView(
             longitude = markerLongitudeDegrees.toDouble(),
             elevation = markerElevationMeters,
             timeZone = timeZone,
-            earthRotationDegrees = 0f,
+            earthRotationDegrees = markerLongitudeDegrees,
             earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
         )
     }
@@ -370,7 +370,7 @@ fun EarthWidgetZmanimView(
             EarthWidgetScene(
                 sphereSize = sphereSize,
                 renderSizePx = renderSizePx,
-                earthRotationDegrees = 0f,
+                earthRotationDegrees = markerLongitudeDegrees,
                 lightDegrees = model.lightDegrees,
                 sunElevationDegrees = model.sunElevationDegrees,
                 earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,

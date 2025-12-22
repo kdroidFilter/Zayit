@@ -1823,14 +1823,14 @@ private fun drawMarkerOnSphere(
     // Only draw if marker is on visible hemisphere (facing camera)
     if (z1 <= 0f) return
 
+    // Calculate marker sizes
+    val markerRadiusPx = max(MIN_MARKER_RADIUS_PX, sphereSizePx * MARKER_RADIUS_FRACTION)
+    val outlineRadiusPx = markerRadiusPx + MARKER_OUTLINE_EXTRA_PX
+
     // Project to screen coordinates
     val half = (sphereSizePx - 1) / 2f
     val centerX = half + x2 * half
     val centerY = half - y2 * half
-
-    // Calculate marker sizes
-    val markerRadiusPx = max(MIN_MARKER_RADIUS_PX, sphereSizePx * MARKER_RADIUS_FRACTION)
-    val outlineRadiusPx = markerRadiusPx + MARKER_OUTLINE_EXTRA_PX
 
     // Bounds for iteration
     val minX = (centerX - outlineRadiusPx).roundToInt().coerceIn(0, sphereSizePx - 1)

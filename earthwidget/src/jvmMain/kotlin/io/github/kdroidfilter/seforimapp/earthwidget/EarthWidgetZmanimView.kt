@@ -20,11 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.kosherjava.zmanim.AstronomicalCalendar
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
 import com.kosherjava.zmanim.hebrewcalendar.JewishDate
-import com.kosherjava.zmanim.util.GeoLocation
-import com.kosherjava.zmanim.util.NOAACalculator
 import org.jetbrains.compose.resources.stringResource
 import seforimapp.earthwidget.generated.resources.Res
 import seforimapp.earthwidget.generated.resources.earthwidget_date_offset_label
@@ -39,14 +36,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.TimeZone
-import kotlin.math.PI
-import kotlin.math.asin
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.floor
 import kotlin.math.roundToInt
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 // ============================================================================
 // CONSTANTS
@@ -109,30 +99,6 @@ private data class ZmanimModel(
     val moonOrbitDegrees: Float,
     val moonPhaseAngleDegrees: Float,
     val julianDay: Double,
-)
-
-/**
- * 3D vector with double precision for coordinate transformations.
- */
-private data class Vec3(val x: Double, val y: Double, val z: Double) {
-    /** Returns a unit vector in the same direction. */
-    fun normalized(): Vec3 {
-        val len = sqrt(x * x + y * y + z * z)
-        if (len <= 1e-9) return this
-        val inv = 1.0 / len
-        return Vec3(x * inv, y * inv, z * inv)
-    }
-}
-
-/**
- * Sun direction in world coordinates.
- *
- * @property lightDegrees Azimuth angle for rendering.
- * @property elevationDegrees Elevation angle for rendering.
- */
-private data class SunDirection(
-    val lightDegrees: Float,
-    val elevationDegrees: Float,
 )
 
 // ============================================================================
@@ -403,254 +369,26 @@ private fun computeZmanimModel(
     earthRotationDegrees: Float,
     earthTiltDegrees: Float,
 ): ZmanimModel {
-    val location = GeoLocation("Marker", latitude, longitude, elevation, timeZone)
-    val astronomicalCalendar = AstronomicalCalendar(location)
-    val baseCalendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
-    astronomicalCalendar.calendar = baseCalendar
-
-    // Get key solar events
-    val sunrise = astronomicalCalendar.sunrise
-    val sunset = astronomicalCalendar.sunset
-    val solarNoon = astronomicalCalendar.sunTransit
-
-    // NOAA returns azimuth with North = 0
-    val solarAzimuthNorth = NOAACalculator.getSolarAzimuth(baseCalendar, latitude, longitude)
-
-    // Calculate sun elevation with interpolation
-    val localSunElevationDegrees = computeSunElevationDegrees(
+    val sunDirection = computeSunLightDirectionForEarth(
         referenceTime = referenceTime,
-        sunrise = sunrise,
-        sunset = sunset,
-        solarNoon = solarNoon,
         latitude = latitude,
         longitude = longitude,
-        timeZone = timeZone,
-    )
-
-    // Transform to world coordinates
-    val sunDirection = computeSunDirectionWorld(
-        latitude = latitude,
-        longitude = longitude,
-        azimuthDegrees = solarAzimuthNorth,
-        elevationDegrees = localSunElevationDegrees,
         earthRotationDegrees = earthRotationDegrees,
         earthTiltDegrees = earthTiltDegrees,
     )
 
     // Calculate moon position
-    val julianDay = computeJulianDay(referenceTime)
+    val julianDay = computeJulianDayUtc(referenceTime)
     val phaseAngle = computeHalakhicPhaseAngle(referenceTime, timeZone)
     val moonOrbitDegrees = normalizeOrbitDegrees(phaseAngle + 90f)
 
     return ZmanimModel(
         lightDegrees = sunDirection.lightDegrees,
-        sunElevationDegrees = sunDirection.elevationDegrees,
+        sunElevationDegrees = sunDirection.sunElevationDegrees,
         moonOrbitDegrees = moonOrbitDegrees,
         moonPhaseAngleDegrees = phaseAngle,
         julianDay = julianDay,
     )
-}
-
-/**
- * Computes sun elevation with sinusoidal interpolation between sunrise and sunset.
- *
- * This provides smoother elevation curves than point calculations,
- * better representing the sun's arc through the sky.
- *
- * @param referenceTime Time for calculation.
- * @param sunrise Sunrise time (or null if polar day/night).
- * @param sunset Sunset time (or null if polar day/night).
- * @param solarNoon Solar noon time.
- * @param latitude Observer latitude.
- * @param longitude Observer longitude.
- * @param timeZone Local timezone.
- * @return Sun elevation in degrees.
- */
-private fun computeSunElevationDegrees(
-    referenceTime: Date,
-    sunrise: Date?,
-    sunset: Date?,
-    solarNoon: Date?,
-    latitude: Double,
-    longitude: Double,
-    timeZone: TimeZone,
-): Float {
-    val referenceCalendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
-
-    // Fallback to NOAA point calculation
-    val fallback = NOAACalculator.getSolarElevation(referenceCalendar, latitude, longitude).toFloat()
-
-    // If no sunrise/sunset (polar regions), use point calculation
-    if (sunrise == null || sunset == null) {
-        return fallback.coerceIn(-90f, 90f)
-    }
-
-    val sunriseMillis = sunrise.time
-    val sunsetMillis = sunset.time
-    if (sunriseMillis >= sunsetMillis) {
-        return fallback.coerceIn(-90f, 90f)
-    }
-
-    // Calculate day progress (0 = sunrise, 1 = sunset)
-    val dayProgress = (referenceTime.time - sunriseMillis).toDouble() /
-            (sunsetMillis - sunriseMillis).toDouble()
-
-    // Use sinusoidal interpolation during daylight hours
-    if (dayProgress in 0.0..1.0) {
-        val noonElevation = if (solarNoon != null) {
-            val noonCalendar = Calendar.getInstance(timeZone).apply { time = solarNoon }
-            NOAACalculator.getSolarElevation(noonCalendar, latitude, longitude)
-        } else {
-            fallback.toDouble()
-        }
-        // Sin interpolation: 0 at sunrise/sunset, max at noon
-        val elevation = sin(PI * dayProgress) * noonElevation
-        return elevation.toFloat().coerceIn(-90f, 90f)
-    }
-
-    return fallback.coerceIn(-90f, 90f)
-}
-
-/**
- * Transforms sun direction from local horizontal to world coordinates.
- *
- * Converts observer's local azimuth/elevation to the rendering coordinate system,
- * accounting for Earth rotation and tilt.
- *
- * @param latitude Observer latitude.
- * @param longitude Observer longitude.
- * @param azimuthDegrees Sun azimuth (North = 0, clockwise).
- * @param elevationDegrees Sun elevation above horizon.
- * @param earthRotationDegrees Earth rotation angle.
- * @param earthTiltDegrees Earth axial tilt.
- * @return Sun direction for rendering.
- */
-private fun computeSunDirectionWorld(
-    latitude: Double,
-    longitude: Double,
-    azimuthDegrees: Double,
-    elevationDegrees: Float,
-    earthRotationDegrees: Float,
-    earthTiltDegrees: Float,
-): SunDirection {
-    // Convert to radians
-    val latRad = Math.toRadians(latitude)
-    val lonRad = Math.toRadians(longitude)
-    val azRad = Math.toRadians(azimuthDegrees)
-    val elRad = Math.toRadians(elevationDegrees.toDouble())
-
-    // Precompute trig values
-    val sinLat = sin(latRad)
-    val cosLat = cos(latRad)
-    val sinLon = sin(lonRad)
-    val cosLon = cos(lonRad)
-
-    // Build local coordinate frame at observer position
-    // East vector (tangent to latitude circle)
-    val eastX = cosLon
-    val eastY = 0.0
-    val eastZ = -sinLon
-
-    // North vector (tangent to meridian)
-    val northX = -sinLat * sinLon
-    val northY = cosLat
-    val northZ = -sinLat * cosLon
-
-    // Up vector (radial, away from Earth center)
-    val upX = cosLat * sinLon
-    val upY = sinLat
-    val upZ = cosLat * cosLon
-
-    // Convert horizontal coordinates to direction
-    val sinAz = sin(azRad)
-    val cosAz = cos(azRad)
-    val cosEl = cos(elRad)
-    val sinEl = sin(elRad)
-
-    // Sun direction in local frame, then transform to Earth-centered
-    val dirX = (eastX * sinAz + northX * cosAz) * cosEl + upX * sinEl
-    val dirY = (eastY * sinAz + northY * cosAz) * cosEl + upY * sinEl
-    val dirZ = (eastZ * sinAz + northZ * cosAz) * cosEl + upZ * sinEl
-
-    // Transform to world coordinates
-    val earthDir = Vec3(dirX, dirY, dirZ).normalized()
-    val worldDir = earthToWorld(earthDir, earthRotationDegrees, earthTiltDegrees).normalized()
-
-    // Convert back to azimuth/elevation for rendering
-    val lightDegrees = Math.toDegrees(atan2(worldDir.x, worldDir.z)).toFloat()
-    val elevation = Math.toDegrees(asin(worldDir.y.coerceIn(-1.0, 1.0))).toFloat()
-
-    return SunDirection(lightDegrees = lightDegrees, elevationDegrees = elevation)
-}
-
-/**
- * Transforms a vector from Earth-fixed to world coordinates.
- *
- * Applies inverse Earth rotation and tilt.
- *
- * @param earthDir Direction in Earth-fixed coordinates.
- * @param earthRotationDegrees Earth rotation angle.
- * @param earthTiltDegrees Earth axial tilt.
- * @return Direction in world coordinates.
- */
-private fun earthToWorld(
-    earthDir: Vec3,
-    earthRotationDegrees: Float,
-    earthTiltDegrees: Float,
-): Vec3 {
-    // Inverse Earth rotation (yaw)
-    val yawRad = Math.toRadians(-earthRotationDegrees.toDouble())
-    val cosYaw = cos(yawRad)
-    val sinYaw = sin(yawRad)
-    val x1 = earthDir.x * cosYaw + earthDir.z * sinYaw
-    val z1 = -earthDir.x * sinYaw + earthDir.z * cosYaw
-    val y1 = earthDir.y
-
-    // Inverse Earth tilt (pitch)
-    val tiltRad = Math.toRadians(-earthTiltDegrees.toDouble())
-    val cosTilt = cos(tiltRad)
-    val sinTilt = sin(tiltRad)
-    val x2 = x1 * cosTilt - y1 * sinTilt
-    val y2 = x1 * sinTilt + y1 * cosTilt
-
-    return Vec3(x2, y2, z1)
-}
-
-// ============================================================================
-// JULIAN DAY CALCULATION
-// ============================================================================
-
-/**
- * Converts a Date to Julian Day number.
- *
- * Uses the standard Gregorian calendar to Julian Day conversion algorithm.
- *
- * @param date Date to convert.
- * @return Julian Day number (decimal).
- */
-private fun computeJulianDay(date: Date): Double {
-    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { time = date }
-    var year = cal.get(Calendar.YEAR)
-    var month = cal.get(Calendar.MONTH) + 1
-    val day = cal.get(Calendar.DAY_OF_MONTH)
-    val hour = cal.get(Calendar.HOUR_OF_DAY)
-    val minute = cal.get(Calendar.MINUTE)
-    val second = cal.get(Calendar.SECOND)
-
-    // Adjust January/February (treat as months 13/14 of previous year)
-    if (month <= 2) {
-        year -= 1
-        month += 12
-    }
-
-    // Gregorian calendar correction
-    val A = year / 100
-    val B = 2 - A + A / 4
-
-    // Day fraction
-    val dayFraction = (hour + minute / 60.0 + second / 3600.0) / 24.0
-
-    return floor(365.25 * (year + 4716)) + floor(30.6001 * (month + 1)) + day + dayFraction + B - 1524.5
 }
 
 // ============================================================================

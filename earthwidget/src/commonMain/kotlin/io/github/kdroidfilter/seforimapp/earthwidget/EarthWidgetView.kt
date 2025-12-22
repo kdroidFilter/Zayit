@@ -1,7 +1,9 @@
 package io.github.kdroidfilter.seforimapp.earthwidget
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -271,58 +273,53 @@ fun EarthWidgetScene(
     moonPhaseAngleDegrees: Float? = null,
     julianDay: Double? = null,
 ) {
-    val animationSpec = tween<Float>(durationMillis = 260)
-    val animatedEarthRotation = rememberAnimatedAngle(
+    val smoothSpec = spring<Float>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMediumLow,
+    )
+
+    val animatedEarthRotation = rememberSmoothAnimatedAngle(
         targetValue = earthRotationDegrees,
-        durationMillis = 260,
         normalize = ::normalizeAngle360,
     )
-    val animatedLightDegrees = rememberAnimatedAngle(
+    val animatedLightDegrees = rememberSmoothAnimatedAngle(
         targetValue = lightDegrees,
-        durationMillis = 260,
         normalize = ::normalizeAngle180,
     )
     val animatedSunElevation by animateFloatAsState(
         targetValue = sunElevationDegrees,
-        animationSpec = animationSpec,
+        animationSpec = smoothSpec,
         label = "sunElevation",
     )
     val animatedTiltDegrees by animateFloatAsState(
         targetValue = earthTiltDegrees,
-        animationSpec = animationSpec,
+        animationSpec = smoothSpec,
         label = "tiltDegrees",
     )
-    val animatedMoonOrbit = rememberAnimatedAngle(
+    val animatedMoonOrbit = rememberSmoothAnimatedAngle(
         targetValue = moonOrbitDegrees,
-        durationMillis = 260,
         normalize = ::normalizeAngle360,
     )
     val animatedMarkerLat by animateFloatAsState(
         targetValue = markerLatitudeDegrees,
-        animationSpec = animationSpec,
+        animationSpec = smoothSpec,
         label = "markerLat",
     )
-    val animatedMarkerLon = rememberAnimatedAngle(
+    val animatedMarkerLon = rememberSmoothAnimatedAngle(
         targetValue = markerLongitudeDegrees,
-        durationMillis = 260,
         normalize = ::normalizeAngle180,
     )
-    val animatedMoonLightDegrees = rememberAnimatedAngle(
+    val animatedMoonLightDegrees = rememberSmoothAnimatedAngle(
         targetValue = moonLightDegrees,
-        durationMillis = 260,
         normalize = ::normalizeAngle180,
     )
     val animatedMoonSunElevation by animateFloatAsState(
         targetValue = moonSunElevationDegrees,
-        animationSpec = animationSpec,
+        animationSpec = smoothSpec,
         label = "moonSunElevation",
     )
     val animatedMoonPhaseAngle = moonPhaseAngleDegrees?.let {
-        rememberAnimatedAngle(
-            targetValue = it,
-            durationMillis = 260,
-            normalize = ::normalizeAngle360,
-        )
+        rememberSmoothAnimatedAngle(targetValue = it, normalize = ::normalizeAngle360)
     }
 
     val earthTexture = rememberEarthTexture()
@@ -675,26 +672,33 @@ private fun normalizeAngle180(value: Float): Float {
 }
 
 @Composable
-private fun rememberAnimatedAngle(
+private fun rememberSmoothAnimatedAngle(
     targetValue: Float,
-    durationMillis: Int,
     normalize: (Float) -> Float,
 ): Float {
-    var unwrappedTarget by remember { mutableFloatStateOf(targetValue) }
-
-    val animated by animateFloatAsState(
-        targetValue = unwrappedTarget,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "animatedAngle",
+    val springSpec = spring<Float>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMediumLow,
     )
 
+    val animatable = remember { Animatable(normalize(targetValue)) }
+
     LaunchedEffect(targetValue) {
-        val currentWrapped = normalize(animated)
-        var delta = targetValue - currentWrapped
+        val current = animatable.value
+        val currentWrapped = normalize(current)
+        val targetWrapped = normalize(targetValue)
+
+        var delta = targetWrapped - currentWrapped
         if (delta > 180f) delta -= 360f
         if (delta < -180f) delta += 360f
-        unwrappedTarget = animated + delta
+
+        val newTarget = current + delta
+        animatable.animateTo(
+            targetValue = newTarget,
+            animationSpec = springSpec,
+            initialVelocity = animatable.velocity,
+        )
     }
 
-    return normalize(animated)
+    return normalize(animatable.value)
 }

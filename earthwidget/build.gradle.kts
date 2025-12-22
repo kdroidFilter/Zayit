@@ -37,6 +37,10 @@ kotlin {
             implementation("com.kosherjava:zmanim:2.5.0")
 
         }
+
+        jvmTest.dependencies {
+            implementation(kotlin("test"))
+        }
     }
 }
 

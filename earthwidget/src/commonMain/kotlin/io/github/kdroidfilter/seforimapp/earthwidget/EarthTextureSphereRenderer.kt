@@ -133,6 +133,12 @@ private const val SHADOW_EDGE_START = -0.15f
 /** Shadow transition end (cosine of angle). */
 private const val SHADOW_EDGE_END = 0.1f
 
+/** Earth umbra radius as fraction of Earth-Moon distance (real-world ~0.72 / 60). */
+private const val EARTH_UMBRA_DISTANCE_RATIO = 0.01197f
+
+/** Earth penumbra radius as fraction of Earth-Moon distance (real-world ~1.28 / 60). */
+private const val EARTH_PENUMBRA_DISTANCE_RATIO = 0.02119f
+
 // ============================================================================
 // VISUAL CONSTANTS
 // ============================================================================
@@ -372,8 +378,12 @@ private fun computeSunEclipticLongitude(julianDay: Double): Float {
 /**
  * Computes the geometric Moon illumination direction from ephemeris data.
  *
- * Uses precise astronomical calculations to determine how the Moon
- * should be illuminated based on the Sun-Earth-Moon geometry.
+ * Calculates the phase angle (Sun-Moon elongation) from astronomical ephemeris
+ * and uses it to determine how the Moon should be illuminated.
+ *
+ * The phase angle is the angular distance between Sun and Moon as seen from Earth:
+ * - 0° = New Moon (Sun and Moon in same direction, Moon not illuminated)
+ * - 180° = Full Moon (Sun and Moon opposite, Moon fully illuminated)
  *
  * @param julianDay Julian Day number.
  * @param viewDirX View direction X component.
@@ -390,33 +400,78 @@ internal fun computeGeometricMoonIllumination(
     val moonPos = computeMoonEclipticPosition(julianDay)
     val sunLong = computeSunEclipticLongitude(julianDay)
 
-    // Sun direction from Moon's perspective in ecliptic coordinates
-    val sunMoonAngle = (sunLong - moonPos.longitude) * DEG_TO_RAD_F
-    val sunLat = -moonPos.latitude * DEG_TO_RAD_F
+    // Calculate elongation (angular distance between Sun and Moon)
+    // This gives us the phase angle directly
+    val elongation = normalizeAngleDeg((moonPos.longitude - sunLong).toDouble())
 
-    val cosLat = cos(sunLat)
-    val sunDirX = sin(sunMoonAngle) * cosLat
-    val sunDirY = sin(sunLat)
-    val sunDirZ = cos(sunMoonAngle) * cosLat
+    // Convert elongation to phase angle for rendering:
+    // elongation 0° = new moon (phase 0°)
+    // elongation 180° = full moon (phase 180°)
+    val phaseAngleDegrees = elongation.toFloat()
 
-    // Build view-aligned coordinate frame
+    // Use the phase-based lighting calculation which correctly handles
+    // the geometry of how sunlight illuminates the Moon's visible face
+    return computeMoonLightFromPhaseInternal(
+        phaseAngleDegrees = phaseAngleDegrees,
+        viewDirX = viewDirX,
+        viewDirY = viewDirY,
+        viewDirZ = viewDirZ,
+    )
+}
+
+/**
+ * Internal implementation of phase-based Moon lighting.
+ *
+ * Computes the light direction that will produce the correct illumination
+ * pattern on the Moon's visible face based on its phase.
+ *
+ * @param phaseAngleDegrees Moon phase (0 = new, 180 = full).
+ * @param viewDirX View direction X.
+ * @param viewDirY View direction Y.
+ * @param viewDirZ View direction Z.
+ * @return Light direction for rendering.
+ */
+private fun computeMoonLightFromPhaseInternal(
+    phaseAngleDegrees: Float,
+    viewDirX: Float,
+    viewDirY: Float,
+    viewDirZ: Float,
+): LightDirection {
     val viewDir = Vec3f(viewDirX, viewDirY, viewDirZ).normalized()
+
+    // Normalize phase to [0, 360)
+    val normalizedPhase = ((phaseAngleDegrees % 360f) + 360f) % 360f
+
+    // The angle between view direction and sun direction
+    // At phase 0° (new moon): sun is behind the moon (theta = 180° from view)
+    // At phase 180° (full moon): sun is in front of the moon (theta = 0° from view)
+    val thetaDegrees = 180f - normalizedPhase
+    val thetaRad = Math.toRadians(thetaDegrees.toDouble())
+
+    // Build a basis perpendicular to the view direction
+    // The sun moves in a plane containing the view direction
     var right = cross(Vec3f.WORLD_UP, viewDir)
-    if (right.length() < EPSILON) {
+    if (right.length() <= EPSILON) {
         right = Vec3f(1f, 0f, 0f)
     }
     right = right.normalized()
-    val up = cross(viewDir, right).normalized()
 
-    // Transform sun direction to view space
-    val sunDir = Vec3f(sunDirX, sunDirY, sunDirZ).normalized()
-    val lightX = dot(sunDir, right)
-    val lightY = dot(sunDir, up)
-    val lightZ = dot(sunDir, viewDir)
+    // Sun direction: rotate from view direction by theta around the "right" axis
+    // This places the sun in the correct position relative to the Moon
+    val cosT = cos(thetaRad).toFloat()
+    val sinT = sin(thetaRad).toFloat()
+
+    // Rodrigues' rotation formula simplified for rotation around 'right' axis
+    val up = cross(viewDir, right).normalized()
+    val sunDir = Vec3f(
+        viewDir.x * cosT + up.x * sinT,
+        viewDir.y * cosT + up.y * sinT,
+        viewDir.z * cosT + up.z * sinT,
+    ).normalized()
 
     return LightDirection(
-        lightDegrees = Math.toDegrees(atan2(lightX.toDouble(), lightZ.toDouble())).toFloat(),
-        sunElevationDegrees = Math.toDegrees(asin(lightY.toDouble().coerceIn(-1.0, 1.0))).toFloat()
+        lightDegrees = Math.toDegrees(atan2(sunDir.x.toDouble(), sunDir.z.toDouble())).toFloat(),
+        sunElevationDegrees = Math.toDegrees(asin(sunDir.y.toDouble().coerceIn(-1.0, 1.0))).toFloat()
     )
 }
 
@@ -1066,7 +1121,6 @@ internal fun renderEarthWithMoonArgb(
         moonCenterX = moonOrbit.x,
         moonCenterY = moonOrbit.yCam,
         moonCenterZ = moonOrbit.zCam,
-        earthRadius = earthRadiusPx,
         moonRadius = moonRadiusWorldPx,
         sunAzimuthDegrees = moonLightDegreesResolved,
         sunElevationDegrees = moonSunElevationDegreesResolved,
@@ -1334,7 +1388,6 @@ internal fun renderMoonFromMarkerArgb(
         moonCenterX = moonOrbit.x,
         moonCenterY = moonOrbit.yCam,
         moonCenterZ = moonOrbit.zCam,
-        earthRadius = earthRadiusPx,
         moonRadius = moonRadiusWorldPx,
         sunAzimuthDegrees = moonLightDegreesResolved,
         sunElevationDegrees = moonSunElevationDegreesResolved,
@@ -1780,7 +1833,6 @@ private fun drawMarkerOnSphere(
  * @param moonCenterX Moon X position.
  * @param moonCenterY Moon Y position.
  * @param moonCenterZ Moon Z position.
- * @param earthRadius Earth radius.
  * @param moonRadius Moon radius.
  * @param sunAzimuthDegrees Sun azimuth.
  * @param sunElevationDegrees Sun elevation.
@@ -1790,7 +1842,6 @@ private fun moonSunVisibility(
     moonCenterX: Float,
     moonCenterY: Float,
     moonCenterZ: Float,
-    earthRadius: Float,
     moonRadius: Float,
     sunAzimuthDegrees: Float,
     sunElevationDegrees: Float,
@@ -1805,12 +1856,17 @@ private fun moonSunVisibility(
 
     // Distance from Moon to Earth-Sun axis
     val r2 = moonCenterX * moonCenterX + moonCenterY * moonCenterY + moonCenterZ * moonCenterZ
+    val moonDistance = sqrt(r2)
     val d2 = (r2 - proj * proj).coerceAtLeast(0f)
     val d = sqrt(d2)
 
+    // Scale Earth's shadow using realistic umbra/penumbra size at lunar distance
+    val umbraRadius = moonDistance * EARTH_UMBRA_DISTANCE_RATIO
+    val penumbraRadius = moonDistance * EARTH_PENUMBRA_DISTANCE_RATIO
+    val softPenumbra = (penumbraRadius + moonRadius * 0.12f).coerceAtLeast(umbraRadius)
+
     // Smooth transition through penumbra
-    val penumbra = earthRadius + moonRadius * 0.9f
-    return smoothStep(earthRadius, penumbra, d)
+    return smoothStep(umbraRadius, softPenumbra, d)
 }
 
 // ============================================================================

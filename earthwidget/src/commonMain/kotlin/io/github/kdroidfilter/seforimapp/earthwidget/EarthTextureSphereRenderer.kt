@@ -11,16 +11,267 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-private const val DEG_TO_RAD = 0.017453292f
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+private const val DEG_TO_RAD = 0.017453292519943295  // PI / 180 with full Double precision
+private const val DEG_TO_RAD_F = 0.017453292f
 private const val MOON_TO_EARTH_DIAMETER_RATIO = 0.2724f
 private const val STARFIELD_SEED = 0x6D2B79F5
 private const val CAMERA_DISTANCE_FACTOR = 1.6f
+private const val MOON_ORBIT_INCLINATION_DEG = 5.145f
+
+// J2000.0 epoch constants for Moon ephemeris (Meeus algorithm)
+private const val MOON_MEAN_LONGITUDE_J2000 = 218.3164477
+private const val MOON_MEAN_LONGITUDE_RATE = 481267.88123421
+private const val MOON_MEAN_ANOMALY_J2000 = 134.9633964
+private const val MOON_MEAN_ANOMALY_RATE = 477198.8675055
+private const val MOON_MEAN_ELONGATION_J2000 = 297.8501921
+private const val MOON_MEAN_ELONGATION_RATE = 445267.1114034
+private const val SUN_MEAN_ANOMALY_J2000 = 357.5291092
+private const val SUN_MEAN_ANOMALY_RATE = 35999.0502909
+private const val MOON_ARG_LATITUDE_J2000 = 93.2720950
+private const val MOON_ARG_LATITUDE_RATE = 483202.0175233
+
+// Sun ephemeris constants
+private const val SUN_MEAN_LONGITUDE_J2000 = 280.4665
+private const val SUN_MEAN_LONGITUDE_RATE = 36000.7698
+
+/**
+ * Normalize angle to [0, 360) range.
+ */
+private fun normalizeAngleDeg(degrees: Double): Double {
+    val result = degrees % 360.0
+    return if (result < 0) result + 360.0 else result
+}
 
 internal data class EarthTexture(
     val argb: IntArray,
     val width: Int,
     val height: Int,
 )
+
+data class LightDirection(
+    val lightDegrees: Float,
+    val sunElevationDegrees: Float,
+)
+
+private data class EclipticPosition(val longitude: Float, val latitude: Float)
+
+/**
+ * Computes Moon's ecliptic position using Meeus algorithm with Double precision.
+ * Uses named constants for J2000.0 epoch values.
+ */
+private fun computeMoonEclipticPosition(julianDay: Double): EclipticPosition {
+    val T = (julianDay - 2451545.0) / 36525.0
+
+    // Mean elements using named constants (Double precision)
+    val Lp = normalizeAngleDeg(MOON_MEAN_LONGITUDE_J2000 + MOON_MEAN_LONGITUDE_RATE * T)
+    val Mp = normalizeAngleDeg(MOON_MEAN_ANOMALY_J2000 + MOON_MEAN_ANOMALY_RATE * T)
+    val D = normalizeAngleDeg(MOON_MEAN_ELONGATION_J2000 + MOON_MEAN_ELONGATION_RATE * T)
+    val Ms = normalizeAngleDeg(SUN_MEAN_ANOMALY_J2000 + SUN_MEAN_ANOMALY_RATE * T)
+    val F = normalizeAngleDeg(MOON_ARG_LATITUDE_J2000 + MOON_ARG_LATITUDE_RATE * T)
+
+    val MpRad = Mp * DEG_TO_RAD
+    val DRad = D * DEG_TO_RAD
+    val MsRad = Ms * DEG_TO_RAD
+    val FRad = F * DEG_TO_RAD
+
+    // Principal longitude correction terms (degrees)
+    val dL = 6.289 * sin(MpRad) +
+             1.274 * sin(2.0 * DRad - MpRad) +
+             0.658 * sin(2.0 * DRad) +
+             0.214 * sin(2.0 * MpRad) -
+             0.186 * sin(MsRad) -
+             0.114 * sin(2.0 * FRad)
+
+    // Principal latitude correction terms (degrees)
+    val dB = 5.128 * sin(FRad) +
+             0.281 * sin(MpRad + FRad) +
+             0.278 * sin(MpRad - FRad)
+
+    return EclipticPosition(
+        longitude = normalizeAngleDeg(Lp + dL).toFloat(),
+        latitude = dB.toFloat()
+    )
+}
+
+/**
+ * Computes Sun's ecliptic longitude using simplified algorithm with Double precision.
+ */
+private fun computeSunEclipticLongitude(julianDay: Double): Float {
+    val T = (julianDay - 2451545.0) / 36525.0
+    val L0 = normalizeAngleDeg(SUN_MEAN_LONGITUDE_J2000 + SUN_MEAN_LONGITUDE_RATE * T)
+    val M = normalizeAngleDeg(SUN_MEAN_ANOMALY_J2000 + SUN_MEAN_ANOMALY_RATE * T)
+    val Mrad = M * DEG_TO_RAD
+    val C = 1.9146 * sin(Mrad) + 0.02 * sin(2.0 * Mrad)
+    return normalizeAngleDeg(L0 + C).toFloat()
+}
+
+// Compute geometric moon illumination from ephemeris
+internal fun computeGeometricMoonIllumination(
+    julianDay: Double,
+    viewDirX: Float,
+    viewDirY: Float,
+    viewDirZ: Float,
+): LightDirection {
+    val moonPos = computeMoonEclipticPosition(julianDay)
+    val sunLong = computeSunEclipticLongitude(julianDay)
+
+    // Sun-Moon angle in ecliptic plane (sun direction FROM moon)
+    val sunMoonAngle = (sunLong - moonPos.longitude) * DEG_TO_RAD_F
+    val sunLat = -moonPos.latitude * DEG_TO_RAD_F
+
+    val cosLat = cos(sunLat)
+    val sunDirX = sin(sunMoonAngle) * cosLat
+    val sunDirY = sin(sunLat)
+    val sunDirZ = cos(sunMoonAngle) * cosLat
+
+    // Transform to view-aligned coordinate frame
+    val viewDir = Vec3f(viewDirX, viewDirY, viewDirZ).normalized()
+    val worldUp = Vec3f(0f, 1f, 0f)
+    var right = cross(worldUp, viewDir)
+    if (right.length() < 1e-6f) {
+        right = Vec3f(1f, 0f, 0f)
+    }
+    right = right.normalized()
+    val up = cross(viewDir, right).normalized()
+
+    val sunDir = Vec3f(sunDirX, sunDirY, sunDirZ).normalized()
+    val lightX = dot(sunDir, right)
+    val lightY = dot(sunDir, up)
+    val lightZ = dot(sunDir, viewDir)
+
+    return LightDirection(
+        lightDegrees = Math.toDegrees(atan2(lightX.toDouble(), lightZ.toDouble())).toFloat(),
+        sunElevationDegrees = Math.toDegrees(asin(lightY.toDouble().coerceIn(-1.0, 1.0))).toFloat()
+    )
+}
+
+private data class Vec3f(val x: Float, val y: Float, val z: Float) {
+    fun length(): Float = sqrt(x * x + y * y + z * z)
+    fun normalized(): Vec3f {
+        val len = length()
+        if (len <= 1e-6f) return this
+        val inv = 1f / len
+        return Vec3f(x * inv, y * inv, z * inv)
+    }
+}
+
+private fun cross(a: Vec3f, b: Vec3f): Vec3f {
+    return Vec3f(
+        x = a.y * b.z - a.z * b.y,
+        y = a.z * b.x - a.x * b.z,
+        z = a.x * b.y - a.y * b.x,
+    )
+}
+
+private fun dot(a: Vec3f, b: Vec3f): Float {
+    return a.x * b.x + a.y * b.y + a.z * b.z
+}
+
+private fun computeMoonLightFromPhase(
+    phaseAngleDegrees: Float,
+    viewDirX: Float,
+    viewDirY: Float,
+    viewDirZ: Float,
+    sunReferenceX: Float,
+    sunReferenceY: Float,
+    sunReferenceZ: Float,
+): LightDirection {
+    val viewDir = Vec3f(viewDirX, viewDirY, viewDirZ).normalized()
+    val normalizedPhase = ((phaseAngleDegrees % 360f) + 360f) % 360f
+    val thetaDegrees = abs(180f - normalizedPhase)
+
+    val sunReference = Vec3f(sunReferenceX, sunReferenceY, sunReferenceZ)
+    val referenceDir = if (sunReference.length() > 1e-6f) {
+        sunReference.normalized()
+    } else {
+        Vec3f(0f, 1f, 0f)
+    }
+    val dotRef = dot(referenceDir, viewDir)
+    var basis = Vec3f(
+        referenceDir.x - viewDir.x * dotRef,
+        referenceDir.y - viewDir.y * dotRef,
+        referenceDir.z - viewDir.z * dotRef,
+    )
+    if (basis.length() <= 1e-6f) {
+        val axisBase = cross(viewDir, Vec3f(0f, 1f, 0f))
+        basis = if (axisBase.length() <= 1e-6f) {
+            cross(viewDir, Vec3f(1f, 0f, 0f))
+        } else {
+            axisBase
+        }
+        if (basis.length() <= 1e-6f) {
+            basis = cross(viewDir, Vec3f(0f, 0f, 1f))
+        }
+    }
+    val u = basis.normalized()
+    val thetaRad = Math.toRadians(thetaDegrees.toDouble())
+    val cosT = cos(thetaRad).toFloat()
+    val sinT = sin(thetaRad).toFloat()
+    val sunDir = Vec3f(
+        viewDir.x * cosT + u.x * sinT,
+        viewDir.y * cosT + u.y * sinT,
+        viewDir.z * cosT + u.z * sinT,
+    ).normalized()
+
+    val lightDegrees = Math.toDegrees(atan2(sunDir.x.toDouble(), sunDir.z.toDouble())).toFloat()
+    val sunElevationDegrees = Math.toDegrees(asin(sunDir.y.toDouble().coerceIn(-1.0, 1.0))).toFloat()
+    return LightDirection(lightDegrees = lightDegrees, sunElevationDegrees = sunElevationDegrees)
+}
+
+/**
+ * Result of moon orbit position transformation.
+ */
+private data class MoonOrbitPosition(
+    val x: Float,      // X position in camera space
+    val yCam: Float,   // Y position in camera space
+    val zCam: Float    // Z position (depth) in camera space
+)
+
+/**
+ * Transforms moon orbit position from orbital plane to camera space.
+ * Applies orbital inclination and view pitch transformations.
+ * Note: pitchRad and yawRad are always 0 in current usage, so simplified.
+ */
+private fun transformMoonOrbitPosition(
+    moonOrbitDegrees: Float,
+    orbitRadius: Float,
+    viewPitchRad: Float
+): MoonOrbitPosition {
+    val orbitInclinationRad = MOON_ORBIT_INCLINATION_DEG * DEG_TO_RAD_F
+    val cosInc = cos(orbitInclinationRad)
+    val sinInc = sin(orbitInclinationRad)
+    val cosView = cos(viewPitchRad)
+    val sinView = sin(viewPitchRad)
+
+    val angle = moonOrbitDegrees * DEG_TO_RAD_F
+    val x0 = cos(angle) * orbitRadius
+    val z0 = sin(angle) * orbitRadius
+
+    // Apply orbital inclination (rotation around X axis)
+    val yInc = -z0 * sinInc
+    val zInc = z0 * cosInc
+
+    // Apply view pitch (rotation to tilt orbit towards viewer)
+    val yCam = yInc * cosView - zInc * sinView
+    val zCam = yInc * sinView + zInc * cosView
+
+    return MoonOrbitPosition(x = x0, yCam = yCam, zCam = zCam)
+}
+
+private fun sunVectorFromAngles(lightDegrees: Float, sunElevationDegrees: Float): Vec3f {
+    val az = lightDegrees * DEG_TO_RAD_F
+    val el = sunElevationDegrees * DEG_TO_RAD_F
+    val cosEl = cos(el)
+    return Vec3f(
+        x = (sin(az) * cosEl),
+        y = sin(el),
+        z = (cos(az) * cosEl),
+    )
+}
 
 internal fun renderTexturedSphereArgb(
     texture: EarthTexture,
@@ -36,15 +287,19 @@ internal fun renderTexturedSphereArgb(
     viewDirX: Float = 0f,
     viewDirY: Float = 0f,
     viewDirZ: Float = 1f,
+    upHintX: Float = 0f,
+    upHintY: Float = 0f,
+    upHintZ: Float = 0f,
     sunVisibility: Float = 1f,
     atmosphereStrength: Float = 0.22f,
+    shadowAlphaStrength: Float = 0f,
 ): IntArray {
     val output = IntArray(outputSizePx * outputSizePx)
 
-    val rotationRad = rotationDegrees * DEG_TO_RAD
-    val tiltRad = tiltDegrees * DEG_TO_RAD
-    val sunAzimuthRad = lightDegrees * DEG_TO_RAD
-    val sunElevationRad = sunElevationDegrees * DEG_TO_RAD
+    val rotationRad = rotationDegrees * DEG_TO_RAD_F
+    val tiltRad = tiltDegrees * DEG_TO_RAD_F
+    val sunAzimuthRad = lightDegrees * DEG_TO_RAD_F
+    val sunElevationRad = sunElevationDegrees * DEG_TO_RAD_F
     val cosSunElevation = cos(sunElevationRad)
     val sunX = sin(sunAzimuthRad) * cosSunElevation
     val sunY = sin(sunElevationRad)
@@ -68,9 +323,22 @@ internal fun renderTexturedSphereArgb(
         forwardZ = 1f
     }
 
-    var rightX = forwardZ
-    var rightY = 0f
-    var rightZ = -forwardX
+    var rightX: Float
+    var rightY: Float
+    var rightZ: Float
+    val upHintLen = sqrt(upHintX * upHintX + upHintY * upHintY + upHintZ * upHintZ)
+    if (upHintLen > 1e-6f) {
+        val upHX = upHintX / upHintLen
+        val upHY = upHintY / upHintLen
+        val upHZ = upHintZ / upHintLen
+        rightX = upHY * forwardZ - upHZ * forwardY
+        rightY = upHZ * forwardX - upHX * forwardZ
+        rightZ = upHX * forwardY - upHY * forwardX
+    } else {
+        rightX = forwardZ
+        rightY = 0f
+        rightZ = -forwardX
+    }
     var rightLen = sqrt(rightX * rightX + rightY * rightY + rightZ * rightZ)
     if (rightLen < 1e-6f) {
         rightX = 0f
@@ -185,7 +453,13 @@ internal fun renderTexturedSphereArgb(
 
             val dist = sqrt(rr)
             val alpha = ((1f - dist) / edgeFeather).coerceIn(0f, 1f)
-            val outA = (a * alpha).toInt().coerceIn(0, 255)
+            val shadowAlpha = if (shadowAlphaStrength <= 0f) {
+                1f
+            } else {
+                val strength = shadowAlphaStrength.coerceIn(0f, 1f)
+                (1f - strength) + strength * shadowMask
+            }
+            val outA = (a * alpha * shadowAlpha).toInt().coerceIn(0, 255)
 
             output[y * outputSizePx + x] = (outA shl 24) or (sr shl 16) or (sg shl 8) or sb
         }
@@ -213,6 +487,10 @@ internal fun renderEarthWithMoonArgb(
     moonRotationDegrees: Float = 0f,
     showBackgroundStars: Boolean = true,
     showOrbitPath: Boolean = true,
+    moonLightDegrees: Float = lightDegrees,
+    moonSunElevationDegrees: Float = sunElevationDegrees,
+    moonPhaseAngleDegrees: Float? = null,
+    julianDay: Double? = null,
 ): IntArray {
     val out = IntArray(outputSizePx * outputSizePx)
     if (earthTexture == null) return out
@@ -240,37 +518,19 @@ internal fun renderEarthWithMoonArgb(
     } else {
         0f
     }
-    val orbitInclinationRad = 5.145f * DEG_TO_RAD
-    // Earth's spin (earthRotationDegrees) should not rotate the Moon's orbit; keep orbit in an inertial frame.
-    val yawRad = 0f
-    // Earth's axial tilt should not change the Moon's orbit plane.
-    val pitchRad = 0f
 
+    // Transform moon position using extracted helper
+    val moonOrbit = transformMoonOrbitPosition(moonOrbitDegrees, orbitRadius, viewPitchRad)
+    val x2 = moonOrbit.x
+    val yCam = moonOrbit.yCam
+    val zCam = moonOrbit.zCam
+
+    // Pre-compute orbit transform parameters for drawOrbitPath
+    val orbitInclinationRad = MOON_ORBIT_INCLINATION_DEG * DEG_TO_RAD_F
     val cosInc = cos(orbitInclinationRad)
     val sinInc = sin(orbitInclinationRad)
-    val cosPitchOrbit = cos(pitchRad)
-    val sinPitchOrbit = sin(pitchRad)
-    val cosYawOrbit = cos(yawRad)
-    val sinYawOrbit = sin(yawRad)
     val cosView = cos(viewPitchRad)
     val sinView = sin(viewPitchRad)
-
-    val angle = moonOrbitDegrees * DEG_TO_RAD
-    val x0 = cos(angle) * orbitRadius
-    val y0 = 0f
-    val z0 = sin(angle) * orbitRadius
-
-    val yInc = y0 * cosInc - z0 * sinInc
-    val zInc = y0 * sinInc + z0 * cosInc
-
-    val y1 = yInc * cosPitchOrbit - zInc * sinPitchOrbit
-    val z1 = yInc * sinPitchOrbit + zInc * cosPitchOrbit
-
-    val x2 = x0 * cosYawOrbit + z1 * sinYawOrbit
-    val z2 = -x0 * sinYawOrbit + z1 * cosYawOrbit
-
-    val yCam = y1 * cosView - z2 * sinView
-    val zCam = y1 * sinView + z2 * cosView
 
     val moonScale = perspectiveScale(cameraZ, zCam)
     val moonSizePx = (moonBaseSizePx * moonScale).roundToInt().coerceAtLeast(8)
@@ -312,10 +572,6 @@ internal fun renderEarthWithMoonArgb(
             orbitRadius = orbitRadius,
             cosInc = cosInc,
             sinInc = sinInc,
-            cosPitch = cosPitchOrbit,
-            sinPitch = sinPitchOrbit,
-            cosYaw = cosYawOrbit,
-            sinYaw = sinYawOrbit,
             cosView = cosView,
             sinView = sinView,
             moonCenterX = moonCenterX,
@@ -327,33 +583,59 @@ internal fun renderEarthWithMoonArgb(
 
     if (moonTexture == null) return out
 
+    val moonViewDirX = -x2
+    val moonViewDirY = -yCam
+    val moonViewDirZ = cameraZ - zCam
+
+    // Use geometric ephemeris when julianDay is provided, otherwise fall back to phase angle
+    val moonLighting = when {
+        julianDay != null -> computeGeometricMoonIllumination(
+            julianDay = julianDay,
+            viewDirX = moonViewDirX,
+            viewDirY = moonViewDirY,
+            viewDirZ = moonViewDirZ,
+        )
+        moonPhaseAngleDegrees != null -> {
+            val sunReference = sunVectorFromAngles(lightDegrees, sunElevationDegrees)
+            computeMoonLightFromPhase(
+                phaseAngleDegrees = moonPhaseAngleDegrees,
+                viewDirX = moonViewDirX,
+                viewDirY = moonViewDirY,
+                viewDirZ = moonViewDirZ,
+                sunReferenceX = sunReference.x,
+                sunReferenceY = sunReference.y,
+                sunReferenceZ = sunReference.z,
+            )
+        }
+        else -> null
+    }
+    val moonLightDegreesResolved = moonLighting?.lightDegrees ?: moonLightDegrees
+    val moonSunElevationDegreesResolved = moonLighting?.sunElevationDegrees ?: moonSunElevationDegrees
+
     val sunVisibility = moonSunVisibility(
         moonCenterX = x2,
         moonCenterY = yCam,
         moonCenterZ = zCam,
         earthRadius = earthRadiusPx,
         moonRadius = moonRadiusWorldPx,
-        sunAzimuthDegrees = lightDegrees,
-        sunElevationDegrees = sunElevationDegrees,
+        sunAzimuthDegrees = moonLightDegreesResolved,
+        sunElevationDegrees = moonSunElevationDegreesResolved,
     )
-
-    val moonViewDirX = -x2
-    val moonViewDirY = -yCam
-    val moonViewDirZ = cameraZ - zCam
     val moon = renderTexturedSphereArgb(
         texture = moonTexture,
         outputSizePx = moonSizePx,
         rotationDegrees = moonRotationDegrees,
-        lightDegrees = lightDegrees,
+        lightDegrees = moonLightDegreesResolved,
         tiltDegrees = 0f,
         ambient = 0.04f,
         diffuseStrength = 0.96f,
-        sunElevationDegrees = sunElevationDegrees,
+        sunElevationDegrees = moonSunElevationDegreesResolved,
         viewDirX = moonViewDirX,
         viewDirY = moonViewDirY,
         viewDirZ = moonViewDirZ,
         sunVisibility = sunVisibility,
         atmosphereStrength = 0f,
+        shadowAlphaStrength = 1f,
     )
 
     val x0Moon = moonLeft.coerceAtLeast(0)
@@ -421,6 +703,143 @@ internal fun renderEarthWithMoonArgb(
     return out
 }
 
+internal fun renderMoonFromMarkerArgb(
+    moonTexture: EarthTexture?,
+    outputSizePx: Int,
+    lightDegrees: Float,
+    sunElevationDegrees: Float,
+    earthRotationDegrees: Float,
+    earthTiltDegrees: Float,
+    moonOrbitDegrees: Float,
+    markerLatitudeDegrees: Float,
+    markerLongitudeDegrees: Float,
+    moonRotationDegrees: Float = 0f,
+    showBackgroundStars: Boolean = true,
+    moonLightDegrees: Float = lightDegrees,
+    moonSunElevationDegrees: Float = sunElevationDegrees,
+    moonPhaseAngleDegrees: Float? = null,
+    julianDay: Double? = null,
+): IntArray {
+    val out = IntArray(outputSizePx * outputSizePx)
+    out.fill(0xFF000000.toInt())
+    if (showBackgroundStars) {
+        drawStarfield(dst = out, dstW = outputSizePx, dstH = outputSizePx, seed = STARFIELD_SEED)
+    }
+    if (moonTexture == null) return out
+
+    val sceneHalf = outputSizePx / 2f
+    val earthSizePx = (outputSizePx * 0.40f).roundToInt().coerceAtLeast(8)
+    val earthRadiusPx = (earthSizePx - 1) / 2f
+
+    val moonBaseSizePx = (earthSizePx * MOON_TO_EARTH_DIAMETER_RATIO).roundToInt().coerceAtLeast(8)
+    val moonRadiusWorldPx = (moonBaseSizePx - 1) / 2f
+    val edgeMarginPx = max(6f, outputSizePx * 0.02f)
+    val orbitRadius = (sceneHalf - moonRadiusWorldPx - edgeMarginPx).coerceAtLeast(0f)
+    val desiredSeparation = earthRadiusPx + moonRadiusWorldPx + 1.5f
+    val viewPitchRad = if (orbitRadius > 1e-6f) {
+        asin((desiredSeparation / orbitRadius).coerceIn(0f, 0.999f))
+    } else {
+        0f
+    }
+
+    // Transform moon position using extracted helper
+    val moonOrbit = transformMoonOrbitPosition(moonOrbitDegrees, orbitRadius, viewPitchRad)
+    val moonX = moonOrbit.x
+    val moonY = moonOrbit.yCam
+    val moonZ = moonOrbit.zCam
+
+    val latRad = markerLatitudeDegrees.coerceIn(-90f, 90f) * DEG_TO_RAD_F
+    val lonRad = markerLongitudeDegrees.coerceIn(-180f, 180f) * DEG_TO_RAD_F
+    val cosLat = cos(latRad)
+
+    val texX = sin(lonRad) * cosLat
+    val texY = sin(latRad)
+    val texZ = cos(lonRad) * cosLat
+
+    val earthYawRad = earthRotationDegrees * DEG_TO_RAD_F
+    val cosYaw = cos(earthYawRad)
+    val sinYaw = sin(earthYawRad)
+    val xRot = texX * cosYaw - texZ * sinYaw
+    val zRot = texX * sinYaw + texZ * cosYaw
+
+    val tiltRad = earthTiltDegrees * DEG_TO_RAD_F
+    val cosTilt = cos(tiltRad)
+    val sinTilt = sin(tiltRad)
+    val obsX = (xRot * cosTilt + texY * sinTilt) * earthRadiusPx
+    val obsY = (-xRot * sinTilt + texY * cosTilt) * earthRadiusPx
+    val obsZ = zRot * earthRadiusPx
+
+    val viewDirX = obsX - moonX
+    val viewDirY = obsY - moonY
+    val viewDirZ = obsZ - moonZ
+    val upLen = sqrt(obsX * obsX + obsY * obsY + obsZ * obsZ)
+    val upHintX = if (upLen > 1e-6f) obsX / upLen else 0f
+    val upHintY = if (upLen > 1e-6f) obsY / upLen else 1f
+    val upHintZ = if (upLen > 1e-6f) obsZ / upLen else 0f
+
+    // Use geometric ephemeris when julianDay is provided, otherwise fall back to phase angle
+    val moonLighting = when {
+        julianDay != null -> computeGeometricMoonIllumination(
+            julianDay = julianDay,
+            viewDirX = viewDirX,
+            viewDirY = viewDirY,
+            viewDirZ = viewDirZ,
+        )
+        moonPhaseAngleDegrees != null -> {
+            val sunReference = sunVectorFromAngles(lightDegrees, sunElevationDegrees)
+            computeMoonLightFromPhase(
+                phaseAngleDegrees = moonPhaseAngleDegrees,
+                viewDirX = viewDirX,
+                viewDirY = viewDirY,
+                viewDirZ = viewDirZ,
+                sunReferenceX = sunReference.x,
+                sunReferenceY = sunReference.y,
+                sunReferenceZ = sunReference.z,
+            )
+        }
+        else -> null
+    }
+    val moonLightDegreesResolved = moonLighting?.lightDegrees ?: moonLightDegrees
+    val moonSunElevationDegreesResolved = moonLighting?.sunElevationDegrees ?: moonSunElevationDegrees
+
+    val sunVisibility = moonSunVisibility(
+        moonCenterX = moonX,
+        moonCenterY = moonY,
+        moonCenterZ = moonZ,
+        earthRadius = earthRadiusPx,
+        moonRadius = moonRadiusWorldPx,
+        sunAzimuthDegrees = moonLightDegreesResolved,
+        sunElevationDegrees = moonSunElevationDegreesResolved,
+    )
+
+    val moon = renderTexturedSphereArgb(
+        texture = moonTexture,
+        outputSizePx = outputSizePx,
+        rotationDegrees = moonRotationDegrees,
+        lightDegrees = moonLightDegreesResolved,
+        tiltDegrees = 0f,
+        ambient = 0.04f,
+        diffuseStrength = 0.96f,
+        sunElevationDegrees = moonSunElevationDegreesResolved,
+        viewDirX = viewDirX,
+        viewDirY = viewDirY,
+        viewDirZ = viewDirZ,
+        upHintX = upHintX,
+        upHintY = upHintY,
+        upHintZ = upHintZ,
+        sunVisibility = sunVisibility,
+        atmosphereStrength = 0f,
+        shadowAlphaStrength = 1f,
+    )
+
+    blitOver(dst = out, dstW = outputSizePx, src = moon, srcW = outputSizePx, left = 0, top = 0)
+    return out
+}
+
+/**
+ * Draws the moon orbit path with perspective projection.
+ * Simplified: pitchRad and yawRad are always 0, so intermediate transforms removed.
+ */
 private fun drawOrbitPath(
     dst: IntArray,
     dstW: Int,
@@ -430,10 +849,6 @@ private fun drawOrbitPath(
     orbitRadius: Float,
     cosInc: Float,
     sinInc: Float,
-    cosPitch: Float,
-    sinPitch: Float,
-    cosYaw: Float,
-    sinYaw: Float,
     cosView: Float,
     sinView: Float,
     moonCenterX: Float,
@@ -458,20 +873,16 @@ private fun drawOrbitPath(
         val x0 = cos(t) * orbitRadius
         val z0 = sin(t) * orbitRadius
 
+        // Apply orbital inclination only (pitch and yaw are always 0)
         val yInc = -z0 * sinInc
         val zInc = z0 * cosInc
 
-        val y1 = yInc * cosPitch - zInc * sinPitch
-        val z1 = yInc * sinPitch + zInc * cosPitch
-
-        val x2 = x0 * cosYaw + z1 * sinYaw
-        val z2 = -x0 * sinYaw + z1 * cosYaw
-
-        val yCam = y1 * cosView - z2 * sinView
-        val zCam = y1 * sinView + z2 * cosView
+        // Apply view pitch
+        val yCam = yInc * cosView - zInc * sinView
+        val zCam = yInc * sinView + zInc * cosView
 
         val orbitScale = perspectiveScale(cameraZ, zCam)
-        val sx = (center + x2 * orbitScale).roundToInt()
+        val sx = (center + x0 * orbitScale).roundToInt()
         val sy = (center - yCam * orbitScale).roundToInt()
 
         if (prevX != Int.MIN_VALUE) {
@@ -763,6 +1174,10 @@ private fun powInt(base: Float, exponent: Int): Float {
     return result
 }
 
+/**
+ * Computes visibility of sun from moon position (for eclipse shadows).
+ * Uses sunVectorFromAngles to avoid duplicate angle-to-vector conversion.
+ */
 private fun moonSunVisibility(
     moonCenterX: Float,
     moonCenterY: Float,
@@ -772,14 +1187,9 @@ private fun moonSunVisibility(
     sunAzimuthDegrees: Float,
     sunElevationDegrees: Float,
 ): Float {
-    val az = sunAzimuthDegrees * DEG_TO_RAD
-    val el = sunElevationDegrees * DEG_TO_RAD
-    val cosEl = cos(el)
-    val sunX = sin(az) * cosEl
-    val sunY = sin(el)
-    val sunZ = cos(az) * cosEl
+    val sunDir = sunVectorFromAngles(sunAzimuthDegrees, sunElevationDegrees)
 
-    val proj = moonCenterX * sunX + moonCenterY * sunY + moonCenterZ * sunZ
+    val proj = moonCenterX * sunDir.x + moonCenterY * sunDir.y + moonCenterZ * sunDir.z
     if (proj > 0f) return 1f
 
     val r2 = moonCenterX * moonCenterX + moonCenterY * moonCenterY + moonCenterZ * moonCenterZ
@@ -804,8 +1214,8 @@ private fun drawMarkerOnSphere(
     rotationDegrees: Float,
     tiltDegrees: Float,
 ) {
-    val latRad = markerLatitudeDegrees.coerceIn(-90f, 90f) * DEG_TO_RAD
-    val lonRad = markerLongitudeDegrees.coerceIn(-180f, 180f) * DEG_TO_RAD
+    val latRad = markerLatitudeDegrees.coerceIn(-90f, 90f) * DEG_TO_RAD_F
+    val lonRad = markerLongitudeDegrees.coerceIn(-180f, 180f) * DEG_TO_RAD_F
     val cosLat = cos(latRad)
 
     val texX = sin(lonRad) * cosLat

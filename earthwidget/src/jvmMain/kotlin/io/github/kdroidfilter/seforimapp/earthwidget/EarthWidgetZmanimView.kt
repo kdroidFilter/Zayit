@@ -1,0 +1,516 @@
+package io.github.kdroidfilter.seforimapp.earthwidget
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.Checkbox
+import androidx.compose.material.Slider
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.kosherjava.zmanim.AstronomicalCalendar
+import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
+import com.kosherjava.zmanim.hebrewcalendar.JewishDate
+import com.kosherjava.zmanim.util.GeoLocation
+import com.kosherjava.zmanim.util.NOAACalculator
+import org.jetbrains.compose.resources.stringResource
+import seforimapp.earthwidget.generated.resources.Res
+import seforimapp.earthwidget.generated.resources.earthwidget_date_offset_label
+import seforimapp.earthwidget.generated.resources.earthwidget_datetime_label
+import seforimapp.earthwidget.generated.resources.earthwidget_marker_latitude_label
+import seforimapp.earthwidget.generated.resources.earthwidget_marker_longitude_label
+import seforimapp.earthwidget.generated.resources.earthwidget_show_background_label
+import seforimapp.earthwidget.generated.resources.earthwidget_show_orbit_label
+import seforimapp.earthwidget.generated.resources.earthwidget_time_hour_label
+import seforimapp.earthwidget.generated.resources.earthwidget_time_minute_label
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.TimeZone
+import kotlin.math.PI
+import kotlin.math.asin
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.math.sqrt
+import kotlin.math.floor
+
+private const val DEFAULT_MARKER_LAT = 31.7683
+private const val DEFAULT_MARKER_LON = 35.2137
+private const val DEFAULT_MARKER_ELEVATION = 800.0
+private const val DEFAULT_EARTH_TILT_DEGREES = 23.44f
+private const val LUNAR_CYCLE_MILLIS = 29.0 * 86_400_000.0 + 12.0 * 3_600_000.0 + 793.0 * 10_000.0 / 3.0
+
+private data class ZmanimModel(
+    val lightDegrees: Float,
+    val sunElevationDegrees: Float,
+    val moonOrbitDegrees: Float,
+    val moonPhaseAngleDegrees: Float,
+    val julianDay: Double,
+)
+
+private data class Vec3(val x: Double, val y: Double, val z: Double) {
+    fun normalized(): Vec3 {
+        val len = sqrt(x * x + y * y + z * z)
+        if (len <= 1e-9) return this
+        val inv = 1.0 / len
+        return Vec3(x * inv, y * inv, z * inv)
+    }
+}
+
+private data class SunDirection(
+    val lightDegrees: Float,
+    val elevationDegrees: Float,
+)
+
+@Composable
+fun EarthWidgetZmanimView(
+    modifier: Modifier = Modifier,
+    sphereSize: Dp = 500.dp,
+    renderSizePx: Int = 600,
+) {
+    var markerLatitudeDegrees by remember { mutableFloatStateOf(DEFAULT_MARKER_LAT.toFloat()) }
+    var markerLongitudeDegrees by remember { mutableFloatStateOf(DEFAULT_MARKER_LON.toFloat()) }
+    var showBackground by remember { mutableStateOf(true) }
+    var showOrbitPath by remember { mutableStateOf(true) }
+
+    val timeZone = remember(markerLatitudeDegrees, markerLongitudeDegrees) {
+        timeZoneForLocation(
+            latitude = markerLatitudeDegrees.toDouble(),
+            longitude = markerLongitudeDegrees.toDouble(),
+        )
+    }
+    val baseNow = remember(timeZone) { Date() }
+    val nowCalendar = remember(timeZone, baseNow) {
+        Calendar.getInstance(timeZone).apply { time = baseNow }
+    }
+
+    var dayOffset by remember { mutableFloatStateOf(0f) }
+    var hourOfDay by remember(timeZone, nowCalendar) {
+        mutableFloatStateOf(nowCalendar.get(Calendar.HOUR_OF_DAY).toFloat())
+    }
+    var minuteOfHour by remember(timeZone, nowCalendar) {
+        mutableFloatStateOf(nowCalendar.get(Calendar.MINUTE).toFloat())
+    }
+
+    val referenceTime = remember(baseNow, dayOffset, hourOfDay, minuteOfHour, timeZone) {
+        Calendar.getInstance(timeZone).apply {
+            time = baseNow
+            add(Calendar.DAY_OF_YEAR, dayOffset.roundToInt())
+            set(Calendar.HOUR_OF_DAY, hourOfDay.roundToInt().coerceIn(0, 23))
+            set(Calendar.MINUTE, minuteOfHour.roundToInt().coerceIn(0, 59))
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.time
+    }
+
+    val model = remember(
+        referenceTime,
+        markerLatitudeDegrees,
+        markerLongitudeDegrees,
+        timeZone,
+    ) {
+        computeZmanimModel(
+            referenceTime = referenceTime,
+            latitude = markerLatitudeDegrees.toDouble(),
+            longitude = markerLongitudeDegrees.toDouble(),
+            elevation = DEFAULT_MARKER_ELEVATION,
+            timeZone = timeZone,
+            earthRotationDegrees = 0f,
+            earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
+        )
+    }
+
+    val formatter = remember(timeZone) {
+        SimpleDateFormat("yyyy-MM-dd HH:mm").apply { this.timeZone = timeZone }
+    }
+    val formattedTime = remember(referenceTime, formatter) { formatter.format(referenceTime) }
+
+    LazyColumn(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        item {
+            EarthWidgetScene(
+                sphereSize = sphereSize,
+                renderSizePx = renderSizePx,
+                earthRotationDegrees = 0f,
+                lightDegrees = model.lightDegrees,
+                sunElevationDegrees = model.sunElevationDegrees,
+                earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
+                moonOrbitDegrees = model.moonOrbitDegrees,
+                markerLatitudeDegrees = markerLatitudeDegrees,
+                markerLongitudeDegrees = markerLongitudeDegrees,
+                showBackgroundStars = showBackground,
+                showOrbitPath = showOrbitPath,
+                moonPhaseAngleDegrees = model.moonPhaseAngleDegrees,
+                julianDay = model.julianDay,
+            )
+        }
+
+        item {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(text = stringResource(Res.string.earthwidget_datetime_label))
+                Text(text = formattedTime)
+            }
+        }
+
+        item {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(text = stringResource(Res.string.earthwidget_date_offset_label))
+                    Text(text = dayOffset.roundToInt().toString())
+                }
+                Slider(
+                    value = dayOffset,
+                    onValueChange = { dayOffset = it },
+                    valueRange = -30f..30f,
+                )
+            }
+        }
+
+        item {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(text = stringResource(Res.string.earthwidget_time_hour_label))
+                    Text(text = hourOfDay.roundToInt().toString())
+                }
+                Slider(
+                    value = hourOfDay,
+                    onValueChange = { hourOfDay = it },
+                    valueRange = 0f..23f,
+                )
+            }
+        }
+
+        item {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(text = stringResource(Res.string.earthwidget_time_minute_label))
+                    Text(text = minuteOfHour.roundToInt().toString())
+                }
+                Slider(
+                    value = minuteOfHour,
+                    onValueChange = { minuteOfHour = it },
+                    valueRange = 0f..59f,
+                )
+            }
+        }
+
+        item {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(text = stringResource(Res.string.earthwidget_marker_latitude_label))
+                    Text(text = markerLatitudeDegrees.roundToInt().toString())
+                }
+                Slider(
+                    value = markerLatitudeDegrees,
+                    onValueChange = { markerLatitudeDegrees = it },
+                    valueRange = -90f..90f,
+                )
+            }
+        }
+
+        item {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(text = stringResource(Res.string.earthwidget_marker_longitude_label))
+                    Text(text = markerLongitudeDegrees.roundToInt().toString())
+                }
+                Slider(
+                    value = markerLongitudeDegrees,
+                    onValueChange = { markerLongitudeDegrees = it },
+                    valueRange = -180f..180f,
+                )
+            }
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Checkbox(checked = showBackground, onCheckedChange = { showBackground = it })
+                Text(text = stringResource(Res.string.earthwidget_show_background_label))
+            }
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Checkbox(checked = showOrbitPath, onCheckedChange = { showOrbitPath = it })
+                Text(text = stringResource(Res.string.earthwidget_show_orbit_label))
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+    }
+}
+
+private fun computeZmanimModel(
+    referenceTime: Date,
+    latitude: Double,
+    longitude: Double,
+    elevation: Double,
+    timeZone: TimeZone,
+    earthRotationDegrees: Float,
+    earthTiltDegrees: Float,
+): ZmanimModel {
+    val location = GeoLocation("Marker", latitude, longitude, elevation, timeZone)
+    val astronomicalCalendar = AstronomicalCalendar(location)
+    val baseCalendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
+    astronomicalCalendar.calendar = baseCalendar
+
+    val sunrise = astronomicalCalendar.sunrise
+    val sunset = astronomicalCalendar.sunset
+    val solarNoon = astronomicalCalendar.sunTransit
+
+    // NOAA returns azimuth with North = 0 (adds +180 internally)
+    val solarAzimuthNorth = NOAACalculator.getSolarAzimuth(baseCalendar, latitude, longitude)
+    val localSunElevationDegrees = computeSunElevationDegrees(
+        referenceTime = referenceTime,
+        sunrise = sunrise,
+        sunset = sunset,
+        solarNoon = solarNoon,
+        latitude = latitude,
+        longitude = longitude,
+        timeZone = timeZone,
+    )
+    val sunDirection = computeSunDirectionWorld(
+        latitude = latitude,
+        longitude = longitude,
+        azimuthDegrees = solarAzimuthNorth,
+        elevationDegrees = localSunElevationDegrees,
+        earthRotationDegrees = earthRotationDegrees,
+        earthTiltDegrees = earthTiltDegrees,
+    )
+
+    val julianDay = computeJulianDay(referenceTime)
+    val phaseAngle = computeHalakhicPhaseAngle(referenceTime, timeZone)
+    val moonOrbitDegrees = normalizeOrbitDegrees(phaseAngle + 90f)
+
+    return ZmanimModel(
+        lightDegrees = sunDirection.lightDegrees,
+        sunElevationDegrees = sunDirection.elevationDegrees,
+        moonOrbitDegrees = moonOrbitDegrees,
+        moonPhaseAngleDegrees = phaseAngle,
+        julianDay = julianDay,
+    )
+}
+
+private fun computeSunElevationDegrees(
+    referenceTime: Date,
+    sunrise: Date?,
+    sunset: Date?,
+    solarNoon: Date?,
+    latitude: Double,
+    longitude: Double,
+    timeZone: TimeZone,
+): Float {
+    val referenceCalendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
+    val fallback = NOAACalculator.getSolarElevation(referenceCalendar, latitude, longitude).toFloat()
+
+    if (sunrise == null || sunset == null) {
+        return fallback.coerceIn(-90f, 90f)
+    }
+    val sunriseMillis = sunrise.time
+    val sunsetMillis = sunset.time
+    if (sunriseMillis >= sunsetMillis) {
+        return fallback.coerceIn(-90f, 90f)
+    }
+
+    val dayProgress = (referenceTime.time - sunriseMillis).toDouble() /
+        (sunsetMillis - sunriseMillis).toDouble()
+    if (dayProgress in 0.0..1.0) {
+        val noonElevation = if (solarNoon != null) {
+            val noonCalendar = Calendar.getInstance(timeZone).apply { time = solarNoon }
+            NOAACalculator.getSolarElevation(noonCalendar, latitude, longitude)
+        } else {
+            fallback.toDouble()
+        }
+        val elevation = sin(PI * dayProgress) * noonElevation
+        return elevation.toFloat().coerceIn(-90f, 90f)
+    }
+
+    return fallback.coerceIn(-90f, 90f)
+}
+
+private fun computeSunDirectionWorld(
+    latitude: Double,
+    longitude: Double,
+    azimuthDegrees: Double,
+    elevationDegrees: Float,
+    earthRotationDegrees: Float,
+    earthTiltDegrees: Float,
+): SunDirection {
+    val latRad = Math.toRadians(latitude)
+    val lonRad = Math.toRadians(longitude)
+    val azRad = Math.toRadians(azimuthDegrees)
+    val elRad = Math.toRadians(elevationDegrees.toDouble())
+
+    val sinLat = sin(latRad)
+    val cosLat = cos(latRad)
+    val sinLon = sin(lonRad)
+    val cosLon = cos(lonRad)
+
+    val eastX = cosLon
+    val eastY = 0.0
+    val eastZ = -sinLon
+
+    val northX = -sinLat * sinLon
+    val northY = cosLat
+    val northZ = -sinLat * cosLon
+
+    val upX = cosLat * sinLon
+    val upY = sinLat
+    val upZ = cosLat * cosLon
+
+    val sinAz = sin(azRad)
+    val cosAz = cos(azRad)
+    val cosEl = cos(elRad)
+    val sinEl = sin(elRad)
+
+    val dirX = (eastX * sinAz + northX * cosAz) * cosEl + upX * sinEl
+    val dirY = (eastY * sinAz + northY * cosAz) * cosEl + upY * sinEl
+    val dirZ = (eastZ * sinAz + northZ * cosAz) * cosEl + upZ * sinEl
+
+    val earthDir = Vec3(dirX, dirY, dirZ).normalized()
+    val worldDir = earthToWorld(earthDir, earthRotationDegrees, earthTiltDegrees).normalized()
+
+    val lightDegrees = Math.toDegrees(atan2(worldDir.x, worldDir.z)).toFloat()
+    val elevation = Math.toDegrees(asin(worldDir.y.coerceIn(-1.0, 1.0))).toFloat()
+    return SunDirection(lightDegrees = lightDegrees, elevationDegrees = elevation)
+}
+
+private fun earthToWorld(
+    earthDir: Vec3,
+    earthRotationDegrees: Float,
+    earthTiltDegrees: Float,
+): Vec3 {
+    val yawRad = Math.toRadians(-earthRotationDegrees.toDouble())
+    val cosYaw = cos(yawRad)
+    val sinYaw = sin(yawRad)
+    val x1 = earthDir.x * cosYaw + earthDir.z * sinYaw
+    val z1 = -earthDir.x * sinYaw + earthDir.z * cosYaw
+    val y1 = earthDir.y
+
+    val tiltRad = Math.toRadians(-earthTiltDegrees.toDouble())
+    val cosTilt = cos(tiltRad)
+    val sinTilt = sin(tiltRad)
+    val x2 = x1 * cosTilt - y1 * sinTilt
+    val y2 = x1 * sinTilt + y1 * cosTilt
+    return Vec3(x2, y2, z1)
+}
+
+private fun computeJulianDay(date: Date): Double {
+    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { time = date }
+    var year = cal.get(Calendar.YEAR)
+    var month = cal.get(Calendar.MONTH) + 1
+    val day = cal.get(Calendar.DAY_OF_MONTH)
+    val hour = cal.get(Calendar.HOUR_OF_DAY)
+    val minute = cal.get(Calendar.MINUTE)
+    val second = cal.get(Calendar.SECOND)
+
+    if (month <= 2) {
+        year -= 1
+        month += 12
+    }
+
+    val A = year / 100
+    val B = 2 - A + A / 4
+    val dayFraction = (hour + minute / 60.0 + second / 3600.0) / 24.0
+
+    return floor(365.25 * (year + 4716)) + floor(30.6001 * (month + 1)) + day + dayFraction + B - 1524.5
+}
+
+private fun computeHalakhicPhaseAngle(referenceTime: Date, timeZone: TimeZone): Float {
+    val jewishCalendar = JewishCalendar()
+    val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
+    jewishCalendar.setDate(calendar)
+
+    var molad = jewishCalendar.moladAsDate
+
+    // If current month's molad is in the future, use previous month's molad
+    if (molad.time > referenceTime.time) {
+        goToPreviousHebrewMonth(jewishCalendar)
+        molad = jewishCalendar.moladAsDate
+    }
+
+    val ageMillis = referenceTime.time - molad.time
+    return ((ageMillis.toDouble() / LUNAR_CYCLE_MILLIS) * 360.0).toFloat() % 360f
+}
+
+private fun goToPreviousHebrewMonth(jewishCalendar: JewishCalendar) {
+    val currentMonth = jewishCalendar.jewishMonth
+    val currentYear = jewishCalendar.jewishYear
+
+    when (currentMonth) {
+        JewishDate.TISHREI -> {
+            jewishCalendar.jewishYear = currentYear - 1
+            jewishCalendar.jewishMonth = JewishDate.ELUL
+        }
+        JewishDate.NISSAN -> {
+            // Check if current year is leap year for ADAR vs ADAR_II
+            val prevMonth = if (jewishCalendar.isJewishLeapYear) {
+                JewishDate.ADAR_II
+            } else {
+                JewishDate.ADAR
+            }
+            jewishCalendar.jewishMonth = prevMonth
+        }
+        else -> jewishCalendar.jewishMonth = currentMonth - 1
+    }
+    jewishCalendar.jewishDayOfMonth = 1
+}
+
+private fun normalizeOrbitDegrees(angleDegrees: Float): Float {
+    val normalized = ((angleDegrees % 360f) + 360f) % 360f
+    return normalized
+}
+
+private fun timeZoneForLocation(latitude: Double, longitude: Double): TimeZone {
+    if (latitude in 29.0..34.8 && longitude in 34.0..36.6) {
+        return TimeZone.getTimeZone("Asia/Jerusalem")
+    }
+    val offsetHours = (longitude / 15.0).roundToInt().coerceIn(-12, 14)
+    val zoneId = if (offsetHours >= 0) "GMT+$offsetHours" else "GMT$offsetHours"
+    return TimeZone.getTimeZone(zoneId)
+}
+

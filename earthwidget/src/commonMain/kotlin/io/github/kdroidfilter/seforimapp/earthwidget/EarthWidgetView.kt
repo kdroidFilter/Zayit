@@ -31,6 +31,7 @@ import seforimapp.earthwidget.generated.resources.moonmap2k
 import seforimapp.earthwidget.generated.resources.earthwidget_light_label
 import seforimapp.earthwidget.generated.resources.earthwidget_marker_latitude_label
 import seforimapp.earthwidget.generated.resources.earthwidget_marker_longitude_label
+import seforimapp.earthwidget.generated.resources.earthwidget_moon_from_marker_label
 import seforimapp.earthwidget.generated.resources.earthwidget_moon_orbit_label
 import seforimapp.earthwidget.generated.resources.earthwidget_rotation_label
 import seforimapp.earthwidget.generated.resources.earthwidget_show_background_label
@@ -46,14 +47,17 @@ fun EarthWidgetView(
     renderSizePx: Int = 600,
     initialMarkerLatitudeDegrees: Float = 31.7683f,
     initialMarkerLongitudeDegrees: Float = 35.2137f,
+    initialRotationDegrees: Float = 0f,
+    initialLightDegrees: Float = 30f,
+    initialSunElevationDegrees: Float = 12f,
+    initialTiltDegrees: Float = 23.44f,
+    initialMoonOrbitDegrees: Float = 0f,
 ) {
-    val texture = rememberEarthTexture()
-    val moonTexture = rememberMoonTexture()
-    var rotationDegrees by remember { mutableFloatStateOf(0f) }
-    var lightDegrees by remember { mutableFloatStateOf(30f) }
-    var sunElevationDegrees by remember { mutableFloatStateOf(12f) }
-    var tiltDegrees by remember { mutableFloatStateOf(23.44f) }
-    var moonOrbitDegrees by remember { mutableFloatStateOf(0f) }
+    var rotationDegrees by remember { mutableFloatStateOf(initialRotationDegrees) }
+    var lightDegrees by remember { mutableFloatStateOf(initialLightDegrees) }
+    var sunElevationDegrees by remember { mutableFloatStateOf(initialSunElevationDegrees) }
+    var tiltDegrees by remember { mutableFloatStateOf(initialTiltDegrees) }
+    var moonOrbitDegrees by remember { mutableFloatStateOf(initialMoonOrbitDegrees) }
     var markerLatitudeDegrees by remember { mutableFloatStateOf(initialMarkerLatitudeDegrees.coerceIn(-90f, 90f)) }
     var markerLongitudeDegrees by remember { mutableFloatStateOf(initialMarkerLongitudeDegrees.coerceIn(-180f, 180f)) }
     var showBackground by remember { mutableStateOf(true) }
@@ -65,9 +69,8 @@ fun EarthWidgetView(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         item {
-            val sphere = rememberEarthMoonImage(
-                earthTexture = texture,
-                moonTexture = moonTexture,
+            EarthWidgetScene(
+                sphereSize = sphereSize,
                 renderSizePx = renderSizePx,
                 earthRotationDegrees = rotationDegrees,
                 lightDegrees = lightDegrees,
@@ -79,13 +82,6 @@ fun EarthWidgetView(
                 showBackgroundStars = showBackground,
                 showOrbitPath = showOrbitPath,
             )
-
-            Image(
-                bitmap = sphere,
-                contentDescription = null,
-                modifier = Modifier.size(sphereSize),
-            )
-
         }
         item {
             Row(
@@ -245,6 +241,124 @@ fun EarthWidgetView(
 }
 
 @Composable
+fun EarthWidgetScene(
+    modifier: Modifier = Modifier,
+    sphereSize: Dp = 500.dp,
+    renderSizePx: Int = 600,
+    earthRotationDegrees: Float,
+    lightDegrees: Float,
+    sunElevationDegrees: Float,
+    earthTiltDegrees: Float,
+    moonOrbitDegrees: Float,
+    markerLatitudeDegrees: Float,
+    markerLongitudeDegrees: Float,
+    showBackgroundStars: Boolean,
+    showOrbitPath: Boolean,
+    showMoonFromMarker: Boolean = true,
+    moonLightDegrees: Float = lightDegrees,
+    moonSunElevationDegrees: Float = sunElevationDegrees,
+    moonPhaseAngleDegrees: Float? = null,
+    julianDay: Double? = null,
+) {
+    val texture = rememberEarthTexture()
+    val moonTexture = rememberMoonTexture()
+    val moonViewSize = sphereSize * 0.45f
+    val moonRenderSizePx = (renderSizePx * 0.5f).roundToInt().coerceAtLeast(120)
+    val sphere = rememberEarthMoonImage(
+        earthTexture = texture,
+        moonTexture = moonTexture,
+        renderSizePx = renderSizePx,
+        earthRotationDegrees = earthRotationDegrees,
+        lightDegrees = lightDegrees,
+        sunElevationDegrees = sunElevationDegrees,
+        earthTiltDegrees = earthTiltDegrees,
+        moonOrbitDegrees = moonOrbitDegrees,
+        markerLatitudeDegrees = markerLatitudeDegrees,
+        markerLongitudeDegrees = markerLongitudeDegrees,
+        showBackgroundStars = showBackgroundStars,
+        showOrbitPath = showOrbitPath,
+        moonLightDegrees = moonLightDegrees,
+        moonSunElevationDegrees = moonSunElevationDegrees,
+        moonPhaseAngleDegrees = moonPhaseAngleDegrees,
+        julianDay = julianDay,
+    )
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Image(
+            bitmap = sphere,
+            contentDescription = null,
+            modifier = Modifier.size(sphereSize),
+        )
+        if (showMoonFromMarker) {
+            Text(text = stringResource(Res.string.earthwidget_moon_from_marker_label))
+            MoonFromMarkerWidgetView(
+                sphereSize = moonViewSize,
+                renderSizePx = moonRenderSizePx,
+                earthRotationDegrees = earthRotationDegrees,
+                lightDegrees = lightDegrees,
+                sunElevationDegrees = sunElevationDegrees,
+                earthTiltDegrees = earthTiltDegrees,
+                moonOrbitDegrees = moonOrbitDegrees,
+                markerLatitudeDegrees = markerLatitudeDegrees,
+                markerLongitudeDegrees = markerLongitudeDegrees,
+                showBackgroundStars = showBackgroundStars,
+                moonLightDegrees = moonLightDegrees,
+                moonSunElevationDegrees = moonSunElevationDegrees,
+                moonPhaseAngleDegrees = moonPhaseAngleDegrees,
+                julianDay = julianDay,
+            )
+        }
+    }
+}
+
+@Composable
+fun MoonFromMarkerWidgetView(
+    modifier: Modifier = Modifier,
+    sphereSize: Dp = 220.dp,
+    renderSizePx: Int = 320,
+    earthRotationDegrees: Float,
+    lightDegrees: Float,
+    sunElevationDegrees: Float,
+    earthTiltDegrees: Float,
+    moonOrbitDegrees: Float,
+    markerLatitudeDegrees: Float,
+    markerLongitudeDegrees: Float,
+    showBackgroundStars: Boolean = true,
+    moonLightDegrees: Float = lightDegrees,
+    moonSunElevationDegrees: Float = sunElevationDegrees,
+    moonPhaseAngleDegrees: Float? = null,
+    julianDay: Double? = null,
+) {
+    val texture = rememberMoonTexture()
+    val moon = rememberMoonFromMarkerImage(
+        moonTexture = texture,
+        renderSizePx = renderSizePx,
+        earthRotationDegrees = earthRotationDegrees,
+        lightDegrees = lightDegrees,
+        sunElevationDegrees = sunElevationDegrees,
+        earthTiltDegrees = earthTiltDegrees,
+        moonOrbitDegrees = moonOrbitDegrees,
+        markerLatitudeDegrees = markerLatitudeDegrees,
+        markerLongitudeDegrees = markerLongitudeDegrees,
+        showBackgroundStars = showBackgroundStars,
+        moonLightDegrees = moonLightDegrees,
+        moonSunElevationDegrees = moonSunElevationDegrees,
+        moonPhaseAngleDegrees = moonPhaseAngleDegrees,
+        julianDay = julianDay,
+    )
+
+    Image(
+        bitmap = moon,
+        contentDescription = null,
+        modifier = modifier.size(sphereSize),
+    )
+}
+
+@Composable
 private fun rememberEarthTexture(): EarthTexture? {
     val image = imageResource(Res.drawable.earthmap1k)
     return remember(image) { earthTextureFromImageBitmap(image) }
@@ -254,6 +368,58 @@ private fun rememberEarthTexture(): EarthTexture? {
 private fun rememberMoonTexture(): EarthTexture? {
     val image = imageResource(Res.drawable.moonmap2k)
     return remember(image) { earthTextureFromImageBitmap(image) }
+}
+
+@Composable
+private fun rememberMoonFromMarkerImage(
+    moonTexture: EarthTexture?,
+    renderSizePx: Int,
+    earthRotationDegrees: Float,
+    lightDegrees: Float,
+    sunElevationDegrees: Float,
+    earthTiltDegrees: Float,
+    moonOrbitDegrees: Float,
+    markerLatitudeDegrees: Float,
+    markerLongitudeDegrees: Float,
+    showBackgroundStars: Boolean,
+    moonLightDegrees: Float,
+    moonSunElevationDegrees: Float,
+    moonPhaseAngleDegrees: Float?,
+    julianDay: Double?,
+): ImageBitmap {
+    return remember(
+        moonTexture,
+        renderSizePx,
+        earthRotationDegrees,
+        lightDegrees,
+        sunElevationDegrees,
+        earthTiltDegrees,
+        moonOrbitDegrees,
+        markerLatitudeDegrees,
+        markerLongitudeDegrees,
+        showBackgroundStars,
+        moonLightDegrees,
+        moonSunElevationDegrees,
+        moonPhaseAngleDegrees,
+        julianDay,
+    ) {
+        val argb = renderMoonFromMarkerArgb(
+            moonTexture = moonTexture,
+            outputSizePx = renderSizePx,
+            lightDegrees = lightDegrees,
+            sunElevationDegrees = sunElevationDegrees,
+            earthRotationDegrees = earthRotationDegrees,
+            earthTiltDegrees = earthTiltDegrees,
+            moonOrbitDegrees = moonOrbitDegrees,
+            markerLatitudeDegrees = markerLatitudeDegrees,
+            markerLongitudeDegrees = markerLongitudeDegrees,
+            showBackgroundStars = showBackgroundStars,
+            moonLightDegrees = moonLightDegrees,
+            moonSunElevationDegrees = moonSunElevationDegrees,
+            moonPhaseAngleDegrees = moonPhaseAngleDegrees,
+        )
+        imageBitmapFromArgb(argb, renderSizePx, renderSizePx)
+    }
 }
 
 @Composable
@@ -270,6 +436,10 @@ private fun rememberEarthMoonImage(
     markerLongitudeDegrees: Float,
     showBackgroundStars: Boolean,
     showOrbitPath: Boolean,
+    moonLightDegrees: Float,
+    moonSunElevationDegrees: Float,
+    moonPhaseAngleDegrees: Float?,
+    julianDay: Double?,
 ): ImageBitmap {
     return remember(
         earthTexture,
@@ -284,6 +454,10 @@ private fun rememberEarthMoonImage(
         markerLongitudeDegrees,
         showBackgroundStars,
         showOrbitPath,
+        moonLightDegrees,
+        moonSunElevationDegrees,
+        moonPhaseAngleDegrees,
+        julianDay,
     ) {
         val argb = renderEarthWithMoonArgb(
             earthTexture = earthTexture,
@@ -298,6 +472,10 @@ private fun rememberEarthMoonImage(
             markerLongitudeDegrees = markerLongitudeDegrees,
             showBackgroundStars = showBackgroundStars,
             showOrbitPath = showOrbitPath,
+            moonLightDegrees = moonLightDegrees,
+            moonSunElevationDegrees = moonSunElevationDegrees,
+            moonPhaseAngleDegrees = moonPhaseAngleDegrees,
+            julianDay = julianDay,
         )
         imageBitmapFromArgb(argb, renderSizePx, renderSizePx)
     }

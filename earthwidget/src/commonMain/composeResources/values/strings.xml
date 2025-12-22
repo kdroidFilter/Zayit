@@ -4,6 +4,11 @@
     <string name="earthwidget_sun_elevation_label">גובה השמש</string>
     <string name="earthwidget_tilt_label">הטיית ציר Y</string>
     <string name="earthwidget_moon_orbit_label">מסלול הירח</string>
+    <string name="earthwidget_moon_from_marker_label">תצוגת הירח מהסמן</string>
+    <string name="earthwidget_datetime_label">תאריך ושעה</string>
+    <string name="earthwidget_date_offset_label">הסטת ימים</string>
+    <string name="earthwidget_time_hour_label">שעה</string>
+    <string name="earthwidget_time_minute_label">דקה</string>
     <string name="earthwidget_marker_latitude_label">קו רוחב</string>
     <string name="earthwidget_marker_longitude_label">קו אורך</string>
     <string name="earthwidget_show_background_label">הצגת רקע</string>

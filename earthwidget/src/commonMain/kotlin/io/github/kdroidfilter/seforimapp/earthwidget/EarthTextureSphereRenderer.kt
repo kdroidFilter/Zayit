@@ -656,23 +656,43 @@ private fun computeMoonLightFromPhaseWithObserverUp(
     val thetaDegrees = 180f - normalizedPhase
     val thetaRad = Math.toRadians(thetaDegrees.toDouble())
 
-    // Orient the crescent using the real sun direction when available, otherwise fall back
-    val planeUp = projectOntoViewPlane(viewDir, sunHint)
-        ?: projectOntoViewPlane(viewDir, observerUp)
+    // Use observer's up direction as the stable reference for crescent orientation.
+    // This ensures the crescent orientation remains stable relative to the observer's horizon
+    // even when switching between sunrise and sunset (when sun azimuth changes by ~180°).
+    val baseUp = projectOntoViewPlane(viewDir, observerUp)
         ?: projectOntoViewPlane(viewDir, Vec3f.WORLD_UP)
         ?: run {
             val fallbackRight = if (abs(viewDir.x) < 0.9f) Vec3f(1f, 0f, 0f) else Vec3f(0f, 0f, 1f)
             cross(viewDir, fallbackRight).normalized()
         }
 
+    // Calculate the right vector in the view plane (perpendicular to both viewDir and baseUp)
+    val planeRight = cross(viewDir, baseUp).normalized()
+
+    // Determine which side of the view plane the sun is on.
+    // This ensures the crescent points toward the sun without flipping the orientation.
+    val rotationSign = if (sunHint != null) {
+        val sunProjected = projectOntoViewPlane(viewDir, sunHint)
+        if (sunProjected != null) {
+            // Check if sun is on the positive or negative side of baseUp in the view plane
+            val sunOnRight = dot(sunProjected, planeRight)
+            if (sunOnRight >= 0f) 1f else -1f
+        } else {
+            1f
+        }
+    } else {
+        1f
+    }
+
     // Sun direction: rotate view direction toward the projected sun direction by the phase angle
+    // The rotation sign ensures the crescent points toward the actual sun position
     val cosT = cos(thetaRad).toFloat()
-    val sinT = sin(thetaRad).toFloat()
+    val sinT = sin(thetaRad).toFloat() * rotationSign
 
     val sunDir = Vec3f(
-        viewDir.x * cosT + planeUp.x * sinT,
-        viewDir.y * cosT + planeUp.y * sinT,
-        viewDir.z * cosT + planeUp.z * sinT,
+        viewDir.x * cosT + planeRight.x * sinT,
+        viewDir.y * cosT + planeRight.y * sinT,
+        viewDir.z * cosT + planeRight.z * sinT,
     ).normalized()
 
     return LightDirection(

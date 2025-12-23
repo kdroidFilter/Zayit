@@ -656,43 +656,50 @@ private fun computeMoonLightFromPhaseWithObserverUp(
     val thetaDegrees = 180f - normalizedPhase
     val thetaRad = Math.toRadians(thetaDegrees.toDouble())
 
-    // Use observer's up direction as the stable reference for crescent orientation.
-    // This ensures the crescent orientation remains stable relative to the observer's horizon
-    // even when switching between sunrise and sunset (when sun azimuth changes by ~180°).
-    val baseUp = projectOntoViewPlane(viewDir, observerUp)
+    // Build a stable reference frame in the view plane based on observer's zenith.
+    // This provides consistent "up" and "right" directions relative to the observer's horizon.
+    val stableUp = projectOntoViewPlane(viewDir, observerUp)
         ?: projectOntoViewPlane(viewDir, Vec3f.WORLD_UP)
         ?: run {
             val fallbackRight = if (abs(viewDir.x) < 0.9f) Vec3f(1f, 0f, 0f) else Vec3f(0f, 0f, 1f)
             cross(viewDir, fallbackRight).normalized()
         }
+    val stableRight = cross(viewDir, stableUp).normalized()
 
-    // Calculate the right vector in the view plane (perpendicular to both viewDir and baseUp)
-    val planeRight = cross(viewDir, baseUp).normalized()
-
-    // Determine which side of the view plane the sun is on.
-    // This ensures the crescent points toward the sun without flipping the orientation.
-    val rotationSign = if (sunHint != null) {
+    // Determine the crescent orientation angle in the view plane.
+    // The crescent should point toward the sun, so we use the sun's projected position
+    // to determine the angle, but express it relative to the stable reference frame.
+    val crescentAngle: Float = if (sunHint != null) {
         val sunProjected = projectOntoViewPlane(viewDir, sunHint)
         if (sunProjected != null) {
-            // Check if sun is on the positive or negative side of baseUp in the view plane
-            val sunOnRight = dot(sunProjected, planeRight)
-            if (sunOnRight >= 0f) 1f else -1f
+            // Decompose the sun's position into the stable reference frame
+            val sunUp = dot(sunProjected, stableUp)
+            val sunRight = dot(sunProjected, stableRight)
+            // Angle from "up" toward "right" (counter-clockwise in the view plane)
+            atan2(sunRight, sunUp)
         } else {
-            1f
+            0f
         }
     } else {
-        1f
+        0f
     }
 
-    // Sun direction: rotate view direction toward the projected sun direction by the phase angle
-    // The rotation sign ensures the crescent points toward the actual sun position
+    // Build the rotation axis in the view plane based on the crescent angle.
+    // This axis points toward the sun in the view plane.
+    val planeUp = Vec3f(
+        stableUp.x * cos(crescentAngle) + stableRight.x * sin(crescentAngle),
+        stableUp.y * cos(crescentAngle) + stableRight.y * sin(crescentAngle),
+        stableUp.z * cos(crescentAngle) + stableRight.z * sin(crescentAngle),
+    ).normalized()
+
+    // Sun direction: rotate view direction toward planeUp by the phase angle
     val cosT = cos(thetaRad).toFloat()
-    val sinT = sin(thetaRad).toFloat() * rotationSign
+    val sinT = sin(thetaRad).toFloat()
 
     val sunDir = Vec3f(
-        viewDir.x * cosT + planeRight.x * sinT,
-        viewDir.y * cosT + planeRight.y * sinT,
-        viewDir.z * cosT + planeRight.z * sinT,
+        viewDir.x * cosT + planeUp.x * sinT,
+        viewDir.y * cosT + planeUp.y * sinT,
+        viewDir.z * cosT + planeUp.z * sinT,
     ).normalized()
 
     return LightDirection(

@@ -66,6 +66,9 @@ import seforimapp.earthwidget.generated.resources.earthwidget_city_jerusalem
 import seforimapp.earthwidget.generated.resources.earthwidget_city_london
 import seforimapp.earthwidget.generated.resources.earthwidget_city_los_angeles
 import seforimapp.earthwidget.generated.resources.earthwidget_city_moscow
+import seforimapp.earthwidget.generated.resources.earthwidget_city_sydney
+import seforimapp.earthwidget.generated.resources.earthwidget_city_singapore
+import seforimapp.earthwidget.generated.resources.earthwidget_city_buenos_aires
 import seforimapp.earthwidget.generated.resources.earthwidget_city_new_york
 import seforimapp.earthwidget.generated.resources.earthwidget_city_paris
 import seforimapp.earthwidget.generated.resources.earthwidget_datetime_label
@@ -246,6 +249,28 @@ fun EarthWidgetZmanimView(
                 elevationMeters = 156.0,
                 timeZoneId = "Europe/Moscow",
             ),
+            // Southern hemisphere and equator locations for testing moon crescent orientation
+            KnownLocation(
+                name = Res.string.earthwidget_city_sydney,
+                latitude = -33.8688,
+                longitude = 151.2093,
+                elevationMeters = 58.0,
+                timeZoneId = "Australia/Sydney",
+            ),
+            KnownLocation(
+                name = Res.string.earthwidget_city_singapore,
+                latitude = 1.3521,
+                longitude = 103.8198,
+                elevationMeters = 15.0,
+                timeZoneId = "Asia/Singapore",
+            ),
+            KnownLocation(
+                name = Res.string.earthwidget_city_buenos_aires,
+                latitude = -34.6037,
+                longitude = -58.3816,
+                elevationMeters = 25.0,
+                timeZoneId = "America/Argentina/Buenos_Aires",
+            ),
         )
     }
 
@@ -264,11 +289,11 @@ fun EarthWidgetZmanimView(
     var earthRotationOffset by remember { mutableFloatStateOf(0f) }
     var isDraggingEarth by remember { mutableStateOf(false) }
 
-    // Date/time selection (in the computed timezone)
-    val initialCalendar = remember(timeZone) {
-        Calendar.getInstance(timeZone).apply { time = Date() }
+    // Date/time selection - initialized once with the default timezone, then preserved across location changes
+    val initialCalendar = remember {
+        Calendar.getInstance(TimeZone.getTimeZone(knownLocations.first().timeZoneId)).apply { time = Date() }
     }
-    var selectedDate by remember(timeZone) {
+    var selectedDate by remember {
         mutableStateOf(
             LocalDate.of(
                 initialCalendar.get(Calendar.YEAR),
@@ -277,10 +302,10 @@ fun EarthWidgetZmanimView(
             ),
         )
     }
-    var selectedHour by remember(timeZone) {
+    var selectedHour by remember {
         mutableStateOf(initialCalendar.get(Calendar.HOUR_OF_DAY).coerceIn(0, 23))
     }
-    var selectedMinute by remember(timeZone) {
+    var selectedMinute by remember {
         mutableStateOf(initialCalendar.get(Calendar.MINUTE).coerceIn(0, 59))
     }
     var showDateTimePicker by remember { mutableStateOf(false) }

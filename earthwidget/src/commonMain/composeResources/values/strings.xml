@@ -16,6 +16,9 @@
     <string name="earthwidget_city_london">לונדון</string>
     <string name="earthwidget_city_los_angeles">לוס אנג׳לס</string>
     <string name="earthwidget_city_moscow">מוסקבה</string>
+    <string name="earthwidget_city_sydney">סידני</string>
+    <string name="earthwidget_city_singapore">סינגפור</string>
+    <string name="earthwidget_city_buenos_aires">בואנוס איירס</string>
     <string name="earthwidget_marker_latitude_label">קו רוחב</string>
     <string name="earthwidget_marker_longitude_label">קו אורך</string>
     <string name="earthwidget_display_section">תצוגה</string>

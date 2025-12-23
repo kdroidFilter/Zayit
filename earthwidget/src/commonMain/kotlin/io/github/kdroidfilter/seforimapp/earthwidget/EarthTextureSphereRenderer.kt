@@ -482,78 +482,6 @@ private fun computeMoonLightFromPhaseInternal(
 }
 
 /**
- * Computes Moon lighting direction from phase angle.
- *
- * Alternative to ephemeris-based calculation when only the phase angle is known.
- *
- * @param phaseAngleDegrees Moon phase angle (0 = new moon, 180 = full moon).
- * @param viewDirX View direction X component.
- * @param viewDirY View direction Y component.
- * @param viewDirZ View direction Z component.
- * @param sunReferenceX Sun reference direction X.
- * @param sunReferenceY Sun reference direction Y.
- * @param sunReferenceZ Sun reference direction Z.
- * @return Light direction for Moon rendering.
- */
-private fun computeMoonLightFromPhase(
-    phaseAngleDegrees: Float,
-    viewDirX: Float,
-    viewDirY: Float,
-    viewDirZ: Float,
-    sunReferenceX: Float,
-    sunReferenceY: Float,
-    sunReferenceZ: Float,
-): LightDirection {
-    val viewDir = Vec3f(viewDirX, viewDirY, viewDirZ).normalized()
-    val normalizedPhase = ((phaseAngleDegrees % 360f) + 360f) % 360f
-    val thetaDegrees = abs(180f - normalizedPhase)
-
-    // Build orthonormal basis from sun reference
-    val sunReference = Vec3f(sunReferenceX, sunReferenceY, sunReferenceZ)
-    val referenceDir = if (sunReference.length() > EPSILON) {
-        sunReference.normalized()
-    } else {
-        Vec3f.WORLD_UP
-    }
-
-    // Project reference onto plane perpendicular to view
-    val dotRef = dot(referenceDir, viewDir)
-    var basis = Vec3f(
-        referenceDir.x - viewDir.x * dotRef,
-        referenceDir.y - viewDir.y * dotRef,
-        referenceDir.z - viewDir.z * dotRef,
-    )
-
-    if (basis.length() <= EPSILON) {
-        val axisBase = cross(viewDir, Vec3f.WORLD_UP)
-        basis = if (axisBase.length() <= EPSILON) {
-            cross(viewDir, Vec3f(1f, 0f, 0f))
-        } else {
-            axisBase
-        }
-        if (basis.length() <= EPSILON) {
-            basis = cross(viewDir, Vec3f.FORWARD)
-        }
-    }
-
-    val u = basis.normalized()
-    val thetaRad = Math.toRadians(thetaDegrees.toDouble())
-    val cosT = cos(thetaRad).toFloat()
-    val sinT = sin(thetaRad).toFloat()
-
-    val sunDir = Vec3f(
-        viewDir.x * cosT + u.x * sinT,
-        viewDir.y * cosT + u.y * sinT,
-        viewDir.z * cosT + u.z * sinT,
-    ).normalized()
-
-    return LightDirection(
-        lightDegrees = Math.toDegrees(atan2(sunDir.x.toDouble(), sunDir.z.toDouble())).toFloat(),
-        sunElevationDegrees = Math.toDegrees(asin(sunDir.y.toDouble().coerceIn(-1.0, 1.0))).toFloat()
-    )
-}
-
-/**
  * Converts azimuth and elevation angles to a direction vector.
  */
 private fun sunVectorFromAngles(lightDegrees: Float, sunElevationDegrees: Float): Vec3f {
@@ -1105,51 +1033,34 @@ internal fun renderEarthWithMoonArgb(
 
     if (moonTexture == null) return out
 
-    // Calculate Moon lighting
+    // Calculate Moon view direction (from Moon to camera)
     val moonViewDirX = -moonOrbit.x
     val moonViewDirY = -moonOrbit.yCam
     val moonViewDirZ = cameraZ - moonOrbit.zCam
 
-    val moonLighting = computeMoonLighting(
-        julianDay = julianDay,
-        moonPhaseAngleDegrees = moonPhaseAngleDegrees,
-        moonViewDirX = moonViewDirX,
-        moonViewDirY = moonViewDirY,
-        moonViewDirZ = moonViewDirZ,
-        lightDegrees = lightDegrees,
-        sunElevationDegrees = sunElevationDegrees,
-    )
-    val moonLightDegreesResolved = moonLighting?.lightDegrees ?: moonLightDegrees
-    val moonSunElevationDegreesResolved = moonLighting?.sunElevationDegrees ?: moonSunElevationDegrees
+    // In the main scene, the Moon is lit by the same sun as the Earth.
+    // This creates a consistent visualization where both bodies show
+    // realistic sun illumination (lit side vs dark side).
+    // Phase-based lighting (which can make the Moon invisible) is only
+    // used in the "Moon from marker" view.
 
-    // Calculate Moon shadow from Earth
-    val sunVisibility = moonSunVisibility(
-        moonCenterX = moonOrbit.x,
-        moonCenterY = moonOrbit.yCam,
-        moonCenterZ = moonOrbit.zCam,
-        moonRadius = moonRadiusWorldPx,
-        sunAzimuthDegrees = moonLightDegreesResolved,
-        sunElevationDegrees = moonSunElevationDegreesResolved,
-    )
-
-    // Render Moon
+    // Render Moon with same sun lighting as Earth (no phase-based shadows)
     val moon = renderTexturedSphereArgb(
         texture = moonTexture,
         outputSizePx = moonSizePx,
         rotationDegrees = moonRotationDegrees,
-        lightDegrees = moonLightDegreesResolved,
+        lightDegrees = lightDegrees, // Same sun direction as Earth
         tiltDegrees = 0f,
         ambient = MOON_AMBIENT,
         diffuseStrength = MOON_DIFFUSE_STRENGTH,
-        sunElevationDegrees = moonSunElevationDegreesResolved,
+        sunElevationDegrees = sunElevationDegrees, // Same sun elevation as Earth
         viewDirX = moonViewDirX,
         viewDirY = moonViewDirY,
         viewDirZ = moonViewDirZ,
-        sunVisibility = sunVisibility,
+        sunVisibility = 1f, // No eclipse shadow in this visualization
         atmosphereStrength = 0f,
-        shadowAlphaStrength = 1f,
+        shadowAlphaStrength = 0f, // No phase-based transparency (Moon stays visible)
     )
-    drawGhostMoonOutline(argb = moon, sizePx = moonSizePx)
 
     // Composite Moon with depth sorting
     compositeMoonWithDepth(
@@ -1175,6 +1086,10 @@ internal fun renderEarthWithMoonArgb(
 
 /**
  * Computes Moon lighting from ephemeris or phase angle.
+ *
+ * The Moon's illumination depends only on its phase angle (Sun-Earth-Moon geometry)
+ * and the viewing direction. It does NOT depend on the local sun position on Earth
+ * (time of day), as the Moon's phase is independent of the observer's local time.
  */
 private fun computeMoonLighting(
     julianDay: Double?,
@@ -1186,15 +1101,12 @@ private fun computeMoonLighting(
     sunElevationDegrees: Float,
 ): LightDirection? = when {
     moonPhaseAngleDegrees != null -> {
-        val sunReference = sunVectorFromAngles(lightDegrees, sunElevationDegrees)
-        computeMoonLightFromPhase(
+        // Use phase-only calculation - Moon illumination is independent of local sun position
+        computeMoonLightFromPhaseInternal(
             phaseAngleDegrees = moonPhaseAngleDegrees,
             viewDirX = moonViewDirX,
             viewDirY = moonViewDirY,
             viewDirZ = moonViewDirZ,
-            sunReferenceX = sunReference.x,
-            sunReferenceY = sunReference.y,
-            sunReferenceZ = sunReference.z,
         )
     }
     julianDay != null -> computeGeometricMoonIllumination(

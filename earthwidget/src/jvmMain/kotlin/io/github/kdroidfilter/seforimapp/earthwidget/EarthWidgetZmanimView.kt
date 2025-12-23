@@ -428,6 +428,8 @@ fun EarthWidgetZmanimView(
                         showMoonFromMarker = showMoonFromMarker,
                         moonPhaseAngleDegrees = model.moonPhaseAngleDegrees,
                         julianDay = model.julianDay,
+                        moonFromMarkerLightDegrees = model.lightDegrees,
+                        moonFromMarkerSunElevationDegrees = model.sunElevationDegrees,
                         animateEarthRotation = !isDraggingEarth, // Instant rotation during drag
                     )
                 }

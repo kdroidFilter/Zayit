@@ -34,4 +34,5 @@
     <string name="earthwidget_next_month">החודש הבא</string>
     <string name="earthwidget_calendar_mode_gregorian">לועזי</string>
     <string name="earthwidget_calendar_mode_hebrew">עברי</string>
+    <string name="earthwidget_recenter_button">מרכוז על הסמן</string>
 </resources>

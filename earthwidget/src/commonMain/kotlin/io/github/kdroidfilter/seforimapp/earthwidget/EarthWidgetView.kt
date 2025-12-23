@@ -117,6 +117,8 @@ fun EarthWidgetScene(
     moonPhaseAngleDegrees: Float? = null,
     julianDay: Double? = null,
     animateEarthRotation: Boolean = true,
+    moonFromMarkerLightDegrees: Float? = null,
+    moonFromMarkerSunElevationDegrees: Float? = null,
 ) {
     val smoothSpec = spring<Float>(
         dampingRatio = Spring.DampingRatioNoBouncy,
@@ -223,21 +225,23 @@ fun EarthWidgetScene(
     }
 
     val moonContent: @Composable () -> Unit = {
+        val moonLightForMarker = moonFromMarkerLightDegrees ?: animatedMoonLightDegrees
+        val moonSunElevationForMarker = moonFromMarkerSunElevationDegrees ?: animatedMoonSunElevation
         // Moon-from-marker view uses the actual marker longitude (not the visual Earth rotation)
         // This ensures the moon phase is always calculated from the marker's real position
         MoonFromMarkerWidgetView(
             sphereSize = moonViewSize,
             renderSizePx = moonRenderSizePx,
             earthRotationDegrees = animatedMarkerLon, // Use marker position, not visual rotation
-            lightDegrees = animatedLightDegrees,
-            sunElevationDegrees = animatedSunElevation,
+            lightDegrees = moonLightForMarker,
+            sunElevationDegrees = moonSunElevationForMarker,
             earthTiltDegrees = animatedTiltDegrees,
             moonOrbitDegrees = animatedMoonOrbit,
             markerLatitudeDegrees = animatedMarkerLat,
             markerLongitudeDegrees = animatedMarkerLon,
             showBackgroundStars = showBackgroundStars,
-            moonLightDegrees = animatedMoonLightDegrees,
-            moonSunElevationDegrees = animatedMoonSunElevation,
+            moonLightDegrees = moonLightForMarker,
+            moonSunElevationDegrees = moonSunElevationForMarker,
             moonPhaseAngleDegrees = animatedMoonPhaseAngle,
             julianDay = julianDay,
         )

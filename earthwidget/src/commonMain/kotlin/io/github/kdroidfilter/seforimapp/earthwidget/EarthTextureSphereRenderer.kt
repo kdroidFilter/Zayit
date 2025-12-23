@@ -10,6 +10,7 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.math.tan
 
 // ============================================================================
 // MATHEMATICAL CONSTANTS
@@ -67,6 +68,12 @@ private const val MOON_ARG_LATITUDE_J2000 = 93.2720950
 
 /** Moon argument of latitude rate (degrees per Julian century). */
 private const val MOON_ARG_LATITUDE_RATE = 483202.0175233
+
+/** Mean obliquity coefficients for equatorial conversion (arcseconds). */
+private const val MEAN_OBLIQUITY_COEFF0 = 21.448
+private const val MEAN_OBLIQUITY_COEFF1 = 46.815
+private const val MEAN_OBLIQUITY_COEFF2 = 0.00059
+private const val MEAN_OBLIQUITY_COEFF3 = 0.001813
 
 /** Sun mean longitude at J2000.0 epoch (degrees). */
 private const val SUN_MEAN_LONGITUDE_J2000 = 280.4665
@@ -240,6 +247,16 @@ private data class EclipticPosition(
     val latitude: Float,
 )
 
+private data class EquatorialPosition(
+    val rightAscensionRad: Double,
+    val declinationRad: Double,
+)
+
+private data class HorizontalPosition(
+    val azimuthFromNorthDeg: Double,
+    val elevationDeg: Double,
+)
+
 /**
  * Moon position in camera space after orbital transformations.
  *
@@ -252,6 +269,18 @@ private data class MoonOrbitPosition(
     val yCam: Float,
     val zCam: Float,
 )
+
+/**
+ * Simple 3D vector with double precision for geocentric calculations.
+ */
+private data class Vec3d(val x: Double, val y: Double, val z: Double) {
+    fun normalized(): Vec3d {
+        val len = sqrt(x * x + y * y + z * z)
+        if (len <= 1e-12) return this
+        val inv = 1.0 / len
+        return Vec3d(x * inv, y * inv, z * inv)
+    }
+}
 
 /**
  * 3D vector with float precision for graphics calculations.
@@ -293,6 +322,20 @@ private fun cross(a: Vec3f, b: Vec3f): Vec3f = Vec3f(
 
 /** Computes the dot product of two vectors. */
 private fun dot(a: Vec3f, b: Vec3f): Float = a.x * b.x + a.y * b.y + a.z * b.z
+
+/** Projects [target] onto the plane perpendicular to [viewDir] and normalizes the result. */
+private fun projectOntoViewPlane(viewDir: Vec3f, target: Vec3f?): Vec3f? {
+    if (target == null) return null
+    val projection = Vec3f(
+        target.x - viewDir.x * dot(viewDir, target),
+        target.y - viewDir.y * dot(viewDir, target),
+        target.z - viewDir.z * dot(viewDir, target),
+    )
+    val len = projection.length()
+    if (len <= EPSILON) return null
+    val inv = 1f / len
+    return Vec3f(projection.x * inv, projection.y * inv, projection.z * inv)
+}
 
 /** Small value for floating-point comparisons. */
 private const val EPSILON = 1e-6f
@@ -360,6 +403,98 @@ private fun computeMoonEclipticPosition(julianDay: Double): EclipticPosition {
     return EclipticPosition(
         longitude = normalizeAngleDeg(Lp + dL).toFloat(),
         latitude = dB.toFloat()
+    )
+}
+
+/**
+ * Mean obliquity of the ecliptic (radians).
+ */
+private fun meanObliquityRad(julianDay: Double): Double {
+    val T = (julianDay - J2000_EPOCH_JD) / DAYS_PER_JULIAN_CENTURY
+    val seconds = MEAN_OBLIQUITY_COEFF0 -
+        T * (MEAN_OBLIQUITY_COEFF1 + T * (MEAN_OBLIQUITY_COEFF2 - MEAN_OBLIQUITY_COEFF3 * T))
+    val degrees = 23.0 + (26.0 + seconds / 60.0) / 60.0
+    return degrees * DEG_TO_RAD
+}
+
+/**
+ * Moon equatorial coordinates (right ascension/declination).
+ */
+private fun computeMoonEquatorialPosition(julianDay: Double): EquatorialPosition {
+    val ecliptic = computeMoonEclipticPosition(julianDay)
+    val lonRad = ecliptic.longitude * DEG_TO_RAD
+    val latRad = ecliptic.latitude * DEG_TO_RAD
+    val obliquityRad = meanObliquityRad(julianDay)
+
+    val sinLon = sin(lonRad)
+    val cosLon = cos(lonRad)
+    val sinLat = sin(latRad)
+    val cosLat = cos(latRad)
+    val sinObliq = sin(obliquityRad)
+    val cosObliq = cos(obliquityRad)
+
+    val decRad = asin((sinLat * cosObliq + cosLat * sinObliq * sinLon).coerceIn(-1.0, 1.0))
+    val y = sinLon * cosObliq - tan(latRad) * sinObliq
+    val x = cosLon
+    var raRad = atan2(y, x)
+    if (raRad < 0) raRad += 2 * PI
+
+    return EquatorialPosition(
+        rightAscensionRad = raRad,
+        declinationRad = decRad,
+    )
+}
+
+private fun normalizeRad(angle: Double): Double {
+    val twoPi = 2 * PI
+    val mod = angle % twoPi
+    return if (mod < 0) mod + twoPi else mod
+}
+
+/**
+ * Greenwich mean sidereal time (radians).
+ */
+private fun greenwichMeanSiderealTimeRad(julianDay: Double): Double {
+    val T = (julianDay - J2000_EPOCH_JD) / DAYS_PER_JULIAN_CENTURY
+    val gmstDeg = 280.46061837 +
+        360.98564736629 * (julianDay - J2000_EPOCH_JD) +
+        T * T * (0.000387933 - T / 38710000.0)
+    return normalizeRad(gmstDeg * DEG_TO_RAD)
+}
+
+private fun localSiderealTimeRad(julianDay: Double, longitudeDeg: Double): Double {
+    return normalizeRad(greenwichMeanSiderealTimeRad(julianDay) + longitudeDeg * DEG_TO_RAD)
+}
+
+/**
+ * Computes Moon azimuth/elevation for the observer.
+ */
+private fun computeMoonHorizontalPosition(
+    julianDay: Double,
+    latitudeDeg: Double,
+    longitudeDeg: Double,
+): HorizontalPosition {
+    val eq = computeMoonEquatorialPosition(julianDay)
+    val latRad = latitudeDeg * DEG_TO_RAD
+    val lstRad = localSiderealTimeRad(julianDay, longitudeDeg)
+    val hourAngleRad = normalizeRad(lstRad - eq.rightAscensionRad)
+
+    val sinLat = sin(latRad)
+    val cosLat = cos(latRad)
+    val sinDec = sin(eq.declinationRad)
+    val cosDec = cos(eq.declinationRad)
+    val sinH = sin(hourAngleRad)
+    val cosH = cos(hourAngleRad)
+
+    val elevationRad = asin((sinDec * sinLat + cosDec * cosLat * cosH).coerceIn(-1.0, 1.0))
+    val azimuthRad = atan2(
+        -sinH,
+        tan(eq.declinationRad) * cosLat - sinLat * cosH,
+    )
+
+    return HorizontalPosition(
+        azimuthFromNorthDeg = normalizeAngleDeg(Math.toDegrees(azimuthRad)),
+        elevationDeg = Math.toDegrees(elevationRad),
     )
 }
 
@@ -462,7 +597,7 @@ private fun computeMoonLightFromPhaseInternal(
     }
     right = right.normalized()
 
-    // Sun direction: rotate from view direction by theta around the "right" axis
+    // Sun direction: rotate view direction toward the projected sun direction by the phase angle
     // This places the sun in the correct position relative to the Moon
     val cosT = cos(thetaRad).toFloat()
     val sinT = sin(thetaRad).toFloat()
@@ -473,6 +608,71 @@ private fun computeMoonLightFromPhaseInternal(
         viewDir.x * cosT + up.x * sinT,
         viewDir.y * cosT + up.y * sinT,
         viewDir.z * cosT + up.z * sinT,
+    ).normalized()
+
+    return LightDirection(
+        lightDegrees = Math.toDegrees(atan2(sunDir.x.toDouble(), sunDir.z.toDouble())).toFloat(),
+        sunElevationDegrees = Math.toDegrees(asin(sunDir.y.toDouble().coerceIn(-1.0, 1.0))).toFloat()
+    )
+}
+
+/**
+ * Computes Moon lighting using the observer's up direction as reference.
+ * This ensures the crescent orientation changes based on where the observer is on Earth.
+ *
+ * The crescent rotates smoothly based on the observer's zenith direction:
+ * - Different latitudes see the ecliptic at different angles
+ * - This affects how the crescent appears tilted in the sky
+ *
+ * @param phaseAngleDegrees Moon phase (0 = new, 180 = full).
+ * @param viewDirX View direction X (from observer to moon).
+ * @param viewDirY View direction Y.
+ * @param viewDirZ View direction Z.
+ * @param observerUpX Observer's zenith direction X.
+ * @param observerUpY Observer's zenith direction Y.
+ * @param observerUpZ Observer's zenith direction Z.
+ * @param sunDirectionHint Optional sun vector to orient the crescent tilt.
+ */
+private fun computeMoonLightFromPhaseWithObserverUp(
+    phaseAngleDegrees: Float,
+    viewDirX: Float,
+    viewDirY: Float,
+    viewDirZ: Float,
+    observerUpX: Float,
+    observerUpY: Float,
+    observerUpZ: Float,
+    sunDirectionHint: Vec3f? = null,
+): LightDirection {
+    val viewDir = Vec3f(viewDirX, viewDirY, viewDirZ).normalized()
+    val observerUp = Vec3f(observerUpX, observerUpY, observerUpZ).normalized()
+    val sunHint = sunDirectionHint?.normalized()
+
+    // Normalize phase to [0, 360)
+    val normalizedPhase = ((phaseAngleDegrees % 360f) + 360f) % 360f
+
+    // The angle between view direction and sun direction
+    // At phase 0° (new moon): sun is behind the moon (theta = 180° from view)
+    // At phase 180° (full moon): sun is in front of the moon (theta = 0° from view)
+    val thetaDegrees = 180f - normalizedPhase
+    val thetaRad = Math.toRadians(thetaDegrees.toDouble())
+
+    // Orient the crescent using the real sun direction when available, otherwise fall back
+    val planeUp = projectOntoViewPlane(viewDir, sunHint)
+        ?: projectOntoViewPlane(viewDir, observerUp)
+        ?: projectOntoViewPlane(viewDir, Vec3f.WORLD_UP)
+        ?: run {
+            val fallbackRight = if (abs(viewDir.x) < 0.9f) Vec3f(1f, 0f, 0f) else Vec3f(0f, 0f, 1f)
+            cross(viewDir, fallbackRight).normalized()
+        }
+
+    // Sun direction: rotate view direction toward the projected sun direction by the phase angle
+    val cosT = cos(thetaRad).toFloat()
+    val sinT = sin(thetaRad).toFloat()
+
+    val sunDir = Vec3f(
+        viewDir.x * cosT + planeUp.x * sinT,
+        viewDir.y * cosT + planeUp.y * sinT,
+        viewDir.z * cosT + planeUp.z * sinT,
     ).normalized()
 
     return LightDirection(
@@ -493,6 +693,68 @@ private fun sunVectorFromAngles(lightDegrees: Float, sunElevationDegrees: Float)
         y = sin(el),
         z = cos(az) * cosEl,
     )
+}
+
+/**
+ * Transforms a local horizontal vector (azimuth from North, elevation) into world coordinates.
+ */
+private fun horizontalToWorld(
+    latitudeDeg: Double,
+    longitudeDeg: Double,
+    azimuthFromNorthDeg: Double,
+    elevationDeg: Double,
+    earthRotationDegrees: Float,
+    earthTiltDegrees: Float,
+): Vec3f {
+    val latRad = latitudeDeg * DEG_TO_RAD
+    val lonRad = longitudeDeg * DEG_TO_RAD
+    val azRad = azimuthFromNorthDeg * DEG_TO_RAD
+    val elRad = elevationDeg * DEG_TO_RAD
+
+    val sinLat = sin(latRad)
+    val cosLat = cos(latRad)
+    val sinLon = sin(lonRad)
+    val cosLon = cos(lonRad)
+
+    // Local ENU basis in Earth-fixed coordinates (matching renderer axes).
+    val eastX = cosLon
+    val eastY = 0.0
+    val eastZ = -sinLon
+
+    val northX = -sinLat * sinLon
+    val northY = cosLat
+    val northZ = -sinLat * cosLon
+
+    val upX = cosLat * sinLon
+    val upY = sinLat
+    val upZ = cosLat * cosLon
+
+    val sinAz = sin(azRad)
+    val cosAz = cos(azRad)
+    val cosEl = cos(elRad)
+    val sinEl = sin(elRad)
+
+    val dirX = (eastX * sinAz + northX * cosAz) * cosEl + upX * sinEl
+    val dirY = (eastY * sinAz + northY * cosAz) * cosEl + upY * sinEl
+    val dirZ = (eastZ * sinAz + northZ * cosAz) * cosEl + upZ * sinEl
+
+    val earthDir = Vec3d(dirX, dirY, dirZ).normalized()
+
+    // Apply inverse Earth orientation used by the renderer
+    val yawRad = (-earthRotationDegrees) * DEG_TO_RAD
+    val cosYaw = cos(yawRad)
+    val sinYaw = sin(yawRad)
+    val x1 = earthDir.x * cosYaw + earthDir.z * sinYaw
+    val z1 = -earthDir.x * sinYaw + earthDir.z * cosYaw
+    val y1 = earthDir.y
+
+    val tiltRad = (-earthTiltDegrees) * DEG_TO_RAD
+    val cosTilt = cos(tiltRad)
+    val sinTilt = sin(tiltRad)
+    val x2 = x1 * cosTilt - y1 * sinTilt
+    val y2 = x1 * sinTilt + y1 * cosTilt
+
+    return Vec3f(x = x2.toFloat(), y = y2.toFloat(), z = z1.toFloat()).normalized()
 }
 
 // ============================================================================
@@ -1087,9 +1349,9 @@ internal fun renderEarthWithMoonArgb(
 /**
  * Computes Moon lighting from ephemeris or phase angle.
  *
- * The Moon's illumination depends only on its phase angle (Sun-Earth-Moon geometry)
- * and the viewing direction. It does NOT depend on the local sun position on Earth
- * (time of day), as the Moon's phase is independent of the observer's local time.
+ * The illumination fraction comes from the phase angle (or ephemeris) and the viewing direction.
+ * Callers that need the crescent oriented to the local sky should use the phase helper that
+ * accepts a sun direction hint.
  */
 private fun computeMoonLighting(
     julianDay: Double?,
@@ -1278,9 +1540,9 @@ internal fun renderMoonFromMarkerArgb(
     )
 
     // View direction from observer to Moon
-    val viewDirX = observerPosition.x - moonOrbit.x
-    val viewDirY = observerPosition.y - moonOrbit.yCam
-    val viewDirZ = observerPosition.z - moonOrbit.zCam
+    var viewDirX = observerPosition.x - moonOrbit.x
+    var viewDirY = observerPosition.y - moonOrbit.yCam
+    var viewDirZ = observerPosition.z - moonOrbit.zCam
 
     // Up hint is radial direction at observer position
     val upLen = sqrt(observerPosition.x * observerPosition.x +
@@ -1290,16 +1552,52 @@ internal fun renderMoonFromMarkerArgb(
     val upHintY = if (upLen > EPSILON) observerPosition.y / upLen else 1f
     val upHintZ = if (upLen > EPSILON) observerPosition.z / upLen else 0f
 
-    // Calculate Moon lighting
-    val moonLighting = computeMoonLighting(
-        julianDay = julianDay,
-        moonPhaseAngleDegrees = moonPhaseAngleDegrees,
-        moonViewDirX = viewDirX,
-        moonViewDirY = viewDirY,
-        moonViewDirZ = viewDirZ,
-        lightDegrees = lightDegrees,
-        sunElevationDegrees = sunElevationDegrees,
-    )
+    // Replace view direction with topocentric Moon direction when ephemeris is available
+    if (julianDay != null) {
+        val horizontal = computeMoonHorizontalPosition(
+            julianDay = julianDay,
+            latitudeDeg = markerLatitudeDegrees.toDouble(),
+            longitudeDeg = markerLongitudeDegrees.toDouble(),
+        )
+        val moonDirWorld = horizontalToWorld(
+            latitudeDeg = markerLatitudeDegrees.toDouble(),
+            longitudeDeg = markerLongitudeDegrees.toDouble(),
+            azimuthFromNorthDeg = horizontal.azimuthFromNorthDeg,
+            elevationDeg = horizontal.elevationDeg,
+            earthRotationDegrees = earthRotationDegrees,
+            earthTiltDegrees = earthTiltDegrees,
+        )
+        viewDirX = -moonDirWorld.x
+        viewDirY = -moonDirWorld.y
+        viewDirZ = -moonDirWorld.z
+    }
+
+    val sunDirectionHint = sunVectorFromAngles(moonLightDegrees, moonSunElevationDegrees)
+
+    // Calculate Moon lighting based on phase angle, observer position, and the sun direction
+    // The observer's up direction and sun hint drive the crescent orientation
+    val moonLighting = if (moonPhaseAngleDegrees != null) {
+        computeMoonLightFromPhaseWithObserverUp(
+            phaseAngleDegrees = moonPhaseAngleDegrees,
+            viewDirX = viewDirX,
+            viewDirY = viewDirY,
+            viewDirZ = viewDirZ,
+            observerUpX = upHintX,
+            observerUpY = upHintY,
+            observerUpZ = upHintZ,
+            sunDirectionHint = sunDirectionHint,
+        )
+    } else {
+        computeMoonLighting(
+            julianDay = julianDay,
+            moonPhaseAngleDegrees = null,
+            moonViewDirX = viewDirX,
+            moonViewDirY = viewDirY,
+            moonViewDirZ = viewDirZ,
+            lightDegrees = lightDegrees,
+            sunElevationDegrees = sunElevationDegrees,
+        )
+    }
     val moonLightDegreesResolved = moonLighting?.lightDegrees ?: moonLightDegrees
     val moonSunElevationDegreesResolved = moonLighting?.sunElevationDegrees ?: moonSunElevationDegrees
 

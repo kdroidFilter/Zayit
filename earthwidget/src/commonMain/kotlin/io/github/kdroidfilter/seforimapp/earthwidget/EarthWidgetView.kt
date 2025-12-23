@@ -116,20 +116,30 @@ fun EarthWidgetScene(
     moonSunElevationDegrees: Float = sunElevationDegrees,
     moonPhaseAngleDegrees: Float? = null,
     julianDay: Double? = null,
+    animateEarthRotation: Boolean = true,
 ) {
     val smoothSpec = spring<Float>(
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessMediumLow,
     )
 
-    val animatedEarthRotation = rememberSmoothAnimatedAngle(
-        targetValue = earthRotationDegrees,
-        normalize = ::normalizeAngle360,
-    )
-    val animatedLightDegrees = rememberSmoothAnimatedAngle(
-        targetValue = lightDegrees,
-        normalize = ::normalizeAngle180,
-    )
+    // Earth rotation and light can be instant (during drag) or animated (location change)
+    val animatedEarthRotation = if (animateEarthRotation) {
+        rememberSmoothAnimatedAngle(
+            targetValue = earthRotationDegrees,
+            normalize = ::normalizeAngle360,
+        )
+    } else {
+        normalizeAngle360(earthRotationDegrees)
+    }
+    val animatedLightDegrees = if (animateEarthRotation) {
+        rememberSmoothAnimatedAngle(
+            targetValue = lightDegrees,
+            normalize = ::normalizeAngle180,
+        )
+    } else {
+        normalizeAngle180(lightDegrees)
+    }
     val animatedSunElevation by animateFloatAsState(
         targetValue = sunElevationDegrees,
         animationSpec = smoothSpec,
@@ -213,10 +223,12 @@ fun EarthWidgetScene(
     }
 
     val moonContent: @Composable () -> Unit = {
+        // Moon-from-marker view uses the actual marker longitude (not the visual Earth rotation)
+        // This ensures the moon phase is always calculated from the marker's real position
         MoonFromMarkerWidgetView(
             sphereSize = moonViewSize,
             renderSizePx = moonRenderSizePx,
-            earthRotationDegrees = animatedEarthRotation,
+            earthRotationDegrees = animatedMarkerLon, // Use marker position, not visual rotation
             lightDegrees = animatedLightDegrees,
             sunElevationDegrees = animatedSunElevation,
             earthTiltDegrees = animatedTiltDegrees,

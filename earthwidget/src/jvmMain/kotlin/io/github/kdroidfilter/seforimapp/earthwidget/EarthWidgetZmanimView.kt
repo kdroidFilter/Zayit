@@ -61,6 +61,7 @@ import seforimapp.earthwidget.generated.resources.earthwidget_action_cancel
 import seforimapp.earthwidget.generated.resources.earthwidget_action_ok
 import seforimapp.earthwidget.generated.resources.earthwidget_calendar_mode_gregorian
 import seforimapp.earthwidget.generated.resources.earthwidget_calendar_mode_hebrew
+import seforimapp.earthwidget.generated.resources.earthwidget_recenter_button
 import seforimapp.earthwidget.generated.resources.earthwidget_city_jerusalem
 import seforimapp.earthwidget.generated.resources.earthwidget_city_london
 import seforimapp.earthwidget.generated.resources.earthwidget_city_los_angeles
@@ -97,6 +98,9 @@ import java.util.TimeZone
 import kotlin.math.roundToInt
 import org.jetbrains.jewel.ui.Orientation
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 
 // ============================================================================
 // CONSTANTS
@@ -256,6 +260,10 @@ fun EarthWidgetZmanimView(
     var showOrbitPath by remember { mutableStateOf(true) }
     var showMoonFromMarker by remember { mutableStateOf(true) }
 
+    // Earth rotation offset from user drag (added to marker longitude)
+    var earthRotationOffset by remember { mutableFloatStateOf(0f) }
+    var isDraggingEarth by remember { mutableStateOf(false) }
+
     // Date/time selection (in the computed timezone)
     val initialCalendar = remember(timeZone) {
         Calendar.getInstance(timeZone).apply { time = Date() }
@@ -365,33 +373,80 @@ fun EarthWidgetZmanimView(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Main scene
+        // Main scene with drag-to-rotate support
         item {
-            EarthWidgetScene(
-                sphereSize = sphereSize,
-                renderSizePx = renderSizePx,
-                earthRotationDegrees = markerLongitudeDegrees,
-                lightDegrees = model.lightDegrees,
-                sunElevationDegrees = model.sunElevationDegrees,
-                earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
-                moonOrbitDegrees = model.moonOrbitDegrees,
-                markerLatitudeDegrees = markerLatitudeDegrees,
-                markerLongitudeDegrees = markerLongitudeDegrees,
-                showBackgroundStars = showBackground,
-                showOrbitPath = showOrbitPath,
-                orbitLabels = orbitLabels,
-                onOrbitLabelClick = { label ->
-                    val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
-                    val jewishCalendar = JewishCalendar().apply { setDate(calendar) }
-                    val targetDate = JewishDate().apply {
-                        setJewishDate(jewishCalendar.jewishYear, jewishCalendar.jewishMonth, label.dayOfMonth)
+            val density = LocalDensity.current
+            val degreesPerPx = remember(sphereSize) {
+                // Calculate how many degrees of rotation per pixel of drag
+                // A full drag across the sphere width = 180 degrees
+                with(density) { 180f / sphereSize.toPx() }
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier.pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragStart = { isDraggingEarth = true },
+                            onDragEnd = { isDraggingEarth = false },
+                            onDragCancel = { isDraggingEarth = false },
+                        ) { change, dragAmount ->
+                            change.consume()
+                            // Horizontal drag rotates the Earth (negative because dragging right
+                            // should rotate the Earth to show what's on the left)
+                            earthRotationOffset -= dragAmount.x * degreesPerPx
+                        }
+                    },
+                ) {
+                    EarthWidgetScene(
+                        sphereSize = sphereSize,
+                        renderSizePx = renderSizePx,
+                        earthRotationDegrees = markerLongitudeDegrees + earthRotationOffset,
+                        // Compensate light direction for Earth rotation offset.
+                        // Model computed lightDegrees for earthRotation = markerLongitude.
+                        // Subtracting offset keeps the sun fixed relative to Earth's surface,
+                        // so the marker always shows correct day/night for the selected time.
+                        lightDegrees = model.lightDegrees - earthRotationOffset,
+                        sunElevationDegrees = model.sunElevationDegrees,
+                        earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
+                        moonOrbitDegrees = model.moonOrbitDegrees,
+                        markerLatitudeDegrees = markerLatitudeDegrees,
+                        markerLongitudeDegrees = markerLongitudeDegrees,
+                        showBackgroundStars = showBackground,
+                        showOrbitPath = showOrbitPath,
+                        orbitLabels = orbitLabels,
+                        onOrbitLabelClick = { label ->
+                            val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
+                            val jewishCalendar = JewishCalendar().apply { setDate(calendar) }
+                            val targetDate = JewishDate().apply {
+                                setJewishDate(jewishCalendar.jewishYear, jewishCalendar.jewishMonth, label.dayOfMonth)
+                            }
+                            selectedDate = targetDate.localDate
+                        },
+                        showMoonFromMarker = showMoonFromMarker,
+                        moonPhaseAngleDegrees = model.moonPhaseAngleDegrees,
+                        julianDay = model.julianDay,
+                        animateEarthRotation = !isDraggingEarth, // Instant rotation during drag
+                    )
+                }
+
+                // Recenter button (only shown when Earth is rotated away from marker)
+                if (earthRotationOffset != 0f) {
+                    OutlinedButton(
+                        onClick = { earthRotationOffset = 0f },
+                    ) {
+                        Icon(
+                            key = AllIconsKeys.General.Locate,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = stringResource(Res.string.earthwidget_recenter_button))
                     }
-                    selectedDate = targetDate.localDate
-                },
-                showMoonFromMarker = showMoonFromMarker,
-                moonPhaseAngleDegrees = model.moonPhaseAngleDegrees,
-                julianDay = model.julianDay,
-            )
+                }
+            }
         }
 
         item {
@@ -494,6 +549,7 @@ fun EarthWidgetZmanimView(
                                 markerLongitudeDegrees = location.longitude.toFloat()
                                 markerElevationMeters = location.elevationMeters
                                 timeZone = TimeZone.getTimeZone(location.timeZoneId)
+                                earthRotationOffset = 0f // Reset rotation when changing location
                             }
 
                             if (isSelected) {

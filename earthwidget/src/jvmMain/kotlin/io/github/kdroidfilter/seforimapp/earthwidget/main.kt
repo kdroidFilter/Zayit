@@ -19,7 +19,7 @@ import java.util.Locale
 fun main() {
     Locale.setDefault(Locale.Builder().setLanguage("he").build())
     singleWindowApplication(
-        title = "",
+        title = "Hello World !",
         state = WindowState(placement = WindowPlacement.Maximized)
     ) {
         IntUiTheme(isDark = true) {

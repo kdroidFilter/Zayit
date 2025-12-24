@@ -187,11 +187,7 @@ internal fun computeMoonLightFromPhaseInternal(
     val sinT = sin(thetaRad).toFloat()
 
     val up = cross(viewDir, right).normalized()
-    val sunDir = Vec3f(
-        viewDir.x * cosT + up.x * sinT,
-        viewDir.y * cosT + up.y * sinT,
-        viewDir.z * cosT + up.z * sinT,
-    ).normalized()
+    val sunDir = rotateTowards(viewDir, up, cosT, sinT)
 
     return LightDirection(
         lightDegrees = Math.toDegrees(atan2(sunDir.x.toDouble(), sunDir.z.toDouble())).toFloat(),
@@ -252,11 +248,7 @@ internal fun computeMoonLightFromPhaseWithObserverUp(
     val cosT = cos(thetaRad).toFloat()
     val sinT = sin(thetaRad).toFloat()
 
-    val sunDir = Vec3f(
-        viewDir.x * cosT + planeUp.x * sinT,
-        viewDir.y * cosT + planeUp.y * sinT,
-        viewDir.z * cosT + planeUp.z * sinT,
-    ).normalized()
+    val sunDir = rotateTowards(viewDir, planeUp, cosT, sinT)
 
     return LightDirection(
         lightDegrees = Math.toDegrees(atan2(sunDir.x.toDouble(), sunDir.z.toDouble())).toFloat(),

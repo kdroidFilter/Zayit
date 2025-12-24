@@ -85,3 +85,14 @@ internal fun smoothStep(edge0: Float, edge1: Float, x: Float): Float {
     val t = ((x - edge0) / (edge1 - edge0)).coerceIn(0f, 1f)
     return t * t * (3f - 2f * t)
 }
+
+/**
+ * Rotates a vector towards an "up" direction by the provided cos/sin.
+ */
+internal fun rotateTowards(view: Vec3f, up: Vec3f, cosT: Float, sinT: Float): Vec3f {
+    return Vec3f(
+        view.x * cosT + up.x * sinT,
+        view.y * cosT + up.y * sinT,
+        view.z * cosT + up.z * sinT,
+    ).normalized()
+}

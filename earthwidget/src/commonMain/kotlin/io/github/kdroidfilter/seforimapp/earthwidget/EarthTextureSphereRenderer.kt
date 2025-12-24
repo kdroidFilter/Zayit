@@ -748,11 +748,9 @@ private fun horizontalToWorld(
     val eastZ = -sinLon
 
     val northX = -sinLat * sinLon
-    val northY = cosLat
     val northZ = -sinLat * cosLon
 
     val upX = cosLat * sinLon
-    val upY = sinLat
     val upZ = cosLat * cosLon
 
     val sinAz = sin(azRad)
@@ -761,7 +759,7 @@ private fun horizontalToWorld(
     val sinEl = sin(elRad)
 
     val dirX = (eastX * sinAz + northX * cosAz) * cosEl + upX * sinEl
-    val dirY = (eastY * sinAz + northY * cosAz) * cosEl + upY * sinEl
+    val dirY = (eastY * sinAz + cosLat * cosAz) * cosEl + sinLat * sinEl
     val dirZ = (eastZ * sinAz + northZ * cosAz) * cosEl + upZ * sinEl
 
     val earthDir = Vec3d(dirX, dirY, dirZ).normalized()

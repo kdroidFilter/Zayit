@@ -1,16 +1,6 @@
 package io.github.kdroidfilter.seforimapp.earthwidget
 
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.asin
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.floor
-import kotlin.math.max
-import kotlin.math.roundToInt
-import kotlin.math.sin
-import kotlin.math.sqrt
-import kotlin.math.tan
+import kotlin.math.*
 
 // ============================================================================
 // SPHERE RENDERING
@@ -400,8 +390,8 @@ internal fun renderEarthWithMoonArgb(
     val out = IntArray(outputSizePx * outputSizePx)
     if (earthTexture == null) return out
 
-    val sceneHalf = outputSizePx / 2f
-    val cameraZ = outputSizePx * CAMERA_DISTANCE_FACTOR
+    val geometry = computeSceneGeometry(outputSizePx)
+    val moonLayout = computeMoonScreenLayout(geometry, moonOrbitDegrees)
 
     // Fill background
     out.fill(OPAQUE_BLACK)
@@ -409,50 +399,10 @@ internal fun renderEarthWithMoonArgb(
         drawStarfield(dst = out, dstW = outputSizePx, dstH = outputSizePx, seed = STARFIELD_SEED)
     }
 
-    // Calculate Earth dimensions
-    val earthSizePx = (outputSizePx * EARTH_SIZE_FRACTION).roundToInt().coerceAtLeast(MIN_SPHERE_SIZE_PX)
-    val earthRadiusPx = (earthSizePx - 1) / 2f
-    val earthLeft = (sceneHalf - earthSizePx / 2f).roundToInt()
-    val earthTop = (sceneHalf - earthSizePx / 2f).roundToInt()
-
-    // Calculate Moon dimensions
-    val moonBaseSizePx = (earthSizePx * MOON_TO_EARTH_DIAMETER_RATIO).roundToInt()
-        .coerceAtLeast(MIN_SPHERE_SIZE_PX)
-    val moonRadiusWorldPx = (moonBaseSizePx - 1) / 2f
-    val edgeMarginPx = max(6f, outputSizePx * 0.02f)
-    val orbitRadius = (sceneHalf - moonRadiusWorldPx - edgeMarginPx).coerceAtLeast(0f)
-
-    // Calculate view pitch to ensure Moon clears Earth
-    val desiredSeparation = earthRadiusPx + moonRadiusWorldPx + 1.5f
-    val viewPitchRad = if (orbitRadius > EPSILON) {
-        asin((desiredSeparation / orbitRadius).coerceIn(0f, 0.999f))
-    } else {
-        0f
-    }
-
-    // Transform moon position
-    val moonOrbit = transformMoonOrbitPosition(moonOrbitDegrees, orbitRadius, viewPitchRad)
-
-    // Pre-compute orbit transform parameters
-    val orbitInclinationRad = MOON_ORBIT_INCLINATION_DEG * DEG_TO_RAD_F
-    val cosInc = cos(orbitInclinationRad)
-    val sinInc = sin(orbitInclinationRad)
-    val cosView = cos(viewPitchRad)
-    val sinView = sin(viewPitchRad)
-
-    // Calculate Moon screen position
-    val moonScale = perspectiveScale(cameraZ, moonOrbit.zCam)
-    val moonSizePx = (moonBaseSizePx * moonScale).roundToInt().coerceAtLeast(MIN_SPHERE_SIZE_PX)
-    val moonRadiusPx = (moonSizePx - 1) / 2f
-    val moonCenterX = sceneHalf + moonOrbit.x * moonScale
-    val moonCenterY = sceneHalf - moonOrbit.yCam * moonScale
-    val moonLeft = (moonCenterX - moonRadiusPx).roundToInt()
-    val moonTop = (moonCenterY - moonRadiusPx).roundToInt()
-
     // Render Earth
     val earth = renderTexturedSphereArgb(
         texture = earthTexture,
-        outputSizePx = earthSizePx,
+        outputSizePx = geometry.earthSizePx,
         rotationDegrees = earthRotationDegrees,
         lightDegrees = lightDegrees,
         tiltDegrees = earthTiltDegrees,
@@ -465,7 +415,7 @@ internal fun renderEarthWithMoonArgb(
     // Draw marker on Earth
     drawMarkerOnSphere(
         sphereArgb = earth,
-        sphereSizePx = earthSizePx,
+        sphereSizePx = geometry.earthSizePx,
         markerLatitudeDegrees = markerLatitudeDegrees,
         markerLongitudeDegrees = markerLongitudeDegrees,
         rotationDegrees = earthRotationDegrees,
@@ -473,7 +423,7 @@ internal fun renderEarthWithMoonArgb(
     )
 
     // Composite Earth onto scene
-    blitOver(dst = out, dstW = outputSizePx, src = earth, srcW = earthSizePx, left = earthLeft, top = earthTop)
+    blitOver(dst = out, dstW = outputSizePx, src = earth, srcW = geometry.earthSizePx, left = geometry.earthLeft, top = geometry.earthTop)
 
     // Draw orbit path
     if (showOrbitPath) {
@@ -481,26 +431,26 @@ internal fun renderEarthWithMoonArgb(
             dst = out,
             dstW = outputSizePx,
             dstH = outputSizePx,
-            center = sceneHalf,
-            earthRadiusPx = earthRadiusPx,
-            orbitRadius = orbitRadius,
-            cosInc = cosInc,
-            sinInc = sinInc,
-            cosView = cosView,
-            sinView = sinView,
-            moonCenterX = moonCenterX,
-            moonCenterY = moonCenterY,
-            moonRadiusPx = if (moonTexture != null) moonRadiusPx else 0f,
-            cameraZ = cameraZ,
+            center = geometry.sceneHalf,
+            earthRadiusPx = geometry.earthRadiusPx,
+            orbitRadius = geometry.orbitRadius,
+            cosInc = geometry.cosInc,
+            sinInc = geometry.sinInc,
+            cosView = geometry.cosView,
+            sinView = geometry.sinView,
+            moonCenterX = moonLayout.moonCenterX,
+            moonCenterY = moonLayout.moonCenterY,
+            moonRadiusPx = if (moonTexture != null) moonLayout.moonRadiusPx else 0f,
+            cameraZ = geometry.cameraZ,
         )
     }
 
     if (moonTexture == null) return out
 
     // Calculate Moon view direction (from Moon to camera)
-    val moonViewDirX = -moonOrbit.x
-    val moonViewDirY = -moonOrbit.yCam
-    val moonViewDirZ = cameraZ - moonOrbit.zCam
+    val moonViewDirX = -moonLayout.moonOrbit.x
+    val moonViewDirY = -moonLayout.moonOrbit.yCam
+    val moonViewDirZ = geometry.cameraZ - moonLayout.moonOrbit.zCam
 
     // In the main scene, the Moon is lit by the same sun as the Earth.
     // This creates a consistent visualization where both bodies show
@@ -511,7 +461,7 @@ internal fun renderEarthWithMoonArgb(
     // Render Moon with same sun lighting as Earth (no phase-based shadows)
     val moon = renderTexturedSphereArgb(
         texture = moonTexture,
-        outputSizePx = moonSizePx,
+        outputSizePx = moonLayout.moonSizePx,
         rotationDegrees = moonRotationDegrees,
         lightDegrees = lightDegrees, // Same sun direction as Earth
         tiltDegrees = 0f,
@@ -531,18 +481,18 @@ internal fun renderEarthWithMoonArgb(
         out = out,
         outputSizePx = outputSizePx,
         earth = earth,
-        earthSizePx = earthSizePx,
-        earthLeft = earthLeft,
-        earthTop = earthTop,
-        earthRadiusPx = earthRadiusPx,
+        earthSizePx = geometry.earthSizePx,
+        earthLeft = geometry.earthLeft,
+        earthTop = geometry.earthTop,
+        earthRadiusPx = geometry.earthRadiusPx,
         moon = moon,
-        moonSizePx = moonSizePx,
-        moonLeft = moonLeft,
-        moonTop = moonTop,
-        moonRadiusPx = moonRadiusPx,
-        moonRadiusWorldPx = moonRadiusWorldPx,
-        moonZCam = moonOrbit.zCam,
-        moonScale = moonScale,
+        moonSizePx = moonLayout.moonSizePx,
+        moonLeft = moonLayout.moonLeft,
+        moonTop = moonLayout.moonTop,
+        moonRadiusPx = moonLayout.moonRadiusPx,
+        moonRadiusWorldPx = geometry.moonRadiusWorldPx,
+        moonZCam = moonLayout.moonOrbit.zCam,
+        moonScale = moonLayout.moonScale,
     )
 
     return out
@@ -711,26 +661,8 @@ internal fun renderMoonFromMarkerArgb(
 
     if (moonTexture == null) return out
 
-    // Calculate scene geometry (same as main scene for consistency)
-    val sceneHalf = outputSizePx / 2f
-    val earthSizePx = (outputSizePx * EARTH_SIZE_FRACTION).roundToInt().coerceAtLeast(MIN_SPHERE_SIZE_PX)
-    val earthRadiusPx = (earthSizePx - 1) / 2f
-
-    val moonBaseSizePx = (earthSizePx * MOON_TO_EARTH_DIAMETER_RATIO).roundToInt()
-        .coerceAtLeast(MIN_SPHERE_SIZE_PX)
-    val moonRadiusWorldPx = (moonBaseSizePx - 1) / 2f
-    val edgeMarginPx = max(6f, outputSizePx * 0.02f)
-    val orbitRadius = (sceneHalf - moonRadiusWorldPx - edgeMarginPx).coerceAtLeast(0f)
-
-    val desiredSeparation = earthRadiusPx + moonRadiusWorldPx + 1.5f
-    val viewPitchRad = if (orbitRadius > EPSILON) {
-        asin((desiredSeparation / orbitRadius).coerceIn(0f, 0.999f))
-    } else {
-        0f
-    }
-
-    // Get Moon position
-    val moonOrbit = transformMoonOrbitPosition(moonOrbitDegrees, orbitRadius, viewPitchRad)
+    val geometry = computeSceneGeometry(outputSizePx)
+    val moonLayout = computeMoonScreenLayout(geometry, moonOrbitDegrees)
 
     // Calculate observer position on Earth surface
     val observerPosition = calculateObserverPosition(
@@ -738,13 +670,13 @@ internal fun renderMoonFromMarkerArgb(
         markerLongitudeDegrees = markerLongitudeDegrees,
         earthRotationDegrees = earthRotationDegrees,
         earthTiltDegrees = earthTiltDegrees,
-        earthRadiusPx = earthRadiusPx,
+        earthRadiusPx = geometry.earthRadiusPx,
     )
 
     // View direction from observer to Moon
-    var viewDirX = observerPosition.x - moonOrbit.x
-    var viewDirY = observerPosition.y - moonOrbit.yCam
-    var viewDirZ = observerPosition.z - moonOrbit.zCam
+    var viewDirX = observerPosition.x - moonLayout.moonOrbit.x
+    var viewDirY = observerPosition.y - moonLayout.moonOrbit.yCam
+    var viewDirZ = observerPosition.z - moonLayout.moonOrbit.zCam
 
     // Up hint is radial direction at observer position
     val upLen = sqrt(observerPosition.x * observerPosition.x +
@@ -804,10 +736,10 @@ internal fun renderMoonFromMarkerArgb(
     val moonSunElevationDegreesResolved = moonLighting?.sunElevationDegrees ?: moonSunElevationDegrees
 
     val sunVisibility = moonSunVisibility(
-        moonCenterX = moonOrbit.x,
-        moonCenterY = moonOrbit.yCam,
-        moonCenterZ = moonOrbit.zCam,
-        moonRadius = moonRadiusWorldPx,
+        moonCenterX = moonLayout.moonOrbit.x,
+        moonCenterY = moonLayout.moonOrbit.yCam,
+        moonCenterZ = moonLayout.moonOrbit.zCam,
+        moonRadius = geometry.moonRadiusWorldPx,
         sunAzimuthDegrees = moonLightDegreesResolved,
         sunElevationDegrees = moonSunElevationDegreesResolved,
     )
@@ -885,21 +817,14 @@ private fun calculateObserverPosition(
     earthTiltDegrees: Float,
     earthRadiusPx: Float,
 ): ObserverPosition {
-    val latRad = markerLatitudeDegrees.coerceIn(-90f, 90f) * DEG_TO_RAD_F
-    val lonRad = markerLongitudeDegrees.coerceIn(-180f, 180f) * DEG_TO_RAD_F
-    val cosLat = cos(latRad)
-
-    // Position on unit sphere
-    val texX = sin(lonRad) * cosLat
-    val texY = sin(latRad)
-    val texZ = cos(lonRad) * cosLat
+    val unit = latLonToUnitVector(markerLatitudeDegrees, markerLongitudeDegrees)
 
     // Apply Earth rotation (yaw)
     val earthYawRad = earthRotationDegrees * DEG_TO_RAD_F
     val cosYaw = cos(earthYawRad)
     val sinYaw = sin(earthYawRad)
-    val xRot = texX * cosYaw - texZ * sinYaw
-    val zRot = texX * sinYaw + texZ * cosYaw
+    val xRot = unit.x * cosYaw - unit.z * sinYaw
+    val zRot = unit.x * sinYaw + unit.z * cosYaw
 
     // Apply Earth tilt (pitch)
     val tiltRad = earthTiltDegrees * DEG_TO_RAD_F
@@ -907,8 +832,8 @@ private fun calculateObserverPosition(
     val sinTilt = sin(tiltRad)
 
     return ObserverPosition(
-        x = (xRot * cosTilt + texY * sinTilt) * earthRadiusPx,
-        y = (-xRot * sinTilt + texY * cosTilt) * earthRadiusPx,
+        x = (xRot * cosTilt + unit.y * sinTilt) * earthRadiusPx,
+        y = (-xRot * sinTilt + unit.y * cosTilt) * earthRadiusPx,
         z = zRot * earthRadiusPx,
     )
 }
@@ -1210,27 +1135,21 @@ private fun drawMarkerOnSphere(
     tiltDegrees: Float,
 ) {
     // Convert marker coordinates to 3D position
-    val latRad = markerLatitudeDegrees.coerceIn(-90f, 90f) * DEG_TO_RAD_F
-    val lonRad = markerLongitudeDegrees.coerceIn(-180f, 180f) * DEG_TO_RAD_F
-    val cosLat = cos(latRad)
-
-    val texX = sin(lonRad) * cosLat
-    val texY = sin(latRad)
-    val texZ = cos(lonRad) * cosLat
+    val unit = latLonToUnitVector(markerLatitudeDegrees, markerLongitudeDegrees)
 
     // Apply rotation
     val yawRad = rotationDegrees * DEG_TO_RAD
     val cosYaw = cos(yawRad)
     val sinYaw = sin(yawRad)
-    val x1 = texX * cosYaw - texZ * sinYaw
-    val z1 = texX * sinYaw + texZ * cosYaw
+    val x1 = unit.x * cosYaw - unit.z * sinYaw
+    val z1 = unit.x * sinYaw + unit.z * cosYaw
 
     // Apply tilt
     val tiltRad = tiltDegrees * DEG_TO_RAD
     val cosTilt = cos(tiltRad)
     val sinTilt = sin(tiltRad)
-    val x2 = x1 * cosTilt + texY * sinTilt
-    val y2 = -x1 * sinTilt + texY * cosTilt
+    val x2 = x1 * cosTilt + unit.y * sinTilt
+    val y2 = -x1 * sinTilt + unit.y * cosTilt
 
     // Only draw if marker is on visible hemisphere (facing camera)
     if (z1 <= 0f) return
@@ -1415,32 +1334,13 @@ internal fun computeOrbitScreenPosition(
     outputSizePx: Int,
     orbitDegrees: Float,
 ): OrbitScreenPosition {
-    val sceneHalf = outputSizePx / 2f
-
-    val earthSizePx = (outputSizePx * EARTH_SIZE_FRACTION).roundToInt().coerceAtLeast(MIN_SPHERE_SIZE_PX)
-    val earthRadiusPx = (earthSizePx - 1) / 2f
-
-    val moonBaseSizePx = (earthSizePx * MOON_TO_EARTH_DIAMETER_RATIO).roundToInt()
-        .coerceAtLeast(MIN_SPHERE_SIZE_PX)
-    val moonRadiusWorldPx = (moonBaseSizePx - 1) / 2f
-
-    val edgeMarginPx = max(6f, outputSizePx * 0.02f)
-    val orbitRadius = (sceneHalf - moonRadiusWorldPx - edgeMarginPx).coerceAtLeast(0f)
-
-    val desiredSeparation = earthRadiusPx + moonRadiusWorldPx + 1.5f
-    val viewPitchRad = if (orbitRadius > EPSILON) {
-        asin((desiredSeparation / orbitRadius).coerceIn(0f, 0.999f))
-    } else {
-        0f
-    }
-
-    val orbit = transformMoonOrbitPosition(orbitDegrees, orbitRadius, viewPitchRad)
-    val cameraZ = outputSizePx * CAMERA_DISTANCE_FACTOR
-    val orbitScale = perspectiveScale(cameraZ, orbit.zCam)
+    val geometry = computeSceneGeometry(outputSizePx)
+    val orbit = transformMoonOrbitPosition(orbitDegrees, geometry.orbitRadius, geometry.viewPitchRad)
+    val orbitScale = perspectiveScale(geometry.cameraZ, orbit.zCam)
 
     return OrbitScreenPosition(
-        x = sceneHalf + orbit.x * orbitScale,
-        y = sceneHalf - orbit.yCam * orbitScale,
+        x = geometry.sceneHalf + orbit.x * orbitScale,
+        y = geometry.sceneHalf - orbit.yCam * orbitScale,
         zCam = orbit.zCam,
     )
 }

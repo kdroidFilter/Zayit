@@ -74,6 +74,35 @@ internal data class MoonOrbitPosition(
     val zCam: Float,
 )
 
+internal data class SceneGeometry(
+    val outputSizePx: Int,
+    val sceneHalf: Float,
+    val cameraZ: Float,
+    val earthSizePx: Int,
+    val earthRadiusPx: Float,
+    val earthLeft: Int,
+    val earthTop: Int,
+    val moonBaseSizePx: Int,
+    val moonRadiusWorldPx: Float,
+    val orbitRadius: Float,
+    val viewPitchRad: Float,
+    val cosInc: Float,
+    val sinInc: Float,
+    val cosView: Float,
+    val sinView: Float,
+)
+
+internal data class MoonScreenLayout(
+    val moonOrbit: MoonOrbitPosition,
+    val moonScale: Float,
+    val moonSizePx: Int,
+    val moonRadiusPx: Float,
+    val moonCenterX: Float,
+    val moonCenterY: Float,
+    val moonLeft: Int,
+    val moonTop: Int,
+)
+
 /**
  * Simple 3D vector with double precision for geocentric calculations.
  */
@@ -84,6 +113,8 @@ internal data class Vec3d(val x: Double, val y: Double, val z: Double) {
         val inv = 1.0 / len
         return Vec3d(x * inv, y * inv, z * inv)
     }
+
+    fun toVec3f(): Vec3f = Vec3f(x.toFloat(), y.toFloat(), z.toFloat())
 }
 
 /**

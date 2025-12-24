@@ -9,7 +9,6 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.sin
-import kotlin.math.sqrt
 import kotlin.math.tan
 
 /**
@@ -193,15 +192,6 @@ private fun normalizeMinutes1440(minutes: Double): Double {
     return if (mod < 0.0) mod + 1440.0 else mod
 }
 
-private data class Vec3(val x: Double, val y: Double, val z: Double) {
-    fun normalized(): Vec3 {
-        val len = sqrt(x * x + y * y + z * z)
-        if (len <= 1e-9) return this
-        val inv = 1.0 / len
-        return Vec3(x * inv, y * inv, z * inv)
-    }
-}
-
 /**
  * Transforms sun direction from local horizontal (azimuth/elevation at observer) to world coordinates.
  */
@@ -239,11 +229,20 @@ private fun computeSunDirectionWorld(
     val cosEl = cos(elRad)
     val sinEl = sin(elRad)
 
-    val dirX = (eastX * sinAz + northX * cosAz) * cosEl + upX * sinEl
-    val dirY = (eastY * sinAz + cosLat * cosAz) * cosEl + sinLat * sinEl
-    val dirZ = (eastZ * sinAz + northZ * cosAz) * cosEl + upZ * sinEl
-
-    val earthDir = Vec3(dirX, dirY, dirZ).normalized()
+    val earthDir = combineHorizontalDirection(
+        sinAz = sinAz,
+        cosAz = cosAz,
+        cosEl = cosEl,
+        sinEl = sinEl,
+        eastX = eastX,
+        eastZ = eastZ,
+        northX = northX,
+        northZ = northZ,
+        upX = upX,
+        upZ = upZ,
+        cosLat = cosLat,
+        sinLat = sinLat,
+    ).normalized()
     val worldDir = earthToWorld(earthDir, earthRotationDegrees, earthTiltDegrees).normalized()
 
     return LightDirection(
@@ -257,10 +256,10 @@ private fun computeSunDirectionWorld(
  * applied by the renderer when mapping world positions to texture coordinates.
  */
 private fun earthToWorld(
-    earthDir: Vec3,
+    earthDir: Vec3d,
     earthRotationDegrees: Float,
     earthTiltDegrees: Float,
-): Vec3 {
+): Vec3d {
     val yawRad = Math.toRadians(-earthRotationDegrees.toDouble())
     val cosYaw = cos(yawRad)
     val sinYaw = sin(yawRad)
@@ -274,5 +273,5 @@ private fun earthToWorld(
     val x2 = x1 * cosTilt - y1 * sinTilt
     val y2 = x1 * sinTilt + y1 * cosTilt
 
-    return Vec3(x2, y2, z1)
+    return Vec3d(x2, y2, z1)
 }

@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.flow.collectLatest
 import org.jetbrains.compose.resources.imageResource
 import seforimapp.earthwidget.generated.resources.Res
 import seforimapp.earthwidget.generated.resources.earthmap
@@ -381,6 +382,8 @@ private fun rememberMoonFromMarkerImage(
 
 /**
  * Renders the Earth-Moon composite image off the UI thread.
+ * Uses a MutableStateFlow with conflate to skip intermediate states during rapid updates,
+ * preventing render queue buildup during drag operations.
  */
 @Composable
 private fun rememberRenderedEarthMoonImage(
@@ -394,13 +397,25 @@ private fun rememberRenderedEarthMoonImage(
         ImageBitmap(renderedState.renderSizePx, renderedState.renderSizePx)
     }
 
-    LaunchedEffect(renderer, textures, targetState) {
-        val renderedImage = renderer.renderScene(
-            state = targetState,
-            textures = textures,
-        )
-        renderedState = targetState
-        image = renderedImage
+    // Use MutableStateFlow to emit state updates and conflate to drop intermediate values
+    val stateFlow = remember { kotlinx.coroutines.flow.MutableStateFlow(targetState) }
+
+    // Update the flow whenever targetState changes
+    LaunchedEffect(targetState) {
+        stateFlow.value = targetState
+    }
+
+    // Collect with collectLatest to cancel previous render when new state arrives
+    // StateFlow is already conflated, so intermediate values are automatically dropped
+    LaunchedEffect(renderer, textures) {
+        stateFlow.collectLatest { state ->
+            val renderedImage = renderer.renderScene(
+                state = state,
+                textures = textures,
+            )
+            renderedState = state
+            image = renderedImage
+        }
     }
 
     return RenderedImage(

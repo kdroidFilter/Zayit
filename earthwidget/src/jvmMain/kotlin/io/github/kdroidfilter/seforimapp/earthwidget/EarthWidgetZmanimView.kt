@@ -3,25 +3,11 @@ package io.github.kdroidfilter.seforimapp.earthwidget
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -30,12 +16,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.kosherjava.zmanim.ComplexZmanimCalendar
 import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
@@ -44,66 +32,19 @@ import com.kosherjava.zmanim.util.GeoLocation
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.Checkbox
-import org.jetbrains.jewel.ui.component.DefaultButton
-import org.jetbrains.jewel.ui.component.Divider
-import org.jetbrains.jewel.ui.component.GroupHeader
-import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.IconButton
-import org.jetbrains.jewel.ui.component.OutlinedButton
-import org.jetbrains.jewel.ui.component.SegmentedControl
-import org.jetbrains.jewel.ui.component.SegmentedControlButtonData
-import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.segmentedControlButtonStyle
-import seforimapp.earthwidget.generated.resources.Res
-import seforimapp.earthwidget.generated.resources.earthwidget_action_cancel
-import seforimapp.earthwidget.generated.resources.earthwidget_action_ok
-import seforimapp.earthwidget.generated.resources.earthwidget_calendar_mode_gregorian
-import seforimapp.earthwidget.generated.resources.earthwidget_calendar_mode_hebrew
-import seforimapp.earthwidget.generated.resources.earthwidget_recenter_button
-import seforimapp.earthwidget.generated.resources.earthwidget_city_jerusalem
-import seforimapp.earthwidget.generated.resources.earthwidget_city_london
-import seforimapp.earthwidget.generated.resources.earthwidget_city_los_angeles
-import seforimapp.earthwidget.generated.resources.earthwidget_city_moscow
-import seforimapp.earthwidget.generated.resources.earthwidget_city_sydney
-import seforimapp.earthwidget.generated.resources.earthwidget_city_singapore
-import seforimapp.earthwidget.generated.resources.earthwidget_city_buenos_aires
-import seforimapp.earthwidget.generated.resources.earthwidget_city_new_york
-import seforimapp.earthwidget.generated.resources.earthwidget_city_paris
-import seforimapp.earthwidget.generated.resources.earthwidget_datetime_label
-import seforimapp.earthwidget.generated.resources.earthwidget_datetime_picker_title
-import seforimapp.earthwidget.generated.resources.earthwidget_display_section
-import seforimapp.earthwidget.generated.resources.earthwidget_location_section
-import seforimapp.earthwidget.generated.resources.earthwidget_marker_latitude_label
-import seforimapp.earthwidget.generated.resources.earthwidget_marker_longitude_label
-import seforimapp.earthwidget.generated.resources.earthwidget_moon_from_marker_label
-import seforimapp.earthwidget.generated.resources.earthwidget_next_month
-import seforimapp.earthwidget.generated.resources.earthwidget_prev_month
-import seforimapp.earthwidget.generated.resources.earthwidget_select_datetime_button
-import seforimapp.earthwidget.generated.resources.earthwidget_show_background_label
-import seforimapp.earthwidget.generated.resources.earthwidget_show_orbit_label
-import seforimapp.earthwidget.generated.resources.earthwidget_time_preset_chatzos_hayom
-import seforimapp.earthwidget.generated.resources.earthwidget_time_preset_chatzos_layla
-import seforimapp.earthwidget.generated.resources.earthwidget_time_preset_section
-import seforimapp.earthwidget.generated.resources.earthwidget_time_preset_sunrise
-import seforimapp.earthwidget.generated.resources.earthwidget_time_preset_sunset
+import seforimapp.earthwidget.generated.resources.*
+import java.text.SimpleDateFormat
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
+import java.util.*
 import kotlin.math.roundToInt
-import org.jetbrains.jewel.ui.Orientation
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 
 // ============================================================================
 // CONSTANTS
@@ -1164,8 +1105,8 @@ private fun computeHebrewMonthOrbitLabels(
     if (daysInMonth <= 0) return emptyList()
 
     val formatter = HebrewDateFormatter().apply {
-        setHebrewFormat(true)
-        setUseGershGershayim(false)
+        isHebrewFormat = true
+        isUseGershGershayim = false
     }
 
     val stepDegrees = 360f / daysInMonth.toFloat()

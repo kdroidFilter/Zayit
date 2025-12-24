@@ -18,10 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
@@ -36,8 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.imageResource
 import seforimapp.earthwidget.generated.resources.Res
-import seforimapp.earthwidget.generated.resources.earthmap1k
-import seforimapp.earthwidget.generated.resources.moonmap2k
+import seforimapp.earthwidget.generated.resources.earthmap
+import seforimapp.earthwidget.generated.resources.moonmap
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -352,7 +349,7 @@ fun MoonFromMarkerWidgetView(
  */
 @Composable
 private fun rememberEarthTexture(): EarthTexture? {
-    val image = imageResource(Res.drawable.earthmap1k)
+    val image = imageResource(Res.drawable.earthmap)
     return remember(image) { earthTextureFromImageBitmap(image) }
 }
 
@@ -361,7 +358,7 @@ private fun rememberEarthTexture(): EarthTexture? {
  */
 @Composable
 private fun rememberMoonTexture(): EarthTexture? {
-    val image = imageResource(Res.drawable.moonmap2k)
+    val image = imageResource(Res.drawable.moonmap)
     return remember(image) { earthTextureFromImageBitmap(image) }
 }
 

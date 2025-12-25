@@ -49,6 +49,7 @@ private const val MIN_SIZE_FOR_PARALLEL = 200
  * @param sunVisibility Shadow occlusion factor (0-1).
  * @param atmosphereStrength Rim atmosphere glow intensity.
  * @param shadowAlphaStrength Shadow-based alpha blending.
+ * @param outputBuffer Optional pre-allocated output buffer. If null, a new buffer is created.
  * @return ARGB pixel array of rendered sphere.
  */
 internal suspend fun renderTexturedSphereArgb(
@@ -71,8 +72,14 @@ internal suspend fun renderTexturedSphereArgb(
     sunVisibility: Float = 1f,
     atmosphereStrength: Float = DEFAULT_ATMOSPHERE_STRENGTH,
     shadowAlphaStrength: Float = 0f,
+    outputBuffer: IntArray? = null,
 ): IntArray {
-    val output = IntArray(outputSizePx * outputSizePx)
+    val expectedSize = outputSizePx * outputSizePx
+    val output = if (outputBuffer != null && outputBuffer.size >= expectedSize) {
+        outputBuffer
+    } else {
+        IntArray(expectedSize)
+    }
 
     // Pre-compute all rendering parameters
     val params = SphereRenderParams(
@@ -516,10 +523,8 @@ private fun computePixelLighting(
  * @param moonRotationDegrees Moon rotation.
  * @param showBackgroundStars Whether to draw starfield.
  * @param showOrbitPath Whether to draw orbit path.
- * @param moonLightDegrees Override for Moon light direction.
- * @param moonSunElevationDegrees Override for Moon sun elevation.
- * @param moonPhaseAngleDegrees Moon phase for lighting calculation.
- * @param julianDay Julian Day for ephemeris calculation.
+ * @param bufferPool Optional buffer pool for reusing intermediate buffers.
+ * @param outputBuffer Optional pre-allocated output buffer.
  * @return ARGB pixel array of complete scene.
  */
 internal suspend fun renderEarthWithMoonArgb(
@@ -533,121 +538,139 @@ internal suspend fun renderEarthWithMoonArgb(
     moonOrbitDegrees: Float,
     markerLatitudeDegrees: Float,
     markerLongitudeDegrees: Float,
-    moonRotationDegrees: Float = moonOrbitDegrees + earthRotationDegrees, // Synchronized with orbit and Earth rotation
+    moonRotationDegrees: Float = moonOrbitDegrees + earthRotationDegrees,
     showBackgroundStars: Boolean = true,
     showOrbitPath: Boolean = true,
-    moonLightDegrees: Float = lightDegrees,
-    moonSunElevationDegrees: Float = sunElevationDegrees,
-    moonPhaseAngleDegrees: Float? = null,
-    julianDay: Double? = null,
+    bufferPool: PixelBufferPool? = null,
+    outputBuffer: IntArray? = null,
 ): IntArray {
-    val out = IntArray(outputSizePx * outputSizePx)
+    val outputSize = outputSizePx * outputSizePx
+    val out = if (outputBuffer != null && outputBuffer.size >= outputSize) {
+        outputBuffer.fill(OPAQUE_BLACK)
+        outputBuffer
+    } else {
+        IntArray(outputSize).also { it.fill(OPAQUE_BLACK) }
+    }
+
     if (earthTexture == null) return out
 
     val geometry = computeSceneGeometry(outputSizePx)
     val moonLayout = computeMoonScreenLayout(geometry, moonOrbitDegrees)
 
-    // Fill background
-    out.fill(OPAQUE_BLACK)
+    // Fill background with stars
     if (showBackgroundStars) {
         drawStarfield(dst = out, dstW = outputSizePx, dstH = outputSizePx, seed = STARFIELD_SEED)
     }
 
-    // Render Earth
-    val earth = renderTexturedSphereArgb(
-        texture = earthTexture,
-        outputSizePx = geometry.earthSizePx,
-        rotationDegrees = earthRotationDegrees,
-        lightDegrees = lightDegrees,
-        tiltDegrees = earthTiltDegrees,
-        specularStrength = EARTH_SPECULAR_STRENGTH,
-        specularExponent = EARTH_SPECULAR_EXPONENT,
-        sunElevationDegrees = sunElevationDegrees,
-        viewDirZ = 1f,
-    )
+    // Acquire Earth buffer from pool or create new
+    val earthSize = geometry.earthSizePx * geometry.earthSizePx
+    val earthBuffer = bufferPool?.acquire(earthSize)
 
-    // Draw marker on Earth
-    drawMarkerOnSphere(
-        sphereArgb = earth,
-        sphereSizePx = geometry.earthSizePx,
-        markerLatitudeDegrees = markerLatitudeDegrees,
-        markerLongitudeDegrees = markerLongitudeDegrees,
-        rotationDegrees = earthRotationDegrees,
-        tiltDegrees = earthTiltDegrees,
-    )
-
-    // Composite Earth onto scene
-    blitOver(dst = out, dstW = outputSizePx, src = earth, srcW = geometry.earthSizePx, left = geometry.earthLeft, top = geometry.earthTop)
-
-    // Draw orbit path
-    if (showOrbitPath) {
-        drawOrbitPath(
-            dst = out,
-            dstW = outputSizePx,
-            dstH = outputSizePx,
-            center = geometry.sceneHalf,
-            earthRadiusPx = geometry.earthRadiusPx,
-            orbitRadius = geometry.orbitRadius,
-            cosInc = geometry.cosInc,
-            sinInc = geometry.sinInc,
-            cosView = geometry.cosView,
-            sinView = geometry.sinView,
-            moonCenterX = moonLayout.moonCenterX,
-            moonCenterY = moonLayout.moonCenterY,
-            moonRadiusPx = if (moonTexture != null) moonLayout.moonRadiusPx else 0f,
-            cameraZ = geometry.cameraZ,
+    try {
+        // Render Earth
+        val earth = renderTexturedSphereArgb(
+            texture = earthTexture,
+            outputSizePx = geometry.earthSizePx,
+            rotationDegrees = earthRotationDegrees,
+            lightDegrees = lightDegrees,
+            tiltDegrees = earthTiltDegrees,
+            specularStrength = EARTH_SPECULAR_STRENGTH,
+            specularExponent = EARTH_SPECULAR_EXPONENT,
+            sunElevationDegrees = sunElevationDegrees,
+            viewDirZ = 1f,
+            outputBuffer = earthBuffer,
         )
+
+        // Draw marker on Earth
+        drawMarkerOnSphere(
+            sphereArgb = earth,
+            sphereSizePx = geometry.earthSizePx,
+            markerLatitudeDegrees = markerLatitudeDegrees,
+            markerLongitudeDegrees = markerLongitudeDegrees,
+            rotationDegrees = earthRotationDegrees,
+            tiltDegrees = earthTiltDegrees,
+        )
+
+        // Composite Earth onto scene
+        blitOver(dst = out, dstW = outputSizePx, src = earth, srcW = geometry.earthSizePx, left = geometry.earthLeft, top = geometry.earthTop)
+
+        // Draw orbit path
+        if (showOrbitPath) {
+            drawOrbitPath(
+                dst = out,
+                dstW = outputSizePx,
+                dstH = outputSizePx,
+                center = geometry.sceneHalf,
+                earthRadiusPx = geometry.earthRadiusPx,
+                orbitRadius = geometry.orbitRadius,
+                cosInc = geometry.cosInc,
+                sinInc = geometry.sinInc,
+                cosView = geometry.cosView,
+                sinView = geometry.sinView,
+                moonCenterX = moonLayout.moonCenterX,
+                moonCenterY = moonLayout.moonCenterY,
+                moonRadiusPx = if (moonTexture != null) moonLayout.moonRadiusPx else 0f,
+                cameraZ = geometry.cameraZ,
+            )
+        }
+
+        if (moonTexture == null) return out
+
+        // Calculate Moon view direction (from Moon to camera)
+        val moonViewDirX = -moonLayout.moonOrbit.x
+        val moonViewDirY = -moonLayout.moonOrbit.yCam
+        val moonViewDirZ = geometry.cameraZ - moonLayout.moonOrbit.zCam
+
+        // Acquire Moon buffer from pool or create new
+        val moonSize = moonLayout.moonSizePx * moonLayout.moonSizePx
+        val moonBuffer = bufferPool?.acquire(moonSize)
+
+        try {
+            // Render Moon with same sun lighting as Earth (no phase-based shadows)
+            val moon = renderTexturedSphereArgb(
+                texture = moonTexture,
+                outputSizePx = moonLayout.moonSizePx,
+                rotationDegrees = moonRotationDegrees,
+                lightDegrees = lightDegrees,
+                tiltDegrees = 0f,
+                ambient = MOON_AMBIENT,
+                diffuseStrength = MOON_DIFFUSE_STRENGTH,
+                sunElevationDegrees = sunElevationDegrees,
+                viewDirX = moonViewDirX,
+                viewDirY = moonViewDirY,
+                viewDirZ = moonViewDirZ,
+                sunVisibility = 1f,
+                atmosphereStrength = 0f,
+                shadowAlphaStrength = 0f,
+                outputBuffer = moonBuffer,
+            )
+
+            // Composite Moon with depth sorting
+            compositeMoonWithDepth(
+                out = out,
+                outputSizePx = outputSizePx,
+                earth = earth,
+                earthSizePx = geometry.earthSizePx,
+                earthLeft = geometry.earthLeft,
+                earthTop = geometry.earthTop,
+                earthRadiusPx = geometry.earthRadiusPx,
+                moon = moon,
+                moonSizePx = moonLayout.moonSizePx,
+                moonLeft = moonLayout.moonLeft,
+                moonTop = moonLayout.moonTop,
+                moonRadiusPx = moonLayout.moonRadiusPx,
+                moonRadiusWorldPx = geometry.moonRadiusWorldPx,
+                moonZCam = moonLayout.moonOrbit.zCam,
+                moonScale = moonLayout.moonScale,
+            )
+        } finally {
+            // Release Moon buffer back to pool (bufferPool is non-null if moonBuffer is non-null)
+            moonBuffer?.let { bufferPool?.release(it) }
+        }
+    } finally {
+        // Release Earth buffer back to pool (bufferPool is non-null if earthBuffer is non-null)
+        earthBuffer?.let { bufferPool?.release(it) }
     }
-
-    if (moonTexture == null) return out
-
-    // Calculate Moon view direction (from Moon to camera)
-    val moonViewDirX = -moonLayout.moonOrbit.x
-    val moonViewDirY = -moonLayout.moonOrbit.yCam
-    val moonViewDirZ = geometry.cameraZ - moonLayout.moonOrbit.zCam
-
-    // In the main scene, the Moon is lit by the same sun as the Earth.
-    // This creates a consistent visualization where both bodies show
-    // realistic sun illumination (lit side vs dark side).
-    // Phase-based lighting (which can make the Moon invisible) is only
-    // used in the "Moon from marker" view.
-
-    // Render Moon with same sun lighting as Earth (no phase-based shadows)
-    val moon = renderTexturedSphereArgb(
-        texture = moonTexture,
-        outputSizePx = moonLayout.moonSizePx,
-        rotationDegrees = moonRotationDegrees,
-        lightDegrees = lightDegrees, // Same sun direction as Earth
-        tiltDegrees = 0f,
-        ambient = MOON_AMBIENT,
-        diffuseStrength = MOON_DIFFUSE_STRENGTH,
-        sunElevationDegrees = sunElevationDegrees, // Same sun elevation as Earth
-        viewDirX = moonViewDirX,
-        viewDirY = moonViewDirY,
-        viewDirZ = moonViewDirZ,
-        sunVisibility = 1f, // No eclipse shadow in this visualization
-        atmosphereStrength = 0f,
-        shadowAlphaStrength = 0f, // No phase-based transparency (Moon stays visible)
-    )
-
-    // Composite Moon with depth sorting
-    compositeMoonWithDepth(
-        out = out,
-        outputSizePx = outputSizePx,
-        earth = earth,
-        earthSizePx = geometry.earthSizePx,
-        earthLeft = geometry.earthLeft,
-        earthTop = geometry.earthTop,
-        earthRadiusPx = geometry.earthRadiusPx,
-        moon = moon,
-        moonSizePx = moonLayout.moonSizePx,
-        moonLeft = moonLayout.moonLeft,
-        moonTop = moonLayout.moonTop,
-        moonRadiusPx = moonLayout.moonRadiusPx,
-        moonRadiusWorldPx = geometry.moonRadiusWorldPx,
-        moonZCam = moonLayout.moonOrbit.zCam,
-        moonScale = moonLayout.moonScale,
-    )
 
     return out
 }
@@ -787,6 +810,8 @@ private fun compositeMoonWithDepth(
  * @param moonSunElevationDegrees Override for Moon sun elevation.
  * @param moonPhaseAngleDegrees Moon phase for lighting.
  * @param julianDay Julian Day for ephemeris.
+ * @param bufferPool Optional buffer pool for reusing intermediate buffers.
+ * @param outputBuffer Optional pre-allocated output buffer.
  * @return ARGB pixel array of Moon view.
  */
 internal suspend fun renderMoonFromMarkerArgb(
@@ -805,9 +830,16 @@ internal suspend fun renderMoonFromMarkerArgb(
     moonSunElevationDegrees: Float = sunElevationDegrees,
     moonPhaseAngleDegrees: Float? = null,
     julianDay: Double? = null,
+    bufferPool: PixelBufferPool? = null,
+    outputBuffer: IntArray? = null,
 ): IntArray {
-    val out = IntArray(outputSizePx * outputSizePx)
-    out.fill(OPAQUE_BLACK)
+    val outputSize = outputSizePx * outputSizePx
+    val out = if (outputBuffer != null && outputBuffer.size >= outputSize) {
+        outputBuffer.fill(OPAQUE_BLACK)
+        outputBuffer
+    } else {
+        IntArray(outputSize).also { it.fill(OPAQUE_BLACK) }
+    }
 
     if (showBackgroundStars) {
         drawStarfield(dst = out, dstW = outputSizePx, dstH = outputSizePx, seed = STARFIELD_SEED)
@@ -898,29 +930,39 @@ internal suspend fun renderMoonFromMarkerArgb(
         sunElevationDegrees = moonSunElevationDegreesResolved,
     )
 
-    // Render Moon
-    val moon = renderTexturedSphereArgb(
-        texture = moonTexture,
-        outputSizePx = outputSizePx,
-        rotationDegrees = moonRotationDegrees,
-        lightDegrees = moonLightDegreesResolved,
-        tiltDegrees = 0f,
-        ambient = MOON_AMBIENT,
-        diffuseStrength = MOON_DIFFUSE_STRENGTH,
-        sunElevationDegrees = moonSunElevationDegreesResolved,
-        viewDirX = viewDirX,
-        viewDirY = viewDirY,
-        viewDirZ = viewDirZ,
-        upHintX = upHintX,
-        upHintY = upHintY,
-        upHintZ = upHintZ,
-        sunVisibility = sunVisibility,
-        atmosphereStrength = 0f,
-        shadowAlphaStrength = 1f,
-    )
-    drawGhostMoonOutline(argb = moon, sizePx = outputSizePx)
+    // Acquire Moon buffer from pool or create new
+    val moonBuffer = bufferPool?.acquire(outputSize)
 
-    blitOver(dst = out, dstW = outputSizePx, src = moon, srcW = outputSizePx, left = 0, top = 0)
+    try {
+        // Render Moon
+        val moon = renderTexturedSphereArgb(
+            texture = moonTexture,
+            outputSizePx = outputSizePx,
+            rotationDegrees = moonRotationDegrees,
+            lightDegrees = moonLightDegreesResolved,
+            tiltDegrees = 0f,
+            ambient = MOON_AMBIENT,
+            diffuseStrength = MOON_DIFFUSE_STRENGTH,
+            sunElevationDegrees = moonSunElevationDegreesResolved,
+            viewDirX = viewDirX,
+            viewDirY = viewDirY,
+            viewDirZ = viewDirZ,
+            upHintX = upHintX,
+            upHintY = upHintY,
+            upHintZ = upHintZ,
+            sunVisibility = sunVisibility,
+            atmosphereStrength = 0f,
+            shadowAlphaStrength = 1f,
+            outputBuffer = moonBuffer,
+        )
+        drawGhostMoonOutline(argb = moon, sizePx = outputSizePx)
+
+        blitOver(dst = out, dstW = outputSizePx, src = moon, srcW = outputSizePx, left = 0, top = 0)
+    } finally {
+        // Release Moon buffer back to pool (bufferPool is non-null if moonBuffer is non-null)
+        moonBuffer?.let { bufferPool?.release(it) }
+    }
+
     return out
 }
 

@@ -1,17 +1,34 @@
 package io.github.kdroidfilter.seforimapp.earthwidget
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlin.math.*
+
+// ============================================================================
+// PARALLELIZATION CONFIGURATION
+// ============================================================================
+
+/** Number of parallel chunks for rendering. Tuned for typical desktop CPUs. */
+private const val PARALLEL_CHUNK_COUNT = 8
+
+/** Minimum output size to use parallel rendering (smaller sizes have too much overhead). */
+private const val MIN_SIZE_FOR_PARALLEL = 200
 
 // ============================================================================
 // SPHERE RENDERING
 // ============================================================================
 
 /**
- * Renders a textured sphere with Phong lighting.
+ * Renders a textured sphere with Phong lighting using parallel processing.
  *
  * This is the core rendering function that projects a texture onto a sphere
  * and applies realistic lighting including ambient, diffuse, specular, and
  * atmospheric effects.
+ *
+ * Uses coroutine-based parallelization to distribute work across multiple CPU cores,
+ * significantly improving render performance on multi-core systems.
  *
  * @param texture Source texture to map onto sphere.
  * @param outputSizePx Output image size (square).
@@ -34,7 +51,7 @@ import kotlin.math.*
  * @param shadowAlphaStrength Shadow-based alpha blending.
  * @return ARGB pixel array of rendered sphere.
  */
-internal fun renderTexturedSphereArgb(
+internal suspend fun renderTexturedSphereArgb(
     texture: EarthTexture,
     outputSizePx: Int,
     rotationDegrees: Float,
@@ -57,51 +74,190 @@ internal fun renderTexturedSphereArgb(
 ): IntArray {
     val output = IntArray(outputSizePx * outputSizePx)
 
-    // Pre-compute rotation and tilt matrices
-    val rotationRad = rotationDegrees * DEG_TO_RAD_F
-    val tiltRad = tiltDegrees * DEG_TO_RAD_F
-    val cosYaw = cos(rotationRad)
-    val sinYaw = sin(rotationRad)
-    val cosTilt = cos(tiltRad)
-    val sinTilt = sin(tiltRad)
+    // Pre-compute all rendering parameters
+    val params = SphereRenderParams(
+        texture = texture,
+        outputSizePx = outputSizePx,
+        rotationDegrees = rotationDegrees,
+        lightDegrees = lightDegrees,
+        tiltDegrees = tiltDegrees,
+        ambient = ambient,
+        diffuseStrength = diffuseStrength,
+        specularStrength = specularStrength,
+        specularExponent = specularExponent,
+        sunElevationDegrees = sunElevationDegrees,
+        viewDirX = viewDirX,
+        viewDirY = viewDirY,
+        viewDirZ = viewDirZ,
+        upHintX = upHintX,
+        upHintY = upHintY,
+        upHintZ = upHintZ,
+        sunVisibility = sunVisibility,
+        atmosphereStrength = atmosphereStrength,
+        shadowAlphaStrength = shadowAlphaStrength,
+    )
 
-    // Light direction
-    val sunAzimuthRad = lightDegrees * DEG_TO_RAD_F
-    val sunElevationRad = sunElevationDegrees * DEG_TO_RAD_F
-    val cosSunElevation = cos(sunElevationRad)
-    val sunX = sin(sunAzimuthRad) * cosSunElevation
-    val sunY = sin(sunElevationRad)
-    val sunZ = cos(sunAzimuthRad) * cosSunElevation
+    // Use parallel rendering for larger images, sequential for smaller ones
+    if (outputSizePx >= MIN_SIZE_FOR_PARALLEL) {
+        renderSphereParallel(output, params)
+    } else {
+        renderSphereSequential(output, params)
+    }
 
-    // Texture data
-    val texWidth = texture.width
-    val texHeight = texture.height
-    val tex = texture.argb
+    return output
+}
 
-    // Build camera coordinate system
-    val cameraFrame = buildCameraFrame(viewDirX, viewDirY, viewDirZ, upHintX, upHintY, upHintZ)
+/**
+ * Pre-computed rendering parameters to avoid redundant calculations across chunks.
+ */
+private class SphereRenderParams(
+    val texture: EarthTexture,
+    val outputSizePx: Int,
+    rotationDegrees: Float,
+    lightDegrees: Float,
+    tiltDegrees: Float,
+    val ambient: Float,
+    val diffuseStrength: Float,
+    val specularStrength: Float,
+    val specularExponent: Int,
+    sunElevationDegrees: Float,
+    viewDirX: Float,
+    viewDirY: Float,
+    viewDirZ: Float,
+    upHintX: Float,
+    upHintY: Float,
+    upHintZ: Float,
+    sunVisibility: Float,
+    val atmosphereStrength: Float,
+    val shadowAlphaStrength: Float,
+) {
+    // Pre-computed rotation and tilt
+    val cosYaw: Float
+    val sinYaw: Float
+    val cosTilt: Float
+    val sinTilt: Float
 
-    // Pre-compute half vector for specular (Blinn-Phong)
-    val halfVector = computeHalfVector(sunX, sunY, sunZ, cameraFrame)
-    val specEnabled = specularStrength > 0f && halfVector != null && specularExponent > 0
+    // Pre-computed light direction
+    val sunX: Float
+    val sunY: Float
+    val sunZ: Float
+
+    // Camera frame
+    val cameraFrame: CameraFrame
+
+    // Specular computation
+    val halfVector: HalfVector?
+    val specEnabled: Boolean
 
     // Screen coordinate helpers
-    val halfW = (outputSizePx - 1) / 2f
-    val halfH = (outputSizePx - 1) / 2f
-    val invHalfW = 1f / halfW
-    val invHalfH = 1f / halfH
-    val lightVisibility = sunVisibility.coerceIn(0f, 1f)
+    val halfW: Float
+    val halfH: Float
+    val invHalfW: Float
+    val invHalfH: Float
+    val lightVisibility: Float
 
-    // Render each pixel
-    for (y in 0 until outputSizePx) {
+    // Texture references
+    val texWidth: Int = texture.width
+    val texHeight: Int = texture.height
+    val tex: IntArray = texture.argb
+
+    init {
+        val rotationRad = rotationDegrees * DEG_TO_RAD_F
+        val tiltRad = tiltDegrees * DEG_TO_RAD_F
+        cosYaw = cos(rotationRad)
+        sinYaw = sin(rotationRad)
+        cosTilt = cos(tiltRad)
+        sinTilt = sin(tiltRad)
+
+        val sunAzimuthRad = lightDegrees * DEG_TO_RAD_F
+        val sunElevationRad = sunElevationDegrees * DEG_TO_RAD_F
+        val cosSunElevation = cos(sunElevationRad)
+        sunX = sin(sunAzimuthRad) * cosSunElevation
+        sunY = sin(sunElevationRad)
+        sunZ = cos(sunAzimuthRad) * cosSunElevation
+
+        cameraFrame = buildCameraFrame(viewDirX, viewDirY, viewDirZ, upHintX, upHintY, upHintZ)
+        halfVector = computeHalfVector(sunX, sunY, sunZ, cameraFrame)
+        specEnabled = specularStrength > 0f && halfVector != null && specularExponent > 0
+
+        halfW = (outputSizePx - 1) / 2f
+        halfH = (outputSizePx - 1) / 2f
+        invHalfW = 1f / halfW
+        invHalfH = 1f / halfH
+        lightVisibility = sunVisibility.coerceIn(0f, 1f)
+    }
+}
+
+/**
+ * Renders the sphere using parallel coroutines, splitting work into horizontal chunks.
+ */
+private suspend fun renderSphereParallel(output: IntArray, params: SphereRenderParams) {
+    val chunkSize = (params.outputSizePx + PARALLEL_CHUNK_COUNT - 1) / PARALLEL_CHUNK_COUNT
+
+    coroutineScope {
+        (0 until params.outputSizePx step chunkSize).map { startY ->
+            async(Dispatchers.Default) {
+                val endY = minOf(startY + chunkSize, params.outputSizePx)
+                renderRowRange(output, params, startY, endY)
+            }
+        }.awaitAll()
+    }
+}
+
+/**
+ * Renders the sphere sequentially (for small images where parallelization overhead isn't worth it).
+ */
+private fun renderSphereSequential(output: IntArray, params: SphereRenderParams) {
+    renderRowRange(output, params, 0, params.outputSizePx)
+}
+
+/**
+ * Renders a range of rows [startY, endY) to the output buffer.
+ * Each row is independent, making this safe for parallel execution.
+ */
+private fun renderRowRange(
+    output: IntArray,
+    params: SphereRenderParams,
+    startY: Int,
+    endY: Int,
+) {
+    val outputSizePx = params.outputSizePx
+    val halfW = params.halfW
+    val halfH = params.halfH
+    val invHalfW = params.invHalfW
+    val invHalfH = params.invHalfH
+    val cameraFrame = params.cameraFrame
+    val cosYaw = params.cosYaw
+    val sinYaw = params.sinYaw
+    val cosTilt = params.cosTilt
+    val sinTilt = params.sinTilt
+    val texWidth = params.texWidth
+    val texHeight = params.texHeight
+    val tex = params.tex
+    val sunX = params.sunX
+    val sunY = params.sunY
+    val sunZ = params.sunZ
+    val ambient = params.ambient
+    val diffuseStrength = params.diffuseStrength
+    val specularStrength = params.specularStrength
+    val specularExponent = params.specularExponent
+    val specEnabled = params.specEnabled
+    val halfVector = params.halfVector
+    val lightVisibility = params.lightVisibility
+    val atmosphereStrength = params.atmosphereStrength
+    val shadowAlphaStrength = params.shadowAlphaStrength
+
+    for (y in startY until endY) {
         val ny = (halfH - y) * invHalfH
+        val rowOffset = y * outputSizePx
+
         for (x in 0 until outputSizePx) {
             val nx = (x - halfW) * invHalfW
             val rr = nx * nx + ny * ny
 
             // Skip pixels outside sphere
             if (rr > 1f) {
-                output[y * outputSizePx + x] = TRANSPARENT_BLACK
+                output[rowOffset + x] = TRANSPARENT_BLACK
                 continue
             }
 
@@ -150,11 +306,9 @@ internal fun renderTexturedSphereArgb(
                 shadowAlphaStrength = shadowAlphaStrength,
             )
 
-            output[y * outputSizePx + x] = pixelColor
+            output[rowOffset + x] = pixelColor
         }
     }
-
-    return output
 }
 
 /**
@@ -368,7 +522,7 @@ private fun computePixelLighting(
  * @param julianDay Julian Day for ephemeris calculation.
  * @return ARGB pixel array of complete scene.
  */
-internal fun renderEarthWithMoonArgb(
+internal suspend fun renderEarthWithMoonArgb(
     earthTexture: EarthTexture?,
     moonTexture: EarthTexture?,
     outputSizePx: Int,
@@ -635,7 +789,7 @@ private fun compositeMoonWithDepth(
  * @param julianDay Julian Day for ephemeris.
  * @return ARGB pixel array of Moon view.
  */
-internal fun renderMoonFromMarkerArgb(
+internal suspend fun renderMoonFromMarkerArgb(
     moonTexture: EarthTexture?,
     outputSizePx: Int,
     lightDegrees: Float,

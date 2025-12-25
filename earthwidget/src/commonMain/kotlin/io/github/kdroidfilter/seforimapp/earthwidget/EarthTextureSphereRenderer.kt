@@ -523,6 +523,7 @@ private fun computePixelLighting(
  * @param showOrbitPath Whether to draw orbit path.
  * @param bufferPool Optional buffer pool for reusing intermediate buffers.
  * @param outputBuffer Optional pre-allocated output buffer.
+ * @param starfieldCache Optional cache for pre-rendered starfields.
  * @return ARGB pixel array of complete scene.
  */
 internal suspend fun renderEarthWithMoonArgb(
@@ -541,24 +542,30 @@ internal suspend fun renderEarthWithMoonArgb(
     showOrbitPath: Boolean = true,
     bufferPool: PixelBufferPool? = null,
     outputBuffer: IntArray? = null,
+    starfieldCache: StarfieldCache? = null,
 ): IntArray {
     val outputSize = outputSizePx * outputSizePx
     val out = if (outputBuffer != null && outputBuffer.size >= outputSize) {
-        outputBuffer.fill(OPAQUE_BLACK)
         outputBuffer
     } else {
-        IntArray(outputSize).also { it.fill(OPAQUE_BLACK) }
+        IntArray(outputSize)
+    }
+
+    // Fill background with cached starfield or solid black
+    if (showBackgroundStars && starfieldCache != null) {
+        val cachedStarfield = starfieldCache.getOrCreate(outputSizePx, outputSizePx)
+        cachedStarfield.copyInto(out)
+    } else if (showBackgroundStars) {
+        out.fill(OPAQUE_BLACK)
+        drawStarfield(dst = out, dstW = outputSizePx, dstH = outputSizePx, seed = STARFIELD_SEED)
+    } else {
+        out.fill(OPAQUE_BLACK)
     }
 
     if (earthTexture == null) return out
 
     val geometry = computeSceneGeometry(outputSizePx)
     val moonLayout = computeMoonScreenLayout(geometry, moonOrbitDegrees)
-
-    // Fill background with stars
-    if (showBackgroundStars) {
-        drawStarfield(dst = out, dstW = outputSizePx, dstH = outputSizePx, seed = STARFIELD_SEED)
-    }
 
     // Acquire Earth buffer from pool or create new
     val earthSize = geometry.earthSizePx * geometry.earthSizePx
@@ -812,6 +819,7 @@ private fun compositeMoonWithDepth(
  * @param julianDay Julian Day for ephemeris.
  * @param bufferPool Optional buffer pool for reusing intermediate buffers.
  * @param outputBuffer Optional pre-allocated output buffer.
+ * @param starfieldCache Optional cache for pre-rendered starfields.
  * @return ARGB pixel array of Moon view.
  */
 internal suspend fun renderMoonFromMarkerArgb(
@@ -832,17 +840,24 @@ internal suspend fun renderMoonFromMarkerArgb(
     julianDay: Double? = null,
     bufferPool: PixelBufferPool? = null,
     outputBuffer: IntArray? = null,
+    starfieldCache: StarfieldCache? = null,
 ): IntArray {
     val outputSize = outputSizePx * outputSizePx
     val out = if (outputBuffer != null && outputBuffer.size >= outputSize) {
-        outputBuffer.fill(OPAQUE_BLACK)
         outputBuffer
     } else {
-        IntArray(outputSize).also { it.fill(OPAQUE_BLACK) }
+        IntArray(outputSize)
     }
 
-    if (showBackgroundStars) {
+    // Fill background with cached starfield or solid black
+    if (showBackgroundStars && starfieldCache != null) {
+        val cachedStarfield = starfieldCache.getOrCreate(outputSizePx, outputSizePx)
+        cachedStarfield.copyInto(out)
+    } else if (showBackgroundStars) {
+        out.fill(OPAQUE_BLACK)
         drawStarfield(dst = out, dstW = outputSizePx, dstH = outputSizePx, seed = STARFIELD_SEED)
+    } else {
+        out.fill(OPAQUE_BLACK)
     }
 
     if (moonTexture == null) return out

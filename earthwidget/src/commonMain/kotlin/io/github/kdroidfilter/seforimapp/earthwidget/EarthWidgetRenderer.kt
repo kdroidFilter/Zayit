@@ -59,12 +59,17 @@ internal data class MoonFromMarkerRenderState(
  * Intermediate buffers (Earth, Moon spheres) and output buffers are pooled
  * and reused across frames, significantly reducing GC pressure.
  *
+ * Uses a starfield cache to avoid re-rendering the deterministic starfield
+ * background on every frame.
+ *
  * @param dispatcher Coroutine dispatcher for background rendering.
  * @param bufferPool Optional buffer pool; defaults to global shared pool.
+ * @param starfieldCache Optional starfield cache; defaults to global shared cache.
  */
 internal class EarthWidgetRenderer(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val bufferPool: PixelBufferPool = globalPixelBufferPool,
+    private val starfieldCache: StarfieldCache = globalStarfieldCache,
 ) {
     /**
      * Renders the Earth-Moon composite scene.
@@ -99,6 +104,7 @@ internal class EarthWidgetRenderer(
                 showOrbitPath = state.showOrbitPath,
                 bufferPool = bufferPool,
                 outputBuffer = outputBuffer,
+                starfieldCache = starfieldCache,
             )
 
             // Convert to ImageBitmap (copies the data)
@@ -145,6 +151,7 @@ internal class EarthWidgetRenderer(
                 julianDay = state.julianDay,
                 bufferPool = bufferPool,
                 outputBuffer = outputBuffer,
+                starfieldCache = starfieldCache,
             )
 
             // Convert to ImageBitmap (copies the data)

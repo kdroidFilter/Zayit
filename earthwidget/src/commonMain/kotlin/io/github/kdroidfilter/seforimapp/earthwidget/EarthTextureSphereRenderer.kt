@@ -291,10 +291,8 @@ private fun renderRowRange(
             u -= floor(u)
             val v = (0.5f - (latitude / PI.toFloat())).coerceIn(0f, 1f)
 
-            // Sample texture
-            val tx = (u * texWidth).toInt().coerceIn(0, texWidth - 1)
-            val ty = (v * texHeight).toInt().coerceIn(0, texHeight - 1)
-            val texColor = tex[ty * texWidth + tx]
+            // Sample texture with bilinear filtering for smoother results
+            val texColor = sampleTextureBilinear(tex, texWidth, texHeight, u, v)
 
             // Compute lighting
             val pixelColor = computePixelLighting(
@@ -664,11 +662,13 @@ internal suspend fun renderEarthWithMoonArgb(
                 moonScale = moonLayout.moonScale,
             )
         } finally {
-            // Release Moon buffer back to pool (bufferPool is non-null if moonBuffer is non-null)
+            // Release Moon buffer back to pool
+            @Suppress("UNNECESSARY_SAFE_CALL")
             moonBuffer?.let { bufferPool?.release(it) }
         }
     } finally {
-        // Release Earth buffer back to pool (bufferPool is non-null if earthBuffer is non-null)
+        // Release Earth buffer back to pool
+        @Suppress("UNNECESSARY_SAFE_CALL")
         earthBuffer?.let { bufferPool?.release(it) }
     }
 
@@ -959,7 +959,8 @@ internal suspend fun renderMoonFromMarkerArgb(
 
         blitOver(dst = out, dstW = outputSizePx, src = moon, srcW = outputSizePx, left = 0, top = 0)
     } finally {
-        // Release Moon buffer back to pool (bufferPool is non-null if moonBuffer is non-null)
+        // Release Moon buffer back to pool
+        @Suppress("UNNECESSARY_SAFE_CALL")
         moonBuffer?.let { bufferPool?.release(it) }
     }
 
@@ -1306,6 +1307,145 @@ private fun xorshift32(value: Int): Int {
     x = x xor (x ushr 17)
     x = x xor (x shl 5)
     return x
+}
+
+// ============================================================================
+// BILINEAR TEXTURE SAMPLING
+// ============================================================================
+
+/**
+ * Samples a texture using bilinear interpolation for smoother results.
+ *
+ * Bilinear filtering interpolates between 4 neighboring texels based on
+ * the fractional UV coordinates, reducing aliasing artifacts compared
+ * to point sampling.
+ *
+ * @param tex Texture pixel data in ARGB format.
+ * @param texWidth Texture width in pixels.
+ * @param texHeight Texture height in pixels.
+ * @param u Horizontal texture coordinate (0-1, wraps).
+ * @param v Vertical texture coordinate (0-1, clamped).
+ * @return Interpolated ARGB color.
+ */
+private fun sampleTextureBilinear(
+    tex: IntArray,
+    texWidth: Int,
+    texHeight: Int,
+    u: Float,
+    v: Float,
+): Int {
+    // Convert UV to pixel coordinates
+    val x = u * texWidth
+    val y = v * texHeight
+
+    // Get integer pixel coordinates
+    val x0 = x.toInt()
+    val y0 = y.toInt().coerceIn(0, texHeight - 1)
+
+    // Handle horizontal wrapping (for seamless longitude)
+    val x0Wrapped = if (x0 < 0) texWidth + (x0 % texWidth) else x0 % texWidth
+    val x1Wrapped = (x0Wrapped + 1) % texWidth
+
+    // Clamp vertical (no wrapping at poles)
+    val y1 = (y0 + 1).coerceAtMost(texHeight - 1)
+
+    // Fractional parts for interpolation
+    val fx = x - x.toInt()
+    val fy = y - y.toInt()
+
+    // Sample 4 neighboring texels
+    val c00 = tex[y0 * texWidth + x0Wrapped]
+    val c10 = tex[y0 * texWidth + x1Wrapped]
+    val c01 = tex[y1 * texWidth + x0Wrapped]
+    val c11 = tex[y1 * texWidth + x1Wrapped]
+
+    // Bilinear interpolation
+    val top = lerpColorLinear(c00, c10, fx)
+    val bottom = lerpColorLinear(c01, c11, fx)
+    return lerpColorLinear(top, bottom, fy)
+}
+
+/**
+ * Linearly interpolates between two ARGB colors in linear color space.
+ *
+ * Performs gamma-correct interpolation by:
+ * 1. Converting sRGB to linear
+ * 2. Interpolating in linear space
+ * 3. Converting back to sRGB
+ *
+ * This produces more visually accurate results than naive interpolation.
+ *
+ * @param c0 First color (ARGB).
+ * @param c1 Second color (ARGB).
+ * @param t Interpolation factor (0 = c0, 1 = c1).
+ * @return Interpolated ARGB color.
+ */
+private fun lerpColorLinear(c0: Int, c1: Int, t: Float): Int {
+    if (t <= 0f) return c0
+    if (t >= 1f) return c1
+
+    // Extract channels
+    val a0 = (c0 ushr 24) and 0xFF
+    val r0 = (c0 ushr 16) and 0xFF
+    val g0 = (c0 ushr 8) and 0xFF
+    val b0 = c0 and 0xFF
+
+    val a1 = (c1 ushr 24) and 0xFF
+    val r1 = (c1 ushr 16) and 0xFF
+    val g1 = (c1 ushr 8) and 0xFF
+    val b1 = c1 and 0xFF
+
+    // Convert to linear space (approximate gamma 2.2 with square)
+    val r0Lin = (r0 / 255f).let { it * it }
+    val g0Lin = (g0 / 255f).let { it * it }
+    val b0Lin = (b0 / 255f).let { it * it }
+
+    val r1Lin = (r1 / 255f).let { it * it }
+    val g1Lin = (g1 / 255f).let { it * it }
+    val b1Lin = (b1 / 255f).let { it * it }
+
+    // Interpolate in linear space
+    val invT = 1f - t
+    val aLerp = a0 * invT + a1 * t
+    val rLerp = r0Lin * invT + r1Lin * t
+    val gLerp = g0Lin * invT + g1Lin * t
+    val bLerp = b0Lin * invT + b1Lin * t
+
+    // Convert back to sRGB (gamma encode with sqrt)
+    val a = aLerp.roundToInt().coerceIn(0, 255)
+    val r = (sqrt(rLerp) * 255f).roundToInt().coerceIn(0, 255)
+    val g = (sqrt(gLerp) * 255f).roundToInt().coerceIn(0, 255)
+    val b = (sqrt(bLerp) * 255f).roundToInt().coerceIn(0, 255)
+
+    return (a shl 24) or (r shl 16) or (g shl 8) or b
+}
+
+/**
+ * Fast linear interpolation for colors (without gamma correction).
+ *
+ * Use this for performance-critical paths where slight color
+ * inaccuracy is acceptable.
+ *
+ * @param c0 First color (ARGB).
+ * @param c1 Second color (ARGB).
+ * @param t Interpolation factor (0 = c0, 1 = c1).
+ * @return Interpolated ARGB color.
+ */
+@Suppress("unused")
+private fun lerpColorFast(c0: Int, c1: Int, t: Float): Int {
+    if (t <= 0f) return c0
+    if (t >= 1f) return c1
+
+    val invT = 1f - t
+    val a = ((c0 ushr 24) and 0xFF) * invT + ((c1 ushr 24) and 0xFF) * t
+    val r = ((c0 ushr 16) and 0xFF) * invT + ((c1 ushr 16) and 0xFF) * t
+    val g = ((c0 ushr 8) and 0xFF) * invT + ((c1 ushr 8) and 0xFF) * t
+    val b = (c0 and 0xFF) * invT + (c1 and 0xFF) * t
+
+    return (a.roundToInt() shl 24) or
+            (r.roundToInt() shl 16) or
+            (g.roundToInt() shl 8) or
+            b.roundToInt()
 }
 
 // ============================================================================

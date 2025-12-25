@@ -2,12 +2,12 @@
 
 commonsCompress = "1.28.0"
 composeSonner = "0.4.0"
-confettikit = "0.6.0"
+confettikit = "0.7.0"
 filekitCore = "0.12.0"
 jsoup = "1.21.2"
 jvmNativeTrustedRoots = "1.1.7"
 jvmToolchain = "25"
-koalaplotCore = "0.10.3"
+koalaplotCore = "0.10.4"
 kotlin = "2.3.0"
 compose = "1.10.0-rc02"
 agp = "8.12.3"
@@ -22,11 +22,11 @@ androidx-navigation = "2.9.1"
 kotlinx-serialization = "1.9.0"
 multiplatformSettings = "1.3.0"
 kotlinx-datetime = "0.7.1"
-buildConfig = "6.0.6"
+buildConfig = "6.0.7"
 materialKolor = "4.0.5"
-jewel = "0.32.1-253.28294.285"
+jewel = "0.33.0-253.29795"
 jna = "5.18.1"
-oshiCore = "6.9.1"
+oshiCore = "6.9.2"
 paging = "3.3.6"
 platformtools = "0.7.4"
 composenativetray = "1.0.4"
@@ -85,7 +85,7 @@ jewel-int-ui-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalon
 jewel-ui = { module = "org.jetbrains.jewel:jewel-ui", version.ref = "jewel" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "paging" }
-androidx-paging-compose = { module = "androidx.paging:paging-compose", version = "3.4.0-alpha04" }
+androidx-paging-compose = { module = "androidx.paging:paging-compose", version = "3.4.0-beta01" }
 oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshiCore" }
 platformtools-appmanager = { module = "io.github.kdroidfilter:platformtools.appmanager", version.ref = "platformtools" }
 platformtools-core = { module = "io.github.kdroidfilter:platformtools.core", version.ref = "platformtools" }
@@ -127,4 +127,4 @@ android-library = { id = "com.android.kotlin.multiplatform.library", version.ref
 caupain =  { id = "com.deezer.caupain", version = "1.7.1"}
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 linux-deps = { id = "io.github.kdroidfilter.compose.linux.packagedeps", version = "0.2.4"}
-stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version = "0.6.5" }
+stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version = "0.6.6" }

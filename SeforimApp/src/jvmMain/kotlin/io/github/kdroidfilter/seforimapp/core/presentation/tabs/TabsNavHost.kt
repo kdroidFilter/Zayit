@@ -33,6 +33,7 @@ import io.github.kdroidfilter.seforim.navigation.nonAnimatedComposable
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
@@ -255,6 +256,17 @@ fun TabsNavHost() {
                 )
                 val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                 val uiState by viewModel.uiState.collectAsState()
+                // React to destination changes when ViewModel is reused (e.g., Home -> BookContent)
+                LaunchedEffect(destination.bookId, destination.lineId) {
+                    if (destination.bookId > 0) {
+                        val lineId = destination.lineId
+                        if (lineId != null && lineId > 0) {
+                            viewModel.onEvent(BookContentEvent.OpenBookAtLine(destination.bookId, lineId))
+                        } else {
+                            viewModel.onEvent(BookContentEvent.OpenBookById(destination.bookId))
+                        }
+                    }
+                }
                 BookContentScreen(
                     uiState = uiState,
                     onEvent = viewModel::onEvent,
@@ -416,6 +428,17 @@ fun TabsNavHost() {
                             )
                             val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                             val uiState by viewModel.uiState.collectAsState()
+                            // React to destination changes when ViewModel is reused (e.g., Home -> BookContent)
+                            LaunchedEffect(destination.bookId, destination.lineId) {
+                                if (destination.bookId > 0) {
+                                    val lineId = destination.lineId
+                                    if (lineId != null && lineId > 0) {
+                                        viewModel.onEvent(BookContentEvent.OpenBookAtLine(destination.bookId, lineId))
+                                    } else {
+                                        viewModel.onEvent(BookContentEvent.OpenBookById(destination.bookId))
+                                    }
+                                }
+                            }
                             BookContentScreen(
                                 uiState = uiState,
                                 onEvent = viewModel::onEvent,

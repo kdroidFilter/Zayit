@@ -17,6 +17,7 @@ import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStor
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
+import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
 import java.nio.file.Paths
 import java.util.UUID
 
@@ -50,10 +51,11 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideLuceneSearchService(): LuceneSearchService {
+    fun provideLuceneSearchService(repository: SeforimRepository): LuceneSearchService {
         val dbPath = getDatabasePath()
         val indexPath = if (dbPath.endsWith(".db")) "$dbPath.lucene" else "$dbPath.luceneindex"
-        return LuceneSearchService(Paths.get(indexPath))
+        val snippetSourceProvider = RepositorySnippetSourceProvider(repository)
+        return LuceneSearchService(Paths.get(indexPath), snippetSourceProvider)
     }
 
     @Provides

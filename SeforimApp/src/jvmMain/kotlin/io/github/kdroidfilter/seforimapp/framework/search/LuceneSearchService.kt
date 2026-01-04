@@ -26,15 +26,39 @@ import org.jsoup.safety.Safelist
 import io.github.kdroidfilter.seforimapp.logger.debugln
 
 /**
+ * Info about a line needed to fetch snippet source from DB.
+ */
+data class LineSnippetInfo(
+    val lineId: Long,
+    val bookId: Long,
+    val lineIndex: Int
+)
+
+/**
+ * Provider that fetches snippet source text for multiple lines.
+ * Returns a map of lineId -> snippetSource (HTML-cleaned, with neighbors if needed).
+ */
+fun interface SnippetSourceProvider {
+    fun getSnippetSources(lines: List<LineSnippetInfo>): Map<Long, String>
+}
+
+/**
  * Minimal Lucene search service for JVM runtime.
  * Supports book title suggestions and full-text queries (future extension).
  */
-class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = StandardAnalyzer()) {
+class LuceneSearchService(
+    indexDir: Path,
+    private val snippetSourceProvider: SnippetSourceProvider? = null,
+    private val analyzer: Analyzer = StandardAnalyzer()
+) {
     companion object {
         // Hard cap on how many synonym/expansion terms we allow per token
         private const val MAX_SYNONYM_TERMS_PER_TOKEN: Int = 32
         // Global cap for boost queries built from dictionary expansions
         private const val MAX_SYNONYM_BOOST_TERMS: Int = 256
+        // Constants for snippet source building (must match indexer)
+        private const val SNIPPET_NEIGHBOR_WINDOW = 4
+        private const val SNIPPET_MIN_LENGTH = 280
     }
 
     // Open Lucene directory lazily to avoid any I/O at app startup
@@ -289,24 +313,51 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         highlightTerms: List<String>
     ): List<LineHit> {
         if (scoreDocs.isEmpty()) return emptyList()
-        val hits = scoreDocs.map { sd ->
-            val doc = stored.document(sd.doc)
-            val bid = doc.getField("book_id").numericValue().toLong()
-            val btitle = doc.getField("book_title").stringValue() ?: ""
-            val lid = doc.getField("line_id").numericValue().toLong()
-            val lidx = doc.getField("line_index").numericValue().toInt()
-            val raw = doc.getField("text_raw")?.stringValue() ?: ""
 
-            // Apply boost for base books based on orderIndex
-            val isBaseBook = doc.getField("is_base_book")?.numericValue()?.toInt() == 1
-            val orderIndex = doc.getField("order_index")?.numericValue()?.toInt() ?: 999
-            val baseScore = sd.score
+        // First pass: extract metadata from index
+        data class DocMeta(
+            val sd: ScoreDoc,
+            val bookId: Long,
+            val bookTitle: String,
+            val lineId: Long,
+            val lineIndex: Int,
+            val isBaseBook: Boolean,
+            val orderIndex: Int,
+            val indexedRaw: String // from text_raw field, may be empty if not stored
+        )
+
+        val docMetas = scoreDocs.map { sd ->
+            val doc = stored.document(sd.doc)
+            DocMeta(
+                sd = sd,
+                bookId = doc.getField("book_id").numericValue().toLong(),
+                bookTitle = doc.getField("book_title").stringValue() ?: "",
+                lineId = doc.getField("line_id").numericValue().toLong(),
+                lineIndex = doc.getField("line_index").numericValue().toInt(),
+                isBaseBook = doc.getField("is_base_book")?.numericValue()?.toInt() == 1,
+                orderIndex = doc.getField("order_index")?.numericValue()?.toInt() ?: 999,
+                indexedRaw = doc.getField("text_raw")?.stringValue() ?: ""
+            )
+        }
+
+        // Get snippet sources: from provider if available, otherwise from index
+        val snippetSources: Map<Long, String> = if (snippetSourceProvider != null) {
+            val lineInfos = docMetas.map { LineSnippetInfo(it.lineId, it.bookId, it.lineIndex) }
+            snippetSourceProvider.getSnippetSources(lineInfos)
+        } else {
+            // Fallback to indexed text_raw
+            docMetas.associate { it.lineId to it.indexedRaw }
+        }
+
+        val hits = docMetas.map { meta ->
+            val raw = snippetSources[meta.lineId] ?: meta.indexedRaw
+            val baseScore = meta.sd.score
 
             // Calculate boost: lower orderIndex = higher boost (only for base books)
-            val boostedScore = if (isBaseBook) {
+            val boostedScore = if (meta.isBaseBook) {
                 // Formula: boost = baseScore * (1 + (120 - orderIndex) / 60)
                 // orderIndex 1 gets ~3x boost, orderIndex 50 gets ~2.2x boost, orderIndex 100+ gets ~1.3x boost
-                val boostFactor = 1.0f + (120 - orderIndex).coerceAtLeast(0) / 60.0f
+                val boostFactor = 1.0f + (120 - meta.orderIndex).coerceAtLeast(0) / 60.0f
                 baseScore * boostFactor
             } else {
                 baseScore
@@ -314,10 +365,10 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
 
             val snippet = buildSnippet(raw, anchorTerms, highlightTerms)
             LineHit(
-                bookId = bid,
-                bookTitle = btitle,
-                lineId = lid,
-                lineIndex = lidx,
+                bookId = meta.bookId,
+                bookTitle = meta.bookTitle,
+                lineId = meta.lineId,
+                lineIndex = meta.lineIndex,
                 snippet = snippet,
                 score = boostedScore,
                 rawText = raw

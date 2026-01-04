@@ -24,7 +24,6 @@ import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsNavHost
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
@@ -117,8 +116,12 @@ fun main() {
         val appGraph = remember { createGraph<AppGraph>() }
         // Ensure AppSettings uses the DI-provided Settings immediately
         AppSettings.initialize(appGraph.settings)
-        // Force Dark theme for desktop.
-        MainAppState.setTheme(IntUiThemes.Dark)
+        val initialTheme = remember { AppSettings.getThemeMode() }
+        LaunchedEffect(initialTheme) {
+            if (MainAppState.theme.value != initialTheme) {
+                MainAppState.setTheme(initialTheme)
+            }
+        }
 
         CompositionLocalProvider(
             LocalAppGraph provides appGraph,

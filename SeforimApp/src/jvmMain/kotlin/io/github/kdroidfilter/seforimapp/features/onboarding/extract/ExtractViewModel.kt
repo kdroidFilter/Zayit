@@ -20,7 +20,8 @@ import kotlinx.coroutines.launch
 
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey(ExtractViewModel::class)
-class ExtractViewModel @Inject constructor(
+@Inject
+class ExtractViewModel(
     private val useCase: ExtractUseCase,
     private val processRepository: OnboardingProcessRepository,
 ) : ViewModel() {

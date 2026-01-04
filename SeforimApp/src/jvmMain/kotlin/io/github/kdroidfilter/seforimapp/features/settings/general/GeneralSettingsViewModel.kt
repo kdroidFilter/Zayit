@@ -16,7 +16,8 @@ import kotlinx.coroutines.flow.stateIn
 
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey(GeneralSettingsViewModel::class)
-class GeneralSettingsViewModel @Inject constructor() : ViewModel() {
+@Inject
+class GeneralSettingsViewModel : ViewModel() {
 
     private val dbPath = MutableStateFlow(AppSettings.getDatabasePath())
     private val closeTree = MutableStateFlow(AppSettings.getCloseBookTreeOnNewBookSelected())

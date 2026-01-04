@@ -14,7 +14,8 @@ import kotlinx.coroutines.flow.stateIn
 
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey(UserProfileViewModel::class)
-class UserProfileViewModel @Inject constructor(
+@Inject
+class UserProfileViewModel(
     private val useCase: UserProfileUseCase
 ) : ViewModel() {
 

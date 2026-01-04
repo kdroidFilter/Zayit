@@ -14,7 +14,8 @@ import kotlinx.coroutines.flow.stateIn
 
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey(FontsSettingsViewModel::class)
-class FontsSettingsViewModel @Inject constructor() : ViewModel() {
+@Inject
+class FontsSettingsViewModel : ViewModel() {
 
     private val bookFont = MutableStateFlow(AppSettings.getBookFontCode())
     private val commentaryFont = MutableStateFlow(AppSettings.getCommentaryFontCode())

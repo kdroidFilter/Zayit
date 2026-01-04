@@ -12,7 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey(TypeOfInstallationViewModel::class)
-class TypeOfInstallationViewModel @Inject constructor(
+@Inject
+class TypeOfInstallationViewModel(
     private val processRepository: OnboardingProcessRepository,
 ) : ViewModel() {
 

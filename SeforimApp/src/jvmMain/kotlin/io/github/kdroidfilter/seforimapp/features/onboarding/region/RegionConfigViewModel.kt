@@ -14,7 +14,8 @@ import kotlinx.coroutines.flow.stateIn
 
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey(RegionConfigViewModel::class)
-class RegionConfigViewModel @Inject constructor(
+@Inject
+class RegionConfigViewModel(
     private val useCase: RegionConfigUseCase
 ) : ViewModel() {
 

@@ -18,7 +18,8 @@ import kotlinx.coroutines.launch
 
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey(DownloadViewModel::class)
-class DownloadViewModel @Inject constructor(
+@Inject
+class DownloadViewModel(
     private val useCase: DownloadUseCase,
     private val processRepository: OnboardingProcessRepository,
 ) : ViewModel() {

@@ -14,7 +14,8 @@ import kotlinx.coroutines.flow.stateIn
 
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey(AvailableDiskSpaceViewModel::class)
-class AvailableDiskSpaceViewModel @Inject constructor(
+@Inject
+class AvailableDiskSpaceViewModel(
     private val useCase: AvailableDiskSpaceUseCase
 ) : ViewModel() {
 

@@ -14,8 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -418,7 +420,7 @@ fun EarthWidgetZmanimView(
         selectedMinute = cal.get(Calendar.MINUTE).coerceIn(0, 59)
     }
 
-    if (showDateTimePicker && showControls) {
+    if (showDateTimePicker) {
         DatePickerDialog(
             initialDate = selectedDate,
             onDismissRequest = { showDateTimePicker = false },
@@ -474,7 +476,10 @@ fun EarthWidgetZmanimView(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         textAlign = TextAlign.Start,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .pointerHoverIcon(PointerIcon.Hand)
+                            .clickable { showDateTimePicker = true },
                     )
                     EarthSceneContent(
                         modifier = Modifier.fillMaxWidth(),
@@ -697,6 +702,8 @@ fun EarthWidgetZmanimView(
                 textAlign = TextAlign.Start,
                 modifier = Modifier
                     .align(Alignment.TopStart)
+                    .pointerHoverIcon(PointerIcon.Hand)
+                    .clickable { showDateTimePicker = true }
                     .padding(start = 8.dp, top = 8.dp),
             )
         }
@@ -942,7 +949,7 @@ private fun DatePickerDialog(
     onDismissRequest: () -> Unit,
     onConfirm: (LocalDate) -> Unit,
 ) {
-    var calendarMode by remember { mutableStateOf(CalendarMode.GREGORIAN) }
+    var calendarMode by remember { mutableStateOf(CalendarMode.HEBREW) }
     var displayedMonth by remember(initialDate) { mutableStateOf(YearMonth.from(initialDate)) }
     var displayedHebrewMonth by remember(initialDate) {
         mutableStateOf(hebrewYearMonthFromLocalDate(initialDate))
@@ -977,11 +984,11 @@ private fun DatePickerDialog(
         val shape = RoundedCornerShape(12.dp)
         Column(
             modifier = Modifier
-                .widthIn(min = 420.dp, max = 560.dp)
+                .widthIn(min = 360.dp, max = 460.dp)
                 .background(JewelTheme.globalColors.panelBackground, shape)
                 .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
                 Text(
                     text = stringResource(Res.string.earthwidget_datetime_picker_title),
@@ -991,14 +998,6 @@ private fun DatePickerDialog(
             SegmentedControl(
                 buttons = listOf(
                     SegmentedControlButtonData(
-                        selected = calendarMode == CalendarMode.GREGORIAN,
-                        content = { Text(text = stringResource(Res.string.earthwidget_calendar_mode_gregorian)) },
-                        onSelect = {
-                            calendarMode = CalendarMode.GREGORIAN
-                            displayedMonth = YearMonth.from(selectedDate)
-                        },
-                    ),
-                    SegmentedControlButtonData(
                         selected = calendarMode == CalendarMode.HEBREW,
                         content = { Text(text = stringResource(Res.string.earthwidget_calendar_mode_hebrew)) },
                         onSelect = {
@@ -1006,8 +1005,16 @@ private fun DatePickerDialog(
                             displayedHebrewMonth = hebrewYearMonthFromLocalDate(selectedDate)
                         },
                     ),
+                    SegmentedControlButtonData(
+                        selected = calendarMode == CalendarMode.GREGORIAN,
+                        content = { Text(text = stringResource(Res.string.earthwidget_calendar_mode_gregorian)) },
+                        onSelect = {
+                            calendarMode = CalendarMode.GREGORIAN
+                            displayedMonth = YearMonth.from(selectedDate)
+                        },
+                    ),
                 ),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.align(Alignment.CenterHorizontally),
             )
 
             Row(
@@ -1062,40 +1069,50 @@ private fun DatePickerDialog(
             }
 
             val weekHeaderShape = RoundedCornerShape(8.dp)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(JewelTheme.globalColors.toolwindowBackground, weekHeaderShape)
-                    .border(1.dp, JewelTheme.globalColors.borders.disabled, weekHeaderShape)
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-                ) {
-                    for (dayOfWeek in weekDays) {
-                        Text(
-                            text = dayOfWeek.getDisplayName(TextStyle.NARROW, hebrewLocale),
-                            modifier = Modifier.width(36.dp),
-                            textAlign = TextAlign.Center,
-                            style = JewelTheme.defaultTextStyle.copy(fontWeight = FontWeight.Medium),
+            val gridSpacing = 4.dp
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val cellSize = ((maxWidth - (gridSpacing * 6)) / 7).coerceAtLeast(28.dp)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(JewelTheme.globalColors.toolwindowBackground, weekHeaderShape)
+                            .border(1.dp, JewelTheme.globalColors.borders.disabled, weekHeaderShape)
+                            .padding(vertical = 6.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(gridSpacing),
+                        ) {
+                            for (dayOfWeek in weekDays) {
+                                Text(
+                                    text = dayOfWeek.getDisplayName(TextStyle.NARROW, hebrewLocale),
+                                    modifier = Modifier.width(cellSize),
+                                    textAlign = TextAlign.Center,
+                                    style = JewelTheme.defaultTextStyle.copy(fontWeight = FontWeight.Medium),
+                                )
+                            }
+                        }
+                    }
+
+                    when (calendarMode) {
+                        CalendarMode.GREGORIAN -> MonthGrid(
+                            displayedMonth = displayedMonth,
+                            selectedDate = selectedDate,
+                            onDateSelected = { selectedDate = it },
+                            cellSize = cellSize,
+                            spacing = gridSpacing,
+                        )
+                        CalendarMode.HEBREW -> HebrewMonthGrid(
+                            displayedMonth = displayedHebrewMonth,
+                            selectedDate = selectedDate,
+                            onDateSelected = { selectedDate = it },
+                            formatter = hebrewDateFormatter,
+                            cellSize = cellSize,
+                            spacing = gridSpacing,
                         )
                     }
                 }
-            }
-
-            when (calendarMode) {
-                CalendarMode.GREGORIAN -> MonthGrid(
-                    displayedMonth = displayedMonth,
-                    selectedDate = selectedDate,
-                    onDateSelected = { selectedDate = it },
-                )
-                CalendarMode.HEBREW -> HebrewMonthGrid(
-                    displayedMonth = displayedHebrewMonth,
-                    selectedDate = selectedDate,
-                    onDateSelected = { selectedDate = it },
-                    formatter = hebrewDateFormatter,
-                )
             }
 
                 Row(
@@ -1140,21 +1157,22 @@ private fun MonthGrid(
     displayedMonth: YearMonth,
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
+    cellSize: Dp,
+    spacing: Dp,
 ) {
     val weeks = remember(displayedMonth) { buildMonthGrid(displayedMonth) }
     var hoveredDate by remember(displayedMonth) { mutableStateOf<LocalDate?>(null) }
-    val cellSize = 36.dp
     val cellShape = RoundedCornerShape(6.dp)
     val selectedBg = JewelTheme.segmentedControlButtonStyle.colors.backgroundSelected
     val hoverBg = JewelTheme.segmentedControlButtonStyle.colors.backgroundHovered
     val selectedTextColor = JewelTheme.globalColors.text.selected
     val normalTextColor = JewelTheme.globalColors.text.normal
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
         for (week in weeks) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(spacing),
             ) {
                 for (day in week) {
                     if (day == null) {
@@ -1202,21 +1220,22 @@ private fun HebrewMonthGrid(
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
     formatter: HebrewDateFormatter,
+    cellSize: Dp,
+    spacing: Dp,
 ) {
     val weeks = remember(displayedMonth) { buildHebrewMonthGrid(displayedMonth, formatter) }
     var hoveredDate by remember(displayedMonth) { mutableStateOf<LocalDate?>(null) }
-    val cellSize = 36.dp
     val cellShape = RoundedCornerShape(6.dp)
     val selectedBg = JewelTheme.segmentedControlButtonStyle.colors.backgroundSelected
     val hoverBg = JewelTheme.segmentedControlButtonStyle.colors.backgroundHovered
     val selectedTextColor = JewelTheme.globalColors.text.selected
     val normalTextColor = JewelTheme.globalColors.text.normal
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
         for (week in weeks) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(spacing),
             ) {
                 for (day in week) {
                     if (day == null) {

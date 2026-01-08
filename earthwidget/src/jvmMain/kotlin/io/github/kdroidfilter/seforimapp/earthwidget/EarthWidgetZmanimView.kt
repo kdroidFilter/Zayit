@@ -101,6 +101,7 @@ private const val MAX_GMT_OFFSET = 14
  * @property moonPhaseAngleDegrees Moon phase angle (0-360).
  * @property julianDay Julian Day number for ephemeris.
  */
+@Immutable
 private data class ZmanimModel(
     val lightDegrees: Float,
     val sunElevationDegrees: Float,
@@ -108,6 +109,13 @@ private data class ZmanimModel(
     val moonPhaseAngleDegrees: Float,
     val julianDay: Double,
 )
+
+/**
+ * Stable wrapper for orbit labels list to enable Compose skipping.
+ * Uses reference equality for stability checks.
+ */
+@Stable
+private class StableOrbitLabels(val list: List<OrbitLabelData>)
 
 private data class KnownLocation(
     val name: StringResource,
@@ -117,11 +125,26 @@ private data class KnownLocation(
     val timeZoneId: String,
 )
 
+data class EarthWidgetLocation(
+    val latitude: Double,
+    val longitude: Double,
+    val elevationMeters: Double,
+    val timeZone: TimeZone,
+)
+
 private data class ZmanimPresetTimes(
     val sunrise: Date?,
     val sunset: Date?,
     val chatzosHayom: Date?,
     val chatzosLayla: Date?,
+)
+
+data class ZmanimTimes(
+    val alosHashachar: Date?,
+    val sunrise: Date?,
+    val chatzosHayom: Date?,
+    val sunset: Date?,
+    val tzais: Date?,
 )
 
 // ============================================================================
@@ -142,8 +165,21 @@ private data class ZmanimPresetTimes(
 @Composable
 fun EarthWidgetZmanimView(
     modifier: Modifier = Modifier,
-    sphereSize: Dp = 500.dp,
-    renderSizePx: Int = 520,
+    sphereSize: Dp = 300.dp,
+    renderSizePx: Int = 350,
+    locationOverride: EarthWidgetLocation? = null,
+    targetTime: Date? = null,
+    targetDate: LocalDate? = null,
+    onDateSelected: ((LocalDate) -> Unit)? = null,
+    allowLocationSelection: Boolean = true,
+    containerBackground: Color? = null,
+    contentPadding: Dp = 12.dp,
+    showControls: Boolean = true,
+    showOrbitLabels: Boolean = true,
+    showMoonInOrbit: Boolean = true,
+    initialShowMoonFromMarker: Boolean = true,
+    useScroll: Boolean = true,
+    earthSizeFraction: Float = EARTH_SIZE_FRACTION,
 ) {
     // Location state
     val knownLocations = remember {
@@ -224,7 +260,7 @@ fun EarthWidgetZmanimView(
     // Display options
     var showBackground by remember { mutableStateOf(true) }
     var showOrbitPath by remember { mutableStateOf(true) }
-    var showMoonFromMarker by remember { mutableStateOf(true) }
+    var showMoonFromMarker by remember { mutableStateOf(initialShowMoonFromMarker) }
 
     // Earth rotation offset from user drag (added to marker longitude)
     var earthRotationOffset by remember { mutableFloatStateOf(0f) }
@@ -250,6 +286,49 @@ fun EarthWidgetZmanimView(
         mutableStateOf(initialCalendar.get(Calendar.MINUTE).coerceIn(0, 59))
     }
     var showDateTimePicker by remember { mutableStateOf(false) }
+
+    LaunchedEffect(locationOverride) {
+        locationOverride?.let { override ->
+            markerLatitudeDegrees = override.latitude.toFloat()
+            markerLongitudeDegrees = override.longitude.toFloat()
+            markerElevationMeters = override.elevationMeters
+            timeZone = override.timeZone
+            earthRotationOffset = 0f
+
+            if (targetTime == null) {
+                val now = Calendar.getInstance(override.timeZone)
+                selectedDate = LocalDate.of(
+                    now.get(Calendar.YEAR),
+                    now.get(Calendar.MONTH) + 1,
+                    now.get(Calendar.DAY_OF_MONTH),
+                )
+                selectedHour = now.get(Calendar.HOUR_OF_DAY).coerceIn(0, 23)
+                selectedMinute = now.get(Calendar.MINUTE).coerceIn(0, 59)
+            }
+        }
+    }
+
+    LaunchedEffect(targetTime, timeZone) {
+        targetTime?.let { date ->
+            val cal = Calendar.getInstance(timeZone).apply { time = date }
+            selectedDate = LocalDate.of(
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.DAY_OF_MONTH),
+            )
+            selectedHour = cal.get(Calendar.HOUR_OF_DAY).coerceIn(0, 23)
+            selectedMinute = cal.get(Calendar.MINUTE).coerceIn(0, 59)
+        }
+    }
+
+    // Sync with external targetDate if provided
+    LaunchedEffect(targetDate) {
+        targetDate?.let { date ->
+            if (date != selectedDate) {
+                selectedDate = date
+            }
+        }
+    }
 
     val referenceTime = remember(selectedDate, selectedHour, selectedMinute, timeZone) {
         Calendar.getInstance(timeZone).apply {
@@ -282,10 +361,16 @@ fun EarthWidgetZmanimView(
         )
     }
 
-    val orbitLabels = remember(referenceTime, timeZone) {
-        computeHebrewMonthOrbitLabels(
-            referenceTime = referenceTime,
-            timeZone = timeZone,
+    val stableOrbitLabels = remember(referenceTime, timeZone, showOrbitLabels) {
+        StableOrbitLabels(
+            if (showOrbitLabels) {
+                computeHebrewMonthOrbitLabels(
+                    referenceTime = referenceTime,
+                    timeZone = timeZone,
+                )
+            } else {
+                emptyList()
+            }
         )
     }
 
@@ -320,7 +405,7 @@ fun EarthWidgetZmanimView(
         selectedMinute = cal.get(Calendar.MINUTE).coerceIn(0, 59)
     }
 
-    if (showDateTimePicker) {
+    if (showDateTimePicker && showControls) {
         DatePickerDialog(
             initialDate = selectedDate,
             onDismissRequest = { showDateTimePicker = false },
@@ -331,238 +416,258 @@ fun EarthWidgetZmanimView(
         )
     }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(JewelTheme.globalColors.panelBackground)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // Main scene with drag-to-rotate support
-        item {
-            val density = LocalDensity.current
-            val degreesPerPx = remember(sphereSize) {
-                // Calculate how many degrees of rotation per pixel of drag
-                // A full drag across the sphere width = 180 degrees
-                with(density) { 180f / sphereSize.toPx() }
-            }
+    val backgroundColor = containerBackground ?: JewelTheme.globalColors.panelBackground
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Box(
-                    modifier = Modifier.pointerInput(Unit) {
-                        detectDragGestures(
-                            onDragStart = { isDraggingEarth = true },
-                            onDragEnd = { isDraggingEarth = false },
-                            onDragCancel = { isDraggingEarth = false },
-                        ) { change, dragAmount ->
-                            change.consume()
-                            // Horizontal drag rotates the Earth (negative because dragging right
-                            // should rotate the Earth to show what's on the left)
-                            earthRotationOffset -= dragAmount.x * degreesPerPx
-                        }
-                    },
+    // Stable callbacks to avoid recomposition - these lambdas reference mutableStateOf-backed vars
+    // so they remain stable across recompositions while still accessing the latest state
+    val onEarthRotationDeltaCallback = remember { { delta: Float -> earthRotationOffset += delta } }
+    val onDragStateChangeCallback = remember { { dragging: Boolean -> isDraggingEarth = dragging } }
+    val onRecenterCallback = remember { { earthRotationOffset = 0f } }
+
+    // Use rememberUpdatedState to keep the lambda stable while accessing latest values
+    val currentTimeZone by rememberUpdatedState(timeZone)
+    val currentReferenceTime by rememberUpdatedState(referenceTime)
+    val currentOnDateSelected by rememberUpdatedState(onDateSelected)
+    val onOrbitLabelClickHandler: (OrbitLabelData) -> Unit = remember {
+        { label: OrbitLabelData ->
+            val calendar = Calendar.getInstance(currentTimeZone).apply { time = currentReferenceTime }
+            val jewishCalendar = JewishCalendar().apply { setDate(calendar) }
+            val newDate = JewishDate().apply {
+                setJewishDate(jewishCalendar.jewishYear, jewishCalendar.jewishMonth, label.dayOfMonth)
+            }.localDate
+            selectedDate = newDate
+            currentOnDateSelected?.invoke(newDate)
+            Unit
+        }
+    }
+
+    if (useScroll) {
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .background(backgroundColor)
+                .padding(contentPadding),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            item {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    EarthWidgetScene(
+                    EarthSceneContent(
+                        modifier = Modifier.fillMaxWidth(),
                         sphereSize = sphereSize,
                         renderSizePx = renderSizePx,
-                        earthRotationDegrees = markerLongitudeDegrees + earthRotationOffset,
-                        // Compensate light direction for Earth rotation offset.
-                        // Model computed lightDegrees for earthRotation = markerLongitude.
-                        // Subtracting offset keeps the sun fixed relative to Earth's surface,
-                        // so the marker always shows correct day/night for the selected time.
-                        lightDegrees = model.lightDegrees - earthRotationOffset,
-                        sunElevationDegrees = model.sunElevationDegrees,
-                        earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
-                        moonOrbitDegrees = model.moonOrbitDegrees,
-                        markerLatitudeDegrees = markerLatitudeDegrees,
                         markerLongitudeDegrees = markerLongitudeDegrees,
-                        showBackgroundStars = showBackground,
+                        earthRotationOffset = earthRotationOffset,
+                        onEarthRotationDelta = onEarthRotationDeltaCallback,
+                        onDragStateChange = onDragStateChangeCallback,
+                        model = model,
+                        markerLatitudeDegrees = markerLatitudeDegrees,
+                        showBackground = showBackground,
                         showOrbitPath = showOrbitPath,
-                        orbitLabels = orbitLabels,
-                        onOrbitLabelClick = { label ->
-                            val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
-                            val jewishCalendar = JewishCalendar().apply { setDate(calendar) }
-                            val targetDate = JewishDate().apply {
-                                setJewishDate(jewishCalendar.jewishYear, jewishCalendar.jewishMonth, label.dayOfMonth)
-                            }
-                            selectedDate = targetDate.localDate
-                        },
+                        stableOrbitLabels = stableOrbitLabels,
+                        onOrbitLabelClick = onOrbitLabelClickHandler,
                         showMoonFromMarker = showMoonFromMarker,
-                        moonPhaseAngleDegrees = model.moonPhaseAngleDegrees,
-                        julianDay = model.julianDay,
-                        moonFromMarkerLightDegrees = model.lightDegrees,
-                        moonFromMarkerSunElevationDegrees = model.sunElevationDegrees,
-                        animateEarthRotation = !isDraggingEarth, // Instant rotation during drag
+                        showMoonInOrbit = showMoonInOrbit,
+                        earthSizeFraction = earthSizeFraction,
+                        isDraggingEarth = isDraggingEarth,
+                    )
+                    RecenterButton(
+                        earthRotationOffset = earthRotationOffset,
+                        onRecenter = onRecenterCallback,
                     )
                 }
+            }
 
-                // Recenter button (only shown when Earth is rotated away from marker)
-                if (earthRotationOffset != 0f) {
-                    OutlinedButton(
-                        onClick = { earthRotationOffset = 0f },
+            if (showControls) {
+                item {
+                    val panelShape = RoundedCornerShape(10.dp)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 560.dp)
+                            .background(JewelTheme.globalColors.toolwindowBackground, panelShape)
+                            .border(1.dp, JewelTheme.globalColors.borders.normal, panelShape)
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        Icon(
-                            key = AllIconsKeys.General.Locate,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
+                        GroupHeader(text = stringResource(Res.string.earthwidget_datetime_label))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text(text = formattedTime, modifier = Modifier.weight(1f))
+                            OutlinedButton(onClick = { showDateTimePicker = true }) {
+                                Text(text = stringResource(Res.string.earthwidget_select_datetime_button))
+                            }
+                        }
+
+                        Divider(orientation = Orientation.Horizontal)
+
+                        GroupHeader(text = stringResource(Res.string.earthwidget_time_preset_section))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            OutlinedButton(
+                                onClick = { zmanimPresets.sunrise?.let(::applyPreset) },
+                                enabled = zmanimPresets.sunrise != null,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                TimePresetButtonLabel(
+                                    label = stringResource(Res.string.earthwidget_time_preset_sunrise),
+                                    time = zmanimPresets.sunrise,
+                                    timeFormatter = presetTimeFormatter,
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = { zmanimPresets.sunset?.let(::applyPreset) },
+                                enabled = zmanimPresets.sunset != null,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                TimePresetButtonLabel(
+                                    label = stringResource(Res.string.earthwidget_time_preset_sunset),
+                                    time = zmanimPresets.sunset,
+                                    timeFormatter = presetTimeFormatter,
+                                )
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            OutlinedButton(
+                                onClick = { zmanimPresets.chatzosHayom?.let(::applyPreset) },
+                                enabled = zmanimPresets.chatzosHayom != null,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                TimePresetButtonLabel(
+                                    label = stringResource(Res.string.earthwidget_time_preset_chatzos_hayom),
+                                    time = zmanimPresets.chatzosHayom,
+                                    timeFormatter = presetTimeFormatter,
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = { zmanimPresets.chatzosLayla?.let(::applyPreset) },
+                                enabled = zmanimPresets.chatzosLayla != null,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                TimePresetButtonLabel(
+                                    label = stringResource(Res.string.earthwidget_time_preset_chatzos_layla),
+                                    time = zmanimPresets.chatzosLayla,
+                                    timeFormatter = presetTimeFormatter,
+                                )
+                            }
+                        }
+
+                        if (allowLocationSelection) {
+                            Divider(orientation = Orientation.Horizontal)
+                            GroupHeader(text = stringResource(Res.string.earthwidget_location_section))
+                            for (row in knownLocations.chunked(3)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    for (location in row) {
+                                        val isSelected = location == selectedLocation
+                                        val onSelect = {
+                                            selectedLocation = location
+                                            markerLatitudeDegrees = location.latitude.toFloat()
+                                            markerLongitudeDegrees = location.longitude.toFloat()
+                                            markerElevationMeters = location.elevationMeters
+                                            timeZone = TimeZone.getTimeZone(location.timeZoneId)
+                                            earthRotationOffset = 0f // Reset rotation when changing location
+                                        }
+
+                                        if (isSelected) {
+                                            DefaultButton(
+                                                onClick = onSelect,
+                                                modifier = Modifier.weight(1f),
+                                            ) {
+                                                Text(text = stringResource(location.name))
+                                            }
+                                        } else {
+                                            OutlinedButton(
+                                                onClick = onSelect,
+                                                modifier = Modifier.weight(1f),
+                                            ) {
+                                                Text(text = stringResource(location.name))
+                                            }
+                                        }
+                                    }
+                                    repeat(3 - row.size) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                        }
+
+                        Divider(orientation = Orientation.Horizontal)
+
+                        GroupHeader(text = stringResource(Res.string.earthwidget_display_section))
+                        LabeledCheckbox(
+                            checked = showBackground,
+                            onCheckedChange = { showBackground = it },
+                            label = stringResource(Res.string.earthwidget_show_background_label),
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = stringResource(Res.string.earthwidget_recenter_button))
+                        LabeledCheckbox(
+                            checked = showOrbitPath,
+                            onCheckedChange = { showOrbitPath = it },
+                            label = stringResource(Res.string.earthwidget_show_orbit_label),
+                        )
+                        if (showMoonInOrbit) {
+                            LabeledCheckbox(
+                                checked = showMoonFromMarker,
+                                onCheckedChange = { showMoonFromMarker = it },
+                                label = stringResource(Res.string.earthwidget_moon_from_marker_label),
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
                     }
                 }
             }
         }
-
-        item {
-            val panelShape = RoundedCornerShape(10.dp)
-            Column(
+    } else {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(backgroundColor)
+                .padding(contentPadding),
+            contentAlignment = Alignment.Center,
+        ) {
+            EarthSceneContent(
+                modifier = Modifier.fillMaxSize(),
+                sphereSize = sphereSize,
+                renderSizePx = renderSizePx,
+                markerLongitudeDegrees = markerLongitudeDegrees,
+                earthRotationOffset = earthRotationOffset,
+                onEarthRotationDelta = onEarthRotationDeltaCallback,
+                onDragStateChange = onDragStateChangeCallback,
+                model = model,
+                markerLatitudeDegrees = markerLatitudeDegrees,
+                showBackground = showBackground,
+                showOrbitPath = showOrbitPath,
+                stableOrbitLabels = stableOrbitLabels,
+                onOrbitLabelClick = onOrbitLabelClickHandler,
+                showMoonFromMarker = showMoonFromMarker,
+                showMoonInOrbit = showMoonInOrbit,
+                earthSizeFraction = earthSizeFraction,
+                isDraggingEarth = isDraggingEarth,
+            )
+            RecenterButton(
+                earthRotationOffset = earthRotationOffset,
+                onRecenter = onRecenterCallback,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 560.dp)
-                    .background(JewelTheme.globalColors.toolwindowBackground, panelShape)
-                    .border(1.dp, JewelTheme.globalColors.borders.normal, panelShape)
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                GroupHeader(text = stringResource(Res.string.earthwidget_datetime_label))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text(text = formattedTime, modifier = Modifier.weight(1f))
-                    OutlinedButton(onClick = { showDateTimePicker = true }) {
-                        Text(text = stringResource(Res.string.earthwidget_select_datetime_button))
-                    }
-                }
-
-                Divider(orientation = Orientation.Horizontal)
-
-                GroupHeader(text = stringResource(Res.string.earthwidget_time_preset_section))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    OutlinedButton(
-                        onClick = { zmanimPresets.sunrise?.let(::applyPreset) },
-                        enabled = zmanimPresets.sunrise != null,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        TimePresetButtonLabel(
-                            label = stringResource(Res.string.earthwidget_time_preset_sunrise),
-                            time = zmanimPresets.sunrise,
-                            timeFormatter = presetTimeFormatter,
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = { zmanimPresets.sunset?.let(::applyPreset) },
-                        enabled = zmanimPresets.sunset != null,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        TimePresetButtonLabel(
-                            label = stringResource(Res.string.earthwidget_time_preset_sunset),
-                            time = zmanimPresets.sunset,
-                            timeFormatter = presetTimeFormatter,
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    OutlinedButton(
-                        onClick = { zmanimPresets.chatzosHayom?.let(::applyPreset) },
-                        enabled = zmanimPresets.chatzosHayom != null,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        TimePresetButtonLabel(
-                            label = stringResource(Res.string.earthwidget_time_preset_chatzos_hayom),
-                            time = zmanimPresets.chatzosHayom,
-                            timeFormatter = presetTimeFormatter,
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = { zmanimPresets.chatzosLayla?.let(::applyPreset) },
-                        enabled = zmanimPresets.chatzosLayla != null,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        TimePresetButtonLabel(
-                            label = stringResource(Res.string.earthwidget_time_preset_chatzos_layla),
-                            time = zmanimPresets.chatzosLayla,
-                            timeFormatter = presetTimeFormatter,
-                        )
-                    }
-                }
-
-                Divider(orientation = Orientation.Horizontal)
-
-                GroupHeader(text = stringResource(Res.string.earthwidget_location_section))
-                for (row in knownLocations.chunked(3)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        for (location in row) {
-                            val isSelected = location == selectedLocation
-                            val onSelect = {
-                                selectedLocation = location
-                                markerLatitudeDegrees = location.latitude.toFloat()
-                                markerLongitudeDegrees = location.longitude.toFloat()
-                                markerElevationMeters = location.elevationMeters
-                                timeZone = TimeZone.getTimeZone(location.timeZoneId)
-                                earthRotationOffset = 0f // Reset rotation when changing location
-                            }
-
-                            if (isSelected) {
-                                DefaultButton(
-                                    onClick = onSelect,
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Text(text = stringResource(location.name))
-                                }
-                            } else {
-                                OutlinedButton(
-                                    onClick = onSelect,
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Text(text = stringResource(location.name))
-                                }
-                            }
-                        }
-                        repeat(3 - row.size) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
-
-                Divider(orientation = Orientation.Horizontal)
-
-                GroupHeader(text = stringResource(Res.string.earthwidget_display_section))
-                LabeledCheckbox(
-                    checked = showBackground,
-                    onCheckedChange = { showBackground = it },
-                    label = stringResource(Res.string.earthwidget_show_background_label),
-                )
-                LabeledCheckbox(
-                    checked = showOrbitPath,
-                    onCheckedChange = { showOrbitPath = it },
-                    label = stringResource(Res.string.earthwidget_show_orbit_label),
-                )
-                LabeledCheckbox(
-                    checked = showMoonFromMarker,
-                    onCheckedChange = { showMoonFromMarker = it },
-                    label = stringResource(Res.string.earthwidget_moon_from_marker_label),
-                )
-
-                Spacer(modifier = Modifier.height(2.dp))
-            }
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 8.dp, bottom = 8.dp),
+            )
         }
     }
 }
@@ -570,6 +675,111 @@ fun EarthWidgetZmanimView(
 // ============================================================================
 // REUSABLE UI COMPONENTS
 // ============================================================================
+
+/**
+ * Earth scene with drag-to-rotate support.
+ * Extracted as a separate composable to enable Compose's skipping optimization.
+ */
+@Composable
+private fun EarthSceneContent(
+    modifier: Modifier,
+    sphereSize: Dp,
+    renderSizePx: Int,
+    markerLongitudeDegrees: Float,
+    earthRotationOffset: Float,
+    onEarthRotationDelta: (Float) -> Unit,
+    onDragStateChange: (Boolean) -> Unit,
+    model: ZmanimModel,
+    markerLatitudeDegrees: Float,
+    showBackground: Boolean,
+    showOrbitPath: Boolean,
+    stableOrbitLabels: StableOrbitLabels,
+    onOrbitLabelClick: (OrbitLabelData) -> Unit,
+    showMoonFromMarker: Boolean,
+    showMoonInOrbit: Boolean,
+    earthSizeFraction: Float,
+    isDraggingEarth: Boolean,
+) {
+    val density = LocalDensity.current
+    val degreesPerPx = remember(sphereSize) {
+        // Calculate how many degrees of rotation per pixel of drag
+        // A full drag across the sphere width = 180 degrees
+        with(density) { 180f / sphereSize.toPx() }
+    }
+
+    Box(
+        modifier = modifier.pointerInput(Unit) {
+            detectDragGestures(
+                onDragStart = { onDragStateChange(true) },
+                onDragEnd = { onDragStateChange(false) },
+                onDragCancel = { onDragStateChange(false) },
+            ) { change, dragAmount ->
+                change.consume()
+                // Horizontal drag rotates the Earth (negative because dragging right
+                // should rotate the Earth to show what's on the left)
+                onEarthRotationDelta(-dragAmount.x * degreesPerPx)
+            }
+        },
+        contentAlignment = Alignment.Center,
+    ) {
+        EarthWidgetScene(
+            sphereSize = sphereSize,
+            renderSizePx = renderSizePx,
+            earthRotationDegrees = markerLongitudeDegrees + earthRotationOffset,
+            // Compensate light direction for Earth rotation offset.
+            // Model computed lightDegrees for earthRotation = markerLongitude.
+            // Subtracting offset keeps the sun fixed relative to Earth's surface,
+            // so the marker always shows correct day/night for the selected time.
+            lightDegrees = model.lightDegrees - earthRotationOffset,
+            sunElevationDegrees = model.sunElevationDegrees,
+            earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
+            moonOrbitDegrees = model.moonOrbitDegrees,
+            markerLatitudeDegrees = markerLatitudeDegrees,
+            markerLongitudeDegrees = markerLongitudeDegrees,
+            showBackgroundStars = showBackground,
+            showOrbitPath = showOrbitPath,
+            orbitLabels = stableOrbitLabels.list,
+            onOrbitLabelClick = onOrbitLabelClick,
+            showMoonFromMarker = showMoonFromMarker,
+            showMoonInOrbit = showMoonInOrbit,
+            earthSizeFraction = earthSizeFraction,
+            moonPhaseAngleDegrees = model.moonPhaseAngleDegrees,
+            julianDay = model.julianDay,
+            moonFromMarkerLightDegrees = model.lightDegrees,
+            moonFromMarkerSunElevationDegrees = model.sunElevationDegrees,
+            animateEarthRotation = !isDraggingEarth, // Instant rotation during drag
+        )
+    }
+}
+
+/**
+ * Recenter button shown when Earth is rotated away from marker.
+ */
+@Composable
+private fun RecenterButton(
+    earthRotationOffset: Float,
+    onRecenter: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (earthRotationOffset != 0f) {
+        OutlinedButton(
+            onClick = onRecenter,
+            modifier = modifier,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(
+                    key = AllIconsKeys.General.Locate,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(text = stringResource(Res.string.earthwidget_recenter_button))
+            }
+        }
+    }
+}
 
 /**
  * A checkbox with accompanying label.
@@ -1148,6 +1358,38 @@ private fun computeZmanimPresetTimes(
     )
 }
 
+fun computeZmanimTimes(
+    date: LocalDate,
+    location: EarthWidgetLocation,
+): ZmanimTimes {
+    val geoLocation = GeoLocation(
+        "earthwidget",
+        location.latitude,
+        location.longitude,
+        location.elevationMeters,
+        location.timeZone,
+    )
+    val calendar = ComplexZmanimCalendar(geoLocation).apply {
+        this.calendar = Calendar.getInstance(location.timeZone).apply {
+            set(Calendar.YEAR, date.year)
+            set(Calendar.MONTH, date.monthValue - 1)
+            set(Calendar.DAY_OF_MONTH, date.dayOfMonth)
+            set(Calendar.HOUR_OF_DAY, 12)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+    }
+
+    return ZmanimTimes(
+        alosHashachar = calendar.alosHashachar,
+        sunrise = calendar.sunrise,
+        chatzosHayom = calendar.chatzos,
+        sunset = calendar.sunset,
+        tzais = calendar.tzais,
+    )
+}
+
 // ============================================================================
 // MOON PHASE CALCULATION
 // ============================================================================
@@ -1236,7 +1478,7 @@ private fun normalizeOrbitDegrees(angleDegrees: Float): Float {
  * @param longitude Location longitude.
  * @return Appropriate timezone.
  */
-private fun timeZoneForLocation(latitude: Double, longitude: Double): TimeZone {
+fun timeZoneForLocation(latitude: Double, longitude: Double): TimeZone {
     // Use Israel timezone for coordinates within Israel
     if (latitude in ISRAEL_LAT_MIN..ISRAEL_LAT_MAX &&
         longitude in ISRAEL_LON_MIN..ISRAEL_LON_MAX) {

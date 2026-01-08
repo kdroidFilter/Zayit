@@ -143,11 +143,14 @@ internal fun combineHorizontalDirection(
     return Vec3d(dirX, dirY, dirZ)
 }
 
-internal fun computeSceneGeometry(outputSizePx: Int): SceneGeometry {
+internal fun computeSceneGeometry(
+    outputSizePx: Int,
+    earthSizeFraction: Float = EARTH_SIZE_FRACTION,
+): SceneGeometry {
     val sceneHalf = outputSizePx / 2f
     val cameraZ = outputSizePx * CAMERA_DISTANCE_FACTOR
 
-    val earthSizePx = (outputSizePx * EARTH_SIZE_FRACTION).roundToInt().coerceAtLeast(MIN_SPHERE_SIZE_PX)
+    val earthSizePx = (outputSizePx * earthSizeFraction).roundToInt().coerceAtLeast(MIN_SPHERE_SIZE_PX)
     val earthRadiusPx = (earthSizePx - 1) / 2f
     val earthLeft = (sceneHalf - earthSizePx / 2f).roundToInt()
     val earthTop = (sceneHalf - earthSizePx / 2f).roundToInt()

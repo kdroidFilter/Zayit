@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
+import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetMoonSkyView
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
 import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
 import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
@@ -73,6 +74,7 @@ import seforimapp.seforimapp.generated.resources.home_widget_label_sunset
 import seforimapp.seforimapp.generated.resources.home_widget_visible_stars_title
 import java.text.SimpleDateFormat
 import java.time.LocalDate
+import java.util.Calendar
 import java.util.Date
 
 private const val ZMANIM_LAYOUT_SCALE = 1.5f
@@ -114,6 +116,11 @@ private sealed class ZmanimGridItem {
         val time: String,
         val onClick: (() -> Unit)?,
     ) : ZmanimGridItem()
+
+    data class MoonSky(
+        val referenceTime: Date,
+        val location: EarthWidgetLocation,
+    ) : ZmanimGridItem()
 }
 
 @Composable
@@ -140,6 +147,18 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
     }
     fun formatTime(date: Date?): String = date?.let { "\u2066${timeFormatter.format(it)}\u2069" } ?: ""
     var earthWidgetTargetTime by remember { mutableStateOf<Date?>(null) }
+    val fallbackMoonTime = remember(selectedDate, timeZone) {
+        Calendar.getInstance(timeZone).apply {
+            set(Calendar.YEAR, selectedDate.year)
+            set(Calendar.MONTH, selectedDate.monthValue - 1)
+            set(Calendar.DAY_OF_MONTH, selectedDate.dayOfMonth)
+            set(Calendar.HOUR_OF_DAY, 22)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.time
+    }
+    val moonReferenceTime = earthWidgetTargetTime ?: zmanimTimes.tzais ?: fallbackMoonTime
 
     // When clicking a zmanim card, update the Earth widget's target time
     val onZmanimClick: (Date?) -> Unit = { date ->
@@ -227,7 +246,7 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
         val rightColumnWidth = availableWidth * 0.35f
         val minCardWidth = 150.dp
         val maxColumnsLimit = 4
-        val zmanimItemCount = momentCards.size + 1
+        val zmanimItemCount = momentCards.size + 2
         val maxColumns = ((leftColumnWidth + horizontalSpacing) / (minCardWidth + horizontalSpacing))
             .toInt()
             .coerceAtLeast(1)
@@ -255,6 +274,12 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
                     title = Res.string.home_widget_visible_stars_title,
                     time = formatTime(zmanimTimes.tzais),
                     onClick = { onZmanimClick(zmanimTimes.tzais) },
+                )
+            )
+            add(
+                ZmanimGridItem.MoonSky(
+                    referenceTime = moonReferenceTime,
+                    location = earthLocation,
                 )
             )
         }
@@ -987,6 +1012,13 @@ private fun ZmanimCardsGrid(
                                 onClick = item.onClick
                             )
                         }
+                        is ZmanimGridItem.MoonSky -> {
+                            MoonSkyCard(
+                                referenceTime = item.referenceTime,
+                                location = item.location,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                 }
                 repeat(safeColumns - rowItems.size) {
@@ -1136,6 +1168,45 @@ private fun VisibleStarsCard(
                 fontSize = 30.sp,
                 textAlign = TextAlign.End,
                 modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MoonSkyCard(
+    referenceTime: Date,
+    location: EarthWidgetLocation,
+    modifier: Modifier = Modifier,
+) {
+    val isDark = JewelTheme.isDark
+    val shape = RoundedCornerShape(18.dp)
+    val borderColor = if (isDark) {
+        JewelTheme.globalColors.borders.disabled
+    } else {
+        JewelTheme.globalColors.borders.normal
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(ZMANIM_CARD_HEIGHT)
+            .clip(shape)
+            .background(Color.Black)
+            .border(1.dp, borderColor, shape)
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            val moonSize = minOf(maxWidth, maxHeight)
+            EarthWidgetMoonSkyView(
+                modifier = Modifier.size(moonSize),
+                sphereSize = moonSize,
+                location = location,
+                referenceTime = referenceTime,
+                showBackground = true,
+                earthSizeFraction = 0.6f,
             )
         }
     }

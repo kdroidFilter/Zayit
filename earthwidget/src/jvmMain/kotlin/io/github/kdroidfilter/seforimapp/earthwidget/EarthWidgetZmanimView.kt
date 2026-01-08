@@ -672,6 +672,81 @@ fun EarthWidgetZmanimView(
     }
 }
 
+@Composable
+fun EarthWidgetMoonSkyView(
+    modifier: Modifier = Modifier,
+    sphereSize: Dp = 140.dp,
+    renderSizePx: Int = 0,
+    location: EarthWidgetLocation,
+    referenceTime: Date,
+    showBackground: Boolean = true,
+    earthSizeFraction: Float = EARTH_SIZE_FRACTION,
+) {
+    val markerLatitudeDegrees = location.latitude.toFloat()
+    val markerLongitudeDegrees = location.longitude.toFloat()
+    val model = remember(
+        referenceTime,
+        markerLatitudeDegrees,
+        markerLongitudeDegrees,
+        location.elevationMeters,
+        location.timeZone,
+    ) {
+        computeZmanimModel(
+            referenceTime = referenceTime,
+            latitude = markerLatitudeDegrees.toDouble(),
+            longitude = markerLongitudeDegrees.toDouble(),
+            elevation = location.elevationMeters,
+            timeZone = location.timeZone,
+            earthRotationDegrees = markerLongitudeDegrees,
+            earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
+        )
+    }
+
+    val density = LocalDensity.current
+    val resolvedRenderSizePx = remember(sphereSize, renderSizePx, density) {
+        if (renderSizePx > 0) {
+            renderSizePx
+        } else {
+            (with(density) { sphereSize.toPx() } * 1.35f).roundToInt().coerceAtLeast(160)
+        }
+    }
+    val renderer = remember { EarthWidgetRenderer() }
+    val moonState = remember(
+        resolvedRenderSizePx,
+        markerLatitudeDegrees,
+        markerLongitudeDegrees,
+        showBackground,
+        earthSizeFraction,
+        model,
+    ) {
+        MoonFromMarkerRenderState(
+            renderSizePx = resolvedRenderSizePx,
+            earthRotationDegrees = markerLongitudeDegrees,
+            lightDegrees = model.lightDegrees,
+            sunElevationDegrees = model.sunElevationDegrees,
+            earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
+            moonOrbitDegrees = model.moonOrbitDegrees,
+            markerLatitudeDegrees = markerLatitudeDegrees,
+            markerLongitudeDegrees = markerLongitudeDegrees,
+            showBackgroundStars = showBackground,
+            moonLightDegrees = model.lightDegrees,
+            moonSunElevationDegrees = model.sunElevationDegrees,
+            moonPhaseAngleDegrees = model.moonPhaseAngleDegrees,
+            julianDay = model.julianDay,
+            earthSizeFraction = earthSizeFraction,
+        )
+    }
+
+    MoonFromMarkerWidgetView(
+        renderer = renderer,
+        moonTexture = null,
+        state = moonState,
+        modifier = modifier,
+        sphereSize = sphereSize,
+        animateTransitions = true,
+    )
+}
+
 // ============================================================================
 // REUSABLE UI COMPONENTS
 // ============================================================================

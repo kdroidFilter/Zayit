@@ -226,3 +226,11 @@
 -keep class org.jsoup.** { *; }
 -keep enum org.jsoup.** { *; }
 -dontwarn org.jsoup.**
+
+# --- Fix crash: HebrewDateFormatter EnumMap NPE (ProGuard altering enums) ---
+# Zmanim's HebrewDateFormatter builds EnumMap<JewishCalendar.Parsha, String> at runtime.
+# If R8/ProGuard rewrites or unboxes these enums, EnumMap will crash with:
+# "Cannot read the array length because this.keyUniverse is null".
+-keep class com.kosherjava.zmanim.** { *; }
+-keep enum com.kosherjava.zmanim.** { *; }
+-dontwarn com.kosherjava.zmanim.**

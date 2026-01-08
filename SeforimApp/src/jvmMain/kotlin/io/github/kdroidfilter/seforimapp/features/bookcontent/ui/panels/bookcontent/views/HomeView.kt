@@ -169,10 +169,9 @@ private fun HomeBody(
             val baseWidth = 600.dp
             val maxScaleForWidth = (maxWidth.value / baseWidth.value).coerceAtLeast(0f)
             val clampedScale = homeScale.coerceAtMost(maxScaleForWidth).coerceAtLeast(0f)
-            val paddingScale = (1f + (clampedScale - 1f) * 5f).coerceAtLeast(0.2f)
 
             Box(
-                modifier = modifier.padding(top = 56.dp * paddingScale).fillMaxSize().padding(8.dp),
+                modifier = modifier.padding(top = 56.dp).fillMaxSize().padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 // Keep state outside LazyColumn so it persists across item recompositions
@@ -240,13 +239,7 @@ private fun HomeBody(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    item {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            Box(homeContentModifier, contentAlignment = Alignment.Center) {
-                                WelcomeUser(username = searchUi.userDisplayName)
-                            }
-                        }
-                    }
+
                     item {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             Box(homeContentModifier, contentAlignment = Alignment.Center) {
@@ -485,13 +478,6 @@ private fun HomeBody(
             }
         }
     }
-}
-
-@Composable
-private fun WelcomeUser(username: String) {
-    Text(
-        stringResource(Res.string.home_welcome_user, username), textAlign = TextAlign.Center, fontSize = 36.sp
-    )
 }
 
 /** App logo shown on the Home screen. */

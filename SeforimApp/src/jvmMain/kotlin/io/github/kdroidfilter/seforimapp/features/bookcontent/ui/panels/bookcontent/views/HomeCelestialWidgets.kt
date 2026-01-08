@@ -168,6 +168,19 @@ private sealed class ZmanimGridItem {
 @Composable
 fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
     val userPlace = remember { resolveUserPlace() }
+    val userCityLabel = remember { AppSettings.getRegionCity() }
+    val locationOptions = remember {
+        worldPlaces.mapValues { (_, cities) ->
+            cities.mapValues { (_, place) ->
+                EarthWidgetLocation(
+                    latitude = place.lat,
+                    longitude = place.lng,
+                    elevationMeters = place.elevation,
+                    timeZone = timeZoneForLocation(place.lat, place.lng),
+                )
+            }
+        }
+    }
     val timeZone = remember(userPlace) { timeZoneForLocation(userPlace.lat, userPlace.lng) }
     val earthLocation = remember(userPlace, timeZone) {
         EarthWidgetLocation(
@@ -419,6 +432,8 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
                             initialShowMoonFromMarker = false,
                             useScroll = false,
                             earthSizeFraction = 0.6f,
+                            locationLabel = userCityLabel,
+                            locationOptions = locationOptions,
                         )
                     }
                 }

@@ -6,26 +6,28 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
-import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.kosherjava.zmanim.ComplexZmanimCalendar
 import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
@@ -36,6 +38,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
+import org.jetbrains.jewel.ui.component.LocalMenuController
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.segmentedControlButtonStyle
 import seforimapp.earthwidget.generated.resources.*
@@ -79,6 +82,11 @@ private const val DEGREES_PER_HOUR = 15.0
 /** Israel latitude bounds (south to north). */
 private const val ISRAEL_LAT_MIN = 29.0
 private const val ISRAEL_LAT_MAX = 34.8
+
+private val CALENDAR_MENU_WIDTH = 320.dp
+private val CALENDAR_GRID_SPACING = 4.dp
+private val LOCATION_MENU_WIDTH = 320.dp
+private val LOCATION_MENU_HEIGHT = 260.dp
 
 /** Israel longitude bounds (west to east). */
 private const val ISRAEL_LON_MIN = 34.0
@@ -175,6 +183,8 @@ fun EarthWidgetZmanimView(
     sphereSize: Dp = 300.dp,
     renderSizePx: Int = 350,
     locationOverride: EarthWidgetLocation? = null,
+    locationLabel: String? = null,
+    locationOptions: Map<String, Map<String, EarthWidgetLocation>> = emptyMap(),
     targetTime: Date? = null,
     targetDate: LocalDate? = null,
     onDateSelected: ((LocalDate) -> Unit)? = null,
@@ -292,7 +302,6 @@ fun EarthWidgetZmanimView(
     var selectedMinute by remember {
         mutableStateOf(initialCalendar.get(Calendar.MINUTE).coerceIn(0, 59))
     }
-    var showDateTimePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(locationOverride) {
         locationOverride?.let { override ->
@@ -386,13 +395,44 @@ fun EarthWidgetZmanimView(
         SimpleDateFormat("yyyy-MM-dd HH:mm").apply { this.timeZone = timeZone }
     }
     val formattedTime = remember(referenceTime, formatter) { formatter.format(referenceTime) }
-    val hebrewMonthYear = remember(referenceTime, timeZone) {
+    val selectedLocationLabel = stringResource(selectedLocation.name)
+    val normalizedLocationOptions = remember(locationOptions) {
+        locationOptions.filterValues { it.isNotEmpty() }
+    }
+    var selectedLocationSelection by remember(normalizedLocationOptions) {
+        mutableStateOf(resolveInitialLocationSelection(normalizedLocationOptions, locationLabel))
+    }
+    var menuCountrySelection by remember(normalizedLocationOptions) {
+        mutableStateOf(
+            selectedLocationSelection?.country ?: normalizedLocationOptions.keys.firstOrNull()
+        )
+    }
+    LaunchedEffect(locationLabel, normalizedLocationOptions) {
+        if (selectedLocationSelection == null && normalizedLocationOptions.isNotEmpty()) {
+            selectedLocationSelection = resolveInitialLocationSelection(normalizedLocationOptions, locationLabel)
+        }
+        if (menuCountrySelection == null) {
+            menuCountrySelection = selectedLocationSelection?.country ?: normalizedLocationOptions.keys.firstOrNull()
+        }
+    }
+    val resolvedLocationLabel = when {
+        normalizedLocationOptions.isNotEmpty() ->
+            selectedLocationSelection?.city ?: locationLabel?.takeIf { it.isNotBlank() }
+        !locationLabel.isNullOrBlank() -> locationLabel
+        locationOverride == null -> selectedLocationLabel
+        else -> null
+    }
+    val hebrewDateLabel = remember(referenceTime, timeZone) {
         val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
         val jewishDate = JewishDate().apply { setDate(calendar) }
-        val dateFormatter = HebrewDateFormatter().apply { setHebrewFormat(true) }
+        val dateFormatter = HebrewDateFormatter().apply {
+            isHebrewFormat = true
+            isUseGershGershayim = false
+        }
+        val dayOfMonth = dateFormatter.formatHebrewNumber(jewishDate.jewishDayOfMonth)
         val month = dateFormatter.formatMonth(jewishDate)
         val year = dateFormatter.formatHebrewNumber(jewishDate.getJewishYear())
-        "$month $year"
+        "$dayOfMonth $month $year"
     }
 
     val presetTimeFormatter = remember(timeZone) {
@@ -420,17 +460,6 @@ fun EarthWidgetZmanimView(
         selectedMinute = cal.get(Calendar.MINUTE).coerceIn(0, 59)
     }
 
-    if (showDateTimePicker) {
-        DatePickerDialog(
-            initialDate = selectedDate,
-            onDismissRequest = { showDateTimePicker = false },
-            onConfirm = { date ->
-                selectedDate = date
-                showDateTimePicker = false
-            },
-        )
-    }
-
     val backgroundColor = containerBackground ?: JewelTheme.globalColors.panelBackground
 
     // Stable callbacks to avoid recomposition - these lambdas reference mutableStateOf-backed vars
@@ -443,6 +472,10 @@ fun EarthWidgetZmanimView(
     val currentTimeZone by rememberUpdatedState(timeZone)
     val currentReferenceTime by rememberUpdatedState(referenceTime)
     val currentOnDateSelected by rememberUpdatedState(onDateSelected)
+    val onCalendarDateSelected: (LocalDate) -> Unit = { date ->
+        selectedDate = date
+        currentOnDateSelected?.invoke(date)
+    }
     val onOrbitLabelClickHandler: (OrbitLabelData) -> Unit = remember {
         { label: OrbitLabelData ->
             val calendar = Calendar.getInstance(currentTimeZone).apply { time = currentReferenceTime }
@@ -454,6 +487,16 @@ fun EarthWidgetZmanimView(
             currentOnDateSelected?.invoke(newDate)
             Unit
         }
+    }
+    val onLocationSelected: (String, String) -> Unit = selection@{ country, city ->
+        val location = normalizedLocationOptions[country]?.get(city) ?: return@selection
+        selectedLocationSelection = LocationSelection(country, city)
+        menuCountrySelection = country
+        markerLatitudeDegrees = location.latitude.toFloat()
+        markerLongitudeDegrees = location.longitude.toFloat()
+        markerElevationMeters = location.elevationMeters
+        timeZone = location.timeZone
+        earthRotationOffset = 0f
     }
 
     if (useScroll) {
@@ -467,20 +510,34 @@ fun EarthWidgetZmanimView(
         ) {
             item {
                 Column(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(
-                        text = hebrewMonthYear,
-                        color = JewelTheme.globalColors.text.normal.copy(alpha = 0.9f),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Start,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .pointerHoverIcon(PointerIcon.Hand)
-                            .clickable { showDateTimePicker = true },
-                    )
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        DateSelectionSplitButton(
+                            label = hebrewDateLabel,
+                            selectedDate = selectedDate,
+                            onDateSelected = onCalendarDateSelected,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(start = 8.dp, top = 8.dp),
+                        )
+                        if (resolvedLocationLabel != null) {
+                            LocationSelectionSplitButton(
+                                label = resolvedLocationLabel,
+                                locations = normalizedLocationOptions,
+                                selectedCountry = menuCountrySelection,
+                                selectedSelection = selectedLocationSelection,
+                                onCountrySelected = { menuCountrySelection = it },
+                                onCitySelected = { country, city -> onLocationSelected(country, city) },
+                                modifier =
+                                    Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(end = 8.dp, top = 8.dp),
+                            )
+                        }
+                    }
                     EarthSceneContent(
                         modifier = Modifier.fillMaxWidth(),
                         sphereSize = sphereSize,
@@ -526,9 +583,11 @@ fun EarthWidgetZmanimView(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             Text(text = formattedTime, modifier = Modifier.weight(1f))
-                            OutlinedButton(onClick = { showDateTimePicker = true }) {
-                                Text(text = stringResource(Res.string.earthwidget_select_datetime_button))
-                            }
+                            DateSelectionSplitButton(
+                                label = hebrewDateLabel,
+                                selectedDate = selectedDate,
+                                onDateSelected = onCalendarDateSelected,
+                            )
                         }
 
                         Divider(orientation = Orientation.Horizontal)
@@ -694,18 +753,28 @@ fun EarthWidgetZmanimView(
                     .align(Alignment.BottomEnd)
                     .padding(end = 8.dp, bottom = 8.dp),
             )
-            Text(
-                text = hebrewMonthYear,
-                color = JewelTheme.globalColors.text.normal.copy(alpha = 0.9f),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Start,
+            DateSelectionSplitButton(
+                label = hebrewDateLabel,
+                selectedDate = selectedDate,
+                onDateSelected = onCalendarDateSelected,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .pointerHoverIcon(PointerIcon.Hand)
-                    .clickable { showDateTimePicker = true }
                     .padding(start = 8.dp, top = 8.dp),
             )
+            if (resolvedLocationLabel != null) {
+                LocationSelectionSplitButton(
+                    label = resolvedLocationLabel,
+                    locations = normalizedLocationOptions,
+                    selectedCountry = menuCountrySelection,
+                    selectedSelection = selectedLocationSelection,
+                    onCountrySelected = { menuCountrySelection = it },
+                    onCitySelected = { country, city -> onLocationSelected(country, city) },
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(end = 8.dp, top = 8.dp),
+                )
+            }
         }
     }
 }
@@ -940,14 +1009,13 @@ private fun TimePresetButtonLabel(
 }
 
 // ============================================================================
-// DATE/TIME PICKER
+// DATE PICKER MENU
 // ============================================================================
 
 @Composable
-private fun DatePickerDialog(
+private fun CalendarMenuContent(
     initialDate: LocalDate,
-    onDismissRequest: () -> Unit,
-    onConfirm: (LocalDate) -> Unit,
+    onDateSelected: (LocalDate) -> Unit,
 ) {
     var calendarMode by remember { mutableStateOf(CalendarMode.HEBREW) }
     var displayedMonth by remember(initialDate) { mutableStateOf(YearMonth.from(initialDate)) }
@@ -978,161 +1046,336 @@ private fun DatePickerDialog(
         )
     }
 
-    Dialog(
-        onDismissRequest = onDismissRequest,
+    val menuController = LocalMenuController.current
+    val inputModeManager = LocalInputModeManager.current
+    val closeMenu = {
+        menuController.closeAll(inputModeManager.inputMode, true)
+    }
+    val density = LocalDensity.current
+    val cellSize = remember(density) {
+        with(density) {
+            val widthPx = CALENDAR_MENU_WIDTH.toPx()
+            val spacingPx = CALENDAR_GRID_SPACING.toPx()
+            val minCellPx = 28.dp.toPx()
+            val cellPx = ((widthPx - (spacingPx * 6f)) / 7f).coerceAtLeast(minCellPx)
+            cellPx.toDp()
+        }
+    }
+
+    Column(
+        modifier = Modifier.width(CALENDAR_MENU_WIDTH),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        val shape = RoundedCornerShape(12.dp)
-        Column(
-            modifier = Modifier
-                .widthIn(min = 360.dp, max = 460.dp)
-                .background(JewelTheme.globalColors.panelBackground, shape)
-                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-                Text(
-                    text = stringResource(Res.string.earthwidget_datetime_picker_title),
-                    style = JewelTheme.defaultTextStyle.copy(fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
-                )
-
-            SegmentedControl(
-                buttons = listOf(
-                    SegmentedControlButtonData(
-                        selected = calendarMode == CalendarMode.HEBREW,
-                        content = { Text(text = stringResource(Res.string.earthwidget_calendar_mode_hebrew)) },
-                        onSelect = {
-                            calendarMode = CalendarMode.HEBREW
-                            displayedHebrewMonth = hebrewYearMonthFromLocalDate(selectedDate)
-                        },
-                    ),
-                    SegmentedControlButtonData(
-                        selected = calendarMode == CalendarMode.GREGORIAN,
-                        content = { Text(text = stringResource(Res.string.earthwidget_calendar_mode_gregorian)) },
-                        onSelect = {
-                            calendarMode = CalendarMode.GREGORIAN
-                            displayedMonth = YearMonth.from(selectedDate)
-                        },
-                    ),
+        SegmentedControl(
+            buttons = listOf(
+                SegmentedControlButtonData(
+                    selected = calendarMode == CalendarMode.HEBREW,
+                    content = { Text(text = stringResource(Res.string.earthwidget_calendar_mode_hebrew)) },
+                    onSelect = {
+                        calendarMode = CalendarMode.HEBREW
+                        displayedHebrewMonth = hebrewYearMonthFromLocalDate(selectedDate)
+                    },
                 ),
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                IconButton(
-                    onClick = {
-                        when (calendarMode) {
-                            CalendarMode.GREGORIAN -> displayedMonth = displayedMonth.minusMonths(1)
-                            CalendarMode.HEBREW -> displayedHebrewMonth = previousHebrewYearMonth(displayedHebrewMonth)
-                        }
+                SegmentedControlButtonData(
+                    selected = calendarMode == CalendarMode.GREGORIAN,
+                    content = { Text(text = stringResource(Res.string.earthwidget_calendar_mode_gregorian)) },
+                    onSelect = {
+                        calendarMode = CalendarMode.GREGORIAN
+                        displayedMonth = YearMonth.from(selectedDate)
                     },
-                ) {
-                    Icon(
-                        key = AllIconsKeys.General.ChevronRight,
-                        contentDescription = stringResource(Res.string.earthwidget_prev_month),
-                    )
-                }
-                val monthShape = RoundedCornerShape(8.dp)
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(JewelTheme.globalColors.toolwindowBackground, monthShape)
-                        .border(1.dp, JewelTheme.globalColors.borders.disabled, monthShape)
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = when (calendarMode) {
-                            CalendarMode.GREGORIAN -> displayedMonth.format(monthTitleFormatter)
-                            CalendarMode.HEBREW -> formatHebrewMonthTitle(displayedHebrewMonth, hebrewDateFormatter)
-                        },
-                        textAlign = TextAlign.Center,
-                        style = JewelTheme.defaultTextStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
-                    )
-                }
-                IconButton(
-                    onClick = {
-                        when (calendarMode) {
-                            CalendarMode.GREGORIAN -> displayedMonth = displayedMonth.plusMonths(1)
-                            CalendarMode.HEBREW -> displayedHebrewMonth = nextHebrewYearMonth(displayedHebrewMonth)
-                        }
-                    },
-                ) {
-                    Icon(
-                        key = AllIconsKeys.General.ChevronLeft,
-                        contentDescription = stringResource(Res.string.earthwidget_next_month),
-                    )
-                }
-            }
+                ),
+            ),
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
 
-            val weekHeaderShape = RoundedCornerShape(8.dp)
-            val gridSpacing = 4.dp
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val cellSize = ((maxWidth - (gridSpacing * 6)) / 7).coerceAtLeast(28.dp)
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(JewelTheme.globalColors.toolwindowBackground, weekHeaderShape)
-                            .border(1.dp, JewelTheme.globalColors.borders.disabled, weekHeaderShape)
-                            .padding(vertical = 6.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(gridSpacing),
-                        ) {
-                            for (dayOfWeek in weekDays) {
-                                Text(
-                                    text = dayOfWeek.getDisplayName(TextStyle.NARROW, hebrewLocale),
-                                    modifier = Modifier.width(cellSize),
-                                    textAlign = TextAlign.Center,
-                                    style = JewelTheme.defaultTextStyle.copy(fontWeight = FontWeight.Medium),
-                                )
-                            }
-                        }
-                    }
-
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            IconButton(
+                onClick = {
                     when (calendarMode) {
-                        CalendarMode.GREGORIAN -> MonthGrid(
-                            displayedMonth = displayedMonth,
-                            selectedDate = selectedDate,
-                            onDateSelected = { selectedDate = it },
-                            cellSize = cellSize,
-                            spacing = gridSpacing,
-                        )
-                        CalendarMode.HEBREW -> HebrewMonthGrid(
-                            displayedMonth = displayedHebrewMonth,
-                            selectedDate = selectedDate,
-                            onDateSelected = { selectedDate = it },
-                            formatter = hebrewDateFormatter,
-                            cellSize = cellSize,
-                            spacing = gridSpacing,
-                        )
+                        CalendarMode.GREGORIAN -> displayedMonth = displayedMonth.minusMonths(1)
+                        CalendarMode.HEBREW -> displayedHebrewMonth = previousHebrewYearMonth(displayedHebrewMonth)
                     }
-                }
+                },
+            ) {
+                Icon(
+                    key = AllIconsKeys.General.ChevronRight,
+                    contentDescription = stringResource(Res.string.earthwidget_prev_month),
+                )
             }
+            val monthShape = RoundedCornerShape(8.dp)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .background(JewelTheme.globalColors.toolwindowBackground, monthShape)
+                    .border(1.dp, JewelTheme.globalColors.borders.disabled, monthShape)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = when (calendarMode) {
+                        CalendarMode.GREGORIAN -> displayedMonth.format(monthTitleFormatter)
+                        CalendarMode.HEBREW -> formatHebrewMonthTitle(displayedHebrewMonth, hebrewDateFormatter)
+                    },
+                    textAlign = TextAlign.Center,
+                    style = JewelTheme.defaultTextStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
+                )
+            }
+            IconButton(
+                onClick = {
+                    when (calendarMode) {
+                        CalendarMode.GREGORIAN -> displayedMonth = displayedMonth.plusMonths(1)
+                        CalendarMode.HEBREW -> displayedHebrewMonth = nextHebrewYearMonth(displayedHebrewMonth)
+                    }
+                },
+            ) {
+                Icon(
+                    key = AllIconsKeys.General.ChevronLeft,
+                    contentDescription = stringResource(Res.string.earthwidget_next_month),
+                )
+            }
+        }
 
+        val weekHeaderShape = RoundedCornerShape(8.dp)
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(JewelTheme.globalColors.toolwindowBackground, weekHeaderShape)
+                    .border(1.dp, JewelTheme.globalColors.borders.disabled, weekHeaderShape)
+                    .padding(vertical = 6.dp),
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(CALENDAR_GRID_SPACING),
                 ) {
-                    OutlinedButton(onClick = onDismissRequest) {
-                        Text(text = stringResource(Res.string.earthwidget_action_cancel))
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    DefaultButton(
-                        onClick = {
-                            onConfirm(selectedDate)
-                        },
-                    ) {
-                        Text(text = stringResource(Res.string.earthwidget_action_ok))
+                    for (dayOfWeek in weekDays) {
+                        Text(
+                            text = dayOfWeek.getDisplayName(TextStyle.NARROW, hebrewLocale),
+                            modifier = Modifier.width(cellSize),
+                            textAlign = TextAlign.Center,
+                            style = JewelTheme.defaultTextStyle.copy(fontWeight = FontWeight.Medium),
+                        )
                     }
                 }
             }
+
+            val onSelectDate: (LocalDate) -> Unit = { date ->
+                selectedDate = date
+                onDateSelected(date)
+                closeMenu()
+            }
+
+            when (calendarMode) {
+                CalendarMode.GREGORIAN -> MonthGrid(
+                    displayedMonth = displayedMonth,
+                    selectedDate = selectedDate,
+                    onDateSelected = onSelectDate,
+                    cellSize = cellSize,
+                    spacing = CALENDAR_GRID_SPACING,
+                )
+                CalendarMode.HEBREW -> HebrewMonthGrid(
+                    displayedMonth = displayedHebrewMonth,
+                    selectedDate = selectedDate,
+                    onDateSelected = onSelectDate,
+                    formatter = hebrewDateFormatter,
+                    cellSize = cellSize,
+                    spacing = CALENDAR_GRID_SPACING,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DateSelectionSplitButton(
+    label: String,
+    selectedDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier) {
+        OutlinedSplitButton(
+            onClick = {},
+            secondaryOnClick = {},
+            popupModifier = Modifier.width(CALENDAR_MENU_WIDTH),
+            maxPopupWidth = CALENDAR_MENU_WIDTH,
+            content = {
+                Text(
+                    text = label,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Medium,
+                )
+            },
+            menuContent = {
+                passiveItem {
+                    CalendarMenuContent(
+                        initialDate = selectedDate,
+                        onDateSelected = onDateSelected,
+                    )
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun LocationSelectionSplitButton(
+    label: String,
+    locations: Map<String, Map<String, EarthWidgetLocation>>,
+    selectedCountry: String?,
+    selectedSelection: LocationSelection?,
+    onCountrySelected: (String) -> Unit,
+    onCitySelected: (String, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier) {
+        OutlinedSplitButton(
+            onClick = {},
+            secondaryOnClick = {},
+            popupModifier = Modifier.width(LOCATION_MENU_WIDTH),
+            maxPopupWidth = LOCATION_MENU_WIDTH,
+            content = {
+                Text(
+                    text = label,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Medium,
+                )
+            },
+            menuContent = {
+                passiveItem {
+                    if (locations.isEmpty()) {
+                        Text(
+                            text = label,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    } else {
+                        LocationMenuContent(
+                            locations = locations,
+                            selectedCountry = selectedCountry,
+                            selectedCity = selectedSelection
+                                ?.takeIf { it.country == selectedCountry }
+                                ?.city,
+                            onCountrySelected = onCountrySelected,
+                            onCitySelected = onCitySelected,
+                        )
+                    }
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun LocationMenuContent(
+    locations: Map<String, Map<String, EarthWidgetLocation>>,
+    selectedCountry: String?,
+    selectedCity: String?,
+    onCountrySelected: (String) -> Unit,
+    onCitySelected: (String, String) -> Unit,
+) {
+    val menuController = LocalMenuController.current
+    val inputModeManager = LocalInputModeManager.current
+    val closeMenu = {
+        menuController.closeAll(inputModeManager.inputMode, true)
+    }
+    val countries = remember(locations) { locations.keys.toList() }
+    val activeCountry = selectedCountry ?: countries.firstOrNull()
+    val cities = remember(activeCountry, locations) {
+        activeCountry?.let { locations[it]?.keys?.toList().orEmpty() }.orEmpty()
+    }
+
+    Row(
+        modifier = Modifier
+            .width(LOCATION_MENU_WIDTH)
+            .heightIn(max = LOCATION_MENU_HEIGHT)
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        LocationListColumn(
+            items = countries,
+            selectedItem = activeCountry,
+            onItemSelected = onCountrySelected,
+            modifier = Modifier.weight(1f),
+        )
+        Divider(
+            orientation = Orientation.Vertical,
+            modifier = Modifier.fillMaxHeight(),
+        )
+        LocationListColumn(
+            items = cities,
+            selectedItem = selectedCity,
+            onItemSelected = { city ->
+                activeCountry?.let { country ->
+                    onCitySelected(country, city)
+                    closeMenu()
+                }
+            },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun LocationListColumn(
+    items: List<String>,
+    selectedItem: String?,
+    onItemSelected: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var hoveredItem by remember(items) { mutableStateOf<String?>(null) }
+    val itemShape = RoundedCornerShape(6.dp)
+    val selectedBg = JewelTheme.segmentedControlButtonStyle.colors.backgroundSelected
+    val hoverBg = JewelTheme.segmentedControlButtonStyle.colors.backgroundHovered
+    val selectedTextColor = JewelTheme.globalColors.text.selected
+    val normalTextColor = JewelTheme.globalColors.text.normal
+
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        for (item in items) {
+            val isSelected = item == selectedItem
+            val isHovered = item == hoveredItem
+            val background: Brush = when {
+                isSelected -> selectedBg
+                isHovered -> hoverBg
+                else -> SolidColor(Color.Transparent)
+            }
+            val textColor = if (isSelected) selectedTextColor else normalTextColor
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(itemShape)
+                    .background(background, itemShape)
+                    .onPointerEvent(PointerEventType.Enter) { hoveredItem = item }
+                    .onPointerEvent(PointerEventType.Exit) {
+                        if (hoveredItem == item) {
+                            hoveredItem = null
+                        }
+                    }
+                    .clickable { onItemSelected(item) }
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+            ) {
+                Text(
+                    text = item,
+                    color = textColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 
@@ -1140,6 +1383,11 @@ private enum class CalendarMode {
     GREGORIAN,
     HEBREW,
 }
+
+private data class LocationSelection(
+    val country: String,
+    val city: String,
+)
 
 private data class HebrewYearMonth(
     val year: Int,
@@ -1596,6 +1844,23 @@ private fun goToPreviousHebrewMonth(jewishCalendar: JewishCalendar) {
  */
 private fun normalizeOrbitDegrees(angleDegrees: Float): Float {
     return ((angleDegrees % 360f) + 360f) % 360f
+}
+
+private fun resolveInitialLocationSelection(
+    locations: Map<String, Map<String, EarthWidgetLocation>>,
+    preferredCity: String?,
+): LocationSelection? {
+    if (locations.isEmpty()) return null
+    if (!preferredCity.isNullOrBlank()) {
+        for ((country, cities) in locations) {
+            if (cities.containsKey(preferredCity)) {
+                return LocationSelection(country, preferredCity)
+            }
+        }
+    }
+    val fallbackCountry = locations.keys.firstOrNull() ?: return null
+    val fallbackCity = locations[fallbackCountry]?.keys?.firstOrNull() ?: return null
+    return LocationSelection(fallbackCountry, fallbackCity)
 }
 
 /**

@@ -540,6 +540,7 @@ internal suspend fun renderEarthWithMoonArgb(
     moonRotationDegrees: Float = moonOrbitDegrees + earthRotationDegrees,
     showBackgroundStars: Boolean = true,
     showOrbitPath: Boolean = true,
+    earthSizeFraction: Float = EARTH_SIZE_FRACTION,
     bufferPool: PixelBufferPool? = null,
     outputBuffer: IntArray? = null,
     starfieldCache: StarfieldCache? = null,
@@ -564,7 +565,7 @@ internal suspend fun renderEarthWithMoonArgb(
 
     if (earthTexture == null) return out
 
-    val geometry = computeSceneGeometry(outputSizePx)
+    val geometry = computeSceneGeometry(outputSizePx, earthSizeFraction)
     val moonLayout = computeMoonScreenLayout(geometry, moonOrbitDegrees)
 
     // Acquire Earth buffer from pool or create new
@@ -838,6 +839,7 @@ internal suspend fun renderMoonFromMarkerArgb(
     moonSunElevationDegrees: Float = sunElevationDegrees,
     moonPhaseAngleDegrees: Float? = null,
     julianDay: Double? = null,
+    earthSizeFraction: Float = EARTH_SIZE_FRACTION,
     bufferPool: PixelBufferPool? = null,
     outputBuffer: IntArray? = null,
     starfieldCache: StarfieldCache? = null,
@@ -862,7 +864,7 @@ internal suspend fun renderMoonFromMarkerArgb(
 
     if (moonTexture == null) return out
 
-    val geometry = computeSceneGeometry(outputSizePx)
+    val geometry = computeSceneGeometry(outputSizePx, earthSizeFraction)
     val moonLayout = computeMoonScreenLayout(geometry, moonOrbitDegrees)
 
     // Calculate observer position on Earth surface
@@ -1684,8 +1686,9 @@ internal data class OrbitScreenPosition(
 internal fun computeOrbitScreenPosition(
     outputSizePx: Int,
     orbitDegrees: Float,
+    earthSizeFraction: Float = EARTH_SIZE_FRACTION,
 ): OrbitScreenPosition {
-    val geometry = computeSceneGeometry(outputSizePx)
+    val geometry = computeSceneGeometry(outputSizePx, earthSizeFraction)
     val orbit = transformMoonOrbitPosition(orbitDegrees, geometry.orbitRadius, geometry.viewPitchRad)
     val orbitScale = perspectiveScale(geometry.cameraZ, orbit.zCam)
 

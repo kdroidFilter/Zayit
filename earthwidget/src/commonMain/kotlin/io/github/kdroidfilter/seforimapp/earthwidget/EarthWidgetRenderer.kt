@@ -16,6 +16,7 @@ internal data class EarthWidgetTextures(
 /**
  * Rendering parameters for the Earth + Moon composite scene.
  */
+@androidx.compose.runtime.Immutable
 internal data class EarthRenderState(
     val renderSizePx: Int,
     val earthRotationDegrees: Float,
@@ -31,11 +32,13 @@ internal data class EarthRenderState(
     val moonSunElevationDegrees: Float,
     val moonPhaseAngleDegrees: Float?,
     val julianDay: Double?,
+    val earthSizeFraction: Float,
 )
 
 /**
  * Rendering parameters for the Moon-from-marker inset view.
  */
+@androidx.compose.runtime.Immutable
 internal data class MoonFromMarkerRenderState(
     val renderSizePx: Int,
     val earthRotationDegrees: Float,
@@ -50,6 +53,7 @@ internal data class MoonFromMarkerRenderState(
     val moonSunElevationDegrees: Float,
     val moonPhaseAngleDegrees: Float?,
     val julianDay: Double?,
+    val earthSizeFraction: Float,
 )
 
 /**
@@ -102,6 +106,7 @@ internal class EarthWidgetRenderer(
                 markerLongitudeDegrees = state.markerLongitudeDegrees,
                 showBackgroundStars = state.showBackgroundStars,
                 showOrbitPath = state.showOrbitPath,
+                earthSizeFraction = state.earthSizeFraction,
                 bufferPool = bufferPool,
                 outputBuffer = outputBuffer,
                 starfieldCache = starfieldCache,
@@ -149,6 +154,7 @@ internal class EarthWidgetRenderer(
                 moonSunElevationDegrees = state.moonSunElevationDegrees,
                 moonPhaseAngleDegrees = state.moonPhaseAngleDegrees,
                 julianDay = state.julianDay,
+                earthSizeFraction = state.earthSizeFraction,
                 bufferPool = bufferPool,
                 outputBuffer = outputBuffer,
                 starfieldCache = starfieldCache,

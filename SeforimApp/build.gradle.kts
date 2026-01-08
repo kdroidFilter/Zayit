@@ -133,6 +133,7 @@ kotlin {
 
         jvmMain.dependencies {
             api(project(":jewel"))
+            implementation(project(":earthwidget"))
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
             }

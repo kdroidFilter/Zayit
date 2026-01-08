@@ -2,9 +2,11 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcon
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +20,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +36,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
+import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
+import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
+import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
+import io.github.kdroidfilter.seforimapp.features.zmanim.data.Place
+import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -48,26 +61,24 @@ import seforimapp.seforimapp.generated.resources.home_lunar_label_moonrise
 import seforimapp.seforimapp.generated.resources.home_lunar_label_moonset
 import seforimapp.seforimapp.generated.resources.home_lunar_next_full_moon_label
 import seforimapp.seforimapp.generated.resources.home_lunar_next_full_moon_value
-import seforimapp.seforimapp.generated.resources.home_widget_card_first_light_detail
-import seforimapp.seforimapp.generated.resources.home_widget_card_first_light_subtitle
 import seforimapp.seforimapp.generated.resources.home_widget_card_first_light_title
-import seforimapp.seforimapp.generated.resources.home_widget_card_noon_detail
-import seforimapp.seforimapp.generated.resources.home_widget_card_noon_subtitle
 import seforimapp.seforimapp.generated.resources.home_widget_card_noon_title
-import seforimapp.seforimapp.generated.resources.home_widget_card_sunrise_detail
-import seforimapp.seforimapp.generated.resources.home_widget_card_sunrise_subtitle
 import seforimapp.seforimapp.generated.resources.home_widget_card_sunrise_title
-import seforimapp.seforimapp.generated.resources.home_widget_card_sunset_detail
-import seforimapp.seforimapp.generated.resources.home_widget_card_sunset_subtitle
 import seforimapp.seforimapp.generated.resources.home_widget_card_sunset_title
 import seforimapp.seforimapp.generated.resources.home_widget_label_astronomical_dawn
 import seforimapp.seforimapp.generated.resources.home_widget_label_night
 import seforimapp.seforimapp.generated.resources.home_widget_label_noon
 import seforimapp.seforimapp.generated.resources.home_widget_label_sunrise
 import seforimapp.seforimapp.generated.resources.home_widget_label_sunset
-import seforimapp.seforimapp.generated.resources.home_widget_visible_stars_detail
-import seforimapp.seforimapp.generated.resources.home_widget_visible_stars_subtitle
 import seforimapp.seforimapp.generated.resources.home_widget_visible_stars_title
+import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.util.Date
+
+private const val ZMANIM_LAYOUT_SCALE = 1.5f
+private val ZMANIM_CARD_HEIGHT = 90.dp * ZMANIM_LAYOUT_SCALE
+private val ZMANIM_VERTICAL_SPACING = 12.dp * ZMANIM_LAYOUT_SCALE
+private val ZMANIM_HORIZONTAL_SPACING = 12.dp
 
 private data class DayMarker(
     val label: StringResource,
@@ -79,8 +90,7 @@ private data class DayMarker(
 private data class DayMomentCardData(
     val title: StringResource,
     val time: String,
-    val subtitle: StringResource,
-    val detail: StringResource,
+    val timeValue: Date?,
     val accentStart: Color,
     val accentEnd: Color
 )
@@ -93,64 +103,161 @@ private data class LunarCycleData(
     val nextFullMoonIn: String
 )
 
+private sealed class ZmanimGridItem {
+    data class Moment(
+        val data: DayMomentCardData,
+        val onClick: (() -> Unit)?,
+    ) : ZmanimGridItem()
+
+    data class VisibleStars(
+        val title: StringResource,
+        val time: String,
+        val onClick: (() -> Unit)?,
+    ) : ZmanimGridItem()
+}
+
 @Composable
 fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
+    val userPlace = remember { resolveUserPlace() }
+    val timeZone = remember(userPlace) { timeZoneForLocation(userPlace.lat, userPlace.lng) }
+    val earthLocation = remember(userPlace, timeZone) {
+        EarthWidgetLocation(
+            latitude = userPlace.lat,
+            longitude = userPlace.lng,
+            elevationMeters = userPlace.elevation,
+            timeZone = timeZone
+        )
+    }
+
+    // Shared date state - controls both the Earth widget and zmanim cards
+    val todayDate = remember(timeZone) { LocalDate.now(timeZone.toZoneId()) }
+    var selectedDate by remember(todayDate) { mutableStateOf(todayDate) }
+
+    // Compute zmanim times based on selected date
+    val zmanimTimes = remember(selectedDate, earthLocation) { computeZmanimTimes(selectedDate, earthLocation) }
+    val timeFormatter = remember(timeZone) {
+        SimpleDateFormat("HH:mm").apply { this.timeZone = timeZone }
+    }
+    fun formatTime(date: Date?): String = date?.let { "\u2066${timeFormatter.format(it)}\u2069" } ?: ""
+    var earthWidgetTargetTime by remember { mutableStateOf<Date?>(null) }
+
+    // When clicking a zmanim card, update the Earth widget's target time
+    val onZmanimClick: (Date?) -> Unit = { date ->
+        date?.let { earthWidgetTargetTime = Date(it.time) }
+    }
+
+    // When clicking an orbit label in the Earth widget, update the shared date
+    val onDateSelected: (LocalDate) -> Unit = { date ->
+        selectedDate = date
+        // Reset target time when date changes so widget shows noon of new date
+        earthWidgetTargetTime = null
+    }
+
     val markers = listOf(
-        DayMarker(Res.string.home_widget_label_astronomical_dawn, "04:57", 0.05f, Color(0xFFC084FC)),
-        DayMarker(Res.string.home_widget_label_sunrise, "05:41", 0.18f, Color(0xFFFFD166)),
-        DayMarker(Res.string.home_widget_label_noon, "12:01", 0.52f, Color(0xFFFFAD61)),
-        DayMarker(Res.string.home_widget_label_sunset, "19:13", 0.78f, Color(0xFF7CB7FF)),
-        DayMarker(Res.string.home_widget_label_night, "20:41", 0.94f, Color(0xFFAEB8FF))
+        DayMarker(
+            Res.string.home_widget_label_astronomical_dawn,
+            formatTime(zmanimTimes.alosHashachar),
+            0.05f,
+            Color(0xFFC084FC)
+        ),
+        DayMarker(
+            Res.string.home_widget_label_sunrise,
+            formatTime(zmanimTimes.sunrise),
+            0.18f,
+            Color(0xFFFFD166)
+        ),
+        DayMarker(
+            Res.string.home_widget_label_noon,
+            formatTime(zmanimTimes.chatzosHayom),
+            0.52f,
+            Color(0xFFFFAD61)
+        ),
+        DayMarker(
+            Res.string.home_widget_label_sunset,
+            formatTime(zmanimTimes.sunset),
+            0.78f,
+            Color(0xFF7CB7FF)
+        ),
+        DayMarker(
+            Res.string.home_widget_label_night,
+            formatTime(zmanimTimes.tzais),
+            0.94f,
+            Color(0xFFAEB8FF)
+        )
     )
 
     val momentCards = listOf(
         DayMomentCardData(
             title = Res.string.home_widget_card_first_light_title,
-            time = "04:57",
-            subtitle = Res.string.home_widget_card_first_light_subtitle,
-            detail = Res.string.home_widget_card_first_light_detail,
+            time = formatTime(zmanimTimes.alosHashachar),
+            timeValue = zmanimTimes.alosHashachar,
             accentStart = Color(0xFF8AB4F8),
             accentEnd = Color(0xFFC3DAFE)
         ),
         DayMomentCardData(
             title = Res.string.home_widget_card_sunrise_title,
-            time = "05:41",
-            subtitle = Res.string.home_widget_card_sunrise_subtitle,
-            detail = Res.string.home_widget_card_sunrise_detail,
+            time = formatTime(zmanimTimes.sunrise),
+            timeValue = zmanimTimes.sunrise,
             accentStart = Color(0xFFFFCA7A),
             accentEnd = Color(0xFFFFE0A3)
         ),
         DayMomentCardData(
             title = Res.string.home_widget_card_noon_title,
-            time = "12:01",
-            subtitle = Res.string.home_widget_card_noon_subtitle,
-            detail = Res.string.home_widget_card_noon_detail,
+            time = formatTime(zmanimTimes.chatzosHayom),
+            timeValue = zmanimTimes.chatzosHayom,
             accentStart = Color(0xFFFFA94D),
             accentEnd = Color(0xFFFFC58A)
         ),
         DayMomentCardData(
             title = Res.string.home_widget_card_sunset_title,
-            time = "19:13",
-            subtitle = Res.string.home_widget_card_sunset_subtitle,
-            detail = Res.string.home_widget_card_sunset_detail,
+            time = formatTime(zmanimTimes.sunset),
+            timeValue = zmanimTimes.sunset,
             accentStart = Color(0xFF9CB9FF),
             accentEnd = Color(0xFFB6D4FF)
         )
     )
 
-    val lunarCycle = LunarCycleData(
-        dayValue = "10.3",
-        illuminationPercent = 78,
-        moonriseTime = "16:42",
-        moonsetTime = "03:18",
-        nextFullMoonIn = "4"
-    )
-
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val contentSpacing = 12.dp
+        val horizontalSpacing = ZMANIM_HORIZONTAL_SPACING
+        val verticalSpacing = ZMANIM_VERTICAL_SPACING
         val maxContentWidth = 1000.dp
         val effectiveWidth = maxContentWidth.coerceAtMost(maxWidth)
-        val columnWidth = (effectiveWidth - contentSpacing) / 2
+        val availableWidth = effectiveWidth - horizontalSpacing
+        val leftColumnWidth = availableWidth * 0.65f
+        val rightColumnWidth = availableWidth * 0.35f
+        val minCardWidth = 150.dp
+        val maxColumnsLimit = 4
+        val zmanimItemCount = momentCards.size + 1
+        val maxColumns = ((leftColumnWidth + horizontalSpacing) / (minCardWidth + horizontalSpacing))
+            .toInt()
+            .coerceAtLeast(1)
+        val columns = maxColumns.coerceAtMost(maxColumnsLimit).coerceAtMost(zmanimItemCount)
+        val rowCount = ((zmanimItemCount + columns - 1) / columns).coerceAtLeast(1)
+        val leftColumnHeight = (ZMANIM_CARD_HEIGHT * rowCount) +
+            (verticalSpacing * (rowCount - 1).coerceAtLeast(0))
+        val heightForSphere = leftColumnHeight
+        val sphereBase = minOf(rightColumnWidth, heightForSphere)
+        val rawSphereSize = sphereBase * 0.98f
+        val sphereSize = if (sphereBase < 140.dp) sphereBase else rawSphereSize.coerceAtLeast(140.dp)
+        val rightColumnHeightModifier = Modifier.height(leftColumnHeight)
+
+        val zmanimItems = buildList {
+            momentCards.forEach { card ->
+                val onClick = if (card.timeValue != null) {
+                    { onZmanimClick(card.timeValue) }
+                } else {
+                    null
+                }
+                add(ZmanimGridItem.Moment(card, onClick))
+            }
+            add(
+                ZmanimGridItem.VisibleStars(
+                    title = Res.string.home_widget_visible_stars_title,
+                    time = formatTime(zmanimTimes.tzais),
+                    onClick = { onZmanimClick(zmanimTimes.tzais) },
+                )
+            )
+        }
 
         Box(
             modifier = Modifier
@@ -160,34 +267,51 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
         ) {
             Row(
                 modifier = Modifier.width(effectiveWidth),
-                horizontalArrangement = Arrangement.spacedBy(contentSpacing),
+                horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
                 verticalAlignment = Alignment.Top
             ) {
                 Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(contentSpacing)
+                    modifier = Modifier
+                        .weight(0.65f)
+                        .height(leftColumnHeight),
+                    verticalArrangement = Arrangement.spacedBy(verticalSpacing)
                 ) {
-//                DayCycleCard(markers = markers)
-                    DayMomentsGrid(
-                        cards = momentCards,
-                        maxWidth = columnWidth,
-                        horizontalSpacing = contentSpacing
-                    )
-                    VisibleStarsCard(
-                        title = Res.string.home_widget_visible_stars_title,
-                        time = "20:41",
-                        subtitle = Res.string.home_widget_visible_stars_subtitle,
-                        detail = Res.string.home_widget_visible_stars_detail
+                    ZmanimCardsGrid(
+                        items = zmanimItems,
+                        columns = columns,
+                        horizontalSpacing = horizontalSpacing,
+                        verticalSpacing = verticalSpacing,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(contentSpacing)
+                    modifier = Modifier.weight(0.35f),
+                    verticalArrangement = Arrangement.spacedBy(verticalSpacing)
                 ) {
-                    LunarCycleCard(
-                        data = lunarCycle,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    CelestialWidgetCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(rightColumnHeightModifier),
+                        backgroundColor = Color.Black,
+                    ) {
+                        EarthWidgetZmanimView(
+                            modifier = Modifier.fillMaxSize(),
+                            sphereSize = sphereSize,
+                            locationOverride = earthLocation,
+                            targetTime = earthWidgetTargetTime,
+                            targetDate = selectedDate,
+                            onDateSelected = onDateSelected,
+                            allowLocationSelection = false,
+                            containerBackground = Color.Transparent,
+                            contentPadding = 0.dp,
+                            showControls = false,
+                            showOrbitLabels = true,
+                            showMoonInOrbit = true,
+                            initialShowMoonFromMarker = false,
+                            useScroll = false,
+                            earthSizeFraction = 0.6f,
+                        )
+                    }
                 }
             }
         }
@@ -231,6 +355,7 @@ private fun LunarCycleCard(data: LunarCycleData, modifier: Modifier = Modifier) 
         JewelTheme.globalColors.borders.normal
     }
     val textColor = JewelTheme.globalColors.text.normal
+    val labelColor = textColor.copy(alpha = 0.78f)
     val secondary = textColor.copy(alpha = 0.76f)
 
     Box(
@@ -828,29 +953,44 @@ private fun DayCycleCard(markers: List<DayMarker>, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun DayMomentsGrid(
-    cards: List<DayMomentCardData>,
-    maxWidth: Dp,
+private fun ZmanimCardsGrid(
+    items: List<ZmanimGridItem>,
+    columns: Int,
     horizontalSpacing: Dp,
-    modifier: Modifier = Modifier
+    verticalSpacing: Dp,
+    modifier: Modifier = Modifier,
 ) {
-    val minCardWidth = 130.dp
-    val twoColumnsMinWidth = minCardWidth * 2 + horizontalSpacing
-    val columns = if (maxWidth >= twoColumnsMinWidth) 2 else 1
+    val safeColumns = columns.coerceAtLeast(1)
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(horizontalSpacing)
+        verticalArrangement = Arrangement.spacedBy(verticalSpacing)
     ) {
-        cards.chunked(columns).forEach { rowCards ->
+        items.chunked(safeColumns).forEach { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(horizontalSpacing)
             ) {
-                rowCards.forEach { card ->
-                    DayMomentCard(
-                        data = card,
-                        modifier = Modifier.weight(1f)
-                    )
+                rowItems.forEach { item ->
+                    when (item) {
+                        is ZmanimGridItem.Moment -> {
+                            DayMomentCard(
+                                data = item.data,
+                                modifier = Modifier.weight(1f),
+                                onClick = item.onClick
+                            )
+                        }
+                        is ZmanimGridItem.VisibleStars -> {
+                            VisibleStarsCard(
+                                title = item.title,
+                                time = item.time,
+                                modifier = Modifier.weight(1f),
+                                onClick = item.onClick
+                            )
+                        }
+                    }
+                }
+                repeat(safeColumns - rowItems.size) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -858,7 +998,11 @@ private fun DayMomentsGrid(
 }
 
 @Composable
-private fun DayMomentCard(data: DayMomentCardData, modifier: Modifier = Modifier) {
+private fun DayMomentCard(
+    data: DayMomentCardData,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
+) {
     val isDark = JewelTheme.isDark
     val shape = RoundedCornerShape(18.dp)
     val panelBackground = JewelTheme.globalColors.panelBackground
@@ -882,57 +1026,42 @@ private fun DayMomentCard(data: DayMomentCardData, modifier: Modifier = Modifier
     } else {
         JewelTheme.globalColors.borders.normal
     }
-    val labelColor = JewelTheme.globalColors.text.normal.copy(alpha = 0.75f)
+    val labelColor = JewelTheme.globalColors.text.normal.copy(alpha = 0.78f)
 
     Box(
         modifier = modifier
-            .height(90.dp)
+            .height(ZMANIM_CARD_HEIGHT)
             .clip(shape)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .background(background)
             .border(1.dp, borderColor, shape)
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.Start
         ) {
-            Column(
-                modifier = Modifier.weight(0.45f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Text(
-                    text = stringResource(data.title),
-                    color = labelColor,
-                    fontSize = 12.sp
-                )
-                Text(
-                    text = data.time,
-                    color = JewelTheme.globalColors.text.normal,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp
-                )
-            }
             Row(
-                modifier = Modifier.weight(0.55f),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                GradientDot(data.accentStart, data.accentEnd, size = 10.dp)
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = stringResource(data.subtitle),
-                        color = JewelTheme.globalColors.text.normal,
-                        fontSize = 13.sp
-                    )
-                    Text(
-                        text = stringResource(data.detail),
-                        color = labelColor,
-                        fontSize = 12.sp
-                    )
-                }
+                GradientDot(data.accentStart, data.accentEnd, size = 13.dp)
+                Text(
+                    text = stringResource(data.title),
+                    color = labelColor,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
+            Text(
+                text = data.time,
+                color = JewelTheme.globalColors.text.normal,
+                fontWeight = FontWeight.Bold,
+                fontSize = 30.sp,
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -941,9 +1070,8 @@ private fun DayMomentCard(data: DayMomentCardData, modifier: Modifier = Modifier
 private fun VisibleStarsCard(
     title: StringResource,
     time: String,
-    subtitle: StringResource,
-    detail: StringResource,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
     val isDark = JewelTheme.isDark
     val shape = RoundedCornerShape(18.dp)
@@ -972,69 +1100,95 @@ private fun VisibleStarsCard(
         JewelTheme.globalColors.borders.normal
     }
     val textColor = JewelTheme.globalColors.text.normal
-    val secondary = textColor.copy(alpha = 0.76f)
-
+    val labelColor = textColor.copy(alpha = 0.78f)
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(90.dp)
+            .height(ZMANIM_CARD_HEIGHT)
             .clip(shape)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .background(background)
             .border(1.dp, borderColor, shape)
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.Start
         ) {
-            Column(
-                modifier = Modifier.weight(0.45f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Text(
-                    text = stringResource(title),
-                    color = textColor,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = time,
-                    color = accent,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp
-                )
-            }
             Row(
-                modifier = Modifier.weight(0.55f),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val starOuter = accent.blendTowards(Color.White, 0.35f)
-                    GradientDot(starOuter, accent, size = 12.dp)
-                    GradientDot(starOuter, accent, size = 12.dp)
-                    GradientDot(starOuter, accent, size = 12.dp)
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = stringResource(subtitle),
-                        color = textColor,
-                        fontSize = 13.sp
-                    )
-                    Text(
-                        text = stringResource(detail),
-                        color = secondary,
-                        fontSize = 12.sp
-                    )
-                }
+                val starOuter = accent.blendTowards(Color.White, 0.35f)
+                GradientDot(starOuter, accent, size = 13.dp)
+                Text(
+                    text = stringResource(title),
+                    color = labelColor,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
+            Text(
+                text = time,
+                color = accent,
+                fontWeight = FontWeight.Bold,
+                fontSize = 30.sp,
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
+}
+
+@Composable
+private fun CelestialWidgetCard(
+    modifier: Modifier = Modifier,
+    backgroundColor: Color? = null,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val isDark = JewelTheme.isDark
+    val shape = RoundedCornerShape(22.dp)
+    val panelBackground = JewelTheme.globalColors.panelBackground
+    val accent = JewelTheme.globalColors.text.info
+    val background = if (backgroundColor == null) {
+        if (isDark) {
+            Brush.verticalGradient(
+                listOf(
+                    panelBackground.blendTowards(Color.White, 0.06f),
+                    panelBackground.blendTowards(Color.Black, 0.18f)
+                )
+            )
+        } else {
+            Brush.verticalGradient(
+                listOf(
+                    panelBackground.blendTowards(Color.White, 0.10f),
+                    panelBackground.blendTowards(accent, 0.05f)
+                )
+            )
+        }
+    } else {
+        null
+    }
+    val borderColor = if (isDark) {
+        JewelTheme.globalColors.borders.disabled
+    } else {
+        JewelTheme.globalColors.borders.normal
+    }
+
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .then(
+                if (backgroundColor != null) {
+                    Modifier.background(backgroundColor, shape)
+                } else {
+                    Modifier.background(background!!, shape)
+                }
+            )
+            .border(1.dp, borderColor, shape),
+        content = content
+    )
 }
 
 @Composable
@@ -1094,6 +1248,18 @@ private fun Color.blendTowards(target: Color, ratio: Float): Color {
         blue = blue * inverse + target.blue * clamped,
         alpha = alpha * inverse + target.alpha * clamped
     )
+}
+
+private fun resolveUserPlace(): Place {
+    val country = AppSettings.getRegionCountry()
+    val city = AppSettings.getRegionCity()
+    val place = if (!country.isNullOrBlank() && !city.isNullOrBlank()) {
+        worldPlaces[country]?.get(city)
+    } else {
+        null
+    }
+
+    return place ?: Place(31.7683, 35.2137, 800.0)
 }
 
 @Preview

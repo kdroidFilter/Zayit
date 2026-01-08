@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -40,6 +41,16 @@ import seforimapp.earthwidget.generated.resources.earthmap
 import seforimapp.earthwidget.generated.resources.moonmap
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+
+// ============================================================================
+// SHARED ANIMATION SPECS
+// ============================================================================
+
+/** Shared spring spec for smooth angle animations. */
+private val SmoothAngleSpringSpec = spring<Float>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMediumLow,
+)
 
 // ============================================================================
 // DEFAULT VALUES
@@ -121,6 +132,8 @@ fun EarthWidgetScene(
     orbitLabels: List<OrbitLabelData> = emptyList(),
     onOrbitLabelClick: ((OrbitLabelData) -> Unit)? = null,
     showMoonFromMarker: Boolean = true,
+    showMoonInOrbit: Boolean = true,
+    earthSizeFraction: Float = EARTH_SIZE_FRACTION,
     moonLightDegrees: Float = lightDegrees,
     moonSunElevationDegrees: Float = sunElevationDegrees,
     moonPhaseAngleDegrees: Float? = null,
@@ -129,11 +142,6 @@ fun EarthWidgetScene(
     moonFromMarkerLightDegrees: Float? = null,
     moonFromMarkerSunElevationDegrees: Float? = null,
 ) {
-    val smoothSpec = spring<Float>(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMediumLow,
-    )
-
     // Earth rotation and light can be instant (during drag) or animated (location change)
     val animatedEarthRotation = if (animateEarthRotation) {
         rememberSmoothAnimatedAngle(
@@ -153,12 +161,12 @@ fun EarthWidgetScene(
     }
     val animatedSunElevation by animateFloatAsState(
         targetValue = sunElevationDegrees,
-        animationSpec = smoothSpec,
+        animationSpec = SmoothAngleSpringSpec,
         label = "sunElevation",
     )
     val animatedTiltDegrees by animateFloatAsState(
         targetValue = earthTiltDegrees,
-        animationSpec = smoothSpec,
+        animationSpec = SmoothAngleSpringSpec,
         label = "tiltDegrees",
     )
     val animatedMoonOrbit = rememberSmoothAnimatedAngle(
@@ -167,7 +175,7 @@ fun EarthWidgetScene(
     )
     val animatedMarkerLat by animateFloatAsState(
         targetValue = markerLatitudeDegrees,
-        animationSpec = smoothSpec,
+        animationSpec = SmoothAngleSpringSpec,
         label = "markerLat",
     )
     val animatedMarkerLon = rememberSmoothAnimatedAngle(
@@ -180,7 +188,7 @@ fun EarthWidgetScene(
     )
     val animatedMoonSunElevation by animateFloatAsState(
         targetValue = moonSunElevationDegrees,
-        animationSpec = smoothSpec,
+        animationSpec = SmoothAngleSpringSpec,
         label = "moonSunElevation",
     )
     val animatedMoonPhaseAngle = moonPhaseAngleDegrees?.let {
@@ -190,8 +198,8 @@ fun EarthWidgetScene(
     val earthTexture = rememberEarthTexture()
     val moonTexture = rememberMoonTexture()
     val renderer = remember { EarthWidgetRenderer() }
-    val textures = remember(earthTexture, moonTexture) {
-        EarthWidgetTextures(earth = earthTexture, moon = moonTexture)
+    val textures = remember(earthTexture, moonTexture, showMoonInOrbit) {
+        EarthWidgetTextures(earth = earthTexture, moon = if (showMoonInOrbit) moonTexture else null)
     }
 
     val moonViewSize = sphereSize * MOON_VIEW_SIZE_RATIO
@@ -215,6 +223,7 @@ fun EarthWidgetScene(
         moonSunElevationDegrees = animatedMoonSunElevation,
         moonPhaseAngleDegrees = animatedMoonPhaseAngle,
         julianDay = julianDay,
+        earthSizeFraction = earthSizeFraction,
     )
 
     val renderedScene = rememberRenderedEarthMoonImage(
@@ -236,6 +245,7 @@ fun EarthWidgetScene(
                     sphereSize = sphereSize,
                     labels = orbitLabels,
                     onLabelClick = onOrbitLabelClick,
+                    earthSizeFraction = earthSizeFraction,
                     modifier = Modifier.matchParentSize(),
                 )
             }
@@ -259,6 +269,7 @@ fun EarthWidgetScene(
             moonSunElevationDegrees = moonSunElevationForMarker,
             moonPhaseAngleDegrees = animatedMoonPhaseAngle,
             julianDay = julianDay,
+            earthSizeFraction = earthSizeFraction,
         )
         // Moon-from-marker view uses the actual marker longitude (not the visual Earth rotation)
         // This ensures the moon phase is always calculated from the marker's real position
@@ -444,11 +455,6 @@ private fun rememberSmoothAnimatedAngle(
     targetValue: Float,
     normalize: (Float) -> Float,
 ): Float {
-    val springSpec = spring<Float>(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMediumLow,
-    )
-
     val animatable = remember { Animatable(normalize(targetValue)) }
 
     LaunchedEffect(targetValue) {
@@ -463,7 +469,7 @@ private fun rememberSmoothAnimatedAngle(
         val newTarget = current + delta
         animatable.animateTo(
             targetValue = newTarget,
-            animationSpec = springSpec,
+            animationSpec = SmoothAngleSpringSpec,
             initialVelocity = animatable.velocity,
         )
     }
@@ -471,6 +477,7 @@ private fun rememberSmoothAnimatedAngle(
     return normalize(animatable.value)
 }
 
+@Immutable
 data class OrbitLabelData(
     val orbitDegrees: Float,
     val text: String,
@@ -483,6 +490,7 @@ private fun OrbitDayLabelsOverlay(
     sphereSize: Dp,
     labels: List<OrbitLabelData>,
     onLabelClick: ((OrbitLabelData) -> Unit)?,
+    earthSizeFraction: Float = EARTH_SIZE_FRACTION,
     modifier: Modifier = Modifier,
 ) {
     if (labels.isEmpty() || renderSizePx <= 0) return
@@ -504,6 +512,7 @@ private fun OrbitDayLabelsOverlay(
             val p = computeOrbitScreenPosition(
                 outputSizePx = renderSizePx,
                 orbitDegrees = label.orbitDegrees,
+                earthSizeFraction = earthSizeFraction,
             )
             val dx = p.x - center
             val dy = p.y - center

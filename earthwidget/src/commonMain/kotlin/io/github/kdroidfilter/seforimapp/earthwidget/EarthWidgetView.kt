@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -330,6 +331,7 @@ internal fun MoonFromMarkerWidgetView(
     state: MoonFromMarkerRenderState,
     modifier: Modifier = Modifier,
     sphereSize: Dp = 220.dp,
+    animateTransitions: Boolean = false,
 ) {
     val resolvedMoonTexture = moonTexture ?: rememberMoonTexture()
 
@@ -339,11 +341,52 @@ internal fun MoonFromMarkerWidgetView(
         state = state,
     )
 
-    Image(
-        bitmap = moonImage,
-        contentDescription = null,
-        modifier = modifier.size(sphereSize),
-    )
+    if (!animateTransitions) {
+        Image(
+            bitmap = moonImage,
+            contentDescription = null,
+            modifier = modifier.size(sphereSize),
+        )
+        return
+    }
+
+    var currentImage by remember { mutableStateOf<ImageBitmap?>(null) }
+    var previousImage by remember { mutableStateOf<ImageBitmap?>(null) }
+    val fade = remember { Animatable(1f) }
+
+    LaunchedEffect(moonImage) {
+        if (currentImage == null) {
+            currentImage = moonImage
+            previousImage = null
+            fade.snapTo(1f)
+        } else if (moonImage != currentImage) {
+            previousImage = currentImage
+            currentImage = moonImage
+            fade.snapTo(0f)
+            fade.animateTo(1f, animationSpec = spring())
+            previousImage = null
+        }
+    }
+
+    val frontImage = currentImage ?: moonImage
+    Box(modifier = modifier.size(sphereSize), contentAlignment = Alignment.Center) {
+        if (previousImage != null) {
+            Image(
+                bitmap = previousImage!!,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(sphereSize)
+                    .alpha(1f - fade.value),
+            )
+        }
+        Image(
+            bitmap = frontImage,
+            contentDescription = null,
+            modifier = Modifier
+                .size(sphereSize)
+                .alpha(if (previousImage != null) fade.value else 1f),
+        )
+    }
 }
 
 // ============================================================================

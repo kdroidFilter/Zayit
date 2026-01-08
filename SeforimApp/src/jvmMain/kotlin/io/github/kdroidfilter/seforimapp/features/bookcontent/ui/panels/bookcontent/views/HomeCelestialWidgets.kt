@@ -66,11 +66,17 @@ import seforimapp.seforimapp.generated.resources.home_widget_card_first_light_ti
 import seforimapp.seforimapp.generated.resources.home_widget_card_noon_title
 import seforimapp.seforimapp.generated.resources.home_widget_card_sunrise_title
 import seforimapp.seforimapp.generated.resources.home_widget_card_sunset_title
+import seforimapp.seforimapp.generated.resources.home_widget_shema_gra_label
+import seforimapp.seforimapp.generated.resources.home_widget_shema_mga_label
+import seforimapp.seforimapp.generated.resources.home_widget_shema_title
+import seforimapp.seforimapp.generated.resources.home_widget_tefila_title
 import seforimapp.seforimapp.generated.resources.home_widget_label_astronomical_dawn
 import seforimapp.seforimapp.generated.resources.home_widget_label_night
 import seforimapp.seforimapp.generated.resources.home_widget_label_noon
 import seforimapp.seforimapp.generated.resources.home_widget_label_sunrise
 import seforimapp.seforimapp.generated.resources.home_widget_label_sunset
+import seforimapp.seforimapp.generated.resources.home_widget_tzais_geonim_label
+import seforimapp.seforimapp.generated.resources.home_widget_tzais_rabbeinu_tam_label
 import seforimapp.seforimapp.generated.resources.home_widget_visible_stars_title
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -111,10 +117,40 @@ private sealed class ZmanimGridItem {
         val onClick: (() -> Unit)?,
     ) : ZmanimGridItem()
 
+    data class Shema(
+        val title: StringResource,
+        val graLabel: StringResource,
+        val graTime: String,
+        val graTimeValue: Date?,
+        val mgaLabel: StringResource,
+        val mgaTime: String,
+        val mgaTimeValue: Date?,
+        val onGraClick: (() -> Unit)?,
+        val onMgaClick: (() -> Unit)?,
+    ) : ZmanimGridItem()
+
+    data class Tefila(
+        val title: StringResource,
+        val graLabel: StringResource,
+        val graTime: String,
+        val graTimeValue: Date?,
+        val mgaLabel: StringResource,
+        val mgaTime: String,
+        val mgaTimeValue: Date?,
+        val onGraClick: (() -> Unit)?,
+        val onMgaClick: (() -> Unit)?,
+    ) : ZmanimGridItem()
+
     data class VisibleStars(
         val title: StringResource,
-        val time: String,
-        val onClick: (() -> Unit)?,
+        val geonimLabel: StringResource,
+        val geonimTime: String,
+        val geonimTimeValue: Date?,
+        val rabbeinuTamLabel: StringResource,
+        val rabbeinuTamTime: String,
+        val rabbeinuTamTimeValue: Date?,
+        val onGeonimClick: (() -> Unit)?,
+        val onRabbeinuTamClick: (() -> Unit)?,
     ) : ZmanimGridItem()
 
     data class MoonSky(
@@ -246,7 +282,71 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
         val rightColumnWidth = availableWidth * 0.35f
         val minCardWidth = 150.dp
         val maxColumnsLimit = 4
-        val zmanimItemCount = momentCards.size + 2
+
+        val zmanimItems = buildList {
+            momentCards.forEachIndexed { index, card ->
+                val onClick = if (card.timeValue != null) {
+                    { onZmanimClick(card.timeValue) }
+                } else {
+                    null
+                }
+                add(ZmanimGridItem.Moment(card, onClick))
+                if (index == 1) {
+                    val graTimeValue = zmanimTimes.sofZmanShmaGra
+                    val mgaTimeValue = zmanimTimes.sofZmanShmaMga
+                    add(
+                        ZmanimGridItem.Shema(
+                            title = Res.string.home_widget_shema_title,
+                            graLabel = Res.string.home_widget_shema_gra_label,
+                            graTime = formatTime(graTimeValue),
+                            graTimeValue = graTimeValue,
+                            mgaLabel = Res.string.home_widget_shema_mga_label,
+                            mgaTime = formatTime(mgaTimeValue),
+                            mgaTimeValue = mgaTimeValue,
+                            onGraClick = graTimeValue?.let { { onZmanimClick(it) } },
+                            onMgaClick = mgaTimeValue?.let { { onZmanimClick(it) } },
+                        )
+                    )
+                    val tefilaGraTime = zmanimTimes.sofZmanTfilaGra
+                    val tefilaMgaTime = zmanimTimes.sofZmanTfilaMga
+                    add(
+                        ZmanimGridItem.Tefila(
+                            title = Res.string.home_widget_tefila_title,
+                            graLabel = Res.string.home_widget_shema_gra_label,
+                            graTime = formatTime(tefilaGraTime),
+                            graTimeValue = tefilaGraTime,
+                            mgaLabel = Res.string.home_widget_shema_mga_label,
+                            mgaTime = formatTime(tefilaMgaTime),
+                            mgaTimeValue = tefilaMgaTime,
+                            onGraClick = tefilaGraTime?.let { { onZmanimClick(it) } },
+                            onMgaClick = tefilaMgaTime?.let { { onZmanimClick(it) } },
+                        )
+                    )
+                }
+            }
+            val tzaisGeonim = zmanimTimes.tzais
+            val tzaisRabbeinuTam = zmanimTimes.tzaisRabbeinuTam
+            add(
+                ZmanimGridItem.VisibleStars(
+                    title = Res.string.home_widget_visible_stars_title,
+                    geonimLabel = Res.string.home_widget_tzais_geonim_label,
+                    geonimTime = formatTime(tzaisGeonim),
+                    geonimTimeValue = tzaisGeonim,
+                    rabbeinuTamLabel = Res.string.home_widget_tzais_rabbeinu_tam_label,
+                    rabbeinuTamTime = formatTime(tzaisRabbeinuTam),
+                    rabbeinuTamTimeValue = tzaisRabbeinuTam,
+                    onGeonimClick = tzaisGeonim?.let { { onZmanimClick(it) } },
+                    onRabbeinuTamClick = tzaisRabbeinuTam?.let { { onZmanimClick(it) } },
+                )
+            )
+            add(
+                ZmanimGridItem.MoonSky(
+                    referenceTime = moonReferenceTime,
+                    location = earthLocation,
+                )
+            )
+        }
+        val zmanimItemCount = zmanimItems.size
         val maxColumns = ((leftColumnWidth + horizontalSpacing) / (minCardWidth + horizontalSpacing))
             .toInt()
             .coerceAtLeast(1)
@@ -259,30 +359,6 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
         val rawSphereSize = sphereBase * 0.98f
         val sphereSize = if (sphereBase < 140.dp) sphereBase else rawSphereSize.coerceAtLeast(140.dp)
         val rightColumnHeightModifier = Modifier.height(leftColumnHeight)
-
-        val zmanimItems = buildList {
-            momentCards.forEach { card ->
-                val onClick = if (card.timeValue != null) {
-                    { onZmanimClick(card.timeValue) }
-                } else {
-                    null
-                }
-                add(ZmanimGridItem.Moment(card, onClick))
-            }
-            add(
-                ZmanimGridItem.VisibleStars(
-                    title = Res.string.home_widget_visible_stars_title,
-                    time = formatTime(zmanimTimes.tzais),
-                    onClick = { onZmanimClick(zmanimTimes.tzais) },
-                )
-            )
-            add(
-                ZmanimGridItem.MoonSky(
-                    referenceTime = moonReferenceTime,
-                    location = earthLocation,
-                )
-            )
-        }
 
         Box(
             modifier = Modifier
@@ -1004,12 +1080,46 @@ private fun ZmanimCardsGrid(
                                 onClick = item.onClick
                             )
                         }
-                        is ZmanimGridItem.VisibleStars -> {
-                            VisibleStarsCard(
+                        is ZmanimGridItem.Shema -> {
+                            DualTimeCard(
                                 title = item.title,
-                                time = item.time,
+                                leftLabel = item.mgaLabel,
+                                leftTime = item.mgaTime,
+                                leftTimeValue = item.mgaTimeValue,
+                                rightLabel = item.graLabel,
+                                rightTime = item.graTime,
+                                rightTimeValue = item.graTimeValue,
+                                onLeftClick = item.onMgaClick,
+                                onRightClick = item.onGraClick,
                                 modifier = Modifier.weight(1f),
-                                onClick = item.onClick
+                            )
+                        }
+                        is ZmanimGridItem.Tefila -> {
+                            DualTimeCard(
+                                title = item.title,
+                                leftLabel = item.mgaLabel,
+                                leftTime = item.mgaTime,
+                                leftTimeValue = item.mgaTimeValue,
+                                rightLabel = item.graLabel,
+                                rightTime = item.graTime,
+                                rightTimeValue = item.graTimeValue,
+                                onLeftClick = item.onMgaClick,
+                                onRightClick = item.onGraClick,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        is ZmanimGridItem.VisibleStars -> {
+                            DualTimeCard(
+                                title = item.title,
+                                leftLabel = item.geonimLabel,
+                                leftTime = item.geonimTime,
+                                leftTimeValue = item.geonimTimeValue,
+                                rightLabel = item.rabbeinuTamLabel,
+                                rightTime = item.rabbeinuTamTime,
+                                rightTimeValue = item.rabbeinuTamTimeValue,
+                                onLeftClick = item.onGeonimClick,
+                                onRightClick = item.onRabbeinuTamClick,
+                                modifier = Modifier.weight(1f),
                             )
                         }
                         is ZmanimGridItem.MoonSky -> {
@@ -1099,30 +1209,33 @@ private fun DayMomentCard(
 }
 
 @Composable
-private fun VisibleStarsCard(
+private fun DualTimeCard(
     title: StringResource,
-    time: String,
+    leftLabel: StringResource,
+    leftTime: String,
+    leftTimeValue: Date?,
+    rightLabel: StringResource,
+    rightTime: String,
+    rightTimeValue: Date?,
     modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
+    onLeftClick: (() -> Unit)? = null,
+    onRightClick: (() -> Unit)? = null,
 ) {
     val isDark = JewelTheme.isDark
     val shape = RoundedCornerShape(18.dp)
     val panelBackground = JewelTheme.globalColors.panelBackground
-    val accent = JewelTheme.globalColors.text.info
     val background = if (isDark) {
-        Brush.horizontalGradient(
+        Brush.verticalGradient(
             listOf(
-                panelBackground.blendTowards(accent, 0.3f),
-                panelBackground.blendTowards(accent, 0.2f),
-                panelBackground.blendTowards(accent, 0.1f)
+                panelBackground.blendTowards(Color.White, 0.06f),
+                panelBackground.blendTowards(Color.Black, 0.18f)
             )
         )
     } else {
-        Brush.horizontalGradient(
+        Brush.verticalGradient(
             listOf(
-                panelBackground.blendTowards(accent, 0.25f),
-                panelBackground.blendTowards(accent, 0.15f),
-                panelBackground.blendTowards(accent, 0.05f)
+                panelBackground.blendTowards(Color.White, 0.10f),
+                panelBackground.blendTowards(JewelTheme.globalColors.text.info, 0.05f)
             )
         )
     }
@@ -1131,14 +1244,14 @@ private fun VisibleStarsCard(
     } else {
         JewelTheme.globalColors.borders.normal
     }
-    val textColor = JewelTheme.globalColors.text.normal
-    val labelColor = textColor.copy(alpha = 0.78f)
+    val labelColor = JewelTheme.globalColors.text.normal.copy(alpha = 0.78f)
+    val accentStart = Color(0xFF9AE7E7)
+    val accentEnd = Color(0xFFC7F5F0)
+
     Box(
         modifier = modifier
-            .fillMaxWidth()
             .height(ZMANIM_CARD_HEIGHT)
             .clip(shape)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .background(background)
             .border(1.dp, borderColor, shape)
             .padding(horizontal = 12.dp, vertical = 10.dp)
@@ -1152,23 +1265,65 @@ private fun VisibleStarsCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val starOuter = accent.blendTowards(Color.White, 0.35f)
-                GradientDot(starOuter, accent, size = 13.dp)
+                GradientDot(accentStart, accentEnd, size = 13.dp)
                 Text(
                     text = stringResource(title),
                     color = labelColor,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
-            Text(
-                text = time,
-                color = accent,
-                fontWeight = FontWeight.Bold,
-                fontSize = 30.sp,
-                textAlign = TextAlign.End,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-            )
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .then(if (onLeftClick != null && leftTimeValue != null) {
+                            Modifier.clickable(onClick = onLeftClick)
+                        } else {
+                            Modifier
+                        }),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Text(
+                        text = stringResource(leftLabel),
+                        color = labelColor,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = leftTime,
+                        color = JewelTheme.globalColors.text.normal,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp
+                    )
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .then(if (onRightClick != null && rightTimeValue != null) {
+                            Modifier.clickable(onClick = onRightClick)
+                        } else {
+                            Modifier
+                        }),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Text(
+                        text = stringResource(rightLabel),
+                        color = labelColor,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = rightTime,
+                        color = JewelTheme.globalColors.text.normal,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp
+                    )
+                }
+            }
         }
     }
 }

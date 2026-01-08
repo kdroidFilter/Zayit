@@ -142,9 +142,14 @@ private data class ZmanimPresetTimes(
 data class ZmanimTimes(
     val alosHashachar: Date?,
     val sunrise: Date?,
+    val sofZmanShmaGra: Date?,
+    val sofZmanShmaMga: Date?,
+    val sofZmanTfilaGra: Date?,
+    val sofZmanTfilaMga: Date?,
     val chatzosHayom: Date?,
     val sunset: Date?,
     val tzais: Date?,
+    val tzaisRabbeinuTam: Date?,
 )
 
 // ============================================================================
@@ -1459,9 +1464,14 @@ fun computeZmanimTimes(
     return ZmanimTimes(
         alosHashachar = calendar.alosHashachar,
         sunrise = calendar.sunrise,
+        sofZmanShmaGra = calendar.getSofZmanShmaGRA(),
+        sofZmanShmaMga = calendar.getSofZmanShmaMGA(),
+        sofZmanTfilaGra = calendar.getSofZmanTfilaGRA(),
+        sofZmanTfilaMga = calendar.getSofZmanTfilaMGA(),
         chatzosHayom = calendar.chatzos,
         sunset = calendar.sunset,
         tzais = calendar.tzais,
+        tzaisRabbeinuTam = calendar.getTzais72(),
     )
 }
 

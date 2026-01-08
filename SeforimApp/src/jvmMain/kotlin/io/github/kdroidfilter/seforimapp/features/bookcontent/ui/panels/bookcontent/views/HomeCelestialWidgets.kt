@@ -3,6 +3,9 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcon
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -29,6 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetMoonSkyView
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
@@ -195,6 +201,7 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
         }.time
     }
     val moonReferenceTime = earthWidgetTargetTime ?: zmanimTimes.tzais ?: fallbackMoonTime
+    val selectedTimeMillis = earthWidgetTargetTime?.time
 
     // When clicking a zmanim card, update the Earth widget's target time
     val onZmanimClick: (Date?) -> Unit = { date ->
@@ -382,6 +389,7 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
                         columns = columns,
                         horizontalSpacing = horizontalSpacing,
                         verticalSpacing = verticalSpacing,
+                        selectedTimeMillis = selectedTimeMillis,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -1059,6 +1067,7 @@ private fun ZmanimCardsGrid(
     columns: Int,
     horizontalSpacing: Dp,
     verticalSpacing: Dp,
+    selectedTimeMillis: Long?,
     modifier: Modifier = Modifier,
 ) {
     val safeColumns = columns.coerceAtLeast(1)
@@ -1074,49 +1083,70 @@ private fun ZmanimCardsGrid(
                 rowItems.forEach { item ->
                     when (item) {
                         is ZmanimGridItem.Moment -> {
+                            val isSelected = selectedTimeMillis != null &&
+                                item.data.timeValue?.time == selectedTimeMillis
                             DayMomentCard(
                                 data = item.data,
+                                isSelected = isSelected,
                                 modifier = Modifier.weight(1f),
                                 onClick = item.onClick
                             )
                         }
                         is ZmanimGridItem.Shema -> {
+                            val isLeftSelected = selectedTimeMillis != null &&
+                                item.mgaTimeValue?.time == selectedTimeMillis
+                            val isRightSelected = selectedTimeMillis != null &&
+                                item.graTimeValue?.time == selectedTimeMillis
                             DualTimeCard(
                                 title = item.title,
                                 leftLabel = item.mgaLabel,
                                 leftTime = item.mgaTime,
                                 leftTimeValue = item.mgaTimeValue,
+                                leftSelected = isLeftSelected,
                                 rightLabel = item.graLabel,
                                 rightTime = item.graTime,
                                 rightTimeValue = item.graTimeValue,
+                                rightSelected = isRightSelected,
                                 onLeftClick = item.onMgaClick,
                                 onRightClick = item.onGraClick,
                                 modifier = Modifier.weight(1f),
                             )
                         }
                         is ZmanimGridItem.Tefila -> {
+                            val isLeftSelected = selectedTimeMillis != null &&
+                                item.mgaTimeValue?.time == selectedTimeMillis
+                            val isRightSelected = selectedTimeMillis != null &&
+                                item.graTimeValue?.time == selectedTimeMillis
                             DualTimeCard(
                                 title = item.title,
                                 leftLabel = item.mgaLabel,
                                 leftTime = item.mgaTime,
                                 leftTimeValue = item.mgaTimeValue,
+                                leftSelected = isLeftSelected,
                                 rightLabel = item.graLabel,
                                 rightTime = item.graTime,
                                 rightTimeValue = item.graTimeValue,
+                                rightSelected = isRightSelected,
                                 onLeftClick = item.onMgaClick,
                                 onRightClick = item.onGraClick,
                                 modifier = Modifier.weight(1f),
                             )
                         }
                         is ZmanimGridItem.VisibleStars -> {
+                            val isLeftSelected = selectedTimeMillis != null &&
+                                item.geonimTimeValue?.time == selectedTimeMillis
+                            val isRightSelected = selectedTimeMillis != null &&
+                                item.rabbeinuTamTimeValue?.time == selectedTimeMillis
                             DualTimeCard(
                                 title = item.title,
                                 leftLabel = item.geonimLabel,
                                 leftTime = item.geonimTime,
                                 leftTimeValue = item.geonimTimeValue,
+                                leftSelected = isLeftSelected,
                                 rightLabel = item.rabbeinuTamLabel,
                                 rightTime = item.rabbeinuTamTime,
                                 rightTimeValue = item.rabbeinuTamTimeValue,
+                                rightSelected = isRightSelected,
                                 onLeftClick = item.onGeonimClick,
                                 onRightClick = item.onRabbeinuTamClick,
                                 modifier = Modifier.weight(1f),
@@ -1142,6 +1172,7 @@ private fun ZmanimCardsGrid(
 @Composable
 private fun DayMomentCard(
     data: DayMomentCardData,
+    isSelected: Boolean,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
@@ -1169,18 +1200,56 @@ private fun DayMomentCard(
         JewelTheme.globalColors.borders.normal
     }
     val labelColor = JewelTheme.globalColors.text.normal.copy(alpha = 0.78f)
+    val hoverSource = remember { MutableInteractionSource() }
+    val isHovered by hoverSource.collectIsHoveredAsState()
+    val isClickable = onClick != null
+    val showHover = isClickable && isHovered
+    val selectionOverlay = JewelTheme.globalColors.text.selected.copy(alpha = if (isDark) 0.2f else 0.12f)
+    val selectionBorder = JewelTheme.globalColors.borders.focused
+    val hoverModifier = if (isClickable) {
+        Modifier.hoverable(hoverSource).pointerHoverIcon(PointerIcon.Hand)
+    } else {
+        Modifier
+    }
+    val clickModifier = if (onClick != null) {
+        Modifier.clickable(onClick = onClick)
+    } else {
+        Modifier
+    }
 
     Box(
         modifier = modifier
             .height(ZMANIM_CARD_HEIGHT)
             .clip(shape)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(hoverModifier)
+            .then(clickModifier)
             .background(background)
             .border(1.dp, borderColor, shape)
-            .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(selectionOverlay)
+            )
+        } else if (showHover) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(AppColors.HOVER_HIGHLIGHT)
+            )
+        }
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(2.dp, selectionBorder, shape)
+            )
+        }
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.Start
         ) {
@@ -1214,9 +1283,11 @@ private fun DualTimeCard(
     leftLabel: StringResource,
     leftTime: String,
     leftTimeValue: Date?,
+    leftSelected: Boolean,
     rightLabel: StringResource,
     rightTime: String,
     rightTimeValue: Date?,
+    rightSelected: Boolean,
     modifier: Modifier = Modifier,
     onLeftClick: (() -> Unit)? = null,
     onRightClick: (() -> Unit)? = null,
@@ -1247,6 +1318,34 @@ private fun DualTimeCard(
     val labelColor = JewelTheme.globalColors.text.normal.copy(alpha = 0.78f)
     val accentStart = Color(0xFF9AE7E7)
     val accentEnd = Color(0xFFC7F5F0)
+    val leftClick = onLeftClick
+    val rightClick = onRightClick
+    val leftClickable = leftClick != null && leftTimeValue != null
+    val rightClickable = rightClick != null && rightTimeValue != null
+    val leftHoverSource = remember { MutableInteractionSource() }
+    val rightHoverSource = remember { MutableInteractionSource() }
+    val isLeftHovered by leftHoverSource.collectIsHoveredAsState()
+    val isRightHovered by rightHoverSource.collectIsHoveredAsState()
+    val showHover = (leftClickable && isLeftHovered) || (rightClickable && isRightHovered)
+    val isSelected = leftSelected || rightSelected
+    val selectionOverlay = JewelTheme.globalColors.text.selected.copy(alpha = if (isDark) 0.2f else 0.12f)
+    val selectionBorder = JewelTheme.globalColors.borders.focused
+    val leftModifier = if (leftClick != null && leftTimeValue != null) {
+        Modifier
+            .hoverable(leftHoverSource)
+            .pointerHoverIcon(PointerIcon.Hand)
+            .clickable(onClick = leftClick)
+    } else {
+        Modifier
+    }
+    val rightModifier = if (rightClick != null && rightTimeValue != null) {
+        Modifier
+            .hoverable(rightHoverSource)
+            .pointerHoverIcon(PointerIcon.Hand)
+            .clickable(onClick = rightClick)
+    } else {
+        Modifier
+    }
 
     Box(
         modifier = modifier
@@ -1254,10 +1353,31 @@ private fun DualTimeCard(
             .clip(shape)
             .background(background)
             .border(1.dp, borderColor, shape)
-            .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(selectionOverlay)
+            )
+        } else if (showHover) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(AppColors.HOVER_HIGHLIGHT)
+            )
+        }
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(2.dp, selectionBorder, shape)
+            )
+        }
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.Start
         ) {
@@ -1278,13 +1398,7 @@ private fun DualTimeCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .then(if (onLeftClick != null && leftTimeValue != null) {
-                            Modifier.clickable(onClick = onLeftClick)
-                        } else {
-                            Modifier
-                        }),
+                    modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
@@ -1301,13 +1415,7 @@ private fun DualTimeCard(
                     )
                 }
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .then(if (onRightClick != null && rightTimeValue != null) {
-                            Modifier.clickable(onClick = onRightClick)
-                        } else {
-                            Modifier
-                        }),
+                    modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
@@ -1324,6 +1432,22 @@ private fun DualTimeCard(
                     )
                 }
             }
+        }
+        Row(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .then(leftModifier)
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .then(rightModifier)
+            )
         }
     }
 }

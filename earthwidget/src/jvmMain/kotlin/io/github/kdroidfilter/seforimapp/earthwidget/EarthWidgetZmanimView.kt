@@ -384,6 +384,14 @@ fun EarthWidgetZmanimView(
         SimpleDateFormat("yyyy-MM-dd HH:mm").apply { this.timeZone = timeZone }
     }
     val formattedTime = remember(referenceTime, formatter) { formatter.format(referenceTime) }
+    val hebrewMonthYear = remember(referenceTime, timeZone) {
+        val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
+        val jewishDate = JewishDate().apply { setDate(calendar) }
+        val dateFormatter = HebrewDateFormatter().apply { setHebrewFormat(true) }
+        val month = dateFormatter.formatMonth(jewishDate)
+        val year = dateFormatter.formatHebrewNumber(jewishDate.getJewishYear())
+        "$month $year"
+    }
 
     val presetTimeFormatter = remember(timeZone) {
         SimpleDateFormat("HH:mm").apply { this.timeZone = timeZone }
@@ -460,6 +468,14 @@ fun EarthWidgetZmanimView(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    Text(
+                        text = hebrewMonthYear,
+                        color = JewelTheme.globalColors.text.normal.copy(alpha = 0.9f),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     EarthSceneContent(
                         modifier = Modifier.fillMaxWidth(),
                         sphereSize = sphereSize,
@@ -672,6 +688,16 @@ fun EarthWidgetZmanimView(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 8.dp, bottom = 8.dp),
+            )
+            Text(
+                text = hebrewMonthYear,
+                color = JewelTheme.globalColors.text.normal.copy(alpha = 0.9f),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Start,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 8.dp, top = 8.dp),
             )
         }
     }

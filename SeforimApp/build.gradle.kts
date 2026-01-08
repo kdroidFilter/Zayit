@@ -1,3 +1,4 @@
+import io.github.kdroidfilter.buildsrc.NativeCleanupHelper
 import io.github.kdroidfilter.buildsrc.RenameMacPkgTask
 import io.github.kdroidfilter.buildsrc.RenameMsiTask
 import io.github.kdroidfilter.buildsrc.Versioning
@@ -303,3 +304,6 @@ val renameMsi = tasks.register<RenameMsiTask>("renameMsi") {
 tasks.matching { it.name.endsWith("Msi") && it.name != "renameMsi" }.configureEach {
     finalizedBy(renameMsi)
 }
+
+// --- Clean unused native binaries from JARs for smaller distribution size
+NativeCleanupHelper.registerCleanupTasks(project)

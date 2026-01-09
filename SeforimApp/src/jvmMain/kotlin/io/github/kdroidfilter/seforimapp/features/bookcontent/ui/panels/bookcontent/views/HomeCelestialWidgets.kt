@@ -181,22 +181,30 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
             }
         }
     }
-    val timeZone = remember(userPlace) { timeZoneForLocation(userPlace.lat, userPlace.lng) }
-    val earthLocation = remember(userPlace, timeZone) {
+
+    // Temporary location selection (does not affect user settings)
+    var temporaryLocation by remember { mutableStateOf<EarthWidgetLocation?>(null) }
+    var temporaryCityLabel by remember { mutableStateOf<String?>(null) }
+
+    // Use temporary location if selected, otherwise fall back to user's saved location
+    val effectiveLocation = temporaryLocation ?: remember(userPlace) {
+        val tz = timeZoneForLocation(userPlace.lat, userPlace.lng)
         EarthWidgetLocation(
             latitude = userPlace.lat,
             longitude = userPlace.lng,
             elevationMeters = userPlace.elevation,
-            timeZone = timeZone
+            timeZone = tz
         )
     }
+    val effectiveCityLabel = temporaryCityLabel ?: userCityLabel
+    val timeZone = effectiveLocation.timeZone
 
     // Shared date state - controls both the Earth widget and zmanim cards
     val todayDate = remember(timeZone) { LocalDate.now(timeZone.toZoneId()) }
     var selectedDate by remember(todayDate) { mutableStateOf(todayDate) }
 
-    // Compute zmanim times based on selected date
-    val zmanimTimes = remember(selectedDate, earthLocation) { computeZmanimTimes(selectedDate, earthLocation) }
+    // Compute zmanim times based on selected date and effective location
+    val zmanimTimes = remember(selectedDate, effectiveLocation) { computeZmanimTimes(selectedDate, effectiveLocation) }
     val timeFormatter = remember(timeZone) {
         SimpleDateFormat("HH:mm").apply { this.timeZone = timeZone }
     }
@@ -225,6 +233,14 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
     val onDateSelected: (LocalDate) -> Unit = { date ->
         selectedDate = date
         // Reset target time when date changes so widget shows noon of new date
+        earthWidgetTargetTime = null
+    }
+
+    // When selecting a location in the Earth widget, update temporary location (without changing user settings)
+    val onLocationSelectedHandler: (String, String, EarthWidgetLocation) -> Unit = { _, city, location ->
+        temporaryLocation = location
+        temporaryCityLabel = city
+        // Reset target time when location changes
         earthWidgetTargetTime = null
     }
 
@@ -362,7 +378,7 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
             add(
                 ZmanimGridItem.MoonSky(
                     referenceTime = moonReferenceTime,
-                    location = earthLocation,
+                    location = effectiveLocation,
                 )
             )
         }
@@ -419,11 +435,12 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
                         EarthWidgetZmanimView(
                             modifier = Modifier.fillMaxSize(),
                             sphereSize = sphereSize,
-                            locationOverride = earthLocation,
+                            locationOverride = effectiveLocation,
                             targetTime = earthWidgetTargetTime,
                             targetDate = selectedDate,
                             onDateSelected = onDateSelected,
-                            allowLocationSelection = false,
+                            onLocationSelected = onLocationSelectedHandler,
+                            allowLocationSelection = true,
                             containerBackground = Color.Transparent,
                             contentPadding = 0.dp,
                             showControls = false,
@@ -432,7 +449,7 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
                             initialShowMoonFromMarker = false,
                             useScroll = false,
                             earthSizeFraction = 0.6f,
-                            locationLabel = userCityLabel,
+                            locationLabel = effectiveCityLabel,
                             locationOptions = locationOptions,
                         )
                     }

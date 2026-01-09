@@ -188,6 +188,7 @@ fun EarthWidgetZmanimView(
     targetTime: Date? = null,
     targetDate: LocalDate? = null,
     onDateSelected: ((LocalDate) -> Unit)? = null,
+    onLocationSelected: ((country: String, city: String, location: EarthWidgetLocation) -> Unit)? = null,
     allowLocationSelection: Boolean = true,
     containerBackground: Color? = null,
     contentPadding: Dp = 12.dp,
@@ -488,7 +489,7 @@ fun EarthWidgetZmanimView(
             Unit
         }
     }
-    val onLocationSelected: (String, String) -> Unit = selection@{ country, city ->
+    val onLocationSelectedInternal: (String, String) -> Unit = selection@{ country, city ->
         val location = normalizedLocationOptions[country]?.get(city) ?: return@selection
         selectedLocationSelection = LocationSelection(country, city)
         menuCountrySelection = country
@@ -497,6 +498,7 @@ fun EarthWidgetZmanimView(
         markerElevationMeters = location.elevationMeters
         timeZone = location.timeZone
         earthRotationOffset = 0f
+        onLocationSelected?.invoke(country, city, location)
     }
 
     if (useScroll) {
@@ -530,7 +532,7 @@ fun EarthWidgetZmanimView(
                                 selectedCountry = menuCountrySelection,
                                 selectedSelection = selectedLocationSelection,
                                 onCountrySelected = { menuCountrySelection = it },
-                                onCitySelected = { country, city -> onLocationSelected(country, city) },
+                                onCitySelected = { country, city -> onLocationSelectedInternal(country, city) },
                                 modifier =
                                     Modifier
                                         .align(Alignment.TopEnd)
@@ -768,7 +770,7 @@ fun EarthWidgetZmanimView(
                     selectedCountry = menuCountrySelection,
                     selectedSelection = selectedLocationSelection,
                     onCountrySelected = { menuCountrySelection = it },
-                    onCitySelected = { country, city -> onLocationSelected(country, city) },
+                    onCitySelected = { country, city -> onLocationSelectedInternal(country, city) },
                     modifier =
                         Modifier
                             .align(Alignment.TopEnd)

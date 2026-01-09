@@ -31,11 +31,11 @@ kotlin {
 
         jvmMain.dependencies {
             api(project(":jewel"))
+            api(project(":hebrewcalendar"))
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
             }
             implementation("com.kosherjava:zmanim:2.5.0")
-
         }
 
         jvmTest.dependencies {

@@ -51,6 +51,8 @@ import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetMoonSkyView
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
+import io.github.kdroidfilter.seforimapp.earthwidget.ROZmanimCalendar
+import io.github.kdroidfilter.seforimapp.earthwidget.ZmanimOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
 import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
@@ -211,6 +213,14 @@ fun HomeCelestialWidgets(
             KiddushLevanaEarliestOpinion.DAYS_3 to KiddushLevanaLatestOpinion.BETWEEN_MOLDOS
         }
     }
+    // Use Sephardic zmanim calculations for SEPHARADE community
+    val zmanimOpinion = remember(userCommunity) {
+        if (userCommunity == Community.SEPHARADE) {
+            ZmanimOpinion.SEPHARDIC
+        } else {
+            ZmanimOpinion.DEFAULT
+        }
+    }
     val locationOptions = remember {
         worldPlaces.mapValues { (_, cities) ->
             cities.mapValues { (_, place) ->
@@ -245,9 +255,13 @@ fun HomeCelestialWidgets(
     val todayDate = remember(timeZone) { LocalDate.now(timeZone.toZoneId()) }
     var selectedDate by remember(todayDate) { mutableStateOf(todayDate) }
 
-    // Compute zmanim times based on selected date and effective location
-    val zmanimTimes = remember(selectedDate, effectiveLocation) { computeZmanimTimes(selectedDate, effectiveLocation) }
-    val shabbatTimes = remember(selectedDate, effectiveLocation) { computeShabbatTimes(selectedDate, effectiveLocation) }
+    // Compute zmanim times based on selected date, effective location, and community opinion
+    val zmanimTimes = remember(selectedDate, effectiveLocation, zmanimOpinion) {
+        computeZmanimTimes(selectedDate, effectiveLocation, zmanimOpinion)
+    }
+    val shabbatTimes = remember(selectedDate, effectiveLocation, zmanimOpinion) {
+        computeShabbatTimes(selectedDate, effectiveLocation, zmanimOpinion)
+    }
     val timeFormatter = remember(timeZone) {
         SimpleDateFormat("HH:mm").apply { this.timeZone = timeZone }
     }
@@ -1937,6 +1951,7 @@ private fun GradientDot(
 private fun computeShabbatTimes(
     date: LocalDate,
     location: EarthWidgetLocation,
+    opinion: ZmanimOpinion = ZmanimOpinion.DEFAULT,
 ): ShabbatTimes {
     val shabbatDate = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY))
     val fridayDate = shabbatDate.minusDays(1)
@@ -1960,12 +1975,7 @@ private fun computeShabbatTimes(
         location.elevationMeters,
         location.timeZone,
     )
-    val entryCalendar = ComplexZmanimCalendar(geoLocation).apply {
-        calendar = calendarForDate(fridayDate)
-    }
-    val exitCalendar = ComplexZmanimCalendar(geoLocation).apply {
-        calendar = calendarForDate(shabbatDate)
-    }
+
     val parashaName = run {
         val jewishCalendar = JewishCalendar().apply {
             setDate(calendarForDate(shabbatDate))
@@ -1979,10 +1989,48 @@ private fun computeShabbatTimes(
     }
     val parashaTitle = if (parashaName.isBlank()) "שבת" else "שבת $parashaName"
 
+    // Calculate entry and exit times based on opinion
+    val (entryTime, exitTime) = when (opinion) {
+        ZmanimOpinion.SEPHARDIC -> {
+            val isInIsrael = location.timeZone.id == "Asia/Jerusalem"
+            val useAmudehHoraah = !isInIsrael
+            // Sephardic: Use ROZmanimCalendar with default Ohr HaChaim/Amudei Horaah rules
+            // Candle lighting: 20 minutes before sunset (Ohr HaChaim default)
+            // End of Shabbat: Ateret Torah in Israel, Amudei Horaah outside Israel
+            val entryCalendar = ROZmanimCalendar(geoLocation).apply {
+                calendar = calendarForDate(fridayDate)
+                isUseElevation = false
+                isUseAmudehHoraah = useAmudehHoraah
+            }
+            val exitCalendar = ROZmanimCalendar(geoLocation).apply {
+                calendar = calendarForDate(shabbatDate)
+                isUseElevation = false
+                isUseAmudehHoraah = useAmudehHoraah
+            }
+            val entry = entryCalendar.getCandleLightingWithElevation(20.0)
+            val exit = if (useAmudehHoraah) {
+                exitCalendar.getTzeitShabbatAmudeiHoraah()
+            } else {
+                val offsetMinutes = if (isInIsrael) 30.0 else 40.0
+                exitCalendar.getTzaisAteretTorah(offsetMinutes)
+            }
+            entry to exit
+        }
+        ZmanimOpinion.DEFAULT -> {
+            val entryCalendar = ComplexZmanimCalendar(geoLocation).apply {
+                calendar = calendarForDate(fridayDate)
+            }
+            val exitCalendar = ComplexZmanimCalendar(geoLocation).apply {
+                calendar = calendarForDate(shabbatDate)
+            }
+            entryCalendar.candleLighting to exitCalendar.tzais
+        }
+    }
+
     return ShabbatTimes(
         parashaName = parashaTitle,
-        entryTime = entryCalendar.candleLighting,
-        exitTime = exitCalendar.tzais,
+        entryTime = entryTime,
+        exitTime = exitTime,
     )
 }
 

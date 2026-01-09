@@ -165,11 +165,31 @@ data class ZmanimTimes(
     val sofZmanTfilaGra: Date?,
     val sofZmanTfilaMga: Date?,
     val chatzosHayom: Date?,
-    val chatzosLayla: Date?,
+    val minchaGedola: Date?,
+    val minchaKetana: Date?,
+    val plagHamincha: Date?,
     val sunset: Date?,
     val tzais: Date?,
     val tzaisRabbeinuTam: Date?,
+    val chatzosLayla: Date?,
 )
+
+/**
+ * Enum representing the zmanim calculation opinion to use.
+ */
+enum class ZmanimOpinion {
+    /**
+     * Default calculations using ComplexZmanimCalendar.
+     * Uses standard GRA and MGA calculations.
+     */
+    DEFAULT,
+
+    /**
+     * Sephardic calculations according to Rabbi Ovadiah Yosef ZT"L.
+     * Uses ROZmanimCalendar with zmaniyot-based calculations.
+     */
+    SEPHARDIC,
+}
 
 // ============================================================================
 // MAIN COMPOSABLE
@@ -1502,6 +1522,7 @@ private fun computeZmanimPresetTimes(
 fun computeZmanimTimes(
     date: LocalDate,
     location: EarthWidgetLocation,
+    opinion: ZmanimOpinion = ZmanimOpinion.DEFAULT,
 ): ZmanimTimes {
     val geoLocation = GeoLocation(
         "earthwidget",
@@ -1510,16 +1531,32 @@ fun computeZmanimTimes(
         location.elevationMeters,
         location.timeZone,
     )
+
+    val javaCalendar = Calendar.getInstance(location.timeZone).apply {
+        set(Calendar.YEAR, date.year)
+        set(Calendar.MONTH, date.monthValue - 1)
+        set(Calendar.DAY_OF_MONTH, date.dayOfMonth)
+        set(Calendar.HOUR_OF_DAY, 12)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+
+    return when (opinion) {
+        ZmanimOpinion.SEPHARDIC -> computeZmanimTimesSephardic(geoLocation, javaCalendar)
+        ZmanimOpinion.DEFAULT -> computeZmanimTimesDefault(geoLocation, javaCalendar)
+    }
+}
+
+/**
+ * Computes zmanim times using standard ComplexZmanimCalendar calculations.
+ */
+private fun computeZmanimTimesDefault(
+    geoLocation: GeoLocation,
+    javaCalendar: Calendar,
+): ZmanimTimes {
     val calendar = ComplexZmanimCalendar(geoLocation).apply {
-        this.calendar = Calendar.getInstance(location.timeZone).apply {
-            set(Calendar.YEAR, date.year)
-            set(Calendar.MONTH, date.monthValue - 1)
-            set(Calendar.DAY_OF_MONTH, date.dayOfMonth)
-            set(Calendar.HOUR_OF_DAY, 12)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
+        this.calendar = javaCalendar
     }
 
     return ZmanimTimes(
@@ -1530,10 +1567,64 @@ fun computeZmanimTimes(
         sofZmanTfilaGra = calendar.getSofZmanTfilaGRA(),
         sofZmanTfilaMga = calendar.getSofZmanTfilaMGA(),
         chatzosHayom = calendar.chatzos,
-        chatzosLayla = calendar.solarMidnight,
+        minchaGedola = calendar.minchaGedola,
+        minchaKetana = calendar.minchaKetana,
+        plagHamincha = calendar.plagHamincha,
         sunset = calendar.sunset,
         tzais = calendar.tzais,
         tzaisRabbeinuTam = calendar.getTzais72(),
+        chatzosLayla = calendar.solarMidnight,
+    )
+}
+
+/**
+ * Computes zmanim times according to Rabbi Ovadiah Yosef ZT"L's opinions.
+ *
+ * Key differences from standard calculations:
+ * - Alos Hashachar: 72 zmaniyot minutes (1/10 of day) before sunrise
+ * - Sof Zman Shema/Tefila MGA: Based on 72 zmaniyot alos/tzais
+ * - Mincha Gedola: The later of 30 min after chatzos or standard calculation
+ * - Plag HaMincha: 1.25 hours before tzais (not sunset)
+ * - Tzais: 13.5 zmaniyot minutes after sunset (Geonim)
+ * - Tzais Rabbeinu Tam: 72 zmaniyot minutes after sunset
+ */
+private fun computeZmanimTimesSephardic(
+    geoLocation: GeoLocation,
+    javaCalendar: Calendar,
+): ZmanimTimes {
+    val isInIsrael = geoLocation.timeZone.id == "Asia/Jerusalem"
+    val useAmudehHoraah = !isInIsrael
+    val roCalendar = ROZmanimCalendar(geoLocation).apply {
+        this.calendar = javaCalendar
+        isUseElevation = false
+        isUseAmudehHoraah = useAmudehHoraah
+    }
+
+    // For GRA times, we still use the standard calculation
+    val complexCalendar = ComplexZmanimCalendar(geoLocation).apply {
+        this.calendar = javaCalendar
+        isUseElevation = false
+    }
+
+    return ZmanimTimes(
+        alosHashachar = roCalendar.getAlotHashachar72Zmaniyot(),
+        sunrise = roCalendar.sunrise,
+        sofZmanShmaGra = complexCalendar.getSofZmanShmaGRA(),
+        sofZmanShmaMga = roCalendar.getSofZmanShmaMGA72MinutesZmanis(),
+        sofZmanTfilaGra = complexCalendar.getSofZmanTfilaGRA(),
+        sofZmanTfilaMga = roCalendar.getSofZmanTfilaMGA72MinutesZmanis(),
+        chatzosHayom = roCalendar.getChatzotHayom(),
+        minchaGedola = roCalendar.getMinchaGedolaGreaterThan30(),
+        minchaKetana = roCalendar.minchaKetana,
+        plagHamincha = roCalendar.getPlagHaminchaYalkutYosef(),
+        sunset = roCalendar.sunset,
+        tzais = roCalendar.getTzeit(),
+        tzaisRabbeinuTam = if (useAmudehHoraah) {
+            roCalendar.getTzais72ZmanisLkulah()
+        } else {
+            roCalendar.getTzais72Zmanis()
+        },
+        chatzosLayla = roCalendar.getChatzotLayla(),
     )
 }
 

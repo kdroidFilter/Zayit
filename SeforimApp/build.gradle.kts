@@ -154,6 +154,9 @@ kotlin {
 
             // HTML sanitization for search snippets
             implementation(libs.jsoup)
+
+            implementation(libs.zmanim)
+
         }
     }
 }

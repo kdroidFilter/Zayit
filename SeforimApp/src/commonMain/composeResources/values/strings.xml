@@ -203,6 +203,7 @@
     <string name="home_widget_card_noon_title">חצות היום</string>
     <string name="home_widget_card_noon_subtitle">אמצע היום ההלכתי</string>
     <string name="home_widget_card_noon_detail">חצי הזמן מן הנץ לשקיעה</string>
+    <string name="home_widget_card_midnight_title">חצות הלילה</string>
     <string name="home_widget_card_sunset_title">שקיעת החמה</string>
     <string name="home_widget_card_sunset_subtitle">סיום זמן היום</string>
     <string name="home_widget_card_sunset_detail">תחילת בין השמשות</string>
@@ -210,6 +211,8 @@
     <string name="home_widget_shema_gra_label">גר״א</string>
     <string name="home_widget_shema_mga_label">מג״א</string>
     <string name="home_widget_tefila_title">סוף זמן תפילה</string>
+    <string name="home_widget_shabbat_entry_label">כניסת שבת</string>
+    <string name="home_widget_shabbat_exit_label">צאת שבת</string>
     <string name="home_widget_visible_stars_title">צאת הכוכבים</string>
     <string name="home_widget_tzais_geonim_label">גאונים</string>
     <string name="home_widget_tzais_rabbeinu_tam_label">ר״ת</string>

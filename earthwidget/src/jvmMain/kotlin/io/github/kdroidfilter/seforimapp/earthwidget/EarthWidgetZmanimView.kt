@@ -318,6 +318,21 @@ fun EarthWidgetZmanimView(
         mutableStateOf(initialCalendar.get(Calendar.MINUTE).coerceIn(0, 59))
     }
 
+    // Track if date/time is different from current time
+    val isDateTimeModified by remember(selectedDate, selectedHour, selectedMinute, timeZone) {
+        derivedStateOf {
+            val now = Calendar.getInstance(timeZone)
+            val currentDate = LocalDate.of(
+                now.get(Calendar.YEAR),
+                now.get(Calendar.MONTH) + 1,
+                now.get(Calendar.DAY_OF_MONTH),
+            )
+            val currentHour = now.get(Calendar.HOUR_OF_DAY)
+            val currentMinute = now.get(Calendar.MINUTE)
+            selectedDate != currentDate || selectedHour != currentHour || selectedMinute != currentMinute
+        }
+    }
+
     LaunchedEffect(locationOverride) {
         locationOverride?.let { override ->
             markerLatitudeDegrees = override.latitude.toFloat()
@@ -508,6 +523,18 @@ fun EarthWidgetZmanimView(
     val currentTimeZone by rememberUpdatedState(timeZone)
     val currentReferenceTime by rememberUpdatedState(referenceTime)
     val currentOnDateSelected by rememberUpdatedState(onDateSelected)
+
+    val onResetDateTimeCallback: () -> Unit = {
+        val now = Calendar.getInstance(timeZone)
+        selectedDate = LocalDate.of(
+            now.get(Calendar.YEAR),
+            now.get(Calendar.MONTH) + 1,
+            now.get(Calendar.DAY_OF_MONTH),
+        )
+        selectedHour = now.get(Calendar.HOUR_OF_DAY).coerceIn(0, 23)
+        selectedMinute = now.get(Calendar.MINUTE).coerceIn(0, 59)
+        currentOnDateSelected?.invoke(selectedDate)
+    }
     val onCalendarDateSelected: (LocalDate) -> Unit = { date ->
         selectedDate = date
         currentOnDateSelected?.invoke(date)
@@ -601,10 +628,19 @@ fun EarthWidgetZmanimView(
                         isDraggingEarth = isDraggingEarth,
                         kiddushLevanaData = kiddushLevanaData,
                     )
-                    RecenterButton(
-                        earthRotationOffset = earthRotationOffset,
-                        onRecenter = onRecenterCallback,
-                    )
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        ResetDateTimeButton(
+                            isDateTimeModified = isDateTimeModified,
+                            onResetDateTime = onResetDateTimeCallback,
+                        )
+                        RecenterButton(
+                            earthRotationOffset = earthRotationOffset,
+                            onRecenter = onRecenterCallback,
+                        )
+                    }
                     if (showKiddushLevanaLegend) {
                         Box(modifier = Modifier.fillMaxWidth()) {
                             KiddushLevanaLegend(
@@ -812,14 +848,23 @@ fun EarthWidgetZmanimView(
                         .padding(start = 8.dp, bottom = 8.dp),
                 )
             }
-            if (earthRotationOffset != 0f) {
-                RecenterButton(
-                    earthRotationOffset = earthRotationOffset,
-                    onRecenter = onRecenterCallback,
+            if (earthRotationOffset != 0f || isDateTimeModified) {
+                Column(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(end = 8.dp, bottom = 8.dp),
-                )
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.End,
+                ) {
+                    ResetDateTimeButton(
+                        isDateTimeModified = isDateTimeModified,
+                        onResetDateTime = onResetDateTimeCallback,
+                    )
+                    RecenterButton(
+                        earthRotationOffset = earthRotationOffset,
+                        onRecenter = onRecenterCallback,
+                    )
+                }
             }
             IntUiTheme(isDark = true) {
                 DateSelectionSplitButton(
@@ -1036,6 +1081,37 @@ private fun RecenterButton(
                         modifier = Modifier.size(16.dp),
                     )
                     Text(text = stringResource(Res.string.earthwidget_recenter_button))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Reset date/time button shown when date/time differs from current time.
+ */
+@Composable
+private fun ResetDateTimeButton(
+    isDateTimeModified: Boolean,
+    onResetDateTime: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (isDateTimeModified) {
+        IntUiTheme(isDark = true) {
+            OutlinedButton(
+                onClick = onResetDateTime,
+                modifier = modifier,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        key = AllIconsKeys.Actions.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(text = stringResource(Res.string.earthwidget_reset_datetime_button))
                 }
             }
         }

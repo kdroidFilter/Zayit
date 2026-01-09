@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
@@ -99,6 +100,8 @@ private const val MIN_GMT_OFFSET = -12
 
 /** Maximum GMT offset in hours. */
 private const val MAX_GMT_OFFSET = 14
+
+private val KIDDUSH_LEVANA_LEGEND_COLOR = Color(0xFFFFD700)
 
 // ============================================================================
 // DATA CLASSES
@@ -285,6 +288,7 @@ fun EarthWidgetZmanimView(
     var showOrbitPath by remember { mutableStateOf(true) }
     var showMoonFromMarker by remember { mutableStateOf(initialShowMoonFromMarker) }
     var showKiddushLevana by remember { mutableStateOf(initialShowKiddushLevana) }
+    val showKiddushLevanaLegend = showKiddushLevana && showOrbitPath
 
     // Earth rotation offset from user drag (added to marker longitude)
     var earthRotationOffset by remember { mutableFloatStateOf(0f) }
@@ -590,6 +594,15 @@ fun EarthWidgetZmanimView(
                         earthRotationOffset = earthRotationOffset,
                         onRecenter = onRecenterCallback,
                     )
+                    if (showKiddushLevanaLegend) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            KiddushLevanaLegend(
+                                modifier = Modifier
+                                    .align(Alignment.CenterStart)
+                                    .padding(start = 8.dp),
+                            )
+                        }
+                    }
                 }
             }
 
@@ -781,13 +794,22 @@ fun EarthWidgetZmanimView(
                 isDraggingEarth = isDraggingEarth,
                 kiddushLevanaData = kiddushLevanaData,
             )
-            RecenterButton(
-                earthRotationOffset = earthRotationOffset,
-                onRecenter = onRecenterCallback,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 8.dp, bottom = 8.dp),
-            )
+            if (showKiddushLevanaLegend) {
+                KiddushLevanaLegend(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 8.dp, bottom = 8.dp),
+                )
+            }
+            if (earthRotationOffset != 0f) {
+                RecenterButton(
+                    earthRotationOffset = earthRotationOffset,
+                    onRecenter = onRecenterCallback,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 8.dp, bottom = 8.dp),
+                )
+            }
             DateSelectionSplitButton(
                 label = hebrewDateLabel,
                 selectedDate = selectedDate,
@@ -1018,6 +1040,38 @@ private fun LabeledCheckbox(
     ) {
         Checkbox(checked = checked, onCheckedChange = onCheckedChange)
         Text(text = label)
+    }
+}
+
+@Composable
+private fun KiddushLevanaLegend(modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(50)
+    val background = JewelTheme.globalColors.panelBackground.copy(alpha = 0.86f)
+    val borderColor = JewelTheme.globalColors.borders.disabled
+    val textColor = JewelTheme.globalColors.text.normal
+
+    Row(
+        modifier = modifier
+            .clip(shape)
+            .background(background, shape)
+            .border(1.dp, borderColor, shape)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(KIDDUSH_LEVANA_LEGEND_COLOR, CircleShape)
+                .border(1.dp, borderColor, CircleShape)
+        )
+        Text(
+            text = stringResource(Res.string.earthwidget_kiddush_levana_legend),
+            color = textColor,
+            fontSize = 11.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

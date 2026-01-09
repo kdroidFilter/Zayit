@@ -58,6 +58,7 @@ import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
+import kotlin.math.abs
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -259,8 +260,8 @@ fun HomeCelestialWidgets(
     val zmanimTimes = remember(selectedDate, effectiveLocation, zmanimOpinion) {
         computeZmanimTimes(selectedDate, effectiveLocation, zmanimOpinion)
     }
-    val shabbatTimes = remember(selectedDate, effectiveLocation, zmanimOpinion) {
-        computeShabbatTimes(selectedDate, effectiveLocation, zmanimOpinion)
+    val shabbatTimes = remember(selectedDate, effectiveLocation, zmanimOpinion, effectiveCityLabel) {
+        computeShabbatTimes(selectedDate, effectiveLocation, zmanimOpinion, effectiveCityLabel)
     }
     val timeFormatter = remember(timeZone) {
         SimpleDateFormat("HH:mm").apply { this.timeZone = timeZone }
@@ -1952,6 +1953,7 @@ private fun computeShabbatTimes(
     date: LocalDate,
     location: EarthWidgetLocation,
     opinion: ZmanimOpinion = ZmanimOpinion.DEFAULT,
+    cityLabel: String? = null,
 ): ShabbatTimes {
     val shabbatDate = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY))
     val fridayDate = shabbatDate.minusDays(1)
@@ -1988,6 +1990,7 @@ private fun computeShabbatTimes(
         if (parasha.isBlank()) formatter.formatSpecialParsha(jewishCalendar) else parasha
     }
     val parashaTitle = if (parashaName.isBlank()) "שבת" else "שבת $parashaName"
+    val isJerusalem = isJerusalemLocation(location, cityLabel)
 
     // Calculate entry and exit times based on opinion
     val (entryTime, exitTime) = when (opinion) {
@@ -2023,7 +2026,18 @@ private fun computeShabbatTimes(
             val exitCalendar = ComplexZmanimCalendar(geoLocation).apply {
                 calendar = calendarForDate(shabbatDate)
             }
-            entryCalendar.candleLighting to exitCalendar.tzais
+            val entry = if (isJerusalem) {
+                entryCalendar.setCandleLightingOffset(40.0)
+                entryCalendar.candleLighting
+            } else {
+                entryCalendar.candleLighting
+            }
+            val exit = if (isJerusalem) {
+                offsetDateByMinutes(exitCalendar.sunset, 40.0)
+            } else {
+                exitCalendar.tzais
+            }
+            entry to exit
         }
     }
 
@@ -2032,6 +2046,23 @@ private fun computeShabbatTimes(
         entryTime = entryTime,
         exitTime = exitTime,
     )
+}
+
+private fun isJerusalemLocation(location: EarthWidgetLocation, cityLabel: String?): Boolean {
+    val trimmedLabel = cityLabel?.trim().orEmpty()
+    if (trimmedLabel == "ירושלים" || trimmedLabel.equals("Jerusalem", ignoreCase = true)) {
+        return true
+    }
+
+    val jerusalem = worldPlaces["ישראל"]?.get("ירושלים") ?: return false
+    val latDiff = abs(location.latitude - jerusalem.lat)
+    val lonDiff = abs(location.longitude - jerusalem.lng)
+    return latDiff < 0.1 && lonDiff < 0.1
+}
+
+private fun offsetDateByMinutes(date: Date?, minutes: Double): Date? {
+    if (date == null) return null
+    return Date(date.time + (minutes * 60_000L).toLong())
 }
 
 private fun Color.blendTowards(target: Color, ratio: Float): Color {

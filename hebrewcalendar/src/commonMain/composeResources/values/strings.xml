@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hebrewcalendar_prev_month">החודש הקודם</string>
+    <string name="hebrewcalendar_next_month">החודש הבא</string>
+    <string name="hebrewcalendar_mode_gregorian">לועזי</string>
+    <string name="hebrewcalendar_mode_hebrew">עברי</string>
+</resources>

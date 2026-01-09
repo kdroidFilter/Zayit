@@ -470,7 +470,8 @@ private fun HomeBody(
                             contentAlignment = Alignment.Center
                         ) {
                             HomeCelestialWidgets(
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                userCommunityCode = searchUi.userCommunityCode,
                             )
                         }
                     }

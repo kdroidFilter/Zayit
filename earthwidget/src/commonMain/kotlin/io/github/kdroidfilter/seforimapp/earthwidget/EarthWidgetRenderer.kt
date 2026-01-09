@@ -33,6 +33,8 @@ internal data class EarthRenderState(
     val moonPhaseAngleDegrees: Float?,
     val julianDay: Double?,
     val earthSizeFraction: Float,
+    val kiddushLevanaStartDegrees: Float? = null,
+    val kiddushLevanaEndDegrees: Float? = null,
 )
 
 /**
@@ -110,6 +112,8 @@ internal class EarthWidgetRenderer(
                 bufferPool = bufferPool,
                 outputBuffer = outputBuffer,
                 starfieldCache = starfieldCache,
+                kiddushLevanaStartDegrees = state.kiddushLevanaStartDegrees,
+                kiddushLevanaEndDegrees = state.kiddushLevanaEndDegrees,
             )
 
             // Convert to ImageBitmap (copies the data)

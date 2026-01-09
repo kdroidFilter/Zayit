@@ -46,8 +46,11 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetMoonSkyView
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
+import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinion
+import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
 import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
+import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.Place
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
@@ -166,9 +169,22 @@ private sealed class ZmanimGridItem {
 }
 
 @Composable
-fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
+fun HomeCelestialWidgets(
+    modifier: Modifier = Modifier,
+    userCommunityCode: String? = null,
+) {
     val userPlace = remember { resolveUserPlace() }
     val userCityLabel = remember { AppSettings.getRegionCity() }
+    val userCommunity = remember(userCommunityCode) {
+        userCommunityCode?.let { code -> runCatching { Community.valueOf(code) }.getOrNull() }
+    }
+    val (kiddushLevanaEarliestOpinion, kiddushLevanaLatestOpinion) = remember(userCommunity) {
+        if (userCommunity == Community.SEPHARADE) {
+            KiddushLevanaEarliestOpinion.DAYS_7 to KiddushLevanaLatestOpinion.DAYS_15
+        } else {
+            KiddushLevanaEarliestOpinion.DAYS_3 to KiddushLevanaLatestOpinion.BETWEEN_MOLDOS
+        }
+    }
     val locationOptions = remember {
         worldPlaces.mapValues { (_, cities) ->
             cities.mapValues { (_, place) ->
@@ -451,6 +467,8 @@ fun HomeCelestialWidgets(modifier: Modifier = Modifier) {
                             earthSizeFraction = 0.6f,
                             locationLabel = effectiveCityLabel,
                             locationOptions = locationOptions,
+                            kiddushLevanaEarliestOpinion = kiddushLevanaEarliestOpinion,
+                            kiddushLevanaLatestOpinion = kiddushLevanaLatestOpinion,
                         )
                     }
                 }

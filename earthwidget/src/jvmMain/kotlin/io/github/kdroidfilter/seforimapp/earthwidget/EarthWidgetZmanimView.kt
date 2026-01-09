@@ -200,6 +200,9 @@ fun EarthWidgetZmanimView(
     initialShowMoonFromMarker: Boolean = true,
     useScroll: Boolean = true,
     earthSizeFraction: Float = EARTH_SIZE_FRACTION,
+    kiddushLevanaEarliestOpinion: KiddushLevanaEarliestOpinion = KiddushLevanaEarliestOpinion.DAYS_3,
+    kiddushLevanaLatestOpinion: KiddushLevanaLatestOpinion = KiddushLevanaLatestOpinion.BETWEEN_MOLDOS,
+    initialShowKiddushLevana: Boolean = true,
 ) {
     // Location state
     val knownLocations = remember {
@@ -281,6 +284,7 @@ fun EarthWidgetZmanimView(
     var showBackground by remember { mutableStateOf(true) }
     var showOrbitPath by remember { mutableStateOf(true) }
     var showMoonFromMarker by remember { mutableStateOf(initialShowMoonFromMarker) }
+    var showKiddushLevana by remember { mutableStateOf(initialShowKiddushLevana) }
 
     // Earth rotation offset from user drag (added to marker longitude)
     var earthRotationOffset by remember { mutableFloatStateOf(0f) }
@@ -391,6 +395,26 @@ fun EarthWidgetZmanimView(
                 emptyList()
             }
         )
+    }
+
+    // Compute Kiddush Levana data
+    val kiddushLevanaData = remember(
+        referenceTime,
+        timeZone,
+        showKiddushLevana,
+        kiddushLevanaEarliestOpinion,
+        kiddushLevanaLatestOpinion,
+    ) {
+        if (showKiddushLevana) {
+            computeKiddushLevanaData(
+                referenceTime = referenceTime,
+                timeZone = timeZone,
+                earliestOpinion = kiddushLevanaEarliestOpinion,
+                latestOpinion = kiddushLevanaLatestOpinion,
+            )
+        } else {
+            null
+        }
     }
 
     // Format time for display
@@ -560,6 +584,7 @@ fun EarthWidgetZmanimView(
                         showMoonInOrbit = showMoonInOrbit,
                         earthSizeFraction = earthSizeFraction,
                         isDraggingEarth = isDraggingEarth,
+                        kiddushLevanaData = kiddushLevanaData,
                     )
                     RecenterButton(
                         earthRotationOffset = earthRotationOffset,
@@ -710,6 +735,11 @@ fun EarthWidgetZmanimView(
                             onCheckedChange = { showOrbitPath = it },
                             label = stringResource(Res.string.earthwidget_show_orbit_label),
                         )
+                        LabeledCheckbox(
+                            checked = showKiddushLevana,
+                            onCheckedChange = { showKiddushLevana = it },
+                            label = stringResource(Res.string.earthwidget_show_kiddush_levana_label),
+                        )
                         if (showMoonInOrbit) {
                             LabeledCheckbox(
                                 checked = showMoonFromMarker,
@@ -749,6 +779,7 @@ fun EarthWidgetZmanimView(
                 showMoonInOrbit = showMoonInOrbit,
                 earthSizeFraction = earthSizeFraction,
                 isDraggingEarth = isDraggingEarth,
+                kiddushLevanaData = kiddushLevanaData,
             )
             RecenterButton(
                 earthRotationOffset = earthRotationOffset,
@@ -885,6 +916,7 @@ private fun EarthSceneContent(
     showMoonInOrbit: Boolean,
     earthSizeFraction: Float,
     isDraggingEarth: Boolean,
+    kiddushLevanaData: KiddushLevanaData? = null,
 ) {
     val density = LocalDensity.current
     val degreesPerPx = remember(sphereSize) {
@@ -934,6 +966,8 @@ private fun EarthSceneContent(
             moonFromMarkerLightDegrees = model.lightDegrees,
             moonFromMarkerSunElevationDegrees = model.sunElevationDegrees,
             animateEarthRotation = !isDraggingEarth, // Instant rotation during drag
+            kiddushLevanaStartDegrees = kiddushLevanaData?.startDegrees,
+            kiddushLevanaEndDegrees = kiddushLevanaData?.endDegrees,
         )
     }
 }
@@ -1423,6 +1457,16 @@ private fun normalizeOrbitDegrees(angleDegrees: Float): Float {
     return ((angleDegrees % 360f) + 360f) % 360f
 }
 
+internal fun orbitDegreesForDaysSinceMolad(daysSinceMolad: Double, daysInMonth: Int): Float {
+    if (daysInMonth <= 0) return normalizeOrbitDegrees(ORBIT_DAY_LABEL_START_DEGREES)
+    val stepDegrees = 360f / daysInMonth.toFloat()
+    // Align "day N after molad" with the same day label (labels are 1-based).
+    val alignedDaysSinceMolad = daysSinceMolad - 1.0
+    return normalizeOrbitDegrees(
+        ORBIT_DAY_LABEL_START_DEGREES + (alignedDaysSinceMolad * stepDegrees).toFloat()
+    )
+}
+
 private fun resolveInitialLocationSelection(
     locations: Map<String, Map<String, EarthWidgetLocation>>,
     preferredCity: String?,
@@ -1463,4 +1507,78 @@ fun timeZoneForLocation(latitude: Double, longitude: Double): TimeZone {
     val zoneId = if (offsetHours >= 0) "GMT+$offsetHours" else "GMT$offsetHours"
 
     return TimeZone.getTimeZone(zoneId)
+}
+
+// ============================================================================
+// KIDDUSH LEVANA CALCULATION
+// ============================================================================
+
+/**
+ * Computes the Kiddush Levana period data for display on the moon orbit.
+ *
+ * Uses the KosherJava library to determine the earliest and latest times
+ * for reciting Kiddush Levana based on the selected halakhic opinions.
+ *
+ * @param referenceTime Current reference time for calculations.
+ * @param timeZone Local timezone.
+ * @param earliestOpinion Opinion for earliest time (3 or 7 days after molad).
+ * @param latestOpinion Opinion for latest time (between moldos or 15 days).
+ * @return KiddushLevanaData with orbit degrees and time information.
+ */
+private fun computeKiddushLevanaData(
+    referenceTime: Date,
+    timeZone: TimeZone,
+    earliestOpinion: KiddushLevanaEarliestOpinion,
+    latestOpinion: KiddushLevanaLatestOpinion,
+): KiddushLevanaData {
+    val jewishCalendar = JewishCalendar()
+    val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
+    jewishCalendar.setDate(calendar)
+
+    // Get earliest time based on opinion
+    val earliestTime: Date? = when (earliestOpinion) {
+        KiddushLevanaEarliestOpinion.DAYS_3 -> jewishCalendar.tchilasZmanKidushLevana3Days
+        KiddushLevanaEarliestOpinion.DAYS_7 -> jewishCalendar.tchilasZmanKidushLevana7Days
+    }
+
+    // Get latest time based on opinion
+    val latestTime: Date? = when (latestOpinion) {
+        KiddushLevanaLatestOpinion.BETWEEN_MOLDOS -> jewishCalendar.sofZmanKidushLevanaBetweenMoldos
+        KiddushLevanaLatestOpinion.DAYS_15 -> jewishCalendar.sofZmanKidushLevana15Days
+    }
+
+    if (earliestTime == null || latestTime == null) {
+        return KiddushLevanaData.EMPTY
+    }
+
+    // Get the molad for the current month
+    var molad = jewishCalendar.moladAsDate
+    if (molad.time > referenceTime.time) {
+        goToPreviousHebrewMonth(jewishCalendar)
+        molad = jewishCalendar.moladAsDate
+    }
+
+    val daysInMonth = jewishCalendar.daysInJewishMonth
+
+    // Convert times to orbit degrees
+    // Days since molad -> orbit degrees
+    fun dateToOrbitDegrees(date: Date): Float {
+        val millisSinceMolad = date.time - molad.time
+        val daysSinceMolad = millisSinceMolad / (24.0 * 60.0 * 60.0 * 1000.0)
+        return orbitDegreesForDaysSinceMolad(daysSinceMolad, daysInMonth)
+    }
+
+    val startDegrees = dateToOrbitDegrees(earliestTime)
+    val endDegrees = dateToOrbitDegrees(latestTime)
+
+    // Check if current time is within the Kiddush Levana period
+    val isCurrentlyAllowed = referenceTime.time >= earliestTime.time && referenceTime.time <= latestTime.time
+
+    return KiddushLevanaData(
+        startDegrees = startDegrees,
+        endDegrees = endDegrees,
+        isCurrentlyAllowed = isCurrentlyAllowed,
+        startTimeMillis = earliestTime.time,
+        endTimeMillis = latestTime.time,
+    )
 }

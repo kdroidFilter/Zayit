@@ -85,6 +85,7 @@ object AppSettings {
         // User profile reactive values
         _userFirstNameFlow.value = getUserFirstName() ?: ""
         _userLastNameFlow.value = getUserLastName() ?: ""
+        _userCommunityCodeFlow.value = getUserCommunityCode()
     }
 
     // StateFlow to observe text size changes
@@ -332,6 +333,9 @@ object AppSettings {
     private val _userLastNameFlow = MutableStateFlow(getUserLastName() ?: "")
     val userLastNameFlow: StateFlow<String> = _userLastNameFlow.asStateFlow()
 
+    private val _userCommunityCodeFlow = MutableStateFlow(getUserCommunityCode())
+    val userCommunityCodeFlow: StateFlow<String?> = _userCommunityCodeFlow.asStateFlow()
+
     fun getUserFirstName(): String? {
         val value: String = settings[KEY_USER_FIRST_NAME, ""]
         return value.ifBlank { null }
@@ -360,6 +364,7 @@ object AppSettings {
 
     fun setUserCommunityCode(value: String?) {
         settings[KEY_USER_COMMUNITY] = value?.takeIf { it.isNotBlank() } ?: ""
+        _userCommunityCodeFlow.value = getUserCommunityCode()
     }
 
     // Theme mode (Light/Dark/System) setting

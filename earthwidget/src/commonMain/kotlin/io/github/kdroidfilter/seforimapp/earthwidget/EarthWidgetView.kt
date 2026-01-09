@@ -142,6 +142,8 @@ fun EarthWidgetScene(
     animateEarthRotation: Boolean = true,
     moonFromMarkerLightDegrees: Float? = null,
     moonFromMarkerSunElevationDegrees: Float? = null,
+    kiddushLevanaStartDegrees: Float? = null,
+    kiddushLevanaEndDegrees: Float? = null,
 ) {
     // Earth rotation and light can be instant (during drag) or animated (location change)
     val animatedEarthRotation = if (animateEarthRotation) {
@@ -225,6 +227,8 @@ fun EarthWidgetScene(
         moonPhaseAngleDegrees = animatedMoonPhaseAngle,
         julianDay = julianDay,
         earthSizeFraction = earthSizeFraction,
+        kiddushLevanaStartDegrees = kiddushLevanaStartDegrees,
+        kiddushLevanaEndDegrees = kiddushLevanaEndDegrees,
     )
 
     val renderedScene = rememberRenderedEarthMoonImage(

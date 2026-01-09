@@ -184,3 +184,19 @@ internal const val OPAQUE_BLACK = 0xFF000000.toInt()
 
 /** Orbit line base color (white without alpha). */
 internal const val ORBIT_COLOR_RGB = 0x00FFFFFF
+
+// ============================================================================
+// KIDDUSH LEVANA VISUAL CONSTANTS
+// ============================================================================
+
+/** Kiddush Levana arc color (golden/amber without alpha). */
+internal const val KIDDUSH_LEVANA_COLOR_RGB = 0x00FFD700
+
+/** Kiddush Levana arc alpha when in front of Earth. */
+internal const val KIDDUSH_LEVANA_ALPHA_FRONT = 0xFF
+
+/** Kiddush Levana arc alpha when behind Earth. */
+internal const val KIDDUSH_LEVANA_ALPHA_BACK = 0xA0
+
+/** Kiddush Levana glow intensity multiplier. */
+internal const val KIDDUSH_LEVANA_GLOW_INTENSITY = 0.55f

@@ -544,6 +544,8 @@ internal suspend fun renderEarthWithMoonArgb(
     bufferPool: PixelBufferPool? = null,
     outputBuffer: IntArray? = null,
     starfieldCache: StarfieldCache? = null,
+    kiddushLevanaStartDegrees: Float? = null,
+    kiddushLevanaEndDegrees: Float? = null,
 ): IntArray {
     val outputSize = outputSizePx * outputSizePx
     val out = if (outputBuffer != null && outputBuffer.size >= outputSize) {
@@ -617,6 +619,8 @@ internal suspend fun renderEarthWithMoonArgb(
                 moonCenterY = moonLayout.moonCenterY,
                 moonRadiusPx = if (moonTexture != null) moonLayout.moonRadiusPx else 0f,
                 cameraZ = geometry.cameraZ,
+                kiddushLevanaStartDegrees = kiddushLevanaStartDegrees,
+                kiddushLevanaEndDegrees = kiddushLevanaEndDegrees,
             )
         }
 
@@ -1058,6 +1062,9 @@ private fun calculateObserverPosition(
 
 /**
  * Draws the Moon's orbital path with perspective projection.
+ *
+ * @param kiddushLevanaStartDegrees Start of Kiddush Levana period in orbit degrees (null to disable).
+ * @param kiddushLevanaEndDegrees End of Kiddush Levana period in orbit degrees (null to disable).
  */
 private fun drawOrbitPath(
     dst: IntArray,
@@ -1074,12 +1081,19 @@ private fun drawOrbitPath(
     moonCenterY: Float,
     moonRadiusPx: Float,
     cameraZ: Float,
+    kiddushLevanaStartDegrees: Float? = null,
+    kiddushLevanaEndDegrees: Float? = null,
 ) {
     if (orbitRadius <= 0f) return
 
     val steps = (orbitRadius * 5.2f).roundToInt().coerceIn(420, 1600)
     val earthRadius2 = earthRadiusPx * earthRadiusPx
     val moonRadiusClip2 = -1f
+
+    // Pre-compute Kiddush Levana range check
+    val hasKiddushLevana = kiddushLevanaStartDegrees != null && kiddushLevanaEndDegrees != null
+    val klStart = kiddushLevanaStartDegrees ?: 0f
+    val klEnd = kiddushLevanaEndDegrees ?: 0f
 
     var prevX = Int.MIN_VALUE
     var prevY = Int.MIN_VALUE
@@ -1104,8 +1118,25 @@ private fun drawOrbitPath(
 
         if (prevX != Int.MIN_VALUE) {
             val avgZ = (prevZ + zCam) * 0.5f
-            val alpha = if (avgZ >= 0f) ORBIT_ALPHA_FRONT else ORBIT_ALPHA_BACK
-            val color = (alpha shl 24) or ORBIT_COLOR_RGB
+
+            // Convert t to orbit degrees (0-360) for Kiddush Levana check
+            val orbitDegrees = (t * 180f / PI.toFloat()) % 360f
+            val isKiddushLevana = hasKiddushLevana && isAngleInRange(orbitDegrees, klStart, klEnd)
+
+            val (alpha, colorRgb, glowIntensity) = if (isKiddushLevana) {
+                Triple(
+                    if (avgZ >= 0f) KIDDUSH_LEVANA_ALPHA_FRONT else KIDDUSH_LEVANA_ALPHA_BACK,
+                    KIDDUSH_LEVANA_COLOR_RGB,
+                    KIDDUSH_LEVANA_GLOW_INTENSITY
+                )
+            } else {
+                Triple(
+                    if (avgZ >= 0f) ORBIT_ALPHA_FRONT else ORBIT_ALPHA_BACK,
+                    ORBIT_COLOR_RGB,
+                    ORBIT_GLOW_INTENSITY
+                )
+            }
+            val color = (alpha shl 24) or colorRgb
 
             drawOrbitLineSegment(
                 dst = dst, dstW = dstW, dstH = dstH,
@@ -1113,12 +1144,29 @@ private fun drawOrbitPath(
                 color = color, orbitZ = avgZ,
                 earthCenter = center, earthRadiusPx = earthRadiusPx, earthRadius2 = earthRadius2,
                 moonCenterX = moonCenterX, moonCenterY = moonCenterY, moonRadiusClip2 = moonRadiusClip2,
+                glowIntensity = glowIntensity,
             )
         }
 
         prevX = sx
         prevY = sy
         prevZ = zCam
+    }
+}
+
+/**
+ * Checks if an angle is within a range, handling wrap-around at 360 degrees.
+ */
+private fun isAngleInRange(angle: Float, start: Float, end: Float): Boolean {
+    val normalizedAngle = ((angle % 360f) + 360f) % 360f
+    val normalizedStart = ((start % 360f) + 360f) % 360f
+    val normalizedEnd = ((end % 360f) + 360f) % 360f
+
+    return if (normalizedStart <= normalizedEnd) {
+        normalizedAngle in normalizedStart..normalizedEnd
+    } else {
+        // Range wraps around 360 degrees
+        normalizedAngle >= normalizedStart || normalizedAngle <= normalizedEnd
     }
 }
 
@@ -1141,6 +1189,7 @@ private fun drawOrbitLineSegment(
     moonCenterX: Float,
     moonCenterY: Float,
     moonRadiusClip2: Float,
+    glowIntensity: Float = ORBIT_GLOW_INTENSITY,
 ) {
     var x = x0
     var y = y0
@@ -1156,6 +1205,7 @@ private fun drawOrbitLineSegment(
             x = x, y = y, color = color, orbitZ = orbitZ,
             earthCenter = earthCenter, earthRadiusPx = earthRadiusPx, earthRadius2 = earthRadius2,
             moonCenterX = moonCenterX, moonCenterY = moonCenterY, moonRadiusClip2 = moonRadiusClip2,
+            glowIntensity = glowIntensity,
         )
 
         if (x == x1 && y == y1) break
@@ -1190,6 +1240,7 @@ private fun plotOrbitPixel(
     moonCenterX: Float,
     moonCenterY: Float,
     moonRadiusClip2: Float,
+    glowIntensity: Float = ORBIT_GLOW_INTENSITY,
 ) {
     if (x !in 0 until dstW || y !in 0 until dstH) return
 
@@ -1215,7 +1266,7 @@ private fun plotOrbitPixel(
 
     // Draw glow
     val a = (color ushr 24) and 0xFF
-    val glowAlpha = (a * ORBIT_GLOW_INTENSITY).roundToInt().coerceIn(0, 255)
+    val glowAlpha = (a * glowIntensity).roundToInt().coerceIn(0, 255)
     if (glowAlpha == 0) return
 
     val glowColor = (glowAlpha shl 24) or (color and 0x00FFFFFF)

@@ -24,6 +24,7 @@
     <string name="earthwidget_display_section">תצוגה</string>
     <string name="earthwidget_show_background_label">הצגת רקע</string>
     <string name="earthwidget_show_orbit_label">הצגת המסלול</string>
+    <string name="earthwidget_show_kiddush_levana_label">הצגת קידוש לבנה</string>
     <string name="earthwidget_select_datetime_button">בחירת תאריך</string>
     <string name="earthwidget_datetime_picker_title">בחירת תאריך</string>
     <string name="earthwidget_time_preset_section">זמנים</string>

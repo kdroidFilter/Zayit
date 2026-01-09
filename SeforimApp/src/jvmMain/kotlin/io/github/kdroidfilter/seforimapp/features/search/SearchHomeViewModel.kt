@@ -54,6 +54,7 @@ data class SearchHomeUiState(
     val selectedScopeBook: Book? = null,
     val selectedScopeToc: TocEntry? = null,
     val userDisplayName: String = "",
+    val userCommunityCode: String? = null,
     val tocPreviewHints: List<String> = emptyList(),
     val pairedReferenceHints: List<Pair<String, String>> = emptyList()
 )
@@ -134,6 +135,12 @@ class SearchHomeViewModel(
                 .distinctUntilChanged()
                 .collect { displayName ->
                     _uiState.value = _uiState.value.copy(userDisplayName = displayName)
+                }
+        }
+        viewModelScope.launch {
+            AppSettings.userCommunityCodeFlow
+                .collect { code ->
+                    _uiState.value = _uiState.value.copy(userCommunityCode = code)
                 }
         }
         // Track currently selected destination; when the active tab is not on Home,

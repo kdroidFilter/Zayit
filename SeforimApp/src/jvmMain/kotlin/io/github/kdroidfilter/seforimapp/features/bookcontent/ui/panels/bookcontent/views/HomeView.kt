@@ -38,8 +38,10 @@ import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -103,6 +105,7 @@ fun HomeView(
     onEvent: (BookContentEvent) -> Unit,
     searchUi: SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
+    homeCelestialWidgetsState: HomeCelestialWidgetsState? = null,
     modifier: Modifier = Modifier
 ) {
     CatalogRow(onEvent = onEvent)
@@ -111,6 +114,7 @@ fun HomeView(
         HomeBody(
             searchUi = searchUi,
             searchCallbacks = searchCallbacks,
+            homeCelestialWidgetsState = homeCelestialWidgetsState,
             modifier = modifier
         )
     }
@@ -127,7 +131,10 @@ fun HomeView(
 @OptIn(ExperimentalJewelApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun HomeBody(
-    searchUi: SearchHomeUiState, searchCallbacks: HomeSearchCallbacks, modifier: Modifier = Modifier
+    searchUi: SearchHomeUiState,
+    searchCallbacks: HomeSearchCallbacks,
+    homeCelestialWidgetsState: HomeCelestialWidgetsState?,
+    modifier: Modifier = Modifier
 ) {
     // Global zoom level from AppSettings; used to scale Home view uniformly
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -137,6 +144,15 @@ private fun HomeBody(
         val ratio = rawTextSize / AppSettings.DEFAULT_TEXT_SIZE
         val softenFactor = 0.3f
         1f + (ratio - 1f) * softenFactor
+    }
+
+    val celestialWidgetsState = if (homeCelestialWidgetsState != null) {
+        homeCelestialWidgetsState
+    } else {
+        val viewModel: HomeCelestialWidgetsViewModel =
+            metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
+        val state by viewModel.state.collectAsState()
+        state
     }
 
     val listState = rememberLazyListState()
@@ -472,6 +488,7 @@ private fun HomeBody(
                             HomeCelestialWidgets(
                                 modifier = Modifier.fillMaxWidth(),
                                 userCommunityCode = searchUi.userCommunityCode,
+                                locationState = celestialWidgetsState,
                             )
                         }
                     }
@@ -1617,7 +1634,11 @@ fun HomeViewPreview() {
             onPickBook = {},
             onPickToc = {})
         HomeView(
-            onEvent = {}, searchUi = stubSearchUi, searchCallbacks = stubCallbacks, modifier = Modifier
+            onEvent = {},
+            searchUi = stubSearchUi,
+            searchCallbacks = stubCallbacks,
+            homeCelestialWidgetsState = HomeCelestialWidgetsState.preview,
+            modifier = Modifier
         )
     }
 }

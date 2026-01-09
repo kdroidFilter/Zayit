@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetMoonSkyView
@@ -51,7 +50,6 @@ import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
 import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
-import io.github.kdroidfilter.seforimapp.features.zmanim.data.Place
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.StringResource
@@ -172,9 +170,10 @@ private sealed class ZmanimGridItem {
 fun HomeCelestialWidgets(
     modifier: Modifier = Modifier,
     userCommunityCode: String? = null,
+    locationState: HomeCelestialWidgetsState,
 ) {
-    val userPlace = remember { resolveUserPlace() }
-    val userCityLabel = remember { AppSettings.getRegionCity() }
+    val userPlace = locationState.userPlace
+    val userCityLabel = locationState.userCityLabel
     val userCommunity = remember(userCommunityCode) {
         userCommunityCode?.let { code -> runCatching { Community.valueOf(code) }.getOrNull() }
     }
@@ -1650,22 +1649,10 @@ private fun Color.blendTowards(target: Color, ratio: Float): Color {
     )
 }
 
-private fun resolveUserPlace(): Place {
-    val country = AppSettings.getRegionCountry()
-    val city = AppSettings.getRegionCity()
-    val place = if (!country.isNullOrBlank() && !city.isNullOrBlank()) {
-        worldPlaces[country]?.get(city)
-    } else {
-        null
-    }
-
-    return place ?: Place(31.7683, 35.2137, 800.0)
-}
-
 @Preview
 @Composable
 private fun HomeCelestialWidgetsPreview() {
     PreviewContainer {
-        HomeCelestialWidgets()
+        HomeCelestialWidgets(locationState = HomeCelestialWidgetsState.preview)
     }
 }

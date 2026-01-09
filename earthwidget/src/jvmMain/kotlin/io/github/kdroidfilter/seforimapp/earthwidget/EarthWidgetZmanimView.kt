@@ -42,11 +42,13 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.component.LocalMenuController
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.component.styling.MenuStyle
 import org.jetbrains.jewel.ui.theme.segmentedControlButtonStyle
 import io.github.kdroidfilter.seforimapp.hebrewcalendar.CalendarMode
 import io.github.kdroidfilter.seforimapp.hebrewcalendar.HebrewCalendarPicker
 import io.github.kdroidfilter.seforimapp.hebrewcalendar.HebrewYearMonth
 import io.github.kdroidfilter.seforimapp.hebrewcalendar.hebrewYearMonthFromLocalDate
+import org.jetbrains.jewel.ui.theme.menuStyle
 import seforimapp.earthwidget.generated.resources.*
 import java.text.SimpleDateFormat
 import java.time.DayOfWeek
@@ -493,6 +495,7 @@ fun EarthWidgetZmanimView(
     }
 
     val backgroundColor = containerBackground ?: JewelTheme.globalColors.panelBackground
+    val globalMenuStyle = JewelTheme.menuStyle
 
     // Stable callbacks to avoid recomposition - these lambdas reference mutableStateOf-backed vars
     // so they remain stable across recompositions while still accessing the latest state
@@ -553,6 +556,7 @@ fun EarthWidgetZmanimView(
                                 label = hebrewDateLabel,
                                 selectedDate = selectedDate,
                                 onDateSelected = onCalendarDateSelected,
+                                menuStyle = globalMenuStyle,
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
                                     .padding(start = 8.dp, top = 8.dp),
@@ -567,6 +571,7 @@ fun EarthWidgetZmanimView(
                                     selectedSelection = selectedLocationSelection,
                                     onCountrySelected = { menuCountrySelection = it },
                                     onCitySelected = { country, city -> onLocationSelectedInternal(country, city) },
+                                    menuStyle = globalMenuStyle,
                                     modifier =
                                         Modifier
                                             .align(Alignment.TopEnd)
@@ -820,6 +825,7 @@ fun EarthWidgetZmanimView(
                     label = hebrewDateLabel,
                     selectedDate = selectedDate,
                     onDateSelected = onCalendarDateSelected,
+                    menuStyle = globalMenuStyle,
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(start = 8.dp, top = 8.dp),
@@ -834,6 +840,7 @@ fun EarthWidgetZmanimView(
                         selectedSelection = selectedLocationSelection,
                         onCountrySelected = { menuCountrySelection = it },
                         onCitySelected = { country, city -> onLocationSelectedInternal(country, city) },
+                        menuStyle = globalMenuStyle,
                         modifier =
                             Modifier
                                 .align(Alignment.TopEnd)
@@ -1118,6 +1125,7 @@ private fun DateSelectionSplitButton(
     label: String,
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
+    menuStyle: MenuStyle = JewelTheme.menuStyle,
     modifier: Modifier = Modifier,
 ) {
     io.github.kdroidfilter.seforimapp.hebrewcalendar.DateSelectionSplitButton(
@@ -1125,6 +1133,7 @@ private fun DateSelectionSplitButton(
         selectedDate = selectedDate,
         onDateSelected = onDateSelected,
         initialMode = CalendarMode.HEBREW,
+        menuStyle = menuStyle,
         modifier = modifier,
     )
 }
@@ -1137,6 +1146,7 @@ private fun LocationSelectionSplitButton(
     selectedSelection: LocationSelection?,
     onCountrySelected: (String) -> Unit,
     onCitySelected: (String, String) -> Unit,
+    menuStyle: MenuStyle = JewelTheme.menuStyle,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
@@ -1145,6 +1155,7 @@ private fun LocationSelectionSplitButton(
             secondaryOnClick = {},
             popupModifier = Modifier.width(LOCATION_MENU_WIDTH),
             maxPopupWidth = LOCATION_MENU_WIDTH,
+            menuStyle = menuStyle,
             content = {
                 Text(
                     text = label,
@@ -1155,22 +1166,24 @@ private fun LocationSelectionSplitButton(
             },
             menuContent = {
                 passiveItem {
-                    if (locations.isEmpty()) {
-                        Text(
-                            text = label,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    } else {
-                        LocationMenuContent(
-                            locations = locations,
-                            selectedCountry = selectedCountry,
-                            selectedCity = selectedSelection
-                                ?.takeIf { it.country == selectedCountry }
-                                ?.city,
-                            onCountrySelected = onCountrySelected,
-                            onCitySelected = onCitySelected,
-                        )
+                    IntUiTheme(isDark = menuStyle.isDark) {
+                        if (locations.isEmpty()) {
+                            Text(
+                                text = label,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        } else {
+                            LocationMenuContent(
+                                locations = locations,
+                                selectedCountry = selectedCountry,
+                                selectedCity = selectedSelection
+                                    ?.takeIf { it.country == selectedCountry }
+                                    ?.city,
+                                onCountrySelected = onCountrySelected,
+                                onCitySelected = onCitySelected,
+                            )
+                        }
                     }
                 }
             },

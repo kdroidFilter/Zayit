@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.LocalMenuController
@@ -45,6 +46,8 @@ import org.jetbrains.jewel.ui.component.SegmentedControl
 import org.jetbrains.jewel.ui.component.SegmentedControlButtonData
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.component.styling.MenuStyle
+import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.jewel.ui.theme.segmentedControlButtonStyle
 import seforimapp.hebrewcalendar.generated.resources.Res
 import seforimapp.hebrewcalendar.generated.resources.hebrewcalendar_mode_gregorian
@@ -254,6 +257,7 @@ fun HebrewCalendarPicker(
  * @param selectedDate The currently selected date
  * @param onDateSelected Callback invoked when a date is selected
  * @param initialMode The initial calendar mode when popup opens
+ * @param menuStyle The menu styling used for the popup content
  * @param modifier Modifier for styling
  */
 @Composable
@@ -262,6 +266,7 @@ fun DateSelectionSplitButton(
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
     initialMode: CalendarMode = CalendarMode.HEBREW,
+    menuStyle: MenuStyle = JewelTheme.menuStyle,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
@@ -270,6 +275,7 @@ fun DateSelectionSplitButton(
             secondaryOnClick = {},
             popupModifier = Modifier.width(CALENDAR_MENU_WIDTH),
             maxPopupWidth = CALENDAR_MENU_WIDTH,
+            menuStyle = menuStyle,
             content = {
                 Text(
                     text = label,
@@ -283,14 +289,16 @@ fun DateSelectionSplitButton(
                     // Access menu controller inside menu content where it's provided
                     val menuController = LocalMenuController.current
                     val inputModeManager = LocalInputModeManager.current
-                    HebrewCalendarPicker(
-                        initialDate = selectedDate,
-                        onDateSelected = { date ->
-                            onDateSelected(date)
-                            menuController.closeAll(inputModeManager.inputMode, true)
-                        },
-                        initialMode = initialMode,
-                    )
+                    IntUiTheme(isDark = menuStyle.isDark) {
+                        HebrewCalendarPicker(
+                            initialDate = selectedDate,
+                            onDateSelected = { date ->
+                                onDateSelected(date)
+                                menuController.closeAll(inputModeManager.inputMode, true)
+                            },
+                            initialMode = initialMode,
+                        )
+                    }
                 }
             },
         )

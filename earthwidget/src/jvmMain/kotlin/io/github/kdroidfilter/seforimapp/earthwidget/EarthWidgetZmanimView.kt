@@ -37,6 +37,7 @@ import com.kosherjava.zmanim.util.GeoLocation
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.component.LocalMenuController
@@ -547,27 +548,31 @@ fun EarthWidgetZmanimView(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Box(modifier = Modifier.fillMaxWidth()) {
-                        DateSelectionSplitButton(
-                            label = hebrewDateLabel,
-                            selectedDate = selectedDate,
-                            onDateSelected = onCalendarDateSelected,
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(start = 8.dp, top = 8.dp),
-                        )
-                        if (resolvedLocationLabel != null) {
-                            LocationSelectionSplitButton(
-                                label = resolvedLocationLabel,
-                                locations = normalizedLocationOptions,
-                                selectedCountry = menuCountrySelection,
-                                selectedSelection = selectedLocationSelection,
-                                onCountrySelected = { menuCountrySelection = it },
-                                onCitySelected = { country, city -> onLocationSelectedInternal(country, city) },
-                                modifier =
-                                    Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(end = 8.dp, top = 8.dp),
+                        IntUiTheme(isDark = true) {
+                            DateSelectionSplitButton(
+                                label = hebrewDateLabel,
+                                selectedDate = selectedDate,
+                                onDateSelected = onCalendarDateSelected,
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(start = 8.dp, top = 8.dp),
                             )
+                        }
+                        if (resolvedLocationLabel != null) {
+                            IntUiTheme(isDark = true) {
+                                LocationSelectionSplitButton(
+                                    label = resolvedLocationLabel,
+                                    locations = normalizedLocationOptions,
+                                    selectedCountry = menuCountrySelection,
+                                    selectedSelection = selectedLocationSelection,
+                                    onCountrySelected = { menuCountrySelection = it },
+                                    onCitySelected = { country, city -> onLocationSelectedInternal(country, city) },
+                                    modifier =
+                                        Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(end = 8.dp, top = 8.dp),
+                                )
+                            }
                         }
                     }
                     EarthSceneContent(
@@ -810,27 +815,31 @@ fun EarthWidgetZmanimView(
                         .padding(end = 8.dp, bottom = 8.dp),
                 )
             }
-            DateSelectionSplitButton(
-                label = hebrewDateLabel,
-                selectedDate = selectedDate,
-                onDateSelected = onCalendarDateSelected,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(start = 8.dp, top = 8.dp),
-            )
-            if (resolvedLocationLabel != null) {
-                LocationSelectionSplitButton(
-                    label = resolvedLocationLabel,
-                    locations = normalizedLocationOptions,
-                    selectedCountry = menuCountrySelection,
-                    selectedSelection = selectedLocationSelection,
-                    onCountrySelected = { menuCountrySelection = it },
-                    onCitySelected = { country, city -> onLocationSelectedInternal(country, city) },
-                    modifier =
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(end = 8.dp, top = 8.dp),
+            IntUiTheme(isDark = true) {
+                DateSelectionSplitButton(
+                    label = hebrewDateLabel,
+                    selectedDate = selectedDate,
+                    onDateSelected = onCalendarDateSelected,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(start = 8.dp, top = 8.dp),
                 )
+            }
+            if (resolvedLocationLabel != null) {
+                IntUiTheme(isDark = true) {
+                    LocationSelectionSplitButton(
+                        label = resolvedLocationLabel,
+                        locations = normalizedLocationOptions,
+                        selectedCountry = menuCountrySelection,
+                        selectedSelection = selectedLocationSelection,
+                        onCountrySelected = { menuCountrySelection = it },
+                        onCitySelected = { country, city -> onLocationSelectedInternal(country, city) },
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(end = 8.dp, top = 8.dp),
+                    )
+                }
             }
         }
     }
@@ -1004,20 +1013,22 @@ private fun RecenterButton(
     modifier: Modifier = Modifier,
 ) {
     if (earthRotationOffset != 0f) {
-        OutlinedButton(
-            onClick = onRecenter,
-            modifier = modifier,
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+        IntUiTheme(isDark = true) {
+            OutlinedButton(
+                onClick = onRecenter,
+                modifier = modifier,
             ) {
-                Icon(
-                    key = AllIconsKeys.General.Locate,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                )
-                Text(text = stringResource(Res.string.earthwidget_recenter_button))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        key = AllIconsKeys.General.Locate,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(text = stringResource(Res.string.earthwidget_recenter_button))
+                }
             }
         }
     }
@@ -1045,33 +1056,35 @@ private fun LabeledCheckbox(
 
 @Composable
 private fun KiddushLevanaLegend(modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(50)
-    val background = JewelTheme.globalColors.panelBackground.copy(alpha = 0.86f)
-    val borderColor = JewelTheme.globalColors.borders.disabled
-    val textColor = JewelTheme.globalColors.text.normal
+    IntUiTheme(isDark = true) {
+        val shape = RoundedCornerShape(50)
+        val background = JewelTheme.globalColors.panelBackground.copy(alpha = 0.86f)
+        val borderColor = JewelTheme.globalColors.borders.disabled
+        val textColor = JewelTheme.globalColors.text.normal
 
-    Row(
-        modifier = modifier
-            .clip(shape)
-            .background(background, shape)
-            .border(1.dp, borderColor, shape)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .background(KIDDUSH_LEVANA_LEGEND_COLOR, CircleShape)
-                .border(1.dp, borderColor, CircleShape)
-        )
-        Text(
-            text = stringResource(Res.string.earthwidget_kiddush_levana_legend),
-            color = textColor,
-            fontSize = 11.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(
+            modifier = modifier
+                .clip(shape)
+                .background(background, shape)
+                .border(1.dp, borderColor, shape)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(KIDDUSH_LEVANA_LEGEND_COLOR, CircleShape)
+                    .border(1.dp, borderColor, CircleShape)
+            )
+            Text(
+                text = stringResource(Res.string.earthwidget_kiddush_levana_legend),
+                color = textColor,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

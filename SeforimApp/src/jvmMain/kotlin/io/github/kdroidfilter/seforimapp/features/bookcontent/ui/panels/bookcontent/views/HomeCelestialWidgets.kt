@@ -41,6 +41,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
+import com.kosherjava.zmanim.ComplexZmanimCalendar
+import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
+import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
+import com.kosherjava.zmanim.util.GeoLocation
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetMoonSkyView
@@ -70,12 +74,15 @@ import seforimapp.seforimapp.generated.resources.home_lunar_label_moonset
 import seforimapp.seforimapp.generated.resources.home_lunar_next_full_moon_label
 import seforimapp.seforimapp.generated.resources.home_lunar_next_full_moon_value
 import seforimapp.seforimapp.generated.resources.home_widget_card_first_light_title
+import seforimapp.seforimapp.generated.resources.home_widget_card_midnight_title
 import seforimapp.seforimapp.generated.resources.home_widget_card_noon_title
 import seforimapp.seforimapp.generated.resources.home_widget_card_sunrise_title
 import seforimapp.seforimapp.generated.resources.home_widget_card_sunset_title
 import seforimapp.seforimapp.generated.resources.home_widget_shema_gra_label
 import seforimapp.seforimapp.generated.resources.home_widget_shema_mga_label
 import seforimapp.seforimapp.generated.resources.home_widget_shema_title
+import seforimapp.seforimapp.generated.resources.home_widget_shabbat_entry_label
+import seforimapp.seforimapp.generated.resources.home_widget_shabbat_exit_label
 import seforimapp.seforimapp.generated.resources.home_widget_tefila_title
 import seforimapp.seforimapp.generated.resources.home_widget_label_astronomical_dawn
 import seforimapp.seforimapp.generated.resources.home_widget_label_night
@@ -86,7 +93,9 @@ import seforimapp.seforimapp.generated.resources.home_widget_tzais_geonim_label
 import seforimapp.seforimapp.generated.resources.home_widget_tzais_rabbeinu_tam_label
 import seforimapp.seforimapp.generated.resources.home_widget_visible_stars_title
 import java.text.SimpleDateFormat
+import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.temporal.TemporalAdjusters
 import java.util.Calendar
 import java.util.Date
 
@@ -116,6 +125,12 @@ private data class LunarCycleData(
     val moonriseTime: String,
     val moonsetTime: String,
     val nextFullMoonIn: String
+)
+
+private data class ShabbatTimes(
+    val parashaName: String,
+    val entryTime: Date?,
+    val exitTime: Date?,
 )
 
 private sealed class ZmanimGridItem {
@@ -158,6 +173,18 @@ private sealed class ZmanimGridItem {
         val rabbeinuTamTimeValue: Date?,
         val onGeonimClick: (() -> Unit)?,
         val onRabbeinuTamClick: (() -> Unit)?,
+    ) : ZmanimGridItem()
+
+    data class Shabbat(
+        val title: String,
+        val entryLabel: StringResource,
+        val entryTime: String,
+        val entryTimeValue: Date?,
+        val exitLabel: StringResource,
+        val exitTime: String,
+        val exitTimeValue: Date?,
+        val onEntryClick: (() -> Unit)?,
+        val onExitClick: (() -> Unit)?,
     ) : ZmanimGridItem()
 
     data class MoonSky(
@@ -220,6 +247,7 @@ fun HomeCelestialWidgets(
 
     // Compute zmanim times based on selected date and effective location
     val zmanimTimes = remember(selectedDate, effectiveLocation) { computeZmanimTimes(selectedDate, effectiveLocation) }
+    val shabbatTimes = remember(selectedDate, effectiveLocation) { computeShabbatTimes(selectedDate, effectiveLocation) }
     val timeFormatter = remember(timeZone) {
         SimpleDateFormat("HH:mm").apply { this.timeZone = timeZone }
     }
@@ -323,16 +351,22 @@ fun HomeCelestialWidgets(
         )
     )
 
+    val chatzosLaylaCard = DayMomentCardData(
+        title = Res.string.home_widget_card_midnight_title,
+        time = formatTime(zmanimTimes.chatzosLayla),
+        timeValue = zmanimTimes.chatzosLayla,
+        accentStart = Color(0xFF8CA6FF),
+        accentEnd = Color(0xFFC2D0FF)
+    )
+
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val horizontalSpacing = ZMANIM_HORIZONTAL_SPACING
         val verticalSpacing = ZMANIM_VERTICAL_SPACING
         val maxContentWidth = 1000.dp
         val effectiveWidth = maxContentWidth.coerceAtMost(maxWidth)
         val availableWidth = effectiveWidth - horizontalSpacing
-        val leftColumnWidth = availableWidth * 0.65f
         val rightColumnWidth = availableWidth * 0.35f
-        val minCardWidth = 150.dp
-        val maxColumnsLimit = 4
+        val maxColumnsLimit = 5
 
         val zmanimItems = buildList {
             momentCards.forEachIndexed { index, card ->
@@ -390,6 +424,23 @@ fun HomeCelestialWidgets(
                     onRabbeinuTamClick = tzaisRabbeinuTam?.let { { onZmanimClick(it) } },
                 )
             )
+            val chatzosLaylaClick = chatzosLaylaCard.timeValue?.let { { onZmanimClick(it) } }
+            add(ZmanimGridItem.Moment(chatzosLaylaCard, chatzosLaylaClick))
+            val shabbatEntryTime = shabbatTimes.entryTime
+            val shabbatExitTime = shabbatTimes.exitTime
+            add(
+                ZmanimGridItem.Shabbat(
+                    title = shabbatTimes.parashaName,
+                    entryLabel = Res.string.home_widget_shabbat_entry_label,
+                    entryTime = formatTime(shabbatEntryTime),
+                    entryTimeValue = shabbatEntryTime,
+                    exitLabel = Res.string.home_widget_shabbat_exit_label,
+                    exitTime = formatTime(shabbatExitTime),
+                    exitTimeValue = shabbatExitTime,
+                    onEntryClick = shabbatEntryTime?.let { { onZmanimClick(it) } },
+                    onExitClick = shabbatExitTime?.let { { onZmanimClick(it) } },
+                )
+            )
             add(
                 ZmanimGridItem.MoonSky(
                     referenceTime = moonReferenceTime,
@@ -398,10 +449,7 @@ fun HomeCelestialWidgets(
             )
         }
         val zmanimItemCount = zmanimItems.size
-        val maxColumns = ((leftColumnWidth + horizontalSpacing) / (minCardWidth + horizontalSpacing))
-            .toInt()
-            .coerceAtLeast(1)
-        val columns = maxColumns.coerceAtMost(maxColumnsLimit).coerceAtMost(zmanimItemCount)
+        val columns = maxColumnsLimit.coerceAtMost(zmanimItemCount).coerceAtLeast(1)
         val rowCount = ((zmanimItemCount + columns - 1) / columns).coerceAtLeast(1)
         val leftColumnHeight = (ZMANIM_CARD_HEIGHT * rowCount) +
             (verticalSpacing * (rowCount - 1).coerceAtLeast(0))
@@ -1201,6 +1249,26 @@ private fun ZmanimCardsGrid(
                                 modifier = Modifier.weight(1f),
                             )
                         }
+                        is ZmanimGridItem.Shabbat -> {
+                            val isLeftSelected = selectedTimeMillis != null &&
+                                item.entryTimeValue?.time == selectedTimeMillis
+                            val isRightSelected = selectedTimeMillis != null &&
+                                item.exitTimeValue?.time == selectedTimeMillis
+                            ShabbatDualTimeCard(
+                                title = item.title,
+                                entryLabel = item.entryLabel,
+                                entryTime = item.entryTime,
+                                entryTimeValue = item.entryTimeValue,
+                                entrySelected = isLeftSelected,
+                                exitLabel = item.exitLabel,
+                                exitTime = item.exitTime,
+                                exitTimeValue = item.exitTimeValue,
+                                exitSelected = isRightSelected,
+                                onEntryClick = item.onEntryClick,
+                                onExitClick = item.onExitClick,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                         is ZmanimGridItem.MoonSky -> {
                             MoonSkyCard(
                                 referenceTime = item.referenceTime,
@@ -1299,29 +1367,33 @@ private fun DayMomentCard(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.Start
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                GradientDot(data.accentStart, data.accentEnd, size = 13.dp)
+                GradientDot(data.accentStart, data.accentEnd, size = 11.dp)
                 Text(
                     text = stringResource(data.title),
                     color = labelColor,
-                    fontSize = 15.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
-            Text(
-                text = data.time,
-                color = JewelTheme.globalColors.text.normal,
-                fontWeight = FontWeight.Bold,
-                fontSize = 30.sp,
-                textAlign = TextAlign.End,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                TimeValueLarge(
+                    time = data.time,
+                    color = JewelTheme.globalColors.text.normal,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }
@@ -1340,6 +1412,42 @@ private fun DualTimeCard(
     modifier: Modifier = Modifier,
     onLeftClick: (() -> Unit)? = null,
     onRightClick: (() -> Unit)? = null,
+) {
+    DualTimeCardContent(
+        title = stringResource(title),
+        leftLabel = stringResource(leftLabel),
+        leftTime = leftTime,
+        leftTimeValue = leftTimeValue,
+        leftSelected = leftSelected,
+        rightLabel = stringResource(rightLabel),
+        rightTime = rightTime,
+        rightTimeValue = rightTimeValue,
+        rightSelected = rightSelected,
+        modifier = modifier,
+        onLeftClick = onLeftClick,
+        onRightClick = onRightClick,
+    )
+}
+
+@Composable
+private fun DualTimeCardContent(
+    title: String,
+    leftLabel: String,
+    leftTime: String,
+    leftTimeValue: Date?,
+    leftSelected: Boolean,
+    rightLabel: String,
+    rightTime: String,
+    rightTimeValue: Date?,
+    rightSelected: Boolean,
+    modifier: Modifier = Modifier,
+    onLeftClick: (() -> Unit)? = null,
+    onRightClick: (() -> Unit)? = null,
+    backgroundOverride: Brush? = null,
+    borderColorOverride: Color? = null,
+    accentStartOverride: Color? = null,
+    accentEndOverride: Color? = null,
+    premiumOverlay: Brush? = null,
 ) {
     val isDark = JewelTheme.isDark
     val shape = RoundedCornerShape(18.dp)
@@ -1367,6 +1475,10 @@ private fun DualTimeCard(
     val labelColor = JewelTheme.globalColors.text.normal.copy(alpha = 0.78f)
     val accentStart = Color(0xFF9AE7E7)
     val accentEnd = Color(0xFFC7F5F0)
+    val resolvedBackground = backgroundOverride ?: background
+    val resolvedBorderColor = borderColorOverride ?: borderColor
+    val resolvedAccentStart = accentStartOverride ?: accentStart
+    val resolvedAccentEnd = accentEndOverride ?: accentEnd
     val leftClick = onLeftClick
     val rightClick = onRightClick
     val leftClickable = leftClick != null && leftTimeValue != null
@@ -1400,9 +1512,16 @@ private fun DualTimeCard(
         modifier = modifier
             .height(ZMANIM_CARD_HEIGHT)
             .clip(shape)
-            .background(background)
-            .border(1.dp, borderColor, shape)
+            .background(resolvedBackground)
+            .border(1.dp, resolvedBorderColor, shape)
     ) {
+        if (premiumOverlay != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(premiumOverlay)
+            )
+        }
         if (isSelected) {
             Box(
                 modifier = Modifier
@@ -1427,58 +1546,67 @@ private fun DualTimeCard(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.Start
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                GradientDot(accentStart, accentEnd, size = 13.dp)
+                GradientDot(resolvedAccentStart, resolvedAccentEnd, size = 11.dp)
                 Text(
-                    text = stringResource(title),
+                    text = title,
                     color = labelColor,
-                    fontSize = 15.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                    horizontalAlignment = Alignment.Start
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = stringResource(leftLabel),
-                        color = labelColor,
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = leftTime,
-                        color = JewelTheme.globalColors.text.normal,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp
-                    )
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                    horizontalAlignment = Alignment.Start
-                ) {
-                    Text(
-                        text = stringResource(rightLabel),
-                        color = labelColor,
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = rightTime,
-                        color = JewelTheme.globalColors.text.normal,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = leftLabel,
+                            color = labelColor,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        TimeValue(
+                            time = leftTime,
+                            color = JewelTheme.globalColors.text.normal,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = rightLabel,
+                            color = labelColor,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        TimeValue(
+                            time = rightTime,
+                            color = JewelTheme.globalColors.text.normal,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
         }
@@ -1499,6 +1627,174 @@ private fun DualTimeCard(
             )
         }
     }
+}
+
+@Composable
+private fun TimeValue(
+    time: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    val parts = remember(time) { splitTimeParts(time) }
+    if (parts == null) {
+        Text(
+            text = time,
+            color = color,
+            fontWeight = FontWeight.Bold,
+            fontSize = 22.sp,
+            modifier = modifier
+        )
+        return
+    }
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = parts.first,
+            color = color,
+            fontWeight = FontWeight.Bold,
+            fontSize = 22.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(
+            text = parts.second,
+            color = color.copy(alpha = 0.8f),
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 21.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun TimeValueLarge(
+    time: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    val parts = remember(time) { splitTimeParts(time) }
+    if (parts == null) {
+        Text(
+            text = time,
+            color = color,
+            fontWeight = FontWeight.Bold,
+            fontSize = 30.sp,
+            modifier = modifier
+        )
+        return
+    }
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = parts.first,
+            color = color,
+            fontWeight = FontWeight.Bold,
+            fontSize = 30.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(
+            text = parts.second,
+            color = color.copy(alpha = 0.75f),
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 28.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+private fun splitTimeParts(time: String): Pair<String, String>? {
+    val sanitized = time.replace("\u2066", "").replace("\u2069", "").trim()
+    if (sanitized.isEmpty()) return null
+    val parts = sanitized.split(":")
+    if (parts.size != 2) return null
+    val hours = parts[0].trim()
+    val minutes = parts[1].trim()
+    if (hours.isEmpty() || minutes.isEmpty()) return null
+    return hours to minutes
+}
+
+@Composable
+private fun ShabbatDualTimeCard(
+    title: String,
+    entryLabel: StringResource,
+    entryTime: String,
+    entryTimeValue: Date?,
+    entrySelected: Boolean,
+    exitLabel: StringResource,
+    exitTime: String,
+    exitTimeValue: Date?,
+    exitSelected: Boolean,
+    modifier: Modifier = Modifier,
+    onEntryClick: (() -> Unit)? = null,
+    onExitClick: (() -> Unit)? = null,
+) {
+    val isDark = JewelTheme.isDark
+    val panelBackground = JewelTheme.globalColors.panelBackground
+    val premiumStart = if (isDark) {
+        panelBackground.blendTowards(Color(0xFF2B1F06), 0.7f)
+    } else {
+        panelBackground.blendTowards(Color(0xFFFFF4D0), 0.92f)
+    }
+    val premiumMid = if (isDark) {
+        panelBackground.blendTowards(Color(0xFF4A3309), 0.6f)
+    } else {
+        panelBackground.blendTowards(Color(0xFFFFE3A8), 0.86f)
+    }
+    val premiumEnd = if (isDark) {
+        panelBackground.blendTowards(Color(0xFF7A5414), 0.5f)
+    } else {
+        panelBackground.blendTowards(Color(0xFFFFD187), 0.8f)
+    }
+    val background = Brush.verticalGradient(listOf(premiumStart, premiumMid, premiumEnd))
+    val borderColor = if (isDark) Color(0xFFB78A2E) else Color(0xFFE0B65C)
+    val accentStart = if (isDark) Color(0xFFF4D37D) else Color(0xFFC58A0E)
+    val accentEnd = if (isDark) Color(0xFFFFE7B0) else Color(0xFFFFD489)
+    val sheen = if (isDark) {
+        Brush.horizontalGradient(
+            listOf(
+                Color.White.copy(alpha = 0.14f),
+                Color.Transparent,
+                Color.White.copy(alpha = 0.08f)
+            )
+        )
+    } else {
+        Brush.horizontalGradient(
+            listOf(
+                Color.White.copy(alpha = 0.3f),
+                Color.Transparent,
+                Color.White.copy(alpha = 0.12f)
+            )
+        )
+    }
+
+    DualTimeCardContent(
+        title = title,
+        leftLabel = stringResource(entryLabel),
+        leftTime = entryTime,
+        leftTimeValue = entryTimeValue,
+        leftSelected = entrySelected,
+        rightLabel = stringResource(exitLabel),
+        rightTime = exitTime,
+        rightTimeValue = exitTimeValue,
+        rightSelected = exitSelected,
+        modifier = modifier,
+        onLeftClick = onEntryClick,
+        onRightClick = onExitClick,
+        backgroundOverride = background,
+        borderColorOverride = borderColor,
+        accentStartOverride = accentStart,
+        accentEndOverride = accentEnd,
+        premiumOverlay = sheen,
+    )
 }
 
 @Composable
@@ -1635,6 +1931,58 @@ private fun GradientDot(
                 shape = CircleShape
             )
             .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+    )
+}
+
+private fun computeShabbatTimes(
+    date: LocalDate,
+    location: EarthWidgetLocation,
+): ShabbatTimes {
+    val shabbatDate = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY))
+    val fridayDate = shabbatDate.minusDays(1)
+
+    fun calendarForDate(localDate: LocalDate): Calendar {
+        return Calendar.getInstance(location.timeZone).apply {
+            set(Calendar.YEAR, localDate.year)
+            set(Calendar.MONTH, localDate.monthValue - 1)
+            set(Calendar.DAY_OF_MONTH, localDate.dayOfMonth)
+            set(Calendar.HOUR_OF_DAY, 12)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+    }
+
+    val geoLocation = GeoLocation(
+        "shabbat",
+        location.latitude,
+        location.longitude,
+        location.elevationMeters,
+        location.timeZone,
+    )
+    val entryCalendar = ComplexZmanimCalendar(geoLocation).apply {
+        calendar = calendarForDate(fridayDate)
+    }
+    val exitCalendar = ComplexZmanimCalendar(geoLocation).apply {
+        calendar = calendarForDate(shabbatDate)
+    }
+    val parashaName = run {
+        val jewishCalendar = JewishCalendar().apply {
+            setDate(calendarForDate(shabbatDate))
+        }
+        val formatter = HebrewDateFormatter().apply {
+            isHebrewFormat = true
+            isUseGershGershayim = false
+        }
+        val parasha = formatter.formatParsha(jewishCalendar)
+        if (parasha.isBlank()) formatter.formatSpecialParsha(jewishCalendar) else parasha
+    }
+    val parashaTitle = if (parashaName.isBlank()) "שבת" else "שבת $parashaName"
+
+    return ShabbatTimes(
+        parashaName = parashaTitle,
+        entryTime = entryCalendar.candleLighting,
+        exitTime = exitCalendar.tzais,
     )
 }
 

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -63,6 +64,7 @@ import java.util.Locale
 
 private val CALENDAR_MENU_WIDTH = 320.dp
 private val CALENDAR_GRID_SPACING = 4.dp
+private val TODAY_INDICATOR_SIZE = 4.dp
 
 /**
  * A Hebrew/Gregorian calendar picker component.
@@ -321,6 +323,7 @@ private fun MonthGrid(
     val hoverBg = JewelTheme.segmentedControlButtonStyle.colors.backgroundHovered
     val selectedTextColor = JewelTheme.globalColors.text.selected
     val normalTextColor = JewelTheme.globalColors.text.normal
+    val todayDate = LocalDate.now()
 
     Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
         for (week in weeks) {
@@ -336,12 +339,14 @@ private fun MonthGrid(
 
                     val isSelected = day == selectedDate
                     val isHovered = hoveredDate == day
+                    val isToday = day == todayDate
                     val bgBrush: Brush = when {
                         isSelected -> selectedBg
                         isHovered -> hoverBg
                         else -> SolidColor(Color.Transparent)
                     }
                     val textColor = if (isSelected) selectedTextColor else normalTextColor
+                    val todayIndicatorColor = if (isSelected) selectedTextColor else JewelTheme.globalColors.text.info
                     val border = when {
                         isSelected -> JewelTheme.globalColors.borders.focused
                         isHovered -> JewelTheme.globalColors.borders.normal
@@ -360,6 +365,15 @@ private fun MonthGrid(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(text = day.dayOfMonth.toString(), color = textColor)
+                        if (isToday) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 1.dp)
+                                    .size(TODAY_INDICATOR_SIZE)
+                                    .background(todayIndicatorColor, CircleShape),
+                            )
+                        }
                     }
                 }
             }
@@ -384,6 +398,7 @@ private fun HebrewMonthGrid(
     val hoverBg = JewelTheme.segmentedControlButtonStyle.colors.backgroundHovered
     val selectedTextColor = JewelTheme.globalColors.text.selected
     val normalTextColor = JewelTheme.globalColors.text.normal
+    val todayDate = LocalDate.now()
 
     Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
         for (week in weeks) {
@@ -399,12 +414,14 @@ private fun HebrewMonthGrid(
 
                     val isSelected = day.localDate == selectedDate
                     val isHovered = hoveredDate == day.localDate
+                    val isToday = day.localDate == todayDate
                     val bgBrush: Brush = when {
                         isSelected -> selectedBg
                         isHovered -> hoverBg
                         else -> SolidColor(Color.Transparent)
                     }
                     val textColor = if (isSelected) selectedTextColor else normalTextColor
+                    val todayIndicatorColor = if (isSelected) selectedTextColor else JewelTheme.globalColors.text.info
                     val border = when {
                         isSelected -> JewelTheme.globalColors.borders.focused
                         isHovered -> JewelTheme.globalColors.borders.normal
@@ -423,6 +440,15 @@ private fun HebrewMonthGrid(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(text = day.label, color = textColor)
+                        if (isToday) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 1.dp)
+                                    .size(TODAY_INDICATOR_SIZE)
+                                    .background(todayIndicatorColor, CircleShape),
+                            )
+                        }
                     }
                 }
             }

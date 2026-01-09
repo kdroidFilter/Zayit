@@ -36,6 +36,7 @@ slf4j = "2.0.17"
 maven-publish = "0.35.0"
 sqlDelight = "2.1.0"
 adaptiveNavigation = "1.2.0"
+zmanim = "2.5.0"
 zstdJni = "1.5.7-6"
 metro = "0.9.2"
 lucene = "10.3.2"
@@ -102,6 +103,7 @@ adaptive-layout = { module = "org.jetbrains.compose.material3.adaptive:adaptive-
 adaptive-navigation = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation", version.ref = "adaptiveNavigation" }
 split-pane-desktop = { module = "org.jetbrains.compose.components:components-splitpane-desktop", version.ref = "compose"}
 sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqlDelight" }
+zmanim = { module = "com.kosherjava:zmanim", version.ref = "zmanim" }
 zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstdJni" }
 lucene-core = { module = "org.apache.lucene:lucene-core", version.ref = "lucene" }
 lucene-analysis-common = { module = "org.apache.lucene:lucene-analysis-common", version.ref = "lucene" }

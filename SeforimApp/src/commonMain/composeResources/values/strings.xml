@@ -99,8 +99,8 @@
     <string name="sources">מקורות</string>
     <string name="show_commentaries_tooltip">הצג את הפירושים הקיימים על פסקה זו</string>
     <string name="show_commentaries">הצג פירושים</string>
-    <string name="show_sources_tooltip">הצג מקורות לטקסט זה</string>
-    <string name="show_sources">הצג מקורות</string>
+    <string name="show_sources_tooltip">הצג מקור לטקסט זה</string>
+    <string name="show_sources">הצג מקור</string>
     <string name="columns_gap_tooltip">שנה את מבנה העמודות</string>
     <string name="columns_gap">מבנה עמודות</string>
     <string name="filter_commentators_tooltip">סנן את הפרשנים</string>

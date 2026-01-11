@@ -145,6 +145,7 @@ private fun SearchToolbar(
 fun SearchResultInBookShellMvi(
     bookUiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
+    showDiacritics: Boolean,
     // Search state
     searchUi: SearchUiState,
     visibleResults: List<SearchResult>,
@@ -228,7 +229,8 @@ fun SearchResultInBookShellMvi(
                         if (showBookContent) {
                             BookContentPanel(
                                 uiState = bookUiState,
-                                onEvent = onEvent
+                                onEvent = onEvent,
+                                showDiacritics = showDiacritics
                             )
                         } else {
                             SearchResultContentMvi(
@@ -247,7 +249,7 @@ fun SearchResultInBookShellMvi(
             showSplitter = bookUiState.navigation.isVisible
         )
 
-        EndVerticalBar(uiState = bookUiState, onEvent = onEvent)
+        EndVerticalBar(uiState = bookUiState, onEvent = onEvent, showDiacritics = showDiacritics)
     }
 }
 

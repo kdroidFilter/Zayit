@@ -6,6 +6,7 @@ import dev.zacsweers.metrox.viewmodel.ViewModelGraph
 import io.github.kdroidfilter.seforim.navigation.TabNavControllerRegistry
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
@@ -26,6 +27,7 @@ abstract class AppGraph : ViewModelGraph {
     abstract val tabTitleUpdateManager: TabTitleUpdateManager
     abstract val tabNavControllerRegistry: TabNavControllerRegistry
     abstract val settings: Settings
+    abstract val categoryDisplaySettingsStore: CategoryDisplaySettingsStore
     abstract val repository: SeforimRepository
     abstract val luceneSearchService: LuceneSearchService
     abstract val tabsViewModel: TabsViewModel

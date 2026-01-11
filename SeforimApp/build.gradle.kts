@@ -17,6 +17,7 @@ plugins {
     alias(libs.plugins.metro)
     alias(libs.plugins.linux.deps)
     alias(libs.plugins.stability.analyzer)
+    alias(libs.plugins.sqlDelight)
 }
 
 val version = Versioning.resolveVersion(project)
@@ -233,6 +234,15 @@ compose.desktop {
                 optimize.set(true)
                 configurationFiles.from(project.file("proguard-rules.pro"))
             }
+        }
+    }
+}
+
+sqldelight {
+    databases {
+        create("UserSettingsDb") {
+            packageName.set("io.github.kdroidfilter.seforimapp.db")
+            dialect("app.cash.sqldelight:sqlite-3-24-dialect:${libs.versions.sqlDelight.get()}")
         }
     }
 }

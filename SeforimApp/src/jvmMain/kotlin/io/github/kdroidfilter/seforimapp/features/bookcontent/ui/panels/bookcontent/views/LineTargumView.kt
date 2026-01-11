@@ -37,6 +37,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnecti
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
+import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -69,7 +70,8 @@ fun LineTargumView(
     fontCodeFlow: StateFlow<String> = AppSettings.targumFontCodeFlow,
     titleRes: StringResource = Res.string.links,
     selectLineRes: StringResource = Res.string.select_line_for_links,
-    emptyRes: StringResource = Res.string.no_links_for_line
+    emptyRes: StringResource = Res.string.no_links_for_line,
+    showDiacritics: Boolean
 ) {
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val commentTextSize by animateFloatAsState(
@@ -226,7 +228,8 @@ fun LineTargumView(
                                                 fontFamily = targumFontFamily,
                                                 boldScale = boldScaleForPlatform,
                                                 highlightQuery = highlightQuery,
-                                                onLinkClick = onLinkClick
+                                                onLinkClick = onLinkClick,
+                                                showDiacritics = showDiacritics
                                             )
                                         }
                                     }
@@ -265,7 +268,8 @@ fun LineTargumView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
-    availabilityType: ConnectionType = ConnectionType.TARGUM
+    availabilityType: ConnectionType = ConnectionType.TARGUM,
+    showDiacritics: Boolean
 ) {
     val providers = uiState.providers ?: return
     val contentState = uiState.content
@@ -320,7 +324,8 @@ fun LineTargumView(
         onHide = onHide,
         highlightQuery = activeQuery,
         lineConnections = lineConnections,
-        availabilityType = availabilityType
+        availabilityType = availabilityType,
+        showDiacritics = showDiacritics
     )
 }
 
@@ -343,7 +348,8 @@ private fun LinkItem(
     fontFamily: FontFamily,
     boldScale: Float = 1.0f,
     highlightQuery: String,
-    onLinkClick: (CommentaryWithText) -> Unit
+    onLinkClick: (CommentaryWithText) -> Unit,
+    showDiacritics: Boolean
 ) {
     // Optimisation : mémorisation du callback pour éviter recréation
     val onClick = remember(item, onLinkClick) {
@@ -358,9 +364,13 @@ private fun LinkItem(
                 detectTapGestures(onTap = { onClick() })
             }
     ) {
-        val annotated = remember(item.link.id, item.targetText, commentTextSize, boldScale) {
+        val processedText = remember(item.link.id, item.targetText, showDiacritics) {
+            if (showDiacritics) item.targetText else HebrewTextUtils.removeAllDiacritics(item.targetText)
+        }
+
+        val annotated = remember(item.link.id, processedText, commentTextSize, boldScale, showDiacritics) {
             buildAnnotatedFromHtml(
-                item.targetText,
+                processedText,
                 commentTextSize,
                 boldScale = if (boldScale < 1f) 1f else boldScale
             )

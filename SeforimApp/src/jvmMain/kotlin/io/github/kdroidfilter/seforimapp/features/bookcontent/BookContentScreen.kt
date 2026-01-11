@@ -236,12 +236,14 @@ private fun composeKeyEventToSwingKeyStroke(event: KeyEvent): KeyStroke? {
  *
  * @param uiState The complete UI state used for rendering the book content screen, capturing navigation, TOC, content display, layout management, and more.
  * @param onEvent Function that handles various user-driven events or state updates within the book content view.
+ * @param showDiacritics Whether to render Hebrew diacritics for the current root category.
  */
 @OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class, ExperimentalFoundationApi::class)
 @Composable
 fun BookContentScreen(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
+    showDiacritics: Boolean,
     isRestoringSession: Boolean = false,
     searchUi: SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
@@ -375,6 +377,10 @@ fun BookContentScreen(
                                 }
                                 true
                             }
+                            isCtrlOrCmd && keyEvent.key == Key.J -> {
+                                onEvent(BookContentEvent.ToggleDiacritics)
+                                true
+                            }
                             else -> false
                         }
                     } else {
@@ -406,6 +412,7 @@ fun BookContentScreen(
                             BookContentPanel(
                                 uiState = uiState,
                                 onEvent = onEvent,
+                                showDiacritics = showDiacritics,
                                 isRestoringSession = isRestoringSession,
                                 searchUi = searchUi,
                                 searchCallbacks = searchCallbacks
@@ -417,7 +424,7 @@ fun BookContentScreen(
                 showSplitter = uiState.navigation.isVisible
             )
 
-            EndVerticalBar(uiState = uiState, onEvent = onEvent)
+            EndVerticalBar(uiState = uiState, onEvent = onEvent, showDiacritics = showDiacritics)
         }
     }
 

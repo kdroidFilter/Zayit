@@ -16,13 +16,16 @@ import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactoryKey
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.Providers
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.CommentariesUseCase
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.ContentUseCase
+import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.CategoryDisplaySettingsUseCase
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.NavigationUseCase
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.TocUseCase
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.AltTocUseCase
 import io.github.kdroidfilter.seforimapp.logger.debugln
+import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -42,6 +45,7 @@ class BookContentViewModel(
     @Assisted savedStateHandle: SavedStateHandle,
     private val persistedStore: TabPersistedStateStore,
     private val repository: SeforimRepository,
+    private val categoryDisplaySettingsStore: CategoryDisplaySettingsStore,
     private val titleUpdateManager: TabTitleUpdateManager,
     private val tabsViewModel: TabsViewModel
 ) : ViewModel() {
@@ -67,6 +71,8 @@ class BookContentViewModel(
     private val tocUseCase = TocUseCase(repository, stateManager)
     private val altTocUseCase = AltTocUseCase(repository, stateManager)
     private val commentariesUseCase = CommentariesUseCase(repository, stateManager, viewModelScope)
+    private val categoryDisplaySettingsUseCase =
+        CategoryDisplaySettingsUseCase(repository, categoryDisplaySettingsStore)
 
     // Paging pour les lignes
     private val _linesPagingData = MutableStateFlow<Flow<PagingData<Line>>?>(null)
@@ -76,6 +82,10 @@ class BookContentViewModel(
         .filterNotNull()
         .flatMapLatest { it }
         .cachedIn(viewModelScope)
+
+    private val _showDiacritics = MutableStateFlow(true)
+    val showDiacritics: StateFlow<Boolean> = _showDiacritics.asStateFlow()
+    private var currentRootCategoryId: Long? = null
 
     // État UI unifié (state is already UI-ready; just inject providers and compute per-line selections)
     val uiState: StateFlow<BookContentState> = stateManager.state
@@ -174,6 +184,7 @@ class BookContentViewModel(
 
     init {
         initialize(savedStateHandle)
+        observeDiacriticsSettings()
     }
 
     /** Initialisation du ViewModel */
@@ -230,6 +241,48 @@ class BookContentViewModel(
                     titleUpdateManager.updateTabTitle(tabId, combined, TabType.BOOK)
                 }
         }
+    }
+
+    private fun observeDiacriticsSettings() {
+        viewModelScope.launch {
+            stateManager.state
+                .map { it.navigation }
+                .map { nav ->
+                    nav to Triple(
+                        nav.selectedBook?.id,
+                        nav.rootCategories.size,
+                        nav.categoryChildren.size
+                    )
+                }
+                .distinctUntilChanged { old, new -> old.second == new.second }
+                .collectLatest { (nav, _) ->
+                    refreshDiacriticsForNavigation(nav)
+                }
+        }
+
+        viewModelScope.launch {
+            categoryDisplaySettingsUseCase.categoryChanges.collectLatest { categoryId ->
+                if (categoryId == currentRootCategoryId) {
+                    val nav = stateManager.state.value.navigation
+                    _showDiacritics.value = categoryDisplaySettingsUseCase
+                        .getShowDiacriticsForCategory(categoryId, nav)
+                        .showDiacritics
+                }
+            }
+        }
+    }
+
+    private suspend fun refreshDiacriticsForNavigation(nav: NavigationState) {
+        val categoryId = nav.selectedBook?.categoryId
+        if (categoryId == null || categoryId <= 0) {
+            currentRootCategoryId = null
+            _showDiacritics.value = true
+            return
+        }
+
+        val setting = categoryDisplaySettingsUseCase.getShowDiacriticsForCategory(categoryId, nav)
+        currentRootCategoryId = setting.rootCategoryId
+        _showDiacritics.value = setting.showDiacritics
     }
 
     /** Gestion des événements */
@@ -347,6 +400,9 @@ class BookContentViewModel(
                 BookContentEvent.ToggleSources ->
                     contentUseCase.toggleSources()
 
+                BookContentEvent.ToggleDiacritics ->
+                    toggleShowDiacriticsForCurrentCategory()
+
                 is BookContentEvent.ContentScrolled ->
                     contentUseCase.updateContentScrollPosition(
                         event.anchorId, event.anchorIndex, event.scrollIndex, event.scrollOffset
@@ -400,6 +456,14 @@ class BookContentViewModel(
                     stateManager.saveAllStates()
             }
         }
+    }
+
+    private suspend fun toggleShowDiacriticsForCurrentCategory() {
+        val nav = stateManager.state.value.navigation
+        val selectedCategoryId = nav.selectedBook?.categoryId ?: return
+        val setting = categoryDisplaySettingsUseCase.toggleShowDiacriticsForCategory(selectedCategoryId, nav) ?: return
+        currentRootCategoryId = setting.rootCategoryId
+        _showDiacritics.value = setting.showDiacritics
     }
 
     /** Charge un livre par ID */

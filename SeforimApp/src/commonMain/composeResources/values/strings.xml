@@ -87,6 +87,9 @@
     <string name="zoom_in">הגדל</string>
     <string name="zoom_out_tooltip">הקטן גודל הטקסט</string>
     <string name="zoom_out">הקטן</string>
+    <string name="toggle_diacritics">ניקוד</string>
+    <string name="show_diacritics_tooltip">הצג ניקוד וטעמים</string>
+    <string name="hide_diacritics_tooltip">הסתר ניקוד וטעמים</string>
     <string name="add_bookmark_tooltip">הוסף סימנייה</string>
     <string name="add_bookmark">הוסף סימנייה</string>
     <string name="search_in_page_tooltip">חפש בתוך העמוד</string>

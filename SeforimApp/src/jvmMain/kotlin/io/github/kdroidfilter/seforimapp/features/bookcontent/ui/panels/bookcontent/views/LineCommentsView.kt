@@ -49,6 +49,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asSt
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
@@ -68,7 +69,8 @@ private const val SCROLL_DEBOUNCE_MS = 100L
 fun LineCommentsView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap()
+    lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
+    showDiacritics: Boolean
 ) {
     val contentState = uiState.content
     val selectedLine = contentState.selectedLine
@@ -106,7 +108,8 @@ fun LineCommentsView(
                     onShowMaxLimit = { onEvent(BookContentEvent.CommentatorsSelectionLimitExceeded) },
                     findQueryText = activeQuery,
                     isCommentatorsListVisible = showCommentatorsList,
-                    prefetchedGroups = selectedLine.let { lineConnections[it.id]?.commentatorGroups }
+                    prefetchedGroups = selectedLine.let { lineConnections[it.id]?.commentatorGroups },
+                    showDiacritics = showDiacritics
                 )
             }
         }
@@ -123,7 +126,8 @@ private fun CommentariesContent(
     onShowMaxLimit: () -> Unit,
     findQueryText: String,
     isCommentatorsListVisible: Boolean,
-    prefetchedGroups: List<CommentatorGroup>?
+    prefetchedGroups: List<CommentatorGroup>?,
+    showDiacritics: Boolean
 ) {
     val providers = uiState.providers ?: return
     val contentState = uiState.content
@@ -206,7 +210,8 @@ private fun CommentariesContent(
                 uiState = uiState,
                 onEvent = onEvent,
                 textSizes = textSizes,
-                findQueryText = findQueryText
+                findQueryText = findQueryText,
+                showDiacritics = showDiacritics
             )
         }
     )
@@ -296,7 +301,8 @@ private fun CommentariesDisplay(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
-    findQueryText: String
+    findQueryText: String,
+    showDiacritics: Boolean
 ) {
     val contentState = uiState.content
 
@@ -328,7 +334,8 @@ private fun CommentariesDisplay(
         textSizes,
         commentaryFontFamily,
         boldScaleForPlatform,
-        findQueryText
+        findQueryText,
+        showDiacritics
     ) {
         CommentariesLayoutConfig(
             selectedCommentators = selectedCommentators,
@@ -353,7 +360,8 @@ private fun CommentariesDisplay(
             textSizes = textSizes,
             fontFamily = commentaryFontFamily,
             boldScale = boldScaleForPlatform,
-            highlightQuery = findQueryText
+            highlightQuery = findQueryText,
+            showDiacritics = showDiacritics
         )
     }
 
@@ -514,6 +522,7 @@ private fun CommentaryListView(
                     fontFamily = config.fontFamily,
                     boldScale = config.boldScale,
                     highlightQuery = highlightQuery,
+                    showDiacritics = config.showDiacritics,
                     onClick = { config.onCommentClick(commentary) }
                 )
             }
@@ -537,6 +546,7 @@ private fun CommentaryItem(
     fontFamily: FontFamily,
     boldScale: Float = 1.0f,
     highlightQuery: String,
+    showDiacritics: Boolean,
     onClick: () -> Unit
 ) {
     Column(
@@ -560,14 +570,19 @@ private fun CommentaryItem(
                 }
             }
     ) {
+        val processedText = remember(commentary.link.id, commentary.targetText, showDiacritics) {
+            if (showDiacritics) commentary.targetText else HebrewTextUtils.removeAllDiacritics(commentary.targetText)
+        }
+
         val annotated = remember(
             commentary.link.id,
-            commentary.targetText,
+            processedText,
             textSizes.commentTextSize,
-            boldScale
+            boldScale,
+            showDiacritics
         ) {
             buildAnnotatedFromHtml(
-                commentary.targetText,
+                processedText,
                 textSizes.commentTextSize,
                 boldScale = if (boldScale < 1f) 1f else boldScale
             )
@@ -808,6 +823,7 @@ private data class CommentariesLayoutConfig(
     val fontFamily: FontFamily,
     val boldScale: Float,
     val highlightQuery: String,
+    val showDiacritics: Boolean
 )
 
 @OptIn(ExperimentalFoundationApi::class)

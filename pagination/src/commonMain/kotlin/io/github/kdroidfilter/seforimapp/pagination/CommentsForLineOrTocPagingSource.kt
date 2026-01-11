@@ -56,9 +56,10 @@ class CommentsForLineOrTocPagingSource(
             val commentaries = repository.getCommentariesForLineRange(
                 lineIds = ids,
                 activeCommentatorIds = commentatorIds,
+                connectionTypes = setOf(ConnectionType.COMMENTARY),
                 offset = offset,
                 limit = limit
-            ).filter { it.link.connectionType == ConnectionType.COMMENTARY }
+            )
 
             val prevKey = if (page == 0) null else page - 1
             val nextKey = if (commentaries.isEmpty()) null else page + 1

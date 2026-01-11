@@ -1,6 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.settings.ui
 
-import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,11 +13,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsViewModel
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.ListComboBox
@@ -25,11 +26,13 @@ import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.settings_font_book_label
 import seforimapp.seforimapp.generated.resources.settings_font_commentary_label
+import seforimapp.seforimapp.generated.resources.settings_font_sources_label
 import seforimapp.seforimapp.generated.resources.settings_font_targum_label
 
 @Composable
 fun FontsSettingsScreen() {
-    val viewModel: FontsSettingsViewModel = LocalAppGraph.current.fontsSettingsViewModel
+    val viewModel: FontsSettingsViewModel =
+        metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
     FontsSettingsView(state = state, onEvent = viewModel::onEvent)
 }
@@ -72,6 +75,17 @@ private fun FontsSettingsView(state: FontsSettingsState, onEvent: (FontsSettings
                 items = optionLabels,
                 selectedIndex = selectedIndex,
                 onSelectedItemChange = { idx -> onEvent(FontsSettingsEvents.SetTargumFont(options[idx].code)) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = stringResource(Res.string.settings_font_sources_label))
+            val selectedIndex = options.indexOfFirst { it.code == state.sourceFontCode }.let { if (it >= 0) it else 0 }
+            ListComboBox(
+                items = optionLabels,
+                selectedIndex = selectedIndex,
+                onSelectedItemChange = { idx -> onEvent(FontsSettingsEvents.SetSourceFont(options[idx].code)) },
                 modifier = Modifier.weight(1f)
             )
         }

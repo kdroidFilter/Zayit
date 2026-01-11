@@ -12,9 +12,12 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
  */
 class LineTargumPagingSource(
     private val repository: SeforimRepository,
-    private val lineId: Long,
-    private val sourceBookIds: Set<Long> = emptySet()
+    private val baseLineId: Long,
+    private val sourceBookIds: Set<Long> = emptySet(),
+    private val connectionTypes: Set<ConnectionType> = setOf(ConnectionType.TARGUM)
 ) : PagingSource<Int, CommentaryWithText>() {
+
+    private var resolvedLineIds: List<Long>? = null
 
     override fun getRefreshKey(state: PagingState<Int, CommentaryWithText>): Int? {
         return state.anchorPosition?.let { anchorPosition ->
@@ -29,12 +32,21 @@ class LineTargumPagingSource(
             val limit = params.loadSize
             val offset = page * limit
 
+            if (resolvedLineIds == null) {
+                val headingToc = repository.getHeadingTocEntryByLineId(baseLineId)
+                resolvedLineIds = if (headingToc != null) {
+                    repository.getLineIdsForTocEntry(headingToc.id).filter { it != baseLineId }
+                } else listOf(baseLineId)
+            }
+            val ids = resolvedLineIds ?: listOf(baseLineId)
+
             val links = repository.getCommentariesForLineRange(
-                lineIds = listOf(lineId),
+                lineIds = ids,
                 activeCommentatorIds = sourceBookIds, // reuse filtering by target book IDs
+                connectionTypes = connectionTypes,
                 offset = offset,
                 limit = limit
-            ).filter { it.link.connectionType == ConnectionType.TARGUM }
+            )
 
             val prevKey = if (page == 0) null else page - 1
             val nextKey = if (links.isEmpty()) null else page + 1

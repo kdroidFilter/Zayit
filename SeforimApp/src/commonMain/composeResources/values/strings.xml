@@ -34,6 +34,7 @@
     <string name="settings_font_book_label">גופן לטקסט הספר</string>
     <string name="settings_font_commentary_label">גופן לפירושים</string>
     <string name="settings_font_targum_label">גופן לתרגומים</string>
+    <string name="settings_font_sources_label">גופן למקורות</string>
     <!-- Font names -->
     <string name="font_noto_serif_hebrew">Noto Serif Hebrew</string>
     <string name="font_noto_rashi_hebrew">Noto Rashi Hebrew</string>
@@ -77,6 +78,8 @@
     <string name="bookmarks">סימניות</string>
     <string name="my_commentaries">הפירושים שלי</string>
     <string name="my_commentaries_label">פירושים שלי</string>
+    <string name="context_menu_search_selected_text">חפש במאגר</string>
+    <string name="context_menu_find_in_page">חפש בעמוד</string>
 
     <!-- Book Content Screen - End Vertical Bar -->
     <string name="tools">כלים</string>
@@ -93,12 +96,19 @@
     <string name="report_tooltip">דווח על בעיה בעמוד זה</string>
     <string name="report">דיווח</string>
     <string name="commentaries">פירושים</string>
+    <string name="sources">מקורות</string>
     <string name="show_commentaries_tooltip">הצג את הפירושים הקיימים על פסקה זו</string>
     <string name="show_commentaries">הצג פירושים</string>
+    <string name="show_sources_tooltip">הצג מקור לטקסט זה</string>
+    <string name="show_sources">הצג מקור</string>
     <string name="columns_gap_tooltip">שנה את מבנה העמודות</string>
     <string name="columns_gap">מבנה עמודות</string>
     <string name="filter_commentators_tooltip">סנן את הפרשנים</string>
     <string name="filter">סנן</string>
+    <!-- Toggle commentators sidebar (used for contentDescription and tooltip) -->
+    <string name="toggle_commentators_sidebar">הצג/הסתר סרגל הפרשנים</string>
+    <string name="show_commentators_sidebar">הצג סרגל הפרשנים</string>
+    <string name="hide_commentators_sidebar">הסתר סרגל הפרשנים</string>
     <string name="write_note_tooltip">כתוב הערה על שורה זאת</string>
     <string name="write_note">כתוב הערה</string>
     <string name="show_targumim_tooltip">הצג תרגומים</string>
@@ -118,6 +128,8 @@
     <string name="no_commentaries_for_line">אין פירושים זמינים לפסקה זו</string>
     <string name="no_commentaries_from_selected">אין פירושים זמינים מהפרשנים שנבחרו לשורה זו</string>
     <string name="select_at_least_one_commentator">אנא בחר לפחות פרשן אחד מהרשימה</string>
+    <string name="select_line_for_sources">בחר שורה כדי לצפות במקורות</string>
+    <string name="no_sources_for_line">אין מקורות זמינים לשורה זו</string>
     <string name="select_between_1_and_4_commentators">אנא בחר בין 1 ל-4 פרשנים</string>
     <string name="max_commentators_limit">ניתן לבחור עד 4 פרשנים בלבד</string>
     <string name="no_commentators_available">אין פרשנים זמינים</string>
@@ -140,6 +152,7 @@
     <string name="search_mode_reference_explicit">חיפוש לפי מקור</string>
     <string name="search_mode_text_explicit">חיפוש בטקסט</string>
     <string name="search_by_category_or_book">חפש לפי קטגוריה או ספר</string>
+    <string name="remove_selected_book">הסר ספר שנבחר</string>
 
     <!-- Home Page View - Search hints -->
     <string name="reference_hint_1">שו"ע אורח חיים סימן רסח</string>
@@ -161,12 +174,58 @@
     <string name="reference_toc_hint_3">סעיף א</string>
     <string name="reference_toc_hint_4">דף ב עמוד א</string>
     <string name="reference_toc_hint_5">שער א</string>
+    <string name="tab_hint_select">Tab ⇥</string>
+    <string name="autocomplete_no_results">לא נמצאו תוצאות</string>
+    <string name="autocomplete_loading">טוען…</string>
 
     <string name="text_hint_1">הכל בידי שמים חוץ מיראת שמים</string>
     <string name="text_hint_2">ואהבת לרעך כמוך</string>
     <string name="text_hint_3">שמע ישראל ה׳ אלקינו ה׳ אחד</string>
     <string name="text_hint_4">מי שטרח בערב שבת יאכל בשבת</string>
     <string name="text_hint_5">אין עוד מלבדו</string>
+
+    <!-- Home Page View - Day cycle widgets -->
+    <string name="home_cycle_card_title">זמני היום ההלכתיים · תצוגה מרוכזת</string>
+    <string name="home_cycle_card_subtitle">סיכום זמני היום והלילה</string>
+    <string name="home_cycle_chip_twilight">עלות השחר: %1$s</string>
+    <string name="home_cycle_chip_solar_noon">חצות היום: %1$s</string>
+    <string name="home_widget_label_astronomical_dawn">עמוד השחר</string>
+    <string name="home_widget_label_sunrise">נץ החמה</string>
+    <string name="home_widget_label_noon">חצות היום</string>
+    <string name="home_widget_label_sunset">שקיעת החמה</string>
+    <string name="home_widget_label_night">צאת הכוכבים</string>
+    <string name="home_widget_card_first_light_title">עמוד השחר</string>
+    <string name="home_widget_card_first_light_subtitle">ראשית אור היום ההלכתי</string>
+    <string name="home_widget_card_first_light_detail">תחילת היום לעניין חלק מן ההלכות</string>
+    <string name="home_widget_card_sunrise_title">נץ החמה</string>
+    <string name="home_widget_card_sunrise_subtitle">תחילת זמן קריאת שמע</string>
+    <string name="home_widget_card_sunrise_detail">סמוך לזמן תפילת שחרית</string>
+    <string name="home_widget_card_noon_title">חצות היום</string>
+    <string name="home_widget_card_noon_subtitle">אמצע היום ההלכתי</string>
+    <string name="home_widget_card_noon_detail">חצי הזמן מן הנץ לשקיעה</string>
+    <string name="home_widget_card_midnight_title">חצות הלילה</string>
+    <string name="home_widget_card_sunset_title">שקיעת החמה</string>
+    <string name="home_widget_card_sunset_subtitle">סיום זמן היום</string>
+    <string name="home_widget_card_sunset_detail">תחילת בין השמשות</string>
+    <string name="home_widget_shema_title">סוף זמן ק"ש</string>
+    <string name="home_widget_shema_gra_label">גר״א</string>
+    <string name="home_widget_shema_mga_label">מג״א</string>
+    <string name="home_widget_tefila_title">סוף זמן תפילה</string>
+    <string name="home_widget_shabbat_entry_label">כניסת שבת</string>
+    <string name="home_widget_shabbat_exit_label">צאת שבת</string>
+    <string name="home_widget_visible_stars_title">צאת הכוכבים</string>
+    <string name="home_widget_tzais_geonim_label">גאונים</string>
+    <string name="home_widget_tzais_rabbeinu_tam_label">ר״ת</string>
+    <string name="home_widget_visible_stars_subtitle">תחילת הלילה ההלכתי</string>
+    <string name="home_widget_visible_stars_detail">סיום זמן בין השמשות</string>
+    <string name="home_lunar_card_title">מחזור הלבנה ההלכתי</string>
+    <string name="home_lunar_card_subtitle">זמני קידוש לבנה</string>
+    <string name="home_lunar_chip_day">יום הלבנה %1$s</string>
+    <string name="home_lunar_label_illumination">שיעור נראות הלבנה</string>
+    <string name="home_lunar_label_moonrise">תחילת זמן קידוש לבנה</string>
+    <string name="home_lunar_label_moonset">סיום זמן קידוש לבנה</string>
+    <string name="home_lunar_next_full_moon_label">הזמן הבא לקידוש לבנה</string>
+    <string name="home_lunar_next_full_moon_value">בעוד %1$s ימים</string>
 
     <!-- Search Levels - Values -->
     <string name="search_level_1_value">דיוק מושלם</string>
@@ -245,7 +304,6 @@
     <string name="onboarding_open_app">פתח את היישום</string>
     <string name="onboarding_error_occurred">אירעה שגיאה</string>
     <string name="onboarding_error_with_detail">אירעה שגיאה: %1$s</string>
-    <string name="home_welcome_user">שלום %1$s!</string>
     <string name="onboarding_preparing_download">מכין הורדה...</string>
     <string name="onboarding_choose_source">בחרו כיצד להגדיר את מסד הנתונים</string>
     <string name="onboarding_download_db_button">הורדת מסד הנתונים</string>
@@ -397,6 +455,9 @@
     <string name="db_update_version_error_title">הגרסה אינה תואמת</string>
     <string name="db_update_version_error_message">מסד הנתונים שנבחר אינו תואם לגרסה זו של היישום. אנא בחרו קובץ אחר או הורידו את הגרסה העדכנית.</string>
     <string name="db_update_try_again">נסו שוב</string>
+    <string name="alt_table_of_contents">חלופות תוכן</string>
+    <string name="no_alt_toc_available">אין מבנים חלופיים זמינים</string>
+    <string name="select_structure_for_toc">בחרו מבנה חלופי</string>
 
 
 </resources>

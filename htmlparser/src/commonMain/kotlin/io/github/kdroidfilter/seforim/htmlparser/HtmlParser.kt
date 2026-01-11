@@ -120,8 +120,17 @@ class HtmlParser {
         // Normalizes multiple spaces into a single space, but preserves leading/trailing spaces
         val normalizedText = textRaw.replace(Regex("\\s+"), " ")
 
-        // Do not add empty segments (only spaces)
-        if (normalizedText.isBlank()) return
+        // Preserve whitespace-only nodes so inline tags do not collapse words
+        if (normalizedText.isBlank()) {
+            if (textRaw.isNotEmpty() && list.isNotEmpty()) {
+                val last = list.last()
+                if (!last.isLineBreak && !last.text.endsWith(" ")) {
+                    val updated = last.copy(text = last.text + " ")
+                    list[list.lastIndex] = updated
+                }
+            }
+            return
+        }
 
         // Determines whether to preserve leading and trailing spaces
         val hasLeadingSpace = textRaw.isNotEmpty() && textRaw.first().isWhitespace()
@@ -144,10 +153,12 @@ class HtmlParser {
 
             if (sameStyle) {
                 // Fusion avec le segment précédent du même style
+                val lastEndsWithWhitespace = last.text.lastOrNull()?.isWhitespace() == true
                 val separator = when {
-                    // Si le segment actuel a un espace au début ou le précédent à la fin
-                    hasLeadingSpace || last.text.lastOrNull()?.isWhitespace() == true -> ""
-                    // Sinon, vérifie si on a besoin d'un espace entre les deux
+                    // Préserve explicitement un espace de tête si le texte brut en contenait un
+                    hasLeadingSpace && !lastEndsWithWhitespace -> " "
+                    lastEndsWithWhitespace -> ""
+                    // Sinon, vérifie si on a besoin d'un espace entre les deux (texte latin uniquement)
                     needsSpaceBetween(last.text, trimmedText) -> " "
                     else -> ""
                 }
@@ -200,7 +211,29 @@ class HtmlParser {
     }
 
     private fun needsSpaceBetween(a: String, b: String): Boolean {
-        return a.isNotEmpty() && !a.last().isWhitespace() &&
-                b.isNotEmpty() && !b.first().isWhitespace()
+        if (a.isEmpty() || b.isEmpty()) return false
+
+        val lastChar = a.last()
+        val firstChar = b.first()
+
+        // Don't add space if either side already has whitespace
+        if (lastChar.isWhitespace() || firstChar.isWhitespace()) return false
+
+        // Don't add space if we're dealing with Hebrew or other RTL/non-Latin text
+        // Hebrew Unicode range: U+0590 to U+05FF
+        // Hebrew Extended: U+FB1D to U+FB4F
+        if (isHebrewOrRTL(lastChar) || isHebrewOrRTL(firstChar)) return false
+
+        // Only add space for Latin text
+        return true
+    }
+
+    private fun isHebrewOrRTL(char: Char): Boolean {
+        val code = char.code
+        return (code in 0x0590..0x05FF) ||  // Hebrew
+                (code in 0xFB1D..0xFB4F) ||  // Hebrew Presentation Forms
+                (code in 0x0600..0x06FF) ||  // Arabic
+                (code in 0x0750..0x077F) ||  // Arabic Supplement
+                (code >= 0x0300 && code <= 0x036F)  // Combining Diacritical Marks (niqqud, etc.)
     }
 }

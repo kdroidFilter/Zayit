@@ -40,6 +40,7 @@ object AppSettings {
     private const val KEY_FONT_BOOK = "font_book"
     private const val KEY_FONT_COMMENTARY = "font_commentary"
     private const val KEY_FONT_TARGUM = "font_targum"
+    private const val KEY_FONT_SOURCE = "font_source"
     private const val KEY_SAVED_SESSION = "saved_session_json"
     private const val KEY_SAVED_SESSION_PARTS_COUNT = "saved_session_parts_count"
     private const val KEY_SAVED_SESSION_PART_PREFIX = "saved_session_part_"
@@ -79,10 +80,12 @@ object AppSettings {
         _bookFontCodeFlow.value = getBookFontCode()
         _commentaryFontCodeFlow.value = getCommentaryFontCode()
         _targumFontCodeFlow.value = getTargumFontCode()
+        _sourceFontCodeFlow.value = getSourceFontCode()
         _ramSaverEnabledFlow.value = isRamSaverEnabled()
         // User profile reactive values
         _userFirstNameFlow.value = getUserFirstName() ?: ""
         _userLastNameFlow.value = getUserLastName() ?: ""
+        _userCommunityCodeFlow.value = getUserCommunityCode()
     }
 
     // StateFlow to observe text size changes
@@ -118,6 +121,9 @@ object AppSettings {
 
     private val _targumFontCodeFlow = MutableStateFlow(getTargumFontCode())
     val targumFontCodeFlow: StateFlow<String> = _targumFontCodeFlow.asStateFlow()
+
+    private val _sourceFontCodeFlow = MutableStateFlow(getSourceFontCode())
+    val sourceFontCodeFlow: StateFlow<String> = _sourceFontCodeFlow.asStateFlow()
 
     // Find-in-page state (scoped per tab, not persisted)
     private val findQueryFlowByTab = mutableMapOf<String, MutableStateFlow<String>>()
@@ -211,6 +217,15 @@ object AppSettings {
     fun setTargumFontCode(code: String) {
         settings[KEY_FONT_TARGUM] = code
         _targumFontCodeFlow.value = code
+    }
+
+    fun getSourceFontCode(): String {
+        return settings[KEY_FONT_SOURCE, "frankruhllibre"]
+    }
+
+    fun setSourceFontCode(code: String) {
+        settings[KEY_FONT_SOURCE] = code
+        _sourceFontCodeFlow.value = code
     }
 
     fun getCloseBookTreeOnNewBookSelected(): Boolean {
@@ -318,6 +333,9 @@ object AppSettings {
     private val _userLastNameFlow = MutableStateFlow(getUserLastName() ?: "")
     val userLastNameFlow: StateFlow<String> = _userLastNameFlow.asStateFlow()
 
+    private val _userCommunityCodeFlow = MutableStateFlow(getUserCommunityCode())
+    val userCommunityCodeFlow: StateFlow<String?> = _userCommunityCodeFlow.asStateFlow()
+
     fun getUserFirstName(): String? {
         val value: String = settings[KEY_USER_FIRST_NAME, ""]
         return value.ifBlank { null }
@@ -346,6 +364,7 @@ object AppSettings {
 
     fun setUserCommunityCode(value: String?) {
         settings[KEY_USER_COMMUNITY] = value?.takeIf { it.isNotBlank() } ?: ""
+        _userCommunityCodeFlow.value = getUserCommunityCode()
     }
 
     // Theme mode (Light/Dark/System) setting
@@ -402,6 +421,7 @@ object AppSettings {
         _bookFontCodeFlow.value = "notoserifhebrew"
         _commentaryFontCodeFlow.value = "notorashihebrew"
         _targumFontCodeFlow.value = "notorashihebrew"
+        _sourceFontCodeFlow.value = "frankruhllibre"
         _ramSaverEnabledFlow.value = false
     }
 }

@@ -1,3 +1,4 @@
+import io.github.kdroidfilter.buildsrc.NativeCleanupHelper
 import io.github.kdroidfilter.buildsrc.RenameMacPkgTask
 import io.github.kdroidfilter.buildsrc.RenameMsiTask
 import io.github.kdroidfilter.buildsrc.Versioning
@@ -15,6 +16,7 @@ plugins {
     alias(libs.plugins.buildConfig)
     alias(libs.plugins.metro)
     alias(libs.plugins.linux.deps)
+    alias(libs.plugins.stability.analyzer)
 }
 
 val version = Versioning.resolveVersion(project)
@@ -66,6 +68,9 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.navigation.compose)
+
+            // MetroX (ViewModel integration)
+            implementation(libs.metrox.viewmodel.compose)
 
             // KotlinX
             implementation(libs.kotlinx.coroutines.core)
@@ -128,6 +133,7 @@ kotlin {
 
         jvmMain.dependencies {
             api(project(":jewel"))
+            implementation(project(":earthwidget"))
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
             }
@@ -148,6 +154,9 @@ kotlin {
 
             // HTML sanitization for search snippets
             implementation(libs.jsoup)
+
+            implementation(libs.zmanim)
+
         }
     }
 }
@@ -299,3 +308,6 @@ val renameMsi = tasks.register<RenameMsiTask>("renameMsi") {
 tasks.matching { it.name.endsWith("Msi") && it.name != "renameMsi" }.configureEach {
     finalizedBy(renameMsi)
 }
+
+// --- Clean unused native binaries from JARs for smaller distribution size
+NativeCleanupHelper.registerCleanupTasks(project)

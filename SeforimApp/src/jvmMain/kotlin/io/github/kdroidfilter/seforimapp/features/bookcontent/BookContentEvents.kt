@@ -12,6 +12,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.*
 sealed interface BookContentEvent {
     // Navigation events
     data class SearchTextChanged(val text: String) : BookContentEvent
+    data class SearchInDatabase(val query: String) : BookContentEvent
     data class CategorySelected(val category: Category) : BookContentEvent
     data class BookSelected(val book: Book) : BookContentEvent
     data class BookSelectedInNewTab(val book: Book) : BookContentEvent
@@ -21,6 +22,10 @@ sealed interface BookContentEvent {
     data class TocEntryExpanded(val entry: TocEntry) : BookContentEvent
     data object ToggleToc : BookContentEvent
     data class TocScrolled(val index: Int, val offset: Int) : BookContentEvent
+    data class AltTocEntryExpanded(val entry: AltTocEntry) : BookContentEvent
+    data class AltTocScrolled(val index: Int, val offset: Int) : BookContentEvent
+    data class AltTocStructureSelected(val structure: AltTocStructure) : BookContentEvent
+    data class AltTocEntrySelected(val entry: AltTocEntry) : BookContentEvent
     
     // Book tree events
     data class BookTreeScrolled(val index: Int, val offset: Int) : BookContentEvent
@@ -34,6 +39,7 @@ sealed interface BookContentEvent {
     data class OpenBookById(val bookId: Long) : BookContentEvent
     data object ToggleCommentaries : BookContentEvent
     data object ToggleTargum : BookContentEvent
+    data object ToggleSources : BookContentEvent
     data class ContentScrolled(
         val anchorId: Long,
         val anchorIndex: Int,
@@ -53,6 +59,7 @@ sealed interface BookContentEvent {
     data object CommentatorsSelectionLimitExceeded : BookContentEvent
     // Targum events
     data class SelectedTargumSourcesChanged(val lineId: Long, val selectedIds: Set<Long>) : BookContentEvent
+    data class SelectedSourcesChanged(val lineId: Long, val selectedIds: Set<Long>) : BookContentEvent
 
     // Scroll events
     data class ParagraphScrolled(val position: Int) : BookContentEvent

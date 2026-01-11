@@ -7,16 +7,17 @@ import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforim.navigation.TabNavControllerRegistry
-import io.github.kdroidfilter.seforim.tabs.TabStateManager
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
+import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
 import java.nio.file.Paths
 import java.util.UUID
 
@@ -26,7 +27,7 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideTabStateManager(): TabStateManager = TabStateManager()
+    fun provideTabPersistedStateStore(): TabPersistedStateStore = TabPersistedStateStore()
 
     @Provides
     @SingleIn(AppScope::class)
@@ -50,10 +51,11 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideLuceneSearchService(): LuceneSearchService {
+    fun provideLuceneSearchService(repository: SeforimRepository): LuceneSearchService {
         val dbPath = getDatabasePath()
         val indexPath = if (dbPath.endsWith(".db")) "$dbPath.lucene" else "$dbPath.luceneindex"
-        return LuceneSearchService(Paths.get(indexPath))
+        val snippetSourceProvider = RepositorySnippetSourceProvider(repository)
+        return LuceneSearchService(Paths.get(indexPath), snippetSourceProvider)
     }
 
     @Provides
@@ -68,10 +70,8 @@ object AppCoreBindings {
     @SingleIn(AppScope::class)
     fun provideTabsViewModel(
         titleUpdateManager: TabTitleUpdateManager,
-        stateManager: TabStateManager
     ): TabsViewModel = TabsViewModel(
         titleUpdateManager = titleUpdateManager,
-        stateManager = stateManager,
         startDestination = TabsDestination.BookContent(
             bookId = -1,
             tabId = UUID.randomUUID().toString()
@@ -83,14 +83,14 @@ object AppCoreBindings {
     @SingleIn(AppScope::class)
     fun provideSearchHomeViewModel(
         tabsViewModel: TabsViewModel,
-        stateManager: TabStateManager,
+        persistedStore: TabPersistedStateStore,
         repository: SeforimRepository,
         lucene: LuceneSearchService,
         lookup: LuceneLookupSearchService,
         settings: Settings
     ): SearchHomeViewModel = SearchHomeViewModel(
         tabsViewModel = tabsViewModel,
-        stateManager = stateManager,
+        persistedStore = persistedStore,
         repository = repository,
         lucene = lucene,
         lookup = lookup,

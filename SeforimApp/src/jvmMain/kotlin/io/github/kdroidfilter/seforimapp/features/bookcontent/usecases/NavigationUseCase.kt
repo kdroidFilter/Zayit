@@ -27,18 +27,26 @@ class NavigationUseCase(
      * Load the root categories and the full tree from the precomputed catalog.
      * The catalog MUST be available, otherwise nothing is loaded.
      */
-     fun loadRootCategories() {
+    suspend fun loadRootCategories() {
         val catalog = CatalogCache.getCatalog() ?: run {
             errorln { "ERROR: Precomputed catalog not available!" }
             return
         }
 
+        // Merge alt-structure flags from DB to ensure navigation tree knows about them
+        val altFlags = runCatching { repository.getAllBookAltFlags() }.getOrDefault(emptyMap())
+        val booksWithFlags: Set<Book> = catalog.extractAllBooks().map { book ->
+            altFlags[book.id]?.let { book.copy(hasAltStructures = it) } ?: book
+        }.toSet()
+
         debugln { "✓ Using precomputed catalog for navigation tree" }
-        stateManager.updateNavigation {
+        // Catalog data is derived and reloaded every app start; do not persist it.
+        // Persisting here can overwrite restored selection/book IDs before models are loaded.
+        stateManager.updateNavigation(save = false) {
             copy(
                 rootCategories = catalog.extractRootCategories(),
                 categoryChildren = catalog.extractCategoryChildren(),
-                booksInCategory = catalog.extractAllBooks()
+                booksInCategory = booksWithFlags
             )
         }
     }
@@ -130,8 +138,8 @@ class NavigationUseCase(
     /**
      * Select a book
      */
-    fun selectBook(book: Book) {
-        stateManager.updateNavigation {
+    fun selectBook(book: Book, save: Boolean = true) {
+        stateManager.updateNavigation(save = save) {
             copy(selectedBook = book)
         }
     }
@@ -142,12 +150,12 @@ class NavigationUseCase(
      * lists for each ancestor, and ensures the leaf category's books are
      * present so the book row can render.
      */
-    suspend fun expandPathToBookId(bookId: Long) {
+    suspend fun expandPathToBookId(bookId: Long, save: Boolean = true) {
         val book = runCatching { repository.getBookCore(bookId) }.getOrNull() ?: return
-        expandPathToBook(book)
+        expandPathToBook(book, save = save)
     }
 
-    suspend fun expandPathToBook(book: Book) {
+    suspend fun expandPathToBook(book: Book, save: Boolean = true) {
         val leafCatId = book.categoryId
         val path = mutableListOf<Category>()
         var currentId: Long? = leafCatId
@@ -168,7 +176,7 @@ class NavigationUseCase(
         val orderedPath = path.asReversed()
         val expandIds = orderedPath.map { it.id }.toSet()
 
-        stateManager.updateNavigation {
+        stateManager.updateNavigation(save = save) {
             copy(
                 expandedCategories = expandedCategories + expandIds,
                 selectedCategory = orderedPath.lastOrNull()

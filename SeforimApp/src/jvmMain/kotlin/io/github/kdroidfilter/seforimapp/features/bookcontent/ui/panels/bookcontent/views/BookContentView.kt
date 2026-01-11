@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +50,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -76,7 +79,10 @@ fun BookContentView(
     anchorIndex: Int = 0,
     topAnchorLineId: Long = -1L,
     topAnchorTimestamp: Long = 0L,
-    onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> }
+    onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> },
+    altHeadingsByLineId: Map<Long, List<AltTocEntry>> = emptyMap(),
+    lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
+    onPrefetchLineConnections: (List<Long>) -> Unit = {}
 ) {
     // Collect paging data
     val lazyPagingItems: LazyPagingItems<Line> = linesPagingData.collectAsLazyPagingItems()
@@ -126,6 +132,32 @@ fun BookContentView(
 
     // Optimize selected line ID lookup
     val selectedLineId = remember(selectedLine) { selectedLine?.id }
+
+    // Prefetch connection data for visible lines to avoid per-line DB calls
+    LaunchedEffect(listState, lazyPagingItems, onPrefetchLineConnections) {
+        snapshotFlow {
+            if (lazyPagingItems.itemCount == 0) emptyList() else {
+                listState.layoutInfo.visibleItemsInfo.mapNotNull { info ->
+                    if (info.index < lazyPagingItems.itemCount) {
+                        lazyPagingItems.peek(info.index)?.id
+                    } else null
+                }.distinct()
+            }
+        }
+            .map { ids -> ids.distinct() }
+            .filter { it.isNotEmpty() }
+            .distinctUntilChanged()
+            .debounce(150)
+            .collect { ids -> onPrefetchLineConnections(ids) }
+    }
+
+    // Ensure the selected line is prefetched even if it is not visible yet
+    LaunchedEffect(selectedLineId, lineConnections) {
+        val id = selectedLineId ?: return@LaunchedEffect
+        if (lineConnections[id] == null) {
+            onPrefetchLineConnections(listOf(id))
+        }
+    }
 
     // Ensure the selected line is visible when explicitly requested (keyboard/nav)
     // without forcing it to the very top of the viewport.
@@ -193,7 +225,7 @@ fun BookContentView(
 
     // Initial restoration from saved state (TabSystem): prefer saved anchor, otherwise saved index/offset.
     // Runs once per book unless a top-anchor request has been issued (which handles itself).
-    LaunchedEffect(book.id, topAnchorTimestamp) {
+    LaunchedEffect(book.id, topAnchorTimestamp, anchorId, scrollIndex, scrollOffset) {
         if (topAnchorTimestamp != 0L) return@LaunchedEffect
         if (hasRestored) return@LaunchedEffect
 
@@ -206,11 +238,26 @@ fun BookContentView(
 
         // Try saved anchor if available
         if (anchorId != -1L) {
-            val snapshot = lazyPagingItems.itemSnapshotList
-            val idx = snapshot.indices.firstOrNull { snapshot[it]?.id == anchorId }
-            if (idx != null) {
-                debugln { "Restoring by saved anchor: idx=$idx, offset=$scrollOffset" }
-                listState.scrollToItem(idx, scrollOffset.coerceAtLeast(0))
+            fun currentAnchorIndex(): Int? {
+                val snapshot = lazyPagingItems.itemSnapshotList
+                return snapshot.indices.firstOrNull { snapshot[it]?.id == anchorId }
+            }
+
+            var idx = currentAnchorIndex()
+            if (idx == null) {
+                debugln { "Saved anchor $anchorId not yet in snapshot; waiting" }
+                withTimeoutOrNull(1500L) {
+                    snapshotFlow { lazyPagingItems.itemSnapshotList }
+                        .map { snapshot -> snapshot.indices.firstOrNull { snapshot[it]?.id == anchorId } }
+                        .filterNotNull()
+                        .first()
+                        .also { resolved -> idx = resolved }
+                }
+            }
+
+            idx?.let { resolved ->
+                debugln { "Restoring by saved anchor: idx=$resolved, offset=$scrollOffset" }
+                listState.scrollToItem(resolved, scrollOffset.coerceAtLeast(0))
                 hasRestored = true
                 restoredAnchorId = anchorId
                 return@LaunchedEffect
@@ -231,18 +278,19 @@ fun BookContentView(
     // Save scroll position with anchor information - optimized with derivedStateOf
     val scrollData = remember(listState, lazyPagingItems) {
         derivedStateOf {
-            val firstVisibleIndex = listState.firstVisibleItemIndex
+            val firstVisibleInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+            val firstVisibleIndex = firstVisibleInfo?.index ?: listState.firstVisibleItemIndex
             val itemCount = lazyPagingItems.itemCount
-            val safeIndex = firstVisibleIndex.coerceAtMost(itemCount - 1)
+            val safeIndex = firstVisibleIndex.coerceIn(0, maxOf(0, itemCount - 1))
 
-            // Get the ID of the first visible line as the anchor
-            val currentAnchorId = if (safeIndex in 0 until itemCount) {
-                lazyPagingItems[safeIndex]?.id ?: -1L
-            } else {
-                -1L
+            // Prefer the LazyColumn item key to avoid relying on paging snapshot access.
+            val currentAnchorId: Long = when (val key = firstVisibleInfo?.key) {
+                is Long -> key
+                is Int -> key.toLong()
+                else -> if (safeIndex in 0 until itemCount) lazyPagingItems[safeIndex]?.id ?: -1L else -1L
             }
 
-            val scrollOff = listState.firstVisibleItemScrollOffset
+            val scrollOff = listState.firstVisibleItemScrollOffset.coerceAtLeast(0)
 
             AnchorData(
                 anchorId = currentAnchorId,
@@ -253,24 +301,52 @@ fun BookContentView(
         }
     }
 
-    LaunchedEffect(scrollData, hasRestored, scrollIndex, scrollOffset) {
-        // Guard: avoid overwriting a previously saved non-zero position with (0,0) before restoration
-        // Start collecting always, but filter out the initial top emission if we still need to restore
-        snapshotFlow { scrollData.value }
-            .distinctUntilChanged()
-            .debounce(250)
-            .collect { data ->
-                if (!hasRestored) {
-                    val hasSavedNonZero = (scrollIndex > 0 || scrollOffset > 0)
-                    val isCurrentZero = (data.scrollIndex == 0 && data.scrollOffset == 0)
-                    if (hasSavedNonZero && isCurrentZero) {
-                        debugln { "Skipping early (0,0) scroll save to preserve saved position: saved=($scrollIndex,$scrollOffset)" }
-                        return@collect
-                    }
-                }
-                debugln { "Saving scroll: anchor=${data.anchorId}, index=${data.scrollIndex}, offset=${data.scrollOffset}" }
-                onScroll(data.anchorId, data.anchorIndex, data.scrollIndex, data.scrollOffset)
+    val onScrollUpdated by rememberUpdatedState(onScroll)
+    val hasRestoredUpdated by rememberUpdatedState(hasRestored)
+    val savedScrollIndexUpdated by rememberUpdatedState(scrollIndex)
+    val savedScrollOffsetUpdated by rememberUpdatedState(scrollOffset)
+    val savedAnchorIdUpdated by rememberUpdatedState(anchorId)
+    val savedAnchorIndexUpdated by rememberUpdatedState(anchorIndex)
+
+    LaunchedEffect(listState, lazyPagingItems) {
+        fun maybeSave(data: AnchorData) {
+            // Guard: on cold-boot restore, don't overwrite the persisted position with an initial transient emission
+            // before the restoration effect has applied the saved anchor/offset.
+            val hasPersistedPosition =
+                savedAnchorIdUpdated > 0 || savedScrollIndexUpdated > 0 || savedScrollOffsetUpdated > 0
+            if (!hasRestoredUpdated && hasPersistedPosition) {
+                return
             }
+
+            // Avoid wiping a previously known anchor when the list hasn't resolved item keys yet (e.g., while loading).
+            val stableAnchorId = data.anchorId.takeIf { it > 0 } ?: savedAnchorIdUpdated
+            val stableAnchorIndex = if (data.anchorId > 0) data.anchorIndex else savedAnchorIndexUpdated
+
+            debugln {
+                "Saving scroll: anchor=$stableAnchorId, index=${data.scrollIndex}, offset=${data.scrollOffset}"
+            }
+            onScrollUpdated(stableAnchorId, stableAnchorIndex, data.scrollIndex, data.scrollOffset)
+        }
+
+        // While scrolling, sample periodically so a close during an active scroll still restores closely.
+        launch {
+            snapshotFlow { scrollData.value }
+                .distinctUntilChanged()
+                .sample(200)
+                .collect { data -> maybeSave(data) }
+        }
+
+        // When scrolling stops, immediately flush the latest value (avoids being a few lines behind).
+        launch {
+            snapshotFlow { listState.isScrollInProgress }
+                .distinctUntilChanged()
+                .filter { inProgress -> !inProgress }
+                .collect {
+                    // Wait one frame so layoutInfo/visibleItemsInfo reflect the final settled position.
+                    withFrameNanos { }
+                    maybeSave(scrollData.value)
+                }
+        }
     }
 
     // Find-in-page UI state (scoped per tab)
@@ -286,6 +362,10 @@ fun BookContentView(
     var currentHitLineIndex by remember { mutableIntStateOf(-1) }
     var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
     var currentMatchStart by remember { mutableIntStateOf(-1) }
+    val plainTextCache = remember(book.id) { mutableStateMapOf<Long, String>() }
+    val annotatedCache = remember(book.id, textSize, boldScaleForPlatform) {
+        mutableStateMapOf<Long, AnnotatedString>()
+    }
 
     // Navigate to next/previous line containing the query (wrap-around)
     val scope = rememberCoroutineScope()
@@ -303,7 +383,9 @@ fun BookContentView(
         while (guard++ < size) {
             i = (i + step + size) % size
             val line = snapshot[i] ?: continue
-            val text = buildAnnotatedFromHtml(line.content, textSize).text
+            val text = plainTextCache.getOrPut(line.id) {
+                buildAnnotatedFromHtml(line.content, textSize).text
+            }
             val start = findAllMatchesOriginal(text, query).firstOrNull()?.first ?: -1
             if (start >= 0) {
                 currentHitLineIndex = i
@@ -391,18 +473,28 @@ fun BookContentView(
                     val line = lazyPagingItems[index]
 
                     if (line != null) {
-                        LineItem(
-                            line = line,
-                            isSelected = selectedLineId == line.id,
-                            baseTextSize = textSize,
-                            lineHeight = lineHeight,
-                            fontFamily = hebrewFontFamily,
-                            boldScale = boldScaleForPlatform,
-                            onLineSelected = onLineSelected,
-                            scrollToLineTimestamp = scrollToLineTimestamp,
-                            highlightQuery = findState.text.toString().takeIf { showFind },
-                            currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null
-                        )
+                        val altHeadings = altHeadingsByLineId[line.id].orEmpty()
+                        Column {
+                            altHeadings.forEach { entry ->
+                                AltHeadingItem(
+                                    entry = entry,
+                                    onClick = { onLineSelected(line) }
+                                )
+                            }
+                            LineItem(
+                                line = line,
+                                isSelected = selectedLineId == line.id,
+                                baseTextSize = textSize,
+                                lineHeight = lineHeight,
+                                fontFamily = hebrewFontFamily,
+                                boldScale = boldScaleForPlatform,
+                                onLineSelected = onLineSelected,
+                                scrollToLineTimestamp = scrollToLineTimestamp,
+                                highlightQuery = findState.text.toString().takeIf { showFind },
+                                currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
+                                annotatedCache = annotatedCache
+                            )
+                        }
                     } else {
                         // Placeholder while loading
                         LoadingPlaceholder()
@@ -509,6 +601,47 @@ private data class AnchorData(
     val scrollOffset: Int
 )
 
+@Composable
+private fun AltHeadingItem(
+    entry: AltTocEntry,
+    onClick: () -> Unit
+) {
+    val fontSize = when (entry.level) {
+        0 -> 20.sp
+        1 -> 18.sp
+        else -> 16.sp
+    }
+    val paddingTop = if (entry.level == 0) 12.dp else 8.dp
+    val paddingBottom = 4.dp
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 8.dp, end = 8.dp, top = paddingTop, bottom = paddingBottom)
+            .pointerInput(entry.id) {
+                detectTapGestures(onTap = { onClick() })
+            }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = entry.text,
+                fontSize = fontSize,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LineItem(
@@ -521,11 +654,18 @@ private fun LineItem(
     onLineSelected: (Line) -> Unit,
     scrollToLineTimestamp: Long,
     highlightQuery: String? = null,
-    currentMatchStart: Int? = null
+    currentMatchStart: Int? = null,
+    annotatedCache: MutableMap<Long, AnnotatedString>? = null
 ) {
     // Memoize the annotated string with proper keys
-    val annotated = remember(line.id, line.content, baseTextSize, boldScale) {
-        buildAnnotatedFromHtml(
+    val annotated = remember(line.id, line.content, baseTextSize, boldScale, annotatedCache) {
+        annotatedCache?.getOrPut(line.id) {
+            buildAnnotatedFromHtml(
+                line.content,
+                baseTextSize,
+                boldScale = if (boldScale < 1f) 1f else boldScale
+            )
+        } ?: buildAnnotatedFromHtml(
             line.content,
             baseTextSize,
             boldScale = if (boldScale < 1f) 1f else boldScale

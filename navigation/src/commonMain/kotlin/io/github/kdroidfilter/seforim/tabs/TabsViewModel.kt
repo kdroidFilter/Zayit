@@ -1,6 +1,7 @@
 // tabs/TabsViewModel.kt
 package io.github.kdroidfilter.seforim.tabs
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,6 +10,7 @@ import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.math.max
 
+@Immutable
 data class TabItem(
     val id: Int,
     val title: String = "Default Tab",
@@ -18,7 +20,6 @@ data class TabItem(
 
 class TabsViewModel(
     private val titleUpdateManager: TabTitleUpdateManager,
-    private val stateManager: TabStateManager,
     startDestination: TabsDestination
 ) : ViewModel() {
 
@@ -76,13 +77,10 @@ class TabsViewModel(
         }
 
         // Capture tabId to clear any per-tab cached state
-        val tabIdToClose = currentTabs[index].destination.tabId
-        // Clear any state associated with this tab to free memory
-        stateManager.clearTabState(tabIdToClose)
 
         // Supprimer l'onglet à l'index donné
         val newTabs = currentTabs.toMutableList().apply { removeAt(index) }
-        _tabs.value = newTabs
+        _tabs.value = newTabs.toList()
 
         // Ajuster l'index sélectionné
         val currentSelectedIndex = _selectedTabIndex.value
@@ -122,7 +120,7 @@ class TabsViewModel(
         val newTabs = currentTabs.toMutableList()
         val movedTab = newTabs.removeAt(fromIndex)
         newTabs.add(toIndex, movedTab)
-        _tabs.value = newTabs
+        _tabs.value = newTabs.toList()
 
         // Adjust selected index: track which tab was selected by its identity
         val selectedTab = currentTabs.getOrNull(_selectedTabIndex.value)
@@ -149,7 +147,7 @@ class TabsViewModel(
     }
 
     private fun addTabWithDestination(destination: TabsDestination) {
-        // Preserve the provided tabId to allow callers to pre-initialize tab state (e.g., via TabStateManager).
+        // Preserve the provided tabId to allow callers to pre-initialize tab state.
         val newDestination = when (destination) {
             is TabsDestination.Home -> TabsDestination.Home(destination.tabId, destination.version)
             is TabsDestination.Search -> TabsDestination.Search(destination.searchQuery, destination.tabId)
@@ -168,8 +166,6 @@ class TabsViewModel(
 
     private fun closeAllTabs() {
         val currentTabs = _tabs.value
-        // Clear state for all existing tabs
-        currentTabs.forEach { stateManager.clearTabState(it.destination.tabId) }
 
         // Create a fresh default tab
         val destination = TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())
@@ -188,9 +184,6 @@ class TabsViewModel(
         val currentTabs = _tabs.value
         if (index !in 0..currentTabs.lastIndex) return
 
-        // Clear all other tabs' state
-        currentTabs.forEachIndexed { i, tab -> if (i != index) stateManager.clearTabState(tab.destination.tabId) }
-
         val keep = currentTabs[index]
         _tabs.value = listOf(keep)
         _selectedTabIndex.value = 0
@@ -201,10 +194,7 @@ class TabsViewModel(
         val currentTabs = _tabs.value
         if (index !in 0..currentTabs.lastIndex) return
 
-        // Clear state for all tabs strictly to the left of index
-        currentTabs.take(index).forEach { tab -> stateManager.clearTabState(tab.destination.tabId) }
-
-        val newTabs = currentTabs.drop(index)
+        val newTabs = currentTabs.drop(index).toList()
         _tabs.value = newTabs
 
         // Adjust selection: preserve selection if still present; otherwise select the first (which is the original index tab)
@@ -221,10 +211,7 @@ class TabsViewModel(
         val currentTabs = _tabs.value
         if (index !in 0..currentTabs.lastIndex) return
 
-        // Clear state for all tabs strictly to the right of index
-        currentTabs.drop(index + 1).forEach { tab -> stateManager.clearTabState(tab.destination.tabId) }
-
-        val newTabs = currentTabs.take(index + 1)
+        val newTabs = currentTabs.take(index + 1).toList()
         _tabs.value = newTabs
 
         // Adjust selection: if the previous selected was to the right, clamp to last (which is index)
@@ -272,7 +259,7 @@ class TabsViewModel(
             destination = newDestination,
             tabType = tabTypeFor(newDestination)
         )
-        _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
+        _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }.toList()
     }
 
     /**
@@ -286,7 +273,6 @@ class TabsViewModel(
         if (index !in 0..currentTabs.lastIndex) return
 
         val current = currentTabs[index]
-        val oldTabId = current.destination.tabId
         val newTabId = UUID.randomUUID().toString()
 
         val newDestination = when (destination) {
@@ -305,15 +291,12 @@ class TabsViewModel(
             )
         }
 
-        // Clear all state for the old tabId to free memory and avoid state bleed
-        stateManager.clearTabState(oldTabId)
-
         val updated = current.copy(
             title = getTabTitle(newDestination),
             destination = newDestination,
             tabType = tabTypeFor(newDestination)
         )
-        _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }
+        _tabs.value = currentTabs.toMutableList().apply { set(index, updated) }.toList()
     }
 
     /**

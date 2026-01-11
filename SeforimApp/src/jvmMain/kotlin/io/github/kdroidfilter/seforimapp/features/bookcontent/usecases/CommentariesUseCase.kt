@@ -4,17 +4,27 @@ import androidx.paging.Pager
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorGroup
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorItem
 import io.github.kdroidfilter.seforimapp.pagination.CommentsForLineOrTocPagingSource
-import io.github.kdroidfilter.seforimapp.pagination.LineCommentsPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.LineTargumPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.PagingDefaults
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
+import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.core.models.PubDate
+import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentarySummary
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * UseCase pour gérer les commentaires et liens
@@ -27,6 +37,31 @@ class CommentariesUseCase(
 
     private companion object {
         private const val MAX_COMMENTATORS = 4
+        private val YEAR_REGEX = Regex("""-?\d{3,4}""")
+        private const val MAX_BASE_LINES_PER_REQUEST = 128
+    }
+    private val commentatorBookCache: MutableMap<Long, Book> = ConcurrentHashMap()
+    private val defaultTargumCache: MutableMap<Long, List<Long>> = ConcurrentHashMap()
+
+    private data class BaseLineResolution(
+        val baseLineIds: List<Long>,
+        val headingTocEntryId: Long? = null,
+        val headingBookId: Long? = null
+    )
+
+    private suspend fun loadBookMetadata(
+        bookId: Long,
+        localCache: MutableMap<Long, Book>
+    ): Book? {
+        localCache[bookId]?.let { return it }
+        commentatorBookCache[bookId]?.let { cached ->
+            localCache[bookId] = cached
+            return cached
+        }
+        val loaded = runCatching { repository.getBookWithPubDates(bookId) }.getOrNull() ?: return null
+        commentatorBookCache[bookId] = loaded
+        localCache[bookId] = loaded
+        return loaded
     }
     
     /**
@@ -54,11 +89,25 @@ class CommentariesUseCase(
         sourceBookId: Long? = null
     ): Flow<PagingData<CommentaryWithText>> {
         val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
-        
+
         return Pager(
             config = PagingDefaults.COMMENTS.config(placeholders = false),
             pagingSourceFactory = {
-                LineTargumPagingSource(repository, lineId, ids)
+                LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.TARGUM))
+            }
+        ).flow.cachedIn(scope)
+    }
+
+    fun buildSourcesPager(
+        lineId: Long,
+        sourceBookId: Long? = null
+    ): Flow<PagingData<CommentaryWithText>> {
+        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+
+        return Pager(
+            config = PagingDefaults.COMMENTS.config(placeholders = false),
+            pagingSourceFactory = {
+                LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.SOURCE))
             }
         ).flow.cachedIn(scope)
     }
@@ -68,29 +117,95 @@ class CommentariesUseCase(
      */
     suspend fun getAvailableCommentators(lineId: Long): Map<String, Long> {
         return try {
-            val headingToc = repository.getHeadingTocEntryByLineId(lineId)
-            val baseIds = if (headingToc != null) {
-                repository.getLineIdsForTocEntry(headingToc.id).filter { it != lineId }
-            } else listOf(lineId)
+            val groups = getCommentatorGroups(lineId)
+            if (groups.isEmpty()) return emptyMap()
 
-            val commentaries = repository.getCommentariesForLines(baseIds)
-                .filter { it.link.connectionType == ConnectionType.COMMENTARY }
-
-            val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
-
-            // Map display name -> bookId with sanitization, preserving order
             val map = LinkedHashMap<String, Long>()
-            commentaries.forEach { commentary ->
-                val raw = commentary.targetBookTitle
-                val display = sanitizeCommentatorName(raw, currentBookTitle)
-                if (!map.containsKey(display)) {
-                    map[display] = commentary.link.targetBookId
+            groups.forEach { group ->
+                group.commentators.forEach { item ->
+                    if (!map.containsKey(item.name)) {
+                        map[item.name] = item.bookId
+                    }
                 }
             }
             map
         } catch (e: Exception) {
             emptyMap()
         }
+    }
+
+    /**
+     * Regroupe les commentateurs par catégorie (type) et triés par date de publication (plus ancien d'abord).
+     */
+    suspend fun getCommentatorGroups(lineId: Long): List<CommentatorGroup> {
+        return try {
+            val entries = loadCommentatorEntries(lineId)
+            if (entries.isEmpty()) return emptyList()
+
+            val categoryCache = mutableMapOf<Long, Category?>()
+            groupCommentatorEntries(entries, categoryCache)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private suspend fun resolveGroupLabel(
+        book: Book?,
+        cache: MutableMap<Long, Category?>
+    ): String {
+        if (book == null) return ""
+
+        suspend fun loadCategory(id: Long): Category? {
+            cache[id]?.let { return it }
+            val loaded = runCatching { repository.getCategory(id) }.getOrNull()
+            cache[id] = loaded
+            return loaded
+        }
+
+        var currentId: Long? = book.categoryId
+        while (currentId != null) {
+            val category = loadCategory(currentId) ?: break
+            val title = category.title
+
+            // Prefer high-level "commentaries on ..." buckets
+            if (
+                title.contains("על התנ״ך") ||
+                title.contains("על התלמוד") ||
+                title.contains("על המשנה") ||
+                title.contains("על המשניות") ||
+                title.contains("על הש\"ס") ||
+                title.contains("על השס")
+            ) {
+                return title
+            }
+
+            // Broad families (e.g., חסידות, מילונים)
+            if (title == "חסידות" || title.contains("חסידות")) {
+                return title
+            }
+            if (title.contains("מילונים")) {
+                return title
+            }
+            if (title == "ראשונים") {
+                return title
+            }
+
+            // Generic "מפרשים" bucket (e.g., for משנה תורה)
+            if (title == "מפרשים") {
+                val parent = category.parentId?.let { parentId ->
+                    loadCategory(parentId)
+                }
+                if (parent != null && parent.title.isNotBlank()) {
+                    return "מפרשים על ${parent.title}"
+                }
+                return title
+            }
+
+            currentId = category.parentId
+        }
+
+        val baseCategory = loadCategory(book.categoryId)
+        return baseCategory?.title ?: ""
     }
 
     private fun sanitizeCommentatorName(raw: String, currentBookTitle: String): String {
@@ -102,28 +217,266 @@ class CommentariesUseCase(
             .replace(" על $t", "")
             .trim()
     }
+
+    private data class CommentatorEntry(
+        val bookId: Long,
+        val displayName: String,
+        val book: Book?
+    )
+
+    private suspend fun buildCommentatorEntries(
+        commentaries: List<CommentarySummary>,
+        currentBookTitle: String,
+        bookCache: MutableMap<Long, Book>
+    ): List<CommentatorEntry> {
+        val displayNameByBookId = LinkedHashMap<Long, String>()
+
+        commentaries.forEach { commentary ->
+            val bookId = commentary.link.targetBookId
+            if (!displayNameByBookId.containsKey(bookId)) {
+                val raw = commentary.targetBookTitle
+                val display = sanitizeCommentatorName(raw, currentBookTitle)
+                displayNameByBookId[bookId] = display
+            }
+        }
+
+        val booksById: Map<Long, Book?> = displayNameByBookId.keys.associateWith { id ->
+            loadBookMetadata(id, bookCache)
+        }
+
+        return displayNameByBookId.map { (bookId, displayName) ->
+            CommentatorEntry(
+                bookId = bookId,
+                displayName = displayName,
+                book = booksById[bookId]
+            )
+        }
+    }
+
+    private suspend fun groupCommentatorEntries(
+        entries: List<CommentatorEntry>,
+        categoryCache: MutableMap<Long, Category?>
+    ): List<CommentatorGroup> {
+        if (entries.isEmpty()) return emptyList()
+
+        val groupsByLabel = LinkedHashMap<String, MutableList<CommentatorEntry>>()
+        entries.forEach { entry ->
+            val label = resolveGroupLabel(entry.book, categoryCache)
+            val list = groupsByLabel.getOrPut(label) { mutableListOf() }
+            list.add(entry)
+        }
+
+        data class TempGroup(
+            val label: String,
+            val entries: List<CommentatorEntry>,
+            val earliestYear: Int
+        )
+
+        val tempGroups = groupsByLabel.map { (label, groupEntries) ->
+            val sortedEntries = groupEntries.sortedWith(
+                compareBy<CommentatorEntry>(
+                    { entry -> entry.book?.pubDates?.let { extractEarliestYear(it) } ?: Int.MAX_VALUE },
+                    { entry -> entry.displayName }
+                )
+            )
+            val groupEarliestYear = sortedEntries.firstOrNull()
+                ?.book
+                ?.pubDates
+                ?.let { extractEarliestYear(it) }
+                ?: Int.MAX_VALUE
+
+            TempGroup(
+                label = label,
+                entries = sortedEntries,
+                earliestYear = groupEarliestYear
+            )
+        }
+
+        return tempGroups
+            .sortedWith(
+                compareBy<TempGroup> { it.earliestYear }
+                    .thenBy { it.label }
+            )
+            .map { group ->
+                CommentatorGroup(
+                    label = group.label,
+                    commentators = group.entries.map { entry ->
+                        CommentatorItem(
+                            name = entry.displayName,
+                            bookId = entry.bookId
+                        )
+                    }
+                )
+            }
+            .filter { it.commentators.isNotEmpty() }
+    }
+
+    private fun buildSourceMap(
+        links: List<CommentarySummary>,
+        currentBookTitle: String
+    ): Map<String, Long> {
+        if (links.isEmpty()) return emptyMap()
+
+        val map = LinkedHashMap<String, Long>()
+        links.forEach { link ->
+            val display = sanitizeCommentatorName(link.targetBookTitle, currentBookTitle)
+            if (!map.containsKey(display)) {
+                map[display] = link.link.targetBookId
+            }
+        }
+        return map
+    }
+
+    private suspend fun buildLineConnectionsSnapshot(
+        connections: List<CommentarySummary>,
+        currentBookTitle: String,
+        bookCache: MutableMap<Long, Book>,
+        categoryCache: MutableMap<Long, Category?>
+    ): LineConnectionsSnapshot {
+        if (connections.isEmpty()) return LineConnectionsSnapshot()
+
+        val commentaries = connections.filter { it.link.connectionType == ConnectionType.COMMENTARY }
+        val targumLinks = connections.filter { it.link.connectionType == ConnectionType.TARGUM }
+        val sourceLinks = connections.filter { it.link.connectionType == ConnectionType.SOURCE }
+
+        val commentatorGroups = if (commentaries.isNotEmpty()) {
+            val entries = buildCommentatorEntries(commentaries, currentBookTitle, bookCache)
+            groupCommentatorEntries(entries, categoryCache)
+        } else {
+            emptyList()
+        }
+
+        return LineConnectionsSnapshot(
+            commentatorGroups = commentatorGroups,
+            targumSources = buildSourceMap(targumLinks, currentBookTitle),
+            sources = buildSourceMap(sourceLinks, currentBookTitle)
+        )
+    }
+
+    private suspend fun loadCommentatorEntries(lineId: Long): List<CommentatorEntry> {
+        val baseIds = resolveBaseLineIds(lineId)
+
+        val commentaries = repository.getCommentarySummariesForLines(baseIds)
+            .filter { it.link.connectionType == ConnectionType.COMMENTARY }
+
+        if (commentaries.isEmpty()) return emptyList()
+
+        val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
+        val bookCache = mutableMapOf<Long, Book>()
+        return buildCommentatorEntries(commentaries, currentBookTitle, bookCache)
+    }
+
+    private fun extractEarliestYear(pubDates: List<PubDate>): Int? {
+        var best: Int? = null
+        for (pub in pubDates) {
+            val raw = pub.date
+            val candidate = YEAR_REGEX.find(raw)?.value?.toIntOrNull()
+                ?: if (raw.contains("Ancient", ignoreCase = true)) Int.MIN_VALUE else null
+            if (candidate != null) {
+                best = if (best == null || candidate < best) candidate else best
+            }
+        }
+        return best
+    }
     
     /**
      * Récupère les sources de liens disponibles pour une ligne
      */
     suspend fun getAvailableLinks(lineId: Long): Map<String, Long> {
         return try {
-            val links = repository.getCommentariesForLines(listOf(lineId))
+            val resolution = resolveBaseLineResolution(lineId)
+            val defaultTargumId = resolution.headingBookId?.let { bookId ->
+                loadDefaultTargumIds(bookId).firstOrNull()
+            }
+            val links = repository.getCommentarySummariesForLines(resolution.baseLineIds)
                 .filter { it.link.connectionType == ConnectionType.TARGUM }
+                .let { targumLinks ->
+                    if (resolution.headingTocEntryId != null && defaultTargumId != null) {
+                        targumLinks.filter { it.link.targetBookId == defaultTargumId }
+                    } else targumLinks
+                }
 
             val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
 
-            val map = LinkedHashMap<String, Long>()
-            links.forEach { link ->
-                val raw = link.targetBookTitle
-                val display = sanitizeCommentatorName(raw, currentBookTitle)
-                if (!map.containsKey(display)) {
-                    map[display] = link.link.targetBookId
-                }
-            }
-            map
+            buildSourceMap(links, currentBookTitle)
         } catch (e: Exception) {
             emptyMap()
+        }
+    }
+
+    suspend fun getAvailableSources(lineId: Long): Map<String, Long> {
+        return try {
+            val baseIds = resolveBaseLineIds(lineId)
+            val links = repository.getCommentarySummariesForLines(baseIds)
+                .filter { it.link.connectionType == ConnectionType.SOURCE }
+
+            val currentBookTitle = stateManager.state.first().navigation.selectedBook?.title?.trim().orEmpty()
+
+            buildSourceMap(links, currentBookTitle)
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    suspend fun loadLineConnections(lineIds: List<Long>): Map<Long, LineConnectionsSnapshot> {
+        if (lineIds.isEmpty()) return emptyMap()
+
+        val distinctIds = lineIds.distinct()
+        val resolutionCache = LinkedHashMap<Long, BaseLineResolution>()
+        val tocLinesCache = mutableMapOf<Long, List<Long>>()
+        val headingCache = mutableMapOf<Long, TocEntry?>()
+
+        distinctIds.forEach { id ->
+            resolutionCache[id] = resolveBaseLineResolution(id, tocLinesCache, headingCache)
+        }
+
+        val allBaseIds = resolutionCache.values.flatMap { it.baseLineIds }.distinct()
+        if (allBaseIds.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
+
+        val allConnections = repository.getCommentarySummariesForLines(allBaseIds)
+        if (allConnections.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
+
+        val connectionsBySource = allConnections.groupBy { it.link.sourceLineId }
+        val currentState = stateManager.state.first()
+        val currentBookTitle = currentState.navigation.selectedBook?.title?.trim().orEmpty()
+        val bookCache = mutableMapOf<Long, Book>()
+        val categoryCache = mutableMapOf<Long, Category?>()
+
+        val defaultTargumByBookId = mutableMapOf<Long, Long?>()
+        resolutionCache.values.mapNotNull { it.headingBookId }.distinct().forEach { bookId ->
+            val ids = loadDefaultTargumIds(bookId)
+            defaultTargumByBookId[bookId] = ids.firstOrNull()
+        }
+
+        return resolutionCache.mapValues { (_, resolution) ->
+            val aggregated = resolution.baseLineIds.flatMap { baseId -> connectionsBySource[baseId].orEmpty() }
+            val defaultTargumId = resolution.headingBookId?.let { defaultTargumByBookId[it] }
+            val filtered = filterTargumConnections(aggregated, resolution, defaultTargumId)
+            buildLineConnectionsSnapshot(filtered, currentBookTitle, bookCache, categoryCache)
+        }
+    }
+
+    /**
+     * Applique les commentateurs par défaut pour un livre donné, s'ils existent dans la base.
+     * Ne remplace pas une configuration déjà mémorisée pour ce livre.
+     */
+    suspend fun applyDefaultCommentatorsForBook(bookId: Long) {
+        val currentState = stateManager.state.first()
+        val existing = currentState.content.selectedCommentatorsByBook[bookId]
+        if (!existing.isNullOrEmpty()) return
+
+        val defaults = runCatching {
+            repository.getDefaultCommentatorIdsForBook(bookId)
+        }.getOrDefault(emptyList())
+
+        if (defaults.isEmpty()) return
+
+        val limited = defaults.take(MAX_COMMENTATORS).toSet()
+
+        stateManager.updateContent {
+            val byBook = selectedCommentatorsByBook.toMutableMap()
+            byBook[bookId] = limited
+            copy(selectedCommentatorsByBook = byBook)
         }
     }
     
@@ -159,6 +512,67 @@ class CommentariesUseCase(
             )
         }
     }
+
+    private suspend fun resolveBaseLineIds(lineId: Long): List<Long> =
+        resolveBaseLineResolution(lineId).baseLineIds
+
+    private suspend fun resolveBaseLineIds(
+        lineId: Long,
+        tocLinesCache: MutableMap<Long, List<Long>>,
+        headingCache: MutableMap<Long, TocEntry?> = mutableMapOf()
+    ): List<Long> = resolveBaseLineResolution(lineId, tocLinesCache, headingCache).baseLineIds
+
+    private suspend fun resolveBaseLineResolution(lineId: Long): BaseLineResolution =
+        resolveBaseLineResolution(lineId, mutableMapOf(), mutableMapOf())
+
+    private suspend fun resolveBaseLineResolution(
+        lineId: Long,
+        tocLinesCache: MutableMap<Long, List<Long>>,
+        headingCache: MutableMap<Long, TocEntry?>
+    ): BaseLineResolution {
+        val headingToc = headingCache.getOrPut(lineId) {
+            repository.getHeadingTocEntryByLineId(lineId)
+        }
+        if (headingToc != null) {
+            val lines = tocLinesCache.getOrPut(headingToc.id) {
+                repository.getLineIdsForTocEntry(headingToc.id)
+            }
+            val idx = lines.indexOf(lineId)
+            val trimmed = if (idx >= 0) {
+                val halfWindow = MAX_BASE_LINES_PER_REQUEST / 2
+                val start = max(0, idx - halfWindow)
+                val end = min(lines.size, start + MAX_BASE_LINES_PER_REQUEST)
+                lines.subList(start, end)
+            } else {
+                lines.take(MAX_BASE_LINES_PER_REQUEST)
+            }
+            return BaseLineResolution(
+                baseLineIds = trimmed.filter { it != lineId },
+                headingTocEntryId = headingToc.id,
+                headingBookId = headingToc.bookId
+            )
+        }
+        return BaseLineResolution(baseLineIds = listOf(lineId))
+    }
+
+    private suspend fun loadDefaultTargumIds(bookId: Long): List<Long> {
+        defaultTargumCache[bookId]?.let { return it }
+        val ids = runCatching { repository.getDefaultTargumIdsForBook(bookId) }
+            .getOrElse { emptyList() }
+        defaultTargumCache[bookId] = ids
+        return ids
+    }
+
+    private fun filterTargumConnections(
+        connections: List<CommentarySummary>,
+        resolution: BaseLineResolution,
+        defaultTargumId: Long?
+    ): List<CommentarySummary> {
+        if (resolution.headingTocEntryId == null || defaultTargumId == null) return connections
+        return connections.filter { summary ->
+            summary.link.connectionType != ConnectionType.TARGUM || summary.link.targetBookId == defaultTargumId
+        }
+    }
     
     /**
      * Met à jour les sources de liens sélectionnées pour une ligne
@@ -186,7 +600,35 @@ class CommentariesUseCase(
         stateManager.updateContent {
             copy(
                 selectedLinkSourcesByLine = byLine,
-                selectedLinkSourcesByBook = byBook
+                selectedLinkSourcesByBook = byBook,
+                selectedTargumSourceIds = selectedIds
+            )
+        }
+    }
+
+    suspend fun updateSelectedSources(lineId: Long, selectedIds: Set<Long>) {
+        val currentContent = stateManager.state.first().content
+        val bookId = stateManager.state.first().navigation.selectedBook?.id ?: return
+
+        val byLine = currentContent.selectedSourcesByLine.toMutableMap()
+        if (selectedIds.isEmpty()) {
+            byLine.remove(lineId)
+        } else {
+            byLine[lineId] = selectedIds
+        }
+
+        val byBook = currentContent.selectedSourcesByBook.toMutableMap()
+        if (selectedIds.isEmpty()) {
+            byBook.remove(bookId)
+        } else {
+            byBook[bookId] = selectedIds
+        }
+
+        stateManager.updateContent {
+            copy(
+                selectedSourcesByLine = byLine,
+                selectedSourcesByBook = byBook,
+                selectedSourceIds = selectedIds
             )
         }
     }
@@ -248,6 +690,25 @@ class CommentariesUseCase(
             }
         } catch (e: Exception) {
             // Ignorer les erreurs silencieusement
+        }
+    }
+
+    suspend fun reapplySelectedSources(line: Line) {
+        val currentState = stateManager.state.first()
+        val bookId = currentState.navigation.selectedBook?.id ?: line.bookId
+        val remembered = currentState.content.selectedSourcesByBook[bookId] ?: emptySet()
+
+        if (remembered.isEmpty()) return
+
+        try {
+            val available = getAvailableSources(line.id)
+            val availableIds = available.values.toSet()
+            val intersection = remembered.intersect(availableIds)
+
+            if (intersection.isNotEmpty()) {
+                updateSelectedSources(line.id, intersection)
+            }
+        } catch (_: Exception) {
         }
     }
     

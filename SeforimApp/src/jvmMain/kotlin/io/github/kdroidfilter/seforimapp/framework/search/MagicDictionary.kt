@@ -34,7 +34,10 @@ class MagicDictionaryIndex private constructor(
             // Enforce read-only queries without altering connection flags post-open
             createStatement().use { stmt -> stmt.execute("PRAGMA query_only=ON") }
         }
-        LookupContext(conn, conn.prepareStatement(LOOKUP_SQL))
+        LookupContext(
+            conn = conn,
+            stmt = conn.prepareStatement(LOOKUP_SQL)
+        )
     }
 
     /**
@@ -144,13 +147,14 @@ class MagicDictionaryIndex private constructor(
                         ?: surfaceN.firstOrNull()
                         ?: normalizedToken
 
-                    val allTerms = (surfaceN + variantsN + baseN).distinct()
+                    val baseTerms = listOfNotNull(baseN.takeIf { it.isNotEmpty() })
+                    val allTerms = (surfaceN + variantsN + baseTerms).distinct()
                     if (allTerms.isEmpty()) continue
 
                     val exp = Expansion(
                         surface = allTerms,
                         variants = emptyList(),
-                        base = listOf(baseN)
+                        base = baseTerms
                     )
 
                     synchronized(baseCache) {
@@ -198,24 +202,32 @@ class MagicDictionaryIndex private constructor(
         /**
          * Find the first candidate path that exists and contains the required tables.
          */
-        fun findValidDictionary(candidates: List<Path>): Path? =
-            candidates.firstOrNull { candidate ->
-                Files.isRegularFile(candidate) && hasRequiredTables(candidate)
-            }?.also {
-                debugln { "[MagicDictionary] Using validated lexical db at $it" }
+        fun findValidDictionary(candidates: List<Path>): Path? {
+            for (candidate in candidates) {
+                if (!Files.isRegularFile(candidate)) continue
+                if (hasRequiredTables(candidate)) {
+                    debugln { "[MagicDictionary] Using validated lexical db at $candidate" }
+                    return candidate
+                } else {
+                    debugln {
+                        "[MagicDictionary] Candidate $candidate is present but missing required tables; skipping"
+                    }
+                }
             }
+            return null
+        }
 
         private fun hasRequiredTables(file: Path): Boolean = runCatching {
             DriverManager.getConnection("jdbc:sqlite:${file.toAbsolutePath()}").use { conn ->
                 val sql = """
-                    SELECT name FROM sqlite_master 
-                    WHERE type = 'table' AND name IN ('surface', 'variant', 'base')
+                    SELECT name FROM sqlite_master
+                    WHERE type = 'table' AND name IN ('surface', 'variant', 'base', 'surface_variant')
                 """.trimIndent()
                 conn.createStatement().use { stmt ->
                     val rs = stmt.executeQuery(sql)
                     val names = mutableSetOf<String>()
                     while (rs.next()) names += rs.getString("name") ?: ""
-                    names.containsAll(listOf("surface", "variant", "base"))
+                    names.containsAll(listOf("surface", "variant", "base", "surface_variant"))
                 }
             }
         }.getOrElse { false }
@@ -226,7 +238,10 @@ class MagicDictionaryIndex private constructor(
                 UNION
                 SELECT b.id FROM base b WHERE b.value = ?
                 UNION
-                SELECT s.base_id FROM variant v JOIN surface s ON v.surface_id = s.id WHERE v.value = ?
+                SELECT s.base_id FROM variant v
+                JOIN surface_variant sv ON sv.variant_id = v.id
+                JOIN surface s ON sv.surface_id = s.id
+                WHERE v.value = ?
             )
             SELECT b.id as base_id,
                    b.value as base,
@@ -235,7 +250,8 @@ class MagicDictionaryIndex private constructor(
             FROM base b
             JOIN matches m ON m.base_id = b.id
             LEFT JOIN surface s ON s.base_id = b.id
-            LEFT JOIN variant v ON v.surface_id = s.id
+            LEFT JOIN surface_variant sv ON sv.surface_id = s.id
+            LEFT JOIN variant v ON sv.variant_id = v.id
         """
     }
 
@@ -272,5 +288,36 @@ class MagicDictionaryIndex private constructor(
             applyFinalForm(rawToken),
             applyFinalForm(normalized)
         ).filter { it.isNotBlank() }.distinct()
+    }
+
+    /**
+     * Load all surface forms whose base lemma directly from the underlying SQLite DB.
+     * This is used for snippet highlighting of Hashem names, independent of token-level expansions.
+     */
+    fun loadHashemSurfaces(): List<String> {
+        val terms = linkedSetOf<String>()
+        runCatching {
+            DriverManager.getConnection(url).use { conn ->
+                val sql = """
+                    SELECT s.value AS surface
+                    FROM surface s
+                    JOIN base b ON s.base_id = b.id
+                    WHERE b.value = 'יהוה'
+                """.trimIndent()
+                conn.createStatement().use { stmt ->
+                    val rs = stmt.executeQuery(sql)
+                    while (rs.next()) {
+                        val v = rs.getString("surface") ?: continue
+                        val trimmed = v.trim()
+                        if (trimmed.isNotEmpty()) {
+                            terms += trimmed
+                        }
+                    }
+                }
+            }
+        }.onFailure {
+            debugln { "[MagicDictionary] Failed to load Hashem surfaces: ${it.message}" }
+        }
+        return terms.toList()
     }
 }

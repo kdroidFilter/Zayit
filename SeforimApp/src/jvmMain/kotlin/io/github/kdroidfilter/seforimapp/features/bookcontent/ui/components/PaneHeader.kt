@@ -3,13 +3,14 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -35,7 +36,8 @@ import seforimapp.seforimapp.generated.resources.commentaries
 fun PaneHeader(
     label: String,
     interactionSource: MutableInteractionSource? = null,
-    onHide: () -> Unit
+    onHide: () -> Unit,
+    actions: (@Composable RowScope.() -> Unit)? = null
 ) {
     val headerHoverSource = interactionSource ?: remember { MutableInteractionSource() }
     val isHovered by headerHoverSource.collectIsHoveredAsState()
@@ -66,11 +68,17 @@ fun PaneHeader(
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                IconActionButton(
-                    key = AllIconsKeys.Windows.Minimize,
-                    onClick = onHide,
-                    contentDescription = "Hide panel"
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    actions?.invoke(this)
+                    IconActionButton(
+                        key = AllIconsKeys.Windows.Minimize,
+                        onClick = onHide,
+                        contentDescription = "Hide panel"
+                    )
+                }
             }
         }
 

@@ -47,6 +47,7 @@ object ThemeUtils {
             IntUiThemes.System -> isSystemInDarkMode()
         }
         val disabledValues = if (isDarkTheme) DisabledAppearanceValues.dark() else DisabledAppearanceValues.light()
+
         if (isDarkTheme) {
             JewelTheme.darkThemeDefinition(
                 defaultTextStyle = defaultTextStyle(),

@@ -4,13 +4,24 @@ package io.github.kdroidfilter.seforimapp.features.search
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactory
+import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactoryKey
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.search.domain.BuildSearchTreeUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.GetBreadcrumbPiecesUseCase
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
+import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
+import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
@@ -47,15 +58,38 @@ data class SearchUiState(
     val progressTotal: Long? = null
 )
 
+@AssistedInject
 class SearchResultViewModel(
-    savedStateHandle: SavedStateHandle,
-    private val stateManager: TabStateManager,
+    @Assisted savedStateHandle: SavedStateHandle,
+    private val persistedStore: TabPersistedStateStore,
     private val repository: SeforimRepository,
     private val lucene: LuceneSearchService,
     private val titleUpdateManager: TabTitleUpdateManager,
     private val tabsViewModel: TabsViewModel
 ) : ViewModel() {
+    @AssistedFactory
+    @ViewModelAssistedFactoryKey(SearchResultViewModel::class)
+    @ContributesIntoMap(AppScope::class)
+    fun interface Factory : ViewModelAssistedFactory {
+        override fun create(extras: CreationExtras): SearchResultViewModel {
+            return create(extras.createSavedStateHandle())
+        }
+
+        fun create(@Assisted savedStateHandle: SavedStateHandle): SearchResultViewModel
+    }
+
     internal val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
+
+    private fun persistedSearchState(): SearchPersistedState =
+        persistedStore.get(tabId)?.search ?: SearchPersistedState()
+
+    private fun updatePersistedSearch(transform: (SearchPersistedState) -> SearchPersistedState) {
+        persistedStore.update(tabId) { current ->
+            val next = transform(current.search ?: SearchPersistedState())
+            current.copy(search = next)
+        }
+    }
+
     private val getBreadcrumbPieces = GetBreadcrumbPiecesUseCase(repository)
     private val buildSearchTreeUseCase = BuildSearchTreeUseCase(repository)
     // MVI events for SearchResultViewModel
@@ -98,13 +132,15 @@ class SearchResultViewModel(
             is SearchResultEvents.RequestBreadcrumb -> viewModelScope.launch {
                 val pieces = runCatching { getBreadcrumbPiecesFor(event.result) }.getOrDefault(emptyList())
                 if (pieces.isNotEmpty()) {
-                    _breadcrumbs.update { it + (event.result.lineId to pieces) }
+                    val next = _breadcrumbs.value + (event.result.lineId to pieces)
+                    _breadcrumbs.value = next
+                    updatePersistedSearch { it.copy(breadcrumbs = next) }
                 }
             }
             is SearchResultEvents.SetUiVisible -> _uiVisible.value = event.visible
             is SearchResultEvents.SetGlobalExtended -> {
                 _uiState.value = _uiState.value.copy(globalExtended = event.extended)
-                stateManager.saveState(tabId, SearchStateKeys.GLOBAL_EXTENDED, event.extended)
+                updatePersistedSearch { it.copy(globalExtended = event.extended) }
             }
         }
     }
@@ -600,45 +636,56 @@ class SearchResultViewModel(
     private val tocBookCache: MutableMap<Long, Long> = mutableMapOf()
 
     init {
-        // Prefer TabStateManager value (persisted across sessions) over the nav argument,
-        // so the top bar reflects the most recent query even if the destination query is stale.
-        val initialQuery = stateManager.getState<String>(tabId, SearchStateKeys.QUERY)
-            ?: savedStateHandle.get<String>("searchQuery")
-            ?: ""
-        val initialScrollIndex = stateManager.getState<Int>(tabId, SearchStateKeys.SCROLL_INDEX) ?: 0
-        val initialScrollOffset = stateManager.getState<Int>(tabId, SearchStateKeys.SCROLL_OFFSET) ?: 0
-        val initialAnchorId = stateManager.getState<Long>(tabId, SearchStateKeys.ANCHOR_ID) ?: -1L
-        val initialAnchorIndex = stateManager.getState<Int>(tabId, SearchStateKeys.ANCHOR_INDEX) ?: 0
-        val initialFilterBookId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)
-        val initialFilterTocId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_TOC_ID)
-        val datasetScope = stateManager.getState<String>(tabId, SearchStateKeys.DATASET_SCOPE) ?: "global"
-        val fetchCategoryId = stateManager.getState<Long>(tabId, SearchStateKeys.FETCH_CATEGORY_ID)
-        val fetchBookId = stateManager.getState<Long>(tabId, SearchStateKeys.FETCH_BOOK_ID)
-        val fetchTocId = stateManager.getState<Long>(tabId, SearchStateKeys.FETCH_TOC_ID)
+        val persisted = persistedSearchState()
+        val navQuery = savedStateHandle.get<String>("searchQuery") ?: ""
+        val initialQuery = persisted.query.takeIf { it.isNotBlank() } ?: navQuery
+
+        if (initialQuery.isNotBlank() && persisted.query != initialQuery) {
+            updatePersistedSearch { it.copy(query = initialQuery) }
+        }
+
+        _selectedCategoryIds.value = persisted.selectedCategoryIds
+        _selectedBookIds.value = persisted.selectedBookIds
+        _selectedTocIds.value = persisted.selectedTocIds
+        _breadcrumbs.value = persisted.breadcrumbs
+
         _uiState.value = _uiState.value.copy(
             query = initialQuery,
-            scrollIndex = initialScrollIndex,
-            scrollOffset = initialScrollOffset,
-            anchorId = initialAnchorId,
-            anchorIndex = initialAnchorIndex,
+            globalExtended = persisted.globalExtended,
+            scrollIndex = persisted.scrollIndex,
+            scrollOffset = persisted.scrollOffset,
+            anchorId = persisted.anchorId,
+            anchorIndex = persisted.anchorIndex,
             textSize = AppSettings.getTextSize(),
-            scopeTocId = initialFilterTocId?.takeIf { it > 0 }
+            scopeTocId = persisted.filterTocId.takeIf { it > 0 }
         )
 
-        // Restore scope book from either book filter or TOC filter
+        val filterCategoryId = persisted.filterCategoryId.takeIf { it > 0 }
+        val filterBookId = persisted.filterBookId.takeIf { it > 0 }
+        val filterTocId = persisted.filterTocId.takeIf { it > 0 }
+
+        // Restore scope book from either book filter or TOC filter.
         when {
-            initialFilterBookId != null && initialFilterBookId > 0 -> {
+            filterBookId != null -> {
                 viewModelScope.launch {
-                    val book = repository.getBookCore(initialFilterBookId)
+                    val book = repository.getBookCore(filterBookId)
                     _uiState.value = _uiState.value.copy(scopeBook = book)
                 }
             }
-            initialFilterTocId != null && initialFilterTocId > 0 -> {
+            filterTocId != null -> {
                 viewModelScope.launch {
-                    val toc = repository.getTocEntry(initialFilterTocId)
+                    val toc = repository.getTocEntry(filterTocId)
                     val book = toc?.let { repository.getBookCore(it.bookId) }
                     _uiState.value = _uiState.value.copy(scopeBook = book)
                 }
+            }
+        }
+
+        // Restore category scope path if a category filter is persisted.
+        if (filterCategoryId != null) {
+            viewModelScope.launch {
+                val path = runCatching { buildCategoryPath(filterCategoryId) }.getOrDefault(emptyList())
+                _uiState.value = _uiState.value.copy(scopeCategoryPath = path)
             }
         }
 
@@ -648,10 +695,9 @@ class SearchResultViewModel(
         }
 
         // Try to restore a full snapshot for this tab without redoing the search.
-        // Try memory cache first, then persistent cache on disk
-        val cached = SearchTabCache.get(tabId) ?: SearchTabPersistentCache.load(tabId)?.also { SearchTabCache.put(tabId, it) }
+        val cached = persisted.snapshot
         if (cached != null) {
-            // Adopt cached results and aggregates; keep filters and scroll from state manager
+            // Adopt cached results and aggregates; keep filters and scroll from persisted state.
             _uiState.value = _uiState.value.copy(
                 results = cached.results,
                 isLoading = false,
@@ -683,22 +729,16 @@ class SearchResultViewModel(
                     )
                 _searchTree.value = snapList.map { mapNode(it) }
             }
-            // Reconstruct currentKey from dataset fetch scope (not view filters)
+            // Reconstruct currentKey from fetch scope.
+            val fetchCategoryId = persisted.fetchCategoryId.takeIf { it > 0 } ?: persisted.filterCategoryId.takeIf { it > 0 }
+            val fetchBookId = persisted.fetchBookId.takeIf { it > 0 } ?: persisted.filterBookId.takeIf { it > 0 }
+            val fetchTocId = persisted.fetchTocId.takeIf { it > 0 } ?: persisted.filterTocId.takeIf { it > 0 }
             currentKey = SearchParamsKey(
                 query = _uiState.value.query,
-                filterCategoryId = fetchCategoryId?.takeIf { datasetScope == "category" && it > 0 },
-                filterBookId = fetchBookId?.takeIf { (datasetScope == "book" || datasetScope == "toc") && it > 0 },
-                filterTocId = fetchTocId?.takeIf { datasetScope == "toc" && it > 0 }
+                filterCategoryId = fetchCategoryId,
+                filterBookId = fetchBookId,
+                filterTocId = fetchTocId
             )
-            // Restore category path if needed (async, non-blocking)
-            viewModelScope.launch {
-                // Restore category scope path if a category filter is persisted
-                val filterCategoryId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_CATEGORY_ID)
-                if (filterCategoryId != null && filterCategoryId > 0) {
-                    val path = runCatching { buildCategoryPath(filterCategoryId) }.getOrDefault(emptyList())
-                    _uiState.value = _uiState.value.copy(scopeCategoryPath = path)
-                }
-            }
         } else if (initialQuery.isNotBlank()) {
             // Fresh VM with no snapshot – run the search
             executeSearch()
@@ -726,10 +766,6 @@ class SearchResultViewModel(
                             currentJob?.cancel()
                             _uiState.value = _uiState.value.copy(isLoading = false, isLoadingMore = false)
                         }
-                        // Save a fresh snapshot (cropped) for instant restoration
-                        val snap = buildSnapshot(_uiState.value.results)
-                        SearchTabCache.put(tabId, snap)
-                        SearchTabPersistentCache.save(tabId, snap)
                     }
                 } else {
                     // Do not auto-resume search on tab reselect. Keep current results/snapshot only.
@@ -743,10 +779,8 @@ class SearchResultViewModel(
             tabsViewModel.tabs.collect { tabs ->
                 val exists = tabs.any { it.destination.tabId == tabId }
                 if (!exists) {
-                    // Tab was closed; stop work and clear any cached snapshot to free memory
+                    // Tab was closed; stop work.
                     cancelSearch()
-                    SearchTabCache.clear(tabId)
-                    SearchTabPersistentCache.clear(tabId)
                 }
             }
         }
@@ -761,7 +795,7 @@ class SearchResultViewModel(
     fun setQuery(query: String) {
         val q = query.trim()
         _uiState.value = _uiState.value.copy(query = q)
-        stateManager.saveState(tabId, SearchStateKeys.QUERY, q)
+        updatePersistedSearch { it.copy(query = q) }
         if (q.isNotEmpty()) {
             // Keep the tab title synced with the current query
             titleUpdateManager.updateTabTitle(tabId, q, TabType.SEARCH)
@@ -773,11 +807,19 @@ class SearchResultViewModel(
         if (q.isBlank()) return
         // New search: clear any previous streaming job and reset scroll/anchor state
         currentJob?.cancel()
-        // Reset persisted scroll/anchor so restoration targets the top for fresh results
-        stateManager.saveState(tabId, SearchStateKeys.SCROLL_INDEX, 0)
-        stateManager.saveState(tabId, SearchStateKeys.SCROLL_OFFSET, 0)
-        stateManager.saveState(tabId, SearchStateKeys.ANCHOR_ID, -1L)
-        stateManager.saveState(tabId, SearchStateKeys.ANCHOR_INDEX, 0)
+        _breadcrumbs.value = emptyMap()
+        // Reset persisted scroll/anchor so restoration targets the top for fresh results.
+        updatePersistedSearch {
+            it.copy(
+                query = q,
+                scrollIndex = 0,
+                scrollOffset = 0,
+                anchorId = -1L,
+                anchorIndex = 0,
+                snapshot = null,
+                breadcrumbs = emptyMap()
+            )
+        }
         _uiState.value = _uiState.value.copy(
             scrollIndex = 0,
             scrollOffset = 0,
@@ -785,9 +827,6 @@ class SearchResultViewModel(
             anchorIndex = 0,
             scrollToAnchorTimestamp = System.currentTimeMillis()
         )
-        // Drop any cached snapshot for this tab to avoid restoring stale results
-        SearchTabCache.clear(tabId)
-        SearchTabPersistentCache.clear(tabId)
         currentJob = viewModelScope.launch(Dispatchers.Default) {
             _uiState.value = _uiState.value.copy(isLoading = true, results = emptyList(), hasMore = false, progressCurrent = 0, progressTotal = null)
             // Reset aggregates and counts for a clean run
@@ -799,16 +838,13 @@ class SearchResultViewModel(
                 _categoryAgg.value = CategoryAgg(emptyMap(), emptyMap(), emptyMap())
                 _tocCounts.value = emptyMap()
             }
-            stateManager.saveState(tabId, SearchStateKeys.QUERY, q)
             try {
-                val near = DEFAULT_NEAR
-                // Use dataset fetch scope for DB queries; view filters are applied client-side
-                val datasetScope = stateManager.getState<String>(tabId, SearchStateKeys.DATASET_SCOPE) ?: "global"
-                val fetchCategoryId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_CATEGORY_ID)?.takeIf { it > 0 }
-                val fetchBookId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)?.takeIf { it > 0 }
-                val fetchTocId = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_TOC_ID)?.takeIf { it > 0 }
+                val persisted = persistedSearchState()
+                val fetchCategoryId = persisted.fetchCategoryId.takeIf { it > 0 } ?: persisted.filterCategoryId.takeIf { it > 0 }
+                val fetchBookId = persisted.fetchBookId.takeIf { it > 0 } ?: persisted.filterBookId.takeIf { it > 0 }
+                val fetchTocId = persisted.fetchTocId.takeIf { it > 0 } ?: persisted.filterTocId.takeIf { it > 0 }
                 // Apply persisted/initial global-extended flag to UI state so toolbar reflects it
-                val extended = stateManager.getState<Boolean>(tabId, SearchStateKeys.GLOBAL_EXTENDED) ?: false
+                val extended = persisted.globalExtended
                 if (_uiState.value.globalExtended != extended) {
                     _uiState.value = _uiState.value.copy(globalExtended = extended)
                 }
@@ -823,12 +859,11 @@ class SearchResultViewModel(
                 val acc = mutableListOf<SearchResult>()
 
                 val initialScopePath = when {
-                    // UI scope comes from view filters, not fetch filters
-                    stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_CATEGORY_ID)?.let { it > 0 } == true -> buildCategoryPath(stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_CATEGORY_ID)!!)
+                    persisted.filterCategoryId > 0 -> buildCategoryPath(persisted.filterCategoryId)
                     else -> emptyList()
                 }
                 val persistedScopeBook = when {
-                    stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)?.let { it > 0 } == true -> repository.getBookCore(stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID)!!)
+                    persisted.filterBookId > 0 -> repository.getBookCore(persisted.filterBookId)
                     else -> null
                 }
                 val resolvedScopeBook = persistedScopeBook ?: fetchBookId?.let { runCatching { repository.getBookCore(it) }.getOrNull() }
@@ -890,8 +925,7 @@ class SearchResultViewModel(
                 // Persist a snapshot of the full results so cold-boot restore is instant
                 runCatching {
                     val snap = buildSnapshot(_uiState.value.results)
-                    SearchTabCache.put(tabId, snap)
-                    SearchTabPersistentCache.save(tabId, snap)
+                    updatePersistedSearch { it.copy(snapshot = snap) }
                 }
 
             } finally {
@@ -985,17 +1019,13 @@ class SearchResultViewModel(
     override fun onCleared() {
         super.onCleared()
         // If the tab still exists, persist a lightweight snapshot so it can be restored
-        // without re-searching. If it was closed, clear any cached snapshot to free memory.
+        // without re-searching.
         val stillExists = runCatching {
             tabsViewModel.tabs.value.any { it.destination.tabId == tabId }
         }.getOrDefault(false)
         if (stillExists) {
             val snap = buildSnapshot(uiState.value.results)
-            SearchTabCache.put(tabId, snap)
-            SearchTabPersistentCache.save(tabId, snap)
-        } else {
-            SearchTabCache.clear(tabId)
-            SearchTabPersistentCache.clear(tabId)
+            updatePersistedSearch { it.copy(snapshot = snap, breadcrumbs = _breadcrumbs.value) }
         }
         cancelSearch()
     }
@@ -1032,11 +1062,14 @@ class SearchResultViewModel(
     }
 
     fun onScroll(anchorId: Long, anchorIndex: Int, index: Int, offset: Int) {
-        // Save to TabStateManager for persistence
-        stateManager.saveState(tabId, SearchStateKeys.SCROLL_INDEX, index)
-        stateManager.saveState(tabId, SearchStateKeys.SCROLL_OFFSET, offset)
-        stateManager.saveState(tabId, SearchStateKeys.ANCHOR_ID, anchorId)
-        stateManager.saveState(tabId, SearchStateKeys.ANCHOR_INDEX, anchorIndex)
+        updatePersistedSearch {
+            it.copy(
+                scrollIndex = index,
+                scrollOffset = offset,
+                anchorId = anchorId,
+                anchorIndex = anchorIndex
+            )
+        }
 
         _uiState.value = _uiState.value.copy(
             scrollIndex = index,
@@ -1056,9 +1089,17 @@ class SearchResultViewModel(
     /** Apply a category filter. Re-query if current dataset is restricted. */
     fun filterByCategoryId(categoryId: Long) {
         viewModelScope.launch {
-            stateManager.saveState(tabId, SearchStateKeys.FILTER_CATEGORY_ID, categoryId)
-            stateManager.saveState(tabId, SearchStateKeys.FILTER_BOOK_ID, 0L)
-            stateManager.saveState(tabId, SearchStateKeys.FILTER_TOC_ID, 0L)
+            updatePersistedSearch {
+                it.copy(
+                    datasetScope = "category",
+                    filterCategoryId = categoryId,
+                    filterBookId = 0L,
+                    filterTocId = 0L,
+                    fetchCategoryId = categoryId,
+                    fetchBookId = 0L,
+                    fetchTocId = 0L
+                )
+            }
             val scopePath = buildCategoryPath(categoryId)
             _uiState.value = _uiState.value.copy(
                 scopeCategoryPath = scopePath,
@@ -1075,9 +1116,17 @@ class SearchResultViewModel(
     /** Apply a book filter. Re-query if current dataset is restricted to another scope. */
     fun filterByBookId(bookId: Long) {
         viewModelScope.launch {
-            stateManager.saveState(tabId, SearchStateKeys.FILTER_CATEGORY_ID, 0L)
-            stateManager.saveState(tabId, SearchStateKeys.FILTER_BOOK_ID, bookId)
-            stateManager.saveState(tabId, SearchStateKeys.FILTER_TOC_ID, 0L)
+            updatePersistedSearch {
+                it.copy(
+                    datasetScope = "book",
+                    filterCategoryId = 0L,
+                    filterBookId = bookId,
+                    filterTocId = 0L,
+                    fetchCategoryId = 0L,
+                    fetchBookId = bookId,
+                    fetchTocId = 0L
+                )
+            }
             val book = runCatching { repository.getBookCore(bookId) }.getOrNull()
             _uiState.value = _uiState.value.copy(
                 scopeBook = book,
@@ -1103,10 +1152,16 @@ class SearchResultViewModel(
         viewModelScope.launch {
             val toc = runCatching { repository.getTocEntry(tocId) }.getOrNull()
             val bookIdFromToc = toc?.bookId
-            // Persist new filters: ensure book filter matches the TOC's book for proper restoration
-            stateManager.saveState(tabId, SearchStateKeys.FILTER_TOC_ID, tocId)
-            if (bookIdFromToc != null && bookIdFromToc > 0) {
-                stateManager.saveState(tabId, SearchStateKeys.FILTER_BOOK_ID, bookIdFromToc)
+            updatePersistedSearch {
+                it.copy(
+                    datasetScope = "toc",
+                    filterCategoryId = 0L,
+                    filterBookId = bookIdFromToc ?: 0L,
+                    filterTocId = tocId,
+                    fetchCategoryId = 0L,
+                    fetchBookId = bookIdFromToc ?: 0L,
+                    fetchTocId = tocId
+                )
             }
 
             val scopeBook = if (bookIdFromToc != null) runCatching { repository.getBookCore(bookIdFromToc) }.getOrNull() else null
@@ -1170,13 +1225,17 @@ class SearchResultViewModel(
                     }
                 }
             }
-            _selectedCategoryIds.update { set -> if (checked) set + ids else set - ids }
+            val next = _selectedCategoryIds.value.let { set -> if (checked) set + ids else set - ids }
+            _selectedCategoryIds.value = next
+            updatePersistedSearch { it.copy(selectedCategoryIds = next) }
             maybeClearFiltersIfNoneChecked()
         }
     }
 
     fun setBookChecked(bookId: Long, checked: Boolean) {
-        _selectedBookIds.update { set -> if (checked) set + bookId else set - bookId }
+        val next = _selectedBookIds.value.let { set -> if (checked) set + bookId else set - bookId }
+        _selectedBookIds.value = next
+        updatePersistedSearch { it.copy(selectedBookIds = next) }
         if (!checked) {
             // Ensure coherent clearing when last selection disappears
             maybeClearFiltersIfNoneChecked()
@@ -1184,7 +1243,9 @@ class SearchResultViewModel(
     }
 
     fun setTocChecked(tocId: Long, checked: Boolean) {
-        _selectedTocIds.update { set -> if (checked) set + tocId else set - tocId }
+        val next = _selectedTocIds.value.let { set -> if (checked) set + tocId else set - tocId }
+        _selectedTocIds.value = next
+        updatePersistedSearch { it.copy(selectedTocIds = next) }
         if (!checked) {
             maybeClearFiltersIfNoneChecked()
         }
@@ -1200,10 +1261,17 @@ class SearchResultViewModel(
             scopeTocId = null
         )
         tocBookCache.clear()
-        // Reset persisted filter keys to neutral
-        stateManager.saveState(tabId, SearchStateKeys.FILTER_BOOK_ID, 0L)
-        stateManager.saveState(tabId, SearchStateKeys.FILTER_CATEGORY_ID, 0L)
-        stateManager.saveState(tabId, SearchStateKeys.FILTER_TOC_ID, 0L)
+        updatePersistedSearch {
+            it.copy(
+                datasetScope = "global",
+                filterCategoryId = 0L,
+                filterBookId = 0L,
+                filterTocId = 0L,
+                fetchCategoryId = 0L,
+                fetchBookId = 0L,
+                fetchTocId = 0L
+            )
+        }
     }
 
     /**
@@ -1262,7 +1330,7 @@ class SearchResultViewModel(
         viewModelScope.launch {
             val hasAnyChecked = _selectedBookIds.value.isNotEmpty()
             if (hasAnyChecked) return@launch
-            val persistedFilterBook = stateManager.getState<Long>(tabId, SearchStateKeys.FILTER_BOOK_ID) ?: 0L
+            val persistedFilterBook = persistedSearchState().filterBookId
             val hasExplicitToc = _uiState.value.scopeTocId != null
             if (persistedFilterBook <= 0L && !hasExplicitToc) {
                 _uiState.value = _uiState.value.copy(scopeBook = null)
@@ -1332,18 +1400,22 @@ class SearchResultViewModel(
 
     fun openResult(result: SearchResult) {
         viewModelScope.launch {
-            // Pre-initialize new BookContent tab with selected book and anchor to reduce flicker
             val newTabId = UUID.randomUUID().toString()
-            repository.getBookCore(result.bookId)?.let { book ->
-                stateManager.saveState(newTabId, StateKeys.SELECTED_BOOK, book)
+            // Seed persisted state so the new tab can restore scroll/anchor deterministically.
+            persistedStore.update(newTabId) { current ->
+                current.copy(
+                    bookContent = current.bookContent.copy(
+                        selectedBookId = result.bookId,
+                        selectedLineId = result.lineId,
+                        contentAnchorLineId = result.lineId,
+                        contentAnchorIndex = 0,
+                        contentScrollIndex = 0,
+                        contentScrollOffset = 0,
+                        isTocVisible = true,
+                    ),
+                    search = null
+                )
             }
-            stateManager.saveState(newTabId, StateKeys.CONTENT_ANCHOR_ID, result.lineId)
-            // Hint BookContent to show TOC on first open from search
-            stateManager.saveState(
-                newTabId,
-                StateKeys.OPEN_SOURCE,
-                io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.SEARCH_RESULT
-            )
 
             tabsViewModel.openTab(
                 TabsDestination.BookContent(
@@ -1366,17 +1438,19 @@ class SearchResultViewModel(
             return
         }
         viewModelScope.launch {
-            // Prepare current tab for BookContent with anchor to avoid flicker
-            repository.getBookCore(result.bookId)?.let { book ->
-                stateManager.saveState(tabId, StateKeys.SELECTED_BOOK, book)
+            persistedStore.update(tabId) { current ->
+                current.copy(
+                    bookContent = current.bookContent.copy(
+                        selectedBookId = result.bookId,
+                        selectedLineId = result.lineId,
+                        contentAnchorLineId = result.lineId,
+                        contentAnchorIndex = 0,
+                        contentScrollIndex = 0,
+                        contentScrollOffset = 0,
+                        isTocVisible = true,
+                    )
+                )
             }
-            stateManager.saveState(tabId, StateKeys.CONTENT_ANCHOR_ID, result.lineId)
-            // Hint BookContent to show TOC on first open from search in the current tab
-            stateManager.saveState(
-                tabId,
-                StateKeys.OPEN_SOURCE,
-                io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookOpenSource.SEARCH_RESULT
-            )
 
             // Swap current tab destination to BookContent while preserving tabId
             tabsViewModel.replaceCurrentTabDestination(

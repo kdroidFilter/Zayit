@@ -2,8 +2,12 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.extract
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
+import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +18,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+@ContributesIntoMap(AppScope::class)
+@ViewModelKey(ExtractViewModel::class)
+@Inject
 class ExtractViewModel(
     private val useCase: ExtractUseCase,
     private val processRepository: OnboardingProcessRepository,

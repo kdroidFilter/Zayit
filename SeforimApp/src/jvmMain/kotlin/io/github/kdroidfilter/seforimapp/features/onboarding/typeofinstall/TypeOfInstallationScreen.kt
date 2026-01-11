@@ -19,7 +19,7 @@ import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
 import io.github.kdroidfilter.seforimapp.icons.Unarchive
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
-import org.jetbrains.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.DefaultButton
@@ -34,7 +34,6 @@ fun TypeOfInstallationScreen(navController: NavController, progressBarState: Pro
     LaunchedEffect(Unit) {
         progressBarState.setProgress(0.3f)
     }
-    val viewModel: TypeOfInstallationViewModel = LocalAppGraph.current.typeOfInstallationViewModel
     val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
     val scope = rememberCoroutineScope()
     TypeOfInstallationView(

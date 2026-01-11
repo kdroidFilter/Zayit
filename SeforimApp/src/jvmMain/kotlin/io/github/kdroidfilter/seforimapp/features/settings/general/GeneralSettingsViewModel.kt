@@ -2,14 +2,21 @@ package io.github.kdroidfilter.seforimapp.features.settings.general
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import io.github.kdroidfilter.platformtools.appmanager.restartApplication
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
+@ContributesIntoMap(AppScope::class)
+@ViewModelKey(GeneralSettingsViewModel::class)
+@Inject
 class GeneralSettingsViewModel : ViewModel() {
 
     private val dbPath = MutableStateFlow(AppSettings.getDatabasePath())

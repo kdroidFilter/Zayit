@@ -6,10 +6,11 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.isCtrlPressed
@@ -22,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.flow.StateFlow
 import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
@@ -31,12 +33,15 @@ import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalo
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
@@ -58,7 +63,13 @@ fun LineTargumView(
     onLinkClick: (CommentaryWithText) -> Unit = {},
     onScroll: (Int, Int) -> Unit = { _, _ -> },
     onHide: () -> Unit = {},
-    highlightQuery: String = ""
+    highlightQuery: String = "",
+    lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
+    availabilityType: ConnectionType = ConnectionType.TARGUM,
+    fontCodeFlow: StateFlow<String> = AppSettings.targumFontCodeFlow,
+    titleRes: StringResource = Res.string.links,
+    selectLineRes: StringResource = Res.string.select_line_for_links,
+    emptyRes: StringResource = Res.string.no_links_for_line
 ) {
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val commentTextSize by animateFloatAsState(
@@ -74,7 +85,7 @@ fun LineTargumView(
     )
 
     // Selected font for targumim
-    val targumFontCode by AppSettings.targumFontCodeFlow.collectAsState()
+    val targumFontCode by fontCodeFlow.collectAsState()
     val targumFontFamily = FontCatalog.familyFor(targumFontCode)
     val boldScaleForPlatform = remember(targumFontCode) {
         val isMac = System.getProperty("os.name")?.contains("Mac", ignoreCase = true) == true
@@ -91,7 +102,7 @@ fun LineTargumView(
     ) {
 
         PaneHeader(
-            label = stringResource(Res.string.links),
+            label = stringResource(titleRes),
             interactionSource = paneInteractionSource,
             onHide = onHide
         )
@@ -100,14 +111,36 @@ fun LineTargumView(
             when (selectedLine) {
                 null -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = stringResource(Res.string.select_line_for_links))
+                        Text(text = stringResource(selectLineRes))
                     }
                 }
 
                 else -> {
-                    var titleToIdMap by remember(selectedLine.id) { mutableStateOf<Map<String, Long>>(emptyMap()) }
+                    val cachedSources = remember(selectedLine.id, lineConnections, availabilityType) {
+                        lineConnections[selectedLine.id]?.let { snapshot ->
+                            when (availabilityType) {
+                                ConnectionType.SOURCE -> snapshot.sources
+                                else -> snapshot.targumSources
+                            }
+                        }
+                    }
 
-                    LaunchedEffect(selectedLine.id) {
+                    var titleToIdMap by remember(selectedLine.id, cachedSources) {
+                        mutableStateOf<Map<String, Long>>(cachedSources ?: emptyMap())
+                    }
+
+                    LaunchedEffect(selectedLine.id, lineConnections) {
+                        val cached = lineConnections[selectedLine.id]?.let { snapshot ->
+                            when (availabilityType) {
+                                ConnectionType.SOURCE -> snapshot.sources
+                                else -> snapshot.targumSources
+                            }
+                        }
+                        if (cached != null) {
+                            titleToIdMap = cached
+                            return@LaunchedEffect
+                        }
+
                         runCatching { getAvailableLinksForLine(selectedLine.id) }
                             .onSuccess { map -> titleToIdMap = map }
                             .onFailure { titleToIdMap = emptyMap() }
@@ -115,59 +148,106 @@ fun LineTargumView(
 
                     if (titleToIdMap.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = stringResource(Res.string.no_links_for_line))
+                            Text(text = stringResource(emptyRes))
                         }
                     } else {
-                        val availableSources by remember(titleToIdMap) {
-                            derivedStateOf {
-                                titleToIdMap.keys.sorted().toList()
-                            }
+                        val availableSources = remember(titleToIdMap) {
+                            titleToIdMap.entries
+                                .sortedBy { it.key }
+                                .map { SourceMeta(it.key, it.value) }
                         }
 
-                        LaunchedEffect(titleToIdMap) {
-                            val ids = titleToIdMap.values.toSet()
-                            if (ids != initiallySelectedSourceIds) {
-                                onSelectedSourcesChange(ids)
-                            }
+                        val selectedSources = remember(titleToIdMap, initiallySelectedSourceIds) {
+                            val availableIds = availableSources.map { it.bookId }.toSet()
+                            val initial = initiallySelectedSourceIds.ifEmpty { availableIds }
+                            initial.intersect(availableIds)
                         }
 
-                        val outerScroll = rememberScrollState()
+                        LaunchedEffect(selectedSources) {
+                            onSelectedSourcesChange(selectedSources)
+                        }
 
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(outerScroll),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        val sourceSections = availableSources.mapNotNull { meta ->
+                            val pagerFlow = remember(selectedLine.id, meta.bookId) {
+                                buildLinksPagerFor(selectedLine.id, meta.bookId).distinctUntilChanged()
+                            }
+                            val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
+                            SourceSection(
+                                title = meta.title,
+                                bookId = meta.bookId,
+                                items = lazyPagingItems
+                            )
+                        }
+
+                        val listState = rememberSaveable(
+                            selectedLine.id,
+                            saver = LazyListState.Saver
                         ) {
-                            availableSources.forEachIndexed { index, source ->
-                                titleToIdMap[source]?.let { id ->
-                                    key(id) {
-                                        // Header: commentator name
+                            LazyListState(
+                                firstVisibleItemIndex = commentariesScrollIndex,
+                                firstVisibleItemScrollOffset = commentariesScrollOffset
+                            )
+                        }
+
+                        LaunchedEffect(listState) {
+                            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+                                .distinctUntilChanged()
+                                .collect { (index, offset) -> onScroll(index, offset) }
+                        }
+
+                        SelectionContainer {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                state = listState,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                sourceSections.forEach { section ->
+                                    item(key = "header-${section.bookId}") {
                                         Text(
-                                            text = source,
+                                            text = section.title,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = (commentTextSize * 1.1f).sp,
                                             textAlign = TextAlign.Center,
                                             modifier = Modifier.fillMaxWidth()
                                         )
+                                    }
 
-                                        PagedLinksList(
-                                            buildLinksPagerFor = buildLinksPagerFor,
-                                            lineId = selectedLine.id,
-                                            sourceBookId = id,
-                                            isPrimary = index == 0,
-                                            initialIndex = if (index == 0) commentariesScrollIndex else 0,
-                                            initialOffset = if (index == 0) commentariesScrollOffset else 0,
-                                            onScroll = onScroll,
-                                            onLinkClick = onLinkClick,
-                                            commentTextSize = commentTextSize,
-                                            lineHeight = lineHeight,
-                                            fontFamily = targumFontFamily,
-                                            boldScale = boldScaleForPlatform,
-                                            highlightQuery = highlightQuery
-                                        )
+                                    items(
+                                        count = section.items.itemCount,
+                                        key = { index ->
+                                            section.items.peek(index)?.link?.id ?: "source-${section.bookId}-$index"
+                                        }
+                                    ) { index ->
+                                        section.items[index]?.let { item ->
+                                            LinkItem(
+                                                item = item,
+                                                commentTextSize = commentTextSize,
+                                                lineHeight = lineHeight,
+                                                fontFamily = targumFontFamily,
+                                                boldScale = boldScaleForPlatform,
+                                                highlightQuery = highlightQuery,
+                                                onLinkClick = onLinkClick
+                                            )
+                                        }
+                                    }
 
-                                        Spacer(modifier = Modifier.height(8.dp))
+                                    when (val state = section.items.loadState.append) {
+                                        is LoadState.Error -> item(key = "append-error-${section.bookId}") {
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(text = state.error.message ?: "Error loading more")
+                                            }
+                                        }
+
+                                        is LoadState.Loading -> item(key = "append-loading-${section.bookId}") {
+                                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                                CircularProgressIndicator()
+                                            }
+                                        }
+
+                                        else -> {}
                                     }
                                 }
                             }
@@ -184,6 +264,8 @@ fun LineTargumView(
 fun LineTargumView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
+    lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
+    availabilityType: ConnectionType = ConnectionType.TARGUM
 ) {
     val providers = uiState.providers ?: return
     val contentState = uiState.content
@@ -236,90 +318,22 @@ fun LineTargumView(
         onLinkClick = onLinkClick,
         onScroll = onScroll,
         onHide = onHide,
-        highlightQuery = activeQuery
+        highlightQuery = activeQuery,
+        lineConnections = lineConnections,
+        availabilityType = availabilityType
     )
 }
 
-@Composable
-private fun CenteredMessage(message: String, fontSize: Float = 14f) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = message, fontSize = fontSize.sp)
-    }
-}
+private data class SourceSection(
+    val title: String,
+    val bookId: Long,
+    val items: LazyPagingItems<CommentaryWithText>
+)
 
-@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
-@Composable
-private fun PagedLinksList(
-    buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
-    lineId: Long,
-    sourceBookId: Long,
-    isPrimary: Boolean,
-    initialIndex: Int,
-    initialOffset: Int,
-    onScroll: (Int, Int) -> Unit,
-    onLinkClick: (CommentaryWithText) -> Unit,
-    commentTextSize: Float,
-    lineHeight: Float,
-    fontFamily: FontFamily,
-    boldScale: Float = 1.0f,
-    highlightQuery: String = "",
-) {
-    val pagerFlow: Flow<PagingData<CommentaryWithText>> = remember(lineId, sourceBookId) {
-        buildLinksPagerFor(lineId, sourceBookId).distinctUntilChanged()
-    }
-
-    val lazyPagingItems: LazyPagingItems<CommentaryWithText> = pagerFlow.collectAsLazyPagingItems()
-
-    val scrollState = rememberScrollState(initial = if (isPrimary) initialOffset else 0)
-
-    if (isPrimary) {
-        LaunchedEffect(scrollState) {
-            snapshotFlow { scrollState.value }
-                .distinctUntilChanged() // Évite appels répétés avec même valeur
-                .collect { o ->
-                    onScroll(0, o)
-                }
-        }
-    }
-
-    SelectionContainer {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 0.dp, max = 480.dp)
-                .verticalScroll(scrollState)
-        ) {
-            for (index in 0 until lazyPagingItems.itemCount) {
-                lazyPagingItems[index]?.let { item ->
-                    LinkItem(
-                        item = item,
-                        commentTextSize = commentTextSize,
-                        lineHeight = lineHeight,
-                        fontFamily = fontFamily,
-                        boldScale = boldScale,
-                        highlightQuery = highlightQuery,
-                        onLinkClick = onLinkClick
-                    )
-                }
-            }
-
-            // Gestion des états de chargement
-            when (val state = lazyPagingItems.loadState.append) {
-                is LoadState.Error -> {
-                    CenteredMessage(message = state.error.message ?: "Error loading more")
-                }
-
-                is LoadState.Loading -> {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-
-                else -> {}
-            }
-        }
-    }
-}
+private data class SourceMeta(
+    val title: String,
+    val bookId: Long
+)
 
 @Composable
 private fun LinkItem(

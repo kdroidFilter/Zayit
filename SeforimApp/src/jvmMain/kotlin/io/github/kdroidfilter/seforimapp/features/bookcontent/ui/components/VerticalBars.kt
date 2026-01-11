@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
@@ -87,6 +88,35 @@ fun EndVerticalBar(
 
     val selectedBook = uiState.navigation.selectedBook
     val noBookSelected = selectedBook == null
+    val selectedLine = uiState.content.selectedLine
+    val providers = uiState.providers
+
+    val lineAvailability by produceState(
+        initialValue = LineResourceAvailability(),
+        key1 = selectedLine?.id,
+        key2 = providers
+    ) {
+        if (selectedLine == null || providers == null) {
+            value = LineResourceAvailability()
+            return@produceState
+        }
+
+        val targumAvailable = runCatching {
+            providers.getAvailableLinksForLine(selectedLine.id)
+        }.getOrNull()?.isNotEmpty()
+        val commentariesAvailable = runCatching {
+            providers.getAvailableCommentatorsForLine(selectedLine.id)
+        }.getOrNull()?.isNotEmpty()
+        val sourcesAvailable = runCatching {
+            providers.getAvailableSourcesForLine(selectedLine.id)
+        }.getOrNull()?.isNotEmpty()
+
+        value = LineResourceAvailability(
+            targumAvailable = targumAvailable,
+            commentariesAvailable = commentariesAvailable,
+            sourcesAvailable = sourcesAvailable
+        )
+    }
 
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
@@ -133,33 +163,74 @@ fun EndVerticalBar(
         bottomContent = {
             val targumEnabled = selectedBook?.hasTargumConnection == true
             val commentaryEnabled = selectedBook?.hasCommentaryConnection == true
+            val sourcesEnabled = selectedBook?.hasSourceConnection == true
             val linksEnabled = (selectedBook?.hasReferenceConnection == true) || (selectedBook?.hasOtherConnection == true)
 
             // Hide both buttons on Home (no book selected)
             if (!noBookSelected) {
+                val targumDisabledForLine = selectedLine != null &&
+                    lineAvailability.targumAvailable == false &&
+                    !uiState.content.showTargum
+                val commentaryDisabledForLine = selectedLine != null &&
+                    lineAvailability.commentariesAvailable == false &&
+                    !uiState.content.showCommentaries
+                val sourcesDisabledForLine = selectedLine != null &&
+                    lineAvailability.sourcesAvailable == false &&
+                    !uiState.content.showSources
+
+                val targumTooltip = when {
+                    targumDisabledForLine -> stringResource(Res.string.no_links_for_line)
+                    selectedLine == null -> stringResource(Res.string.select_line_for_links)
+                    else -> stringResource(Res.string.show_targumim_tooltip)
+                }
+                val commentaryTooltip = when {
+                    commentaryDisabledForLine -> stringResource(Res.string.no_commentaries_for_line)
+                    selectedLine == null -> stringResource(Res.string.select_line_for_commentaries)
+                    else -> stringResource(Res.string.show_commentaries_tooltip)
+                }
+                val sourcesTooltip = when {
+                    sourcesDisabledForLine -> stringResource(Res.string.no_sources_for_line)
+                    selectedLine == null -> stringResource(Res.string.select_line_for_sources)
+                    else -> stringResource(Res.string.show_sources_tooltip)
+                }
+
                 // Show Targum only when available for the book
                 if (targumEnabled) {
                     SelectableIconButtonWithToolip(
-                        toolTipText = stringResource(Res.string.show_targumim_tooltip),
+                        toolTipText = targumTooltip,
                         onClick = { onEvent(BookContentEvent.ToggleTargum) },
                         isSelected = uiState.content.showTargum,
                         icon = Align_horizontal_right,
                         iconDescription = stringResource(Res.string.show_targumim),
                         label = stringResource(Res.string.show_targumim),
-                        enabled = true,
+                        enabled = !targumDisabledForLine,
                         shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "K+⇧+⌘" else "K+Shift+Ctrl"
                     )
                 }
+
+                if (sourcesEnabled) {
+                    SelectableIconButtonWithToolip(
+                        toolTipText = sourcesTooltip,
+                        onClick = { onEvent(BookContentEvent.ToggleSources) },
+                        isSelected = uiState.content.showSources,
+                        icon = References,
+                        iconDescription = stringResource(Res.string.show_sources),
+                        label = stringResource(Res.string.show_sources),
+                        enabled = !sourcesDisabledForLine,
+                        shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "K+⌥+⌘" else "K+Alt+Ctrl"
+                    )
+                }
+
                 // Show Commentaries only when available for the book
                 if (commentaryEnabled) {
                     SelectableIconButtonWithToolip(
-                        toolTipText = stringResource(Res.string.show_commentaries_tooltip),
+                        toolTipText = commentaryTooltip,
                         onClick = { onEvent(BookContentEvent.ToggleCommentaries) },
                         isSelected = uiState.content.showCommentaries,
                         icon = Align_end,
                         iconDescription = stringResource(Res.string.show_commentaries),
                         label = stringResource(Res.string.show_commentaries),
-                        enabled = true,
+                        enabled = !commentaryDisabledForLine,
                         shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "K+⌘" else "K+Ctrl"
                     )
                 }
@@ -182,3 +253,9 @@ fun EndVerticalBar(
         }
     )
 }
+
+private data class LineResourceAvailability(
+    val targumAvailable: Boolean? = null,
+    val commentariesAvailable: Boolean? = null,
+    val sourcesAvailable: Boolean? = null
+)

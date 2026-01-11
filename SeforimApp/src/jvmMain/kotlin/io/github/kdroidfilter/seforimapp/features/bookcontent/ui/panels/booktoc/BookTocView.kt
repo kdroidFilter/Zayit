@@ -66,7 +66,7 @@ fun BookTocView(
     multiSelectIds: Set<Long> = emptySet(),
     onToggle: ((TocEntry, Boolean) -> Unit)? = null
 ) {
-    val visibleEntries = remember(tocEntries, expandedEntries, tocChildren, lines, lineTocMappings, showCounts, onlyWithResults, tocCounts) {
+    val visibleEntries = remember(tocEntries, expandedEntries, tocChildren, showCounts, onlyWithResults, tocCounts) {
         buildVisibleTocEntries(tocEntries, expandedEntries, tocChildren, onlyWithResults, tocCounts)
     }
 

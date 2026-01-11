@@ -3,9 +3,10 @@
     <ExternalSystemSettings>
       <option name="env">
         <map>
-          <entry key="SEFORIMAPP_DATABASE_PATH" value="$USER_HOME$/Downloads/seforim.db" />
+          <entry key="SEFORIMAPP_DATABASE_PATH" value="$PROJECT_DIR$/SeforimLibrary/build/seforim.db" />
           <entry key="SEFORIMAPP_LOGGING" value="true" />
           <entry key="SEFORIMAPP_REPOSITORY_LOGGIN" value="true" />
+          <entry key="SEFORIM_MAGIC_DICT2" value="$PROJECT_DIR$/SeforimLibrary/SeforimMagicIndexer/magicindexer/build/db/lexical.db" />
         </map>
       </option>
       <option name="executionName" />
@@ -24,8 +25,11 @@
     </ExternalSystemSettings>
     <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
     <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+    <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
     <DebugAllEnabled>false</DebugAllEnabled>
     <RunAsTest>false</RunAsTest>
+    <GradleProfilingDisabled>false</GradleProfilingDisabled>
+    <GradleCoverageDisabled>false</GradleCoverageDisabled>
     <method v="2" />
   </configuration>
 </component>

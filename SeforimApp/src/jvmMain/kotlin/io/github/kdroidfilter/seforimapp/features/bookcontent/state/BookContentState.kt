@@ -8,8 +8,6 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 
 /**
  * Auxiliary models that are not part of the persistent state
@@ -19,8 +17,12 @@ data class Providers(
     val linesPagingData: Flow<PagingData<Line>>,
     val buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     val getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
+    val getCommentatorGroupsForLine: suspend (Long) -> List<CommentatorGroup>,
+    val loadLineConnections: suspend (List<Long>) -> Map<Long, LineConnectionsSnapshot>,
     val buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
-    val getAvailableLinksForLine: suspend (Long) -> Map<String, Long>
+    val getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
+    val buildSourcesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    val getAvailableSourcesForLine: suspend (Long) -> Map<String, Long>
 )
 
 /**
@@ -34,6 +36,20 @@ data class VisibleTocEntry(
     val hasChildren: Boolean,
     val isLastChild: Boolean
 )
+
+@Immutable
+data class AltTocState(
+    val structures: List<AltTocStructure> = emptyList(),
+    val selectedStructureId: Long? = null,
+    val entries: List<AltTocEntry> = emptyList(),
+    val expandedEntries: Set<Long> = emptySet(),
+    val children: Map<Long, List<AltTocEntry>> = emptyMap(),
+    val selectedEntryId: Long? = null,
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0,
+    val lineHeadingsByLineId: Map<Long, List<AltTocEntry>> = emptyMap(),
+    val entriesById: Map<Long, AltTocEntry> = emptyMap()
+)
 /**
  * Unified state for BookContent (UI + Business)
  */
@@ -42,6 +58,7 @@ data class BookContentState @OptIn(ExperimentalSplitPaneApi::class) constructor(
     val tabId: String = "",
     val navigation: NavigationState = NavigationState(),
     val toc: TocState = TocState(),
+    val altToc: AltTocState = AltTocState(),
     val content: ContentState = ContentState(),
     val layout: LayoutState = LayoutState(),
     val isLoading: Boolean = false,
@@ -90,6 +107,7 @@ data class ContentState(
     // Visibility
     val showCommentaries: Boolean = false,
     val showTargum: Boolean = false,
+    val showSources: Boolean = false,
 
     // Scroll positions
     val paragraphScrollPosition: Int = 0,
@@ -115,12 +133,15 @@ data class ContentState(
     // Filters selected in UI (for current line)
     val selectedCommentatorIds: Set<Long> = emptySet(),
     val selectedTargumSourceIds: Set<Long> = emptySet(),
+    val selectedSourceIds: Set<Long> = emptySet(),
 
     // Business selections by line/book (kept for use cases)
     val selectedCommentatorsByLine: Map<Long, Set<Long>> = emptyMap(),
     val selectedCommentatorsByBook: Map<Long, Set<Long>> = emptyMap(),
     val selectedLinkSourcesByLine: Map<Long, Set<Long>> = emptyMap(),
     val selectedLinkSourcesByBook: Map<Long, Set<Long>> = emptyMap(),
+    val selectedSourcesByLine: Map<Long, Set<Long>> = emptyMap(),
+    val selectedSourcesByBook: Map<Long, Set<Long>> = emptyMap(),
 
     // Scrolling behavior control
     val shouldScrollToLine: Boolean = false,

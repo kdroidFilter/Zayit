@@ -11,4 +11,5 @@ plugins {
     alias(libs.plugins.metro).apply(false)
     alias(libs.plugins.caupain)
     alias(libs.plugins.linux.deps).apply(false)
+    alias(libs.plugins.stability.analyzer) apply false
 }

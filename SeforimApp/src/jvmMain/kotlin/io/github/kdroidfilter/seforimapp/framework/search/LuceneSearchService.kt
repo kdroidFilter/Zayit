@@ -26,30 +26,72 @@ import org.jsoup.safety.Safelist
 import io.github.kdroidfilter.seforimapp.logger.debugln
 
 /**
+ * Info about a line needed to fetch snippet source from DB.
+ */
+data class LineSnippetInfo(
+    val lineId: Long,
+    val bookId: Long,
+    val lineIndex: Int
+)
+
+/**
+ * Provider that fetches snippet source text for multiple lines.
+ * Returns a map of lineId -> snippetSource (HTML-cleaned, with neighbors if needed).
+ */
+fun interface SnippetSourceProvider {
+    fun getSnippetSources(lines: List<LineSnippetInfo>): Map<Long, String>
+}
+
+/**
  * Minimal Lucene search service for JVM runtime.
  * Supports book title suggestions and full-text queries (future extension).
  */
-class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = StandardAnalyzer()) {
+class LuceneSearchService(
+    indexDir: Path,
+    private val snippetSourceProvider: SnippetSourceProvider? = null,
+    private val analyzer: Analyzer = StandardAnalyzer()
+) {
+    companion object {
+        // Hard cap on how many synonym/expansion terms we allow per token
+        private const val MAX_SYNONYM_TERMS_PER_TOKEN: Int = 32
+        // Global cap for boost queries built from dictionary expansions
+        private const val MAX_SYNONYM_BOOST_TERMS: Int = 256
+        // Constants for snippet source building (must match indexer)
+        private const val SNIPPET_NEIGHBOR_WINDOW = 4
+        private const val SNIPPET_MIN_LENGTH = 280
+    }
+
     // Open Lucene directory lazily to avoid any I/O at app startup
     private val dir by lazy { FSDirectory.open(indexDir) }
 
 
     private val stdAnalyzer: Analyzer by lazy { analyzer }
-    private val magicDict: MagicDictionaryIndex by lazy {
+    private val magicDict: MagicDictionaryIndex? by lazy {
         val candidates = listOfNotNull(
             System.getProperty("magicDict")?.let { Path.of(it) },
             System.getenv("SEFORIM_MAGIC_DICT")?.let { Path.of(it) },
             indexDir.resolveSibling("lexical.db"),
             indexDir.resolveSibling("seforim.db").resolveSibling("lexical.db"),
             Path.of("SeforimLibrary/SeforimMagicIndexer/magicindexer/build/db/lexical.db")
-        )
+        ).distinct()
         val firstExisting = MagicDictionaryIndex.findValidDictionary(candidates)
-        require(firstExisting != null) {
-            "[MagicDictionary] No valid lexical.db found. Provide -DmagicDict=/path/lexical.db or SEFORIM_MAGIC_DICT. Tried (existing but invalid skipped): ${candidates.joinToString()}"
+        if (firstExisting == null) {
+            debugln {
+                "[MagicDictionary] Missing lexical.db; search will run without dictionary expansions. " +
+                    "Provide -DmagicDict=/path/lexical.db or SEFORIM_MAGIC_DICT. Checked: " +
+                    candidates.joinToString()
+            }
+            return@lazy null
         }
         debugln { "[MagicDictionary] Loading lexical db from $firstExisting" }
-        MagicDictionaryIndex.load(::normalizeHebrew, firstExisting)
-            ?: error("[MagicDictionary] Failed to load lexical db at $firstExisting")
+        val loaded = MagicDictionaryIndex.load(::normalizeHebrew, firstExisting)
+        if (loaded == null) {
+            debugln {
+                "[MagicDictionary] Failed to load lexical db at $firstExisting; " +
+                    "continuing without dictionary expansions"
+            }
+        }
+        loaded
     }
 
     private inline fun <T> withSearcher(block: (IndexSearcher) -> T): T {
@@ -185,11 +227,12 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val analyzedStd = analyzedRaw.filter { token ->
             // Special case: if query has ה׳, keep "ה" token
             if (token == "ה" && hasHashem) return@filter true
+            // Preserve numeric tokens (e.g., "6") so they can expand via MagicDictionary
+            if (token.any { it.isDigit() }) return@filter true
 
             token.length >= 2 && token !in setOf(
                 "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט", "י", "כ", "ל", "מ",
                 "נ", "ס", "ע", "פ", "צ", "ק", "ר", "ש", "ת",
-                "את", "של", "על", "אל", "מנ", "עד", "כי", "אמ", "או", "גמ", "זה"
             )
         }
 
@@ -197,48 +240,31 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         debugln { "[DEBUG] Analyzed tokens: $analyzedStd" }
 
         // Get all possible expansions for each token (a token can belong to multiple bases)
-        // BUT exclude "ה" from dictionary expansion (even when it's Hashem) because the dictionary
-        // incorrectly maps it to numbers, polluting the query
-        val tokenExpansions: Map<String, List<MagicDictionaryIndex.Expansion>> =
+        val tokenExpansionsRaw: Map<String, List<MagicDictionaryIndex.Expansion>> =
             analyzedStd.associateWith { token ->
-                // Special case: never expand "ה" via dictionary (it has bad mappings to numbers)
-                if (token == "ה") {
-                    return@associateWith emptyList()
-                }
-
                 // Get best expansion (prefers matching base, then largest)
-                val expansion = magicDict.expansionFor(token) ?: return@associateWith emptyList()
-
-                // Validate expansion: reject if it contains problematic terms
-                val allTerms = expansion.surface + expansion.variants + expansion.base
-                val hasProblematicTerms = allTerms.any { term ->
-                    term.length == 1 ||  // Single-letter terms (ל, ה, ב, etc.)
-                    term.all { it.isDigit() } ||  // Pure numbers (35, 10, etc.)
-                    term in setOf("ליה", "להנ", "להמ", "איהו")  // Aramaic pronouns that pollute Hebrew search
-                }
-
-                if (hasProblematicTerms) {
-                    debugln { "[DEBUG] Rejecting expansion for '$token' due to problematic terms" }
-                    emptyList()
-                } else {
-                    listOf(expansion)
-                }
+                val expansion = magicDict?.expansionFor(token) ?: return@associateWith emptyList()
+                listOf(expansion)
             }
-        tokenExpansions.forEach { (token, exps) ->
-            if (exps.isEmpty() && token == "ה") {
-                debugln { "[DEBUG] Token 'ה' -> NO expansion (kept as-is to avoid number pollution)" }
-            } else {
-                exps.forEach { exp ->
-                    debugln { "[DEBUG] Token '$token' -> expansion: surface=${exp.surface.take(10)}..., variants=${exp.variants.take(10)}..., base=${exp.base}" }
-                }
+        tokenExpansionsRaw.forEach { (token, exps) ->
+            exps.forEach { exp ->
+                debugln { "[DEBUG] Token '$token' -> expansion: surface=${exp.surface.take(10)}..., variants=${exp.variants.take(10)}..., base=${exp.base}" }
             }
         }
 
+        val tokenExpansions: Map<String, List<MagicDictionaryIndex.Expansion>> = tokenExpansionsRaw
+
         val allExpansions = tokenExpansions.values.flatten()
         val expandedTerms = allExpansions.flatMap { it.surface + it.variants + it.base }.distinct()
-        // Filter out single-letter and common Hebrew prefixes from highlighting
-        val filteredExpandedTerms = filterTermsForHighlight(expandedTerms)
-        val highlightTerms = (analyzedStd + filteredExpandedTerms).distinct()
+        // Add 4-gram terms used in the query (matches text_ng4 clauses) so highlighting can
+        // reflect matches that were found via the n-gram branch.
+        val ngramTerms = buildNgramTerms(analyzedStd, gram = 4)
+        // For highlighting/snippets, use the actual query tokens plus the concrete
+        // terms that the search query uses (expansions + n-grams), and if the query
+        // mentions Hashem explicitly, also include dictionary-based variants of the
+        // divine name from the lexical DB
+        val hashemTerms = if (hasHashem) loadHashemHighlightTerms() else emptyList()
+        val highlightTerms = filterTermsForHighlight(analyzedStd + expandedTerms + ngramTerms + hashemTerms)
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
 
         val rankedQuery = buildExpandedQuery(norm, near, analyzedStd, tokenExpansions)
@@ -287,24 +313,51 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         highlightTerms: List<String>
     ): List<LineHit> {
         if (scoreDocs.isEmpty()) return emptyList()
-        val hits = scoreDocs.map { sd ->
-            val doc = stored.document(sd.doc)
-            val bid = doc.getField("book_id").numericValue().toLong()
-            val btitle = doc.getField("book_title").stringValue() ?: ""
-            val lid = doc.getField("line_id").numericValue().toLong()
-            val lidx = doc.getField("line_index").numericValue().toInt()
-            val raw = doc.getField("text_raw")?.stringValue() ?: ""
 
-            // Apply boost for base books based on orderIndex
-            val isBaseBook = doc.getField("is_base_book")?.numericValue()?.toInt() == 1
-            val orderIndex = doc.getField("order_index")?.numericValue()?.toInt() ?: 999
-            val baseScore = sd.score
+        // First pass: extract metadata from index
+        data class DocMeta(
+            val sd: ScoreDoc,
+            val bookId: Long,
+            val bookTitle: String,
+            val lineId: Long,
+            val lineIndex: Int,
+            val isBaseBook: Boolean,
+            val orderIndex: Int,
+            val indexedRaw: String // from text_raw field, may be empty if not stored
+        )
+
+        val docMetas = scoreDocs.map { sd ->
+            val doc = stored.document(sd.doc)
+            DocMeta(
+                sd = sd,
+                bookId = doc.getField("book_id").numericValue().toLong(),
+                bookTitle = doc.getField("book_title").stringValue() ?: "",
+                lineId = doc.getField("line_id").numericValue().toLong(),
+                lineIndex = doc.getField("line_index").numericValue().toInt(),
+                isBaseBook = doc.getField("is_base_book")?.numericValue()?.toInt() == 1,
+                orderIndex = doc.getField("order_index")?.numericValue()?.toInt() ?: 999,
+                indexedRaw = doc.getField("text_raw")?.stringValue() ?: ""
+            )
+        }
+
+        // Get snippet sources: from provider if available, otherwise from index
+        val snippetSources: Map<Long, String> = if (snippetSourceProvider != null) {
+            val lineInfos = docMetas.map { LineSnippetInfo(it.lineId, it.bookId, it.lineIndex) }
+            snippetSourceProvider.getSnippetSources(lineInfos)
+        } else {
+            // Fallback to indexed text_raw
+            docMetas.associate { it.lineId to it.indexedRaw }
+        }
+
+        val hits = docMetas.map { meta ->
+            val raw = snippetSources[meta.lineId] ?: meta.indexedRaw
+            val baseScore = meta.sd.score
 
             // Calculate boost: lower orderIndex = higher boost (only for base books)
-            val boostedScore = if (isBaseBook) {
-                // Formula: boost = baseScore * (1 + (100 - orderIndex) / 100)
-                // orderIndex 1 gets ~2x boost, orderIndex 50 gets ~1.5x boost, orderIndex 100+ gets ~1x boost
-                val boostFactor = 1.0f + (100 - orderIndex).coerceAtLeast(0) / 100.0f
+            val boostedScore = if (meta.isBaseBook) {
+                // Formula: boost = baseScore * (1 + (120 - orderIndex) / 60)
+                // orderIndex 1 gets ~3x boost, orderIndex 50 gets ~2.2x boost, orderIndex 100+ gets ~1.3x boost
+                val boostFactor = 1.0f + (120 - meta.orderIndex).coerceAtLeast(0) / 60.0f
                 baseScore * boostFactor
             } else {
                 baseScore
@@ -312,10 +365,10 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
 
             val snippet = buildSnippet(raw, anchorTerms, highlightTerms)
             LineHit(
-                bookId = bid,
-                bookTitle = btitle,
-                lineId = lid,
-                lineIndex = lidx,
+                bookId = meta.bookId,
+                bookTitle = meta.bookTitle,
+                lineId = meta.lineId,
+                lineIndex = meta.lineIndex,
                 snippet = snippet,
                 score = boostedScore,
                 rawText = raw
@@ -348,7 +401,11 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         if (norm.isBlank()) return Jsoup.clean(raw, Safelist.none())
         val rawClean = Jsoup.clean(raw, Safelist.none())
         val analyzedStd = (analyzeToTerms(stdAnalyzer, norm) ?: emptyList())
-        val highlightTerms = filterTermsForHighlight(analyzedStd)
+        val hasHashem = rawQuery.contains("ה׳") || rawQuery.contains("ה'")
+        val hashemTerms = if (hasHashem) loadHashemHighlightTerms() else emptyList()
+        val highlightTerms = filterTermsForHighlight(
+            analyzedStd + buildNgramTerms(analyzedStd, gram = 4) + hashemTerms
+        )
         val anchorTerms = buildAnchorTerms(norm, highlightTerms)
         return buildSnippet(rawClean, anchorTerms, highlightTerms)
     }
@@ -434,18 +491,16 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         val outer = BooleanQuery.Builder()
         for (t in tokens) {
             val expansions = expansionsByToken[t] ?: emptyList()
+            val synonymTerms = buildLimitedTermsForToken(t, expansions)
             val ngram = if (near > 0) buildNgramPresenceForToken(t) else null
             val clause = BooleanQuery.Builder().apply {
                 // Add the original token
                 add(TermQuery(Term("text", t)), BooleanClause.Occur.SHOULD)
                 if (ngram != null) add(ngram, BooleanClause.Occur.SHOULD)
-                // Add all expansion terms from all possible expansions
-                for (exp in expansions) {
-                    val allTerms = (exp.surface + exp.variants + exp.base).distinct()
-                    for (term in allTerms) {
-                        if (term != t) {  // Avoid duplicating the original token
-                            add(TermQuery(Term("text", term)), BooleanClause.Occur.SHOULD)
-                        }
+                // Add capped set of expansion terms so we do not exceed Lucene's maxClauseCount.
+                for (term in synonymTerms) {
+                    if (term != t) {  // Avoid duplicating the original token
+                        add(TermQuery(Term("text", term)), BooleanClause.Occur.SHOULD)
                     }
                 }
             }.build()
@@ -465,23 +520,79 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
 
     private fun buildMagicBoostQuery(expansions: List<MagicDictionaryIndex.Expansion>): Query? {
         if (expansions.isEmpty()) return null
-        val b = BooleanQuery.Builder()
+        val surfaceTerms = LinkedHashSet<String>()
+        val variantTerms = LinkedHashSet<String>()
+        val baseTerms = LinkedHashSet<String>()
         for (exp in expansions) {
-            // Reduced boosts to favor phrase matches over individual term matches
-            for (s in exp.surface) b.add(BoostQuery(TermQuery(Term("text", s)), 2.0f), BooleanClause.Occur.SHOULD)
-            for (v in exp.variants) b.add(BoostQuery(TermQuery(Term("text", v)), 1.5f), BooleanClause.Occur.SHOULD)
-            for (ba in exp.base) b.add(BoostQuery(TermQuery(Term("text", ba)), 1.0f), BooleanClause.Occur.SHOULD)
+            surfaceTerms.addAll(exp.surface)
+            variantTerms.addAll(exp.variants)
+            baseTerms.addAll(exp.base)
+        }
+
+        val limitedSurfaces = surfaceTerms.take(MAX_SYNONYM_BOOST_TERMS)
+        val limitedVariants = variantTerms.take(MAX_SYNONYM_BOOST_TERMS)
+        val limitedBases = baseTerms.take(MAX_SYNONYM_BOOST_TERMS)
+        if (surfaceTerms.size > limitedSurfaces.size ||
+            variantTerms.size > limitedVariants.size ||
+            baseTerms.size > limitedBases.size
+        ) {
+            debugln {
+                "[DEBUG] Capped magic boost terms: " +
+                    "surface=${surfaceTerms.size}->${limitedSurfaces.size}, " +
+                    "variants=${variantTerms.size}->${limitedVariants.size}, " +
+                    "base=${baseTerms.size}->${limitedBases.size}"
+            }
+        }
+
+        val b = BooleanQuery.Builder()
+        // Reduced boosts to favor phrase matches over individual term matches
+        for (s in limitedSurfaces) {
+            b.add(BoostQuery(TermQuery(Term("text", s)), 2.0f), BooleanClause.Occur.SHOULD)
+        }
+        for (v in limitedVariants) {
+            b.add(BoostQuery(TermQuery(Term("text", v)), 1.5f), BooleanClause.Occur.SHOULD)
+        }
+        for (ba in limitedBases) {
+            b.add(BoostQuery(TermQuery(Term("text", ba)), 1.0f), BooleanClause.Occur.SHOULD)
         }
         return b.build()
     }
 
     private fun buildSynonymBoostQuery(expansions: List<MagicDictionaryIndex.Expansion>): Query? {
         if (expansions.isEmpty()) return null
-        val b = BooleanQuery.Builder()
+        val surfaceTerms = LinkedHashSet<String>()
+        val variantTerms = LinkedHashSet<String>()
+        val baseTerms = LinkedHashSet<String>()
         for (exp in expansions) {
-            for (s in exp.surface) b.add(TermQuery(Term("text", s)), BooleanClause.Occur.SHOULD)
-            for (v in exp.variants) b.add(TermQuery(Term("text", v)), BooleanClause.Occur.SHOULD)
-            for (ba in exp.base) b.add(TermQuery(Term("text", ba)), BooleanClause.Occur.SHOULD)
+            surfaceTerms.addAll(exp.surface)
+            variantTerms.addAll(exp.variants)
+            baseTerms.addAll(exp.base)
+        }
+
+        val limitedSurfaces = surfaceTerms.take(MAX_SYNONYM_BOOST_TERMS)
+        val limitedVariants = variantTerms.take(MAX_SYNONYM_BOOST_TERMS)
+        val limitedBases = baseTerms.take(MAX_SYNONYM_BOOST_TERMS)
+        if (surfaceTerms.size > limitedSurfaces.size ||
+            variantTerms.size > limitedVariants.size ||
+            baseTerms.size > limitedBases.size
+        ) {
+            debugln {
+                "[DEBUG] Capped synonym boost terms: " +
+                    "surface=${surfaceTerms.size}->${limitedSurfaces.size}, " +
+                    "variants=${variantTerms.size}->${limitedVariants.size}, " +
+                    "base=${baseTerms.size}->${limitedBases.size}"
+            }
+        }
+
+        val b = BooleanQuery.Builder()
+        for (s in limitedSurfaces) {
+            b.add(TermQuery(Term("text", s)), BooleanClause.Occur.SHOULD)
+        }
+        for (v in limitedVariants) {
+            b.add(TermQuery(Term("text", v)), BooleanClause.Occur.SHOULD)
+        }
+        for (ba in limitedBases) {
+            b.add(TermQuery(Term("text", ba)), BooleanClause.Occur.SHOULD)
         }
         return b.build()
     }
@@ -491,11 +602,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         expansionsByToken: Map<String, List<MagicDictionaryIndex.Expansion>>
     ): List<Pair<Query, Float>> {
         if (tokens.isEmpty()) return emptyList()
-        val termExpansions = tokens.map { t ->
-            val expansions = expansionsByToken[t] ?: emptyList()
-            val allTerms = expansions.flatMap { it.surface + it.variants + it.base }.distinct()
-            allTerms.ifEmpty { listOf(t) }
-        }
+        val termExpansions = buildTermAlternativesForTokens(tokens, expansionsByToken)
         debugln { "[DEBUG] buildSynonymPhrases - termExpansions sizes: ${termExpansions.map { it.size }}" }
         fun buildMultiPhrase(slop: Int): Query {
             val builder = org.apache.lucene.search.MultiPhraseQuery.Builder()
@@ -524,11 +631,7 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         near: Int
     ): Query? {
         if (tokens.isEmpty()) return null
-        val termExpansions = tokens.map { t ->
-            val expansions = expansionsByToken[t] ?: emptyList()
-            val allTerms = expansions.flatMap { it.surface + it.variants + it.base }.distinct()
-            allTerms.ifEmpty { listOf(t) }
-        }
+        val termExpansions = buildTermAlternativesForTokens(tokens, expansionsByToken)
         val builder = org.apache.lucene.search.MultiPhraseQuery.Builder()
         builder.setSlop(near)
         var position = 0
@@ -587,7 +690,6 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     }
 
     private fun buildFuzzyQuery(norm: String, near: Int): Query? {
-        // Allow fuzzy (edit distance 1) only when overall query length >= 4 and near != 0
         if (near == 0) return null
         if (norm.length < 4) return null
         val tokens = analyzeToTerms(stdAnalyzer, norm)?.filter { it.length >= 4 } ?: emptyList()
@@ -616,28 +718,6 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     private fun filterTermsForHighlight(terms: List<String>): List<String> {
         if (terms.isEmpty()) return emptyList()
 
-        // All Hebrew letters that could be prefixes or single-letter words
-        val hebrewSingleLetters = setOf(
-            "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט", "י", "כ", "ל", "מ",
-            "נ", "ס", "ע", "פ", "צ", "ק", "ר", "ש", "ת"
-        )
-
-        // Hebrew function words and particles that shouldn't be highlighted
-        val hebrewStopWords = setOf(
-            // Particles
-            "את", "אותו", "אותה", "אותי", "אותכ", "אותמ", "אותנו",
-            // Prepositions
-            "של", "על", "אל", "מנ", "עד", "עמ", "כמו", "אצל",
-            // Conjunctions
-            "כי", "אמ", "או", "גמ", "אבל", "אכ", "רק",
-            // Common pronouns
-            "זה", "זו", "זאת", "אלה", "אלו",
-            // Existential
-            "יש", "אינ", "הנה",
-            // Common short numbers (will also be handled by word-boundary logic, but safer to exclude)
-            "אחד", "שני", "שתי", "עשר", "עשרימ"
-        )
-
         fun useful(t: String): Boolean {
             val s = t.trim()
             if (s.isEmpty()) return false
@@ -645,11 +725,6 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
             if (s.length < 2) return false
             // Must contain at least one letter or digit
             if (s.none { it.isLetterOrDigit() }) return false
-            if (s in hebrewSingleLetters) return false
-            // Filter out function words
-            if (s in hebrewStopWords) return false
-            // Filter out pure numeric tokens (like "10", "20")
-            if (s.all { it.isDigit() }) return false
             return true
         }
         return terms
@@ -713,9 +788,8 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
                 val isAtWordStart = isWordBoundary(basePlainLower, idx - 1)
                 val isAtWordEnd = isWordBoundary(basePlainLower, idx + t.length)
                 val isWholeWord = isAtWordStart && isAtWordEnd
-
-                // For short terms (< 3 chars), only highlight if it's a whole word
-                val shouldHighlight = if (t.length < 3) isWholeWord else true
+                // Only highlight whole-word matches to avoid mid-word highlights.
+                val shouldHighlight = isWholeWord
 
                 if (shouldHighlight) {
                     val startOrig = mapToOrigIndex(baseMap, idx)
@@ -795,12 +869,26 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
     }
 
     // --- Helpers ---
+    private fun buildNgramTerms(tokens: List<String>, gram: Int = 4): List<String> {
+        if (gram <= 0) return emptyList()
+        val out = mutableListOf<String>()
+        tokens.forEach { t ->
+            val trimmed = t.trim()
+            if (trimmed.length >= gram) {
+                var i = 0
+                while (i + gram <= trimmed.length) {
+                    out += trimmed.substring(i, i + gram)
+                    i += 1
+                }
+            }
+        }
+        return out.distinct()
+    }
+
+
     private fun normalizeHebrew(input: String): String {
         if (input.isBlank()) return ""
         var s = input.trim()
-
-        // Convert Arabic numerals to Hebrew number words BEFORE other normalization
-        s = convertArabicNumeralsToHebrew(s)
 
         // Remove biblical cantillation marks (teamim) U+0591–U+05AF
         s = s.replace("[\u0591-\u05AF]".toRegex(), "")
@@ -817,74 +905,6 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         return s
     }
 
-    /**
-     * Convert Arabic numerals (1-20) and Hebrew letter numerals to Hebrew number words.
-     * E.g., "יום 1" -> "יום אחד", "יום א" -> "יום אחד", "3 ימים" -> "שלושה ימים"
-     */
-    private fun convertArabicNumeralsToHebrew(text: String): String {
-        val numberToHebrew = mapOf(
-            "1" to "אחד",
-            "2" to "שנים",
-            "3" to "שלושה",
-            "4" to "ארבעה",
-            "5" to "חמשה",
-            "6" to "שש ה",
-            "7" to "שבעה",
-            "8" to "שמונה",
-            "9" to "תשעה",
-            "10" to "עשר ה",
-            "11" to "אחד עשר",
-            "12" to "שנים עשר",
-            "13" to "שלושה עשר",
-            "14" to "ארבעה עשר",
-            "15" to "חמשה עשר",
-            "16" to "שש ה עשר",
-            "17" to "שבעה עשר",
-            "18" to "שמונה עשר",
-            "19" to "תשעה עשר",
-            "20" to "עשרים"
-        )
-
-        // Hebrew letter numerals (gematria-style)
-        val hebrewLetterToWord = mapOf(
-            "א" to "אחד",      // 1
-            "ב" to "שנים",     // 2
-            "ג" to "שלושה",    // 3
-            "ד" to "ארבעה",    // 4
-            "ה" to "חמשה",     // 5
-            "ו" to "שש ה",     // 6
-            "ז" to "שבעה",     // 7
-            "ח" to "שמונה",    // 8
-            "ט" to "תשעה",     // 9
-            "י" to "עשר ה",    // 10
-            "יא" to "אחד עשר", // 11
-            "יב" to "שנים עשר", // 12
-            "יג" to "שלושה עשר", // 13
-            "יד" to "ארבעה עשר", // 14
-            "טו" to "חמשה עשר", // 15 (special case, not יה)
-            "טז" to "שש ה עשר", // 16
-            "יז" to "שבעה עשר", // 17
-            "יח" to "שמונה עשר", // 18
-            "יט" to "תשעה עשר", // 19
-            "כ" to "עשרים"    // 20
-        )
-
-        var result = text
-
-        // First, convert Arabic numerals
-        for ((arabic, hebrew) in numberToHebrew.entries.sortedByDescending { it.key.toInt() }) {
-            result = result.replace(Regex("\\b$arabic\\b"), hebrew)
-        }
-
-        // Then, convert Hebrew letter numerals (process longer ones first to avoid partial matches)
-        for ((letter, word) in hebrewLetterToWord.entries.sortedByDescending { it.key.length }) {
-            // Match when preceded/followed by whitespace or start/end of string
-            result = result.replace(Regex("(?<=\\s|^)$letter(?=\\s|$)"), word)
-        }
-
-        return result
-    }
-
     private fun replaceFinalsWithBase(text: String): String = text
         .replace('\u05DA', '\u05DB') // ך -> כ
         .replace('\u05DD', '\u05DE') // ם -> מ
@@ -893,4 +913,91 @@ class LuceneSearchService(indexDir: Path, private val analyzer: Analyzer = Stand
         .replace('\u05E5', '\u05E6') // ץ -> צ
 
     // StandardAnalyzer only
+
+    /**
+     * Build a capped list of alternative terms for a single token using dictionary expansions.
+     * The resulting list always includes the original token and its base forms (when present),
+     * followed by additional surface/variant forms up to MAX_SYNONYM_TERMS_PER_TOKEN.
+     */
+    private fun buildLimitedTermsForToken(
+        token: String,
+        expansions: List<MagicDictionaryIndex.Expansion>
+    ): List<String> {
+        if (expansions.isEmpty()) return listOf(token)
+
+        val baseTerms = expansions.flatMap { it.base }.distinct()
+        val otherTerms = expansions.flatMap { it.surface + it.variants }.distinct()
+
+        val ordered = LinkedHashSet<String>()
+        if (token.isNotBlank()) {
+            ordered += token
+        }
+        baseTerms.forEach { ordered += it }
+        otherTerms.forEach { ordered += it }
+
+        val totalSize = ordered.size
+        val limited = ordered.take(MAX_SYNONYM_TERMS_PER_TOKEN)
+        if (totalSize > limited.size) {
+            debugln {
+                "[DEBUG] Capped synonym terms for token '$token' from $totalSize to ${limited.size}"
+            }
+        }
+        return limited
+    }
+
+    /**
+     * Build per-token synonym alternative lists for phrase queries, with per-token caps.
+     */
+    private fun buildTermAlternativesForTokens(
+        tokens: List<String>,
+        expansionsByToken: Map<String, List<MagicDictionaryIndex.Expansion>>
+    ): List<List<String>> {
+        if (tokens.isEmpty()) return emptyList()
+        return tokens.map { token ->
+            val expansions = expansionsByToken[token] ?: emptyList()
+            buildLimitedTermsForToken(token, expansions)
+        }
+    }
+
+    /**
+     * Load dictionary-based variants of the divine name  using MagicDictionaryIndex.
+     * We pull all surface forms for base from the underlying SQLite DB  and also add diacritic-stripped variants so highlighting
+     * matches the snippet text after nikud/teamim removal.
+     */
+    private fun loadHashemHighlightTerms(): List<String> {
+        val dict = magicDict ?: return emptyList()
+        val raw = dict.loadHashemSurfaces()
+        if (raw.isEmpty()) return emptyList()
+
+        fun stripHebrewDiacritics(text: String): String {
+            if (text.isEmpty()) return text
+            val sb = StringBuilder(text.length)
+            for (ch in text) {
+                val code = ch.code
+                val isNikudOrTeamim =
+                    (code in 0x0591..0x05AF) || // teamim
+                        (code in 0x05B0..0x05BD) || // nikud + meteg
+                        (ch == '\u05C1') || (ch == '\u05C2') || (ch == '\u05C7')
+                if (!isNikudOrTeamim) {
+                    sb.append(ch)
+                }
+            }
+            return sb.toString()
+        }
+
+        val terms = linkedSetOf<String>()
+        raw.forEach { value ->
+            val trimmed = value.trim()
+            if (trimmed.isEmpty()) return@forEach
+            terms += trimmed
+            val stripped = stripHebrewDiacritics(trimmed).trim()
+            if (stripped.isNotEmpty()) terms += stripped
+            val normalized = normalizeHebrew(trimmed).trim()
+            if (normalized.isNotEmpty()) terms += normalized
+        }
+
+        val out = terms.toList()
+        debugln { "[DEBUG] Hashem highlight terms from lexical DB: ${out.take(20)}..." }
+        return out
+    }
 }

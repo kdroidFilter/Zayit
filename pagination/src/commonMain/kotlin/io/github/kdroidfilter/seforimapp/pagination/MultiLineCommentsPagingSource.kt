@@ -27,9 +27,10 @@ class MultiLineCommentsPagingSource(
             val commentaries = repository.getCommentariesForLineRange(
                 lineIds = lineIds,
                 activeCommentatorIds = commentatorIds,
+                connectionTypes = setOf(io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType.COMMENTARY),
                 offset = offset,
                 limit = limit
-            ).filter { it.link.connectionType == io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType.COMMENTARY }
+            )
 
             val prevKey = if (page == 0) null else page - 1
             val nextKey = if (commentaries.isEmpty()) null else page + 1
@@ -44,4 +45,3 @@ class MultiLineCommentsPagingSource(
         }
     }
 }
-

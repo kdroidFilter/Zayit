@@ -34,6 +34,7 @@ object StateKeys {
     const val SELECTED_LINE_ID = "selectedLineId"
     const val SHOW_COMMENTARIES = "showCommentaries"
     const val SHOW_TARGUM = "showTargum"
+    const val SHOW_SOURCES = "showSources"
     const val PARAGRAPH_SCROLL_POSITION = "paragraphScrollPosition"
     const val CHAPTER_SCROLL_POSITION = "chapterScrollPosition"
     const val SELECTED_CHAPTER = "selectedChapter"
@@ -54,6 +55,8 @@ object StateKeys {
     const val SELECTED_COMMENTATORS_BY_BOOK = "selectedCommentatorsByBook"
     const val SELECTED_TARGUM_SOURCES_BY_LINE = "selectedTargumSourcesByLine"
     const val SELECTED_TARGUM_SOURCES_BY_BOOK = "selectedTargumSourcesByBook"
+    const val SELECTED_SOURCES_BY_LINE = "selectedSourcesByLine"
+    const val SELECTED_SOURCES_BY_BOOK = "selectedSourcesByBook"
     
     // Layout - Split Panes
     const val SPLIT_PANE_POSITION = "splitPanePosition"

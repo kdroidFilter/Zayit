@@ -43,9 +43,10 @@ class LineTargumPagingSource(
             val links = repository.getCommentariesForLineRange(
                 lineIds = ids,
                 activeCommentatorIds = sourceBookIds, // reuse filtering by target book IDs
+                connectionTypes = connectionTypes,
                 offset = offset,
                 limit = limit
-            ).filter { it.link.connectionType in connectionTypes }
+            )
 
             val prevKey = if (page == 0) null else page - 1
             val nextKey = if (links.isEmpty()) null else page + 1

@@ -80,6 +80,7 @@
     <string name="my_commentaries_label">פירושים שלי</string>
     <string name="context_menu_search_selected_text">חפש במאגר</string>
     <string name="context_menu_find_in_page">חפש בעמוד</string>
+    <string name="context_menu_copy_without_nikud">העתק ללא ניקוד</string>
 
     <!-- Book Content Screen - End Vertical Bar -->
     <string name="tools">כלים</string>

@@ -69,6 +69,9 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.logger.allowLogging
+import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
+import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
+import java.awt.datatransfer.StringSelection
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
@@ -354,6 +357,16 @@ fun main() {
                                                 // Cmd + M => minimize window (macOS only)
                                                 getOperatingSystem() == OperatingSystem.MACOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
                                                     windowState.isMinimized = true
+                                                    true
+                                                }
+                                                // Ctrl/Cmd + Shift + C => copy selected text without nikud
+                                                isCtrlOrCmd && keyEvent.isShiftPressed && keyEvent.key == Key.C -> {
+                                                    val selectedText = TextSelectionStore.selectedText.value
+                                                    if (selectedText.isNotBlank()) {
+                                                        val textWithoutDiacritics = HebrewTextUtils.removeAllDiacritics(selectedText)
+                                                        val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+                                                        clipboard.setContents(StringSelection(textWithoutDiacritics), null)
+                                                    }
                                                     true
                                                 }
                                                 else -> false

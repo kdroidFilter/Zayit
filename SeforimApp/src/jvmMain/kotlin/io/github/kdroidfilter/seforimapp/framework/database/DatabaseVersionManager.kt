@@ -17,7 +17,7 @@ object DatabaseVersionManager {
      * Minimum required database version for this application release.
      * This should be updated when database schema or data structure changes.
      */
-    private const val MINIMUM_REQUIRED_VERSION = "20251111203224"
+    private const val MINIMUM_REQUIRED_VERSION = "20260111222851"
     
     /**
      * Gets the current database version by reading the release_info.txt file

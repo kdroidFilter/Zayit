@@ -556,12 +556,13 @@ class BookContentViewModel(
     }
 
     /** Charge un livre */
-    private fun loadBook(book: Book) {
+    private suspend fun loadBook(book: Book) {
+        val resolvedBook = repository.getBookCore(book.id) ?: book
         val previousBook = stateManager.state.value.navigation.selectedBook
 
-        navigationUseCase.selectBook(book)
+        navigationUseCase.selectBook(resolvedBook)
         // Expand navigation tree up to the selected book's category
-        viewModelScope.launch { runCatching { navigationUseCase.expandPathToBook(book) } }
+        viewModelScope.launch { runCatching { navigationUseCase.expandPathToBook(resolvedBook) } }
 
         // Afficher automatiquement le TOC lors de la première sélection d'un livre si caché
         if (previousBook == null && !stateManager.state.value.toc.isVisible) {
@@ -574,7 +575,7 @@ class BookContentViewModel(
         }
 
         // Réinitialiser les positions et les sélections si on change de livre
-        if (previousBook?.id != book.id) {
+        if (previousBook?.id != resolvedBook.id) {
             debugln { "Loading new book, resetting positions and selections" }
             contentUseCase.resetScrollPositions()
             tocUseCase.resetToc()
@@ -602,7 +603,7 @@ class BookContentViewModel(
             System.gc()
         }
 
-        loadBookData(book)
+        loadBookData(resolvedBook)
     }
 
     /** Charge les données du livre */

@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS category_display_settings (
+    categoryId INTEGER NOT NULL PRIMARY KEY,
+    showDiacritics INTEGER NOT NULL DEFAULT 1
+);
+
+selectShowDiacritics:
+SELECT showDiacritics FROM category_display_settings WHERE categoryId = ?;
+
+upsertShowDiacritics:
+INSERT OR REPLACE INTO category_display_settings(categoryId, showDiacritics)
+VALUES (?, ?);

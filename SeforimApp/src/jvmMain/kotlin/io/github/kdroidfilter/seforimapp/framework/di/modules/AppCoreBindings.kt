@@ -10,8 +10,11 @@ import io.github.kdroidfilter.seforim.navigation.TabNavControllerRegistry
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
+import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
+import io.github.kdroidfilter.seforimapp.framework.database.getUserSettingsDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
@@ -40,6 +43,16 @@ object AppCoreBindings {
     @Provides
     @SingleIn(AppScope::class)
     fun provideSettings(): Settings = Settings()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideCategoryDisplaySettingsStore(): CategoryDisplaySettingsStore {
+        val dbPath = getUserSettingsDatabasePath()
+        val driver = JdbcSqliteDriver("jdbc:sqlite:$dbPath")
+        UserSettingsDb.Schema.create(driver)
+        val database = UserSettingsDb(driver)
+        return CategoryDisplaySettingsStore(database)
+    }
 
     @Provides
     @SingleIn(AppScope::class)

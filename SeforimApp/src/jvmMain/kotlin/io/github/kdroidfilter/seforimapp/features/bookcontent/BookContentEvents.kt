@@ -40,6 +40,7 @@ sealed interface BookContentEvent {
     data object ToggleCommentaries : BookContentEvent
     data object ToggleTargum : BookContentEvent
     data object ToggleSources : BookContentEvent
+    data object ToggleDiacritics : BookContentEvent
     data class ContentScrolled(
         val anchorId: Long,
         val anchorIndex: Int,

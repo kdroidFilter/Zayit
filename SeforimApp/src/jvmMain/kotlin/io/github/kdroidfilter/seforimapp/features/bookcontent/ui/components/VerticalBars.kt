@@ -76,7 +76,8 @@ fun StartVerticalBar(
 @Composable
 fun EndVerticalBar(
     uiState: BookContentState,
-    onEvent: (BookContentEvent) -> Unit
+    onEvent: (BookContentEvent) -> Unit,
+    showDiacritics: Boolean
 ) {
     // Collect current text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -148,6 +149,23 @@ fun EndVerticalBar(
                 label = stringResource(Res.string.zoom_out),
                 shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "-⌘" else "-Ctrl"
             )
+
+            // Diacritics toggle button - only show when book has nekudot or teamim
+            val bookHasDiacritics = selectedBook?.hasNekudot == true || selectedBook?.hasTeamim == true
+            if (bookHasDiacritics) {
+                SelectableIconButtonWithToolip(
+                    toolTipText = stringResource(
+                        if (showDiacritics) Res.string.hide_diacritics_tooltip
+                        else Res.string.show_diacritics_tooltip
+                    ),
+                    onClick = { onEvent(BookContentEvent.ToggleDiacritics) },
+                    isSelected = showDiacritics,
+                    icon = TextDiacritics,
+                    iconDescription = stringResource(Res.string.toggle_diacritics),
+                    label = stringResource(Res.string.toggle_diacritics),
+                    shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "J+⌘" else "J+Ctrl"
+                )
+            }
 //            SelectableIconButtonWithToolip(
 //                toolTipText = stringResource(
 //                    if (noBookSelected) Res.string.please_select_a_book else Res.string.add_bookmark_tooltip

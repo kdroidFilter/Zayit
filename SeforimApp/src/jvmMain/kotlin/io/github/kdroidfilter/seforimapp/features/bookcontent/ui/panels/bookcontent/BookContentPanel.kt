@@ -39,6 +39,7 @@ import seforimapp.seforimapp.generated.resources.sources
 fun BookContentPanel(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
+    showDiacritics: Boolean,
     modifier: Modifier = Modifier,
     isRestoringSession: Boolean = false,
     searchUi: SearchHomeUiState = SearchHomeUiState(),
@@ -147,7 +148,8 @@ fun BookContentPanel(
                             },
                             altHeadingsByLineId = uiState.altToc.lineHeadingsByLineId,
                             lineConnections = connectionsCache,
-                            onPrefetchLineConnections = prefetchConnections
+                            onPrefetchLineConnections = prefetchConnections,
+                            showDiacritics = showDiacritics
                         )
                     },
                     secondContent = if (uiState.content.showTargum) {
@@ -155,7 +157,8 @@ fun BookContentPanel(
                             TargumPane(
                                 uiState = uiState,
                                 onEvent = onEvent,
-                                lineConnections = connectionsCache
+                                lineConnections = connectionsCache,
+                                showDiacritics = showDiacritics
                             )
                         }
                     } else {
@@ -169,7 +172,8 @@ fun BookContentPanel(
                         CommentsPane(
                             uiState = uiState,
                             onEvent = onEvent,
-                            lineConnections = connectionsCache
+                            lineConnections = connectionsCache,
+                            showDiacritics = showDiacritics
                         )
                     }
                 }
@@ -179,7 +183,8 @@ fun BookContentPanel(
                         SourcesPane(
                             uiState = uiState,
                             onEvent = onEvent,
-                            lineConnections = connectionsCache
+                            lineConnections = connectionsCache,
+                            showDiacritics = showDiacritics
                         )
                     }
                 }
@@ -210,12 +215,14 @@ private fun LoaderPanel(modifier: Modifier = Modifier) {
 private fun CommentsPane(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    lineConnections: Map<Long, LineConnectionsSnapshot>
+    lineConnections: Map<Long, LineConnectionsSnapshot>,
+    showDiacritics: Boolean
 ) {
     LineCommentsView(
         uiState = uiState,
         onEvent = onEvent,
-        lineConnections = lineConnections
+        lineConnections = lineConnections,
+        showDiacritics = showDiacritics
     )
 }
 
@@ -223,7 +230,8 @@ private fun CommentsPane(
 private fun SourcesPane(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    lineConnections: Map<Long, LineConnectionsSnapshot>
+    lineConnections: Map<Long, LineConnectionsSnapshot>,
+    showDiacritics: Boolean
 ) {
     val providers = uiState.providers ?: return
     LineTargumView(
@@ -251,7 +259,8 @@ private fun SourcesPane(
         fontCodeFlow = AppSettings.sourceFontCodeFlow,
         titleRes = Res.string.sources,
         selectLineRes = Res.string.select_line_for_sources,
-        emptyRes = Res.string.no_sources_for_line
+        emptyRes = Res.string.no_sources_for_line,
+        showDiacritics = showDiacritics
     )
 }
 
@@ -259,12 +268,14 @@ private fun SourcesPane(
 private fun TargumPane(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    lineConnections: Map<Long, LineConnectionsSnapshot>
+    lineConnections: Map<Long, LineConnectionsSnapshot>,
+    showDiacritics: Boolean
 ) {
     LineTargumView(
         uiState = uiState,
         onEvent = onEvent,
-        lineConnections = lineConnections
+        lineConnections = lineConnections,
+        showDiacritics = showDiacritics
     )
 }
 

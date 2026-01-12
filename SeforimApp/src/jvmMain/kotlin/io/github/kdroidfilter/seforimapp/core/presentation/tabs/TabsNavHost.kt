@@ -144,9 +144,11 @@ fun TabsNavHost() {
                 tabOwner.setDefaultArgs(savedState { putString(StateKeys.TAB_ID, destination.tabId) })
                 val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                 val uiState by viewModel.uiState.collectAsState()
+                val showDiacritics by viewModel.showDiacritics.collectAsState()
                 BookContentScreen(
                     uiState = uiState,
                     onEvent = viewModel::onEvent,
+                    showDiacritics = showDiacritics,
                     isRestoringSession = isRestoringSession,
                     searchUi = searchUi,
                     searchCallbacks = homeSearchCallbacks,
@@ -171,6 +173,7 @@ fun TabsNavHost() {
                     onDispose { viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetUiVisible(false)) }
                 }
                 val bcUiState by bookVm.uiState.collectAsState()
+                val showDiacritics by bookVm.showDiacritics.collectAsState()
                 val searchUi by viewModel.uiState.collectAsState()
                 val visibleResults by viewModel.visibleResultsFlow.collectAsState()
                 val isFiltering by viewModel.isFilteringFlow.collectAsState()
@@ -228,6 +231,7 @@ fun TabsNavHost() {
                 SearchResultInBookShellMvi(
                     bookUiState = bcUiState,
                     onEvent = bookVm::onEvent,
+                    showDiacritics = showDiacritics,
                     searchUi = searchUi,
                     visibleResults = visibleResults,
                     isFiltering = isFiltering,
@@ -256,6 +260,7 @@ fun TabsNavHost() {
                 )
                 val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                 val uiState by viewModel.uiState.collectAsState()
+                val showDiacritics by viewModel.showDiacritics.collectAsState()
                 // React to destination changes when ViewModel is reused (e.g., Home -> BookContent)
                 LaunchedEffect(destination.bookId, destination.lineId) {
                     if (destination.bookId > 0) {
@@ -270,6 +275,7 @@ fun TabsNavHost() {
                 BookContentScreen(
                     uiState = uiState,
                     onEvent = viewModel::onEvent,
+                    showDiacritics = showDiacritics,
                     isRestoringSession = isRestoringSession,
                     searchUi = searchUi,
                     searchCallbacks = homeSearchCallbacks,
@@ -314,9 +320,11 @@ fun TabsNavHost() {
                             tabOwner.setDefaultArgs(savedState { putString(StateKeys.TAB_ID, destination.tabId) })
                             val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                             val uiState by viewModel.uiState.collectAsState()
+                            val showDiacritics by viewModel.showDiacritics.collectAsState()
                             BookContentScreen(
                                 uiState = uiState,
                                 onEvent = viewModel::onEvent,
+                                showDiacritics = showDiacritics,
                                 isRestoringSession = isRestoringSession,
                                 searchUi = searchUi,
                                 searchCallbacks = homeSearchCallbacks,
@@ -343,6 +351,7 @@ fun TabsNavHost() {
                                 onDispose { viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetUiVisible(false)) }
                             }
                             val bcUiState by bookVm.uiState.collectAsState()
+                            val showDiacritics by bookVm.showDiacritics.collectAsState()
                             val searchUi by viewModel.uiState.collectAsState()
                             val visibleResults by viewModel.visibleResultsFlow.collectAsState()
                             val isFiltering by viewModel.isFilteringFlow.collectAsState()
@@ -400,6 +409,7 @@ fun TabsNavHost() {
                             SearchResultInBookShellMvi(
                                 bookUiState = bcUiState,
                                 onEvent = bookVm::onEvent,
+                                showDiacritics = showDiacritics,
                                 searchUi = searchUi,
                                 visibleResults = visibleResults,
                                 isFiltering = isFiltering,
@@ -428,6 +438,7 @@ fun TabsNavHost() {
                             )
                             val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                             val uiState by viewModel.uiState.collectAsState()
+                            val showDiacritics by viewModel.showDiacritics.collectAsState()
                             // React to destination changes when ViewModel is reused (e.g., Home -> BookContent)
                             LaunchedEffect(destination.bookId, destination.lineId) {
                                 if (destination.bookId > 0) {
@@ -442,6 +453,7 @@ fun TabsNavHost() {
                             BookContentScreen(
                                 uiState = uiState,
                                 onEvent = viewModel::onEvent,
+                                showDiacritics = showDiacritics,
                                 isRestoringSession = isRestoringSession,
                                 searchUi = searchUi,
                                 searchCallbacks = homeSearchCallbacks,

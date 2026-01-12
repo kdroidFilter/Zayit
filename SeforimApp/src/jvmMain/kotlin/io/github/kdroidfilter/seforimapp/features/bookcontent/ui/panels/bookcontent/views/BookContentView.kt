@@ -51,6 +51,7 @@ import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
+import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -82,7 +83,8 @@ fun BookContentView(
     onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> },
     altHeadingsByLineId: Map<Long, List<AltTocEntry>> = emptyMap(),
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
-    onPrefetchLineConnections: (List<Long>) -> Unit = {}
+    onPrefetchLineConnections: (List<Long>) -> Unit = {},
+    showDiacritics: Boolean
 ) {
     // Collect paging data
     val lazyPagingItems: LazyPagingItems<Line> = linesPagingData.collectAsLazyPagingItems()
@@ -363,7 +365,7 @@ fun BookContentView(
     var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
     var currentMatchStart by remember { mutableIntStateOf(-1) }
     val plainTextCache = remember(book.id) { mutableStateMapOf<Long, String>() }
-    val annotatedCache = remember(book.id, textSize, boldScaleForPlatform) {
+    val annotatedCache = remember(book.id, textSize, boldScaleForPlatform, showDiacritics) {
         mutableStateMapOf<Long, AnnotatedString>()
     }
 
@@ -492,7 +494,8 @@ fun BookContentView(
                                 scrollToLineTimestamp = scrollToLineTimestamp,
                                 highlightQuery = findState.text.toString().takeIf { showFind },
                                 currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
-                                annotatedCache = annotatedCache
+                                annotatedCache = annotatedCache,
+                                showDiacritics = showDiacritics
                             )
                         }
                     } else {
@@ -655,18 +658,28 @@ private fun LineItem(
     scrollToLineTimestamp: Long,
     highlightQuery: String? = null,
     currentMatchStart: Int? = null,
-    annotatedCache: MutableMap<Long, AnnotatedString>? = null
+    annotatedCache: MutableMap<Long, AnnotatedString>? = null,
+    showDiacritics: Boolean = true
 ) {
+    // Process content: remove diacritics if setting is disabled
+    val processedContent = remember(line.content, showDiacritics) {
+        if (showDiacritics) {
+            line.content
+        } else {
+            HebrewTextUtils.removeAllDiacritics(line.content)
+        }
+    }
+
     // Memoize the annotated string with proper keys
-    val annotated = remember(line.id, line.content, baseTextSize, boldScale, annotatedCache) {
+    val annotated = remember(line.id, processedContent, baseTextSize, boldScale, annotatedCache, showDiacritics) {
         annotatedCache?.getOrPut(line.id) {
             buildAnnotatedFromHtml(
-                line.content,
+                processedContent,
                 baseTextSize,
                 boldScale = if (boldScale < 1f) 1f else boldScale
             )
         } ?: buildAnnotatedFromHtml(
-            line.content,
+            processedContent,
             baseTextSize,
             boldScale = if (boldScale < 1f) 1f else boldScale
         )

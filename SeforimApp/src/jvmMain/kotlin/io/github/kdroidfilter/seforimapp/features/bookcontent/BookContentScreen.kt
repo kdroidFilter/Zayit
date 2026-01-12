@@ -56,8 +56,13 @@ import androidx.compose.ui.input.key.type
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
+import seforimapp.seforimapp.generated.resources.context_menu_copy_without_nikud
 import seforimapp.seforimapp.generated.resources.context_menu_find_in_page
 import seforimapp.seforimapp.generated.resources.context_menu_search_selected_text
+import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
+import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 import java.awt.event.InputEvent
 import javax.swing.KeyStroke
 import org.jetbrains.jewel.foundation.InternalJewelApi
@@ -236,12 +241,14 @@ private fun composeKeyEventToSwingKeyStroke(event: KeyEvent): KeyStroke? {
  *
  * @param uiState The complete UI state used for rendering the book content screen, capturing navigation, TOC, content display, layout management, and more.
  * @param onEvent Function that handles various user-driven events or state updates within the book content view.
+ * @param showDiacritics Whether to render Hebrew diacritics for the current root category.
  */
 @OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class, ExperimentalFoundationApi::class)
 @Composable
 fun BookContentScreen(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
+    showDiacritics: Boolean,
     isRestoringSession: Boolean = false,
     searchUi: SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
@@ -250,10 +257,13 @@ fun BookContentScreen(
     val toaster = rememberToasterState()
     val searchSelectedLabel = stringResource(Res.string.context_menu_search_selected_text)
     val findInPageLabel = stringResource(Res.string.context_menu_find_in_page)
+    val copyWithoutNikudLabel = stringResource(Res.string.context_menu_copy_without_nikud)
     val baseTextContextMenu = LocalTextContextMenu.current
     val tabId = uiState.tabId
+    val selectedBook = uiState.navigation.selectedBook
+    val bookHasDiacritics = selectedBook?.hasNekudot == true || selectedBook?.hasTeamim == true
 
-    val textContextMenu = remember(baseTextContextMenu, tabId, onEvent, searchSelectedLabel, findInPageLabel) {
+    val textContextMenu = remember(baseTextContextMenu, tabId, onEvent, searchSelectedLabel, findInPageLabel, copyWithoutNikudLabel, showDiacritics, bookHasDiacritics) {
         object : TextContextMenu {
             @OptIn(ExperimentalFoundationApi::class)
             @Composable
@@ -262,10 +272,36 @@ fun BookContentScreen(
                 state: ContextMenuState,
                 content: @Composable () -> Unit
             ) {
+                // Update the global selection store for keyboard shortcuts
+                LaunchedEffect(textManager.selectedText.text) {
+                    TextSelectionStore.updateSelection(textManager.selectedText.text)
+                }
+
                 ContextMenuDataProvider(
                     items = {
                         val query = normalizeSearchQuery(textManager.selectedText.text)
+                        val selectedText = textManager.selectedText.text
                         buildList {
+                            // Copy without nikud option - first position, only show when book has diacritics and they are enabled
+                            if (bookHasDiacritics && showDiacritics && selectedText.isNotBlank() &&
+                                (HebrewTextUtils.containsNikud(selectedText) || HebrewTextUtils.containsTeamim(selectedText))) {
+                                add(
+                                    ContextMenuItemOptionWithKeybinding(
+                                        icon = AllIconsKeys.Actions.Copy,
+                                        keybinding =
+                                            if (hostOs.isMacOS) {
+                                                linkedSetOf("⇧", "⌘", "C")
+                                            } else {
+                                                linkedSetOf("Ctrl", "Shift", "C")
+                                            },
+                                        label = copyWithoutNikudLabel
+                                    ) {
+                                        val textWithoutDiacritics = HebrewTextUtils.removeAllDiacritics(selectedText)
+                                        val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+                                        clipboard.setContents(StringSelection(textWithoutDiacritics), null)
+                                    }
+                                )
+                            }
                             if (query.isNotBlank()) {
                                 add(
                                     ContextMenuItemOption(
@@ -375,6 +411,10 @@ fun BookContentScreen(
                                 }
                                 true
                             }
+                            isCtrlOrCmd && keyEvent.key == Key.J -> {
+                                onEvent(BookContentEvent.ToggleDiacritics)
+                                true
+                            }
                             else -> false
                         }
                     } else {
@@ -406,6 +446,7 @@ fun BookContentScreen(
                             BookContentPanel(
                                 uiState = uiState,
                                 onEvent = onEvent,
+                                showDiacritics = showDiacritics,
                                 isRestoringSession = isRestoringSession,
                                 searchUi = searchUi,
                                 searchCallbacks = searchCallbacks
@@ -417,7 +458,7 @@ fun BookContentScreen(
                 showSplitter = uiState.navigation.isVisible
             )
 
-            EndVerticalBar(uiState = uiState, onEvent = onEvent)
+            EndVerticalBar(uiState = uiState, onEvent = onEvent, showDiacritics = showDiacritics)
         }
     }
 

@@ -1,9 +1,6 @@
 package io.github.kdroidfilter.seforimapp.framework.database
 
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.Paths
 
 /**
  * Manages database versioning and compatibility checks.
@@ -22,21 +19,21 @@ object DatabaseVersionManager {
     /**
      * Gets the current database version by reading the release_info.txt file
      * located next to the database file.
-     * 
+     *
      * @return Database version string (yyyyMMddHHmmss) or null if not found
      */
     fun getCurrentDatabaseVersion(): String? {
         return try {
-            val dbPath = AppSettings.getDatabasePath() ?: return null
+            val dbPath = getDatabasePath()
             val dbFile = File(dbPath)
-            
+
             // Look for release_info.txt in the same directory as the database
             val versionFile = File(dbFile.parentFile, "release_info.txt")
-            
+
             if (!versionFile.exists()) {
                 return null
             }
-            
+
             versionFile.readText().trim()
         } catch (e: Exception) {
             null
@@ -84,7 +81,7 @@ object DatabaseVersionManager {
      */
     fun isDatabaseConfigured(): Boolean {
         return try {
-            val dbPath = AppSettings.getDatabasePath() ?: return false
+            val dbPath = getDatabasePath()
             File(dbPath).exists()
         } catch (e: Exception) {
             false

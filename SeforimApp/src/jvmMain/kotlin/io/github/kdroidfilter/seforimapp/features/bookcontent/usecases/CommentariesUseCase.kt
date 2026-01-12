@@ -210,12 +210,24 @@ class CommentariesUseCase(
 
     private fun sanitizeCommentatorName(raw: String, currentBookTitle: String): String {
         if (currentBookTitle.isBlank()) return raw
-        val t = currentBookTitle.trim()
-        // Remove suffix variants like " על ספר <title>" or " על <title>"
-        return raw
-            .replace(" על ספר $t", "")
-            .replace(" על $t", "")
-            .trim()
+
+        // Punctuation characters that can appear around/within the title
+        val punct = "[\\s,.\\-־–—:;'\"׳״!?()\\[\\]{}]*"
+
+        // Split title into words, ignoring punctuation
+        val titleWords = currentBookTitle.trim()
+            .split(Regex("[\\s,.\\-־–—:;'\"׳״!?()\\[\\]{}]+"))
+            .filter { it.isNotBlank() }
+
+        if (titleWords.isEmpty()) return raw
+
+        // Join words with flexible punctuation/whitespace pattern between them
+        val flexibleTitle = titleWords.joinToString(punct) { Regex.escape(it) }
+
+        // Build pattern for " על ספר <title>" or " על <title>" with flexible punctuation
+        val pattern = Regex(" על ספר$punct$flexibleTitle$punct| על\\s+$punct$flexibleTitle$punct")
+
+        return raw.replace(pattern, "").trim()
     }
 
     private data class CommentatorEntry(

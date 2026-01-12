@@ -244,14 +244,14 @@ class ContentUseCase(
             stateManager.updateLayout {
                 copy(
                     previousPositions = previousPositions.copy(
-                        content = prev
+                        sources = prev
                     )
                 )
             }
             newPosition = 1f
             currentState.layout.contentSplitState.positionPercentage = newPosition
         } else {
-            newPosition = currentState.layout.previousPositions.content
+            newPosition = currentState.layout.previousPositions.sources
             currentState.layout.contentSplitState.positionPercentage = newPosition
         }
 

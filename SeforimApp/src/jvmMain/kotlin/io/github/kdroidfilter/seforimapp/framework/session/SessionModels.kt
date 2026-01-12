@@ -77,11 +77,12 @@ data class BookContentPersistedState(
     // Layout
     val mainSplitPosition: Float = SplitDefaults.MAIN,
     val tocSplitPosition: Float = SplitDefaults.TOC,
-    val contentSplitPosition: Float = 0.7f,
+    val contentSplitPosition: Float = SplitDefaults.CONTENT,
     val targumSplitPosition: Float = 0.8f,
     val previousMainSplitPosition: Float = SplitDefaults.MAIN,
     val previousTocSplitPosition: Float = SplitDefaults.TOC,
-    val previousContentSplitPosition: Float = 0.7f,
+    val previousContentSplitPosition: Float = SplitDefaults.CONTENT,
+    val previousSourcesSplitPosition: Float = SplitDefaults.SOURCES,
     val previousTargumSplitPosition: Float = 0.8f,
 )
 

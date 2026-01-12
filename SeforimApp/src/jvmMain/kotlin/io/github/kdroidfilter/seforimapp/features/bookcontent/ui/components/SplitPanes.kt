@@ -47,6 +47,13 @@ fun EnhancedHorizontalSplitPane(
         }
     }
 
+    // When the first pane is hidden (minSize = 0), collapse it to 0% to avoid blank space
+    LaunchedEffect(firstMinSize == 0f) {
+        if (firstMinSize == 0f) {
+            state.positionPercentage = 0f
+        }
+    }
+
     // Quantize splitter position to 2 decimal places to avoid layout jitter from
     // floating-point noise, especially on small or non-integer pixel widths.
     LaunchedEffect(state) {
@@ -123,6 +130,13 @@ fun EnhancedVerticalSplitPane(
     LaunchedEffect(secondContent == null) {
         if (secondContent == null) {
             state.positionPercentage = 1f
+        }
+    }
+
+    // When the first pane is hidden (minSize = 0), collapse it to 0% to avoid blank space
+    LaunchedEffect(firstMinSize == 0f) {
+        if (firstMinSize == 0f) {
+            state.positionPercentage = 0f
         }
     }
 

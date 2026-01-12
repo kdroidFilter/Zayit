@@ -21,17 +21,12 @@ import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Checkbox
-import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
-import seforimapp.seforimapp.generated.resources.settings_db_path_label
-import seforimapp.seforimapp.generated.resources.settings_db_path_not_set
 import seforimapp.seforimapp.generated.resources.settings_persist_session
 import seforimapp.seforimapp.generated.resources.settings_ram_saver
-import seforimapp.seforimapp.generated.resources.settings_reset_app
-import seforimapp.seforimapp.generated.resources.settings_reset_done
 
 @Composable
 fun GeneralSettingsScreen() {
@@ -79,16 +74,6 @@ private fun GeneralSettingsView(
             Text(text = stringResource(Res.string.settings_ram_saver))
         }
 
-        Divider(orientation = Orientation.Horizontal)
-
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DefaultButton(onClick = { onEvent(GeneralSettingsEvents.ResetApp) }) {
-                Text(text = stringResource(Res.string.settings_reset_app))
-            }
-            if (state.resetDone) {
-                Text(text = stringResource(Res.string.settings_reset_done))
-            }
-        }
     }
 }
 

@@ -28,7 +28,6 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserPro
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
-import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.component.SpeedSearchArea
 import org.jetbrains.jewel.ui.component.Text
@@ -40,26 +39,15 @@ import seforimapp.seforimapp.generated.resources.onboarding_user_community_sefar
 import seforimapp.seforimapp.generated.resources.onboarding_user_community_sepharade
 import seforimapp.seforimapp.generated.resources.onboarding_user_first_name_label
 import seforimapp.seforimapp.generated.resources.onboarding_user_last_name_label
-import seforimapp.seforimapp.generated.resources.save_button
 
 @Composable
 fun ProfileSettingsScreen() {
     val viewModel: UserProfileViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
-    val canSave = state.firstName.isNotBlank() && state.lastName.isNotBlank() && state.selectedCommunityIndex >= 0
     ProfileSettingsView(
         state = state,
-        onEvent = viewModel::onEvent,
-        onSave = {
-            val firstName = state.firstName.trim()
-            val lastName = state.lastName.trim()
-            val community = state.communities.getOrNull(state.selectedCommunityIndex)
-            AppSettings.setUserFirstName(firstName)
-            AppSettings.setUserLastName(lastName)
-            AppSettings.setUserCommunityCode(community?.name)
-        },
-        canSave = canSave
+        onEvent = viewModel::onEvent
     )
 }
 
@@ -67,9 +55,7 @@ fun ProfileSettingsScreen() {
 @Composable
 private fun ProfileSettingsView(
     state: UserProfileState,
-    onEvent: (UserProfileEvents) -> Unit,
-    onSave: () -> Unit,
-    canSave: Boolean
+    onEvent: (UserProfileEvents) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(8.dp),
@@ -128,10 +114,6 @@ private fun ProfileSettingsView(
             }
         }
 
-        Spacer(Modifier.height(8.dp))
-        DefaultButton(onClick = onSave, enabled = canSave) {
-            Text(stringResource(Res.string.save_button))
-        }
     }
 }
 
@@ -146,9 +128,7 @@ private fun ProfileSettingsView_Preview() {
                 communities = listOf(Community.SEPHARADE, Community.ASHKENAZE, Community.SEFARD),
                 selectedCommunityIndex = 0
             ),
-            onEvent = {},
-            onSave = {},
-            canSave = true
+            onEvent = {}
         )
     }
 }

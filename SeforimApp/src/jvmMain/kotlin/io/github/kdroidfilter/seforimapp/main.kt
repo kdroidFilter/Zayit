@@ -4,7 +4,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -48,7 +47,6 @@ import org.jetbrains.jewel.intui.standalone.theme.default
 import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.ui.ComponentStyling
 import org.jetbrains.jewel.window.DecoratedWindow
-import org.jetbrains.jewel.window.DecoratedWindowScope
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.Dimension
 import java.awt.Toolkit
@@ -72,10 +70,31 @@ import io.github.kdroidfilter.seforimapp.logger.allowLogging
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
 import java.awt.datatransfer.StringSelection
+import java.awt.KeyboardFocusManager
+import java.awt.event.KeyEvent
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
     setMacOsAdaptiveTitleBar()
+
+    // Register global AWT key event dispatcher for Cmd+Shift+C (copy without nikud)
+    KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher { event ->
+        if (event.id == KeyEvent.KEY_PRESSED &&
+            event.keyCode == KeyEvent.VK_C &&
+            event.isShiftDown &&
+            (event.isMetaDown || event.isControlDown)
+        ) {
+            val selectedText = TextSelectionStore.selectedText.value
+            if (selectedText.isNotBlank()) {
+                val textWithoutDiacritics = HebrewTextUtils.removeAllDiacritics(selectedText)
+                val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+                clipboard.setContents(StringSelection(textWithoutDiacritics), null)
+            }
+            true // consume the event
+        } else {
+            false
+        }
+    }
     val loggingEnv = System.getenv("SEFORIMAPP_LOGGING")?.lowercase()
     allowLogging = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"
 
@@ -359,16 +378,6 @@ fun main() {
                                                     windowState.isMinimized = true
                                                     true
                                                 }
-                                                // Ctrl/Cmd + Shift + C => copy selected text without nikud
-                                                isCtrlOrCmd && keyEvent.isShiftPressed && keyEvent.key == Key.C -> {
-                                                    val selectedText = TextSelectionStore.selectedText.value
-                                                    if (selectedText.isNotBlank()) {
-                                                        val textWithoutDiacritics = HebrewTextUtils.removeAllDiacritics(selectedText)
-                                                        val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-                                                        clipboard.setContents(StringSelection(textWithoutDiacritics), null)
-                                                    }
-                                                    true
-                                                }
                                                 else -> false
                                             }
                                         } else false
@@ -379,16 +388,5 @@ fun main() {
                 } // else (null) -> render nothing until decision made
             }
         }
-    }
-}
-
-/**
- * A hack to work around the window flashing its background color when closed
- * (https://youtrack.jetbrains.com/issue/CMP-5651).
- */
-@Composable
-fun DecoratedWindowScope.windowBackgroundFlashingOnCloseWorkaround(background: Color) {
-    LaunchedEffect(window, background) {
-        window.background = java.awt.Color(background.toArgb())
     }
 }

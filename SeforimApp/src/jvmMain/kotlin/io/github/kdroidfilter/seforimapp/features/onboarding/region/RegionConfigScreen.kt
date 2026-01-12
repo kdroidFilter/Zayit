@@ -106,12 +106,12 @@ private fun RegionConfigView(
                     // Country selector (Speed Search)
                     Text(stringResource(Res.string.onboarding_region_country_label))
                     Spacer(Modifier.height(8.dp))
-                    SpeedSearchArea(Modifier.widthIn(max = 240.dp)) {
+                    SpeedSearchArea(Modifier.widthIn(min = 280.dp, max = 360.dp)) {
                         ListComboBox(
                             items = state.countries,
                             selectedIndex = state.selectedCountryIndex,
                             onSelectedItemChange = { index -> onEvent(RegionConfigEvents.SelectCountry(index)) },
-                            modifier = Modifier.widthIn(max = 240.dp),
+                            modifier = Modifier.widthIn(min = 280.dp, max = 360.dp),
                         )
                     }
 
@@ -120,13 +120,13 @@ private fun RegionConfigView(
                     // City selector (enabled only after a country is selected)
                     Text(stringResource(Res.string.onboarding_region_city_label))
                     Spacer(Modifier.height(8.dp))
-                    SpeedSearchArea(Modifier.widthIn(max = 240.dp)) {
+                    SpeedSearchArea(Modifier.widthIn(min = 280.dp, max = 360.dp)) {
                         ListComboBox(
                             items = state.cities,
                             selectedIndex = state.selectedCityIndex,
                             onSelectedItemChange = { index -> onEvent(RegionConfigEvents.SelectCity(index)) },
                             enabled = state.selectedCountryIndex >= 0,
-                            modifier = Modifier.widthIn(max = 240.dp),
+                            modifier = Modifier.widthIn(min = 280.dp, max = 360.dp),
                         )
                     }
                 }

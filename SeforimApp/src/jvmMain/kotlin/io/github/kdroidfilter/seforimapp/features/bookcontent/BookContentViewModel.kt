@@ -339,7 +339,7 @@ class BookContentViewModel(
 
                 is BookContentEvent.AltTocEntrySelected -> {
                     val lineId = altTocUseCase.selectAltEntry(event.entry)
-                    lineId?.let { loadAndSelectLine(it) }
+                    lineId?.let { loadAndSelectLine(it, syncAltToc = false) }
                 }
 
                 // Content
@@ -689,7 +689,7 @@ class BookContentViewModel(
     }
 
     /** Charge et sélectionne une ligne */
-    private suspend fun loadAndSelectLine(lineId: Long) {
+    private suspend fun loadAndSelectLine(lineId: Long, syncAltToc: Boolean = true) {
         val book = stateManager.state.value.navigation.selectedBook ?: return
 
         contentUseCase.loadAndSelectLine(lineId)?.let { line ->
@@ -701,7 +701,9 @@ class BookContentViewModel(
                 commentariesUseCase.reapplySelectedLinkSources(line)
                 commentariesUseCase.reapplySelectedSources(line)
                 // Sync alternative TOC selection if applicable
-                altTocUseCase.selectAltEntryForLine(line.id)
+                if (syncAltToc) {
+                    altTocUseCase.selectAltEntryForLine(line.id)
+                }
             }
         }
     }

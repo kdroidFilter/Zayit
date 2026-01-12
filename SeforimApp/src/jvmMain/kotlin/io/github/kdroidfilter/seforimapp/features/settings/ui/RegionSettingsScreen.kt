@@ -4,9 +4,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
@@ -24,35 +22,21 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfig
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
-import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.component.SpeedSearchArea
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.onboarding_region_city_label
 import seforimapp.seforimapp.generated.resources.onboarding_region_country_label
-import seforimapp.seforimapp.generated.resources.save_button
 
 @Composable
 fun RegionSettingsScreen() {
     val viewModel: RegionConfigViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
-    val canSave = state.selectedCountryIndex >= 0 && state.selectedCityIndex >= 0
     RegionSettingsView(
         state = state,
-        onEvent = viewModel::onEvent,
-        onSave = {
-            val countryIdx = state.selectedCountryIndex
-            val cityIdx = state.selectedCityIndex
-            if (countryIdx >= 0 && cityIdx >= 0) {
-                val country = state.countries[countryIdx]
-                val city = state.cities[cityIdx]
-                AppSettings.setRegionCountry(country)
-                AppSettings.setRegionCity(city)
-            }
-        },
-        canSave = canSave
+        onEvent = viewModel::onEvent
     )
 }
 
@@ -60,9 +44,7 @@ fun RegionSettingsScreen() {
 @Composable
 private fun RegionSettingsView(
     state: RegionConfigState,
-    onEvent: (RegionConfigEvents) -> Unit,
-    onSave: () -> Unit,
-    canSave: Boolean
+    onEvent: (RegionConfigEvents) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(8.dp),
@@ -75,7 +57,11 @@ private fun RegionSettingsView(
                     ListComboBox(
                         items = state.countries,
                         selectedIndex = state.selectedCountryIndex,
-                        onSelectedItemChange = { index -> onEvent(RegionConfigEvents.SelectCountry(index)) },
+                        onSelectedItemChange = { index ->
+                            onEvent(RegionConfigEvents.SelectCountry(index))
+                            val country = state.countries.getOrNull(index)
+                            AppSettings.setRegionCountry(country)
+                        },
                         modifier = Modifier.widthIn(max = 240.dp)
                     )
                 }
@@ -87,17 +73,16 @@ private fun RegionSettingsView(
                     ListComboBox(
                         items = state.cities,
                         selectedIndex = state.selectedCityIndex,
-                        onSelectedItemChange = { index -> onEvent(RegionConfigEvents.SelectCity(index)) },
+                        onSelectedItemChange = { index ->
+                            onEvent(RegionConfigEvents.SelectCity(index))
+                            val city = state.cities.getOrNull(index)
+                            AppSettings.setRegionCity(city)
+                        },
                         enabled = state.selectedCountryIndex >= 0,
                         modifier = Modifier.widthIn(max = 240.dp)
                     )
                 }
             }
-        }
-
-        Spacer(Modifier.height(8.dp))
-        DefaultButton(onClick = onSave, enabled = canSave) {
-            Text(stringResource(Res.string.save_button))
         }
     }
 }
@@ -106,6 +91,6 @@ private fun RegionSettingsView(
 @Preview
 private fun RegionSettingsView_Preview() {
     PreviewContainer {
-        RegionSettingsView(state = RegionConfigState.preview, onEvent = {}, onSave = {}, canSave = true)
+        RegionSettingsView(state = RegionConfigState.preview, onEvent = {})
     }
 }

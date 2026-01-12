@@ -409,6 +409,7 @@
     <!-- Settings action bar -->
     <string name="settings_ok">אישור</string>
     <string name="settings_cancel">ביטול</string>
+    <string name="settings_close">סגור</string>
     <string name="settings_apply">החל</string>
 
     <!-- Settings > Info -->

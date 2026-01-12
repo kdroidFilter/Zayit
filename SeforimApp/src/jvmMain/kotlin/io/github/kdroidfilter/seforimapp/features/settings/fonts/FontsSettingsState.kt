@@ -5,15 +5,15 @@ import androidx.compose.runtime.Immutable
 @Immutable
 data class FontsSettingsState(
     val bookFontCode: String = "notoserifhebrew",
-    val commentaryFontCode: String = "notorashihebrew",
-    val targumFontCode: String = "notorashihebrew",
+    val commentaryFontCode: String = "frankruhllibre",
+    val targumFontCode: String = "taameyashkenaz",
     val sourceFontCode: String = "frankruhllibre",
 ) {
     companion object {
         val preview = FontsSettingsState(
             bookFontCode = "notoserifhebrew",
-            commentaryFontCode = "notorashihebrew",
-            targumFontCode = "notorashihebrew",
+            commentaryFontCode = "frankruhllibre",
+            targumFontCode = "taameyashkenaz",
             sourceFontCode = "frankruhllibre",
         )
     }

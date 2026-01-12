@@ -202,7 +202,7 @@ object AppSettings {
     }
 
     fun getCommentaryFontCode(): String {
-        return settings[KEY_FONT_COMMENTARY, "notorashihebrew"]
+        return settings[KEY_FONT_COMMENTARY, "frankruhllibre"]
     }
 
     fun setCommentaryFontCode(code: String) {
@@ -211,7 +211,7 @@ object AppSettings {
     }
 
     fun getTargumFontCode(): String {
-        return settings[KEY_FONT_TARGUM, "frankruhllibre"]
+        return settings[KEY_FONT_TARGUM, "taameyashkenaz"]
     }
 
     fun setTargumFontCode(code: String) {
@@ -220,7 +220,7 @@ object AppSettings {
     }
 
     fun getSourceFontCode(): String {
-        return settings[KEY_FONT_SOURCE, "frankruhllibre"]
+        return settings[KEY_FONT_SOURCE, "tinos"]
     }
 
     fun setSourceFontCode(code: String) {
@@ -419,9 +419,9 @@ object AppSettings {
         _databasePathFlow.value = null
         _persistSessionFlow.value = true
         _bookFontCodeFlow.value = "notoserifhebrew"
-        _commentaryFontCodeFlow.value = "notorashihebrew"
-        _targumFontCodeFlow.value = "notorashihebrew"
-        _sourceFontCodeFlow.value = "frankruhllibre"
+        _commentaryFontCodeFlow.value = "frankruhllibre"
+        _targumFontCodeFlow.value = "taameyashkenaz"
+        _sourceFontCodeFlow.value = "tinos"
         _ramSaverEnabledFlow.value = false
     }
 }

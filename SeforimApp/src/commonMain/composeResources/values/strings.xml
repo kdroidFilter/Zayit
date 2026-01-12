@@ -46,6 +46,13 @@
     <string name="font_tinos">Tinos</string>
     <string name="font_libertinus_serif">Libertinus Serif</string>
     <string name="font_bona_nova_sc">Bona Nova SC</string>
+    <string name="font_keter_aram_tsova">כתר ארם צובה</string>
+    <string name="font_keter_yg">כתר יג</string>
+    <string name="font_rashi_amiti">רשי אמיתי</string>
+    <string name="font_shofar">שופר</string>
+    <string name="font_taamey_ashkenaz">טעמי אשכנז</string>
+    <string name="font_taamey_david_clm">טעמי דוד</string>
+    <string name="font_taamey_frank_clm">טעמי פרנק</string>
 
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>

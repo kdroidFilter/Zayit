@@ -124,6 +124,8 @@ private val ZMANIM_CARD_HEIGHT = 90.dp * ZMANIM_LAYOUT_SCALE
 private val ZMANIM_VERTICAL_SPACING = 12.dp * ZMANIM_LAYOUT_SCALE
 private val ZMANIM_HORIZONTAL_SPACING = 12.dp
 private val MIN_ZMANIM_CARD_WIDTH = 99.dp
+private val MIN_EARTH_WIDGET_WIDTH = 230.dp
+private val MIN_WIDTH_FOR_EXTRA_CARDS = 443.dp
 
 private data class DayMarker(
     val label: StringResource,
@@ -412,6 +414,7 @@ fun HomeCelestialWidgets(
         val rightColumnWidth = availableWidth * 0.35f
         val leftColumnWidth = availableWidth * 0.65f
         val maxColumnsLimit = 5
+        val showExtraCards = maxWidth >= MIN_WIDTH_FOR_EXTRA_CARDS
 
         val zmanimItems = buildList {
             momentCards.forEachIndexed { index, card ->
@@ -473,8 +476,10 @@ fun HomeCelestialWidgets(
                     onRabbeinuTamClick = tzaisRabbeinuTam?.let { { onZmanimClick(it) } },
                 )
             )
-            val chatzosLaylaClick = chatzosLaylaCard.timeValue?.let { { onZmanimClick(it) } }
-            add(ZmanimGridItem.Moment(chatzosLaylaCard, chatzosLaylaClick))
+            if (showExtraCards) {
+                val chatzosLaylaClick = chatzosLaylaCard.timeValue?.let { { onZmanimClick(it) } }
+                add(ZmanimGridItem.Moment(chatzosLaylaCard, chatzosLaylaClick))
+            }
             val shabbatEntryTime = shabbatTimes.entryTime
             val shabbatExitTime = shabbatTimes.exitTime
             add(
@@ -490,12 +495,14 @@ fun HomeCelestialWidgets(
                     onExitClick = shabbatExitTime?.let { { onZmanimClick(it) } },
                 )
             )
-            add(
-                ZmanimGridItem.MoonSky(
-                    referenceTime = moonReferenceTime,
-                    location = effectiveLocation,
+            if (showExtraCards) {
+                add(
+                    ZmanimGridItem.MoonSky(
+                        referenceTime = moonReferenceTime,
+                        location = effectiveLocation,
+                    )
                 )
-            )
+            }
         }
         val zmanimItemCount = zmanimItems.size
         val baseColumns = maxColumnsLimit.coerceAtMost(zmanimItemCount).coerceAtLeast(1)
@@ -510,6 +517,7 @@ fun HomeCelestialWidgets(
         val leftColumnHeight = (ZMANIM_CARD_HEIGHT * rowCount) +
             (verticalSpacing * (rowCount - 1).coerceAtLeast(0))
         val heightForSphere = leftColumnHeight
+        val showEarthWidget = rightColumnWidth >= MIN_EARTH_WIDGET_WIDTH
         val sphereBase = minOf(rightColumnWidth, heightForSphere)
         val rawSphereSize = sphereBase * 0.98f
         val sphereSize = if (sphereBase < 140.dp) sphereBase else rawSphereSize.coerceAtLeast(140.dp)
@@ -528,7 +536,7 @@ fun HomeCelestialWidgets(
             ) {
                 Column(
                     modifier = Modifier
-                        .weight(0.65f)
+                        .weight(if (showEarthWidget) 0.65f else 1f)
                         .height(leftColumnHeight),
                     verticalArrangement = Arrangement.spacedBy(verticalSpacing)
                 ) {
@@ -538,41 +546,44 @@ fun HomeCelestialWidgets(
                         horizontalSpacing = horizontalSpacing,
                         verticalSpacing = verticalSpacing,
                         selectedTimeMillis = selectedTimeMillis,
+                        compactMode = !showExtraCards,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                Column(
-                    modifier = Modifier.weight(0.35f),
-                    verticalArrangement = Arrangement.spacedBy(verticalSpacing)
-                ) {
-                    CelestialWidgetCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(rightColumnHeightModifier),
-                        backgroundColor = Color.Black,
+                if (showEarthWidget) {
+                    Column(
+                        modifier = Modifier.weight(0.35f),
+                        verticalArrangement = Arrangement.spacedBy(verticalSpacing)
                     ) {
-                        EarthWidgetZmanimView(
-                            modifier = Modifier.fillMaxSize(),
-                            sphereSize = sphereSize,
-                            locationOverride = effectiveLocation,
-                            targetTime = earthWidgetTargetTime,
-                            targetDate = selectedDate,
-                            onDateSelected = onDateSelected,
-                            onLocationSelected = onLocationSelectedHandler,
-                            allowLocationSelection = true,
-                            containerBackground = Color.Transparent,
-                            contentPadding = 0.dp,
-                            showControls = false,
-                            showOrbitLabels = true,
-                            showMoonInOrbit = true,
-                            initialShowMoonFromMarker = false,
-                            useScroll = false,
-                            earthSizeFraction = 0.6f,
-                            locationLabel = effectiveCityLabel,
-                            locationOptions = locationOptions,
-                            kiddushLevanaEarliestOpinion = kiddushLevanaEarliestOpinion,
-                            kiddushLevanaLatestOpinion = kiddushLevanaLatestOpinion,
-                        )
+                        CelestialWidgetCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(rightColumnHeightModifier),
+                            backgroundColor = Color.Black,
+                        ) {
+                            EarthWidgetZmanimView(
+                                modifier = Modifier.fillMaxSize(),
+                                sphereSize = sphereSize,
+                                locationOverride = effectiveLocation,
+                                targetTime = earthWidgetTargetTime,
+                                targetDate = selectedDate,
+                                onDateSelected = onDateSelected,
+                                onLocationSelected = onLocationSelectedHandler,
+                                allowLocationSelection = true,
+                                containerBackground = Color.Transparent,
+                                contentPadding = 0.dp,
+                                showControls = false,
+                                showOrbitLabels = true,
+                                showMoonInOrbit = true,
+                                initialShowMoonFromMarker = false,
+                                useScroll = false,
+                                earthSizeFraction = 0.6f,
+                                locationLabel = effectiveCityLabel,
+                                locationOptions = locationOptions,
+                                kiddushLevanaEarliestOpinion = kiddushLevanaEarliestOpinion,
+                                kiddushLevanaLatestOpinion = kiddushLevanaLatestOpinion,
+                            )
+                        }
                     }
                 }
             }
@@ -1221,6 +1232,7 @@ private fun ZmanimCardsGrid(
     horizontalSpacing: Dp,
     verticalSpacing: Dp,
     selectedTimeMillis: Long?,
+    compactMode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val safeColumns = columns.coerceAtLeast(1)
@@ -1241,6 +1253,7 @@ private fun ZmanimCardsGrid(
                             DayMomentCard(
                                 data = item.data,
                                 isSelected = isSelected,
+                                compactMode = compactMode,
                                 modifier = Modifier.weight(1f),
                                 onClick = item.onClick
                             )
@@ -1263,6 +1276,7 @@ private fun ZmanimCardsGrid(
                                 rightSelected = isRightSelected,
                                 onLeftClick = item.onMgaClick,
                                 onRightClick = item.onGraClick,
+                                compactMode = compactMode,
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -1284,6 +1298,7 @@ private fun ZmanimCardsGrid(
                                 rightSelected = isRightSelected,
                                 onLeftClick = item.onMgaClick,
                                 onRightClick = item.onGraClick,
+                                compactMode = compactMode,
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -1307,6 +1322,7 @@ private fun ZmanimCardsGrid(
                                 rightSelected = isRightSelected,
                                 onLeftClick = item.onGeonimClick,
                                 onRightClick = item.onRabbeinuTamClick,
+                                compactMode = compactMode,
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -1327,6 +1343,7 @@ private fun ZmanimCardsGrid(
                                 exitSelected = isRightSelected,
                                 onEntryClick = item.onEntryClick,
                                 onExitClick = item.onExitClick,
+                                compactMode = compactMode,
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -1351,6 +1368,7 @@ private fun ZmanimCardsGrid(
 private fun DayMomentCard(
     data: DayMomentCardData,
     isSelected: Boolean,
+    compactMode: Boolean = false,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
@@ -1445,6 +1463,7 @@ private fun DayMomentCard(
                     text = stringResource(data.title),
                     abbreviation = data.titleAbbrev?.let { stringResource(it) },
                     color = labelColor,
+                    compactMode = compactMode,
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
@@ -1457,6 +1476,7 @@ private fun DayMomentCard(
                 TimeValueLarge(
                     time = data.time,
                     color = JewelTheme.globalColors.text.normal,
+                    compactMode = compactMode,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -1470,13 +1490,14 @@ private fun AdaptiveCardTitle(
     text: String,
     abbreviation: String? = null,
     color: Color,
+    compactMode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     AdaptiveSingleLineText(
         text = text,
         abbreviation = abbreviation,
         color = color,
-        fontSize = 13.sp,
+        fontSize = if (compactMode) 11.sp else 13.sp,
         fontWeight = FontWeight.SemiBold,
         textAlign = TextAlign.Center,
         modifier = modifier
@@ -1545,9 +1566,10 @@ private fun DualTimeCard(
     rightTime: String,
     rightTimeValue: Date?,
     rightSelected: Boolean,
-    modifier: Modifier = Modifier,
     onLeftClick: (() -> Unit)? = null,
     onRightClick: (() -> Unit)? = null,
+    compactMode: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     DualTimeCardContent(
         title = stringResource(title),
@@ -1565,6 +1587,7 @@ private fun DualTimeCard(
         modifier = modifier,
         onLeftClick = onLeftClick,
         onRightClick = onRightClick,
+        compactMode = compactMode,
     )
 }
 
@@ -1590,6 +1613,7 @@ private fun DualTimeCardContent(
     accentStartOverride: Color? = null,
     accentEndOverride: Color? = null,
     premiumOverlay: Brush? = null,
+    compactMode: Boolean = false,
 ) {
     val isDark = JewelTheme.isDark
     val shape = RoundedCornerShape(18.dp)
@@ -1706,6 +1730,7 @@ private fun DualTimeCardContent(
                     text = title,
                     abbreviation = titleAbbrev,
                     color = labelColor,
+                    compactMode = compactMode,
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
@@ -1715,6 +1740,7 @@ private fun DualTimeCardContent(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
+                val labelFontSize = if (compactMode) 10.sp else 12.sp
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
@@ -1728,7 +1754,7 @@ private fun DualTimeCardContent(
                             text = leftLabel,
                             abbreviation = leftLabelAbbrev,
                             color = labelColor,
-                            fontSize = 12.sp,
+                            fontSize = labelFontSize,
                             fontWeight = FontWeight.Normal,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth(),
@@ -1736,6 +1762,7 @@ private fun DualTimeCardContent(
                         TimeValue(
                             time = leftTime,
                             color = JewelTheme.globalColors.text.normal,
+                            compactMode = compactMode,
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
@@ -1756,7 +1783,7 @@ private fun DualTimeCardContent(
                             text = rightLabel,
                             abbreviation = rightLabelAbbrev,
                             color = labelColor,
-                            fontSize = 12.sp,
+                            fontSize = labelFontSize,
                             fontWeight = FontWeight.Normal,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth(),
@@ -1764,6 +1791,7 @@ private fun DualTimeCardContent(
                         TimeValue(
                             time = rightTime,
                             color = JewelTheme.globalColors.text.normal,
+                            compactMode = compactMode,
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
@@ -1793,15 +1821,18 @@ private fun DualTimeCardContent(
 private fun TimeValue(
     time: String,
     color: Color,
+    compactMode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val primaryFontSize = if (compactMode) 18.sp else 22.sp
+    val secondaryFontSize = if (compactMode) 17.sp else 21.sp
     val parts = remember(time) { splitTimeParts(time) }
     if (parts == null) {
         Text(
             text = time,
             color = color,
             fontWeight = FontWeight.Bold,
-            fontSize = 22.sp,
+            fontSize = primaryFontSize,
             modifier = modifier
         )
         return
@@ -1815,7 +1846,7 @@ private fun TimeValue(
             text = parts.first,
             color = color,
             fontWeight = FontWeight.Bold,
-            fontSize = 22.sp,
+            fontSize = primaryFontSize,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
@@ -1823,7 +1854,7 @@ private fun TimeValue(
             text = parts.second,
             color = color.copy(alpha = 0.8f),
             fontWeight = FontWeight.SemiBold,
-            fontSize = 21.sp,
+            fontSize = secondaryFontSize,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
@@ -1834,15 +1865,18 @@ private fun TimeValue(
 private fun TimeValueLarge(
     time: String,
     color: Color,
+    compactMode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val primaryFontSize = if (compactMode) 24.sp else 30.sp
+    val secondaryFontSize = if (compactMode) 22.sp else 28.sp
     val parts = remember(time) { splitTimeParts(time) }
     if (parts == null) {
         Text(
             text = time,
             color = color,
             fontWeight = FontWeight.Bold,
-            fontSize = 30.sp,
+            fontSize = primaryFontSize,
             modifier = modifier
         )
         return
@@ -1856,7 +1890,7 @@ private fun TimeValueLarge(
             text = parts.first,
             color = color,
             fontWeight = FontWeight.Bold,
-            fontSize = 30.sp,
+            fontSize = primaryFontSize,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
@@ -1864,7 +1898,7 @@ private fun TimeValueLarge(
             text = parts.second,
             color = color.copy(alpha = 0.75f),
             fontWeight = FontWeight.SemiBold,
-            fontSize = 28.sp,
+            fontSize = secondaryFontSize,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
@@ -1896,6 +1930,7 @@ private fun ShabbatDualTimeCard(
     modifier: Modifier = Modifier,
     onEntryClick: (() -> Unit)? = null,
     onExitClick: (() -> Unit)? = null,
+    compactMode: Boolean = false,
 ) {
     val isDark = JewelTheme.isDark
     val panelBackground = JewelTheme.globalColors.panelBackground
@@ -1954,6 +1989,7 @@ private fun ShabbatDualTimeCard(
         accentStartOverride = accentStart,
         accentEndOverride = accentEnd,
         premiumOverlay = sheen,
+        compactMode = compactMode,
     )
 }
 

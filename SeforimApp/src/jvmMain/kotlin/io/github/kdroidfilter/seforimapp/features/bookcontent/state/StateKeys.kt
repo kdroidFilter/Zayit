@@ -66,5 +66,6 @@ object StateKeys {
     const val PREVIOUS_MAIN_SPLIT_POSITION = "previousMainSplitPosition"
     const val PREVIOUS_TOC_SPLIT_POSITION = "previousTocSplitPosition"
     const val PREVIOUS_CONTENT_SPLIT_POSITION = "previousContentSplitPosition"
+    const val PREVIOUS_SOURCES_SPLIT_POSITION = "previousSourcesSplitPosition"
     const val PREVIOUS_TARGUM_SPLIT_POSITION = "previousTargumSplitPosition"
 }

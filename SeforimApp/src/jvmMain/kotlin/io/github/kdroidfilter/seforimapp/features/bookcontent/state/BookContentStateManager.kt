@@ -85,6 +85,7 @@ class BookContentStateManager(
                     main = persisted.previousMainSplitPosition,
                     toc = persisted.previousTocSplitPosition,
                     content = persisted.previousContentSplitPosition,
+                    sources = persisted.previousSourcesSplitPosition,
                     links = persisted.previousTargumSplitPosition
                 )
             )
@@ -233,6 +234,7 @@ class BookContentStateManager(
             previousMainSplitPosition = currentState.layout.previousPositions.main,
             previousTocSplitPosition = currentState.layout.previousPositions.toc,
             previousContentSplitPosition = currentState.layout.previousPositions.content,
+            previousSourcesSplitPosition = currentState.layout.previousPositions.sources,
             previousTargumSplitPosition = currentState.layout.previousPositions.links,
         )
 

@@ -26,7 +26,6 @@ import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
 import seforimapp.seforimapp.generated.resources.settings_persist_session
-import seforimapp.seforimapp.generated.resources.settings_ram_saver
 
 @Composable
 fun GeneralSettingsScreen() {
@@ -62,16 +61,6 @@ private fun GeneralSettingsView(
                 onCheckedChange = { onEvent(GeneralSettingsEvents.SetPersistSession(it)) }
             )
             Text(text = stringResource(Res.string.settings_persist_session))
-        }
-
-        Divider(orientation = Orientation.Horizontal)
-
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Checkbox(
-                checked = state.ramSaver,
-                onCheckedChange = { onEvent(GeneralSettingsEvents.SetRamSaver(it)) }
-            )
-            Text(text = stringResource(Res.string.settings_ram_saver))
         }
 
     }

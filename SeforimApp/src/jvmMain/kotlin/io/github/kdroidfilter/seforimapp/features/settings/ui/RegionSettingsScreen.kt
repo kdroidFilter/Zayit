@@ -53,7 +53,7 @@ private fun RegionSettingsView(
         Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(Res.string.onboarding_region_country_label))
-                SpeedSearchArea(Modifier.widthIn(max = 240.dp)) {
+                SpeedSearchArea(Modifier.widthIn(min = 280.dp, max = 360.dp)) {
                     ListComboBox(
                         items = state.countries,
                         selectedIndex = state.selectedCountryIndex,
@@ -62,14 +62,14 @@ private fun RegionSettingsView(
                             val country = state.countries.getOrNull(index)
                             AppSettings.setRegionCountry(country)
                         },
-                        modifier = Modifier.widthIn(max = 240.dp)
+                        modifier = Modifier.widthIn(min = 280.dp, max = 360.dp)
                     )
                 }
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(Res.string.onboarding_region_city_label))
-                SpeedSearchArea(Modifier.widthIn(max = 240.dp)) {
+                SpeedSearchArea(Modifier.widthIn(min = 280.dp, max = 360.dp)) {
                     ListComboBox(
                         items = state.cities,
                         selectedIndex = state.selectedCityIndex,
@@ -79,7 +79,7 @@ private fun RegionSettingsView(
                             AppSettings.setRegionCity(city)
                         },
                         enabled = state.selectedCountryIndex >= 0,
-                        modifier = Modifier.widthIn(max = 240.dp)
+                        modifier = Modifier.widthIn(min = 280.dp, max = 360.dp)
                     )
                 }
             }

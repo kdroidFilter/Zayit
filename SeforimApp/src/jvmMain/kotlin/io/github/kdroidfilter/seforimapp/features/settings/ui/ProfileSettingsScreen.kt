@@ -101,7 +101,7 @@ private fun ProfileSettingsView(
                 stringResource(Res.string.onboarding_user_community_ashkenaze),
                 stringResource(Res.string.onboarding_user_community_sefard),
             )
-            SpeedSearchArea(Modifier.widthIn(max = 200.dp)) {
+            SpeedSearchArea(Modifier.widthIn(min = 240.dp, max = 320.dp)) {
                 ListComboBox(
                     items = communityLabels,
                     selectedIndex = state.selectedCommunityIndex,

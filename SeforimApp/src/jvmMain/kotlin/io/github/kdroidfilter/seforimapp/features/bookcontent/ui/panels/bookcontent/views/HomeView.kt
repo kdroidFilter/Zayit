@@ -138,6 +138,8 @@ private fun HomeBody(
 ) {
     // Global zoom level from AppSettings; used to scale Home view uniformly
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    // Whether to show zmanim widgets
+    val showZmanimWidgets by AppSettings.showZmanimWidgetsFlow.collectAsState()
     // Apply a gentler zoom curve on the Home screen only: keep default size identical,
     // but soften +/- zoom steps so they feel less strong here than globally.
     val homeScale = remember(rawTextSize) {
@@ -485,18 +487,20 @@ private fun HomeBody(
                             }
                         }
                     }
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 16.dp, bottom = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            HomeCelestialWidgets(
-                                modifier = Modifier.fillMaxWidth(),
-                                userCommunityCode = searchUi.userCommunityCode,
-                                locationState = celestialWidgetsState,
-                            )
+                    if (showZmanimWidgets) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp, bottom = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                HomeCelestialWidgets(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    userCommunityCode = searchUi.userCommunityCode,
+                                    locationState = celestialWidgetsState,
+                                )
+                            }
                         }
                     }
                 }

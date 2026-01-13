@@ -63,6 +63,16 @@ class FontsSettingsViewModel : ViewModel() {
                 AppSettings.setSourceFontCode(event.code)
                 sourceFont.value = event.code
             }
+            is FontsSettingsEvents.ResetToDefaults -> {
+                AppSettings.setBookFontCode(AppSettings.DEFAULT_BOOK_FONT)
+                AppSettings.setCommentaryFontCode(AppSettings.DEFAULT_COMMENTARY_FONT)
+                AppSettings.setTargumFontCode(AppSettings.DEFAULT_TARGUM_FONT)
+                AppSettings.setSourceFontCode(AppSettings.DEFAULT_SOURCE_FONT)
+                bookFont.value = AppSettings.DEFAULT_BOOK_FONT
+                commentaryFont.value = AppSettings.DEFAULT_COMMENTARY_FONT
+                targumFont.value = AppSettings.DEFAULT_TARGUM_FONT
+                sourceFont.value = AppSettings.DEFAULT_SOURCE_FONT
+            }
         }
     }
 }

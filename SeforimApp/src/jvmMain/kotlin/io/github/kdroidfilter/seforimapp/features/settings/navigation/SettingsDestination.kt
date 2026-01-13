@@ -11,9 +11,6 @@ sealed interface SettingsDestination {
     data object Profile : SettingsDestination
 
     @Serializable
-    data object Region : SettingsDestination
-
-    @Serializable
     data object Fonts : SettingsDestination
 
     @Serializable

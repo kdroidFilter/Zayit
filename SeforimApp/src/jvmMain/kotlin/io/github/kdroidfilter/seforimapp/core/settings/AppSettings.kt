@@ -26,6 +26,12 @@ object AppSettings {
     const val MAX_LINE_HEIGHT = 2.5f
     const val LINE_HEIGHT_INCREMENT = 0.1f
 
+    // Default font codes
+    const val DEFAULT_BOOK_FONT = "notoserifhebrew"
+    const val DEFAULT_COMMENTARY_FONT = "frankruhllibre"
+    const val DEFAULT_TARGUM_FONT = "taameyashkenaz"
+    const val DEFAULT_SOURCE_FONT = "tinos"
+
     // Tab display constants
     const val MAX_TAB_TITLE_LENGTH = 20
     // Preferred max width for tabs in dp units (UI caps to this, shrinks below as needed)
@@ -63,6 +69,9 @@ object AppSettings {
 
     // Theme configuration
     private const val KEY_THEME_MODE = "theme_mode"
+
+    // Zmanim widgets visibility
+    private const val KEY_SHOW_ZMANIM_WIDGETS = "show_zmanim_widgets"
 
     // Backing Settings storage (can be replaced at startup if needed)
     @Volatile
@@ -107,6 +116,10 @@ object AppSettings {
     // StateFlow for session persistence setting
     private val _persistSessionFlow = MutableStateFlow(isPersistSessionEnabled())
     val persistSessionFlow: StateFlow<Boolean> = _persistSessionFlow.asStateFlow()
+
+    // StateFlow for zmanim widgets visibility
+    private val _showZmanimWidgetsFlow = MutableStateFlow(isShowZmanimWidgetsEnabled())
+    val showZmanimWidgetsFlow: StateFlow<Boolean> = _showZmanimWidgetsFlow.asStateFlow()
 
     // StateFlow for RAM saver (memory-optimized tabs). Disabled by default
     private val _ramSaverEnabledFlow = MutableStateFlow(isRamSaverEnabled())
@@ -193,7 +206,7 @@ object AppSettings {
 
     // Font settings (persist codes for cross-platform stability)
     fun getBookFontCode(): String {
-        return settings[KEY_FONT_BOOK, "notoserifhebrew"]
+        return settings[KEY_FONT_BOOK, DEFAULT_BOOK_FONT]
     }
 
     fun setBookFontCode(code: String) {
@@ -202,7 +215,7 @@ object AppSettings {
     }
 
     fun getCommentaryFontCode(): String {
-        return settings[KEY_FONT_COMMENTARY, "frankruhllibre"]
+        return settings[KEY_FONT_COMMENTARY, DEFAULT_COMMENTARY_FONT]
     }
 
     fun setCommentaryFontCode(code: String) {
@@ -211,7 +224,7 @@ object AppSettings {
     }
 
     fun getTargumFontCode(): String {
-        return settings[KEY_FONT_TARGUM, "taameyashkenaz"]
+        return settings[KEY_FONT_TARGUM, DEFAULT_TARGUM_FONT]
     }
 
     fun setTargumFontCode(code: String) {
@@ -220,7 +233,7 @@ object AppSettings {
     }
 
     fun getSourceFontCode(): String {
-        return settings[KEY_FONT_SOURCE, "tinos"]
+        return settings[KEY_FONT_SOURCE, DEFAULT_SOURCE_FONT]
     }
 
     fun setSourceFontCode(code: String) {
@@ -267,6 +280,16 @@ object AppSettings {
             // Clear any previously saved session when disabling persistence
             setSavedSessionJson(null)
         }
+    }
+
+    // Zmanim widgets visibility
+    fun isShowZmanimWidgetsEnabled(): Boolean {
+        return settings[KEY_SHOW_ZMANIM_WIDGETS, true]
+    }
+
+    fun setShowZmanimWidgetsEnabled(enabled: Boolean) {
+        settings[KEY_SHOW_ZMANIM_WIDGETS] = enabled
+        _showZmanimWidgetsFlow.value = enabled
     }
 
     // RAM saver setting
@@ -418,10 +441,11 @@ object AppSettings {
         _closeTreeOnNewBookFlow.value = false
         _databasePathFlow.value = null
         _persistSessionFlow.value = true
-        _bookFontCodeFlow.value = "notoserifhebrew"
-        _commentaryFontCodeFlow.value = "frankruhllibre"
-        _targumFontCodeFlow.value = "taameyashkenaz"
-        _sourceFontCodeFlow.value = "tinos"
+        _showZmanimWidgetsFlow.value = true
+        _bookFontCodeFlow.value = DEFAULT_BOOK_FONT
+        _commentaryFontCodeFlow.value = DEFAULT_COMMENTARY_FONT
+        _targumFontCodeFlow.value = DEFAULT_TARGUM_FONT
+        _sourceFontCodeFlow.value = DEFAULT_SOURCE_FONT
         _ramSaverEnabledFlow.value = false
     }
 }

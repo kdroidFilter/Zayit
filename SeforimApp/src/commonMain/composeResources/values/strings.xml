@@ -428,6 +428,12 @@
     <string name="settings_info_repo_prompt">ניתן לעיין בקוד המקור במאגר:</string>
     <string name="settings_info_repo_url_text">https://github.com/kdroidFilter/Zayit</string>
 
+    <!-- App Update -->
+    <string name="update_available_toast">גרסה חדשה זמינה</string>
+    <string name="update_notification_message">גרסה חדשה של זית זמינה להורדה. לחץ כדי לעדכן.</string>
+    <string name="update_available_banner">גרסה %1$s זמינה להורדה</string>
+    <string name="update_download_action">הורד עכשיו</string>
+
     <!-- Filtering (search panels) accessibility labels -->
     <string name="filter_select_category">בחר קטגוריה לסינון</string>
     <string name="filter_select_book">בחר ספר לסינון</string>

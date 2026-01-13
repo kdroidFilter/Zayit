@@ -67,6 +67,8 @@ import seforimapp.seforimapp.generated.resources.settings_reset_confirm_no
 import seforimapp.seforimapp.generated.resources.settings_reset_confirm_yes
 import seforimapp.seforimapp.generated.resources.settings_reset_done
 import seforimapp.seforimapp.generated.resources.settings_reset_warning
+import seforimapp.seforimapp.generated.resources.update_available_banner
+import seforimapp.seforimapp.generated.resources.update_download_action
 
 @Composable
 fun GeneralSettingsScreen() {
@@ -74,13 +76,15 @@ fun GeneralSettingsScreen() {
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
     val version = getAppVersion()
-    GeneralSettingsView(state = state, version = version, onEvent = viewModel::onEvent)
+    val updateVersion by io.github.kdroidfilter.seforimapp.core.MainAppState.updateAvailable.collectAsState()
+    GeneralSettingsView(state = state, version = version, updateVersion = updateVersion, onEvent = viewModel::onEvent)
 }
 
 @Composable
 private fun GeneralSettingsView(
     state: GeneralSettingsState,
     version: String,
+    updateVersion: String?,
     onEvent: (GeneralSettingsEvents) -> Unit
 ) {
     VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
@@ -90,7 +94,7 @@ private fun GeneralSettingsView(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            AppHeader(version = version)
+            AppHeader(version = version, updateVersion = updateVersion)
 
             SettingCard(
                 title = Res.string.close_book_tree_on_new_book,
@@ -122,7 +126,7 @@ private fun GeneralSettingsView(
 }
 
 @Composable
-private fun AppHeader(version: String) {
+private fun AppHeader(version: String, updateVersion: String? = null) {
     val shape = RoundedCornerShape(8.dp)
 
     Column(
@@ -134,6 +138,23 @@ private fun AppHeader(version: String) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Update available banner
+        if (updateVersion != null) {
+            val downloadLabel = stringResource(Res.string.update_download_action)
+            InlineInformationBanner(
+                style = JewelTheme.inlineBannerStyle.information,
+                text = stringResource(Res.string.update_available_banner, updateVersion),
+                linkActions = {
+                    action(
+                        downloadLabel,
+                        onClick = {
+                            Desktop.getDesktop().browse(URI(io.github.kdroidfilter.seforimapp.framework.update.AppUpdateChecker.DOWNLOAD_URL))
+                        }
+                    )
+                }
+            )
+        }
+
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -300,6 +321,6 @@ private fun ResetSection(
 @Preview
 private fun GeneralSettingsView_Preview() {
     PreviewContainer {
-        GeneralSettingsView(state = GeneralSettingsState.preview, version = "0.3.0", onEvent = {})
+        GeneralSettingsView(state = GeneralSettingsState.preview, version = "0.3.0", updateVersion = "0.4.0", onEvent = {})
     }
 }

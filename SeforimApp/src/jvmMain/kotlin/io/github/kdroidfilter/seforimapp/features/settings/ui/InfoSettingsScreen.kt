@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.platformtools.getAppVersion
@@ -28,7 +27,7 @@ import seforimapp.seforimapp.generated.resources.settings_info_repo_url_text
 @Composable
 fun InfoSettingsScreen() {
     val version = getAppVersion()
-    InfoSettingsView(version)
+    InfoSettingsView(version = version)
 }
 
 @Composable
@@ -50,8 +49,6 @@ private fun InfoSettingsView(version: String) {
                 link = "https://github.com/kdroidFilter/Zayit"
             )
         }
-
-
     }
 }
 

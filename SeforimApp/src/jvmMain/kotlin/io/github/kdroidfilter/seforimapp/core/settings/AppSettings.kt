@@ -26,6 +26,12 @@ object AppSettings {
     const val MAX_LINE_HEIGHT = 2.5f
     const val LINE_HEIGHT_INCREMENT = 0.1f
 
+    // Default font codes
+    const val DEFAULT_BOOK_FONT = "notoserifhebrew"
+    const val DEFAULT_COMMENTARY_FONT = "frankruhllibre"
+    const val DEFAULT_TARGUM_FONT = "taameyashkenaz"
+    const val DEFAULT_SOURCE_FONT = "tinos"
+
     // Tab display constants
     const val MAX_TAB_TITLE_LENGTH = 20
     // Preferred max width for tabs in dp units (UI caps to this, shrinks below as needed)
@@ -193,7 +199,7 @@ object AppSettings {
 
     // Font settings (persist codes for cross-platform stability)
     fun getBookFontCode(): String {
-        return settings[KEY_FONT_BOOK, "notoserifhebrew"]
+        return settings[KEY_FONT_BOOK, DEFAULT_BOOK_FONT]
     }
 
     fun setBookFontCode(code: String) {
@@ -202,7 +208,7 @@ object AppSettings {
     }
 
     fun getCommentaryFontCode(): String {
-        return settings[KEY_FONT_COMMENTARY, "frankruhllibre"]
+        return settings[KEY_FONT_COMMENTARY, DEFAULT_COMMENTARY_FONT]
     }
 
     fun setCommentaryFontCode(code: String) {
@@ -211,7 +217,7 @@ object AppSettings {
     }
 
     fun getTargumFontCode(): String {
-        return settings[KEY_FONT_TARGUM, "taameyashkenaz"]
+        return settings[KEY_FONT_TARGUM, DEFAULT_TARGUM_FONT]
     }
 
     fun setTargumFontCode(code: String) {
@@ -220,7 +226,7 @@ object AppSettings {
     }
 
     fun getSourceFontCode(): String {
-        return settings[KEY_FONT_SOURCE, "tinos"]
+        return settings[KEY_FONT_SOURCE, DEFAULT_SOURCE_FONT]
     }
 
     fun setSourceFontCode(code: String) {
@@ -418,10 +424,10 @@ object AppSettings {
         _closeTreeOnNewBookFlow.value = false
         _databasePathFlow.value = null
         _persistSessionFlow.value = true
-        _bookFontCodeFlow.value = "notoserifhebrew"
-        _commentaryFontCodeFlow.value = "frankruhllibre"
-        _targumFontCodeFlow.value = "taameyashkenaz"
-        _sourceFontCodeFlow.value = "tinos"
+        _bookFontCodeFlow.value = DEFAULT_BOOK_FONT
+        _commentaryFontCodeFlow.value = DEFAULT_COMMENTARY_FONT
+        _targumFontCodeFlow.value = DEFAULT_TARGUM_FONT
+        _sourceFontCodeFlow.value = DEFAULT_SOURCE_FONT
         _ramSaverEnabledFlow.value = false
     }
 }

@@ -14,7 +14,6 @@ import io.github.kdroidfilter.seforim.navigation.NavigationAnimations
 import io.github.kdroidfilter.seforimapp.features.settings.ui.GeneralSettingsScreen
 import io.github.kdroidfilter.seforimapp.features.settings.ui.FontsSettingsScreen
 import io.github.kdroidfilter.seforimapp.features.settings.ui.ProfileSettingsScreen
-import io.github.kdroidfilter.seforimapp.features.settings.ui.RegionSettingsScreen
 import io.github.kdroidfilter.seforimapp.features.settings.ui.InfoSettingsScreen
 
 @Composable
@@ -29,9 +28,6 @@ fun SettingsNavHost(navController: NavHostController) {
         }
         noAnimatedComposable<SettingsDestination.Profile> {
             ProfileSettingsScreen()
-        }
-        noAnimatedComposable<SettingsDestination.Region> {
-            RegionSettingsScreen()
         }
         noAnimatedComposable<SettingsDestination.Fonts> {
             FontsSettingsScreen()

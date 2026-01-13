@@ -34,6 +34,7 @@
     <string name="settings_font_commentary_label">גופן לפירושים</string>
     <string name="settings_font_targum_label">גופן לתרגומים</string>
     <string name="settings_font_sources_label">גופן למקורות</string>
+    <string name="settings_font_reset_defaults">איפוס לברירת מחדל</string>
     <!-- Font names -->
     <string name="font_noto_serif_hebrew">Noto Serif Hebrew</string>
     <string name="font_noto_rashi_hebrew">Noto Rashi Hebrew</string>
@@ -273,6 +274,8 @@
 
     <!-- Settings -->
     <string name="close_book_tree_on_new_book">סגור אוטומטית את עץ הספרים בעת בחירת ספר חדש</string>
+    <string name="close_book_tree_on_new_book_description">כאשר אפשרות זו מופעלת, עץ הניווט בצד ימין ייסגר אוטומטית לאחר בחירת ספר חדש, מה שמאפשר יותר מקום לקריאה.</string>
+    <string name="settings_persist_session_description">כאשר אפשרות זו מופעלת, האפליקציה תשמור את הלשוניות הפתוחות ומיקום הקריאה שלך, ותשחזר אותם בהפעלה הבאה.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title_bar">מדריך ההגדרה של זית</string>
@@ -414,9 +417,10 @@
     <!-- Settings > Info -->
     <string name="settings_info_app_version">גרסה: %1$s</string>
     <string name="settings_info_created_by">נוצר על ידי Elie Gambache - KdroidFilter</string>
-    <string name="settings_info_open_source">יישום זה הוא קוד פתוח תחת רישיון AGPL-3.0; ניתן להשתמש ולהפיץ בהתאם לתנאי הרישיון.</string>
+    <string name="settings_info_license">יישום זה הוא קוד פתוח תחת רישיון AGPL-3.0</string>
+    <string name="settings_info_license_usage">ניתן להשתמש ולהפיץ בהתאם לתנאי הרישיון.</string>
     <string name="settings_info_repo_prompt">ניתן לעיין בקוד המקור במאגר:</string>
-    <string name="settings_info_repo_url_text">https://github.com/kdroidFilter/SeforimApp</string>
+    <string name="settings_info_repo_url_text">https://github.com/kdroidFilter/Zayit</string>
 
     <!-- Filtering (search panels) accessibility labels -->
     <string name="filter_select_category">בחר קטגוריה לסינון</string>

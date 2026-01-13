@@ -20,7 +20,8 @@ import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.settings_info_app_version
 import seforimapp.seforimapp.generated.resources.settings_info_created_by
-import seforimapp.seforimapp.generated.resources.settings_info_open_source
+import seforimapp.seforimapp.generated.resources.settings_info_license
+import seforimapp.seforimapp.generated.resources.settings_info_license_usage
 import seforimapp.seforimapp.generated.resources.settings_info_repo_prompt
 import seforimapp.seforimapp.generated.resources.settings_info_repo_url_text
 
@@ -38,14 +39,15 @@ private fun InfoSettingsView(version: String) {
     ) {
         Text(text = stringResource(Res.string.settings_info_app_version, version))
         Text(text = stringResource(Res.string.settings_info_created_by))
-        Text(text = stringResource(Res.string.settings_info_open_source))
+        Text(text = stringResource(Res.string.settings_info_license))
+        Text(text = stringResource(Res.string.settings_info_license_usage))
 
         Row {
             Text(text = stringResource(Res.string.settings_info_repo_prompt))
             Spacer(Modifier.width(8.dp))
             TextWithLink(
                 text = stringResource(Res.string.settings_info_repo_url_text),
-                link = "https://github.com/kdroidFilter/SeforimApp"
+                link = "https://github.com/kdroidFilter/Zayit"
             )
         }
 

@@ -62,6 +62,7 @@ fun buildAnnotatedFromHtml(
                 e.headerLevel != null && e.headerLevel in 1..6 -> {
                     headerSizes[e.headerLevel - 1]
                 }
+                e.isSmall -> defaultSize * 0.85f  // Small text (הגה) is 85% of base size
                 else -> defaultSize
             }
             val fontSize = if (!e.isHeader && e.isBold) {

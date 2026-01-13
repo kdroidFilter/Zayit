@@ -9,6 +9,7 @@ data class ParsedHtmlElement(
     val text: String,
     val isBold: Boolean = false,
     val isItalic: Boolean = false,
+    val isSmall: Boolean = false,
     val isHeader: Boolean = false,
     val headerLevel: Int? = null,
     val commentator: String? = null,
@@ -27,6 +28,7 @@ class HtmlParser {
                 list = out,
                 isBold = false,
                 isItalic = false,
+                isSmall = false,
                 isHeader = false,
                 headerLevel = null,
                 commentator = null,
@@ -45,6 +47,7 @@ class HtmlParser {
         list: MutableList<ParsedHtmlElement>,
         isBold: Boolean,
         isItalic: Boolean,
+        isSmall: Boolean,
         isHeader: Boolean,
         headerLevel: Int?,
         commentator: String?,
@@ -57,6 +60,7 @@ class HtmlParser {
                     textRaw = node.text(),
                     isBold = isBold,
                     isItalic = isItalic,
+                    isSmall = isSmall,
                     isHeader = isHeader,
                     headerLevel = headerLevel,
                     commentator = commentator,
@@ -73,6 +77,7 @@ class HtmlParser {
 
                 val nextBold = isBold || tag == "b" || tag == "strong"
                 val nextItalic = isItalic || tag == "i" || tag == "em"
+                val nextSmall = isSmall || tag == "small"
                 val isHeaderTag = tag.length == 2 && tag[0] == 'h' && tag[1].isDigit()
                 val nextHeader = isHeader || isHeaderTag
                 val nextHeaderLevel = if (isHeaderTag) tag.substring(1).toInt() else headerLevel
@@ -83,6 +88,7 @@ class HtmlParser {
                         textRaw = (node.childNode(0) as TextNode).text(),
                         isBold = nextBold,
                         isItalic = nextItalic,
+                        isSmall = nextSmall,
                         isHeader = nextHeader,
                         headerLevel = nextHeaderLevel,
                         commentator = commentator,
@@ -97,6 +103,7 @@ class HtmlParser {
                         list = list,
                         isBold = nextBold,
                         isItalic = nextItalic,
+                        isSmall = nextSmall,
                         isHeader = nextHeader,
                         headerLevel = nextHeaderLevel,
                         commentator = commentator,
@@ -112,6 +119,7 @@ class HtmlParser {
         textRaw: String,
         isBold: Boolean,
         isItalic: Boolean,
+        isSmall: Boolean,
         isHeader: Boolean,
         headerLevel: Int?,
         commentator: String?,
@@ -146,6 +154,7 @@ class HtmlParser {
                 !last.isLineBreak &&
                         last.isBold == isBold &&
                         last.isItalic == isItalic &&
+                        last.isSmall == isSmall &&
                         last.isHeader == isHeader &&
                         last.headerLevel == headerLevel &&
                         last.commentator == commentator &&
@@ -193,6 +202,7 @@ class HtmlParser {
                 text = finalText,
                 isBold = isBold,
                 isItalic = isItalic,
+                isSmall = isSmall,
                 isHeader = isHeader,
                 headerLevel = headerLevel,
                 commentator = commentator,

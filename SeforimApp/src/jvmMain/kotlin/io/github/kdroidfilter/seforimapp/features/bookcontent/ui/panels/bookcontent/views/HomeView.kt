@@ -201,6 +201,8 @@ private fun HomeBody(
                 // Shared focus requester for the MAIN search bar so other UI (e.g., level changes)
                 // can reliably return focus to it, allowing immediate Enter to submit.
                 val mainSearchFocusRequester = remember { FocusRequester() }
+                // Focus requester for the secondary search bar in ReferenceByCategorySection
+                val referenceSectionFocusRequester = remember { FocusRequester() }
                 var scopeExpanded by remember { mutableStateOf(false) }
                 // Forward reference input changes to the ViewModel (VM handles debouncing and suggestions)
                 LaunchedEffect(Unit) {
@@ -337,8 +339,12 @@ private fun HomeBody(
                                 },
                                 onTab = {
                                     if (!isReferenceMode) {
-                                        // Text mode: expand the scope section as before
+                                        // Text mode: expand the scope section and focus secondary bar
                                         scopeExpanded = true
+                                        scope.launch {
+                                            delay(100) // Wait for composition to settle
+                                            referenceSectionFocusRequester.requestFocus()
+                                        }
                                     }
                                 },
                                 modifier = Modifier,
@@ -439,6 +445,7 @@ private fun HomeBody(
                                         submitOnEnterIfSelection = true,
                                         tocPreviewHints = searchUi.tocPreviewHints,
                                         showHeader = true,
+                                        focusRequester = referenceSectionFocusRequester,
                                         onPickCategory = { picked ->
                                             searchCallbacks.onPickCategory(picked.category)
                                             val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparator)
@@ -615,6 +622,8 @@ private fun ReferenceByCategorySection(
     parentScale: Float = 1f,
     isBookLoading: Boolean = false,
     isTocLoading: Boolean = false,
+    // Focus requester for the internal search bar
+    focusRequester: FocusRequester? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -698,7 +707,8 @@ private fun ReferenceByCategorySection(
             },
             parentScale = parentScale,
             isBookLoading = isBookLoading,
-            isTocLoading = isTocLoading
+            isTocLoading = isTocLoading,
+            focusRequester = focusRequester
         )
     }
 }
@@ -1311,6 +1321,12 @@ private fun SearchBar(
                         isRef && ev.key == Key.Escape && ev.type == KeyEventType.KeyUp -> {
                             popupVisible = false
                             onDismissSuggestions()
+                            true
+                        }
+
+                        // Consume Tab KeyDown in REFERENCE mode when suggestions are visible
+                        // to prevent default focus movement before our KeyUp handler runs
+                        isRef && ev.key == Key.Tab && ev.type == KeyEventType.KeyDown && popupVisible -> {
                             true
                         }
 

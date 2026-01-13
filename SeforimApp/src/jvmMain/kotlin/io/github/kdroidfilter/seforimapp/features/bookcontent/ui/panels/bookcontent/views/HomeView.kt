@@ -188,8 +188,12 @@ private fun HomeBody(
             val maxScaleForWidth = (maxWidth.value / baseWidth.value).coerceAtLeast(0f)
             val clampedScale = homeScale.coerceAtMost(maxScaleForWidth).coerceAtLeast(0f)
 
+            // Scale paddings and spacing proportionally so zoomed content has adequate room
+            val scaledTopPadding = (56.dp * clampedScale).coerceAtLeast(56.dp)
+            val scaledSpacing = (16.dp * clampedScale).coerceAtLeast(16.dp)
+
             Box(
-                modifier = modifier.padding(top = 56.dp).fillMaxSize().padding(8.dp),
+                modifier = modifier.padding(top = scaledTopPadding).fillMaxSize().padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 // Keep state outside LazyColumn so it persists across item recompositions
@@ -254,21 +258,33 @@ private fun HomeBody(
                     scaleY = clampedScale
                 )
 
+                // Logo and search bar base heights - used to reserve correct layout space
+                val logoBaseSize = 220.dp
+                val searchBarBaseHeight = 40.dp
+
                 LazyColumn(
                     state = listState,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(scaledSpacing),
                     modifier = Modifier.fillMaxWidth()
                 ) {
 
                     item {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        // Reserve scaled height so the visually scaled logo doesn't overflow
+                        Box(
+                            Modifier.fillMaxWidth().height(logoBaseSize * clampedScale),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Box(homeContentModifier, contentAlignment = Alignment.Center) {
                                 LogoImage()
                             }
                         }
                     }
                     item {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        // Reserve scaled height for the search bar
+                        Box(
+                            Modifier.fillMaxWidth().height(searchBarBaseHeight * clampedScale),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Box(homeContentModifier) {
                                 // In REFERENCE mode, repurpose the first TextField as the predictive
                             // Book picker (with Category/Book suggestions). Enter should NOT open.

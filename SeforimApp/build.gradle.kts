@@ -158,6 +158,9 @@ kotlin {
 
             implementation(libs.zmanim)
 
+            implementation(libs.knotify)
+            implementation(libs.knotify.compose)
+
         }
     }
 }

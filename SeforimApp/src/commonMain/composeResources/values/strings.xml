@@ -30,7 +30,6 @@
     <string name="settings_db_path_label">נתיב מסד הנתונים:</string>
     <string name="settings_db_path_not_set">לא הוגדר</string>
     <string name="settings_persist_session">שמור מצב בין הפעלות</string>
-    <string name="settings_ram_saver">מצב חיסכון בזיכרון (RAM)</string>
     <string name="settings_font_book_label">גופן לטקסט הספר</string>
     <string name="settings_font_commentary_label">גופן לפירושים</string>
     <string name="settings_font_targum_label">גופן לתרגומים</string>
@@ -409,6 +408,7 @@
     <!-- Settings action bar -->
     <string name="settings_ok">אישור</string>
     <string name="settings_cancel">ביטול</string>
+    <string name="settings_close">סגור</string>
     <string name="settings_apply">החל</string>
 
     <!-- Settings > Info -->

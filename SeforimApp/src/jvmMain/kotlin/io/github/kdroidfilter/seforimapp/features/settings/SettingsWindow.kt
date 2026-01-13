@@ -141,15 +141,13 @@ private fun SettingsWindowView(
                     Divider(orientation = Orientation.Horizontal)
                     Spacer(Modifier.height(8.dp))
 
-                    // Bottom action bar aligned to the end (Confirm applies)
+                    // Bottom action bar aligned to the end
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        OutlinedButton(onClick = onClose) { Text(stringResource(Res.string.settings_cancel)) }
-                        Spacer(Modifier.width(8.dp))
-                        DefaultButton(onClick = onClose) { Text(stringResource(Res.string.settings_ok)) }
+                        DefaultButton(onClick = onClose) { Text(stringResource(Res.string.settings_close)) }
                     }
                 }
             }

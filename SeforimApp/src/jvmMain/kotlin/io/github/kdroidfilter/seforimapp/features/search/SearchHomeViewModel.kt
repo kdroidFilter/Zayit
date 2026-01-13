@@ -234,12 +234,11 @@ class SearchHomeViewModel(
                                     if (q.length < MIN_BOOK_PREFIX_LEN) {
                                         emptyList<BookSuggestionDto>()
                                     } else {
-                                        val bookIds = lookup.searchBooksPrefix(qNorm, limit = MAX_BOOK_PREDICTIVE)
-                                    val bookHits = lookup.searchBooksPrefix(qNorm, limit = MAX_BOOK_PREDICTIVE)
-                                    bookHits
-                                        .sortedBy { matchRank(it.title, q) }
-                                        .take(MAX_BOOK_PREDICTIVE)
-                                        .map { hit ->
+                                        val bookHits = lookup.searchBooksWithScoring(qNorm, limit = MAX_BOOK_PREDICTIVE)
+                                        bookHits
+                                            // Already sorted by score in searchBooksWithScoring, no need to re-sort
+                                            .take(MAX_BOOK_PREDICTIVE)
+                                            .map { hit ->
                                             val book = Book(
                                                 id = hit.id,
                                                 categoryId = hit.categoryId,

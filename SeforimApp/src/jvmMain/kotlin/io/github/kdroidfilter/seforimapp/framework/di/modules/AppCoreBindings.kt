@@ -20,6 +20,7 @@ import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStor
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
+import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
 import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
 import java.nio.file.Paths
 import java.util.UUID
@@ -73,10 +74,18 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideLuceneLookupSearchService(): LuceneLookupSearchService {
+    fun provideAcronymFrequencyCache(): AcronymFrequencyCache {
+        return AcronymFrequencyCache()
+    }
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideLuceneLookupSearchService(
+        acronymCache: AcronymFrequencyCache
+    ): LuceneLookupSearchService {
         val dbPath = getDatabasePath()
         val indexPath = if (dbPath.endsWith(".db")) "$dbPath.lookup.lucene" else "$dbPath.lookupindex"
-        return LuceneLookupSearchService(Paths.get(indexPath))
+        return LuceneLookupSearchService(Paths.get(indexPath), acronymCache = acronymCache)
     }
 
     @Provides

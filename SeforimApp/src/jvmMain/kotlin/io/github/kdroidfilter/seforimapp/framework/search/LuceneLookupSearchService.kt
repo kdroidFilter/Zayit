@@ -204,9 +204,19 @@ class LuceneLookupSearchService(
         val acronymMatchScore = calculateAcronymMatchScore(hit.title, query)
         score += acronymMatchScore
 
-        // 3. BASE BOOKS BOOST (CRITICAL - 50x for priority 1)
+        // 3. Short acronym boost - if query is 2-3 chars and matches a known acronym exactly
+        if (query.length in 2..3 && hasExactAcronymMatch(hit.title, query)) {
+            score *= 50.0  // Massive boost for known short acronyms
+        }
+
+        // 4. BASE BOOKS BOOST (CRITICAL - 50x for priority 1)
         val baseBookBoost = calculateBaseBookBoost(hit)
         score *= baseBookBoost
+
+        // 5. Book ID boost - lower IDs get higher priority (MULTIPLICATIVE)
+        // Apply AFTER other multipliers to ensure low IDs win ties
+        val idMultiplier = calculateIdBoost(hit.id)
+        score *= idMultiplier
 
         return score
     }
@@ -216,8 +226,8 @@ class LuceneLookupSearchService(
         val queryNorm = normalizeHebrew(query)
 
         return when {
-            titleNorm == queryNorm -> 1000.0           // Exact match
-            titleNorm.startsWith(queryNorm) -> 500.0   // Prefix match
+            titleNorm == queryNorm -> 10000.0          // Exact match - MASSIVELY boosted
+            titleNorm.startsWith(queryNorm) -> 1000.0  // Prefix match
             titleNorm.contains(queryNorm) -> 200.0     // Contains
             else -> 50.0                               // Partial match
         }
@@ -278,6 +288,37 @@ class LuceneLookupSearchService(
             orderIndex <= 60 -> 10.0 - (orderIndex - 30) * 0.15
             orderIndex <= 100 -> 5.0 - (orderIndex - 60) * 0.05
             else -> kotlin.math.max(2.0, 5.0 - (orderIndex - 100) * 0.02)
+        }
+    }
+
+    /**
+     * Calculate boost based on book ID - lower IDs get higher priority.
+     * This ensures books earlier in the hierarchy appear first in ties.
+     * Uses continuous formula for smooth, granular differentiation.
+     */
+    private fun calculateIdBoost(bookId: Long): Double {
+        // Continuous inverse formula: lower IDs get exponentially higher boost
+        // ID 1 gets ~10x, ID 100 gets ~5x, ID 1000 gets ~2x, ID 10000 gets ~1.5x
+        val id = bookId.toDouble().coerceAtLeast(1.0)
+
+        // Formula: 1 + (9000 / (id + 1000))
+        // This gives smooth decay where even small ID differences matter
+        return 1.0 + (9000.0 / (id + 1000.0))
+    }
+
+    /**
+     * Check if query exactly matches a known acronym for this book.
+     * Uses book_acronym table to verify it's a real acronym, not just initial letters.
+     */
+    private fun hasExactAcronymMatch(bookTitle: String, query: String): Boolean {
+        if (acronymCache == null) return false
+
+        val acronyms = getAcronymsForBook(bookTitle)
+        val queryNorm = normalizeHebrew(query)
+
+        // Check if query exactly matches any acronym
+        return acronyms.any { acronym ->
+            normalizeHebrew(acronym) == queryNorm
         }
     }
 

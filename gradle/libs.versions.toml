@@ -7,6 +7,7 @@ filekitCore = "0.12.0"
 jsoup = "1.22.1"
 jvmNativeTrustedRoots = "1.1.7"
 jvmToolchain = "25"
+knotify = "0.4.3"
 koalaplotCore = "0.10.4"
 kotlin = "2.3.0"
 compose = "1.10.0"
@@ -56,6 +57,8 @@ jdbc-driver = { module = "app.cash.sqldelight:jdbc-driver", version.ref = "sqlDe
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 jvm-native-trusted-roots = { module = "org.jetbrains.nativecerts:jvm-native-trusted-roots", version.ref = "jvmNativeTrustedRoots" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
+knotify = { module = "io.github.kdroidfilter:knotify", version.ref = "knotify" }
+knotify-compose = { module = "io.github.kdroidfilter:knotify-compose", version.ref = "knotify" }
 koalaplot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaplotCore" }
 kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 kotlinx-serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "kotlinx-serialization" }

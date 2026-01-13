@@ -64,14 +64,19 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.compose.foundation.Image
+import io.github.kdroidfilter.knotify.compose.builder.notification
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.logger.allowLogging
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
+import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateChecker
 import java.awt.datatransfer.StringSelection
+import java.awt.Desktop
 import java.awt.KeyboardFocusManager
 import java.awt.event.KeyEvent
+import java.net.URI
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
@@ -323,6 +328,45 @@ fun main() {
                                     sessionRestored = true
                                 }
                             }
+                            // Check for updates once at startup
+                            val updateNotificationTitle = stringResource(Res.string.update_available_toast)
+                            val updateNotificationMessage = stringResource(Res.string.update_notification_message)
+                            val updateNotificationButton = stringResource(Res.string.update_download_action)
+                            LaunchedEffect(Unit) {
+                                if (!MainAppState.updateCheckDone.value) {
+                                    when (val result = AppUpdateChecker.checkForUpdate()) {
+                                        is AppUpdateChecker.UpdateCheckResult.UpdateAvailable -> {
+                                            MainAppState.setUpdateAvailable(result.latestVersion)
+                                            // Send system notification
+                                            notification(
+                                                title = updateNotificationTitle,
+                                                message = updateNotificationMessage,
+                                                largeIcon = {
+                                                    Image(
+                                                        painter = painterResource(Res.drawable.AppIcon),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.fillMaxSize()
+                                                    )
+                                                },
+                                                onActivated = {
+                                                    Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
+                                                }
+                                            ) {
+                                                button(title = updateNotificationButton) {
+                                                    Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
+                                                }
+                                            }.send()
+                                        }
+                                        is AppUpdateChecker.UpdateCheckResult.UpToDate -> {
+                                            MainAppState.markUpdateCheckDone()
+                                        }
+                                        is AppUpdateChecker.UpdateCheckResult.Error -> {
+                                            MainAppState.markUpdateCheckDone()
+                                        }
+                                    }
+                                }
+                            }
+
                             // Intercept key combos early to avoid focus traversal consuming Tab
                             Box(
                                 modifier = Modifier

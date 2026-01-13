@@ -53,6 +53,8 @@ import seforimapp.seforimapp.generated.resources.settings_info_license
 import seforimapp.seforimapp.generated.resources.settings_info_license_usage
 import seforimapp.seforimapp.generated.resources.settings_persist_session
 import seforimapp.seforimapp.generated.resources.settings_persist_session_description
+import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets
+import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets_description
 
 @Composable
 fun GeneralSettingsScreen() {
@@ -90,6 +92,13 @@ private fun GeneralSettingsView(
                 description = Res.string.settings_persist_session_description,
                 checked = state.persistSession,
                 onCheckedChange = { onEvent(GeneralSettingsEvents.SetPersistSession(it)) }
+            )
+
+            SettingCard(
+                title = Res.string.settings_show_zmanim_widgets,
+                description = Res.string.settings_show_zmanim_widgets_description,
+                checked = state.showZmanimWidgets,
+                onCheckedChange = { onEvent(GeneralSettingsEvents.SetShowZmanimWidgets(it)) }
             )
         }
     }

@@ -70,6 +70,9 @@ object AppSettings {
     // Theme configuration
     private const val KEY_THEME_MODE = "theme_mode"
 
+    // Zmanim widgets visibility
+    private const val KEY_SHOW_ZMANIM_WIDGETS = "show_zmanim_widgets"
+
     // Backing Settings storage (can be replaced at startup if needed)
     @Volatile
     private var settings: Settings = Settings()
@@ -113,6 +116,10 @@ object AppSettings {
     // StateFlow for session persistence setting
     private val _persistSessionFlow = MutableStateFlow(isPersistSessionEnabled())
     val persistSessionFlow: StateFlow<Boolean> = _persistSessionFlow.asStateFlow()
+
+    // StateFlow for zmanim widgets visibility
+    private val _showZmanimWidgetsFlow = MutableStateFlow(isShowZmanimWidgetsEnabled())
+    val showZmanimWidgetsFlow: StateFlow<Boolean> = _showZmanimWidgetsFlow.asStateFlow()
 
     // StateFlow for RAM saver (memory-optimized tabs). Disabled by default
     private val _ramSaverEnabledFlow = MutableStateFlow(isRamSaverEnabled())
@@ -275,6 +282,16 @@ object AppSettings {
         }
     }
 
+    // Zmanim widgets visibility
+    fun isShowZmanimWidgetsEnabled(): Boolean {
+        return settings[KEY_SHOW_ZMANIM_WIDGETS, true]
+    }
+
+    fun setShowZmanimWidgetsEnabled(enabled: Boolean) {
+        settings[KEY_SHOW_ZMANIM_WIDGETS] = enabled
+        _showZmanimWidgetsFlow.value = enabled
+    }
+
     // RAM saver setting
     fun isRamSaverEnabled(): Boolean {
         return settings[KEY_RAM_SAVER_ENABLED, false]
@@ -424,6 +441,7 @@ object AppSettings {
         _closeTreeOnNewBookFlow.value = false
         _databasePathFlow.value = null
         _persistSessionFlow.value = true
+        _showZmanimWidgetsFlow.value = true
         _bookFontCodeFlow.value = DEFAULT_BOOK_FONT
         _commentaryFontCodeFlow.value = DEFAULT_COMMENTARY_FONT
         _targumFontCodeFlow.value = DEFAULT_TARGUM_FONT

@@ -276,6 +276,8 @@
     <string name="close_book_tree_on_new_book">סגור אוטומטית את עץ הספרים בעת בחירת ספר חדש</string>
     <string name="close_book_tree_on_new_book_description">כאשר אפשרות זו מופעלת, עץ הניווט בצד ימין ייסגר אוטומטית לאחר בחירת ספר חדש, מה שמאפשר יותר מקום לקריאה.</string>
     <string name="settings_persist_session_description">כאשר אפשרות זו מופעלת, האפליקציה תשמור את הלשוניות הפתוחות ומיקום הקריאה שלך, ותשחזר אותם בהפעלה הבאה.</string>
+    <string name="settings_show_zmanim_widgets">הצג זמנים הלכתיים בדף הבית</string>
+    <string name="settings_show_zmanim_widgets_description">כאשר אפשרות זו מופעלת, יוצגו בדף הבית וידג\'טים עם זמני היום ההלכתיים (נץ החמה, שקיעה, זמני תפילה וכו\').</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title_bar">מדריך ההגדרה של זית</string>

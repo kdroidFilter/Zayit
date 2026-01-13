@@ -22,15 +22,17 @@ class GeneralSettingsViewModel : ViewModel() {
     private val dbPath = MutableStateFlow(AppSettings.getDatabasePath())
     private val closeTree = MutableStateFlow(AppSettings.getCloseBookTreeOnNewBookSelected())
     private val persist = MutableStateFlow(AppSettings.isPersistSessionEnabled())
+    private val showZmanim = MutableStateFlow(AppSettings.isShowZmanimWidgetsEnabled())
     private val resetDone = MutableStateFlow(false)
 
     val state = combine(
-        dbPath, closeTree, persist, resetDone
-    ) { path, c, p, r ->
+        dbPath, closeTree, persist, showZmanim, resetDone
+    ) { path, c, p, z, r ->
         GeneralSettingsState(
             databasePath = path,
             closeTreeOnNewBook = c,
             persistSession = p,
+            showZmanimWidgets = z,
             resetDone = r
         )
     }.stateIn(
@@ -40,6 +42,7 @@ class GeneralSettingsViewModel : ViewModel() {
             databasePath = dbPath.value,
             closeTreeOnNewBook = closeTree.value,
             persistSession = persist.value,
+            showZmanimWidgets = showZmanim.value,
             resetDone = resetDone.value,
         )
     )
@@ -53,6 +56,10 @@ class GeneralSettingsViewModel : ViewModel() {
             is GeneralSettingsEvents.SetPersistSession -> {
                 AppSettings.setPersistSessionEnabled(event.value)
                 persist.value = event.value
+            }
+            is GeneralSettingsEvents.SetShowZmanimWidgets -> {
+                AppSettings.setShowZmanimWidgetsEnabled(event.value)
+                showZmanim.value = event.value
             }
             is GeneralSettingsEvents.ResetApp -> {
                 val dbPath = runCatching { AppSettings.getDatabasePath() }.getOrNull()

@@ -16,6 +16,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,9 +37,12 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Checkbox
+import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.InlineInformationBanner
+import org.jetbrains.jewel.ui.component.InlineWarningBanner
+import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
@@ -55,6 +61,12 @@ import seforimapp.seforimapp.generated.resources.settings_persist_session
 import seforimapp.seforimapp.generated.resources.settings_persist_session_description
 import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets
 import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets_description
+import seforimapp.seforimapp.generated.resources.settings_reset_app
+import seforimapp.seforimapp.generated.resources.settings_reset_confirm
+import seforimapp.seforimapp.generated.resources.settings_reset_confirm_no
+import seforimapp.seforimapp.generated.resources.settings_reset_confirm_yes
+import seforimapp.seforimapp.generated.resources.settings_reset_done
+import seforimapp.seforimapp.generated.resources.settings_reset_warning
 
 @Composable
 fun GeneralSettingsScreen() {
@@ -99,6 +111,11 @@ private fun GeneralSettingsView(
                 description = Res.string.settings_show_zmanim_widgets_description,
                 checked = state.showZmanimWidgets,
                 onCheckedChange = { onEvent(GeneralSettingsEvents.SetShowZmanimWidgets(it)) }
+            )
+
+            ResetSection(
+                resetDone = state.resetDone,
+                onReset = { onEvent(GeneralSettingsEvents.ResetApp) }
             )
         }
     }
@@ -219,6 +236,62 @@ private fun SettingCard(
                 onCheckedChange = onCheckedChange
             )
             Text(text = stringResource(title))
+        }
+    }
+}
+
+@Composable
+private fun ResetSection(
+    resetDone: Boolean,
+    onReset: () -> Unit
+) {
+    val shape = RoundedCornerShape(8.dp)
+    var showConfirmation by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+            .background(JewelTheme.globalColors.panelBackground)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (resetDone) {
+            InlineWarningBanner(
+                style = JewelTheme.inlineBannerStyle.warning,
+                text = stringResource(Res.string.settings_reset_done),
+            )
+        } else {
+            InlineWarningBanner(
+                style = JewelTheme.inlineBannerStyle.warning,
+                text = stringResource(Res.string.settings_reset_warning),
+            )
+        }
+
+        if (showConfirmation) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(Res.string.settings_reset_confirm),
+                    color = JewelTheme.globalColors.text.warning
+                )
+                DefaultButton(onClick = {
+                    showConfirmation = false
+                    onReset()
+                }) {
+                    Text(text = stringResource(Res.string.settings_reset_confirm_yes))
+                }
+                OutlinedButton(onClick = { showConfirmation = false }) {
+                    Text(text = stringResource(Res.string.settings_reset_confirm_no))
+                }
+            }
+        } else {
+            DefaultButton(onClick = { showConfirmation = true }) {
+                Text(text = stringResource(Res.string.settings_reset_app))
+            }
         }
     }
 }

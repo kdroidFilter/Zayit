@@ -1,0 +1,7 @@
+// Windows resource file for Zayit Installer
+
+// Application icon
+1 ICON "..\\..\\SeforimApp\\desktopAppIcons\\WindowsIcon.ico"
+
+// Application manifest
+1 24 "app.manifest"

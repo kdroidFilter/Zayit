@@ -45,7 +45,8 @@ class LineTargumPagingSource(
                 activeCommentatorIds = sourceBookIds, // reuse filtering by target book IDs
                 connectionTypes = connectionTypes,
                 offset = offset,
-                limit = limit
+                limit = limit,
+                distinctByTargetLine = ids.size > 1 // deduplicate when in paragraph mode
             )
 
             val prevKey = if (page == 0) null else page - 1

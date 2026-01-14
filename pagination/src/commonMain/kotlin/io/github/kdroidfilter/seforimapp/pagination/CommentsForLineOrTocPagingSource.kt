@@ -58,7 +58,8 @@ class CommentsForLineOrTocPagingSource(
                 activeCommentatorIds = commentatorIds,
                 connectionTypes = setOf(ConnectionType.COMMENTARY),
                 offset = offset,
-                limit = limit
+                limit = limit,
+                distinctByTargetLine = ids.size > 1 // deduplicate when in paragraph mode
             )
 
             val prevKey = if (page == 0) null else page - 1

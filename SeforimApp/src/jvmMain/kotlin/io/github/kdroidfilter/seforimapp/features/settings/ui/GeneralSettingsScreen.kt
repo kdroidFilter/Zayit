@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.settings.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +32,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowView
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsViewModel
+import io.github.kdroidfilter.seforimapp.core.presentation.components.ExpandCollapseIcon
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -232,6 +234,7 @@ private fun SettingCard(
     onCheckedChange: (Boolean) -> Unit
 ) {
     val shape = RoundedCornerShape(8.dp)
+    var expanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -240,23 +243,39 @@ private fun SettingCard(
             .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
             .background(JewelTheme.globalColors.panelBackground)
             .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        InlineInformationBanner(
-            style = JewelTheme.inlineBannerStyle.information,
-            text = stringResource(description),
-        )
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Checkbox(
-                checked = checked,
-                onCheckedChange = onCheckedChange
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Checkbox(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange
+                )
+                Text(text = stringResource(title))
+            }
+
+            IconButton(
+                onClick = { expanded = !expanded },
+                modifier = Modifier.size(24.dp)
+            ) {
+                ExpandCollapseIcon(expanded = expanded, size = 16.dp)
+            }
+        }
+
+        AnimatedVisibility(visible = expanded) {
+            Text(
+                text = stringResource(description),
+                fontSize = 12.sp,
+                color = JewelTheme.globalColors.text.info,
+                modifier = Modifier.padding(start = 28.dp)
             )
-            Text(text = stringResource(title))
         }
     }
 }
@@ -278,18 +297,6 @@ private fun ResetSection(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (resetDone) {
-            InlineWarningBanner(
-                style = JewelTheme.inlineBannerStyle.warning,
-                text = stringResource(Res.string.settings_reset_done),
-            )
-        } else {
-            InlineWarningBanner(
-                style = JewelTheme.inlineBannerStyle.warning,
-                text = stringResource(Res.string.settings_reset_warning),
-            )
-        }
-
         if (showConfirmation) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -313,6 +320,18 @@ private fun ResetSection(
             DefaultButton(onClick = { showConfirmation = true }) {
                 Text(text = stringResource(Res.string.settings_reset_app))
             }
+        }
+
+        if (resetDone) {
+            InlineWarningBanner(
+                style = JewelTheme.inlineBannerStyle.warning,
+                text = stringResource(Res.string.settings_reset_done),
+            )
+        } else {
+            InlineWarningBanner(
+                style = JewelTheme.inlineBannerStyle.warning,
+                text = stringResource(Res.string.settings_reset_warning),
+            )
         }
     }
 }

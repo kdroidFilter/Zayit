@@ -20,6 +20,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
+import java.io.File
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
@@ -43,42 +44,57 @@ fun OfflineFileSelectionScreen(
     var cleanupCompleted by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     
-    // File picker for part02 file
+    // Function to start extraction with part01 path
+    fun startExtraction(p1: String) {
+        scope.launch {
+            // Nettoyer les anciens fichiers avant de commencer l'extraction
+            if (!cleanupCompleted) {
+                cleanupUseCase.cleanupDatabaseFiles()
+                cleanupCompleted = true
+            }
+
+            // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
+            progressBarState.setProgress(0.7f)
+            processRepository.setPendingZstPath(p1)
+            extractViewModel.onEvent(ExtractEvents.StartIfPending)
+            hasStartedExtraction = true
+
+            // Move forward and clear all previous onboarding steps so back is disabled
+            navController.navigate(OnBoardingDestination.ExtractScreen) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
+    // File picker for part02 file (only used if part02 not found automatically)
     val pickPart02Launcher = rememberFilePickerLauncher(
         type = FileKitType.File(extensions = listOf("part02"))
     ) { file ->
         val p2 = file?.path
         val p1 = part01Path
         if (!p2.isNullOrBlank() && !p1.isNullOrBlank()) {
-            scope.launch {
-                // Nettoyer les anciens fichiers avant de commencer l'extraction
-                if (!cleanupCompleted) {
-                    cleanupUseCase.cleanupDatabaseFiles()
-                    cleanupCompleted = true
-                }
-                
-                // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
-                progressBarState.setProgress(0.7f)
-                processRepository.setPendingZstPath(p1)
-                extractViewModel.onEvent(ExtractEvents.StartIfPending)
-                hasStartedExtraction = true
-                
-                // Move forward and clear all previous onboarding steps so back is disabled
-                navController.navigate(OnBoardingDestination.ExtractScreen) {
-                    popUpTo(0) { inclusive = true }
-                }
-            }
+            startExtraction(p1)
         }
     }
-    
+
     // File picker for part01 file
     val pickPart01Launcher = rememberFilePickerLauncher(
         type = FileKitType.File(extensions = listOf("part01"))
     ) { file ->
-        part01Path = file?.path
-        if (part01Path != null) {
-            // Immediately ask for part02
-            pickPart02Launcher.launch()
+        val p1 = file?.path
+        part01Path = p1
+        if (!p1.isNullOrBlank()) {
+            // Check if part02 exists in the same directory
+            val part01File = File(p1)
+            val part02File = File(part01File.parent, part01File.name.replace(".part01", ".part02"))
+
+            if (part02File.exists()) {
+                // Part02 found automatically, start extraction
+                startExtraction(p1)
+            } else {
+                // Part02 not found, ask user to select it
+                pickPart02Launcher.launch()
+            }
         }
     }
     

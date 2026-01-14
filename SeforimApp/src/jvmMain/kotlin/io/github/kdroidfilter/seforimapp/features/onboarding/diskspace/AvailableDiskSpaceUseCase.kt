@@ -34,20 +34,29 @@ class AvailableDiskSpaceUseCase {
         return systemDir.totalSpace
     }
 
-    /** Returns true if there is at least 15 GB free on the main disk. */
-    fun hasAtLeast15GBFree(): Boolean {
+    companion object {
+        /** Total space required during installation (includes temporary files). */
+        const val REQUIRED_SPACE_GB = 11L
+        /** Temporary space needed only during installation (will be freed after). */
+        const val TEMPORARY_SPACE_GB = 2.5
+        /** Final space after installation completes. */
+        const val FINAL_SPACE_GB = 8.5
+
+        val REQUIRED_SPACE_BYTES = REQUIRED_SPACE_GB * 1024 * 1024 * 1024
+    }
+
+    /** Returns true if there is at least 11 GB free on the main disk. */
+    fun hasEnoughSpace(): Boolean {
         val freeBytes = getAvailableDiskSpace()
-        val fifteenGB = 15L * 1024 * 1024 * 1024
-        return freeBytes >= fifteenGB
+        return freeBytes >= REQUIRED_SPACE_BYTES
     }
 
     /**
-     * Returns how many bytes remain *after subtracting 15 GB*.
-     * If result is negative, it means less than 15 GB are available.
+     * Returns how many bytes remain *after subtracting the required space*.
+     * If result is negative, it means not enough space is available.
      */
-    fun getRemainingSpaceAfter15GB(): Long {
+    fun getRemainingSpaceAfterInstall(): Long {
         val freeBytes = getAvailableDiskSpace()
-        val fifteenGB = 15L * 1024 * 1024 * 1024
-        return freeBytes - fifteenGB
+        return freeBytes - REQUIRED_SPACE_BYTES
     }
 }

@@ -8,6 +8,9 @@ import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import io.github.kdroidfilter.platformtools.appmanager.restartApplication
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.databasesDir
+import io.github.vinceglb.filekit.path
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -62,27 +65,56 @@ class GeneralSettingsViewModel : ViewModel() {
                 showZmanim.value = event.value
             }
             is GeneralSettingsEvents.ResetApp -> {
-                val dbPath = runCatching { AppSettings.getDatabasePath() }.getOrNull()
-                if (!dbPath.isNullOrBlank()) {
-                    val dbFile = File(dbPath)
-                    val baseDir = dbFile.parentFile
-                    // Delete DB file
-                    runCatching { if (dbFile.exists()) dbFile.delete() }
-                    // Delete Lucene index directories next to the DB
-                    if (baseDir != null && baseDir.exists()) {
-                        val dirNames = listOf(
-                            dbFile.name + ".lucene",
-                            dbFile.name + ".lookup.lucene",
-                            dbFile.name + ".luceneindex",
-                            dbFile.name + ".lookupindex",
-                        )
-                        dirNames.forEach { name ->
-                            val d = File(baseDir, name)
-                            if (d.exists()) runCatching { d.deleteRecursively() }
+                // Get the databases directory
+                val dbDir = File(FileKit.databasesDir.path)
+
+                // Get custom DB path BEFORE clearing settings
+                val customDbPath = runCatching { AppSettings.getDatabasePath() }.getOrNull()
+
+                // Clear settings first
+                AppSettings.clearAll()
+
+                // Delete all files and directories in the databases directory
+                if (dbDir.exists()) {
+                    dbDir.listFiles()?.forEach { file ->
+                        runCatching {
+                            if (file.isDirectory) {
+                                file.deleteRecursively()
+                            } else {
+                                file.delete()
+                            }
                         }
                     }
                 }
-                AppSettings.clearAll()
+
+                // Also delete database files in custom path (if user selected a different location)
+                if (!customDbPath.isNullOrBlank()) {
+                    val customDbFile = File(customDbPath)
+                    val customBaseDir = customDbFile.parentFile
+
+                    // Delete the database file
+                    runCatching { if (customDbFile.exists()) customDbFile.delete() }
+
+                    // Delete related files in the custom directory
+                    if (customBaseDir != null && customBaseDir.exists() && customBaseDir != dbDir) {
+                        val relatedPatterns = listOf(
+                            customDbFile.name + ".lucene",
+                            customDbFile.name + ".lookup.lucene",
+                            "lexical.db",
+                            "catalog.pb",
+                            "release_info.txt"
+                        )
+                        relatedPatterns.forEach { name ->
+                            val f = File(customBaseDir, name)
+                            if (f.exists()) {
+                                runCatching {
+                                    if (f.isDirectory) f.deleteRecursively() else f.delete()
+                                }
+                            }
+                        }
+                    }
+                }
+
                 restartApplication()
                 resetDone.value = true
             }

@@ -111,7 +111,7 @@ fun CatalogRow(
                         spec = PrecomputedCatalog.Dropdowns.SHULCHAN_ARUCH,
                         onEvent = onEvent,
                         modifier = Modifier.widthIn(max = buttonWidth),
-                        maxPopupHeight = 130.dp,
+                        maxPopupHeight = 160.dp,
                         popupWidthMultiplier = 1.1f
                     )
                 }

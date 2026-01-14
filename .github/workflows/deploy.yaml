@@ -40,11 +40,13 @@ jobs:
           - os: windows-latest
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-windows-x64-b176.4.zip"
             arch: amd64
+            rust_target: x86_64-pc-windows-msvc
 
           # Windows ARM64
           - os: windows-11-arm
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-windows-aarch64-b176.4.zip"
             arch: arm64
+            rust_target: aarch64-pc-windows-msvc
 
           # macOS Apple Silicon (ARM64)
           - os: macos-latest  # runner Apple Silicon (ARM64)
@@ -140,6 +142,43 @@ jobs:
         shell: pwsh
         run: .\gradlew.bat :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseMsi
 
+      # Build Rust installer for Windows
+      - name: Install Rust toolchain
+        if: startsWith(matrix.os, 'windows')
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Build Windows installer (.exe)
+        if: startsWith(matrix.os, 'windows')
+        shell: pwsh
+        run: |
+          cd installer
+
+          # Create resources directory
+          New-Item -ItemType Directory -Force -Path resources | Out-Null
+
+          # Copy splash image
+          Copy-Item "..\SeforimApp\src\jvmMain\assets\common\splash.png" "resources\splash.png"
+
+          # Find and copy MSI
+          $msiFile = Get-ChildItem "..\SeforimApp\build\compose\binaries\main-release\msi\Zayit-*.msi" | Select-Object -First 1
+          if (-not $msiFile) {
+            Write-Error "MSI not found"
+            exit 1
+          }
+          Copy-Item $msiFile.FullName "resources\Zayit.msi"
+          $msiBaseName = $msiFile.BaseName
+          Write-Host "Found MSI: $msiBaseName"
+
+          # Build Rust installer
+          cargo build --release --target ${{ matrix.rust_target }}
+
+          # Rename exe to match MSI name
+          $exeName = "$msiBaseName.exe"
+          Move-Item "target\${{ matrix.rust_target }}\release\zayit-installer.exe" "target\${{ matrix.rust_target }}\release\$exeName"
+          Write-Host "Built installer: $exeName"
+
       - name: Build macOS .pkg + .dmg + .zip
         if: startsWith(matrix.os, 'macos')
         shell: bash
@@ -182,6 +221,14 @@ jobs:
         with:
           name: windows-msi-${{ matrix.arch }}
           path: SeforimApp/build/compose/binaries/main-release/msi/*.msi
+          if-no-files-found: error
+
+      - name: Upload Windows .exe installer (amd64/arm64)
+        if: startsWith(matrix.os, 'windows')
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-exe-${{ matrix.arch }}
+          path: installer/target/${{ matrix.rust_target }}/release/*.exe
           if-no-files-found: error
 
       - name: Upload macOS .pkg
@@ -231,10 +278,16 @@ jobs:
           pattern: linux-rpm-*
           merge-multiple: true
 
-      - name: Download Windows artefacts (amd64 + arm64)
+      - name: Download Windows MSI artefacts (amd64 + arm64)
         uses: actions/download-artifact@v7
         with:
           pattern: windows-msi-*
+          merge-multiple: true
+
+      - name: Download Windows EXE artefacts (amd64 + arm64)
+        uses: actions/download-artifact@v7
+        with:
+          pattern: windows-exe-*
           merge-multiple: true
 
       - name: Download macOS artifacts
@@ -272,6 +325,7 @@ jobs:
             *.deb
             *.rpm
             *.msi
+            *.exe
             *.pkg
             *.dmg
             *.zip

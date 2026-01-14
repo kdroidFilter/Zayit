@@ -29,7 +29,8 @@ class MultiLineCommentsPagingSource(
                 activeCommentatorIds = commentatorIds,
                 connectionTypes = setOf(io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType.COMMENTARY),
                 offset = offset,
-                limit = limit
+                limit = limit,
+                distinctByTargetLine = lineIds.size > 1 // deduplicate when multiple source lines
             )
 
             val prevKey = if (page == 0) null else page - 1

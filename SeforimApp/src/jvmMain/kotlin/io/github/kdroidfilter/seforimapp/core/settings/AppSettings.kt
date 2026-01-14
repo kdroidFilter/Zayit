@@ -73,6 +73,9 @@ object AppSettings {
     // Zmanim widgets visibility
     private const val KEY_SHOW_ZMANIM_WIDGETS = "show_zmanim_widgets"
 
+    // Windows-specific: Use OpenGL instead of DirectX
+    private const val KEY_USE_OPENGL = "use_opengl"
+
     // Backing Settings storage (can be replaced at startup if needed)
     @Volatile
     private var settings: Settings = Settings()
@@ -402,6 +405,15 @@ object AppSettings {
 
     fun setThemeMode(theme: IntUiThemes) {
         settings[KEY_THEME_MODE] = theme.name
+    }
+
+    // Windows-specific: Use OpenGL instead of DirectX (for rendering issues like flickering)
+    fun isUseOpenGLEnabled(): Boolean {
+        return settings[KEY_USE_OPENGL, false]
+    }
+
+    fun setUseOpenGLEnabled(enabled: Boolean) {
+        settings[KEY_USE_OPENGL] = enabled
     }
 
     fun setSavedSessionJson(json: String?) {

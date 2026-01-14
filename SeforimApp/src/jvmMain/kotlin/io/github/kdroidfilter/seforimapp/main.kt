@@ -77,9 +77,23 @@ import java.awt.Desktop
 import java.awt.KeyboardFocusManager
 import java.awt.event.KeyEvent
 import java.net.URI
+import java.util.prefs.Preferences
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
+    // On Windows, check if OpenGL should be used instead of DirectX (must be set before Compose starts)
+    if (getOperatingSystem() == OperatingSystem.WINDOWS) {
+        try {
+            val prefs = Preferences.userRoot().node("io.github.kdroidfilter.seforimapp")
+            val useOpenGL = prefs.getBoolean("use_opengl", false)
+            if (useOpenGL) {
+                System.setProperty("skiko.renderApi", "OPENGL")
+            }
+        } catch (_: Exception) {
+            // Ignore errors reading preferences
+        }
+    }
+
     setMacOsAdaptiveTitleBar()
 
     // Register global AWT key event dispatcher for Cmd+Shift+C (copy without nikud)

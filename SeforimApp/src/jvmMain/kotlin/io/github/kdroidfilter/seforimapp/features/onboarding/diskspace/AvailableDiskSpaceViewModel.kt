@@ -19,7 +19,7 @@ class AvailableDiskSpaceViewModel(
     private val useCase: AvailableDiskSpaceUseCase
 ) : ViewModel() {
 
-    private var _hasEnoughSpace = MutableStateFlow(useCase.hasAtLeast15GBFree())
+    private var _hasEnoughSpace = MutableStateFlow(useCase.hasEnoughSpace())
     val hasEnoughSpace = _hasEnoughSpace.asStateFlow()
 
     private var _availableDiskSpace = MutableStateFlow(useCase.getAvailableDiskSpace())
@@ -28,20 +28,20 @@ class AvailableDiskSpaceViewModel(
     private var _totalDiskSpace = MutableStateFlow(useCase.getTotalDiskSpace())
     val totalDiskSpace = _totalDiskSpace.asStateFlow()
 
-    private val _remainingDiskSpaceAfter15Gb = MutableStateFlow(useCase.getRemainingSpaceAfter15GB())
-    var remainingDiskSpaceAfter15Gb = _remainingDiskSpaceAfter15Gb.asStateFlow()
+    private val _remainingDiskSpaceAfterInstall = MutableStateFlow(useCase.getRemainingSpaceAfterInstall())
+    var remainingDiskSpaceAfterInstall = _remainingDiskSpaceAfterInstall.asStateFlow()
 
     // Expose a single combined state with combine
     val state = combine(
         hasEnoughSpace,
         availableDiskSpace,
-        remainingDiskSpaceAfter15Gb,
+        remainingDiskSpaceAfterInstall,
         totalDiskSpace
     ) { hasEnough, available, remainingAfter, total ->
         AvailableDiskSpaceState(
             hasEnoughSpace = hasEnough,
             availableDiskSpace = available,
-            remainingDiskSpaceAfter15Gb = remainingAfter,
+            remainingDiskSpaceAfterInstall = remainingAfter,
             totalDiskSpace = total
         )
     }.stateIn(
@@ -50,16 +50,16 @@ class AvailableDiskSpaceViewModel(
         initialValue = AvailableDiskSpaceState(
             hasEnoughSpace = _hasEnoughSpace.value,
             availableDiskSpace = _availableDiskSpace.value,
-            remainingDiskSpaceAfter15Gb = _remainingDiskSpaceAfter15Gb.value,
+            remainingDiskSpaceAfterInstall = _remainingDiskSpaceAfterInstall.value,
             totalDiskSpace = _totalDiskSpace.value
         )
     )
 
     private fun recheck() {
-        _hasEnoughSpace.value = useCase.hasAtLeast15GBFree()
+        _hasEnoughSpace.value = useCase.hasEnoughSpace()
         _availableDiskSpace.value = useCase.getAvailableDiskSpace()
         _totalDiskSpace.value = useCase.getTotalDiskSpace()
-        _remainingDiskSpaceAfter15Gb.value = useCase.getRemainingSpaceAfter15GB()
+        _remainingDiskSpaceAfterInstall.value = useCase.getRemainingSpaceAfterInstall()
     }
 
     fun onEvent(event: AvailableDiskSpaceEvents) {

@@ -57,20 +57,25 @@ fun AvailableDiskSpaceView(
     onEvent: (AvailableDiskSpaceEvents) -> Unit,
     onNext: () -> Unit = {}
 ) {
-    val requiredBytes = 15L * 1024 * 1024 * 1024
+    val requiredBytes = AvailableDiskSpaceUseCase.REQUIRED_SPACE_BYTES
+    // Space breakdown: permanent (8.5 GB) + temporary (2.5 GB) = total required (11 GB)
+    val permanentSpaceBytes = (AvailableDiskSpaceUseCase.FINAL_SPACE_GB * 1024 * 1024 * 1024).toLong()
+    val temporarySpaceBytes = (AvailableDiskSpaceUseCase.TEMPORARY_SPACE_GB * 1024 * 1024 * 1024).toLong()
+
     OnBoardingScaffold(title = stringResource(Res.string.onboarding_disk_title), bottomAction = {
         DefaultButton(onClick = onNext, enabled = state.hasEnoughSpace) {
             Text(stringResource(Res.string.next_button))
         }
     }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // Pie chart: Used, Required (15GB), Free After Installation
+            // Pie chart: Used, Permanent Space, Temporary Space, Free After Installation
             val total = state.totalDiskSpace
             val used = (total - state.availableDiskSpace).coerceAtLeast(0)
             val freeAfter = (state.availableDiskSpace - requiredBytes).coerceAtLeast(0)
             val slices = listOf(
                 used.toFloat(),
-                requiredBytes.toFloat(),
+                permanentSpaceBytes.toFloat(),
+                temporarySpaceBytes.toFloat(),
                 freeAfter.toFloat()
             )
             val colors = generateHueColorPalette(slices.size)
@@ -82,7 +87,8 @@ fun AvailableDiskSpaceView(
                     slice = { i: Int ->
                         val labelText = when (i) {
                             0 -> stringResource(Res.string.disk_pie_used_with_value, formatBytes(used))
-                            1 -> stringResource(Res.string.disk_pie_required, formatBytes(requiredBytes))
+                            1 -> stringResource(Res.string.disk_pie_permanent_space, formatBytes(permanentSpaceBytes))
+                            2 -> stringResource(Res.string.disk_pie_temporary_space, formatBytes(temporarySpaceBytes))
                             else -> stringResource(Res.string.disk_pie_free_after_with_value, formatBytes(freeAfter))
                         }
                         DefaultSlice(
@@ -96,12 +102,14 @@ fun AvailableDiskSpaceView(
 
                 // Simple legend with sizes
                 val usedLabel = stringResource(Res.string.disk_pie_used_with_value, formatBytes(used))
-                val reqLabel = stringResource(Res.string.disk_pie_required, formatBytes(requiredBytes))
+                val permanentLabel = stringResource(Res.string.disk_pie_permanent_space, formatBytes(permanentSpaceBytes))
+                val temporaryLabel = stringResource(Res.string.disk_pie_temporary_space, formatBytes(temporarySpaceBytes))
                 val freeAfterLabel = stringResource(Res.string.disk_pie_free_after_with_value, formatBytes(freeAfter))
                 Column(verticalArrangement = Arrangement.Center, modifier = Modifier.weight(1f).fillMaxSize()) {
                     LegendItem(color = colors[0], text = usedLabel)
-                    LegendItem(color = colors[1], text = reqLabel)
-                    LegendItem(color = colors[2], text = freeAfterLabel)
+                    LegendItem(color = colors[1], text = permanentLabel)
+                    LegendItem(color = colors[2], text = temporaryLabel)
+                    LegendItem(color = colors[3], text = freeAfterLabel)
                 }
             }
 
@@ -143,7 +151,7 @@ private fun AvailableDiskSpaceScreenEnoughSpacePreview() {
             AvailableDiskSpaceState(
                 hasEnoughSpace = true,
                 availableDiskSpace = 20L * 1024 * 1024 * 1024,
-                remainingDiskSpaceAfter15Gb = 5L * 1024 * 1024 * 1024
+                remainingDiskSpaceAfterInstall = 9L * 1024 * 1024 * 1024
             ),
             {}
         )
@@ -157,8 +165,8 @@ private fun AvailableDiskSpaceScreenNoEnoughSpacePreview() {
         AvailableDiskSpaceView(
             AvailableDiskSpaceState(
                 hasEnoughSpace = false,
-                availableDiskSpace = 10L * 1024 * 1024 * 1024,
-                remainingDiskSpaceAfter15Gb = -5L * 1024 * 1024 * 1024
+                availableDiskSpace = 8L * 1024 * 1024 * 1024,
+                remainingDiskSpaceAfterInstall = -3L * 1024 * 1024 * 1024
             ),
             {}
         )

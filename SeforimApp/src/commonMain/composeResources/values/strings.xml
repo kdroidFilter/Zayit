@@ -68,6 +68,7 @@
     <string name="settings_category_region">אזור</string>
     <string name="settings_category_fonts">גופנים</string>
     <string name="settings_category_about">אודות</string>
+    <string name="settings_category_conditions">תנאים</string>
     <string name="add_tab">הוסף לשונית</string>
     <string name="home">דף הבית</string>
     <string name="close_tab">סגור לשונית</string>

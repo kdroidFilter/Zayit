@@ -14,6 +14,9 @@
 [**The ImageMaster**](https://www.theimagemaster.com/)
 והוא מוגבל לשימוש בתוך יישום זית בלבד. אין לעשות שימוש בגופנים אלו מחוץ ליישום.
 
+היישום כולל גם גופנים מתוך [**פרויקט הקולמוס**](https://culmus.sourceforge.io/), הכפופים לרישיון משלהם.
+יש לעיין בתנאי הרישיון של פרויקט הקולמוס לפני שימוש בגופנים אלו בפרויקטים אחרים.
+
 ## 💡 רישיון היישום
 
 יישום זית עצמו חופשי וחינמי, ומופץ תחת רישיון

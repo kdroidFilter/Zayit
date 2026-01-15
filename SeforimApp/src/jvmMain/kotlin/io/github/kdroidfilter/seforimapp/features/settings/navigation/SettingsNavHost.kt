@@ -15,6 +15,7 @@ import io.github.kdroidfilter.seforimapp.features.settings.ui.GeneralSettingsScr
 import io.github.kdroidfilter.seforimapp.features.settings.ui.FontsSettingsScreen
 import io.github.kdroidfilter.seforimapp.features.settings.ui.ProfileSettingsScreen
 import io.github.kdroidfilter.seforimapp.features.settings.ui.AboutSettingsScreen
+import io.github.kdroidfilter.seforimapp.features.settings.ui.ConditionsSettingsScreen
 
 @Composable
 fun SettingsNavHost(navController: NavHostController) {
@@ -34,6 +35,9 @@ fun SettingsNavHost(navController: NavHostController) {
         }
         noAnimatedComposable<SettingsDestination.About> {
             AboutSettingsScreen()
+        }
+        noAnimatedComposable<SettingsDestination.Conditions> {
+            ConditionsSettingsScreen()
         }
     }
 }

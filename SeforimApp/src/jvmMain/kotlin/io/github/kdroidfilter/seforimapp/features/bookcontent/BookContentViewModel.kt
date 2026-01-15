@@ -362,6 +362,8 @@ class BookContentViewModel(
                             navigationUseCase.selectBook(book)
                             ensureTocVisibleOnFirstOpen()
                             loadBookData(book, forceAnchorId = event.lineId)
+                            // Fermer automatiquement le panneau de l'arbre des livres si l'option est activée
+                            closeBookTreeIfEnabled()
                         }
                     }
                 }
@@ -500,6 +502,9 @@ class BookContentViewModel(
                             // Expand TOC to the line's TOC entry so the branch is visible
                             runCatching { tocUseCase.expandPathToLine(line.id) }
                         }
+
+                        // Fermer automatiquement le panneau de l'arbre des livres si l'option est activée
+                        closeBookTreeIfEnabled()
                     } else {
                         // Restore path: keep the persisted scroll anchor and just ensure the book is loaded.
                         loadBookData(book)
@@ -555,6 +560,19 @@ class BookContentViewModel(
         }
     }
 
+    /**
+     * Automatically closes the book tree panel if the setting is enabled.
+     * Called when opening a book from search results, toolbar, or links.
+     */
+    private fun closeBookTreeIfEnabled() {
+        if (AppSettings.getCloseBookTreeOnNewBookSelected()) {
+            val isTreeVisible = stateManager.state.value.navigation.isVisible
+            if (isTreeVisible) {
+                navigationUseCase.toggleBookTree()
+            }
+        }
+    }
+
     /** Charge un livre */
     private suspend fun loadBook(book: Book) {
         val resolvedBook = repository.getBookCore(book.id) ?: book
@@ -593,12 +611,7 @@ class BookContentViewModel(
             }
 
             // Fermer automatiquement le panneau de l'arbre des livres si l'option est activée
-            if (AppSettings.getCloseBookTreeOnNewBookSelected()) {
-                val isTreeVisible = stateManager.state.value.navigation.isVisible
-                if (isTreeVisible) {
-                    navigationUseCase.toggleBookTree()
-                }
-            }
+            closeBookTreeIfEnabled()
 
             System.gc()
         }

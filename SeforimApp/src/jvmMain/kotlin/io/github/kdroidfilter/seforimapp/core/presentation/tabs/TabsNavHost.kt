@@ -328,6 +328,7 @@ fun TabsNavHost() {
                                 isRestoringSession = isRestoringSession,
                                 searchUi = searchUi,
                                 searchCallbacks = homeSearchCallbacks,
+                                isSelected = isSelected,
                             )
                         }
                         nonAnimatedComposable<TabsDestination.Search> { backStackEntry ->
@@ -457,6 +458,7 @@ fun TabsNavHost() {
                                 isRestoringSession = isRestoringSession,
                                 searchUi = searchUi,
                                 searchCallbacks = homeSearchCallbacks,
+                                isSelected = isSelected,
                             )
                         }
                 }

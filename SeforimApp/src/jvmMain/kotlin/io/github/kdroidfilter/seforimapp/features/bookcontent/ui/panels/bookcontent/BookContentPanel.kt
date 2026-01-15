@@ -43,7 +43,7 @@ fun BookContentPanel(
     modifier: Modifier = Modifier,
     isRestoringSession: Boolean = false,
     searchUi: SearchHomeUiState = SearchHomeUiState(),
-        searchCallbacks: HomeSearchCallbacks = HomeSearchCallbacks(
+    searchCallbacks: HomeSearchCallbacks = HomeSearchCallbacks(
         onReferenceQueryChanged = {},
         onTocQueryChanged = {},
         onFilterChange = {},
@@ -53,7 +53,8 @@ fun BookContentPanel(
         onPickCategory = {},
         onPickBook = {},
         onPickToc = {}
-    )
+    ),
+    isSelected: Boolean = true
 ) {
 
     // Preserve LazyListState across recompositions.
@@ -149,7 +150,8 @@ fun BookContentPanel(
                             altHeadingsByLineId = uiState.altToc.lineHeadingsByLineId,
                             lineConnections = connectionsCache,
                             onPrefetchLineConnections = prefetchConnections,
-                            showDiacritics = showDiacritics
+                            showDiacritics = showDiacritics,
+                            isSelected = isSelected
                         )
                     },
                     secondContent = if (uiState.content.showTargum) {

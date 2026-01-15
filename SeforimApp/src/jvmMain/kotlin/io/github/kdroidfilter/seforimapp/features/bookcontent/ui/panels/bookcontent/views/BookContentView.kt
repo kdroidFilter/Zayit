@@ -84,7 +84,8 @@ fun BookContentView(
     altHeadingsByLineId: Map<Long, List<AltTocEntry>> = emptyMap(),
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
-    showDiacritics: Boolean
+    showDiacritics: Boolean,
+    isSelected: Boolean = true
 ) {
     // Collect paging data
     val lazyPagingItems: LazyPagingItems<Line> = linesPagingData.collectAsLazyPagingItems()
@@ -433,6 +434,12 @@ fun BookContentView(
     LaunchedEffect(book.id) { focusRequester.requestFocus() }
     LaunchedEffect(showFind) {
         if (!showFind) {
+            focusRequester.requestFocus()
+        }
+    }
+    // Request focus when tab becomes selected for immediate keyboard navigation
+    LaunchedEffect(isSelected) {
+        if (isSelected) {
             focusRequester.requestFocus()
         }
     }

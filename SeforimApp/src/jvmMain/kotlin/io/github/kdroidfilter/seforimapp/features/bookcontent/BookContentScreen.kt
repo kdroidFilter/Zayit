@@ -252,6 +252,7 @@ fun BookContentScreen(
     isRestoringSession: Boolean = false,
     searchUi: SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
+    isSelected: Boolean = true,
 ) {
     // Toaster for transient messages (e.g., selection limits)
     val toaster = rememberToasterState()
@@ -449,7 +450,8 @@ fun BookContentScreen(
                                 showDiacritics = showDiacritics,
                                 isRestoringSession = isRestoringSession,
                                 searchUi = searchUi,
-                                searchCallbacks = searchCallbacks
+                                searchCallbacks = searchCallbacks,
+                                isSelected = isSelected
                             )
                         },
                         showSplitter = uiState.toc.isVisible

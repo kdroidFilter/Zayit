@@ -15,4 +15,7 @@ sealed interface SettingsDestination {
 
     @Serializable
     data object About : SettingsDestination
+
+    @Serializable
+    data object Conditions : SettingsDestination
 }

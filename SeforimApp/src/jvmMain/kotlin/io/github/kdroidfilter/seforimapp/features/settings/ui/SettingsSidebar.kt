@@ -35,6 +35,7 @@ import seforimapp.seforimapp.generated.resources.settings_category_fonts
 import seforimapp.seforimapp.generated.resources.settings_category_general
 import seforimapp.seforimapp.generated.resources.settings_category_profile
 import seforimapp.seforimapp.generated.resources.settings_category_about
+import seforimapp.seforimapp.generated.resources.settings_category_conditions
 
 private data class SettingsItem(val label: String, val destination: SettingsDestination)
 
@@ -51,6 +52,7 @@ fun SettingsSidebar(
         SettingsItem(label = stringResource(Res.string.settings_category_profile), destination = SettingsDestination.Profile),
         SettingsItem(label = stringResource(Res.string.settings_category_fonts), destination = SettingsDestination.Fonts),
         SettingsItem(label = stringResource(Res.string.settings_category_about), destination = SettingsDestination.About),
+        SettingsItem(label = stringResource(Res.string.settings_category_conditions), destination = SettingsDestination.Conditions),
     )
 
     Column(modifier = modifier) {
@@ -64,6 +66,7 @@ fun SettingsSidebar(
                     is SettingsDestination.Profile -> currentRoute.contains("Profile")
                     is SettingsDestination.Fonts -> currentRoute.contains("Fonts")
                     is SettingsDestination.About -> currentRoute.contains("About")
+                    is SettingsDestination.Conditions -> currentRoute.contains("Conditions")
                 }
                 SidebarItem(
                     label = item.label,

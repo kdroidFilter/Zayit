@@ -1,7 +1,4 @@
 import io.github.kdroidfilter.buildsrc.Versioning
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.jetbrains.compose.reload.gradle.ComposeHotRun
-import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -48,36 +45,3 @@ kotlin {
     }
 }
 
-compose.desktop {
-    application {
-        mainClass = "io.github.kdroidfilter.seforimapp.earthwidget.MainKt"
-        nativeDistributions {
-            targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Dmg)
-            vendor = "KDroidFilter"
-            linux {
-                packageName = "earthwidget"
-                packageVersion = version
-            }
-            windows {
-                packageName = "EarthWidget"
-                packageVersion = version
-            }
-            macOS {
-                bundleID = "io.github.kdroidfilter.seforimapp.earthwidget.desktopApp"
-                packageName = "EarthWidget"
-                packageVersion = version
-            }
-            buildTypes.release.proguard {
-                version.set("7.8.1")
-                isEnabled = true
-                obfuscate.set(false)
-                optimize.set(true)
-                configurationFiles.from(project.file("proguard-rules.pro"))
-            }
-        }
-    }
-}
-
-tasks.withType<ComposeHotRun>().configureEach {
-    mainClass.set("io.github.kdroidfilter.seforimapp.earthwidget.MainKt")
-}

@@ -195,9 +195,9 @@ function filterAssetsByPlatform(assets, platform) {
     // Filter Windows installers
     return list.filter(a => /\.(msi|exe)$/i.test(a.name))
       .sort((a, b) => {
-        // Prioritize MSI over EXE
-        if (a.lname.endsWith('.msi') && !b.lname.endsWith('.msi')) return -1;
-        if (!a.lname.endsWith('.msi') && b.lname.endsWith('.msi')) return 1;
+        // Prioritize EXE over MSI
+        if (a.lname.endsWith('.exe') && !b.lname.endsWith('.exe')) return -1;
+        if (!a.lname.endsWith('.exe') && b.lname.endsWith('.exe')) return 1;
         return 0;
       });
   }
@@ -427,7 +427,15 @@ async function renderApp() {
 
     if (platform.arch && archGroups[platform.arch]?.length > 0) {
       // Known architecture with matching assets
-      const recommended = archGroups[platform.arch][0];
+      // Find EXE (primary) and MSI (supplementary) for this architecture
+      const archAssets = archGroups[platform.arch];
+      const exeAsset = archAssets.find(a => a.name.toLowerCase().endsWith('.exe'));
+      const msiAsset = archAssets.find(a => a.name.toLowerCase().endsWith('.msi'));
+      const recommended = exeAsset || archAssets[0];
+      const otherArch = platform.arch === 'x64' ? 'arm64' : 'x64';
+      const hasOtherArch = archGroups[otherArch]?.length > 0;
+      const hasSupplementary = msiAsset || hasOtherArch;
+
       mainDownloadBlock = `
         <div class="section section-box">
           <h2 class="section-title">
@@ -445,16 +453,39 @@ async function renderApp() {
               <span>הורד עכשיו</span>
             </a>
           </div>
-          ${archGroups[platform.arch === 'x64' ? 'arm64' : 'x64']?.length > 0 ? `
+          ${hasSupplementary ? `
             <div style="margin-top:1rem;text-align:center;">
               <button class="toggle-button" onclick="setState({showAllAssets: !appState.showAllAssets})">
                 <span class="material-symbols-outlined">
                   ${appState.showAllAssets ? 'expand_less' : 'expand_more'}
                 </span>
-                <span>${appState.showAllAssets ? 'הסתר' : 'הצג'} ארכיטקטורות אחרות</span>
+                <span>${appState.showAllAssets ? 'הסתר' : 'הצג'} אפשרויות נוספות</span>
               </button>
             </div>
-            ${appState.showAllAssets ? renderArchitectureOptions(archGroups, platform.arch) : ''}
+            ${appState.showAllAssets ? `
+              <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,215,0,0.1);">
+                ${msiAsset ? `
+                  <p style="color:var(--gold-soft);font-size:0.9rem;margin:0 0 0.75rem 0;">
+                    פורמט חלופי (MSI):
+                  </p>
+                  <a href="${msiAsset.url}" target="_blank" class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;">
+                    <span class="material-symbols-outlined">download</span>
+                    <span>${msiAsset.name} (${msiAsset.size})</span>
+                  </a>
+                ` : ''}
+                ${hasOtherArch ? `
+                  <p style="color:var(--gold-soft);font-size:0.9rem;margin:${msiAsset ? '1rem' : '0'} 0 0.75rem 0;">
+                    ארכיטקטורות אחרות:
+                  </p>
+                  ${archGroups[otherArch].map(asset => `
+                    <a href="${asset.url}" target="_blank" class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;">
+                      <span class="material-symbols-outlined">${getArchIcon(otherArch)}</span>
+                      <span>${asset.name} (${asset.size})</span>
+                    </a>
+                  `).join('')}
+                ` : ''}
+              </div>
+            ` : ''}
           ` : ''}
         </div>
       `;
@@ -586,6 +617,33 @@ function renderFooter() {
 }
 
 function renderWindowsArchOptions(archGroups) {
+  // Helper to render arch group with EXE primary, MSI secondary
+  const renderArchGroup = (assets, archLabel, archDesc) => {
+    const exeAsset = assets.find(a => a.name.toLowerCase().endsWith('.exe'));
+    const msiAsset = assets.find(a => a.name.toLowerCase().endsWith('.msi'));
+    const primary = exeAsset || assets[0];
+
+    return `
+      <div class="arch-option">
+        <div class="arch-header">
+          <span class="material-symbols-outlined">${getArchIcon(archLabel === archLabelHebrew('x64', 'windows') ? 'x64' : 'arm64')}</span>
+          <h3>${archLabel}</h3>
+        </div>
+        <p class="arch-desc">${archDesc}</p>
+        <a href="${primary.url}" target="_blank" class="btn btn-primary" style="width:100%;margin-top:0.5rem;">
+          <span class="material-symbols-outlined">download</span>
+          <span>${primary.name} (${primary.size})</span>
+        </a>
+        ${msiAsset && exeAsset ? `
+          <a href="${msiAsset.url}" target="_blank" class="btn btn-secondary" style="width:100%;margin-top:0.5rem;">
+            <span class="material-symbols-outlined">download</span>
+            <span>${msiAsset.name} (${msiAsset.size})</span>
+          </a>
+        ` : ''}
+      </div>
+    `;
+  };
+
   return `
     <div class="section section-box">
       <h2 class="section-title">
@@ -597,37 +655,8 @@ function renderWindowsArchOptions(archGroups) {
       </p>
 
       <div class="arch-options">
-        ${archGroups.x64?.length > 0 ? `
-          <div class="arch-option">
-            <div class="arch-header">
-              <span class="material-symbols-outlined">${getArchIcon('x64')}</span>
-              <h3>${archLabelHebrew('x64', 'windows')}</h3>
-            </div>
-            <p class="arch-desc">רוב המחשבים המודרניים</p>
-            ${archGroups.x64.map(asset => `
-              <a href="${asset.url}" target="_blank" class="btn btn-primary" style="width:100%;margin-top:0.5rem;">
-                <span class="material-symbols-outlined">download</span>
-                <span>${asset.name} (${asset.size})</span>
-              </a>
-            `).join('')}
-          </div>
-        ` : ''}
-
-        ${archGroups.arm64?.length > 0 ? `
-          <div class="arch-option">
-            <div class="arch-header">
-              <span class="material-symbols-outlined">${getArchIcon('arm64')}</span>
-              <h3>${archLabelHebrew('arm64', 'windows')}</h3>
-            </div>
-            <p class="arch-desc">מחשבי Surface וכדומה</p>
-            ${archGroups.arm64.map(asset => `
-              <a href="${asset.url}" target="_blank" class="btn btn-primary" style="width:100%;margin-top:0.5rem;">
-                <span class="material-symbols-outlined">download</span>
-                <span>${asset.name} (${asset.size})</span>
-              </a>
-            `).join('')}
-          </div>
-        ` : ''}
+        ${archGroups.x64?.length > 0 ? renderArchGroup(archGroups.x64, archLabelHebrew('x64', 'windows'), 'רוב המחשבים המודרניים') : ''}
+        ${archGroups.arm64?.length > 0 ? renderArchGroup(archGroups.arm64, archLabelHebrew('arm64', 'windows'), 'מחשבי Surface וכדומה') : ''}
       </div>
     </div>
   `;

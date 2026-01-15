@@ -16,6 +16,9 @@ use windows::Win32::Graphics::Gdi::{
     BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::UI::HiDpi::{
+    SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2,
+};
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, GetSystemMetrics,
     LoadCursorW, PostQuitMessage, RegisterClassW, ShowWindow, TranslateMessage, UpdateLayeredWindow,
@@ -29,11 +32,18 @@ const SPLASH_PNG: &[u8] = include_bytes!("../resources/splash.png");
 const MSI_DATA: &[u8] = include_bytes!("../resources/Zayit.msi");
 
 fn main() {
+    // Set DPI awareness before any window creation (like JetBrains Runtime does)
+    unsafe {
+        let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+    }
+
     // Decode splash image
     let img = image::load_from_memory(SPLASH_PNG).expect("Failed to decode splash image");
     let (width, height) = img.dimensions();
 
     // Convert to BGRA format (premultiplied alpha for layered window)
+    // Using ARGB format: 0x00ff0000 (R), 0x0000ff00 (G), 0x000000ff (B), 0xff000000 (A)
+    // with premultiplied alpha (like JBR splash screen)
     let rgba = img.to_rgba8();
     let mut bgra_pixels = Vec::with_capacity((width * height * 4) as usize);
     for pixel in rgba.pixels() {
@@ -44,15 +54,7 @@ fn main() {
         bgra_pixels.push(pixel[3]); // A
     }
 
-    // Flip vertically for Windows DIB format (bottom-up)
-    let row_size = (width * 4) as usize;
-    let mut flipped = vec![0u8; bgra_pixels.len()];
-    for y in 0..height as usize {
-        let src_start = y * row_size;
-        let dst_start = (height as usize - 1 - y) * row_size;
-        flipped[dst_start..dst_start + row_size]
-            .copy_from_slice(&bgra_pixels[src_start..src_start + row_size]);
-    }
+    // No vertical flip needed - we use negative biHeight for top-down DIB (like JBR)
 
     // Flag to signal installation complete
     let install_complete = Arc::new(AtomicBool::new(false));
@@ -65,7 +67,7 @@ fn main() {
     }));
 
     // Create and show splash window
-    let _hwnd = create_splash_window(width as i32, height as i32, &flipped);
+    let _hwnd = create_splash_window(width as i32, height as i32, &bgra_pixels);
 
     // Message loop with periodic check for installation completion
     unsafe {
@@ -217,11 +219,13 @@ fn create_splash_window(img_width: i32, img_height: i32, pixels: &[u8]) -> HWND 
         let screen_dc = GetDC(None);
         let mem_dc = CreateCompatibleDC(screen_dc);
 
+        // Use negative height for top-down DIB format (like JetBrains Runtime)
+        // This avoids the need to manually flip the image vertically
         let bmi = BITMAPINFO {
             bmiHeader: BITMAPINFOHEADER {
                 biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
                 biWidth: img_width,
-                biHeight: img_height,
+                biHeight: -img_height, // Negative height = top-down DIB (like JBR: bmi.biHeight = -splash->height)
                 biPlanes: 1,
                 biBitCount: 32,
                 biCompression: BI_RGB.0,

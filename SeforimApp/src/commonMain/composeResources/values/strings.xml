@@ -67,7 +67,7 @@
     <string name="settings_category_profile">פרופיל</string>
     <string name="settings_category_region">אזור</string>
     <string name="settings_category_fonts">גופנים</string>
-    <string name="settings_category_info">מידע</string>
+    <string name="settings_category_about">אודות</string>
     <string name="add_tab">הוסף לשונית</string>
     <string name="home">דף הבית</string>
     <string name="close_tab">סגור לשונית</string>
@@ -422,13 +422,11 @@
     <string name="settings_close">סגור</string>
     <string name="settings_apply">החל</string>
 
-    <!-- Settings > Info -->
+    <!-- Settings > App Info (General Settings Header) -->
     <string name="settings_info_app_version">גרסה: %1$s</string>
     <string name="settings_info_created_by">נוצר על ידי Elie Gambache - KdroidFilter</string>
     <string name="settings_info_license">יישום זה הוא קוד פתוח תחת רישיון AGPL-3.0</string>
     <string name="settings_info_license_usage">ניתן להשתמש ולהפיץ בהתאם לתנאי הרישיון.</string>
-    <string name="settings_info_repo_prompt">ניתן לעיין בקוד המקור במאגר:</string>
-    <string name="settings_info_repo_url_text">https://github.com/kdroidFilter/Zayit</string>
 
     <!-- App Update -->
     <string name="update_available_toast">גרסה חדשה זמינה</string>

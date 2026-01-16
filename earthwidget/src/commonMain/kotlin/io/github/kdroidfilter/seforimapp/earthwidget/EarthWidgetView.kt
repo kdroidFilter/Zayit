@@ -5,13 +5,17 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -32,6 +36,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -541,7 +547,7 @@ private fun OrbitDayLabelsOverlay(
     modifier: Modifier = Modifier,
 ) {
     if (labels.isEmpty() || renderSizePx <= 0) return
-    val fontSize = (sphereSize.value * 0.025f).coerceIn(9f, 16f).sp
+    val fontSize = (sphereSize.value * 0.032f).coerceIn(11f, 20f).sp
     val textStyle = remember(fontSize) {
         TextStyle(
             color = Color.White,
@@ -572,19 +578,25 @@ private fun OrbitDayLabelsOverlay(
         }
     }
 
+    val hoveredTextStyle = remember(fontSize) {
+        TextStyle(
+            color = Color(0xFFFFD700), // Gold color on hover
+            fontSize = fontSize,
+            fontWeight = FontWeight.Bold,
+            shadow = Shadow(color = Color.Black, offset = Offset(1f, 1f), blurRadius = 4f),
+        )
+    }
+
     Layout(
         modifier = modifier,
         content = {
             for (label in labels) {
                 key(label.dayOfMonth) {
-                    BasicText(
-                        text = label.text,
-                        style = textStyle,
-                        modifier = if (onLabelClick == null) {
-                            Modifier
-                        } else {
-                            Modifier.clickable { onLabelClick(label) }
-                        },
+                    OrbitDayLabel(
+                        label = label,
+                        textStyle = textStyle,
+                        hoveredTextStyle = hoveredTextStyle,
+                        onClick = onLabelClick,
                     )
                 }
             }
@@ -607,5 +619,45 @@ private fun OrbitDayLabelsOverlay(
                 placeable.place(x, y)
             }
         }
+    }
+}
+
+/**
+ * Individual orbit day label with hover effect and expanded click area.
+ */
+@Composable
+private fun OrbitDayLabel(
+    label: OrbitLabelData,
+    textStyle: TextStyle,
+    hoveredTextStyle: TextStyle,
+    onClick: ((OrbitLabelData) -> Unit)?,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
+    val currentStyle = if (isHovered && onClick != null) hoveredTextStyle else textStyle
+
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .then(
+                if (onClick != null) {
+                    Modifier
+                        .pointerHoverIcon(PointerIcon.Hand)
+                        .hoverable(interactionSource)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                        ) { onClick(label) }
+                } else {
+                    Modifier
+                }
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(
+            text = label.text,
+            style = currentStyle,
+        )
     }
 }

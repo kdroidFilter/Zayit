@@ -1,7 +1,7 @@
 # Zayit - the study library that goes straight to the text
 
 <p align="center">
-  <img src="art/splash.png" alt="Zayit splash" width="640">
+  <img src="art/splash.png" alt="Zayit splash" width="100%">
 </p>
 
 Zayit is a free app to read, search, and explore Jewish study texts.
@@ -47,10 +47,11 @@ Everything feels natural, intuitive, and within reach.
 The layout adapts instantly: organize the screen the way you want.
 Show, hide, compare, and tailor reading to your study style.
 
-<p align="center">
-  <img src="art/HOME-LIGHT.png" alt="Home - light theme" width="48%">
-  <img src="art/HOME-DARK.png" alt="Home - dark theme" width="48%">
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/HOME-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/HOME-LIGHT.png">
+  <img src="art/HOME-LIGHT.png" alt="Home screen" width="100%">
+</picture>
 
 ## An exceptional search engine
 A powerful engine designed to understand texts, not just find them.
@@ -68,15 +69,21 @@ Search is fast, stable, and guides you straight to the right source.
 
 Simple to go fast, advanced to go far.
 
-<p align="center">
-  <img src="art/DB-SEARCH-SIMPLE-LIGHT.png" alt="Search (simple) - light theme" width="48%">
-  <img src="art/DB-SEARCH-SIMPLE-DARK.png" alt="Search (simple) - dark theme" width="48%">
-</p>
+Simple search.
 
-<p align="center">
-  <img src="art/DB-SEARCH-ADVANCED-LIGHT.png" alt="Search (advanced) - light theme" width="48%">
-  <img src="art/DB-SEARCH-ADVANCED-DARK.png" alt="Search (advanced) - dark theme" width="48%">
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/DB-SEARCH-SIMPLE-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/DB-SEARCH-SIMPLE-LIGHT.png">
+  <img src="art/DB-SEARCH-SIMPLE-LIGHT.png" alt="Search (simple)" width="100%">
+</picture>
+
+Advanced search.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/DB-SEARCH-ADVANCED-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/DB-SEARCH-ADVANCED-LIGHT.png">
+  <img src="art/DB-SEARCH-ADVANCED-LIGHT.png" alt="Search (advanced)" width="100%">
+</picture>
 
 ## Crafted with care
 Zayit aims for quality and consistency: no gimmicks, no noise.
@@ -96,49 +103,64 @@ Built to be fast, light, almost magical, it runs even on low-powered machines.
 ## Book navigation
 Find a book, jump straight to a chapter, and continue your reading.
 
-<p align="center">
-  <img src="art/BOOK-SEARCH-LIGHT.png" alt="Book search - light theme" width="48%">
-  <img src="art/BOOK-SEARCH-DARK.png" alt="Book search - dark theme" width="48%">
-</p>
+Book search.
 
-<p align="center">
-  <img src="art/TOC-BOOK-SEARCH-LIGHT.png" alt="Table of contents - light theme" width="48%">
-  <img src="art/TOC-BOOK-SEARCH-DARK.png" alt="Table of contents - dark theme" width="48%">
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/BOOK-SEARCH-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/BOOK-SEARCH-LIGHT.png">
+  <img src="art/BOOK-SEARCH-LIGHT.png" alt="Book search" width="100%">
+</picture>
+
+Table of contents.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/TOC-BOOK-SEARCH-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/TOC-BOOK-SEARCH-LIGHT.png">
+  <img src="art/TOC-BOOK-SEARCH-LIGHT.png" alt="Table of contents" width="100%">
+</picture>
 
 ## Search within a book
 Like Ctrl+F: you already know how to use it.
-<p align="center">
-  <img src="art/INBOOK-SEARCH-LIGHT.png" alt="Search within a book - light theme" width="48%">
-  <img src="art/INBOOK-SEARCH-DARK.png" alt="Search within a book - dark theme" width="48%">
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/INBOOK-SEARCH-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/INBOOK-SEARCH-LIGHT.png">
+  <img src="art/INBOOK-SEARCH-LIGHT.png" alt="Search within a book" width="100%">
+</picture>
 
 ## Commentaries and translations
 Choose your commentaries and translations, compare, and move forward in the text.
 
-<p align="center">
-  <img src="art/PIRUSHIM-LIGHT.png" alt="Commentaries - light theme" width="48%">
-  <img src="art/PIRUSHIM-DARK.png" alt="Commentaries - dark theme" width="48%">
-</p>
+Commentaries.
 
-<p align="center">
-  <img src="art/PIRUSHIM-TARGUMIM-LIGHT.png" alt="Commentaries and translations - light theme" width="48%">
-  <img src="art/PIRUSHIM-TARGUMIM-DARK.png" alt="Commentaries and translations - dark theme" width="48%">
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/PIRUSHIM-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/PIRUSHIM-LIGHT.png">
+  <img src="art/PIRUSHIM-LIGHT.png" alt="Commentaries" width="100%">
+</picture>
+
+Commentaries and translations.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/PIRUSHIM-TARGUMIM-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/PIRUSHIM-TARGUMIM-LIGHT.png">
+  <img src="art/PIRUSHIM-TARGUMIM-LIGHT.png" alt="Commentaries and translations" width="100%">
+</picture>
 
 ## Sources
 Find the origin of a passage at a glance.
 
-<p align="center">
-  <img src="art/MEKOR-LIGHT.png" alt="Sources - light theme" width="48%">
-  <img src="art/MEKOR-DARK.png" alt="Sources - dark theme" width="48%">
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/MEKOR-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/MEKOR-LIGHT.png">
+  <img src="art/MEKOR-LIGHT.png" alt="Sources" width="100%">
+</picture>
 
 ## Copy to clipboard
-<p align="center">
-  <img src="art/CLIPBOARD-DEMO-LIGHT.png" alt="Clean copy - light theme" width="48%">
-  <img src="art/CLIPBOARD-DEMO-DARK.png" alt="Clean copy - dark theme" width="48%">
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/CLIPBOARD-DEMO-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/CLIPBOARD-DEMO-LIGHT.png">
+  <img src="art/CLIPBOARD-DEMO-LIGHT.png" alt="Copy to clipboard" width="100%">
+</picture>
 
 ## Thanks
 Thanks to the projects and libraries that make Zayit possible: JetBrains (Kotlin, Compose Desktop, Jewel),

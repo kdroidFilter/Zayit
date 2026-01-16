@@ -1,25 +1,98 @@
 :root {
-  --bg-main: #050509;
-  --bg-gradient-top: #1a1a22;
-  --bg-gradient-bottom: #111118;
-  --card-bg: rgba(16, 16, 24, 0.92);
-  --card-border: rgba(255, 215, 0, 0.12);
-  --card-highlight: rgba(255, 215, 0, 0.18);
-  --gold: #e6d28c;
-  --gold-soft: #d8c68a;
-  --gold-muted: #b8a876;
-  --text-main: #f9f5dd;
-  --text-muted: #c7bea0;
-  --danger: #ff6b6b;
+  /* Light theme (default) */
+  --bg-main: #f5f3ee;
+  --bg-gradient-top: #faf9f5;
+  --bg-gradient-bottom: #eae8e0;
+  --card-bg: rgba(255, 255, 255, 0.95);
+  --card-border: rgba(180, 160, 100, 0.25);
+  --card-highlight: rgba(180, 160, 100, 0.3);
+  --gold: #8b7355;
+  --gold-soft: #9a8265;
+  --gold-muted: #a69070;
+  --text-main: #2c2416;
+  --text-muted: #5c5040;
+  --danger: #dc2626;
   --danger-soft: rgba(220, 38, 38, 0.1);
-  --shadow-strong: 0 26px 60px rgba(0, 0, 0, 0.9);
+  --shadow-strong: 0 26px 60px rgba(0, 0, 0, 0.12);
   --radius-lg: 26px;
   --radius-md: 16px;
   --radius-sm: 10px;
   --transition-fast: 0.18s ease-out;
-  --scrollbar-track: rgba(255, 255, 255, 0.02);
-  --scrollbar-thumb: rgba(255, 215, 0, 0.35);
-  --scrollbar-thumb-hover: rgba(255, 215, 0, 0.6);
+  --scrollbar-track: rgba(0, 0, 0, 0.03);
+  --scrollbar-thumb: rgba(140, 115, 85, 0.4);
+  --scrollbar-thumb-hover: rgba(140, 115, 85, 0.6);
+  --glow-color: rgba(180, 160, 100, 0.15);
+  --section-bg: rgba(250, 248, 242, 0.9);
+  --asset-bg: rgba(245, 243, 238, 0.9);
+  --asset-hover-bg: linear-gradient(90deg, rgba(250, 248, 242, 0.95), rgba(240, 238, 230, 0.95));
+  --spinner-border: rgba(140, 115, 85, 0.22);
+  --logo-border: rgba(0, 0, 0, 0.08);
+  /* Button colors - light theme */
+  --btn-border: rgba(180, 160, 100, 0.3);
+  --btn-bg: rgba(255, 255, 255, 0.85);
+  --btn-hover-bg: rgba(250, 248, 242, 0.95);
+  --btn-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+  --btn-hover-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
+  --btn-secondary-bg: rgba(250, 248, 242, 0.6);
+  --btn-secondary-border: rgba(180, 160, 100, 0.2);
+  /* Card gradient colors - light theme */
+  --card-gradient-start: rgba(255, 255, 255, 0.15);
+  --card-gradient-end: rgba(0, 0, 0, 0.05);
+  --card-glow: rgba(180, 160, 100, 0.12);
+  /* Donate link colors - light theme */
+  --donate-border: rgba(220, 38, 38, 0.2);
+  --donate-bg: rgba(220, 38, 38, 0.05);
+  --donate-hover-bg: rgba(220, 38, 38, 0.15);
+  --donate-hover-border: rgba(220, 38, 38, 0.4);
+  --donate-hover-color: #dc2626;
+  --donate-icon-color: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-main: #050509;
+    --bg-gradient-top: #1a1a22;
+    --bg-gradient-bottom: #111118;
+    --card-bg: rgba(16, 16, 24, 0.92);
+    --card-border: rgba(255, 215, 0, 0.12);
+    --card-highlight: rgba(255, 215, 0, 0.18);
+    --gold: #e6d28c;
+    --gold-soft: #d8c68a;
+    --gold-muted: #b8a876;
+    --text-main: #f9f5dd;
+    --text-muted: #c7bea0;
+    --danger: #ff6b6b;
+    --danger-soft: rgba(220, 38, 38, 0.1);
+    --shadow-strong: 0 26px 60px rgba(0, 0, 0, 0.9);
+    --scrollbar-track: rgba(255, 255, 255, 0.02);
+    --scrollbar-thumb: rgba(255, 215, 0, 0.35);
+    --scrollbar-thumb-hover: rgba(255, 215, 0, 0.6);
+    --glow-color: rgba(255, 215, 0, 0.12);
+    --section-bg: rgba(10, 10, 20, 0.9);
+    --asset-bg: rgba(18, 18, 28, 0.8);
+    --asset-hover-bg: linear-gradient(90deg, rgba(25, 25, 40, 0.7), rgba(0, 0, 0, 0.9));
+    --spinner-border: rgba(216, 198, 138, 0.22);
+    --logo-border: rgba(255, 255, 255, 0.04);
+    /* Button colors - dark theme (original) */
+    --btn-border: rgba(255, 215, 0, 0.25);
+    --btn-bg: rgba(10, 10, 18, 0.7);
+    --btn-hover-bg: rgba(12, 12, 22, 0.8);
+    --btn-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+    --btn-hover-shadow: 0 16px 34px rgba(0, 0, 0, 0.68);
+    --btn-secondary-bg: rgba(255, 255, 255, 0.04);
+    --btn-secondary-border: rgba(255, 255, 255, 0.12);
+    /* Card gradient colors - dark theme (original) */
+    --card-gradient-start: rgba(255, 255, 255, 0.04);
+    --card-gradient-end: rgba(0, 0, 0, 0.35);
+    --card-glow: rgba(255, 215, 0, 0.08);
+    /* Donate link colors - dark theme (original) */
+    --donate-border: rgba(255, 100, 100, 0.2);
+    --donate-bg: rgba(255, 100, 100, 0.05);
+    --donate-hover-bg: rgba(255, 100, 100, 0.15);
+    --donate-hover-border: rgba(255, 100, 100, 0.4);
+    --donate-hover-color: #ff9999;
+    --donate-icon-color: #ff8888;
+  }
 }
 
 * {
@@ -108,10 +181,10 @@ body {
   padding: 2.2rem 2rem 1.75rem;
   background: linear-gradient(
       135deg,
-      rgba(255, 255, 255, 0.04),
-      rgba(0, 0, 0, 0.35)
+      var(--card-gradient-start),
+      var(--card-gradient-end)
     ),
-    radial-gradient(circle at top left, rgba(255, 215, 0, 0.08), transparent 55%),
+    radial-gradient(circle at top left, var(--card-glow), transparent 55%),
     var(--card-bg);
   border: 1px solid var(--card-border);
   box-shadow: var(--shadow-strong);
@@ -127,7 +200,7 @@ body {
   inset-block-start: -60px;
   width: 180px;
   height: 180px;
-  background: radial-gradient(circle, rgba(255, 215, 0, 0.12), transparent 70%);
+  background: radial-gradient(circle, var(--glow-color), transparent 70%);
   opacity: 0.6;
   pointer-events: none;
 }
@@ -145,11 +218,11 @@ body {
   width: 90px;
   height: 90px;
   border-radius: 26px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+  box-shadow: var(--shadow-strong);
   display: block;
   margin: 0 auto 0.75rem;
   object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--logo-border);
   backdrop-filter: blur(6px);
 }
 
@@ -181,10 +254,10 @@ body {
 .section-box {
   background: radial-gradient(
       circle at top right,
-      rgba(255, 215, 0, 0.08),
+      var(--glow-color),
       transparent 60%
     ),
-    rgba(10, 10, 20, 0.9);
+    var(--section-bg);
   border: 1px solid var(--card-highlight);
   padding: 1.35rem 1.25rem;
   border-radius: var(--radius-md);
@@ -197,11 +270,11 @@ body {
 .section-db {
   background: radial-gradient(
       circle at top left,
-      rgba(255, 215, 0, 0.12),
+      var(--glow-color),
       transparent 60%
     ),
-    rgba(9, 9, 16, 0.9);
-  border: 1px solid rgba(255, 215, 0, 0.18);
+    var(--section-bg);
+  border: 1px solid var(--card-highlight);
   padding: 1.4rem 1.25rem 1.2rem;
   border-radius: var(--radius-md);
 }
@@ -231,18 +304,18 @@ body {
   gap: 0.55rem;
   padding: 0.85rem 1.2rem;
   border-radius: 14px;
-  border: 1px solid rgba(255, 215, 0, 0.25);
+  border: 1px solid var(--btn-border);
   text-decoration: none;
   color: var(--text-main);
   background: linear-gradient(
       120deg,
-      rgba(255, 215, 0, 0.12),
-      rgba(255, 215, 0, 0.08)
+      var(--glow-color),
+      transparent
     ),
-    rgba(10, 10, 18, 0.7);
+    var(--btn-bg);
   transition: transform var(--transition-fast), box-shadow var(--transition-fast),
     background var(--transition-fast);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--btn-shadow);
   font-weight: 600;
 }
 
@@ -254,11 +327,11 @@ body {
   transform: translateY(-1.5px);
   background: linear-gradient(
       120deg,
-      rgba(255, 215, 0, 0.18),
-      rgba(255, 215, 0, 0.12)
+      var(--card-highlight),
+      var(--glow-color)
     ),
-    rgba(12, 12, 22, 0.8);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.68);
+    var(--btn-hover-bg);
+  box-shadow: var(--btn-hover-shadow);
 }
 
 .btn:active {
@@ -268,10 +341,10 @@ body {
 .btn-primary {
   background: linear-gradient(
       135deg,
-      rgba(255, 215, 0, 0.18),
-      rgba(255, 215, 0, 0.05)
+      var(--card-highlight),
+      var(--glow-color)
     ),
-    rgba(12, 12, 22, 0.8);
+    var(--btn-hover-bg);
 }
 
 .btn-row {
@@ -281,13 +354,13 @@ body {
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--btn-secondary-bg);
+  border-color: var(--btn-secondary-border);
   color: var(--gold);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--glow-color);
 }
 
 .download-grid {
@@ -307,26 +380,22 @@ body {
 
 .asset-item,
 .db-item {
-  background: rgba(18, 18, 28, 0.8);
+  background: var(--asset-bg);
   padding: 0.9rem 1rem;
   margin: 0 0 0.75rem 0;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--card-border);
   backdrop-filter: blur(6px);
 }
 
 .asset-item:hover,
 .db-item:hover {
-  border-color: rgba(255, 215, 0, 0.35);
-  background: linear-gradient(
-    90deg,
-    rgba(25, 25, 40, 0.7),
-    rgba(0, 0, 0, 0.9)
-  );
+  border-color: var(--card-highlight);
+  background: var(--asset-hover-bg);
 }
 
 .db-item {
-  border-inline-start: 3px solid rgba(255, 215, 0, 0.35);
+  border-inline-start: 3px solid var(--card-highlight);
 }
 
 .asset-item.compact {
@@ -358,8 +427,8 @@ body {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  background: rgba(255, 215, 0, 0.08);
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  background: var(--glow-color);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius-sm);
   padding: 0.55rem 0.7rem;
   margin-bottom: 0.5rem;
@@ -377,7 +446,7 @@ body {
 }
 
 .asset-name {
-  color: #ffffe5;
+  color: var(--text-main);
   margin: 0;
   font-size: 0.86rem;
   word-break: break-word;
@@ -410,7 +479,7 @@ body {
 }
 
 .toggle-button:hover {
-  background: rgba(255, 215, 0, 0.06);
+  background: var(--glow-color);
   color: var(--gold);
 }
 
@@ -434,7 +503,7 @@ body {
 .footer {
   margin-top: 1.5rem;
   text-align: center;
-  border-top: 1px solid rgba(255, 215, 0, 0.12);
+  border-top: 1px solid var(--card-border);
   padding-top: 0.9rem;
   font-size: 0.8rem;
   color: var(--gold-muted);
@@ -460,32 +529,32 @@ body {
   text-decoration: none;
   padding: 0.5rem 1rem;
   border-radius: 999px;
-  border: 1px solid rgba(255, 215, 0, 0.15);
-  background: rgba(255, 215, 0, 0.04);
+  border: 1px solid var(--card-border);
+  background: var(--glow-color);
   transition: all var(--transition-fast);
   font-size: 0.9rem;
 }
 
 .footer-link:hover {
-  background: rgba(255, 215, 0, 0.12);
-  border-color: rgba(255, 215, 0, 0.3);
+  background: var(--card-highlight);
+  border-color: var(--gold-soft);
   color: var(--gold);
   transform: translateY(-1px);
 }
 
 .footer-link-donate {
-  border-color: rgba(255, 100, 100, 0.2);
-  background: rgba(255, 100, 100, 0.05);
+  border-color: var(--donate-border);
+  background: var(--donate-bg);
 }
 
 .footer-link-donate:hover {
-  background: rgba(255, 100, 100, 0.15);
-  border-color: rgba(255, 100, 100, 0.4);
-  color: #ff9999;
+  background: var(--donate-hover-bg);
+  border-color: var(--donate-hover-border);
+  color: var(--donate-hover-color);
 }
 
 .footer-link-donate .footer-icon {
-  color: #ff8888;
+  color: var(--donate-icon-color);
 }
 
 /* Tooltips */
@@ -499,7 +568,7 @@ body {
   bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%) scale(0.9);
-  background: rgba(0, 0, 0, 0.95);
+  background: var(--card-bg);
   color: var(--gold);
   padding: 0.4rem 0.7rem;
   border-radius: 8px;
@@ -508,7 +577,7 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: all 0.2s ease;
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  border: 1px solid var(--card-border);
   z-index: 1000;
 }
 
@@ -519,7 +588,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: rgba(255, 215, 0, 0.2);
+  border-top-color: var(--card-border);
   opacity: 0;
   pointer-events: none;
   transition: all 0.2s ease;
@@ -534,8 +603,8 @@ body {
 
 /* Cross-platform section */
 .section-cross-platform {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.03), rgba(0, 0, 0, 0.2));
-  border-color: rgba(255, 215, 0, 0.1);
+  background: linear-gradient(135deg, var(--glow-color), transparent);
+  border-color: var(--card-border);
 }
 
 .os-tabs {
@@ -546,7 +615,7 @@ body {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
-  border-bottom: 2px solid rgba(255, 215, 0, 0.1);
+  border-bottom: 2px solid var(--card-border);
   padding-bottom: 0.5rem;
 }
 
@@ -557,8 +626,8 @@ body {
   gap: 0.5rem;
   padding: 0.7rem 1.2rem;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 215, 0, 0.1);
+  background: var(--glow-color);
+  border: 1px solid var(--card-border);
   color: var(--gold-muted);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -566,17 +635,17 @@ body {
 }
 
 .tab-button:hover {
-  background: rgba(255, 215, 0, 0.08);
-  border-color: rgba(255, 215, 0, 0.25);
+  background: var(--card-highlight);
+  border-color: var(--gold-soft);
   color: var(--gold);
   transform: translateY(-1px);
 }
 
 .tab-button.active {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.08));
-  border-color: rgba(255, 215, 0, 0.35);
+  background: linear-gradient(135deg, var(--card-highlight), var(--glow-color));
+  border-color: var(--gold);
   color: var(--gold);
-  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.15);
+  box-shadow: var(--shadow-strong);
 }
 
 .tab-button span:first-child {
@@ -600,9 +669,9 @@ body {
 
 .platform-downloads {
   padding: 1.25rem;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--asset-bg);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 215, 0, 0.08);
+  border: 1px solid var(--card-border);
 }
 
 .platform-title {
@@ -653,8 +722,8 @@ body {
   align-items: center;
   gap: 0.4rem;
   padding: 0.5rem 0.9rem;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(255, 215, 0, 0.04));
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  background: linear-gradient(135deg, var(--glow-color), transparent);
+  border: 1px solid var(--card-border);
   border-radius: 999px;
   color: var(--text-main);
   text-decoration: none;
@@ -664,10 +733,10 @@ body {
 }
 
 .download-chip:hover {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.08));
-  border-color: rgba(255, 215, 0, 0.35);
+  background: linear-gradient(135deg, var(--card-highlight), var(--glow-color));
+  border-color: var(--gold-soft);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
+  box-shadow: var(--shadow-strong);
 }
 
 .download-chip span:first-child {
@@ -677,7 +746,7 @@ body {
 .distro-group {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid rgba(255, 215, 0, 0.08);
+  border-top: 1px solid var(--card-border);
 }
 
 .distro-group:first-of-type {
@@ -704,8 +773,8 @@ body {
 /* Command box for macOS */
 .command-box {
   position: relative;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  background: var(--asset-bg);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius-sm);
   padding: 1rem;
   margin: 0.75rem 0;
@@ -731,8 +800,8 @@ body {
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.08));
-  border: 1px solid rgba(255, 215, 0, 0.3);
+  background: linear-gradient(135deg, var(--card-highlight), var(--glow-color));
+  border: 1px solid var(--card-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -740,7 +809,7 @@ body {
 }
 
 .copy-btn:hover {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 215, 0, 0.15));
+  background: linear-gradient(135deg, var(--gold-soft), var(--card-highlight));
   transform: translateY(-1px);
 }
 
@@ -762,16 +831,16 @@ body {
 }
 
 .arch-option {
-  background: rgba(10, 10, 20, 0.7);
-  border: 1px solid rgba(255, 215, 0, 0.15);
+  background: var(--asset-bg);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius-md);
   padding: 1.25rem;
   transition: all var(--transition-fast);
 }
 
 .arch-option:hover {
-  border-color: rgba(255, 215, 0, 0.3);
-  background: rgba(12, 12, 24, 0.8);
+  border-color: var(--card-highlight);
+  background: var(--section-bg);
 }
 
 .arch-header {
@@ -800,10 +869,10 @@ body {
 }
 
 .linux-distro-section {
-  background: rgba(10, 10, 18, 0.5);
+  background: var(--glow-color);
   padding: 1rem;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 215, 0, 0.08);
+  border: 1px solid var(--card-border);
 }
 
 .download-item {
@@ -868,7 +937,7 @@ body {
   border-radius: 9999px;
   border-width: 0.24rem;
   border-style: solid;
-  border-color: rgba(216, 198, 138, 0.22);
+  border-color: var(--spinner-border);
   border-top-color: var(--gold-soft);
   animation: spin 0.9s linear infinite;
 }

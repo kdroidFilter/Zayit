@@ -234,3 +234,8 @@
 -keep class com.kosherjava.zmanim.** { *; }
 -keep enum com.kosherjava.zmanim.** { *; }
 -dontwarn com.kosherjava.zmanim.**
+
+# --- Fix: Community enum used with valueOf() for Kiddush Levana opinion selection ---
+# The Community enum is resolved at runtime via Enum.valueOf(code) where code is stored
+# in AppSettings. If R8/ProGuard optimizes or unboxes this enum, valueOf() will fail.
+-keep enum io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community { *; }

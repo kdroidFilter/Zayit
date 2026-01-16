@@ -30,7 +30,7 @@ fun CatalogRow(
         modifier = Modifier
             .fillMaxSize()
             .zIndex(1f)
-            .padding(16.dp),
+            .padding(6.dp),
         contentAlignment = Alignment.TopStart
     ) {
 

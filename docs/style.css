@@ -25,6 +25,7 @@
   --section-bg: rgba(250, 248, 242, 0.9);
   --asset-bg: rgba(245, 243, 238, 0.9);
   --asset-hover-bg: linear-gradient(90deg, rgba(250, 248, 242, 0.95), rgba(240, 238, 230, 0.95));
+  --asset-border: rgba(0, 0, 0, 0.06);
   --spinner-border: rgba(140, 115, 85, 0.22);
   --logo-border: rgba(0, 0, 0, 0.08);
   /* Button colors - light theme */
@@ -71,6 +72,7 @@
     --section-bg: rgba(10, 10, 20, 0.9);
     --asset-bg: rgba(18, 18, 28, 0.8);
     --asset-hover-bg: linear-gradient(90deg, rgba(25, 25, 40, 0.7), rgba(0, 0, 0, 0.9));
+    --asset-border: rgba(255, 255, 255, 0.03);
     --spinner-border: rgba(216, 198, 138, 0.22);
     --logo-border: rgba(255, 255, 255, 0.04);
     /* Button colors - dark theme (original) */
@@ -384,13 +386,13 @@ body {
   padding: 0.9rem 1rem;
   margin: 0 0 0.75rem 0;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--card-border);
+  border: 1px solid var(--asset-border);
   backdrop-filter: blur(6px);
 }
 
 .asset-item:hover,
 .db-item:hover {
-  border-color: var(--card-highlight);
+  border-color: rgba(255, 215, 0, 0.35);
   background: var(--asset-hover-bg);
 }
 
@@ -770,11 +772,11 @@ body {
   display: none;
 }
 
-/* Command box for macOS */
+/* Command box for macOS - always dark */
 .command-box {
   position: relative;
-  background: var(--asset-bg);
-  border: 1px solid var(--card-border);
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 215, 0, 0.2);
   border-radius: var(--radius-sm);
   padding: 1rem;
   margin: 0.75rem 0;
@@ -786,7 +788,7 @@ body {
 .command-box code {
   flex: 1;
   font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-  color: var(--gold);
+  color: #e6d28c;
   font-size: 0.85rem;
   word-break: break-all;
   user-select: all;
@@ -800,16 +802,16 @@ body {
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  background: linear-gradient(135deg, var(--card-highlight), var(--glow-color));
-  border: 1px solid var(--card-border);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.08));
+  border: 1px solid rgba(255, 215, 0, 0.3);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
-  color: var(--gold);
+  color: #e6d28c;
 }
 
 .copy-btn:hover {
-  background: linear-gradient(135deg, var(--gold-soft), var(--card-highlight));
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 215, 0, 0.15));
   transform: translateY(-1px);
 }
 

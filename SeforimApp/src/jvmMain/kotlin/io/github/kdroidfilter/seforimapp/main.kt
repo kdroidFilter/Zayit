@@ -80,6 +80,11 @@ import java.net.URI
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
+    // Force OpenGL rendering backend on Windows if enabled (must be set before Skia initialization)
+    if (getOperatingSystem() == OperatingSystem.WINDOWS && AppSettings.isUseOpenGlEnabled()) {
+        System.setProperty("skiko.renderApi", "OPENGL")
+    }
+
     setMacOsAdaptiveTitleBar()
 
     // Register global AWT key event dispatcher for Cmd+Shift+C (copy without nikud)

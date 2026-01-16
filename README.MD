@@ -1,125 +1,166 @@
-# SeforimApp
+# Zayit - the study library that goes straight to the text
 
-Kotlin Multiplatform desktop application built with JetBrains Compose Multiplatform, Jewel windowing, Metro DI, a RAM‑efficient tab navigation system, and Paging. The app consumes the composite build SeforimLibrary (`core`, `dao`).
+<p align="center">
+  <img src="art/splash.png" alt="Zayit splash" width="640">
+</p>
 
-## Contents
-- Overview
-- Architecture
-- Requirements
-- Quick Start
-- Desktop
-- Tests
-- Project Structure
-- Contributing
-- Security
-- License
+Zayit is a free app to read, search, and explore Jewish study texts.
+Built for study: fast search, smooth navigation, clean citations.
+For review, preparing a lesson, or studying with a partner.
 
-## Overview
-- Compose Multiplatform UI with Jewel themes and native packaging (DMG/MSI/DEB).
-- RAM‑efficient tabbed navigation via `TabsNavHost` (see `TAB_SYSTEM_README.md`).
-- Dependency injection with Metro (`AppGraph` exposed through `LocalAppGraph`).
-- Data provided by `SeforimLibrary` (`core`, `dao`) with Paging.
-- Hot reload for a fast desktop development loop.
+Free. Clear. Efficient.
 
-## Architecture
-- UI: Compose + Jewel; desktop entrypoint: `SeforimApp/src/jvmMain/kotlin/main.kt`.
-- DI: Metro graph via `createGraph<AppGraph>()`, accessed with `LocalAppGraph`.
-- Navigation: `TabsNavHost`; features live under `SeforimApp/src/jvmMain/kotlin/io/github/kdroidfilter/seforimapp/features`.
-- Data: `SeforimLibrary` (modules `core`, `dao`) + Paging.
-- Shared resources: `src/commonMain/composeResources` (strings, fonts, etc.).
+<table>
+  <tr>
+    <td align="center" valign="middle">
+      <a href="https://kdroidfilter.github.io/Zayit/">
+        <img src="art/button-download.png" alt="Download on GitHub" height="56">
+      </a>
+    </td>
+    <td align="center" valign="middle">
+      <a href="https://ko-fi.com/lomityaesh">
+        <img src="art/button-koffe.png" alt="Support on Ko-fi" height="56">
+      </a>
+    </td>
+  </tr>
+</table>
 
-See `TAB_SYSTEM_README.md` for details on the memory‑friendly tab system and state restoration.
+## Vision
+Zayit is a dream turned useful: a natural, fluid, almost obvious study experience.
+The project will remain free by principle. Support is welcome and meaningful.
+It is designed to stay non-commercial.
+With God's help, Zayit will keep growing without losing its spirit.
 
-## Requirements
-- OS: macOS / Linux / Windows.
-- Java: JetBrains Runtime 21 (JBR 21) is required to build and run this project.
-  - Gradle Toolchains will download JBR 21 automatically when you run `./gradlew`. If you use a locally installed JDK or an IDE, make sure it is JDK 21.
-  - Terminal: ensure `JAVA_HOME` points to a JDK 21. IntelliJ IDEA: set Gradle JDK to the bundled JBR 21.
+## In the spirit of a study hall
+Zayit is designed like a digital study hall: stable, fast, consistent.
+You feel the calm of study: everything works, everything is in its place.
+The text stays at the center, with respect and without distractions.
 
-## Quick Start
-Clone the repo and build:
+## A pro and natural interface
+Zayit is built on JetBrains technologies, including Compose Desktop and Jewel.
+Inspired by Google Chrome and IntelliJ IDEA, it offers a professional interface
+that is fluid and natural, respects study, and does not strain the eyes.
+Zayit is easy to use: you already know how, no learning curve.
+Everything feels natural, intuitive, and within reach.
 
-```bash
-./gradlew build
-```
+## Modular panels
+The layout adapts instantly: organize the screen the way you want.
+Show, hide, compare, and tailor reading to your study style.
 
-## Desktop
-- Run the desktop app (Compose):
+<p align="center">
+  <img src="art/HOME-LIGHT.png" alt="Home - light theme" width="48%">
+  <img src="art/HOME-DARK.png" alt="Home - dark theme" width="48%">
+</p>
 
-```bash
-./gradlew :SeforimApp:run
-```
+## An exceptional search engine
+A powerful engine designed to understand texts, not just find them.
+The database was rebuilt to make search and navigation precise.
+Every result helps you move forward on the topic, without wasting time.
+Powered by Lucene and enhanced by AI for precision.
+It is likely the most powerful engine ever built for this kind of study.
+It finds words, forms, and variants with remarkable reliability.
+Search is fast, stable, and guides you straight to the right source.
 
-- Hot reload (Desktop):
+- Find a passage even from a partial word or approximate spelling.
+- Even without vocalization or cantillation marks, search stays clear and reliable.
+- A partial phrase is often enough to reach the right place.
+- Clean, readable, immediate results, useful for review and lesson prep.
 
-```bash
-./gradlew :SeforimApp:hotRunJvm
-# In another terminal, trigger reload
-./gradlew :SeforimApp:reload
-```
+Simple to go fast, advanced to go far.
 
-- Create a native package (DMG/MSI/DEB):
+<p align="center">
+  <img src="art/DB-SEARCH-SIMPLE-LIGHT.png" alt="Search (simple) - light theme" width="48%">
+  <img src="art/DB-SEARCH-SIMPLE-DARK.png" alt="Search (simple) - dark theme" width="48%">
+</p>
 
-```bash
-./gradlew :SeforimApp:createDistributable
-```
+<p align="center">
+  <img src="art/DB-SEARCH-ADVANCED-LIGHT.png" alt="Search (advanced) - light theme" width="48%">
+  <img src="art/DB-SEARCH-ADVANCED-DARK.png" alt="Search (advanced) - dark theme" width="48%">
+</p>
 
+## Crafted with care
+Zayit aims for quality and consistency: no gimmicks, no noise.
+Like a digital study desk, everything is there to move forward.
+Every detail is designed for natural, respectful study.
+Built to be fast, light, almost magical, it runs even on low-powered machines.
 
-## Tests
-- Run all tests:
+## What Zayit lets you do
+- Find a passage in seconds with simple or advanced search.
+- Explore a library by book and table of contents without losing the thread.
+- Search inside a book to prepare a lesson or review.
+- Show commentaries and translations side by side.
+- Access sources for a passage quickly.
+- Copy a clean excerpt to share in a lesson or with a study partner.
+- Switch instantly between light and dark themes.
 
-```bash
-./gradlew test
-```
+## Book navigation
+Find a book, jump straight to a chapter, and continue your reading.
 
-- Desktop JVM tests only:
+<p align="center">
+  <img src="art/BOOK-SEARCH-LIGHT.png" alt="Book search - light theme" width="48%">
+  <img src="art/BOOK-SEARCH-DARK.png" alt="Book search - dark theme" width="48%">
+</p>
 
-```bash
-./gradlew :SeforimApp:jvmTest
-```
+<p align="center">
+  <img src="art/TOC-BOOK-SEARCH-LIGHT.png" alt="Table of contents - light theme" width="48%">
+  <img src="art/TOC-BOOK-SEARCH-DARK.png" alt="Table of contents - dark theme" width="48%">
+</p>
 
+## Search within a book
+Like Ctrl+F: you already know how to use it.
+<p align="center">
+  <img src="art/INBOOK-SEARCH-LIGHT.png" alt="Search within a book - light theme" width="48%">
+  <img src="art/INBOOK-SEARCH-DARK.png" alt="Search within a book - dark theme" width="48%">
+</p>
 
-Example test scaffold: `SeforimApp/src/jvmTest/kotlin/io/github/kdroidfilter/seforimapp/SampleTest.kt`
+## Commentaries and translations
+Choose your commentaries and translations, compare, and move forward in the text.
 
-```kotlin
-import kotlin.test.Test
-import kotlin.test.assertTrue
+<p align="center">
+  <img src="art/PIRUSHIM-LIGHT.png" alt="Commentaries - light theme" width="48%">
+  <img src="art/PIRUSHIM-DARK.png" alt="Commentaries - dark theme" width="48%">
+</p>
 
-class SampleTest {
-  @Test fun runs() { assertTrue(true) }
-}
-```
+<p align="center">
+  <img src="art/PIRUSHIM-TARGUMIM-LIGHT.png" alt="Commentaries and translations - light theme" width="48%">
+  <img src="art/PIRUSHIM-TARGUMIM-DARK.png" alt="Commentaries and translations - dark theme" width="48%">
+</p>
 
-## Project Structure
-- App module: `SeforimApp` (Kotlin Multiplatform)
-  - Source sets: `src/commonMain`, `src/jvmMain`
-  - Shared resources: `src/commonMain/composeResources`
-  - Desktop entry: `SeforimApp/src/jvmMain/kotlin/main.kt`
-- Composite build: `SeforimLibrary` (consumed via coordinates in the app)
-  - Modules: `core` (domain), `dao` (persistence), `generator` (tools)
-- Local libraries (UI/Utils): `htmlparser`, `icons`, `logger`, `navigation`, `pagination`, `texteffects`, `jewel`
-- Tests: `src/<target>Test` (e.g., `commonTest`, `jvmTest`)
+## Sources
+Find the origin of a passage at a glance.
 
-## Contributing
-- Conventional Commits: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`
-  - Example: `feat(SeforimApp): add Paging3 for desktop`
-- Pull Requests: include a clear description, touched modules, linked issues, UI screenshots/GIFs, and local run steps (`:SeforimApp:run`). Keep PRs focused and incremental.
-- Style: Kotlin + Compose, 4‑space indentation, ~120‑char lines. Naming: classes/objects in PascalCase; functions/properties in camelCase; constants in UPPER_SNAKE_CASE. Composables follow the `SomethingView` and `SomethingViewModel` pattern.
-- Organization: put shared logic in `commonMain`; platform code in `jvmMain`. Avoid leaking platform types across source sets.
-- DI: use the Metro graph (`AppGraph` + `@Provides`) and access via `LocalAppGraph` instead of global singletons.
+<p align="center">
+  <img src="art/MEKOR-LIGHT.png" alt="Sources - light theme" width="48%">
+  <img src="art/MEKOR-DARK.png" alt="Sources - dark theme" width="48%">
+</p>
 
-## Security
-- Do not commit secrets or API keys. Keep machine‑specific settings in `local.properties`.
-- To increase JVM log verbosity locally, add VM option: `-Dorg.slf4j.simpleLogger.defaultLogLevel=debug` in your IDE run config.
+## Copy to clipboard
+<p align="center">
+  <img src="art/CLIPBOARD-DEMO-LIGHT.png" alt="Clean copy - light theme" width="48%">
+  <img src="art/CLIPBOARD-DEMO-DARK.png" alt="Clean copy - dark theme" width="48%">
+</p>
 
-## License
-AGPL‑3.0. See `LICENSE` for details.
+## Thanks
+Thanks to the projects and libraries that make Zayit possible: JetBrains (Kotlin, Compose Desktop, Jewel),
+Apache (Lucene), and all open source authors.
+Thanks also to Sefaria and Otzaria for the quality and openness of their databases.
 
-## Key Tools and Dependencies
-- JetBrains Compose Multiplatform, Jewel UI
-- Metro (DI), KotlinX (Coroutines, Serialization, DateTime)
-- Lifecycle, Navigation, Paging3
-- Ktor Client
+## Sources and rights
+Zayit relies on corpora from **[Sefaria](https://www.sefaria.org.il/)** and
+**[Otzaria Library](https://github.com/Otzaria/otzaria-library)**, converted to SQL via
+**[SeforimLibrary](https://github.com/kdroidFilter/SeforimLibrary)**.
+Each work may have its own terms: the user agrees to respect them.
+Zayit and its authors cannot be held responsible for non-compliant use.
+
+## Typography
+The project includes licensed fonts: **Rashi Amiti** (exclusive to Zayit,
+with permission from **[The ImageMaster](https://www.theimagemaster.com/)**) and fonts from the
+**[Culmus project](https://culmus.sourceforge.io/)** (their own licenses).
+
+## License and sharing
+Zayit is free and open source, published under **[AGPL v3](https://raw.githubusercontent.com/kdroidFilter/SeforimApp/refs/heads/master/LICENSE)**.
+Sharing is encouraged - it is a good deed.
 
 ---
-Tip: for a fast desktop dev loop, use hot reload (`hotRunJvm` + `reload`). For the memory‑efficient tab navigation and state handling, see `TAB_SYSTEM_README.md`.
+
+Zayit is free and open source. For license details, see `LICENSE`.

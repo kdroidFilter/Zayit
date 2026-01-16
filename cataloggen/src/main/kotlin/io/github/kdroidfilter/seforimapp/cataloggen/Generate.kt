@@ -552,8 +552,8 @@ private suspend fun resolveCatalogIds(repo: SeforimRepository): ResolvedCatalogI
     val turCategoryId = findCategoryId(repo, listOf("טור", "ארבעה טורים"), halachaRootId)
         ?: requireCategoryId(repo, "Tur category", listOf("טור", "ארבעה טורים"))
     val shulchanAruchId = findCategoryId(repo, listOf("שולחן ערוך"), halachaRootId)
-        ?: requireCategoryId(repo, "Shulchan Aruch", listOf("שולחן ערוך"))
-
+        ?: requireCategoryId(repo, "Shulchan Aruch", listOf("שו״ע", "שולחן ערוך", "שו\"ע", "שוע"))
+        
     val mishnehTorahChildren = runCatching { repo.getCategoryChildren(mishnehTorahId) }
         .getOrDefault(emptyList())
         .filter { !it.title.trimStart().startsWith("מפרשים") }

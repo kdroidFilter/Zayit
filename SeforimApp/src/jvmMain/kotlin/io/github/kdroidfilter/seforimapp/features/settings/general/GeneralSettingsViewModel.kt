@@ -26,16 +26,19 @@ class GeneralSettingsViewModel : ViewModel() {
     private val closeTree = MutableStateFlow(AppSettings.getCloseBookTreeOnNewBookSelected())
     private val persist = MutableStateFlow(AppSettings.isPersistSessionEnabled())
     private val showZmanim = MutableStateFlow(AppSettings.isShowZmanimWidgetsEnabled())
+    private val useOpenGl = MutableStateFlow(AppSettings.isUseOpenGlEnabled())
     private val resetDone = MutableStateFlow(false)
 
     val state = combine(
-        dbPath, closeTree, persist, showZmanim, resetDone
-    ) { path, c, p, z, r ->
+        combine(dbPath, closeTree, persist) { path, c, p -> Triple(path, c, p) },
+        combine(showZmanim, useOpenGl, resetDone) { z, gl, r -> Triple(z, gl, r) }
+    ) { (path, c, p), (z, gl, r) ->
         GeneralSettingsState(
             databasePath = path,
             closeTreeOnNewBook = c,
             persistSession = p,
             showZmanimWidgets = z,
+            useOpenGl = gl,
             resetDone = r
         )
     }.stateIn(
@@ -46,6 +49,7 @@ class GeneralSettingsViewModel : ViewModel() {
             closeTreeOnNewBook = closeTree.value,
             persistSession = persist.value,
             showZmanimWidgets = showZmanim.value,
+            useOpenGl = useOpenGl.value,
             resetDone = resetDone.value,
         )
     )
@@ -63,6 +67,10 @@ class GeneralSettingsViewModel : ViewModel() {
             is GeneralSettingsEvents.SetShowZmanimWidgets -> {
                 AppSettings.setShowZmanimWidgetsEnabled(event.value)
                 showZmanim.value = event.value
+            }
+            is GeneralSettingsEvents.SetUseOpenGl -> {
+                AppSettings.setUseOpenGlEnabled(event.value)
+                useOpenGl.value = event.value
             }
             is GeneralSettingsEvents.ResetApp -> {
                 // Get the databases directory

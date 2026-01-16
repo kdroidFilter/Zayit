@@ -26,6 +26,15 @@
   --asset-bg: rgba(245, 243, 238, 0.9);
   --asset-hover-bg: linear-gradient(90deg, rgba(250, 248, 242, 0.95), rgba(240, 238, 230, 0.95));
   --asset-border: rgba(0, 0, 0, 0.06);
+  --platform-bg: rgba(0, 0, 0, 0.05);
+  --platform-border: rgba(180, 160, 100, 0.15);
+  --chip-bg-start: rgba(180, 160, 100, 0.12);
+  --chip-bg-end: rgba(180, 160, 100, 0.06);
+  --chip-border: rgba(180, 160, 100, 0.25);
+  --chip-hover-bg-start: rgba(180, 160, 100, 0.2);
+  --chip-hover-bg-end: rgba(180, 160, 100, 0.12);
+  --chip-hover-border: rgba(180, 160, 100, 0.4);
+  --chip-hover-shadow: 0 4px 12px rgba(180, 160, 100, 0.2);
   --spinner-border: rgba(140, 115, 85, 0.22);
   --logo-border: rgba(0, 0, 0, 0.08);
   /* Button colors - light theme */
@@ -73,6 +82,15 @@
     --asset-bg: rgba(18, 18, 28, 0.8);
     --asset-hover-bg: linear-gradient(90deg, rgba(25, 25, 40, 0.7), rgba(0, 0, 0, 0.9));
     --asset-border: rgba(255, 255, 255, 0.03);
+    --platform-bg: rgba(0, 0, 0, 0.3);
+    --platform-border: rgba(255, 215, 0, 0.08);
+    --chip-bg-start: rgba(255, 215, 0, 0.08);
+    --chip-bg-end: rgba(255, 215, 0, 0.04);
+    --chip-border: rgba(255, 215, 0, 0.2);
+    --chip-hover-bg-start: rgba(255, 215, 0, 0.15);
+    --chip-hover-bg-end: rgba(255, 215, 0, 0.08);
+    --chip-hover-border: rgba(255, 215, 0, 0.35);
+    --chip-hover-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
     --spinner-border: rgba(216, 198, 138, 0.22);
     --logo-border: rgba(255, 255, 255, 0.04);
     /* Button colors - dark theme (original) */
@@ -671,9 +689,9 @@ body {
 
 .platform-downloads {
   padding: 1.25rem;
-  background: var(--asset-bg);
+  background: var(--platform-bg);
   border-radius: var(--radius-md);
-  border: 1px solid var(--card-border);
+  border: 1px solid var(--platform-border);
 }
 
 .platform-title {
@@ -724,8 +742,8 @@ body {
   align-items: center;
   gap: 0.4rem;
   padding: 0.5rem 0.9rem;
-  background: linear-gradient(135deg, var(--glow-color), transparent);
-  border: 1px solid var(--card-border);
+  background: linear-gradient(135deg, var(--chip-bg-start), var(--chip-bg-end));
+  border: 1px solid var(--chip-border);
   border-radius: 999px;
   color: var(--text-main);
   text-decoration: none;
@@ -735,10 +753,10 @@ body {
 }
 
 .download-chip:hover {
-  background: linear-gradient(135deg, var(--card-highlight), var(--glow-color));
-  border-color: var(--gold-soft);
+  background: linear-gradient(135deg, var(--chip-hover-bg-start), var(--chip-hover-bg-end));
+  border-color: var(--chip-hover-border);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-strong);
+  box-shadow: var(--chip-hover-shadow);
 }
 
 .download-chip span:first-child {
@@ -748,7 +766,7 @@ body {
 .distro-group {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--card-border);
+  border-top: 1px solid var(--platform-border);
 }
 
 .distro-group:first-of-type {
@@ -775,7 +793,7 @@ body {
 /* Command box for macOS - always dark */
 .command-box {
   position: relative;
-  background: rgba(0, 0, 0, 0.6);
+  background: #0a0a0f;
   border: 1px solid rgba(255, 215, 0, 0.2);
   border-radius: var(--radius-sm);
   padding: 1rem;

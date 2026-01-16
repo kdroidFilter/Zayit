@@ -73,6 +73,9 @@ object AppSettings {
     // Zmanim widgets visibility
     private const val KEY_SHOW_ZMANIM_WIDGETS = "show_zmanim_widgets"
 
+    // Rendering backend (Windows only)
+    private const val KEY_USE_OPENGL = "use_opengl"
+
     // Backing Settings storage (can be replaced at startup if needed)
     @Volatile
     private var settings: Settings = Settings()
@@ -290,6 +293,15 @@ object AppSettings {
     fun setShowZmanimWidgetsEnabled(enabled: Boolean) {
         settings[KEY_SHOW_ZMANIM_WIDGETS] = enabled
         _showZmanimWidgetsFlow.value = enabled
+    }
+
+    // OpenGL rendering backend (Windows only)
+    fun isUseOpenGlEnabled(): Boolean {
+        return settings[KEY_USE_OPENGL, false]
+    }
+
+    fun setUseOpenGlEnabled(enabled: Boolean) {
+        settings[KEY_USE_OPENGL] = enabled
     }
 
     // RAM saver setting

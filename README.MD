@@ -121,6 +121,7 @@ Table of contents.
 
 ## Search within a book
 Like Ctrl+F: you already know how to use it.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="art/INBOOK-SEARCH-DARK.png">
   <source media="(prefers-color-scheme: light)" srcset="art/INBOOK-SEARCH-LIGHT.png">

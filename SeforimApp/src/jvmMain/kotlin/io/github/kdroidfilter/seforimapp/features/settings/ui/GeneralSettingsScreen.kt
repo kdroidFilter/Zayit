@@ -27,7 +27,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.getAppVersion
+import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsState
@@ -69,6 +71,8 @@ import seforimapp.seforimapp.generated.resources.settings_reset_confirm_no
 import seforimapp.seforimapp.generated.resources.settings_reset_confirm_yes
 import seforimapp.seforimapp.generated.resources.settings_reset_done
 import seforimapp.seforimapp.generated.resources.settings_reset_warning
+import seforimapp.seforimapp.generated.resources.settings_use_opengl
+import seforimapp.seforimapp.generated.resources.settings_use_opengl_description
 import seforimapp.seforimapp.generated.resources.update_available_banner
 import seforimapp.seforimapp.generated.resources.update_download_action
 
@@ -118,6 +122,16 @@ private fun GeneralSettingsView(
                 checked = state.showZmanimWidgets,
                 onCheckedChange = { onEvent(GeneralSettingsEvents.SetShowZmanimWidgets(it)) }
             )
+
+            // OpenGL setting - Windows only
+            if (getOperatingSystem() == OperatingSystem.WINDOWS) {
+                SettingCard(
+                    title = Res.string.settings_use_opengl,
+                    description = Res.string.settings_use_opengl_description,
+                    checked = state.useOpenGl,
+                    onCheckedChange = { onEvent(GeneralSettingsEvents.SetUseOpenGl(it)) }
+                )
+            }
 
             ResetSection(
                 resetDone = state.resetDone,

@@ -14,48 +14,48 @@ jobs:
         include:
           # Linux x64 (DEB)
           - os: ubuntu-latest
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-linux-x64-b176.4.tar.gz"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-linux-x64-b268.52.tar.gz"
             arch: amd64
             pkg: deb
 
           # Linux ARM64 (DEB)
           - os: ubuntu-24.04-arm
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-linux-aarch64-b176.4.tar.gz"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-linux-aarch64-b268.52.tar.gz"
             arch: arm64
             pkg: deb
 
           # Linux x64 (RPM)
           - os: ubuntu-latest
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-linux-x64-b176.4.tar.gz"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-linux-x64-b268.52.tar.gz"
             arch: amd64
             pkg: rpm
 
           # Linux ARM64 (RPM)
           - os: ubuntu-24.04-arm
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-linux-aarch64-b176.4.tar.gz"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-linux-aarch64-b268.52.tar.gz"
             arch: arm64
             pkg: rpm
 
           # Windows x64
           - os: windows-latest
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-windows-x64-b176.4.zip"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-windows-x64-b268.52.zip"
             arch: amd64
             rust_target: x86_64-pc-windows-msvc
 
           # Windows ARM64
           - os: windows-11-arm
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-windows-aarch64-b176.4.zip"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-windows-aarch64-b268.52.zip"
             arch: arm64
             rust_target: aarch64-pc-windows-msvc
 
           # macOS Apple Silicon (ARM64)
           - os: macos-latest  # runner Apple Silicon (ARM64)
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-osx-aarch64-b176.4.tar.gz"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-osx-aarch64-b268.52.tar.gz"
             jdk_arch: aarch64
 
           # macOS Intel (x64)
           - os: macos-15-intel      # runner MacIntel (x64)
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25-osx-x64-b176.4.tar.gz"
+            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-osx-x64-b268.52.tar.gz"
             jdk_arch: x64
 
     steps:

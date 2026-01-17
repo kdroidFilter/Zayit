@@ -2,13 +2,14 @@
 
 use image::GenericImageView;
 use std::ffi::c_void;
-use std::io::Write;
+use std::io::{Read as IoRead, Write};
 use std::path::PathBuf;
 use std::process::Command;
 use std::ptr;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
 use std::thread;
+use std::time::{Duration, Instant};
 use windows::core::w;
 use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, SIZE, WPARAM};
 use windows::Win32::Graphics::Gdi::{
@@ -20,9 +21,9 @@ use windows::Win32::UI::HiDpi::{
     SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, GetSystemMetrics,
-    LoadCursorW, PostQuitMessage, RegisterClassW, ShowWindow, TranslateMessage, UpdateLayeredWindow,
-    CS_HREDRAW, CS_VREDRAW, IDC_ARROW, MSG, SM_CXSCREEN, SM_CYSCREEN, SW_SHOW, ULW_ALPHA,
+    CreateWindowExW, DefWindowProcW, DispatchMessageW, GetSystemMetrics,
+    LoadCursorW, PeekMessageW, PostQuitMessage, RegisterClassW, ShowWindow, TranslateMessage, UpdateLayeredWindow,
+    CS_HREDRAW, CS_VREDRAW, IDC_ARROW, MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SW_SHOW, ULW_ALPHA,
     WM_DESTROY, WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
 };
 
@@ -30,6 +31,10 @@ use windows::Win32::UI::WindowsAndMessaging::{
 const SPLASH_PNG: &[u8] = include_bytes!("../resources/splash.png");
 // Embed MSI at compile time
 const MSI_DATA: &[u8] = include_bytes!("../resources/Zayit.msi");
+
+// Progress bar configuration
+const PROGRESS_BAR_HEIGHT: i32 = 4;
+const PROGRESS_BAR_COLOR: (u8, u8, u8) = (212, 175, 55); // Gold color matching the logo
 
 fn main() {
     // Set DPI awareness before any window creation (like JetBrains Runtime does)
@@ -45,44 +50,62 @@ fn main() {
     // Using ARGB format: 0x00ff0000 (R), 0x0000ff00 (G), 0x000000ff (B), 0xff000000 (A)
     // with premultiplied alpha (like JBR splash screen)
     let rgba = img.to_rgba8();
-    let mut bgra_pixels = Vec::with_capacity((width * height * 4) as usize);
+    let mut base_bgra_pixels = Vec::with_capacity((width * height * 4) as usize);
     for pixel in rgba.pixels() {
         let a = pixel[3] as f32 / 255.0;
-        bgra_pixels.push((pixel[2] as f32 * a) as u8); // B premultiplied
-        bgra_pixels.push((pixel[1] as f32 * a) as u8); // G premultiplied
-        bgra_pixels.push((pixel[0] as f32 * a) as u8); // R premultiplied
-        bgra_pixels.push(pixel[3]); // A
+        base_bgra_pixels.push((pixel[2] as f32 * a) as u8); // B premultiplied
+        base_bgra_pixels.push((pixel[1] as f32 * a) as u8); // G premultiplied
+        base_bgra_pixels.push((pixel[0] as f32 * a) as u8); // R premultiplied
+        base_bgra_pixels.push(pixel[3]); // A
     }
 
     // No vertical flip needed - we use negative biHeight for top-down DIB (like JBR)
+
+    // Progress tracking (0-100)
+    let progress = Arc::new(AtomicU32::new(0));
+    let progress_thread = Arc::clone(&progress);
 
     // Flag to signal installation complete
     let install_complete = Arc::new(AtomicBool::new(false));
     let install_complete_thread = Arc::clone(&install_complete);
 
-    // Start MSI installation in background thread
+    // Start MSI installation in background thread with progress monitoring
     let mut install_thread = Some(thread::spawn(move || {
-        install_msi_silently();
+        install_msi_with_progress(progress_thread);
         install_complete_thread.store(true, Ordering::SeqCst);
     }));
 
     // Create and show splash window
-    let _hwnd = create_splash_window(width as i32, height as i32, &bgra_pixels);
+    let hwnd = create_splash_window(width as i32, height as i32, &base_bgra_pixels);
 
-    // Message loop with periodic check for installation completion
+    // Non-blocking message loop with progress bar animation
+    let mut last_displayed_progress: u32 = 0;
+    let mut smooth_progress: f32 = 0.0;
+    let frame_duration = Duration::from_millis(33); // ~30 FPS
+    let mut last_frame = Instant::now();
+    let start_time = Instant::now();
+
     unsafe {
         let mut msg = MSG::default();
         loop {
-            let result = GetMessageW(&mut msg, HWND::default(), 0, 0);
-            if result.0 == 0 || result.0 == -1 {
-                break;
+            // Process all pending messages without blocking
+            while PeekMessageW(&mut msg, HWND::default(), 0, 0, PM_REMOVE).as_bool() {
+                if msg.message == 0x0012 { // WM_QUIT
+                    return;
+                }
+                let _ = TranslateMessage(&msg);
+                DispatchMessageW(&msg);
             }
-
-            let _ = TranslateMessage(&msg);
-            DispatchMessageW(&msg);
 
             // Check if installation is complete
             if install_complete.load(Ordering::SeqCst) {
+                // Animate to 100% smoothly
+                while smooth_progress < 100.0 {
+                    smooth_progress = (smooth_progress + 5.0).min(100.0);
+                    update_splash_with_progress(hwnd, width as i32, height as i32, &base_bgra_pixels, smooth_progress as u32);
+                    thread::sleep(Duration::from_millis(20));
+                }
+
                 // Wait for installation thread to finish
                 if let Some(handle) = install_thread.take() {
                     let _ = handle.join();
@@ -91,30 +114,85 @@ fn main() {
                 // Launch the application
                 launch_application();
 
-                // Keep splash visible for 3 more seconds after app launch
-                thread::sleep(std::time::Duration::from_secs(3));
+                // Keep splash visible for 2 more seconds after app launch
+                thread::sleep(Duration::from_secs(2));
 
                 PostQuitMessage(0);
                 break;
             }
+
+            // Update progress bar at ~30 FPS with smooth animation
+            let now = Instant::now();
+            if now.duration_since(last_frame) >= frame_duration {
+                let target_progress = progress.load(Ordering::SeqCst) as f32;
+
+                // Smooth interpolation toward target
+                // Also add time-based minimum progress so it never looks stuck
+                let elapsed_secs = start_time.elapsed().as_secs_f32();
+                let time_based_min = (elapsed_secs * 2.0).min(85.0); // Slow increase up to 85%
+
+                let effective_target = target_progress.max(time_based_min);
+
+                // Smooth easing toward target
+                if smooth_progress < effective_target {
+                    smooth_progress += ((effective_target - smooth_progress) * 0.1).max(0.5);
+                    smooth_progress = smooth_progress.min(effective_target);
+                }
+
+                let display_progress = smooth_progress as u32;
+                if display_progress != last_displayed_progress {
+                    update_splash_with_progress(hwnd, width as i32, height as i32, &base_bgra_pixels, display_progress);
+                    last_displayed_progress = display_progress;
+                }
+                last_frame = now;
+            }
+
+            // Small sleep to prevent CPU spinning
+            thread::sleep(Duration::from_millis(10));
         }
     }
 }
 
-fn install_msi_silently() {
+fn install_msi_with_progress(progress: Arc<AtomicU32>) {
     // Write MSI to temp file
     let temp_dir = std::env::temp_dir();
     let msi_path = temp_dir.join("Zayit-installer-temp.msi");
+    let log_path = temp_dir.join("Zayit-install.log");
 
     {
         let mut file = std::fs::File::create(&msi_path).expect("Failed to create temp MSI file");
         file.write_all(MSI_DATA).expect("Failed to write MSI data");
     }
 
-    // Run msiexec silently
+    // Flag to signal log monitor to stop
+    let monitor_done = Arc::new(AtomicBool::new(false));
+    let monitor_done_clone = Arc::clone(&monitor_done);
+
+    // Start log monitoring thread
+    let log_path_clone = log_path.clone();
+    let progress_clone = Arc::clone(&progress);
+    let log_monitor = thread::spawn(move || {
+        monitor_msi_log(&log_path_clone, progress_clone, monitor_done_clone);
+    });
+
+    // Run msiexec silently with verbose logging
+    // /L*V! forces immediate flush to log file for real-time monitoring
     let status = Command::new("msiexec")
-        .args(["/i", msi_path.to_str().unwrap(), "/qn", "/norestart"])
+        .args([
+            "/i",
+            msi_path.to_str().unwrap(),
+            "/qn",
+            "/norestart",
+            "/L*V!",
+            log_path.to_str().unwrap(),
+        ])
         .status();
+
+    // Signal log monitor to stop
+    monitor_done.store(true, Ordering::SeqCst);
+
+    // Signal completion by setting progress to 100
+    progress.store(100, Ordering::SeqCst);
 
     match status {
         Ok(exit_status) => {
@@ -130,8 +208,191 @@ fn install_msi_silently() {
         }
     }
 
-    // Clean up temp MSI
+    // Wait for log monitor to finish
+    let _ = log_monitor.join();
+
+    // Clean up temp files
     let _ = std::fs::remove_file(&msi_path);
+    let _ = std::fs::remove_file(&log_path);
+}
+
+fn monitor_msi_log(log_path: &PathBuf, progress: Arc<AtomicU32>, done: Arc<AtomicBool>) {
+    // Wait for log file to be created
+    let start = Instant::now();
+    while !log_path.exists() && start.elapsed() < Duration::from_secs(30) {
+        if done.load(Ordering::SeqCst) {
+            return;
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+
+    if !log_path.exists() {
+        return;
+    }
+
+    // Open log file for continuous reading (tail -f style)
+    let mut file = match std::fs::File::open(log_path) {
+        Ok(f) => f,
+        Err(_) => return,
+    };
+
+    let mut buffer = String::new();
+    let mut last_percentage = 0u32;
+
+    // Continuously read new content from the log file
+    while !done.load(Ordering::SeqCst) {
+        // Read any new content
+        buffer.clear();
+        if file.read_to_string(&mut buffer).is_ok() && !buffer.is_empty() {
+            let content_lower = buffer.to_lowercase();
+
+            // Check for various installation phases and estimate progress
+            if content_lower.contains("generating script") {
+                last_percentage = last_percentage.max(10);
+            }
+            if content_lower.contains("action start") {
+                last_percentage = last_percentage.max(15);
+            }
+            if content_lower.contains("createfolders") {
+                last_percentage = last_percentage.max(25);
+            }
+            if content_lower.contains("installfiles") {
+                last_percentage = last_percentage.max(40);
+            }
+            if content_lower.contains("writeregistryvalues") {
+                last_percentage = last_percentage.max(55);
+            }
+            if content_lower.contains("registerproduct") {
+                last_percentage = last_percentage.max(70);
+            }
+            if content_lower.contains("publishproduct") {
+                last_percentage = last_percentage.max(80);
+            }
+            if content_lower.contains("installfinalize") {
+                last_percentage = last_percentage.max(90);
+            }
+            if content_lower.contains("installation completed successfully")
+               || content_lower.contains("installation operation completed") {
+                last_percentage = 100;
+            }
+
+            // Update progress atomically
+            let current = progress.load(Ordering::SeqCst);
+            if last_percentage > current {
+                progress.store(last_percentage, Ordering::SeqCst);
+            }
+        }
+
+        // Small delay before next read
+        thread::sleep(Duration::from_millis(100));
+    }
+}
+
+fn update_splash_with_progress(hwnd: HWND, width: i32, height: i32, base_pixels: &[u8], progress: u32) {
+    // Create a copy of the base pixels and overlay the progress bar
+    let mut pixels = base_pixels.to_vec();
+
+    // Calculate progress bar dimensions
+    // 30px from bottom, 75% width centered (12.5% margin each side)
+    let side_margin = width * 125 / 1000;  // 12.5%
+    let left_margin = side_margin;
+    let right_margin = side_margin;
+    let bottom_margin = 75;
+
+    let bar_y_start = (height - bottom_margin - PROGRESS_BAR_HEIGHT).max(0);
+    let bar_y_end = (height - bottom_margin).min(height - 1);
+    let bar_x_start = left_margin;
+    let bar_x_end = width - right_margin;
+
+    // Calculate bar width AFTER bounds checking
+    let bar_width = (bar_x_end - bar_x_start).max(1);
+
+    // Calculate filled portion (RIGHT TO LEFT - RTL style)
+    // Progress goes from right to left: at 0% nothing is filled, at 100% full bar from right
+    let filled_width = (bar_width as f32 * (progress as f32 / 100.0)) as i32;
+    let fill_start_x = bar_x_end - filled_width;
+
+    // Draw the progress bar
+    let (r, g, b) = PROGRESS_BAR_COLOR;
+    let bg_alpha = 100u8;  // Semi-transparent background
+    let fg_alpha = 255u8;  // Fully opaque progress
+
+    for y in bar_y_start..bar_y_end {
+        for x in bar_x_start..bar_x_end {
+            let pixel_idx = ((y * width + x) * 4) as usize;
+            if pixel_idx + 3 < pixels.len() {
+                if x >= fill_start_x {
+                    // Filled portion (gold color, fully opaque)
+                    let a = fg_alpha as f32 / 255.0;
+                    pixels[pixel_idx] = (b as f32 * a) as u8;     // B premultiplied
+                    pixels[pixel_idx + 1] = (g as f32 * a) as u8; // G premultiplied
+                    pixels[pixel_idx + 2] = (r as f32 * a) as u8; // R premultiplied
+                    pixels[pixel_idx + 3] = fg_alpha;             // A
+                } else {
+                    // Background portion (dark semi-transparent)
+                    let a = bg_alpha as f32 / 255.0;
+                    pixels[pixel_idx] = (30.0 * a) as u8;     // B premultiplied
+                    pixels[pixel_idx + 1] = (30.0 * a) as u8; // G premultiplied
+                    pixels[pixel_idx + 2] = (30.0 * a) as u8; // R premultiplied
+                    pixels[pixel_idx + 3] = bg_alpha;         // A
+                }
+            }
+        }
+    }
+
+    // Update the layered window with new pixels
+    unsafe {
+        let screen_dc = GetDC(None);
+        let mem_dc = CreateCompatibleDC(screen_dc);
+
+        let bmi = BITMAPINFO {
+            bmiHeader: BITMAPINFOHEADER {
+                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                biWidth: width,
+                biHeight: -height, // Negative height = top-down DIB
+                biPlanes: 1,
+                biBitCount: 32,
+                biCompression: BI_RGB.0,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let mut bits: *mut c_void = ptr::null_mut();
+        let hbitmap = CreateDIBSection(mem_dc, &bmi, DIB_RGB_COLORS, &mut bits, None, 0).unwrap();
+
+        if !bits.is_null() {
+            ptr::copy_nonoverlapping(pixels.as_ptr(), bits as *mut u8, pixels.len());
+        }
+
+        let old_bitmap = SelectObject(mem_dc, hbitmap);
+
+        let size = SIZE { cx: width, cy: height };
+        let pt_src = POINT { x: 0, y: 0 };
+        let blend = windows::Win32::Graphics::Gdi::BLENDFUNCTION {
+            BlendOp: 0,
+            BlendFlags: 0,
+            SourceConstantAlpha: 255,
+            AlphaFormat: 1,
+        };
+
+        let _ = UpdateLayeredWindow(
+            hwnd,
+            screen_dc,
+            None,
+            Some(&size),
+            mem_dc,
+            Some(&pt_src),
+            None,
+            Some(&blend),
+            ULW_ALPHA,
+        );
+
+        SelectObject(mem_dc, old_bitmap);
+        let _ = DeleteObject(hbitmap);
+        let _ = DeleteDC(mem_dc);
+        let _ = ReleaseDC(None, screen_dc);
+    }
 }
 
 fn get_install_path() -> PathBuf {

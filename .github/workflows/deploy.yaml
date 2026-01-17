@@ -1,13 +1,14 @@
 name: Build and Release Compose Desktop App (Linux deb/rpm, Windows msi, macOS pkg with JBR)
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [created]
   workflow_dispatch:
 
 jobs:
   build:
+    # Only run if triggered by a draft release or workflow_dispatch
+    if: github.event_name == 'workflow_dispatch' || github.event.release.draft == true
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -255,6 +256,7 @@ jobs:
 
   release:
     needs: build
+    if: github.event_name == 'workflow_dispatch' || github.event.release.draft == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -264,6 +266,16 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - name: Get release tag
+        id: get_release_tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "TAG=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+          else
+            tag=$(git describe --tags --abbrev=0)
+            echo "TAG=$tag" >> $GITHUB_ENV
+          fi
 
       # Download Artifacts
       - name: Download Linux DEB artefacts (amd64 + arm64)
@@ -310,14 +322,8 @@ jobs:
       - name: List downloaded files
         run: ls -R
 
-      # Get the latest tag (used in manual workflow dispatch)
-      - name: Get latest tag
-        id: get_tag
-        run: |
-          tag=$(git describe --tags --abbrev=0)
-          echo "TAG=$tag" >> $GITHUB_ENV
-      # Upload to latest release (attach to the correct tag)
-      - name: Upload to Latest Release
+      # Upload to release (attach to the correct tag)
+      - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
@@ -329,5 +335,13 @@ jobs:
             *.pkg
             *.dmg
             *.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Publish the release (convert from draft to published)
+      - name: Publish Release
+        if: github.event_name == 'release' && github.event.release.draft == true
+        run: |
+          gh release edit "${{ env.TAG }}" --draft=false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

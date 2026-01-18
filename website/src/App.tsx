@@ -644,7 +644,7 @@ function App() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
               <img
-                src="/icon.png"
+                src="/Zayit/icon.png"
                 alt="Zayit"
                 className="w-10 h-10 rounded-xl"
               />

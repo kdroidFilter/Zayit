@@ -2,10 +2,106 @@ const GITHUB_OWNER = "kdroidFilter";
 const GITHUB_REPO = "Zayit";
 const DB_OWNER = "kdroidFilter";
 const DB_REPO = "SeforimLibrary";
-const BRAND_ICON =
-  "icon.png";
+const BRAND_ICON = "icon.png";
 
-// Enhanced platform and architecture detection
+// ==================== i18n System ====================
+const SUPPORTED_LANGUAGES = ['he', 'en'];
+const DEFAULT_LANGUAGE = 'he';
+const STORAGE_KEY = 'zayit-language';
+
+let translations = {};
+let currentLanguage = DEFAULT_LANGUAGE;
+
+async function loadTranslations(lang) {
+  try {
+    const response = await fetch(`i18n/${lang}.json`);
+    if (!response.ok) throw new Error(`Failed to load ${lang} translations`);
+    return await response.json();
+  } catch (e) {
+    console.error(`Error loading ${lang} translations:`, e);
+    return null;
+  }
+}
+
+async function initI18n() {
+  // Try to get language from localStorage first
+  const savedLang = localStorage.getItem(STORAGE_KEY);
+
+  if (savedLang && SUPPORTED_LANGUAGES.includes(savedLang)) {
+    currentLanguage = savedLang;
+  } else {
+    // Detect browser language
+    const browserLang = navigator.language?.split('-')[0] ||
+                        navigator.languages?.[0]?.split('-')[0] ||
+                        DEFAULT_LANGUAGE;
+    currentLanguage = SUPPORTED_LANGUAGES.includes(browserLang) ? browserLang : DEFAULT_LANGUAGE;
+  }
+
+  // Load translations for all supported languages
+  const loadPromises = SUPPORTED_LANGUAGES.map(async (lang) => {
+    const data = await loadTranslations(lang);
+    if (data) translations[lang] = data;
+  });
+
+  await Promise.all(loadPromises);
+
+  // Fallback to default if current language failed to load
+  if (!translations[currentLanguage] && translations[DEFAULT_LANGUAGE]) {
+    currentLanguage = DEFAULT_LANGUAGE;
+  }
+
+  applyLanguageDirection();
+}
+
+function setLanguage(lang) {
+  if (!SUPPORTED_LANGUAGES.includes(lang) || !translations[lang]) return;
+
+  currentLanguage = lang;
+  localStorage.setItem(STORAGE_KEY, lang);
+  applyLanguageDirection();
+  renderApp();
+}
+
+function applyLanguageDirection() {
+  const dir = translations[currentLanguage]?.meta?.dir || 'rtl';
+  document.documentElement.setAttribute('dir', dir);
+  document.documentElement.setAttribute('lang', currentLanguage);
+
+  // Update page title
+  const title = t('header.downloadTitle');
+  if (title) document.title = title;
+
+  // Update footer
+  const footer = document.querySelector('.page-footer');
+  if (footer) footer.textContent = t('common.createdBy');
+}
+
+function t(key, params = {}) {
+  const keys = key.split('.');
+  let value = translations[currentLanguage];
+
+  for (const k of keys) {
+    if (value === undefined || value === null) return key;
+    value = value[k];
+  }
+
+  if (typeof value !== 'string') return key;
+
+  // Replace parameters like {status} with actual values
+  return value.replace(/\{(\w+)\}/g, (match, param) => {
+    return params[param] !== undefined ? params[param] : match;
+  });
+}
+
+function getCurrentLanguage() {
+  return currentLanguage;
+}
+
+function getLanguageInfo(lang) {
+  return translations[lang]?.meta || { code: lang, name: lang, dir: 'ltr' };
+}
+
+// ==================== Platform Detection ====================
 async function detectPlatform() {
   if (typeof navigator === "undefined") {
     return { os: "unknown", arch: "unknown", isMobile: false };
@@ -40,7 +136,6 @@ async function detectPlatform() {
         arch = archMap[highEntropy.architecture] || highEntropy.architecture;
       }
     } catch (e) {
-      // Fallback to UA string detection
       console.log("Could not get high entropy values:", e);
     }
   }
@@ -65,23 +160,20 @@ async function detectPlatform() {
   }
 
   if (/mac/i.test(platform) || /macintosh|mac os x/i.test(ua)) {
-    // For Mac, try to detect Apple Silicon vs Intel
     if (arch === "unknown") {
-      // Check for Apple Silicon indicators
       if (/Apple/.test(navigator.vendor) && navigator.maxTouchPoints > 0) {
-        arch = "arm64"; // Likely Apple Silicon
+        arch = "arm64";
       } else {
-        arch = null; // Will show both options
+        arch = null;
       }
     }
     return { os: "mac", arch, isMobile: false };
   }
 
   if (/linux/i.test(platform) || /linux/i.test(ua)) {
-    // Detect Linux distribution type
     const distro = /ubuntu|debian/i.test(ua) ? "deb" :
                    /fedora|centos|redhat|rhel|opensuse|suse/i.test(ua) ? "rpm" :
-                   "both"; // Show both if unknown
+                   "both";
     return {
       os: "linux",
       distro,
@@ -93,39 +185,24 @@ async function detectPlatform() {
   return { os: "unknown", arch: "unknown", isMobile: false };
 }
 
-function osLabelHebrew(platform) {
-  const labels = {
-    windows: "ווינדוס",
-    mac: "מק",
-    linux: "לינוקס",
-    ios: "iOS",
-    android: "Android",
-    mobile: "מכשיר נייד",
-    unknown: "לא מזוהה"
-  };
-  return labels[platform.os] || platform.os;
+function osLabel(platform) {
+  const os = platform.os;
+  return t(`platform.${os}`) || os;
 }
 
-function archLabelHebrew(arch, osContext) {
-  if (!arch) return "לא מזוהה";
+function archLabel(arch, osContext) {
+  if (!arch) return t('arch.unknown');
 
   const os = (osContext || "").toLowerCase();
 
   if (arch === "arm64") {
     if (os === "mac" || os === "darwin" || os === "macos") {
-      return "Apple Silicon";
+      return t('arch.appleSilicon');
     }
-    return "ARM64";
+    return t('arch.arm64');
   }
 
-  const labels = {
-    x64: "Intel/AMD 64-bit",
-    x86: "Intel/AMD 32-bit",
-    arm: "ARM",
-    mobile: "נייד",
-    unknown: "לא מזוהה"
-  };
-  return labels[arch] || arch;
+  return t(`arch.${arch}`) || arch;
 }
 
 function getArchIcon(arch) {
@@ -180,7 +257,10 @@ function getLaunchCommand(kind) {
 function formatFileSize(bytes) {
   if (!bytes) return "?";
   const mb = Math.round(bytes / 1024 / 1024);
-  return mb > 0 ? mb + " מ״ב" : "< 1 מ״ב";
+  if (mb > 0) {
+    return mb + " " + t('fileSize.mb');
+  }
+  return t('fileSize.lessThan1mb');
 }
 
 function filterAssetsByPlatform(assets, platform) {
@@ -192,10 +272,8 @@ function filterAssetsByPlatform(assets, platform) {
   }));
 
   if (platform.os === "windows") {
-    // Filter Windows installers
     return list.filter(a => /\.(msi|exe)$/i.test(a.name))
       .sort((a, b) => {
-        // Prioritize EXE over MSI
         if (a.lname.endsWith('.exe') && !b.lname.endsWith('.exe')) return -1;
         if (!a.lname.endsWith('.exe') && b.lname.endsWith('.exe')) return 1;
         return 0;
@@ -203,16 +281,13 @@ function filterAssetsByPlatform(assets, platform) {
   }
 
   if (platform.os === "linux") {
-    // Filter based on distribution
     if (platform.distro === "deb") {
       return list.filter(a => /\.deb$/i.test(a.name));
     } else if (platform.distro === "rpm") {
       return list.filter(a => /\.rpm$/i.test(a.name));
     } else {
-      // Show both deb and rpm
       return list.filter(a => /\.(deb|rpm)$/i.test(a.name))
         .sort((a, b) => {
-          // Group by type
           if (a.lname.endsWith('.deb') && !b.lname.endsWith('.deb')) return -1;
           if (!a.lname.endsWith('.deb') && b.lname.endsWith('.deb')) return 1;
           return 0;
@@ -221,7 +296,6 @@ function filterAssetsByPlatform(assets, platform) {
   }
 
   if (platform.os === "mac") {
-    // For macOS, only show DMG files for manual installation
     return list.filter(a => /\.dmg$/i.test(a.name));
   }
 
@@ -251,6 +325,7 @@ function groupAssetsByArch(assets) {
   return groups;
 }
 
+// ==================== State Management ====================
 let appState = {
   loading: true,
   error: null,
@@ -270,6 +345,49 @@ function setState(patch) {
   renderApp();
 }
 
+// ==================== Render Functions ====================
+function renderLanguageSelector() {
+  const currentLangInfo = getLanguageInfo(currentLanguage);
+
+  return `
+    <div class="language-selector">
+      <button class="lang-btn" onclick="toggleLanguageMenu(event)">
+        <span class="material-symbols-outlined">translate</span>
+        <span class="lang-name">${currentLangInfo.name}</span>
+        <span class="material-symbols-outlined lang-arrow">expand_more</span>
+      </button>
+      <div class="lang-menu" id="lang-menu">
+        ${SUPPORTED_LANGUAGES.map(lang => {
+          const info = getLanguageInfo(lang);
+          const isActive = lang === currentLanguage ? 'active' : '';
+          return `
+            <button class="lang-option ${isActive}" onclick="setLanguage('${lang}')">
+              <span>${info.name}</span>
+              ${lang === currentLanguage ? '<span class="material-symbols-outlined">check</span>' : ''}
+            </button>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+window.toggleLanguageMenu = function(event) {
+  event.stopPropagation();
+  const menu = document.getElementById('lang-menu');
+  if (menu) {
+    menu.classList.toggle('open');
+  }
+};
+
+// Close language menu when clicking elsewhere
+document.addEventListener('click', function(e) {
+  const menu = document.getElementById('lang-menu');
+  if (menu && !e.target.closest('.language-selector')) {
+    menu.classList.remove('open');
+  }
+});
+
 async function renderApp() {
   const root = document.getElementById("zayit-root");
   if (!root) return;
@@ -278,10 +396,11 @@ async function renderApp() {
     root.innerHTML = `
       <div class="card">
         <div class="card-inner">
+          ${renderLanguageSelector()}
           <div class="loading-screen">
             <div class="spinner"></div>
             <p style="color:var(--gold-soft);font-size:1.05rem;margin:0;">
-              טוען את הנתונים…
+              ${t('common.loading')}
             </p>
           </div>
         </div>
@@ -303,12 +422,13 @@ async function renderApp() {
     root.innerHTML = `
       <div class="card">
         <div class="card-inner">
+          ${renderLanguageSelector()}
           <div class="center" style="margin-bottom:1.8rem;">
             <img src="${BRAND_ICON}" alt="Zayit logo" class="header-logo" />
-            <h1 class="title">זית</h1>
+            <h1 class="title">${t('header.title')}</h1>
             <p class="subtitle">
               <span class="material-symbols-outlined">${getOSIcon(platform.os)}</span>
-              ${osLabelHebrew(platform)}
+              ${osLabel(platform)}
             </p>
           </div>
 
@@ -317,11 +437,11 @@ async function renderApp() {
               mobile_off
             </span>
             <h2 style="color:var(--text-main);margin:0 0 0.5rem 0;">
-              לא נתמך במכשירים ניידים
+              ${t('mobile.notSupported')}
             </h2>
             <p style="color:var(--gold-soft);margin:0;font-size:0.95rem;">
-              זית הוא יישום שולחני בלבד.<br/>
-              אנא גש מהמחשב שלך כדי להוריד את התוכנה.
+              ${t('mobile.desktopOnly')}<br/>
+              ${t('mobile.useDesktop')}
             </p>
           </div>
 
@@ -337,9 +457,10 @@ async function renderApp() {
     root.innerHTML = `
       <div class="card">
         <div class="card-inner">
+          ${renderLanguageSelector()}
           <div class="center" style="margin-bottom:1.8rem;">
             <img src="${BRAND_ICON}" alt="Zayit logo" class="header-logo" />
-            <h1 class="title">זית — הורדה</h1>
+            <h1 class="title">${t('header.title')} — ${t('common.download')}</h1>
           </div>
 
           <div class="section section-box" style="text-align:center;">
@@ -347,11 +468,11 @@ async function renderApp() {
               help_outline
             </span>
             <h2 style="color:var(--text-main);margin:0 0 0.5rem 0;">
-              מערכת הפעלה לא מזוהה
+              ${t('unknownOS.title')}
             </h2>
             <p style="color:var(--gold-soft);margin:0 0 1.5rem 0;font-size:0.95rem;">
-              לא הצלחנו לזהות את מערכת ההפעלה שלך.<br/>
-              בחר ידנית את הקובץ המתאים:
+              ${t('unknownOS.description')}<br/>
+              ${t('unknownOS.selectManually')}
             </p>
             ${renderManualDownloadLinks(assets)}
           </div>
@@ -367,9 +488,9 @@ async function renderApp() {
   const errorBlock = appState.error
     ? `
       <div class="error-box">
-        <p class="error-text">⚠️ <strong>שגיאה:</strong> ${appState.error}</p>
+        <p class="error-text"><strong>${t('common.error')}:</strong> ${appState.error}</p>
         <p class="error-help">
-          אם הבעיה נמשכת, בדוק את חיבור האינטרנט או נסה מאוחר יותר.
+          ${t('errors.connectionIssue')}
         </p>
       </div>
     `
@@ -385,10 +506,10 @@ async function renderApp() {
       <div class="section section-box">
         <h2 class="section-title">
           <span class="material-symbols-outlined">terminal</span>
-          <span>התקנה אוטומטית עבור מק</span>
+          <span>${t('install.autoInstallMac')}</span>
         </h2>
         <p style="color:var(--gold-soft);margin:0 0 1rem 0;font-size:0.95rem;">
-          העתק והרץ את הפקודה הבאה בטרמינל:
+          ${t('install.copyAndRun')}
         </p>
         <div class="command-box">
           <code id="mac-command">${getLaunchCommand('mac')}</code>
@@ -398,7 +519,7 @@ async function renderApp() {
         </div>
         <p style="color:var(--gold-muted);margin:1rem 0 0 0;font-size:0.85rem;">
           <span class="material-symbols-outlined" style="font-size:0.95rem;vertical-align:middle;">info</span>
-          הסקריפט יוריד ויתקין את הגרסה המתאימה למחשב שלך אוטומטית
+          ${t('install.scriptInfo')}
         </p>
       </div>
 
@@ -406,14 +527,14 @@ async function renderApp() {
         <div class="section section-box">
           <h2 class="section-title">
             <span class="material-symbols-outlined">download</span>
-            <span>הורדה ידנית</span>
+            <span>${t('install.manualDownload')}</span>
           </h2>
 
           <button class="toggle-button" onclick="setState({showAllAssets: !appState.showAllAssets})" style="margin-bottom:1rem;">
             <span class="material-symbols-outlined">
               ${appState.showAllAssets ? 'expand_less' : 'expand_more'}
             </span>
-            <span>${appState.showAllAssets ? 'הסתר' : 'הצג'} אפשרויות הורדה ידנית</span>
+            <span>${appState.showAllAssets ? t('common.hide') : t('common.show')} ${t('install.showManualOptions')}</span>
           </button>
 
           ${appState.showAllAssets ? renderPlatformAssets(macAssets, 'mac') : ''}
@@ -421,13 +542,10 @@ async function renderApp() {
       ` : ''}
     `;
   } else if (platform.os === "windows") {
-    // Windows - show architecture options if unknown
     const windowsAssets = filterAssetsByPlatform(assets, platform);
     const archGroups = groupAssetsByArch(windowsAssets);
 
     if (platform.arch && archGroups[platform.arch]?.length > 0) {
-      // Known architecture with matching assets
-      // Find EXE (primary) and MSI (supplementary) for this architecture
       const archAssets = archGroups[platform.arch];
       const exeAsset = archAssets.find(a => a.name.toLowerCase().endsWith('.exe'));
       const msiAsset = archAssets.find(a => a.name.toLowerCase().endsWith('.msi'));
@@ -440,17 +558,17 @@ async function renderApp() {
         <div class="section section-box">
           <h2 class="section-title">
             <span class="material-symbols-outlined">download</span>
-            <span>הורדת התוכנה</span>
+            <span>${t('windows.downloadSoftware')}</span>
           </h2>
           <p style="color:var(--gold-soft);margin:0 0 1rem 0;font-size:0.95rem;">
-            קובץ מומלץ בשבילך:
+            ${t('windows.recommendedFile')}:
             <strong>${recommended.name}</strong>
             (${recommended.size})
           </p>
           <div class="btn-row">
             <a href="${recommended.url}" target="_blank" class="btn btn-primary">
               <span class="material-symbols-outlined">download</span>
-              <span>הורד עכשיו</span>
+              <span>${t('common.downloadNow')}</span>
             </a>
           </div>
           ${hasSupplementary ? `
@@ -459,14 +577,14 @@ async function renderApp() {
                 <span class="material-symbols-outlined">
                   ${appState.showAllAssets ? 'expand_less' : 'expand_more'}
                 </span>
-                <span>${appState.showAllAssets ? 'הסתר' : 'הצג'} אפשרויות נוספות</span>
+                <span>${appState.showAllAssets ? t('common.hide') : t('common.show')} ${t('windows.showMoreOptions')}</span>
               </button>
             </div>
             ${appState.showAllAssets ? `
               <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,215,0,0.1);">
                 ${msiAsset ? `
                   <p style="color:var(--gold-soft);font-size:0.9rem;margin:0 0 0.75rem 0;">
-                    פורמט חלופי (MSI):
+                    ${t('windows.alternativeFormat')}
                   </p>
                   <a href="${msiAsset.url}" target="_blank" class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;">
                     <span class="material-symbols-outlined">download</span>
@@ -475,7 +593,7 @@ async function renderApp() {
                 ` : ''}
                 ${hasOtherArch ? `
                   <p style="color:var(--gold-soft);font-size:0.9rem;margin:${msiAsset ? '1rem' : '0'} 0 0.75rem 0;">
-                    ארכיטקטורות אחרות:
+                    ${t('windows.otherArchitectures')}
                   </p>
                   ${archGroups[otherArch].map(asset => `
                     <a href="${asset.url}" target="_blank" class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;">
@@ -490,11 +608,9 @@ async function renderApp() {
         </div>
       `;
     } else {
-      // Unknown architecture or no matching assets - show both options
       mainDownloadBlock = renderWindowsArchOptions(archGroups);
     }
   } else if (platform.os === "linux") {
-    // Linux - show curl command as primary, with download links as secondary
     const linuxAssets = filterAssetsByPlatform(assets, platform);
     const debAssets = linuxAssets.filter(a => a.name.toLowerCase().endsWith('.deb'));
     const rpmAssets = linuxAssets.filter(a => a.name.toLowerCase().endsWith('.rpm'));
@@ -503,10 +619,10 @@ async function renderApp() {
       <div class="section section-box">
         <h2 class="section-title">
           <span class="material-symbols-outlined">terminal</span>
-          <span>התקנה אוטומטית עבור לינוקס</span>
+          <span>${t('install.autoInstallLinux')}</span>
         </h2>
         <p style="color:var(--gold-soft);margin:0 0 1rem 0;font-size:0.95rem;">
-          העתק והרץ את הפקודה הבאה בטרמינל:
+          ${t('install.copyAndRun')}
         </p>
         <div class="command-box">
           <code id="linux-command">${getLaunchCommand('linux')}</code>
@@ -516,7 +632,7 @@ async function renderApp() {
         </div>
         <p style="color:var(--gold-muted);margin:1rem 0 0 0;font-size:0.85rem;">
           <span class="material-symbols-outlined" style="font-size:0.95rem;vertical-align:middle;">info</span>
-          הסקריפט יזהה אוטומטית את ההפצה (DEB/RPM) והארכיטקטורה שלך
+          ${t('install.scriptInfoLinux')}
         </p>
       </div>
 
@@ -524,14 +640,14 @@ async function renderApp() {
         <div class="section section-box">
           <h2 class="section-title">
             <span class="material-symbols-outlined">download</span>
-            <span>הורדה ידנית</span>
+            <span>${t('install.manualDownload')}</span>
           </h2>
 
           <button class="toggle-button" onclick="setState({showAllAssets: !appState.showAllAssets})" style="margin-bottom:1rem;">
             <span class="material-symbols-outlined">
               ${appState.showAllAssets ? 'expand_less' : 'expand_more'}
             </span>
-            <span>${appState.showAllAssets ? 'הסתר' : 'הצג'} אפשרויות הורדה ידנית</span>
+            <span>${appState.showAllAssets ? t('common.hide') : t('common.show')} ${t('install.showManualOptions')}</span>
           </button>
 
           ${appState.showAllAssets ? `
@@ -560,28 +676,26 @@ async function renderApp() {
     `;
   }
 
-  // Database section
   const dbSection = renderDbSection();
-
-  // Cross-platform downloads section
   const crossPlatformSection = renderCrossPlatformSection(assets);
 
   root.innerHTML = `
     <div class="card">
       <div class="card-inner">
+        ${renderLanguageSelector()}
         <div class="center" style="margin-bottom:1.8rem;">
           <img src="${BRAND_ICON}" alt="Zayit logo" class="header-logo" />
-          <h1 class="title">זית — הורדה מהירה</h1>
+          <h1 class="title">${t('header.downloadTitle')}</h1>
           <p class="subtitle">
             <span class="material-symbols-outlined">${getOSIcon(platform.os)}</span>
-            זוהה: <strong>${osLabelHebrew(platform)}</strong>
+            ${t('header.detected')}: <strong>${osLabel(platform)}</strong>
             ${platform.arch && platform.arch !== 'unknown' ? `
-              •
+              &bull;
               <span class="material-symbols-outlined" style="font-size:1rem;">${getArchIcon(platform.arch)}</span>
-              <strong>${archLabelHebrew(platform.arch, platform.os)}</strong>
+              <strong>${archLabel(platform.arch, platform.os)}</strong>
             ` : ''}
           </p>
-          ${release ? `<p class="version-text">גרסה ${release.tag_name}</p>` : ""}
+          ${release ? `<p class="version-text">${t('common.version')} ${release.tag_name}</p>` : ""}
         </div>
 
         ${errorBlock}
@@ -601,12 +715,12 @@ function renderFooter() {
   return `
     <div class="footer">
       <div class="footer-links">
-        <a href="https://github.com/kdroidFilter/Zayit" target="_blank" class="footer-link" data-tooltip="קוד מקור">
+        <a href="https://github.com/kdroidFilter/Zayit" target="_blank" class="footer-link" data-tooltip="${t('common.sourceCode')}">
           <svg class="footer-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
           </svg>
         </a>
-        <a href="https://ko-fi.com/lomityaesh" target="_blank" class="footer-link footer-link-donate" data-tooltip="תמיכה">
+        <a href="https://ko-fi.com/lomityaesh" target="_blank" class="footer-link footer-link-donate" data-tooltip="${t('common.support')}">
           <svg class="footer-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
           </svg>
@@ -617,8 +731,7 @@ function renderFooter() {
 }
 
 function renderWindowsArchOptions(archGroups) {
-  // Helper to render arch group with EXE primary, MSI secondary
-  const renderArchGroup = (assets, archLabel, archDesc) => {
+  const renderArchGroup = (assets, archKey, archDesc) => {
     const exeAsset = assets.find(a => a.name.toLowerCase().endsWith('.exe'));
     const msiAsset = assets.find(a => a.name.toLowerCase().endsWith('.msi'));
     const primary = exeAsset || assets[0];
@@ -626,8 +739,8 @@ function renderWindowsArchOptions(archGroups) {
     return `
       <div class="arch-option">
         <div class="arch-header">
-          <span class="material-symbols-outlined">${getArchIcon(archLabel === archLabelHebrew('x64', 'windows') ? 'x64' : 'arm64')}</span>
-          <h3>${archLabel}</h3>
+          <span class="material-symbols-outlined">${getArchIcon(archKey)}</span>
+          <h3>${archLabel(archKey, 'windows')}</h3>
         </div>
         <p class="arch-desc">${archDesc}</p>
         <a href="${primary.url}" target="_blank" class="btn btn-primary" style="width:100%;margin-top:0.5rem;">
@@ -648,15 +761,15 @@ function renderWindowsArchOptions(archGroups) {
     <div class="section section-box">
       <h2 class="section-title">
         <span class="material-symbols-outlined">download</span>
-        <span>בחר את הארכיטקטורה שלך</span>
+        <span>${t('windows.selectArchitecture')}</span>
       </h2>
       <p style="color:var(--gold-soft);margin:0 0 1.5rem 0;font-size:0.9rem;">
-        לא הצלחנו לזהות את הארכיטקטורה. בחר את האפשרות המתאימה:
+        ${t('windows.archNotDetected')}
       </p>
 
       <div class="arch-options">
-        ${archGroups.x64?.length > 0 ? renderArchGroup(archGroups.x64, archLabelHebrew('x64', 'windows'), 'רוב המחשבים המודרניים') : ''}
-        ${archGroups.arm64?.length > 0 ? renderArchGroup(archGroups.arm64, archLabelHebrew('arm64', 'windows'), 'מחשבי Surface וכדומה') : ''}
+        ${archGroups.x64?.length > 0 ? renderArchGroup(archGroups.x64, 'x64', t('windows.mostModern')) : ''}
+        ${archGroups.arm64?.length > 0 ? renderArchGroup(archGroups.arm64, 'arm64', t('windows.surfaceAndSimilar')) : ''}
       </div>
     </div>
   `;
@@ -671,7 +784,7 @@ function renderLinuxArchOptions(assets, type) {
         <div class="download-item">
           <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
             <span class="material-symbols-outlined" style="font-size:1rem;color:var(--gold-soft);">${getArchIcon('x64')}</span>
-            <span style="color:var(--gold-soft);font-size:0.9rem;">${archLabelHebrew('x64', 'linux')}</span>
+            <span style="color:var(--gold-soft);font-size:0.9rem;">${archLabel('x64', 'linux')}</span>
           </div>
           ${archGroups.x64.map(asset => `
             <a href="${asset.url}" target="_blank" class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;">
@@ -686,7 +799,7 @@ function renderLinuxArchOptions(assets, type) {
         <div class="download-item">
           <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
             <span class="material-symbols-outlined" style="font-size:1rem;color:var(--gold-soft);">${getArchIcon('arm64')}</span>
-            <span style="color:var(--gold-soft);font-size:0.9rem;">${archLabelHebrew('arm64', 'linux')}</span>
+            <span style="color:var(--gold-soft);font-size:0.9rem;">${archLabel('arm64', 'linux')}</span>
           </div>
           ${archGroups.arm64.map(asset => `
             <a href="${asset.url}" target="_blank" class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;">
@@ -711,28 +824,9 @@ function renderLinuxArchOptions(assets, type) {
   `;
 }
 
-function renderArchitectureOptions(archGroups, currentArch) {
-  const otherArch = currentArch === 'x64' ? 'arm64' : 'x64';
-  if (!archGroups[otherArch]?.length) return '';
-
-  return `
-    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,215,0,0.1);">
-      <p style="color:var(--gold-soft);font-size:0.9rem;margin:0 0 0.75rem 0;">
-        ארכיטקטורות אחרות:
-      </p>
-      ${archGroups[otherArch].map(asset => `
-        <a href="${asset.url}" target="_blank" class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;">
-          <span class="material-symbols-outlined">${getArchIcon(otherArch)}</span>
-          <span>${asset.name} (${asset.size})</span>
-        </a>
-      `).join('')}
-    </div>
-  `;
-}
-
 function renderManualDownloadLinks(assets) {
   if (!assets || assets.length === 0) {
-    return `<p style="color:var(--gold-soft);">לא נמצאו קבצים זמינים</p>`;
+    return `<p style="color:var(--gold-soft);">${t('unknownOS.noFilesFound')}</p>`;
   }
 
   return `
@@ -742,11 +836,11 @@ function renderManualDownloadLinks(assets) {
           <div class="asset-line">
             <div class="asset-meta">
               <p class="asset-name">${asset.name}</p>
-              <p class="asset-size">גודל: ${asset.size}</p>
+              <p class="asset-size">${t('common.size')}: ${asset.size}</p>
             </div>
             <a href="${asset.url}" target="_blank" class="btn btn-secondary">
               <span class="material-symbols-outlined">download</span>
-              <span>הורדה</span>
+              <span>${t('common.download')}</span>
             </a>
           </div>
         </div>
@@ -758,14 +852,11 @@ function renderManualDownloadLinks(assets) {
 function renderCrossPlatformSection(allAssets) {
   if (!allAssets || allAssets.length === 0) return '';
 
-  // Group assets by platform
   const windowsAssets = allAssets.filter(a => /\.(msi|exe)$/i.test(a.name));
-  // For macOS, only show DMG files for manual installation
   const macAssets = allAssets.filter(a => /\.dmg$/i.test(a.name));
   const debAssets = allAssets.filter(a => /\.deb$/i.test(a.name));
   const rpmAssets = allAssets.filter(a => /\.rpm$/i.test(a.name));
 
-  // Don't show section if no cross-platform assets
   if (windowsAssets.length === 0 && macAssets.length === 0 && debAssets.length === 0 && rpmAssets.length === 0) {
     return '';
   }
@@ -775,13 +866,13 @@ function renderCrossPlatformSection(allAssets) {
       <div class="section-header">
         <h2 class="section-title">
           <span class="material-symbols-outlined">devices</span>
-          <span>הורדה למערכות הפעלה אחרות</span>
+          <span>${t('crossPlatform.title')}</span>
         </h2>
         <button class="toggle-button inline" onclick="setState({showCrossPlatform: !appState.showCrossPlatform})">
           <span class="material-symbols-outlined">
             ${appState.showCrossPlatform ? 'expand_less' : 'expand_more'}
           </span>
-          <span>${appState.showCrossPlatform ? 'הסתר' : 'הצג'} מערכות אחרות</span>
+          <span>${appState.showCrossPlatform ? t('common.hide') : t('common.show')} ${t('crossPlatform.showOther')}</span>
         </button>
       </div>
 
@@ -790,23 +881,23 @@ function renderCrossPlatformSection(allAssets) {
           <div class="tab-buttons">
             ${windowsAssets.length > 0 ? `
               <button class="tab-button ${appState.selectedOS === 'windows' ? 'active' : ''}"
-                      onclick="setState({selectedOS: 'windows'})" data-tooltip="ווינדוס">
+                      onclick="setState({selectedOS: 'windows'})" data-tooltip="${t('platform.windows')}">
                 <span class="material-symbols-outlined">desktop_windows</span>
-                <span>ווינדוס</span>
+                <span>${t('platform.windows')}</span>
               </button>
             ` : ''}
             ${macAssets.length > 0 ? `
               <button class="tab-button ${appState.selectedOS === 'mac' ? 'active' : ''}"
-                      onclick="setState({selectedOS: 'mac'})" data-tooltip="מק">
+                      onclick="setState({selectedOS: 'mac'})" data-tooltip="${t('platform.mac')}">
                 <span class="material-symbols-outlined">laptop_mac</span>
-                <span>מק</span>
+                <span>${t('platform.mac')}</span>
               </button>
             ` : ''}
             ${(debAssets.length > 0 || rpmAssets.length > 0) ? `
               <button class="tab-button ${appState.selectedOS === 'linux' ? 'active' : ''}"
-                      onclick="setState({selectedOS: 'linux'})" data-tooltip="לינוקס">
+                      onclick="setState({selectedOS: 'linux'})" data-tooltip="${t('platform.linux')}">
                 <span class="material-symbols-outlined">computer</span>
-                <span>לינוקס</span>
+                <span>${t('platform.linux')}</span>
               </button>
             ` : ''}
           </div>
@@ -816,7 +907,7 @@ function renderCrossPlatformSection(allAssets) {
               <div class="platform-downloads">
                 <h3 class="platform-title">
                   <span class="material-symbols-outlined">desktop_windows</span>
-                  ווינדוס
+                  ${t('platform.windows')}
                 </h3>
                 ${renderPlatformAssets(windowsAssets, 'windows')}
               </div>
@@ -826,7 +917,7 @@ function renderCrossPlatformSection(allAssets) {
               <div class="platform-downloads">
                 <h3 class="platform-title">
                   <span class="material-symbols-outlined">laptop_mac</span>
-                  מק
+                  ${t('platform.mac')}
                 </h3>
                 <div class="command-box" style="margin-bottom:1rem;">
                   <code>${getLaunchCommand('mac')}</code>
@@ -834,7 +925,7 @@ function renderCrossPlatformSection(allAssets) {
                     <span class="material-symbols-outlined">content_copy</span>
                   </button>
                 </div>
-                <p style="color:var(--gold-muted);font-size:0.85rem;margin-bottom:1rem;">או הורד ידנית:</p>
+                <p style="color:var(--gold-muted);font-size:0.85rem;margin-bottom:1rem;">${t('crossPlatform.orDownloadManually')}</p>
                 ${renderPlatformAssets(macAssets, 'mac')}
               </div>
             ` : ''}
@@ -843,7 +934,7 @@ function renderCrossPlatformSection(allAssets) {
               <div class="platform-downloads">
                 <h3 class="platform-title">
                   <span class="material-symbols-outlined">computer</span>
-                  לינוקס
+                  ${t('platform.linux')}
                 </h3>
                 <div class="command-box" style="margin-bottom:1rem;">
                   <code>${getLaunchCommand('linux')}</code>
@@ -851,7 +942,7 @@ function renderCrossPlatformSection(allAssets) {
                     <span class="material-symbols-outlined">content_copy</span>
                   </button>
                 </div>
-                <p style="color:var(--gold-muted);font-size:0.85rem;margin-bottom:1rem;">או הורד ידנית:</p>
+                <p style="color:var(--gold-muted);font-size:0.85rem;margin-bottom:1rem;">${t('crossPlatform.orDownloadManually')}</p>
                 ${debAssets.length > 0 ? `
                   <div class="distro-group">
                     <h4 class="distro-title">
@@ -896,7 +987,7 @@ function renderPlatformAssets(assets, type) {
         <div class="arch-group">
           <div class="arch-label">
             <span class="material-symbols-outlined">${getArchIcon('x64')}</span>
-            <span>${archLabelHebrew('x64', osContext)}</span>
+            <span>${archLabel('x64', osContext)}</span>
           </div>
           <div class="arch-downloads">
             ${archGroups.x64.map(asset => `
@@ -913,7 +1004,7 @@ function renderPlatformAssets(assets, type) {
         <div class="arch-group">
           <div class="arch-label">
             <span class="material-symbols-outlined">${getArchIcon('arm64')}</span>
-            <span>${archLabelHebrew('arm64', osContext)}</span>
+            <span>${archLabel('arm64', osContext)}</span>
           </div>
           <div class="arch-downloads">
             ${archGroups.arm64.map(asset => `
@@ -950,7 +1041,7 @@ function renderDbSection() {
           <span class="material-symbols-outlined">
             ${showDbLinks ? "expand_less" : "expand_more"}
           </span>
-          <span>${showDbLinks ? "הסתר קבצי מסד נתונים" : "הצג קבצי מסד נתונים"}</span>
+          <span>${showDbLinks ? t('database.hideFiles') : t('database.showFiles')}</span>
         </button>
       `
     : "";
@@ -959,14 +1050,14 @@ function renderDbSection() {
   if (appState.dbLoading) {
     dbInner = `
       <div class="small-text" style="color:var(--gold-soft);">
-        טוען קבצי מסד נתונים…
+        ${t('database.loading')}
       </div>
     `;
   } else if (appState.dbError) {
     dbInner = `
       <div class="error-box" style="margin:0;">
         <p class="error-text" style="margin:0;">
-          ⚠️ ${appState.dbError}
+          ${appState.dbError}
         </p>
       </div>
     `;
@@ -981,7 +1072,7 @@ function renderDbSection() {
                   <div class="asset-line">
                     <div class="asset-meta">
                       <p class="asset-name" style="margin:0;">${a.name}</p>
-                      <p class="asset-size" style="margin:0.1rem 0 0 0;">גודל: ${a.size}</p>
+                      <p class="asset-size" style="margin:0.1rem 0 0 0;">${t('common.size')}: ${a.size}</p>
                       ${
                         a.sha256
                           ? `<p class="small-text" style="margin-top:0.2rem;">SHA-256: ${a.sha256}</p>`
@@ -990,7 +1081,7 @@ function renderDbSection() {
                     </div>
                     <a href="${a.url}" target="_blank" class="btn btn-secondary">
                       <span class="material-symbols-outlined">download</span>
-                      <span>הורדה</span>
+                      <span>${t('common.download')}</span>
                     </a>
                   </div>
                 </div>
@@ -1003,8 +1094,7 @@ function renderDbSection() {
       dbInner = `
         <div class="info-banner">
           <p class="small-text" style="margin:0;color:var(--text-main);font-size:0.9rem;">
-            אם אתה מתכנן להתקין את זית ללא חיבור לאינטרנט,
-            הורד גם את קבצי מסד הנתונים (הורדה נפרדת).
+            ${t('database.offlineInfo')}
           </p>
         </div>
         ${dbToggleButton ? `<div class="toggle-row">${dbToggleButton}</div>` : ""}
@@ -1012,7 +1102,7 @@ function renderDbSection() {
           showDbLinks
             ? `
                 <p style="color:var(--gold-muted);font-size:0.83rem;margin:0 0 0.5rem 0;">
-                  גודל כולל של קבצי מסד הנתונים: ${formatFileSize(totalDbSize)}
+                  ${t('database.totalSize')}: ${formatFileSize(totalDbSize)}
                 </p>
                 <div class="assets-list compact">
                   ${dbListHtml}
@@ -1024,7 +1114,7 @@ function renderDbSection() {
     } else {
       dbInner = `
         <p style="color:var(--gold-soft);text-align:center;margin:0;font-size:0.85rem;">
-          לא נמצאו קבצי מסד נתונים זמינים.
+          ${t('database.noFilesAvailable')}
         </p>
       `;
     }
@@ -1035,7 +1125,7 @@ function renderDbSection() {
       <div class="section-header">
         <div class="section-title">
           <span class="material-symbols-outlined">database</span>
-          <span>קבצי מסד נתונים</span>
+          <span>${t('database.title')}</span>
         </div>
       </div>
       <div id="zayit-db-inner">
@@ -1045,7 +1135,7 @@ function renderDbSection() {
   `;
 }
 
-// Global functions for copying commands
+// ==================== Event Handlers ====================
 window.copyCommand = function(command, btn) {
   const button = btn || (typeof event !== 'undefined' ? event.target.closest('.copy-btn') : null);
   if (!button) return;
@@ -1091,6 +1181,7 @@ function attachEventHandlers() {
   }
 }
 
+// ==================== API Calls ====================
 async function fetchLatestRelease() {
   try {
     const headers = {};
@@ -1099,7 +1190,7 @@ async function fetchLatestRelease() {
       { headers }
     );
     if (!resp.ok) {
-      throw new Error("GitHub API - שגיאה " + resp.status + ". נסה שוב בעוד כמה דקות.");
+      throw new Error(t('errors.githubError', { status: resp.status }));
     }
     const data = await resp.json();
     const assets = (data.assets || []).map((a) => ({
@@ -1138,7 +1229,7 @@ async function fetchDbAssets() {
       { headers }
     );
     if (!resp.ok) {
-      throw new Error("GitHub API - שגיאה " + resp.status);
+      throw new Error(t('errors.githubError', { status: resp.status }));
     }
     const data = await resp.json();
     const parts = (data.assets || []).filter(function (a) {
@@ -1172,19 +1263,21 @@ async function fetchDbAssets() {
   }
 }
 
+// ==================== Initialization ====================
 window.addEventListener("DOMContentLoaded", async function () {
   // Register service worker for cache control (optional)
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('/service-worker.js');
       console.log('Service Worker registered:', registration);
-
-      // Check for updates every page load
       registration.update();
     } catch (error) {
       console.log('Service Worker registration failed:', error);
     }
   }
+
+  // Initialize i18n system first
+  await initI18n();
 
   renderApp(); // Render loading state
 

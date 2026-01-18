@@ -968,6 +968,110 @@ body {
   }
 }
 
+/* Language Selector */
+.language-selector {
+  position: absolute;
+  top: 1rem;
+  inset-inline-end: 1rem;
+  z-index: 100;
+}
+
+.lang-btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--glow-color);
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--gold-soft);
+  font-size: 0.85rem;
+  transition: all var(--transition-fast);
+}
+
+.lang-btn:hover {
+  background: var(--card-highlight);
+  border-color: var(--gold-soft);
+  color: var(--gold);
+}
+
+.lang-btn .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+.lang-btn .lang-arrow {
+  font-size: 1rem;
+  transition: transform var(--transition-fast);
+}
+
+.lang-name {
+  font-weight: 500;
+}
+
+.lang-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  inset-inline-end: 0;
+  min-width: 140px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-strong);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.lang-menu.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.lang-option {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  color: var(--gold-soft);
+  font-size: 0.9rem;
+  transition: all var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.lang-option:hover {
+  background: var(--glow-color);
+  color: var(--gold);
+}
+
+.lang-option.active {
+  background: var(--card-highlight);
+  color: var(--gold);
+}
+
+.lang-option .material-symbols-outlined {
+  font-size: 1rem;
+  color: var(--gold);
+}
+
+/* RTL/LTR adjustments */
+html[dir="ltr"] .card-inner {
+  position: relative;
+}
+
+html[dir="ltr"] .card::before {
+  right: -40px;
+  left: auto;
+}
+
+/* Responsive adjustments */
 @media (max-width: 600px) {
   body {
     padding: 1rem;
@@ -978,5 +1082,23 @@ body {
   }
   .section {
     margin-top: 1.3rem;
+  }
+
+  .language-selector {
+    top: 0.75rem;
+    inset-inline-end: 0.75rem;
+  }
+
+  .lang-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .lang-name {
+    display: none;
+  }
+
+  .lang-btn .lang-arrow {
+    display: none;
   }
 }

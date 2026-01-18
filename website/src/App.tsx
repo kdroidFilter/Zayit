@@ -67,9 +67,9 @@ function App() {
       <Navigation />
 
       {/* Hero Section - Responsive Fullscreen Image with Comparison */}
-      <section ref={heroRef} className="relative min-h-[60vh] md:min-h-screen w-full flex items-center justify-center overflow-hidden px-4 py-8 pt-24">
+      <section ref={heroRef} className="relative min-h-[40vh] md:min-h-screen w-full flex items-center justify-center overflow-hidden px-4 py-8 pt-24">
         <motion.div
-          className="relative w-full max-w-6xl"
+          className="relative w-full max-w-6xl [&_img]:max-h-[40vh] [&_img]:md:max-h-none [&_img]:w-auto [&_img]:mx-auto"
           style={{
             scale: imageScale,
             y: imageY,

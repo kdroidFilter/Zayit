@@ -1,5 +1,7 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
@@ -22,7 +25,6 @@ import io.github.kdroidfilter.seforimapp.catalog.DropdownSpec
 import io.github.kdroidfilter.seforimapp.catalog.MultiCategoryDropdownSpec
 import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
 import io.github.kdroidfilter.seforimapp.catalog.TocQuickLinksSpec
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
@@ -69,11 +71,19 @@ fun CatalogDropdown(
                         precomputedBooks.forEach { bookRef ->
                             val hoverSource = remember { MutableInteractionSource() }
                             val isHovered by hoverSource.collectIsHoveredAsState()
+                            val backgroundColor by animateColorAsState(
+                                targetValue = if (isHovered) {
+                                    JewelTheme.globalColors.outlines.focused.copy(alpha = 0.12f)
+                                } else {
+                                    Color.Transparent
+                                },
+                                animationSpec = tween(durationMillis = 150)
+                            )
                             Row(
                                 Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(if (isHovered) AppColors.HOVER_HIGHLIGHT else androidx.compose.ui.graphics.Color.Transparent)
+                                    .background(backgroundColor)
                                     .clickable(
                                         indication = null,
                                         interactionSource = hoverSource
@@ -143,11 +153,19 @@ fun CatalogDropdown(
                             books.forEach { bookRef ->
                                 val hoverSource = remember { MutableInteractionSource() }
                                 val isHovered by hoverSource.collectIsHoveredAsState()
+                                val backgroundColor by animateColorAsState(
+                                    targetValue = if (isHovered) {
+                                        JewelTheme.globalColors.outlines.focused.copy(alpha = 0.12f)
+                                    } else {
+                                        Color.Transparent
+                                    },
+                                    animationSpec = tween(durationMillis = 150)
+                                )
                                 Row(
                                     Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(if (isHovered) AppColors.HOVER_HIGHLIGHT else androidx.compose.ui.graphics.Color.Transparent)
+                                        .background(backgroundColor)
                                         .clickable(
                                             indication = null,
                                             interactionSource = hoverSource

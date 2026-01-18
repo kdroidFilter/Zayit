@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeOut
@@ -46,7 +47,6 @@ import androidx.compose.ui.window.PopupProperties
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.BookOpenTabs
@@ -685,11 +685,19 @@ private fun RtlAwareTab(
                     items.forEach { item ->
                         val hover = remember { MutableInteractionSource() }
                         val isHovered by hover.collectIsHoveredAsState()
+                        val backgroundColor by animateColorAsState(
+                            targetValue = if (isHovered) {
+                                JewelTheme.globalColors.outlines.focused.copy(alpha = 0.12f)
+                            } else {
+                                androidx.compose.ui.graphics.Color.Transparent
+                            },
+                            animationSpec = tween(durationMillis = 150)
+                        )
                         Box(
                             Modifier
                                 .fillMaxWidth()
                                 .clip(shape)
-                                .background(if (isHovered) AppColors.HOVER_HIGHLIGHT else androidx.compose.ui.graphics.Color.Transparent)
+                                .background(backgroundColor)
                                 .hoverable(hover)
                                 .pointerHoverIcon(PointerIcon.Hand)
                                 .clickable(onClick = {

@@ -40,7 +40,6 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -999,6 +998,14 @@ private fun SuggestionRow(
     val hoverSource = remember { MutableInteractionSource() }
     val isHovered by hoverSource.collectIsHoveredAsState()
     val active = highlighted || isHovered
+    val backgroundColor by animateColorAsState(
+        targetValue = if (active) {
+            JewelTheme.globalColors.outlines.focused.copy(alpha = 0.12f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 150)
+    )
     val hasContent = parts.isNotEmpty()
     LaunchedEffect(active, parts) {
         if (active) {
@@ -1025,7 +1032,7 @@ private fun SuggestionRow(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp))
-            .background(if (active) AppColors.HOVER_HIGHLIGHT else Color.Transparent).clickable(onClick = onClick)
+            .background(backgroundColor).clickable(onClick = onClick)
             .pointerHoverIcon(PointerIcon.Hand).hoverable(hoverSource).padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         Box(

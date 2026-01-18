@@ -8,8 +8,6 @@ import {
   Sun,
   Zap,
   Heart,
-  Github,
-  Coffee,
   Download,
   Sparkles,
   Shield,
@@ -640,58 +638,13 @@ function App() {
 
       {/* Footer */}
       <footer className="py-12 px-6" style={{ borderTop: '1px solid var(--card-border)' }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <img
-                src="/Zayit/icon.png"
-                alt="Zayit"
-                className="w-10 h-10 rounded-xl"
-              />
-              <span className="font-semibold" style={{ color: 'var(--text-main)' }}>
-                {isRTL ? 'זית' : 'Zayit'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-6 flex-wrap justify-center">
-              <a
-                href="https://github.com/kdroidFilter/SeforimApp"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-colors"
-                style={{
-                  color: 'var(--gold-soft)',
-                  border: `1px solid ${isDark ? 'rgba(230, 210, 140, 0.2)' : 'rgba(139, 115, 85, 0.2)'}`,
-                }}
-              >
-                <Github size={18} />
-                {t('footer.sourceCode')}
-              </a>
-              <a
-                href="https://ko-fi.com/lomityaesh"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-colors"
-                style={{
-                  color: '#dc2626',
-                  border: '1px solid rgba(220, 38, 38, 0.2)',
-                  background: 'rgba(220, 38, 38, 0.05)',
-                }}
-              >
-                <Coffee size={18} />
-                {t('footer.support')}
-              </a>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-6 text-center" style={{ borderTop: '1px solid var(--card-border)' }}>
-            <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>
-              {t('footer.createdBy')} &#10084;
-            </p>
-            <p className="text-xs" style={{ color: 'var(--gold-muted)' }}>
-              {t('footer.license')}
-            </p>
-          </div>
+        <div className="max-w-6xl mx-auto text-center">
+          <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>
+            {t('footer.createdBy')} &#10084;
+          </p>
+          <p className="text-xs" style={{ color: 'var(--gold-muted)' }}>
+            {t('footer.license')}
+          </p>
         </div>
       </footer>
     </div>

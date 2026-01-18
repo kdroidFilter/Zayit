@@ -106,17 +106,13 @@ object AppCoreBindings {
     @Provides
     @SingleIn(AppScope::class)
     fun provideSearchHomeViewModel(
-        tabsViewModel: TabsViewModel,
         persistedStore: TabPersistedStateStore,
         repository: SeforimRepository,
-        searchEngine: SearchEngine,
         lookup: LuceneLookupSearchService,
         settings: Settings
     ): SearchHomeViewModel = SearchHomeViewModel(
-        tabsViewModel = tabsViewModel,
         persistedStore = persistedStore,
         repository = repository,
-        searchEngine = searchEngine,
         lookup = lookup,
         settings = settings
     )

@@ -1,6 +1,9 @@
 package io.github.kdroidfilter.seforimapp.framework.database
 
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.logger.errorln
+import io.github.kdroidfilter.seforimapp.logger.infoln
+import io.github.kdroidfilter.seforimapp.logger.warnln
 import io.github.kdroidfilter.seforimlibrary.core.models.PrecomputedCatalog
 import io.github.kdroidfilter.seforimlibrary.dao.CatalogLoader
 import io.github.vinceglb.filekit.FileKit
@@ -11,10 +14,9 @@ import java.io.File
 private const val DEFAULT_DB_NAME = "seforim.db"
 
 /**
- * Gets the database path, preferring an environment variable if present,
- * falling back to AppSettings, and finally checking the default location.
+ * Lazily computed database path. Thread-safe and computed only once.
  */
-fun getDatabasePath(): String {
+private val cachedDatabasePath: String by lazy {
     // 1) Prefer an explicit environment variable override if provided
     val envDbPath = System.getenv("SEFORIMAPP_DATABASE_PATH")?.takeIf { it.isNotBlank() }
 
@@ -33,8 +35,7 @@ fun getDatabasePath(): String {
 
     val dbPath = envDbPath ?: settingsPath ?: defaultDbPath
 
-    println("[DatabaseUtils] env=$envDbPath, rawSettings=$rawSettingsPath, settings=$settingsPath, default=$defaultDbPath, final=$dbPath")
-    println("[DatabaseUtils] File exists: ${File(dbPath).exists()}")
+    infoln { "[DatabaseUtils] Database path resolved: $dbPath (exists: ${File(dbPath).exists()})" }
 
     // Check if the database file exists
     val dbFile = File(dbPath)
@@ -42,8 +43,16 @@ fun getDatabasePath(): String {
         throw IllegalStateException("Database file not found at $dbPath")
     }
 
-    return dbPath
+    dbPath
 }
+
+/**
+ * Gets the database path, preferring an environment variable if present,
+ * falling back to AppSettings, and finally checking the default location.
+ *
+ * The path is computed once and cached for the entire runtime (thread-safe).
+ */
+fun getDatabasePath(): String = cachedDatabasePath
 
 
 /**
@@ -73,15 +82,14 @@ object CatalogCache {
             val catalog = CatalogLoader.loadCatalog(dbPath)
 
             if (catalog != null) {
-                println("✓ Precomputed catalog loaded: ${catalog.totalCategories} categories, ${catalog.totalBooks} books")
+                infoln { "[CatalogCache] Precomputed catalog loaded: ${catalog.totalCategories} categories, ${catalog.totalBooks} books" }
             } else {
-                println("⚠ Precomputed catalog not found, will load from database instead")
+                warnln { "[CatalogCache] Precomputed catalog not found, will load from database instead" }
             }
 
             catalog
         } catch (e: Exception) {
-            println("✗ Failed to load precomputed catalog: ${e.message}")
-            e.printStackTrace()
+            errorln { "[CatalogCache] Failed to load precomputed catalog: ${e.message}" }
             null
         }
     }

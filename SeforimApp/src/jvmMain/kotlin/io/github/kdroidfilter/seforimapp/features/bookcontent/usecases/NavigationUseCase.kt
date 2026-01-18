@@ -8,9 +8,6 @@ import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimapp.logger.errorln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
-import io.github.kdroidfilter.seforimlibrary.core.models.extractAllBooks
-import io.github.kdroidfilter.seforimlibrary.core.models.extractCategoryChildren
-import io.github.kdroidfilter.seforimlibrary.core.models.extractRootCategories
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -26,16 +23,21 @@ class NavigationUseCase(
     /**
      * Load the root categories and the full tree from the precomputed catalog.
      * The catalog MUST be available, otherwise nothing is loaded.
+     * Data is retrieved from CatalogCache which caches the extracted structures in memory.
      */
     suspend fun loadRootCategories() {
-        val catalog = CatalogCache.getCatalog() ?: run {
+        val rootCategories = CatalogCache.getRootCategories()
+        val categoryChildren = CatalogCache.getCategoryChildren()
+        val allBooks = CatalogCache.getAllBooks()
+
+        if (rootCategories == null || categoryChildren == null || allBooks == null) {
             errorln { "ERROR: Precomputed catalog not available!" }
             return
         }
 
         // Merge alt-structure flags from DB to ensure navigation tree knows about them
         val altFlags = runCatching { repository.getAllBookAltFlags() }.getOrDefault(emptyMap())
-        val booksWithFlags: Set<Book> = catalog.extractAllBooks().map { book ->
+        val booksWithFlags: Set<Book> = allBooks.map { book ->
             altFlags[book.id]?.let { book.copy(hasAltStructures = it) } ?: book
         }.toSet()
 
@@ -44,8 +46,8 @@ class NavigationUseCase(
         // Persisting here can overwrite restored selection/book IDs before models are loaded.
         stateManager.updateNavigation(save = false) {
             copy(
-                rootCategories = catalog.extractRootCategories(),
-                categoryChildren = catalog.extractCategoryChildren(),
+                rootCategories = rootCategories,
+                categoryChildren = categoryChildren,
                 booksInCategory = booksWithFlags
             )
         }

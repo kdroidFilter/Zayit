@@ -175,7 +175,7 @@ export function Navigation() {
 
             {/* CTA Button */}
             <motion.a
-              href="/download"
+              href="/Zayit/download"
               className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white"
               style={{
                 background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)',
@@ -263,7 +263,7 @@ export function Navigation() {
                 </div>
 
                 <a
-                  href="/download"
+                  href="/Zayit/download"
                   className="flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold text-white"
                   style={{
                     background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)',

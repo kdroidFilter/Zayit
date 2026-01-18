@@ -615,7 +615,7 @@ function App() {
             </p>
 
             <motion.a
-              href="/download"
+              href="/Zayit/download"
               className="inline-flex items-center gap-3 px-10 py-5 rounded-full text-xl font-semibold text-white"
               style={{
                 background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)',

@@ -7,13 +7,13 @@ const BRAND_ICON = "icon.png";
 // ==================== i18n System ====================
 const SUPPORTED_LANGUAGES = ['en', 'he'];
 const DEFAULT_LANGUAGE = 'en';
-const STORAGE_KEY = 'zayit-language';
+const STORAGE_KEY = 'language'; // Synced with /website
 
 let translations = {};
 let currentLanguage = DEFAULT_LANGUAGE;
 
 // ==================== Theme System ====================
-const THEME_STORAGE_KEY = 'zayit-theme';
+const THEME_STORAGE_KEY = 'theme'; // Synced with /website
 let currentTheme = 'system'; // 'light', 'dark', or 'system'
 
 function initTheme() {

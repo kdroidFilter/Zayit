@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, Menu, X, Download, Sun, Moon, Github, Coffee } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { LANGUAGE_STORAGE_KEY } from '../i18n';
 
 export function Navigation() {
   const { t, i18n } = useTranslation();
@@ -15,6 +16,7 @@ export function Navigation() {
 
   const toggleLanguage = (lang: string) => {
     i18n.changeLanguage(lang);
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
     document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
     document.documentElement.lang = lang;
     setIsLangOpen(false);

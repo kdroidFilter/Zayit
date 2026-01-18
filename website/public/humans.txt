@@ -1,0 +1,16 @@
+/* TEAM */
+Developer: KDroid Filter
+Site: https://github.com/kdroidFilter
+From: Israel
+
+/* THANKS */
+Otzaria Project - For text sources
+JetBrains - For Compose Multiplatform & Jewel
+
+/* SITE */
+Last update: 2026/01/18
+Language: English, Hebrew
+Standards: HTML5, CSS3, ES6+
+Framework: React 19, Vite, Tailwind CSS
+Components: Framer Motion, Lucide Icons
+IDE: IntelliJ IDEA

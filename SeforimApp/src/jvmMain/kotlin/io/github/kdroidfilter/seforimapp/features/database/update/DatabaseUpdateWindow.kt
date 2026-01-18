@@ -11,9 +11,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateNavHost
@@ -43,7 +42,7 @@ fun ApplicationScope.DatabaseUpdateWindow(
     DecoratedWindow(
         onCloseRequest = { exitApplication() },
         title = stringResource(Res.string.app_name),
-        icon = if (getOperatingSystem() == OperatingSystem.MACOS) null else painterResource(Res.drawable.AppIcon),
+        icon = if (PlatformInfo.isMacOS) null else painterResource(Res.drawable.AppIcon),
         state = updateWindowState,
         visible = true,
         resizable = false,
@@ -62,8 +61,8 @@ fun ApplicationScope.DatabaseUpdateWindow(
             LocalWindowViewModelStoreOwner provides windowViewModelOwner,
             LocalViewModelStoreOwner provides windowViewModelOwner,
         ) {
-            val isMac = getOperatingSystem() == OperatingSystem.MACOS
-            val isWindows = getOperatingSystem() == OperatingSystem.WINDOWS
+            val isMac = PlatformInfo.isMacOS
+            val isWindows = PlatformInfo.isWindows
             val navController = rememberNavController()
             var canNavigateBack by remember { mutableStateOf(false) }
 

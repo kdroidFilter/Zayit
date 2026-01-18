@@ -28,6 +28,7 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -122,9 +123,8 @@ fun BookContentView(
     val hebrewFontFamily = FontCatalog.familyFor(bookFontCode)
     // macOS fallback: some Hebrew fonts have no Bold face; slightly scale bold text for visibility
     val boldScaleForPlatform = remember(bookFontCode) {
-        val isMac = System.getProperty("os.name")?.contains("Mac", ignoreCase = true) == true
         val lacksBold = bookFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
-        if (isMac && lacksBold) 1.08f else 1.0f
+        if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
     }
 
     // Track restoration state per book

@@ -8,8 +8,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsView
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import org.jetbrains.jewel.window.DecoratedWindowScope
 import org.jetbrains.jewel.window.TitleBar
 import org.jetbrains.jewel.window.newFullscreenControls
@@ -28,7 +28,7 @@ fun DecoratedWindowScope.MainTitleBar() {
             // This avoids subtle 1px oscillations on small or non-integer window sizes.
             val tabsAreaWidth: Dp = with(density) {
                 val windowWidthPx = windowWidth.toPx()
-                val iconsAreaWidthDp = when (getOperatingSystem()) {
+                val iconsAreaWidthDp = when (PlatformInfo.currentOS) {
                     OperatingSystem.MACOS -> iconWidth * (iconsNumber + 2)
                     OperatingSystem.WINDOWS -> iconWidth * (iconsNumber + 3.5f)
                     else -> iconWidth * iconsNumber

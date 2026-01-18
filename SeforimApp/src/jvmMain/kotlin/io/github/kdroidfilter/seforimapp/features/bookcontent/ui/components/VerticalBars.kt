@@ -4,9 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -31,7 +30,7 @@ fun StartVerticalBar(
                 icon = Library,
                 iconDescription = stringResource(Res.string.books),
                 label = stringResource(Res.string.books),
-                shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "B+⌘" else "B+Ctrl"
+                shortcutHint = if (PlatformInfo.isMacOS) "B+⌘" else "B+Ctrl"
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.book_content),
@@ -40,7 +39,7 @@ fun StartVerticalBar(
                 icon = TableOfContents,
                 iconDescription = stringResource(Res.string.table_of_contents),
                 label = stringResource(Res.string.table_of_contents),
-                shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "B+⇧+⌘" else "B+Shift+Ctrl"
+                shortcutHint = if (PlatformInfo.isMacOS) "B+⇧+⌘" else "B+Shift+Ctrl"
 
             )
         },
@@ -134,7 +133,7 @@ fun EndVerticalBar(
                 icon = ZoomIn,
                 iconDescription = stringResource(Res.string.zoom_in),
                 label = stringResource(Res.string.zoom_in),
-                shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "+⌘" else "+Ctrl"
+                shortcutHint = if (PlatformInfo.isMacOS) "+⌘" else "+Ctrl"
             )
             SelectableIconButtonWithToolip(
                 toolTipText = if (canZoomOut)
@@ -147,7 +146,7 @@ fun EndVerticalBar(
                 icon = ZoomOut,
                 iconDescription = stringResource(Res.string.zoom_out),
                 label = stringResource(Res.string.zoom_out),
-                shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "-⌘" else "-Ctrl"
+                shortcutHint = if (PlatformInfo.isMacOS) "-⌘" else "-Ctrl"
             )
 
             // Diacritics toggle button - only show when book has nekudot or teamim
@@ -163,7 +162,7 @@ fun EndVerticalBar(
                     icon = TextDiacritics,
                     iconDescription = stringResource(Res.string.toggle_diacritics),
                     label = stringResource(Res.string.toggle_diacritics),
-                    shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "J+⌘" else "J+Ctrl"
+                    shortcutHint = if (PlatformInfo.isMacOS) "J+⌘" else "J+Ctrl"
                 )
             }
 //            SelectableIconButtonWithToolip(
@@ -222,7 +221,7 @@ fun EndVerticalBar(
                         iconDescription = stringResource(Res.string.show_targumim),
                         label = stringResource(Res.string.show_targumim),
                         enabled = !targumDisabledForLine,
-                        shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "K+⇧+⌘" else "K+Shift+Ctrl"
+                        shortcutHint = if (PlatformInfo.isMacOS) "K+⇧+⌘" else "K+Shift+Ctrl"
                     )
                 }
 
@@ -235,7 +234,7 @@ fun EndVerticalBar(
                         iconDescription = stringResource(Res.string.show_sources),
                         label = stringResource(Res.string.show_sources),
                         enabled = !sourcesDisabledForLine,
-                        shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "K+⌥+⌘" else "K+Alt+Ctrl"
+                        shortcutHint = if (PlatformInfo.isMacOS) "K+⌥+⌘" else "K+Alt+Ctrl"
                     )
                 }
 
@@ -249,7 +248,7 @@ fun EndVerticalBar(
                         iconDescription = stringResource(Res.string.show_commentaries),
                         label = stringResource(Res.string.show_commentaries),
                         enabled = !commentaryDisabledForLine,
-                        shortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS) "K+⌘" else "K+Ctrl"
+                        shortcutHint = if (PlatformInfo.isMacOS) "K+⌘" else "K+Ctrl"
                     )
                 }
             }

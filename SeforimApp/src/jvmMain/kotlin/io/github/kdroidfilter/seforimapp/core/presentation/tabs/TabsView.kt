@@ -43,9 +43,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforim.tabs.*
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -442,8 +441,7 @@ private fun RtlAwareTabStripContent(
                 color = JewelTheme.globalColors.borders.disabled
             )
 
-            val os = getOperatingSystem()
-            val shortcutHint = if (os == OperatingSystem.MACOS) "⌘+T" else "Ctrl+T"
+            val shortcutHint = if (PlatformInfo.isMacOS) "⌘+T" else "Ctrl+T"
             TitleBarActionButton(
                 onClick = onAddClick,
                 key = AllIconsKeys.General.Add,

@@ -15,9 +15,8 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils.buildThemeDefinition
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
@@ -76,8 +75,8 @@ private fun SettingsWindowView(
                 LocalWindowViewModelStoreOwner provides windowViewModelOwner,
                 LocalViewModelStoreOwner provides windowViewModelOwner,
             ) {
-                val isMac = getOperatingSystem() == OperatingSystem.MACOS
-                val isWindows = getOperatingSystem() == OperatingSystem.WINDOWS
+                val isMac = PlatformInfo.isMacOS
+                val isWindows = PlatformInfo.isWindows
                 TitleBar(modifier = Modifier.newFullscreenControls()) {
                     Box(
                         modifier = Modifier.fillMaxWidth(if (isMac) 0.9f else 1f)

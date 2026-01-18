@@ -134,11 +134,15 @@ fun BookContentView(
     // Track the restored anchor to avoid re-restoration
     var restoredAnchorId by remember(book.id) { mutableStateOf(-1L) }
 
+    // Track if this is the initial book open (vs changing TOC within same book)
+    var isInitialBookOpen by remember(book.id) { mutableStateOf(true) }
+
     // Hide content until initial scroll is complete to prevent visual glitch
-    val needsInitialPositioning = topAnchorLineId != -1L && !hasRestored
+    // Only apply on initial book open, not when changing TOC entries
+    val needsInitialPositioning = isInitialBookOpen && topAnchorLineId != -1L && !hasRestored
     val contentAlpha by animateFloatAsState(
         targetValue = if (needsInitialPositioning) 0f else 1f,
-        animationSpec = tween(durationMillis = if (needsInitialPositioning) 0 else 150),
+        animationSpec = tween(durationMillis = if (needsInitialPositioning) 0 else 50),
         label = "contentAlpha"
     )
 
@@ -232,6 +236,8 @@ fun BookContentView(
             listState.scrollToItem(idx, 0)
             restoredAnchorId = topAnchorLineId
             hasRestored = true
+            // After first restoration, disable alpha effect for subsequent TOC navigations
+            isInitialBookOpen = false
         }
     }
 

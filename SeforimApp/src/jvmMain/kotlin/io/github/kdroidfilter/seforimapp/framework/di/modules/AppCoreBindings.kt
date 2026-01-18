@@ -18,7 +18,8 @@ import io.github.kdroidfilter.seforimapp.framework.database.getUserSettingsDatab
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
+import io.github.kdroidfilter.seforimlibrary.search.LuceneSearchEngine
+import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
 import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
@@ -65,11 +66,12 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideLuceneSearchService(repository: SeforimRepository): LuceneSearchService {
+    fun provideSearchEngine(repository: SeforimRepository): SearchEngine {
         val dbPath = getDatabasePath()
-        val indexPath = if (dbPath.endsWith(".db")) "$dbPath.lucene" else "$dbPath.luceneindex"
-        val snippetSourceProvider = RepositorySnippetSourceProvider(repository)
-        return LuceneSearchService(Paths.get(indexPath), snippetSourceProvider)
+        val indexPath = Paths.get(if (dbPath.endsWith(".db")) "$dbPath.lucene" else "$dbPath.luceneindex")
+        val dictionaryPath = indexPath.resolveSibling("lexical.db")
+        val snippetProvider = RepositorySnippetSourceProvider(repository)
+        return LuceneSearchEngine(indexPath, snippetProvider, dictionaryPath = dictionaryPath)
     }
 
     @Provides
@@ -107,14 +109,14 @@ object AppCoreBindings {
         tabsViewModel: TabsViewModel,
         persistedStore: TabPersistedStateStore,
         repository: SeforimRepository,
-        lucene: LuceneSearchService,
+        searchEngine: SearchEngine,
         lookup: LuceneLookupSearchService,
         settings: Settings
     ): SearchHomeViewModel = SearchHomeViewModel(
         tabsViewModel = tabsViewModel,
         persistedStore = persistedStore,
         repository = repository,
-        lucene = lucene,
+        searchEngine = searchEngine,
         lookup = lookup,
         settings = settings
     )

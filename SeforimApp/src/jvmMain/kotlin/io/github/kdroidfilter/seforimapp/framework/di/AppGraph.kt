@@ -12,7 +12,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProc
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
+import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 
 /**
  * Metro DI graph: provider functions annotated with @Provides.
@@ -29,7 +29,7 @@ abstract class AppGraph : ViewModelGraph {
     abstract val settings: Settings
     abstract val categoryDisplaySettingsStore: CategoryDisplaySettingsStore
     abstract val repository: SeforimRepository
-    abstract val luceneSearchService: LuceneSearchService
+    abstract val searchEngine: SearchEngine
     abstract val tabsViewModel: TabsViewModel
     abstract val searchHomeViewModel: SearchHomeViewModel
 

@@ -74,6 +74,7 @@
   "download": {
     "title": "Download Zayit",
     "description": "Available for macOS, Windows, and Linux. Free and open source.",
+    "downloads": "downloads",
     "cta": "Go to Downloads",
     "platforms": "Available on all major platforms"
   },

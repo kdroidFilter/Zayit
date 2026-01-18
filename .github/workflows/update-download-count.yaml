@@ -1,0 +1,42 @@
+name: Update Download Count
+
+on:
+  schedule:
+    # Run daily at 6:00 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-count:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch download count and update file
+        run: |
+          # Fetch total download count from GitHub API
+          TOTAL=$(curl -s "https://api.github.com/repos/kdroidFilter/Zayit/releases?per_page=100" \
+            | jq '[.[].assets[].download_count] | add // 0')
+
+          # Round down to nearest hundred
+          ROUNDED=$(( (TOTAL / 100) * 100 ))
+
+          echo "Total downloads: $TOTAL"
+          echo "Rounded to: $ROUNDED"
+
+          # Create JSON file with the count
+          echo "{\"count\": $ROUNDED, \"updatedAt\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > website/public/download-count.json
+
+          cat website/public/download-count.json
+
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add website/public/download-count.json
+          git diff --staged --quiet || git commit -m "chore: update download count"
+          git push

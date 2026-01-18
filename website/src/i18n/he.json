@@ -74,6 +74,7 @@
   "download": {
     "title": "הורדת זית",
     "description": "זמין עבור macOS, Windows ו-Linux. חינם וקוד פתוח.",
+    "downloads": "הורדות",
     "cta": "לדף ההורדות",
     "platforms": "זמין בכל הפלטפורמות העיקריות"
   },

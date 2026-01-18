@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
  */
 object AppUpdateChecker {
 
-    const val DOWNLOAD_URL = "https://kdroidfilter.github.io/Zayit/"
+    const val DOWNLOAD_URL = "https://kdroidfilter.github.io/Zayit/download"
 
     private val releaseFetcher = GitHubReleaseFetcher(
         owner = "kdroidFilter",

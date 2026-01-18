@@ -46,7 +46,6 @@ import androidx.compose.ui.window.PopupProperties
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.BookOpenTabs
@@ -56,12 +55,15 @@ import io.github.kdroidfilter.seforimapp.icons.Tab_close_right
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.foundation.InternalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
+import org.jetbrains.jewel.ui.component.styling.MenuStyle
 import org.jetbrains.jewel.ui.component.styling.TabStyle
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
@@ -640,78 +642,43 @@ private fun RtlAwareTab(
         contentWithTooltip()
 
         if (contextMenuOpen) {
-            val provider = remember(anchorOffset, anchorSize, contextClickOffset) {
-                object : PopupPositionProvider {
-                    override fun calculatePosition(
-                        anchorBounds: IntRect,
-                        windowSize: IntSize,
-                        layoutDirection: LayoutDirection,
-                        popupContentSize: IntSize
-                    ): IntOffset {
-                        var x = anchorOffset.x + contextClickOffset.x
-                        var y = anchorOffset.y + contextClickOffset.y
-                        if (x + popupContentSize.width > windowSize.width) {
-                            x = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
-                        }
-                        if (x < 0) x = 0
-                        if (y + popupContentSize.height > windowSize.height) {
-                            y = (windowSize.height - popupContentSize.height).coerceAtLeast(0)
-                        }
-                        return IntOffset(x, y)
-                    }
-                }
-            }
-            Popup(
-                popupPositionProvider = provider,
-                properties = PopupProperties(focusable = true),
+            // Resource strings must be resolved outside MenuScope
+            val closeAllLabel = stringResource(Res.string.close_all_tabs)
+            val closeOthersLabel = stringResource(Res.string.close_other_tabs)
+            val closeLeftLabel = stringResource(Res.string.close_tabs_left)
+            val closeRightLabel = stringResource(Res.string.close_tabs_right)
+
+            TabContextMenu(
+                anchorOffset = anchorOffset,
+                contextClickOffset = contextClickOffset,
                 onDismissRequest = { contextMenuOpen = false }
             ) {
-                val shape = RoundedCornerShape(6.dp)
-                Column(
-                    Modifier
-                        .width(210.dp)
-                        .clip(shape)
-                        .background(JewelTheme.globalColors.panelBackground)
-                        .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-                        .padding(6.dp)
-                ) {
-                    data class CtxItem(val title: String, val icon: ImageVector, val mirror: Boolean = false, val action: () -> Unit)
-                    val items = buildList<CtxItem> {
-                        add(CtxItem(stringResource(Res.string.close_all_tabs), CloseAll, false, onCloseAll))
-                        if (tabCount > 1) add(CtxItem(stringResource(Res.string.close_other_tabs), Tab_close, false, onCloseOthers))
-                        if (tabIndex > 0) add(CtxItem(stringResource(Res.string.close_tabs_left), Tab_close_right, false, onCloseLeft))
-                        if (tabIndex < tabCount - 1) add(CtxItem(stringResource(Res.string.close_tabs_right), Tab_close_right, true, onCloseRight))
-                    }
-                    items.forEach { item ->
-                        val hover = remember { MutableInteractionSource() }
-                        val isHovered by hover.collectIsHoveredAsState()
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(shape)
-                                .background(if (isHovered) AppColors.HOVER_HIGHLIGHT else androidx.compose.ui.graphics.Color.Transparent)
-                                .hoverable(hover)
-                                .pointerHoverIcon(PointerIcon.Hand)
-                                .clickable(onClick = {
-                                    contextMenuOpen = false
-                                    item.action()
-                                })
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Icon(
-                                    imageVector = item.icon,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp).let { m -> if (item.mirror) m.graphicsLayer(scaleX = -1f) else m },
-                                    tint = JewelTheme.globalColors.text.normal
-                                )
-                                Text(item.title)
-                            }
-                        }
-                    }
+                tabContextMenuItem(
+                    label = closeAllLabel,
+                    icon = CloseAll,
+                    onClick = { contextMenuOpen = false; onCloseAll() }
+                )
+                if (tabCount > 1) {
+                    tabContextMenuItem(
+                        label = closeOthersLabel,
+                        icon = Tab_close,
+                        onClick = { contextMenuOpen = false; onCloseOthers() }
+                    )
+                }
+                if (tabIndex > 0) {
+                    tabContextMenuItem(
+                        label = closeLeftLabel,
+                        icon = Tab_close_right,
+                        onClick = { contextMenuOpen = false; onCloseLeft() }
+                    )
+                }
+                if (tabIndex < tabCount - 1) {
+                    tabContextMenuItem(
+                        label = closeRightLabel,
+                        icon = Tab_close_right,
+                        mirrorIcon = true,
+                        onClick = { contextMenuOpen = false; onCloseRight() }
+                    )
                 }
             }
         }
@@ -751,5 +718,80 @@ private fun SingleLineTabContent(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+// Tab context menu using native Jewel styling
+@OptIn(InternalJewelApi::class)
+@Composable
+private fun TabContextMenu(
+    anchorOffset: IntOffset,
+    contextClickOffset: IntOffset,
+    onDismissRequest: () -> Unit,
+    style: MenuStyle = JewelTheme.menuStyle,
+    content: MenuScope.() -> Unit,
+) {
+    val menuController = remember(onDismissRequest) {
+        DefaultMenuController(onDismissRequest = { onDismissRequest(); true })
+    }
+
+    val positionProvider = remember(anchorOffset, contextClickOffset) {
+        object : PopupPositionProvider {
+            override fun calculatePosition(
+                anchorBounds: IntRect,
+                windowSize: IntSize,
+                layoutDirection: LayoutDirection,
+                popupContentSize: IntSize
+            ): IntOffset {
+                var x = anchorOffset.x + contextClickOffset.x
+                var y = anchorOffset.y + contextClickOffset.y
+                if (x + popupContentSize.width > windowSize.width) {
+                    x = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+                }
+                if (x < 0) x = 0
+                if (y + popupContentSize.height > windowSize.height) {
+                    y = (windowSize.height - popupContentSize.height).coerceAtLeast(0)
+                }
+                return IntOffset(x, y)
+            }
+        }
+    }
+
+    Popup(
+        popupPositionProvider = positionProvider,
+        onDismissRequest = onDismissRequest,
+        properties = PopupProperties(focusable = true),
+        cornerSize = style.metrics.cornerSize,
+    ) {
+        CompositionLocalProvider(LocalMenuController provides menuController) {
+            MenuContent(content = content)
+        }
+    }
+}
+
+private fun MenuScope.tabContextMenuItem(
+    label: String,
+    icon: ImageVector,
+    mirrorIcon: Boolean = false,
+    onClick: () -> Unit,
+) {
+    selectableItem(
+        selected = false,
+        onClick = onClick,
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                painter = rememberVectorPainter(icon),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp).let { m ->
+                    if (mirrorIcon) m.graphicsLayer(scaleX = -1f) else m
+                },
+                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(JewelTheme.globalColors.text.normal)
+            )
+            Text(label)
+        }
     }
 }

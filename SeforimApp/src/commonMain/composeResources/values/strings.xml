@@ -35,7 +35,7 @@
     <string name="settings_db_path_not_set">לא הוגדר</string>
     <string name="settings_persist_session">שמור מצב בין הפעלות</string>
     <string name="settings_font_book_label">גופן לטקסט הספר</string>
-    <string name="settings_font_commentary_label">גופן לפירושים</string>
+    <string name="settings_font_commentary_label">גופן למפרשים</string>
     <string name="settings_font_targum_label">גופן לתרגומים</string>
     <string name="settings_font_sources_label">גופן למקורות</string>
     <string name="settings_font_reset_defaults">איפוס לברירת מחדל</string>
@@ -111,20 +111,20 @@
     <string name="print">הדפס</string>
     <string name="report_tooltip">דווח על בעיה בעמוד זה</string>
     <string name="report">דיווח</string>
-    <string name="commentaries">פירושים</string>
+    <string name="commentaries">מפרשים</string>
     <string name="sources">מקורות</string>
-    <string name="show_commentaries_tooltip">הצג את הפירושים הקיימים על פסקה זו</string>
-    <string name="show_commentaries">הצג פירושים</string>
+    <string name="show_commentaries_tooltip">הצג את המפרשים הקיימים על פסקה זו</string>
+    <string name="show_commentaries">הצג מפרשים</string>
     <string name="show_sources_tooltip">הצג מקור לטקסט זה</string>
     <string name="show_sources">הצג מקור</string>
     <string name="columns_gap_tooltip">שנה את מבנה העמודות</string>
     <string name="columns_gap">מבנה עמודות</string>
-    <string name="filter_commentators_tooltip">סנן את הפרשנים</string>
+    <string name="filter_commentators_tooltip">סנן את המפרשים</string>
     <string name="filter">סנן</string>
     <!-- Toggle commentators sidebar (used for contentDescription and tooltip) -->
-    <string name="toggle_commentators_sidebar">הצג/הסתר סרגל הפרשנים</string>
-    <string name="show_commentators_sidebar">הצג סרגל הפרשנים</string>
-    <string name="hide_commentators_sidebar">הסתר סרגל הפרשנים</string>
+    <string name="toggle_commentators_sidebar">הצג/הסתר סרגל מפרשים</string>
+    <string name="show_commentators_sidebar">הצג סרגל מפרשים</string>
+    <string name="hide_commentators_sidebar">הסתר סרגל מפרשים</string>
     <string name="write_note_tooltip">כתוב הערה על שורה זאת</string>
     <string name="write_note">כתוב הערה</string>
     <string name="show_targumim_tooltip">הצג תרגומים</string>
@@ -140,15 +140,15 @@
     <string name="select_book_for_toc">בחר ספר כדי לצפות בתוכן העניינים שלו</string>
     
     <!-- Line Comments View -->
-    <string name="select_line_for_commentaries">בחר שורה כדי לצפות בפירושים שלה</string>
-    <string name="no_commentaries_for_line">אין פירושים זמינים לפסקה זו</string>
-    <string name="no_commentaries_from_selected">אין פירושים זמינים מהפרשנים שנבחרו לשורה זו</string>
-    <string name="select_at_least_one_commentator">אנא בחר לפחות פרשן אחד מהרשימה</string>
+    <string name="select_line_for_commentaries">בחר שורה כדי לצפות במפרשים שלה</string>
+    <string name="no_commentaries_for_line">אין מפרשים זמינים לפסקה זו</string>
+    <string name="no_commentaries_from_selected">אין מפרשים זמינים מהמפרשים שנבחרו לשורה זו</string>
+    <string name="select_at_least_one_commentator">אנא בחר לפחות מפרש אחד מהרשימה</string>
     <string name="select_line_for_sources">בחר שורה כדי לצפות במקורות</string>
     <string name="no_sources_for_line">אין מקורות זמינים לשורה זו</string>
-    <string name="select_between_1_and_4_commentators">אנא בחר בין 1 ל-4 פרשנים</string>
-    <string name="max_commentators_limit">ניתן לבחור עד 4 פרשנים בלבד</string>
-    <string name="no_commentators_available">אין פרשנים זמינים</string>
+    <string name="select_between_1_and_4_commentators">אנא בחר בין 1 ל-4 מפרשים</string>
+    <string name="max_commentators_limit">ניתן לבחור עד 4 מפרשים בלבד</string>
+    <string name="no_commentators_available">אין מפרשים זמינים</string>
 
     <!-- Line Links View (special links strings) -->
     <string name="links">תרגומים</string>
@@ -158,7 +158,7 @@
     <string name="max_sources_limit">ניתן לבחור עד 4 מקורות בלבד</string>
     <string name="not_available_in_book">לא זמין בספר זה</string>
     <string name="targum_not_available_in_book">אין תרגומים זמינים בספר זה</string>
-    <string name="commentaries_not_available_in_book">אין פירושים זמינים בספר זה</string>
+    <string name="commentaries_not_available_in_book">אין מפרשים זמינים בספר זה</string>
     <string name="links_not_available_in_book">אין קישורים זמינים בספר זה</string>
     <string name="please_select_a_book">אנא בחר ספר</string>
 

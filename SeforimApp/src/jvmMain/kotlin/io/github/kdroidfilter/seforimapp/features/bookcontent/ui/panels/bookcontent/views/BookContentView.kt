@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.focusable
@@ -133,6 +134,18 @@ fun BookContentView(
     // Track the restored anchor to avoid re-restoration
     var restoredAnchorId by remember(book.id) { mutableStateOf(-1L) }
 
+    // Track if this is the initial book open (vs changing TOC within same book)
+    var isInitialBookOpen by remember(book.id) { mutableStateOf(true) }
+
+    // Hide content until initial scroll is complete to prevent visual glitch
+    // Only apply on initial book open, not when changing TOC entries
+    val needsInitialPositioning = isInitialBookOpen && topAnchorLineId != -1L && !hasRestored
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (needsInitialPositioning) 0f else 1f,
+        animationSpec = tween(durationMillis = if (needsInitialPositioning) 0 else 50),
+        label = "contentAlpha"
+    )
+
     // Optimize selected line ID lookup
     val selectedLineId = remember(selectedLine) { selectedLine?.id }
 
@@ -223,6 +236,8 @@ fun BookContentView(
             listState.scrollToItem(idx, 0)
             restoredAnchorId = topAnchorLineId
             hasRestored = true
+            // After first restoration, disable alpha effect for subsequent TOC navigations
+            isInitialBookOpen = false
         }
     }
 
@@ -451,6 +466,7 @@ fun BookContentView(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .graphicsLayer { alpha = contentAlpha }  // Hide until positioned to prevent glitch
             .focusRequester(focusRequester)
             .focusable()
             .onPreviewKeyEvent(previewKeyHandler)

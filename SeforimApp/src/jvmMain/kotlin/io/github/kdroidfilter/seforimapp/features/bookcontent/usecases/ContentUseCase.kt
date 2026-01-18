@@ -66,15 +66,20 @@ class ContentUseCase(
         
         if (line != null) {
             debugln { "[loadAndSelectLine] Loading line $lineId at index ${line.lineIndex}" }
-            
+
+            // Calculate the correct position in the paged items list
+            // When target is near the beginning, it won't be at INITIAL_LOAD_SIZE/2
+            val halfLoad = PagingDefaults.LINES.INITIAL_LOAD_SIZE / 2
+            val computedAnchorIndex = minOf(line.lineIndex, halfLoad)
+
             stateManager.updateContent {
                 copy(
                     selectedLine = line,
                     anchorId = line.id,
-                    anchorIndex = 0,
+                    anchorIndex = computedAnchorIndex,
                     // When selection originates from TOC/breadcrumb, force anchoring at top
                     // by resetting scroll position before pager restoration.
-                    scrollIndex = 0,
+                    scrollIndex = computedAnchorIndex,
                     scrollOffset = 0,
                     scrollToLineTimestamp = System.currentTimeMillis(),
                     topAnchorLineId = line.id,

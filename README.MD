@@ -14,11 +14,14 @@ For review, preparing a lesson, or studying with a partner.
 
 Free. Clear. Efficient.
 
+<h2 align="center">To download, click below</h2>
 <p align="center">
   <a href="https://kdroidfilter.github.io/Zayit/">
-    <img src="art/button-download.png" alt="Download on GitHub" height="56">
+    <img src="art/button-download.png" alt="Download" height="80">
   </a>
-  &nbsp;&nbsp;
+</p>
+
+<p align="center">
   <a href="https://ko-fi.com/lomityaesh">
     <img src="art/button-koffe.png" alt="Support on Ko-fi" height="56">
   </a>
@@ -186,3 +189,5 @@ Sharing is encouraged - it is a good deed.
 ---
 
 Zayit is free and open source. For license details, see `LICENSE`.
+
+<p align="center">Built with love by Elie Gambache ❤️</p>

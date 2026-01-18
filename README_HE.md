@@ -14,11 +14,14 @@
 
 חינם. ברור. יעיל.
 
+<h2 align="center">להורדה לחצו למטה</h2>
 <p align="center">
   <a href="https://kdroidfilter.github.io/Zayit/">
-    <img src="art/button-download.png" alt="הורדה מ-GitHub" height="56">
+    <img src="art/button-download.png" alt="הורדה" height="80">
   </a>
-  &nbsp;&nbsp;
+</p>
+
+<p align="center">
   <a href="https://ko-fi.com/lomityaesh">
     <img src="art/button-koffe.png" alt="תמיכה ב-Ko-fi" height="56">
   </a>
@@ -186,3 +189,5 @@ Apache (Lucene), וכל מחברי הקוד הפתוח.
 ---
 
 זית היא חינמית וקוד פתוח. לפרטי הרישיון, ראו `LICENSE`.
+
+<p align="center">נבנה באהבה על ידי אליהו גמבש ❤️</p>

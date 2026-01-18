@@ -151,6 +151,9 @@ kotlin {
             implementation(libs.lucene.core)
             implementation(libs.reorderable)
 
+            // SeforimLibrary search module
+            implementation("io.github.kdroidfilter.seforimlibrary:search")
+
             implementation(libs.commons.compress)
 
             // HTML sanitization for search snippets

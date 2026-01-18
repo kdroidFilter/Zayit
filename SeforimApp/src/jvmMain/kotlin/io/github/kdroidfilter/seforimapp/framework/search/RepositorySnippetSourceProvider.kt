@@ -1,12 +1,14 @@
 package io.github.kdroidfilter.seforimapp.framework.search
 
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforimlibrary.search.LineSnippetInfo
+import io.github.kdroidfilter.seforimlibrary.search.SnippetProvider
 import kotlinx.coroutines.runBlocking
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
 
 /**
- * Implementation of [SnippetSourceProvider] that fetches line content from the database
+ * Implementation of [SnippetProvider] that fetches line content from the database
  * and reproduces the exact same snippet source logic as the indexer.
  *
  * This allows removing the text_raw field from the Lucene index to reduce index size,
@@ -14,7 +16,7 @@ import org.jsoup.safety.Safelist
  */
 class RepositorySnippetSourceProvider(
     private val repository: SeforimRepository
-) : SnippetSourceProvider {
+) : SnippetProvider {
 
     companion object {
         // Must match the indexer constants

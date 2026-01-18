@@ -660,12 +660,13 @@ class BookContentViewModel(
 
                 // If we have an explicit forced anchor, always select it to ensure correct scroll/selection.
                 // Otherwise, when opening with no prior anchor and no selection, select the computed initial line.
+                // Note: recreatePager = false because we already created the pager above with the correct initialLineId
                 if (resolvedInitialLineId != null) {
                     if (forceAnchorId != null) {
-                        loadAndSelectLine(resolvedInitialLineId)
+                        loadAndSelectLine(resolvedInitialLineId, recreatePager = false)
                         runCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
                     } else if (!shouldUseAnchor && state.content.selectedLine == null) {
-                        loadAndSelectLine(resolvedInitialLineId)
+                        loadAndSelectLine(resolvedInitialLineId, recreatePager = false)
                         // Expand TOC path to the resolved initial line (first entry/leaf)
                         runCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
                     }
@@ -695,13 +696,19 @@ class BookContentViewModel(
     }
 
     /** Loads and selects a line */
-    private suspend fun loadAndSelectLine(lineId: Long, syncAltToc: Boolean = true) {
+    private suspend fun loadAndSelectLine(
+        lineId: Long,
+        syncAltToc: Boolean = true,
+        recreatePager: Boolean = true
+    ) {
         val book = stateManager.state.value.navigation.selectedBook ?: return
 
         contentUseCase.loadAndSelectLine(lineId)?.let { line ->
             if (line.bookId == book.id) {
-                // Recreate pager centered on the line
-                _linesPagingData.value = contentUseCase.buildLinesPager(book.id, line.id)
+                // Recreate pager centered on the line (unless already created with correct position)
+                if (recreatePager) {
+                    _linesPagingData.value = contentUseCase.buildLinesPager(book.id, line.id)
+                }
 
                 commentariesUseCase.reapplySelectedCommentators(line)
                 commentariesUseCase.reapplySelectedLinkSources(line)

@@ -18,7 +18,7 @@ import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.darkmodedetector.mac.setMacOsAdaptiveTitleBar
-import io.github.kdroidfilter.platformtools.getOperatingSystem
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
@@ -81,7 +81,7 @@ import java.net.URI
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
     // Force OpenGL rendering backend on Windows if enabled (must be set before Skia initialization)
-    if (getOperatingSystem() == OperatingSystem.WINDOWS && AppSettings.isUseOpenGlEnabled()) {
+    if (PlatformInfo.isWindows && AppSettings.isUseOpenGlEnabled()) {
         System.setProperty("skiko.renderApi", "OPENGL")
     }
 
@@ -118,7 +118,7 @@ fun main() {
         FileKit.init(appId)
 
         val screen = Toolkit.getDefaultToolkit().screenSize
-        val windowState = if (getOperatingSystem() != OperatingSystem.WINDOWS) rememberWindowState(
+        val windowState = if (!PlatformInfo.isWindows) rememberWindowState(
             position = WindowPosition.Aligned(Alignment.Center),
             placement = WindowPlacement.Maximized,
             size = DpSize(screen.width.dp, screen.height.dp)
@@ -251,7 +251,7 @@ fun main() {
                             exitApplication()
                         },
                         title = windowTitle,
-                        icon = if (getOperatingSystem() == OperatingSystem.MACOS) null else painterResource(  Res.drawable.AppIcon),
+                        icon = if (PlatformInfo.isMacOS) null else painterResource(Res.drawable.AppIcon),
                         state = windowState,
                         visible = isWindowVisible,
                         onKeyEvent = { keyEvent ->
@@ -287,7 +287,7 @@ fun main() {
                                     // Open settings with Cmd+, or Ctrl+,
                                     settingsWindowViewModel.onEvent(SettingsWindowEvents.onOpen)
                                     true
-                                } else if (getOperatingSystem() == OperatingSystem.MACOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
+                                } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
                                     // Minimize window with Cmd+M on macOS
                                     windowState.isMinimized = true
                                     true
@@ -318,7 +318,7 @@ fun main() {
 
                             LaunchedEffect(Unit) {
                                 window.minimumSize = Dimension(600, 300)
-                                if (getOperatingSystem() == OperatingSystem.WINDOWS) {
+                                if (PlatformInfo.isWindows) {
                                     delay(10)
                                     windowState.placement = WindowPlacement.Maximized
                                 }
@@ -423,7 +423,7 @@ fun main() {
                                                     true
                                                 }
                                                 // Cmd + M => minimize window (macOS only)
-                                                getOperatingSystem() == OperatingSystem.MACOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
+                                                PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
                                                     windowState.isMinimized = true
                                                     true
                                                 }

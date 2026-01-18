@@ -17,6 +17,7 @@ import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalWindowInfo
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -90,9 +91,8 @@ fun LineTargumView(
     val targumFontCode by fontCodeFlow.collectAsState()
     val targumFontFamily = FontCatalog.familyFor(targumFontCode)
     val boldScaleForPlatform = remember(targumFontCode) {
-        val isMac = System.getProperty("os.name")?.contains("Mac", ignoreCase = true) == true
         val lacksBold = targumFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
-        if (isMac && lacksBold) 1.08f else 1.0f
+        if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
     }
 
     val paneInteractionSource = remember { MutableInteractionSource() }

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
@@ -36,6 +36,15 @@ function App() {
 
   const imageScale = useTransform(scrollYProgress, [0, 1], [1.15, 1]);
   const imageY = useTransform(scrollYProgress, [0, 1], [0, 50]);
+
+  // Fetch download count
+  const [downloadCount, setDownloadCount] = useState<number | null>(null);
+  useEffect(() => {
+    fetch('/Zayit/download-count.json')
+      .then(res => res.json())
+      .then(data => setDownloadCount(data.count))
+      .catch(() => setDownloadCount(null));
+  }, []);
 
   const features = [
     { icon: Search, key: 'find' },
@@ -611,6 +620,15 @@ function App() {
             >
               {t('download.description')}
             </p>
+
+            {downloadCount !== null && (
+              <p
+                className="text-2xl font-bold mb-8"
+                style={{ color: 'var(--gold)' }}
+              >
+                +{downloadCount.toLocaleString()} {t('download.downloads')}
+              </p>
+            )}
 
             <motion.a
               href="/Zayit/download"

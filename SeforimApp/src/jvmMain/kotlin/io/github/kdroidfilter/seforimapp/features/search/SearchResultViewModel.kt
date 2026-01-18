@@ -18,7 +18,9 @@ import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.search.domain.BuildSearchTreeUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.GetBreadcrumbPiecesUseCase
-import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
+import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
+import io.github.kdroidfilter.seforimlibrary.search.SearchSession
+import io.github.kdroidfilter.seforimlibrary.search.LineHit
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
@@ -63,7 +65,7 @@ class SearchResultViewModel(
     @Assisted savedStateHandle: SavedStateHandle,
     private val persistedStore: TabPersistedStateStore,
     private val repository: SeforimRepository,
-    private val lucene: LuceneSearchService,
+    private val lucene: SearchEngine,
     private val titleUpdateManager: TabTitleUpdateManager,
     private val tabsViewModel: TabsViewModel
 ) : ViewModel() {
@@ -952,28 +954,28 @@ class SearchResultViewModel(
         fetchCategoryId: Long?,
         fetchBookId: Long?,
         fetchTocId: Long?
-    ): Pair<LuceneSearchService.SearchSession, Set<Long>>? {
+    ): Pair<SearchSession, Set<Long>>? {
         var tocAllowedLineIds: Set<Long> = emptySet()
-        val session: LuceneSearchService.SearchSession? = when {
+        val session: SearchSession? = when {
             fetchTocId != null -> {
                 val toc = repository.getTocEntry(fetchTocId) ?: return null
                 ensureTocCountingCaches(toc.bookId)
                 val lineIds = collectLineIdsForTocSubtree(toc.id, toc.bookId)
                 tocAllowedLineIds = lineIds
-                lucene.openSearchSession(query, DEFAULT_NEAR, lineIds = lineIds)
+                lucene.openSession(query, DEFAULT_NEAR, lineIds = lineIds)
             }
-            fetchBookId != null -> lucene.openSearchSession(query, DEFAULT_NEAR, bookIds = listOf(fetchBookId))
+            fetchBookId != null -> lucene.openSession(query, DEFAULT_NEAR, bookIds = listOf(fetchBookId))
             fetchCategoryId != null -> {
                 val books = collectBookIdsUnderCategory(fetchCategoryId)
-                lucene.openSearchSession(query, DEFAULT_NEAR, bookIds = books)
+                lucene.openSession(query, DEFAULT_NEAR, bookIds = books)
             }
             else -> {
                 val extendedGlobal = _uiState.value.globalExtended
                 val baseOnlyBookIds: List<Long>? = if (!extendedGlobal) runCatching { repository.getBaseBookIds() }.getOrNull() else null
                 when {
                     baseOnlyBookIds != null && baseOnlyBookIds.isEmpty() -> null
-                    baseOnlyBookIds != null -> lucene.openSearchSession(query, DEFAULT_NEAR, bookIds = baseOnlyBookIds)
-                    else -> lucene.openSearchSession(query, DEFAULT_NEAR)
+                    baseOnlyBookIds != null -> lucene.openSession(query, DEFAULT_NEAR, bookIds = baseOnlyBookIds)
+                    else -> lucene.openSession(query, DEFAULT_NEAR)
                 }
             }
         }
@@ -982,7 +984,7 @@ class SearchResultViewModel(
     }
 
     private fun hitsToResults(
-        hits: List<LuceneSearchService.LineHit>,
+        hits: List<LineHit>,
         rawQuery: String
     ): List<SearchResult> {
         if (hits.isEmpty()) return emptyList()
@@ -1494,7 +1496,7 @@ class SearchResultViewModel(
         return result
     }
 
-    private suspend fun updateAggregatesForHits(hits: List<LuceneSearchService.LineHit>) {
+    private suspend fun updateAggregatesForHits(hits: List<LineHit>) {
         countsMutex.withLock {
             for (hit in hits) {
                 val book = bookCache[hit.bookId] ?: repository.getBookCore(hit.bookId)?.also { bookCache[hit.bookId] = it } ?: continue
@@ -1514,7 +1516,7 @@ class SearchResultViewModel(
         }
     }
 
-    private suspend fun updateTocCountsForHits(hits: List<LuceneSearchService.LineHit>, scopeBookId: Long) {
+    private suspend fun updateTocCountsForHits(hits: List<LineHit>, scopeBookId: Long) {
         val subset = hits.filter { it.bookId == scopeBookId }
         if (subset.isEmpty()) return
         ensureTocCountingCaches(scopeBookId)

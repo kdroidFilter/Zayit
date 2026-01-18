@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import io.github.kdroidfilter.seforimapp.framework.search.LuceneSearchService
+import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -64,7 +64,7 @@ class SearchHomeViewModel(
     private val tabsViewModel: TabsViewModel,
     private val persistedStore: TabPersistedStateStore,
     private val repository: SeforimRepository,
-    private val lucene: LuceneSearchService,
+    private val searchEngine: SearchEngine,
     private val lookup: LuceneLookupSearchService,
     private val settings: Settings
 ) : ViewModel() {

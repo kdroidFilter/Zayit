@@ -5,8 +5,8 @@ const DB_REPO = "SeforimLibrary";
 const BRAND_ICON = "icon.png";
 
 // ==================== i18n System ====================
-const SUPPORTED_LANGUAGES = ['he', 'en'];
-const DEFAULT_LANGUAGE = 'he';
+const SUPPORTED_LANGUAGES = ['en', 'he'];
+const DEFAULT_LANGUAGE = 'en';
 const STORAGE_KEY = 'zayit-language';
 
 let translations = {};

@@ -6,9 +6,8 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
@@ -54,15 +53,15 @@ fun TitleBarActionsButtonsView() {
         IntUiThemes.System -> stringResource(Res.string.switch_to_light_theme)
     }
 
-    val homeShortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS)
+    val homeShortcutHint = if (PlatformInfo.isMacOS)
         stringResource(Res.string.shortcut_home_mac)
     else stringResource(Res.string.shortcut_home_windows)
 
-    val findShortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS)
+    val findShortcutHint = if (PlatformInfo.isMacOS)
         stringResource(Res.string.shortcut_find_mac)
     else stringResource(Res.string.shortcut_find_windows)
 
-    val settingsShortcutHint = if (getOperatingSystem() == OperatingSystem.MACOS)
+    val settingsShortcutHint = if (PlatformInfo.isMacOS)
         stringResource(Res.string.shortcut_settings_mac)
     else stringResource(Res.string.shortcut_settings_windows)
 

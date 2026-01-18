@@ -38,6 +38,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.Horizontal
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorGroup
@@ -320,9 +321,8 @@ private fun CommentariesDisplay(
     val commentaryFontCode by AppSettings.commentaryFontCodeFlow.collectAsState()
     val commentaryFontFamily = FontCatalog.familyFor(commentaryFontCode)
     val boldScaleForPlatform = remember(commentaryFontCode) {
-        val isMac = System.getProperty("os.name")?.contains("Mac", ignoreCase = true) == true
         val lacksBold = commentaryFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
-        if (isMac && lacksBold) 1.08f else 1.0f
+        if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
     }
 
     val layoutConfig = remember(

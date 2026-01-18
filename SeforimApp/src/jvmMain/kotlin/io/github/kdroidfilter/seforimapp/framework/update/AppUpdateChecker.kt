@@ -1,9 +1,8 @@
 package io.github.kdroidfilter.seforimapp.framework.update
 
-import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.platformtools.getAppVersion
-import io.github.kdroidfilter.platformtools.getOperatingSystem
 import io.github.kdroidfilter.platformtools.releasefetcher.github.GitHubReleaseFetcher
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.network.KtorConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -74,7 +73,7 @@ object AppUpdateChecker {
         val normalized = version.trim()
 
         // On macOS, convert 1.x.y back to 0.x.y (reverse of macSafeVersion in build.gradle.kts)
-        if (getOperatingSystem() == OperatingSystem.MACOS) {
+        if (PlatformInfo.isMacOS) {
             val parts = normalized.split(".")
             if (parts.isNotEmpty() && parts[0] == "1") {
                 return "0.${parts.drop(1).joinToString(".")}"

@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+@theme {
+  /* Light theme colors */
+  --color-bg-main: #f5f3ee;
+  --color-bg-gradient-top: #faf9f5;
+  --color-bg-gradient-bottom: #eae8e0;
+  --color-card-bg: rgba(255, 255, 255, 0.95);
+  --color-gold: #8b7355;
+  --color-gold-soft: #9a8265;
+  --color-gold-muted: #a69070;
+  --color-text-main: #2c2416;
+  --color-text-muted: #5c5040;
+
+  /* Dark theme colors */
+  --color-dark-bg-main: #050509;
+  --color-dark-bg-gradient-top: #1a1a22;
+  --color-dark-bg-gradient-bottom: #111118;
+  --color-dark-card-bg: rgba(16, 16, 24, 0.92);
+  --color-dark-gold: #e6d28c;
+  --color-dark-gold-soft: #d8c68a;
+  --color-dark-gold-muted: #b8a876;
+  --color-dark-text-main: #f9f5dd;
+  --color-dark-text-muted: #c7bea0;
+
+  /* Fonts */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', 'Noto Sans Hebrew', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Light theme (default) */
+:root {
+  --bg-main: var(--color-bg-main);
+  --bg-gradient-top: var(--color-bg-gradient-top);
+  --bg-gradient-bottom: var(--color-bg-gradient-bottom);
+  --card-bg: var(--color-card-bg);
+  --gold: var(--color-gold);
+  --gold-soft: var(--color-gold-soft);
+  --gold-muted: var(--color-gold-muted);
+  --text-main: var(--color-text-main);
+  --text-muted: var(--color-text-muted);
+}
+
+/* Dark theme */
+.dark {
+  --bg-main: var(--color-dark-bg-main);
+  --bg-gradient-top: var(--color-dark-bg-gradient-top);
+  --bg-gradient-bottom: var(--color-dark-bg-gradient-bottom);
+  --card-bg: var(--color-dark-card-bg);
+  --gold: var(--color-dark-gold);
+  --gold-soft: var(--color-dark-gold-soft);
+  --gold-muted: var(--color-dark-gold-muted);
+  --text-main: var(--color-dark-text-main);
+  --text-muted: var(--color-dark-text-muted);
+  /* Dark theme cards - elegant deep warm black with gold accent */
+  --section-alt-bg: rgba(230, 210, 140, 0.02);
+  --card-border: rgba(230, 210, 140, 0.12);
+  --section-bg: rgba(8, 8, 12, 0.95);
+  --feature-card-bg: rgba(12, 10, 8, 0.92);
+  --feature-card-border: rgba(230, 210, 140, 0.2);
+  --glow-color: rgba(230, 210, 140, 0.15);
+  --card-highlight: rgba(230, 210, 140, 0.18);
+}
+
+:root {
+  /* Light theme - original */
+  --section-alt-bg: rgba(139, 115, 85, 0.03);
+  --card-border: rgba(139, 115, 85, 0.1);
+  --feature-card-bg: rgba(255, 255, 255, 0.6);
+  --feature-card-border: rgba(139, 115, 85, 0.1);
+  --glow-color: rgba(180, 160, 100, 0.15);
+  --card-highlight: rgba(180, 160, 100, 0.3);
+}
+
+/* Smooth theme transitions */
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* RTL support */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gold-muted);
+  border-radius: 999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 215, 0, 0.35);
+}
+
+/* Image comparison slider */
+.comparison-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.comparison-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.comparison-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.comparison-overlay img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.comparison-slider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-soft) 100%);
+  cursor: ew-resize;
+  z-index: 10;
+}
+
+.comparison-slider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
+  background: var(--gold);
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.comparison-slider::after {
+  content: '◀ ▶';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  letter-spacing: 4px;
+  white-space: nowrap;
+}

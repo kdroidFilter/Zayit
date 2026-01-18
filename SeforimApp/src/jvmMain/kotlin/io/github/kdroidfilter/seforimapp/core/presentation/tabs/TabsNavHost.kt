@@ -42,6 +42,7 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchShellActions
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultInBookShellMvi
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeNavigationEvent
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import kotlinx.coroutines.launch
@@ -62,6 +63,14 @@ fun TabsNavHost() {
 
     val searchUi: SearchHomeUiState by remember(searchHomeViewModel) { searchHomeViewModel.uiState }.collectAsState()
     val scope = rememberCoroutineScope()
+
+    // Helper to get current tab ID
+    val currentTabId by remember {
+        derivedStateOf {
+            tabs.getOrNull(selectedTabIndex)?.destination?.tabId
+        }
+    }
+
     val homeSearchCallbacks = remember(searchHomeViewModel, scope) {
         HomeSearchCallbacks(
             onReferenceQueryChanged = searchHomeViewModel::onReferenceQueryChanged,
@@ -69,15 +78,51 @@ fun TabsNavHost() {
             onFilterChange = searchHomeViewModel::onFilterChange,
             onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
             onSubmitTextSearch = { query ->
-                scope.launch { searchHomeViewModel.submitSearch(query) }
+                val tabId = currentTabId ?: return@HomeSearchCallbacks
+                scope.launch { searchHomeViewModel.submitSearch(query, tabId) }
             },
             onOpenReference = {
-                scope.launch { searchHomeViewModel.openSelectedReferenceInCurrentTab() }
+                val tabId = currentTabId ?: return@HomeSearchCallbacks
+                scope.launch { searchHomeViewModel.openSelectedReferenceInCurrentTab(tabId) }
             },
             onPickCategory = searchHomeViewModel::onPickCategory,
             onPickBook = searchHomeViewModel::onPickBook,
             onPickToc = searchHomeViewModel::onPickToc,
         )
+    }
+
+    // Dismiss suggestions when navigating away from Home
+    LaunchedEffect(tabs, selectedTabIndex) {
+        val dest = tabs.getOrNull(selectedTabIndex)?.destination
+        val isHome = dest is TabsDestination.Home
+        if (!isHome) {
+            searchHomeViewModel.dismissSuggestions()
+        }
+    }
+
+    // Collect navigation events from SearchHomeViewModel and perform navigation
+    LaunchedEffect(searchHomeViewModel, tabsViewModel) {
+        searchHomeViewModel.navigationEvents.collect { event ->
+            when (event) {
+                is SearchHomeNavigationEvent.NavigateToSearch -> {
+                    tabsViewModel.replaceCurrentTabDestination(
+                        TabsDestination.Search(
+                            searchQuery = event.query,
+                            tabId = event.tabId
+                        )
+                    )
+                }
+                is SearchHomeNavigationEvent.NavigateToBookContent -> {
+                    tabsViewModel.replaceCurrentTabDestination(
+                        TabsDestination.BookContent(
+                            bookId = event.bookId,
+                            tabId = event.tabId,
+                            lineId = event.lineId
+                        )
+                    )
+                }
+            }
+        }
     }
 
     val registry: TabNavControllerRegistry = appGraph.tabNavControllerRegistry

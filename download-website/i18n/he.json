@@ -98,5 +98,9 @@
   },
   "language": {
     "select": "שפה"
+  },
+  "theme": {
+    "light": "מצב בהיר",
+    "dark": "מצב כהה"
   }
 }

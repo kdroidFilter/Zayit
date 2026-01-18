@@ -12,6 +12,59 @@ const STORAGE_KEY = 'zayit-language';
 let translations = {};
 let currentLanguage = DEFAULT_LANGUAGE;
 
+// ==================== Theme System ====================
+const THEME_STORAGE_KEY = 'zayit-theme';
+let currentTheme = 'system'; // 'light', 'dark', or 'system'
+
+function initTheme() {
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
+    currentTheme = savedTheme;
+  }
+  applyTheme();
+
+  // Listen for system preference changes
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (currentTheme === 'system') {
+      applyTheme();
+    }
+  });
+}
+
+function applyTheme() {
+  const root = document.documentElement;
+  root.classList.remove('light', 'dark');
+
+  if (currentTheme === 'light') {
+    root.classList.add('light');
+  } else if (currentTheme === 'dark') {
+    root.classList.add('dark');
+  }
+  // If 'system', no class is added, CSS media query handles it
+}
+
+function isDarkMode() {
+  if (currentTheme === 'dark') return true;
+  if (currentTheme === 'light') return false;
+  // System preference
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function toggleTheme() {
+  // Cycle: system -> light -> dark -> system
+  // Or simpler: just toggle between light and dark based on current resolved state
+  if (isDarkMode()) {
+    currentTheme = 'light';
+  } else {
+    currentTheme = 'dark';
+  }
+  localStorage.setItem(THEME_STORAGE_KEY, currentTheme);
+  applyTheme();
+  renderApp();
+}
+
+window.toggleTheme = toggleTheme;
+
 async function loadTranslations(lang) {
   try {
     const response = await fetch(`i18n/${lang}.json`);
@@ -349,27 +402,35 @@ function setState(patch) {
 }
 
 // ==================== Render Functions ====================
-function renderLanguageSelector() {
+function renderHeaderControls() {
   const currentLangInfo = getLanguageInfo(currentLanguage);
+  const isDark = isDarkMode();
+  const themeIcon = isDark ? 'light_mode' : 'dark_mode';
+  const themeLabel = isDark ? t('theme.light') : t('theme.dark');
 
   return `
-    <div class="language-selector">
-      <button class="lang-btn" onclick="toggleLanguageMenu(event)">
-        <span class="material-symbols-outlined">translate</span>
-        <span class="lang-name">${currentLangInfo.name}</span>
-        <span class="material-symbols-outlined lang-arrow">expand_more</span>
+    <div class="header-controls">
+      <button class="theme-toggle" onclick="toggleTheme()" title="${themeLabel}" aria-label="${themeLabel}">
+        <span class="material-symbols-outlined">${themeIcon}</span>
       </button>
-      <div class="lang-menu" id="lang-menu">
-        ${SUPPORTED_LANGUAGES.map(lang => {
-          const info = getLanguageInfo(lang);
-          const isActive = lang === currentLanguage ? 'active' : '';
-          return `
-            <button class="lang-option ${isActive}" onclick="setLanguage('${lang}')">
-              <span>${info.name}</span>
-              ${lang === currentLanguage ? '<span class="material-symbols-outlined">check</span>' : ''}
-            </button>
-          `;
-        }).join('')}
+      <div class="language-selector">
+        <button class="lang-btn" onclick="toggleLanguageMenu(event)">
+          <span class="material-symbols-outlined">translate</span>
+          <span class="lang-name">${currentLangInfo.name}</span>
+          <span class="material-symbols-outlined lang-arrow">expand_more</span>
+        </button>
+        <div class="lang-menu" id="lang-menu">
+          ${SUPPORTED_LANGUAGES.map(lang => {
+            const info = getLanguageInfo(lang);
+            const isActive = lang === currentLanguage ? 'active' : '';
+            return `
+              <button class="lang-option ${isActive}" onclick="setLanguage('${lang}')">
+                <span>${info.name}</span>
+                ${lang === currentLanguage ? '<span class="material-symbols-outlined">check</span>' : ''}
+              </button>
+            `;
+          }).join('')}
+        </div>
       </div>
     </div>
   `;
@@ -399,7 +460,7 @@ async function renderApp() {
     root.innerHTML = `
       <div class="card">
         <div class="card-inner">
-          ${renderLanguageSelector()}
+          ${renderHeaderControls()}
           <div class="loading-screen">
             <div class="spinner"></div>
             <p style="color:var(--gold-soft);font-size:1.05rem;margin:0;">
@@ -425,7 +486,7 @@ async function renderApp() {
     root.innerHTML = `
       <div class="card">
         <div class="card-inner">
-          ${renderLanguageSelector()}
+          ${renderHeaderControls()}
           <div class="center" style="margin-bottom:1.8rem;">
             <img src="${BRAND_ICON}" alt="Zayit logo" class="header-logo" />
             <h1 class="title">${t('header.title')}</h1>
@@ -460,7 +521,7 @@ async function renderApp() {
     root.innerHTML = `
       <div class="card">
         <div class="card-inner">
-          ${renderLanguageSelector()}
+          ${renderHeaderControls()}
           <div class="center" style="margin-bottom:1.8rem;">
             <img src="${BRAND_ICON}" alt="Zayit logo" class="header-logo" />
             <h1 class="title">${t('header.title')} — ${t('common.download')}</h1>
@@ -685,7 +746,7 @@ async function renderApp() {
   root.innerHTML = `
     <div class="card">
       <div class="card-inner">
-        ${renderLanguageSelector()}
+        ${renderHeaderControls()}
         <div class="center" style="margin-bottom:1.8rem;">
           <img src="${BRAND_ICON}" alt="Zayit logo" class="header-logo" />
           <h1 class="title">${t('header.downloadTitle')}</h1>
@@ -1281,6 +1342,9 @@ window.addEventListener("DOMContentLoaded", async function () {
 
   // Initialize i18n system first
   await initI18n();
+
+  // Initialize theme system
+  initTheme();
 
   renderApp(); // Render loading state
 

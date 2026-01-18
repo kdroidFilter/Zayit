@@ -18,14 +18,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentS
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.Providers
-import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.CommentariesUseCase
-import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.ContentUseCase
-import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.CategoryDisplaySettingsUseCase
-import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.NavigationUseCase
-import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.TocUseCase
-import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.AltTocUseCase
+import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.BookContentUseCaseFactory
 import io.github.kdroidfilter.seforimapp.logger.debugln
-import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -38,14 +32,14 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 
-/** ViewModel simplifié pour l'écran de contenu du livre */
+/** Simplified ViewModel for the book content screen */
 @OptIn(ExperimentalSplitPaneApi::class)
 @AssistedInject
 class BookContentViewModel(
     @Assisted savedStateHandle: SavedStateHandle,
     private val persistedStore: TabPersistedStateStore,
     private val repository: SeforimRepository,
-    private val categoryDisplaySettingsStore: CategoryDisplaySettingsStore,
+    private val useCaseFactory: BookContentUseCaseFactory,
     private val titleUpdateManager: TabTitleUpdateManager,
     private val tabsViewModel: TabsViewModel
 ) : ViewModel() {
@@ -62,19 +56,18 @@ class BookContentViewModel(
 
     internal val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
 
-    // State Manager centralisé
+    // Centralized State Manager
     private val stateManager = BookContentStateManager(tabId, persistedStore)
 
-    // UseCases
-    private val navigationUseCase = NavigationUseCase(repository, stateManager)
-    private val contentUseCase = ContentUseCase(repository, stateManager)
-    private val tocUseCase = TocUseCase(repository, stateManager)
-    private val altTocUseCase = AltTocUseCase(repository, stateManager)
-    private val commentariesUseCase = CommentariesUseCase(repository, stateManager, viewModelScope)
-    private val categoryDisplaySettingsUseCase =
-        CategoryDisplaySettingsUseCase(repository, categoryDisplaySettingsStore)
+    // UseCases - created via factory
+    private val navigationUseCase = useCaseFactory.createNavigationUseCase(stateManager)
+    private val contentUseCase = useCaseFactory.createContentUseCase(stateManager)
+    private val tocUseCase = useCaseFactory.createTocUseCase(stateManager)
+    private val altTocUseCase = useCaseFactory.createAltTocUseCase(stateManager)
+    private val commentariesUseCase = useCaseFactory.createCommentariesUseCase(stateManager, viewModelScope)
+    private val categoryDisplaySettingsUseCase = useCaseFactory.createCategoryDisplaySettingsUseCase()
 
-    // Paging pour les lignes
+    // Paging for lines
     private val _linesPagingData = MutableStateFlow<Flow<PagingData<Line>>?>(null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -187,7 +180,7 @@ class BookContentViewModel(
         observeDiacriticsSettings()
     }
 
-    /** Initialisation du ViewModel */
+    /** ViewModel initialization */
     private fun initialize(savedStateHandle: SavedStateHandle) {
         val persistedBookState = persistedStore.get(tabId)?.bookContent
         val persistedBookId: Long? = persistedBookState?.selectedBookId?.takeIf { it > 0 }
@@ -207,7 +200,7 @@ class BookContentViewModel(
         }
 
         viewModelScope.launch {
-            // Charger les catégories racine
+            // Load root categories
             navigationUseCase.loadRootCategories()
 
             val requestedLineId: Long? = savedStateHandle.get<Long>(StateKeys.LINE_ID)?.takeIf { it > 0 }
@@ -223,7 +216,7 @@ class BookContentViewModel(
                 }
             }
 
-            // Observer le livre sélectionné et le TOC courant pour mettre à jour le titre
+            // Observe the selected book and current TOC to update the title
             stateManager.state
                 .map { state ->
                     val bookTitle = state.navigation.selectedBook?.title.orEmpty()
@@ -285,7 +278,7 @@ class BookContentViewModel(
         _showDiacritics.value = setting.showDiacritics
     }
 
-    /** Gestion des événements */
+    /** Event handling */
     fun onEvent(event: BookContentEvent) {
         viewModelScope.launch {
             when (event) {
@@ -362,7 +355,7 @@ class BookContentViewModel(
                             navigationUseCase.selectBook(book)
                             ensureTocVisibleOnFirstOpen()
                             loadBookData(book, forceAnchorId = event.lineId)
-                            // Fermer automatiquement le panneau de l'arbre des livres si l'option est activée
+                            // Automatically close the book tree panel if the setting is enabled
                             closeBookTreeIfEnabled()
                         }
                     }
@@ -468,7 +461,7 @@ class BookContentViewModel(
         _showDiacritics.value = setting.showDiacritics
     }
 
-    /** Charge un livre par ID */
+    /** Loads a book by ID */
     private suspend fun loadBookById(bookId: Long, lineId: Long? = null, triggerScroll: Boolean = true) {
         stateManager.setLoading(true)
         try {
@@ -573,7 +566,7 @@ class BookContentViewModel(
         }
     }
 
-    /** Charge un livre */
+    /** Loads a book */
     private suspend fun loadBook(book: Book) {
         val resolvedBook = repository.getBookCore(book.id) ?: book
         val previousBook = stateManager.state.value.navigation.selectedBook
@@ -582,35 +575,35 @@ class BookContentViewModel(
         // Expand navigation tree up to the selected book's category
         viewModelScope.launch { runCatching { navigationUseCase.expandPathToBook(resolvedBook) } }
 
-        // Afficher automatiquement le TOC lors de la première sélection d'un livre si caché
+        // Automatically show TOC on first book selection if hidden
         if (previousBook == null && !stateManager.state.value.toc.isVisible) {
             val current = stateManager.state.value
-            // Restaurer la position précédente du séparateur TOC
+            // Restore previous TOC splitter position
             current.layout.tocSplitState.positionPercentage = current.layout.previousPositions.toc
             stateManager.updateToc {
                 copy(isVisible = true)
             }
         }
 
-        // Réinitialiser les positions et les sélections si on change de livre
+        // Reset positions and selections when changing book
         if (previousBook?.id != resolvedBook.id) {
             debugln { "Loading new book, resetting positions and selections" }
             contentUseCase.resetScrollPositions()
             tocUseCase.resetToc()
 
-            // Réinitialiser les sélections de commentateurs et de targum/links et la ligne sélectionnée
+            // Reset commentator and targum/links selections and the selected line
             stateManager.resetForNewBook()
 
-            // Cacher les commentaires lors du changement de livre
+            // Hide commentaries when changing book
             if (stateManager.state.value.content.showCommentaries) {
                 contentUseCase.toggleCommentaries()
             }
-            // Cacher le targum lors du changement de livre
+            // Hide targum when changing book
             if (stateManager.state.value.content.showTargum) {
                 contentUseCase.toggleTargum()
             }
 
-            // Fermer automatiquement le panneau de l'arbre des livres si l'option est activée
+            // Automatically close the book tree panel if the setting is enabled
             closeBookTreeIfEnabled()
 
             System.gc()
@@ -619,7 +612,7 @@ class BookContentViewModel(
         loadBookData(resolvedBook)
     }
 
-    /** Charge les données du livre */
+    /** Loads book data */
     private fun loadBookData(
         book: Book,
         forceAnchorId: Long? = null
@@ -627,7 +620,7 @@ class BookContentViewModel(
         viewModelScope.launch {
             stateManager.setLoading(true)
             try {
-                // Pré-appliquer les commentateurs par défaut pour ce livre (si définis en base)
+                // Pre-apply default commentators for this book (if defined in database)
                 runCatching { commentariesUseCase.applyDefaultCommentatorsForBook(book.id) }
 
                 val state = stateManager.state.value
@@ -693,7 +686,7 @@ class BookContentViewModel(
         return findFirstLeafTocId(firstChild)
     }
 
-    /** Sélectionne une ligne */
+    /** Selects a line */
     private suspend fun selectLine(line: Line) {
         contentUseCase.selectLine(line)
         commentariesUseCase.reapplySelectedCommentators(line)
@@ -701,13 +694,13 @@ class BookContentViewModel(
         commentariesUseCase.reapplySelectedSources(line)
     }
 
-    /** Charge et sélectionne une ligne */
+    /** Loads and selects a line */
     private suspend fun loadAndSelectLine(lineId: Long, syncAltToc: Boolean = true) {
         val book = stateManager.state.value.navigation.selectedBook ?: return
 
         contentUseCase.loadAndSelectLine(lineId)?.let { line ->
             if (line.bookId == book.id) {
-                // Recréer le pager centré sur la ligne
+                // Recreate pager centered on the line
                 _linesPagingData.value = contentUseCase.buildLinesPager(book.id, line.id)
 
                 commentariesUseCase.reapplySelectedCommentators(line)
@@ -721,7 +714,7 @@ class BookContentViewModel(
         }
     }
 
-    /** Ouvre un livre dans un nouvel onglet */
+    /** Opens a book in a new tab */
     private fun openBookInNewTab(book: Book) {
         val newTabId = java.util.UUID.randomUUID().toString()
 
@@ -762,7 +755,7 @@ class BookContentViewModel(
             }
         }
 
-        // Naviguer directement vers le contenu du livre dans le nouvel onglet
+        // Navigate directly to book content in the new tab
         tabsViewModel.openTab(
             TabsDestination.BookContent(
                 bookId = book.id,
@@ -771,7 +764,7 @@ class BookContentViewModel(
         )
     }
 
-    /** Ouvre une cible de commentaire */
+    /** Opens a commentary target */
     private suspend fun openCommentaryTarget(bookId: Long, lineId: Long) {
 
         // Create a new tab and pre-initialize it to avoid initial flashing

@@ -1,14 +1,13 @@
 name: Build and Release Compose Desktop App (Linux deb/rpm, Windows msi, macOS pkg with JBR)
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
   build:
-    # Only run if triggered by a draft release or workflow_dispatch
-    if: github.event_name == 'workflow_dispatch' || github.event.release.draft == true
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -256,7 +255,6 @@ jobs:
 
   release:
     needs: build
-    if: github.event_name == 'workflow_dispatch' || github.event.release.draft == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -267,15 +265,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get release tag
-        id: get_release_tag
+      - name: Get release tag and version
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            echo "TAG=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${GITHUB_REF#refs/tags/}"
           else
-            tag=$(git describe --tags --abbrev=0)
-            echo "TAG=$tag" >> $GITHUB_ENV
+            TAG=$(git describe --tags --abbrev=0)
           fi
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          # Remove 'v' prefix for the title (v0.4.4 -> 0.4.4)
+          VERSION="${TAG#v}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Create draft release
+        run: |
+          gh release create "${{ env.TAG }}" \
+            --draft \
+            --generate-notes \
+            --title "${{ env.VERSION }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
 
       # Download Artifacts
       - name: Download Linux DEB artefacts (amd64 + arm64)
@@ -340,7 +350,6 @@ jobs:
 
       # Publish the release (convert from draft to published)
       - name: Publish Release
-        if: github.event_name == 'release' && github.event.release.draft == true
         run: |
           gh release edit "${{ env.TAG }}" --draft=false
         env:

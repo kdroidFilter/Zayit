@@ -402,6 +402,15 @@ function setState(patch) {
 }
 
 // ==================== Render Functions ====================
+function renderBackButton() {
+  const label = t('nav.backToSite');
+  return `
+    <a href="/Zayit/" class="back-button" title="${label}" aria-label="${label}">
+      <span class="material-symbols-outlined">arrow_back</span>
+    </a>
+  `;
+}
+
 function renderHeaderControls() {
   const currentLangInfo = getLanguageInfo(currentLanguage);
   const isDark = isDarkMode();
@@ -460,6 +469,7 @@ async function renderApp() {
     root.innerHTML = `
       <div class="card">
         <div class="card-inner">
+          ${renderBackButton()}
           ${renderHeaderControls()}
           <div class="loading-screen">
             <div class="spinner"></div>
@@ -486,6 +496,7 @@ async function renderApp() {
     root.innerHTML = `
       <div class="card">
         <div class="card-inner">
+          ${renderBackButton()}
           ${renderHeaderControls()}
           <div class="center" style="margin-bottom:1.8rem;">
             <img src="${BRAND_ICON}" alt="Zayit logo" class="header-logo" />
@@ -521,6 +532,7 @@ async function renderApp() {
     root.innerHTML = `
       <div class="card">
         <div class="card-inner">
+          ${renderBackButton()}
           ${renderHeaderControls()}
           <div class="center" style="margin-bottom:1.8rem;">
             <img src="${BRAND_ICON}" alt="Zayit logo" class="header-logo" />
@@ -746,7 +758,8 @@ async function renderApp() {
   root.innerHTML = `
     <div class="card">
       <div class="card-inner">
-        ${renderHeaderControls()}
+        ${renderBackButton()}
+          ${renderHeaderControls()}
         <div class="center" style="margin-bottom:1.8rem;">
           <img src="${BRAND_ICON}" alt="Zayit logo" class="header-logo" />
           <h1 class="title">${t('header.downloadTitle')}</h1>

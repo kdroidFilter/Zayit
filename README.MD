@@ -1,6 +1,10 @@
 # Zayit - the study library that goes straight to the text
 
 <p align="center">
+  English | <a href="README_HE.md">עברית</a>
+</p>
+
+<p align="center">
   <img src="art/splash.png" alt="Zayit splash" width="100%">
 </p>
 

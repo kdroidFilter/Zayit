@@ -118,9 +118,9 @@ fun BookContentPanel(
                     splitPaneState = uiState.layout.targumSplitState.asStable(),
                     firstContent = {
                         BookContentView(
-                            book = uiState.navigation.selectedBook,
+                            bookId = uiState.navigation.selectedBook.id,
                             linesPagingData = providers.linesPagingData,
-                            selectedLine = uiState.content.selectedLine,
+                            selectedLineId = uiState.content.selectedLine?.id,
                             onLineSelected = { line ->
                                 onEvent(BookContentEvent.LineSelected(line))
                             },
@@ -145,7 +145,7 @@ fun BookContentPanel(
                                     )
                                 )
                             },
-                            altHeadingsByLineId = uiState.altToc.lineHeadingsByLineId,
+                            altHeadingsByLineId = uiState.altToc.lineHeadingsByLineId.asStableAltHeadings(),
                             lineConnections = connectionsCache,
                             onPrefetchLineConnections = prefetchConnections,
                             showDiacritics = showDiacritics,

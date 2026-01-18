@@ -50,7 +50,6 @@ import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalo
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.logger.debugln
-import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
@@ -67,9 +66,9 @@ import org.jetbrains.jewel.ui.component.Text
 @OptIn(FlowPreview::class)
 @Composable
 fun BookContentView(
-    book: Book,
+    bookId: Long,
     linesPagingData: Flow<PagingData<Line>>,
-    selectedLine: Line?,
+    selectedLineId: Long?,
     onLineSelected: (Line) -> Unit,
     onEvent: (BookContentEvent) -> Unit,
     tabId: String,
@@ -83,7 +82,7 @@ fun BookContentView(
     topAnchorLineId: Long = -1L,
     topAnchorTimestamp: Long = 0L,
     onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> },
-    altHeadingsByLineId: Map<Long, List<AltTocEntry>> = emptyMap(),
+    altHeadingsByLineId: StableAltHeadings = StableAltHeadings.Empty,
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
     showDiacritics: Boolean,
@@ -129,13 +128,13 @@ fun BookContentView(
     }
 
     // Track restoration state per book
-    var hasRestored by remember(book.id) { mutableStateOf(false) }
+    var hasRestored by remember(bookId) { mutableStateOf(false) }
 
     // Track the restored anchor to avoid re-restoration
-    var restoredAnchorId by remember(book.id) { mutableStateOf(-1L) }
+    var restoredAnchorId by remember(bookId) { mutableStateOf(-1L) }
 
     // Track if this is the initial book open (vs changing TOC within same book)
-    var isInitialBookOpen by remember(book.id) { mutableStateOf(true) }
+    var isInitialBookOpen by remember(bookId) { mutableStateOf(true) }
 
     // Hide content until initial scroll is complete to prevent visual glitch
     // Only apply on initial book open, not when changing TOC entries
@@ -146,8 +145,7 @@ fun BookContentView(
         label = "contentAlpha"
     )
 
-    // Optimize selected line ID lookup
-    val selectedLineId = remember(selectedLine) { selectedLine?.id }
+    // selectedLineId is now passed as a parameter for stability
 
     // Prefetch connection data for visible lines to avoid per-line DB calls
     LaunchedEffect(listState, lazyPagingItems, onPrefetchLineConnections) {
@@ -243,7 +241,7 @@ fun BookContentView(
 
     // Initial restoration from saved state (TabSystem): prefer saved anchor, otherwise saved index/offset.
     // Runs once per book unless a top-anchor request has been issued (which handles itself).
-    LaunchedEffect(book.id, topAnchorTimestamp, anchorId, scrollIndex, scrollOffset) {
+    LaunchedEffect(bookId, topAnchorTimestamp, anchorId, scrollIndex, scrollOffset) {
         if (topAnchorTimestamp != 0L) return@LaunchedEffect
         if (hasRestored) return@LaunchedEffect
 
@@ -380,9 +378,9 @@ fun BookContentView(
     var currentHitLineIndex by remember { mutableIntStateOf(-1) }
     var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
     var currentMatchStart by remember { mutableIntStateOf(-1) }
-    val plainTextCache = remember(book.id) { mutableStateMapOf<Long, String>() }
-    val annotatedCache = remember(book.id, textSize, boldScaleForPlatform, showDiacritics) {
-        mutableStateMapOf<Long, AnnotatedString>()
+    val plainTextCache = remember(bookId) { mutableStateMapOf<Long, String>() }
+    val stableAnnotatedCache = remember(bookId, textSize, boldScaleForPlatform, showDiacritics) {
+        StableAnnotatedCache(mutableStateMapOf())
     }
 
     // Navigate to next/previous line containing the query (wrap-around)
@@ -446,7 +444,7 @@ fun BookContentView(
 
     // Request initial focus so arrow keys work as soon as the view appears
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(book.id) { focusRequester.requestFocus() }
+    LaunchedEffect(bookId) { focusRequester.requestFocus() }
     LaunchedEffect(showFind) {
         if (!showFind) {
             focusRequester.requestFocus()
@@ -498,26 +496,29 @@ fun BookContentView(
                     val line = lazyPagingItems[index]
 
                     if (line != null) {
-                        val altHeadings = altHeadingsByLineId[line.id].orEmpty()
+                        val altHeadings = altHeadingsByLineId[line.id]
                         Column {
                             altHeadings.forEach { entry ->
                                 AltHeadingItem(
-                                    entry = entry,
+                                    entryId = entry.id,
+                                    level = entry.level,
+                                    text = entry.text,
                                     onClick = { onLineSelected(line) }
                                 )
                             }
                             LineItem(
-                                line = line,
+                                lineId = line.id,
+                                lineContent = line.content,
                                 isSelected = selectedLineId == line.id,
                                 baseTextSize = textSize,
                                 lineHeight = lineHeight,
                                 fontFamily = hebrewFontFamily,
                                 boldScale = boldScaleForPlatform,
-                                onLineSelected = onLineSelected,
+                                onClick = { onLineSelected(line) },
                                 scrollToLineTimestamp = scrollToLineTimestamp,
                                 highlightQuery = findState.text.toString().takeIf { showFind },
                                 currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
-                                annotatedCache = annotatedCache,
+                                annotatedCache = stableAnnotatedCache,
                                 showDiacritics = showDiacritics
                             )
                         }
@@ -627,24 +628,50 @@ private data class AnchorData(
     val scrollOffset: Int
 )
 
+/**
+ * Stable wrapper for alt headings map to avoid unnecessary recompositions.
+ * The map content is considered stable once created.
+ */
+@Stable
+class StableAltHeadings(val map: Map<Long, List<AltTocEntry>>) {
+    operator fun get(lineId: Long): List<AltTocEntry> = map[lineId].orEmpty()
+
+    companion object {
+        val Empty = StableAltHeadings(emptyMap())
+    }
+}
+
+fun Map<Long, List<AltTocEntry>>.asStableAltHeadings(): StableAltHeadings = StableAltHeadings(this)
+
+/**
+ * Stable wrapper for annotated string cache to avoid unnecessary recompositions.
+ */
+@Stable
+class StableAnnotatedCache(val cache: MutableMap<Long, AnnotatedString>) {
+    fun getOrPut(lineId: Long, defaultValue: () -> AnnotatedString): AnnotatedString =
+        cache.getOrPut(lineId, defaultValue)
+}
+
 @Composable
 private fun AltHeadingItem(
-    entry: AltTocEntry,
+    entryId: Long,
+    level: Int,
+    text: String,
     onClick: () -> Unit
 ) {
-    val fontSize = when (entry.level) {
+    val fontSize = when (level) {
         0 -> 20.sp
         1 -> 18.sp
         else -> 16.sp
     }
-    val paddingTop = if (entry.level == 0) 12.dp else 8.dp
+    val paddingTop = if (level == 0) 12.dp else 8.dp
     val paddingBottom = 4.dp
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 8.dp, end = 8.dp, top = paddingTop, bottom = paddingBottom)
-            .pointerInput(entry.id) {
+            .pointerInput(entryId) {
                 detectTapGestures(onTap = { onClick() })
             }
     ) {
@@ -660,7 +687,7 @@ private fun AltHeadingItem(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = entry.text,
+                text = text,
                 fontSize = fontSize,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
             )
@@ -671,31 +698,32 @@ private fun AltHeadingItem(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LineItem(
-    line: Line,
+    lineId: Long,
+    lineContent: String,
     isSelected: Boolean,
     baseTextSize: Float = 16f,
     lineHeight: Float = 1.5f,
     fontFamily: FontFamily,
     boldScale: Float = 1.0f,
-    onLineSelected: (Line) -> Unit,
+    onClick: () -> Unit,
     scrollToLineTimestamp: Long,
     highlightQuery: String? = null,
     currentMatchStart: Int? = null,
-    annotatedCache: MutableMap<Long, AnnotatedString>? = null,
+    annotatedCache: StableAnnotatedCache? = null,
     showDiacritics: Boolean = true
 ) {
     // Process content: remove diacritics if setting is disabled
-    val processedContent = remember(line.content, showDiacritics) {
+    val processedContent = remember(lineContent, showDiacritics) {
         if (showDiacritics) {
-            line.content
+            lineContent
         } else {
-            HebrewTextUtils.removeAllDiacritics(line.content)
+            HebrewTextUtils.removeAllDiacritics(lineContent)
         }
     }
 
     // Memoize the annotated string with proper keys
-    val annotated = remember(line.id, processedContent, baseTextSize, boldScale, annotatedCache, showDiacritics) {
-        annotatedCache?.getOrPut(line.id) {
+    val annotated = remember(lineId, processedContent, baseTextSize, boldScale, annotatedCache, showDiacritics) {
+        annotatedCache?.getOrPut(lineId) {
             buildAnnotatedFromHtml(
                 processedContent,
                 baseTextSize,
@@ -722,11 +750,6 @@ private fun LineItem(
         )
     }
 
-    // Memoize click handler to avoid recreation
-    val clickHandler = remember(line, onLineSelected) {
-        { onLineSelected(line) }
-    }
-
     // Get theme color in composable context
     val borderColor = if (isSelected) JewelTheme.globalColors.outlines.focused else Color.Transparent
 
@@ -746,8 +769,8 @@ private fun LineItem(
         Modifier.fillMaxWidth()
     }
         .bringIntoViewRequester(bringRequester)
-        .pointerInput(line) {
-            detectTapGestures(onTap = { clickHandler() })
+        .pointerInput(lineId) {
+            detectTapGestures(onTap = { onClick() })
         }
 
     Box(

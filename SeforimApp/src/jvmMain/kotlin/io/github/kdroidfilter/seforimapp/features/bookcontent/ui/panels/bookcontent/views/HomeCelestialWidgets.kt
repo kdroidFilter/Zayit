@@ -51,7 +51,6 @@ import com.kosherjava.zmanim.ComplexZmanimCalendar
 import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
 import com.kosherjava.zmanim.util.GeoLocation
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetMoonSkyView
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
@@ -1432,7 +1431,7 @@ private fun DayMomentCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(AppColors.HOVER_HIGHLIGHT)
+                    .background(JewelTheme.globalColors.outlines.focused.copy(alpha = 0.12f))
             )
         }
         if (isSelected) {
@@ -1699,7 +1698,7 @@ private fun DualTimeCardContent(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(AppColors.HOVER_HIGHLIGHT)
+                    .background(JewelTheme.globalColors.outlines.focused.copy(alpha = 0.12f))
             )
         }
         if (isSelected) {

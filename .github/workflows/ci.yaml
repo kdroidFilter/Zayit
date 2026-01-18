@@ -28,11 +28,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run SeforimLibrary tests
-        run: ./gradlew :SeforimLibrary:allTests --no-daemon
-
-      - name: Run SeforimApp tests
-        run: ./gradlew :SeforimApp:jvmTest --no-daemon
+      - name: Run tests
+        run: ./gradlew allTests --no-daemon
 
       - name: Upload test reports
         if: always()

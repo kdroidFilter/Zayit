@@ -240,14 +240,17 @@ function getLaunchScriptUrl(kind) {
 
   const loc = window.location;
   const origin = loc.origin || "";
-  const segments = (loc.pathname || "").split("/").filter(Boolean);
+  const pathname = loc.pathname || "";
 
-  let base = origin;
-  if (segments.length > 0) {
-    base += "/" + segments[0];
+  // Get directory path (remove filename like index.html if present)
+  let basePath = pathname;
+  if (basePath.endsWith('.html')) {
+    basePath = basePath.substring(0, basePath.lastIndexOf('/'));
   }
+  // Ensure no trailing slash for consistency
+  basePath = basePath.replace(/\/+$/, '');
 
-  return base + "/" + file;
+  return origin + basePath + "/" + file;
 }
 
 function getLaunchCommand(kind) {

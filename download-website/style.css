@@ -1161,6 +1161,46 @@ body {
   position: static;
 }
 
+/* Back button */
+.back-button {
+  position: absolute;
+  top: 1rem;
+  inset-inline-start: 1rem;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: var(--glow-color);
+  border: 1px solid var(--card-border);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--gold-soft);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.back-button:hover {
+  background: var(--card-highlight);
+  border-color: var(--gold-soft);
+  color: var(--gold);
+  transform: scale(1.05);
+}
+
+.back-button:active {
+  transform: scale(0.95);
+}
+
+.back-button .material-symbols-outlined {
+  font-size: 1.2rem;
+}
+
+/* RTL: flip the arrow direction */
+html[dir="rtl"] .back-button .material-symbols-outlined {
+  transform: scaleX(-1);
+}
+
 /* RTL/LTR adjustments */
 html[dir="ltr"] .card-inner {
   position: relative;
@@ -1188,6 +1228,17 @@ html[dir="ltr"] .card::before {
     top: 0.75rem;
     inset-inline-end: 0.75rem;
     gap: 0.35rem;
+  }
+
+  .back-button {
+    top: 0.75rem;
+    inset-inline-start: 0.75rem;
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .back-button .material-symbols-outlined {
+    font-size: 1.1rem;
   }
 
   .theme-toggle {

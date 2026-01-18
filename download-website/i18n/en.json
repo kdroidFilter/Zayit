@@ -102,5 +102,8 @@
   "theme": {
     "light": "Light mode",
     "dark": "Dark mode"
+  },
+  "nav": {
+    "backToSite": "Back to website"
   }
 }

@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
@@ -19,6 +20,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.theme.menuStyle
 
 /**
  * DropdownButton is a convenience composable inspired by Jewel's split buttons.
@@ -98,15 +100,17 @@ fun DropdownButton(
                 onDismissRequest = { popupOpen = false }
             ) {
                 val widthDp = with(LocalDensity.current) { (anchorSize.width * popupWidthMultiplier).toDp() }
-                val shape = RoundedCornerShape(6.dp)
+                val menuStyle = JewelTheme.menuStyle
+                val shape = RoundedCornerShape(menuStyle.metrics.cornerSize)
                 val scrollState = rememberScrollState()
                 Box(
                     Modifier
                         .then(if (popupWidthMatchButton) Modifier.width(widthDp) else Modifier)
                         .requiredHeightIn(min = minPopupHeight, max = maxPopupHeight)
+                        .shadow(menuStyle.metrics.shadowSize, shape)
                         .clip(shape)
-                        .background(JewelTheme.globalColors.panelBackground)
-                        .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                        .background(menuStyle.colors.background)
+                        .border(menuStyle.metrics.borderWidth, menuStyle.colors.border, shape)
                 ) {
                     Column(
                         Modifier

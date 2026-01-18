@@ -314,8 +314,6 @@ fn update_splash_with_progress(hwnd: HWND, width: i32, height: i32, base_pixels:
 
     // Draw the progress bar
     let (r, g, b) = PROGRESS_BAR_COLOR;
-    let bg_alpha = 100u8;  // Semi-transparent background
-    let fg_alpha = 255u8;  // Fully opaque progress
 
     for y in bar_y_start..bar_y_end {
         for x in bar_x_start..bar_x_end {
@@ -323,18 +321,17 @@ fn update_splash_with_progress(hwnd: HWND, width: i32, height: i32, base_pixels:
             if pixel_idx + 3 < pixels.len() {
                 if x >= fill_start_x {
                     // Filled portion (gold color, fully opaque)
-                    let a = fg_alpha as f32 / 255.0;
-                    pixels[pixel_idx] = (b as f32 * a) as u8;     // B premultiplied
-                    pixels[pixel_idx + 1] = (g as f32 * a) as u8; // G premultiplied
-                    pixels[pixel_idx + 2] = (r as f32 * a) as u8; // R premultiplied
-                    pixels[pixel_idx + 3] = fg_alpha;             // A
+                    pixels[pixel_idx] = b;     // B
+                    pixels[pixel_idx + 1] = g; // G
+                    pixels[pixel_idx + 2] = r; // R
+                    pixels[pixel_idx + 3] = 255; // A - fully opaque
                 } else {
-                    // Background portion (dark semi-transparent)
-                    let a = bg_alpha as f32 / 255.0;
-                    pixels[pixel_idx] = (30.0 * a) as u8;     // B premultiplied
-                    pixels[pixel_idx + 1] = (30.0 * a) as u8; // G premultiplied
-                    pixels[pixel_idx + 2] = (30.0 * a) as u8; // R premultiplied
-                    pixels[pixel_idx + 3] = bg_alpha;         // A
+                    // Background portion (dark, fully opaque to avoid transparency issues
+                    // when other windows overlap and are minimized)
+                    pixels[pixel_idx] = 30;     // B
+                    pixels[pixel_idx + 1] = 30; // G
+                    pixels[pixel_idx + 2] = 30; // R
+                    pixels[pixel_idx + 3] = 255; // A - fully opaque
                 }
             }
         }

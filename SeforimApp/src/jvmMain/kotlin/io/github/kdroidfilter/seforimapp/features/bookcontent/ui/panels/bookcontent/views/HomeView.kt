@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -40,7 +41,6 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.AppColors
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -61,9 +61,12 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
+import org.jetbrains.jewel.foundation.InternalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
+import org.jetbrains.jewel.ui.component.styling.MenuStyle
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.skiko.Cursor
 import seforimapp.seforimapp.generated.resources.*
 import kotlin.math.roundToInt
@@ -737,6 +740,7 @@ private fun ReferenceByCategorySection(
 /**
  * Renders the suggestion list for categories and books, keeping the currently
  * focused row in view as the user navigates with the keyboard.
+ * Uses native Jewel menu styling for consistent look and feel.
  */
 private fun SuggestionsPanel(
     categorySuggestions: List<CategorySuggestion>,
@@ -749,6 +753,8 @@ private fun SuggestionsPanel(
     loadingMessage: String? = null
 ) {
     val listState = rememberLazyListState()
+    val menuStyle = JewelTheme.menuStyle
+
     LaunchedEffect(focusedIndex, categorySuggestions.size, bookSuggestions.size) {
         if (focusedIndex >= 0) {
             val total = categorySuggestions.size + bookSuggestions.size
@@ -771,10 +777,14 @@ private fun SuggestionsPanel(
     }
     val isEmpty = categorySuggestions.isEmpty() && bookSuggestions.isEmpty()
     Column(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
-            .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(8.dp))
-            .background(JewelTheme.globalColors.panelBackground).heightIn(max = 220.dp)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(menuStyle.metrics.shadowSize, RoundedCornerShape(menuStyle.metrics.cornerSize))
+            .clip(RoundedCornerShape(menuStyle.metrics.cornerSize))
+            .border(menuStyle.metrics.borderWidth, menuStyle.colors.border, RoundedCornerShape(menuStyle.metrics.cornerSize))
+            .background(menuStyle.colors.background)
+            .heightIn(max = 220.dp)
+            .padding(menuStyle.metrics.contentPadding)
     ) {
         LazyColumn(
             state = listState, verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()
@@ -842,6 +852,7 @@ private fun SuggestionsPanel(
 /**
  * Renders the TOC suggestion list for the currently selected book, stripping the
  * duplicated book prefix from breadcrumb paths for compact display.
+ * Uses native Jewel menu styling for consistent look and feel.
  */
 private fun TocSuggestionsPanel(
     tocSuggestions: List<TocSuggestion>,
@@ -861,6 +872,8 @@ private fun TocSuggestionsPanel(
     }
     val isEmpty = filteredSuggestions.isEmpty()
     val listState = rememberLazyListState()
+    val menuStyle = JewelTheme.menuStyle
+
     LaunchedEffect(focusedIndex, filteredSuggestions.size) {
         if (focusedIndex >= 0 && filteredSuggestions.isNotEmpty()) {
             val visible = listState.layoutInfo.visibleItemsInfo
@@ -876,9 +889,14 @@ private fun TocSuggestionsPanel(
         }
     }
     Column(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
-            .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(8.dp))
-            .background(JewelTheme.globalColors.panelBackground).heightIn(max = 220.dp).padding(8.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(menuStyle.metrics.shadowSize, RoundedCornerShape(menuStyle.metrics.cornerSize))
+            .clip(RoundedCornerShape(menuStyle.metrics.cornerSize))
+            .border(menuStyle.metrics.borderWidth, menuStyle.colors.border, RoundedCornerShape(menuStyle.metrics.cornerSize))
+            .background(menuStyle.colors.background)
+            .heightIn(max = 220.dp)
+            .padding(menuStyle.metrics.contentPadding)
     ) {
         LazyColumn(
             state = listState, verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()
@@ -1000,6 +1018,17 @@ private fun SuggestionRow(
     val isHovered by hoverSource.collectIsHoveredAsState()
     val active = highlighted || isHovered
     val hasContent = parts.isNotEmpty()
+
+    // Use Jewel-consistent hover color for native look
+    val backgroundColor by animateColorAsState(
+        targetValue = if (active) {
+            JewelTheme.globalColors.outlines.focused.copy(alpha = 0.12f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 150)
+    )
+
     LaunchedEffect(active, parts) {
         if (active) {
             // Wait until we know the scrollable width to avoid any initial latency
@@ -1024,9 +1053,14 @@ private fun SuggestionRow(
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp))
-            .background(if (active) AppColors.HOVER_HIGHLIGHT else Color.Transparent).clickable(onClick = onClick)
-            .pointerHoverIcon(PointerIcon.Hand).hoverable(hoverSource).padding(horizontal = 8.dp, vertical = 6.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(4.dp))
+            .background(backgroundColor)
+            .clickable(onClick = onClick)
+            .pointerHoverIcon(PointerIcon.Hand)
+            .hoverable(hoverSource)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         Box(
             modifier = Modifier.weight(1f).horizontalScroll(hScroll)

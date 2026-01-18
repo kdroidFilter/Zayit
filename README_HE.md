@@ -14,20 +14,15 @@
 
 חינם. ברור. יעיל.
 
-<table>
-  <tr>
-    <td align="center" valign="middle">
-      <a href="https://kdroidfilter.github.io/Zayit/">
-        <img src="art/button-download.png" alt="הורדה מ-GitHub" height="56">
-      </a>
-    </td>
-    <td align="center" valign="middle">
-      <a href="https://ko-fi.com/lomityaesh">
-        <img src="art/button-koffe.png" alt="תמיכה ב-Ko-fi" height="56">
-      </a>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <a href="https://kdroidfilter.github.io/Zayit/">
+    <img src="art/button-download.png" alt="הורדה מ-GitHub" height="56">
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://ko-fi.com/lomityaesh">
+    <img src="art/button-koffe.png" alt="תמיכה ב-Ko-fi" height="56">
+  </a>
+</p>
 
 ## חזון
 זית היא חלום שהפך לשימושי: חוויית לימוד טבעית, זורמת, כמעט מובנת מאליה.

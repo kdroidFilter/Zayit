@@ -14,20 +14,15 @@ For review, preparing a lesson, or studying with a partner.
 
 Free. Clear. Efficient.
 
-<table>
-  <tr>
-    <td align="center" valign="middle">
-      <a href="https://kdroidfilter.github.io/Zayit/">
-        <img src="art/button-download.png" alt="Download on GitHub" height="56">
-      </a>
-    </td>
-    <td align="center" valign="middle">
-      <a href="https://ko-fi.com/lomityaesh">
-        <img src="art/button-koffe.png" alt="Support on Ko-fi" height="56">
-      </a>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <a href="https://kdroidfilter.github.io/Zayit/">
+    <img src="art/button-download.png" alt="Download on GitHub" height="56">
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://ko-fi.com/lomityaesh">
+    <img src="art/button-koffe.png" alt="Support on Ko-fi" height="56">
+  </a>
+</p>
 
 ## Vision
 Zayit is a dream turned useful: a natural, fluid, almost obvious study experience.

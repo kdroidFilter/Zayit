@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "code": "en",
+    "name": "English",
+    "dir": "ltr"
+  },
+  "nav": {
+    "features": "Features",
+    "search": "Search",
+    "download": "Download",
+    "support": "Support"
+  },
+  "hero": {
+    "title": "Zayit",
+    "subtitle": "The study library that goes straight to the text",
+    "description": "A free app to read, search, and explore Jewish study texts. Built for study: fast search, smooth navigation, clean citations.",
+    "cta": "Download Now",
+    "ctaSecondary": "Learn More",
+    "tagline": "Free. Clear. Efficient."
+  },
+  "vision": {
+    "title": "Vision",
+    "description": "Zayit is a dream turned useful: a natural, fluid, almost obvious study experience. The project will remain free by principle. Support is welcome and meaningful. It is designed to stay non-commercial. With God's help, Zayit will keep growing without losing its spirit."
+  },
+  "spirit": {
+    "title": "In the spirit of a study hall",
+    "description": "Zayit is designed like a digital study hall: stable, fast, consistent. You feel the calm of study: everything works, everything is in its place. The text stays at the center, with respect and without distractions."
+  },
+  "interface": {
+    "title": "A pro and natural interface",
+    "description": "Built on JetBrains technologies, including Compose Desktop and Jewel. Inspired by Google Chrome and IntelliJ IDEA, it offers a professional interface that is fluid and natural, respects study, and does not strain the eyes.",
+    "noLearning": "You already know how to use it. No learning curve."
+  },
+  "panels": {
+    "title": "Modular panels",
+    "description": "The layout adapts instantly: organize the screen the way you want. Show, hide, compare, and tailor reading to your study style."
+  },
+  "search": {
+    "title": "An exceptional search engine",
+    "description": "A powerful engine designed to understand texts, not just find them. The database was rebuilt to make search and navigation precise.",
+    "feature1": "Find a passage even from a partial word or approximate spelling",
+    "feature2": "Even without vocalization or cantillation marks, search stays clear and reliable",
+    "feature3": "A partial phrase is often enough to reach the right place",
+    "feature4": "Clean, readable, immediate results, useful for review and lesson prep",
+    "simple": "Simple to go fast",
+    "advanced": "Advanced to go far",
+    "powered": "Powered by Lucene and enhanced by AI for precision"
+  },
+  "features": {
+    "title": "What Zayit lets you do",
+    "find": "Find a passage in seconds with simple or advanced search",
+    "explore": "Explore a library by book and table of contents",
+    "inbook": "Search inside a book to prepare a lesson or review",
+    "compare": "Show commentaries and translations side by side",
+    "sources": "Access sources for a passage quickly",
+    "copy": "Copy a clean excerpt to share in a lesson or with a study partner",
+    "themes": "Switch instantly between light and dark themes"
+  },
+  "promise": {
+    "title": "Our Promise",
+    "speed": "Lightning fast",
+    "speedDesc": "Exceptionally fast, even on old computers. Zayit is optimized to run smoothly on any machine, so you can focus on study, not on waiting.",
+    "free": "Free forever",
+    "freeDesc": "Zayit is free and will remain free. Always. This is a commitment, not a marketing promise.",
+    "library": "6,800+ books",
+    "libraryDesc": "A vast library of Jewish texts at your fingertips. Torah, Talmud, Halacha, Midrash, commentaries, and much more.",
+    "offline": "100% Offline",
+    "offlineDesc": "No internet required. Once installed, Zayit works completely offline. Your study is never interrupted."
+  },
+  "crafted": {
+    "title": "Crafted with care",
+    "description": "Zayit aims for quality and consistency: no gimmicks, no noise. Like a digital study desk, everything is there to move forward. Every detail is designed for natural, respectful study. Built to be fast, light, almost magical, it runs even on low-powered machines."
+  },
+  "download": {
+    "title": "Download Zayit",
+    "description": "Available for macOS, Windows, and Linux. Free and open source.",
+    "cta": "Go to Downloads",
+    "platforms": "Available on all major platforms"
+  },
+  "footer": {
+    "createdBy": "Built with love by Elie Gambache",
+    "sourceCode": "Source Code",
+    "support": "Support the Project",
+    "license": "Free and open source under AGPL v3"
+  },
+  "comparison": {
+    "light": "Light",
+    "dark": "Dark",
+    "drag": "Drag to compare"
+  }
+}

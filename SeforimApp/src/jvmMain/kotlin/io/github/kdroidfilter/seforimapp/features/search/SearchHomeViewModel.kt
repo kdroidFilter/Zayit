@@ -3,10 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.search
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.seforim.tabs.TabsViewModel
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -29,6 +26,33 @@ import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
+
+/**
+ * Navigation events emitted by SearchHomeViewModel.
+ * The UI layer is responsible for handling these events and performing actual navigation.
+ */
+sealed class SearchHomeNavigationEvent {
+    /**
+     * Navigate to search results screen.
+     * @param query The search query
+     * @param tabId The current tab ID
+     */
+    data class NavigateToSearch(val query: String, val tabId: String) : SearchHomeNavigationEvent()
+
+    /**
+     * Navigate to book content screen.
+     * @param bookId The book to open
+     * @param tabId The current tab ID
+     * @param lineId Optional line ID to scroll to
+     */
+    data class NavigateToBookContent(
+        val bookId: Long,
+        val tabId: String,
+        val lineId: Long?
+    ) : SearchHomeNavigationEvent()
+}
 
 @Immutable
 data class CategorySuggestionDto(val category: Category, val path: List<String>)
@@ -61,16 +85,18 @@ data class SearchHomeUiState(
 
 @OptIn(FlowPreview::class)
 class SearchHomeViewModel(
-    private val tabsViewModel: TabsViewModel,
     private val persistedStore: TabPersistedStateStore,
     private val repository: SeforimRepository,
-    private val searchEngine: SearchEngine,
     private val lookup: LuceneLookupSearchService,
     private val settings: Settings
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SearchHomeUiState())
     val uiState: StateFlow<SearchHomeUiState> = _uiState.asStateFlow()
+
+    // Navigation events channel - UI collects and handles navigation
+    private val _navigationEvents = Channel<SearchHomeNavigationEvent>(Channel.BUFFERED)
+    val navigationEvents = _navigationEvents.receiveAsFlow()
 
     private val referenceQuery = MutableStateFlow("")
     private val tocQuery = MutableStateFlow("")
@@ -141,27 +167,6 @@ class SearchHomeViewModel(
             AppSettings.userCommunityCodeFlow
                 .collect { code ->
                     _uiState.value = _uiState.value.copy(userCommunityCode = code)
-                }
-        }
-        // Track currently selected destination; when the active tab is not on Home,
-        // ensure Home predictive popups are closed so they cannot linger above
-        // other screens.
-        viewModelScope.launch {
-            tabsViewModel.tabs
-                .combine(tabsViewModel.selectedTabIndex) { tabs, index ->
-                    tabs.getOrNull(index)?.destination
-                }
-                .distinctUntilChanged()
-                .collect { dest ->
-                    val isHome = dest is TabsDestination.Home
-                    if (!isHome) {
-                        _uiState.value = _uiState.value.copy(
-                            suggestionsVisible = false,
-                            tocSuggestionsVisible = false,
-                            isReferenceLoading = false,
-                            isTocLoading = false
-                        )
-                    }
                 }
         }
         // Debounced suggestions based on reference query
@@ -416,10 +421,19 @@ class SearchHomeViewModel(
 
     fun onGlobalExtendedChange(extended: Boolean) { _uiState.value = _uiState.value.copy(globalExtended = extended) }
 
-    suspend fun submitSearch(query: String) {
-        val currentTabs = tabsViewModel.tabs.value
-        val currentIndex = tabsViewModel.selectedTabIndex.value
-        val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: return
+    /**
+     * Dismisses all suggestion popups. Called by the UI layer when navigating away from Home.
+     */
+    fun dismissSuggestions() {
+        _uiState.value = _uiState.value.copy(
+            suggestionsVisible = false,
+            tocSuggestionsVisible = false,
+            isReferenceLoading = false,
+            isTocLoading = false
+        )
+    }
+
+    suspend fun submitSearch(query: String, currentTabId: String) {
 
         // Apply selected scope only (view filters) and persist dataset scope for fetch
         val selected = _uiState.value
@@ -500,22 +514,17 @@ class SearchHomeViewModel(
         // reusing stale results when a new search is submitted.
         SearchTabCache.clear(currentTabId)
 
-        // Replace current tab destination to Search (no new tab)
-        tabsViewModel.replaceCurrentTabDestination(
-            TabsDestination.Search(query, currentTabId)
-        )
+        // Emit navigation event - UI layer handles actual navigation
+        _navigationEvents.send(SearchHomeNavigationEvent.NavigateToSearch(query, currentTabId))
     }
 
     /**
      * Opens the selected reference (book/TOC) in the current tab.
      * - If a TOC entry is selected, tries to open at its first line.
      * - Otherwise opens the selected book at its beginning.
+     * @param currentTabId The ID of the current tab where navigation should occur
      */
-    suspend fun openSelectedReferenceInCurrentTab() {
-        val currentTabs = tabsViewModel.tabs.value
-        val currentIndex = tabsViewModel.selectedTabIndex.value
-        val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: return
-
+    suspend fun openSelectedReferenceInCurrentTab(currentTabId: String) {
         val selectedToc = _uiState.value.selectedScopeToc
         val selectedBook = _uiState.value.selectedScopeBook
 
@@ -536,9 +545,13 @@ class SearchHomeViewModel(
             current.copy(bookContent = current.bookContent.copy(selectedBookId = book.id))
         }
 
-        // Replace destination in-place to open the book
-        tabsViewModel.replaceCurrentTabDestination(
-            TabsDestination.BookContent(bookId = book.id, tabId = currentTabId, lineId = anchorLineId)
+        // Emit navigation event - UI layer handles actual navigation
+        _navigationEvents.send(
+            SearchHomeNavigationEvent.NavigateToBookContent(
+                bookId = book.id,
+                tabId = currentTabId,
+                lineId = anchorLineId
+            )
         )
     }
 

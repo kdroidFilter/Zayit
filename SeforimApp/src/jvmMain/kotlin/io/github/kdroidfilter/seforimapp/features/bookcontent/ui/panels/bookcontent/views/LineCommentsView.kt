@@ -516,7 +516,8 @@ private fun CommentaryListView(
         ) { index ->
             lazyPagingItems[index]?.let { commentary ->
                 CommentaryItem(
-                    commentary = commentary,
+                    linkId = commentary.link.id,
+                    targetText = commentary.targetText,
                     textSizes = config.textSizes,
                     fontFamily = config.fontFamily,
                     boldScale = config.boldScale,
@@ -540,7 +541,8 @@ private fun CommentaryListView(
 
 @Composable
 private fun CommentaryItem(
-    commentary: CommentaryWithText,
+    linkId: Long,
+    targetText: String,
     textSizes: AnimatedTextSizes,
     fontFamily: FontFamily,
     boldScale: Float = 1.0f,
@@ -569,12 +571,12 @@ private fun CommentaryItem(
                 }
             }
     ) {
-        val processedText = remember(commentary.link.id, commentary.targetText, showDiacritics) {
-            if (showDiacritics) commentary.targetText else HebrewTextUtils.removeAllDiacritics(commentary.targetText)
+        val processedText = remember(linkId, targetText, showDiacritics) {
+            if (showDiacritics) targetText else HebrewTextUtils.removeAllDiacritics(targetText)
         }
 
         val annotated = remember(
-            commentary.link.id,
+            linkId,
             processedText,
             textSizes.commentTextSize,
             boldScale,

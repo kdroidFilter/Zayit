@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, Menu, X, Download, Sun, Moon } from 'lucide-react';
+import { Globe, Menu, X, Download, Sun, Moon, Github, Coffee } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 export function Navigation() {
@@ -40,21 +40,62 @@ export function Navigation() {
     >
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          {/* Logo */}
-          <motion.a
-            href="#"
-            className="flex items-center gap-3 text-xl font-bold"
-            style={{ color: 'var(--text-main)' }}
-            whileHover={{ scale: 1.02 }}
-          >
-            <img
-              src="/Zayit/icon.png"
-              alt="Zayit"
-              className="w-10 h-10 rounded-xl shadow-lg"
-              style={{ border: '1px solid rgba(139, 115, 85, 0.2)' }}
-            />
-            <span>{isRTL ? 'זית' : 'Zayit'}</span>
-          </motion.a>
+          {/* Logo and Links */}
+          <div className="flex items-center gap-4">
+            <motion.a
+              href="#"
+              className="flex items-center gap-3 text-xl font-bold"
+              style={{ color: 'var(--text-main)' }}
+              whileHover={{ scale: 1.02 }}
+            >
+              <img
+                src="/Zayit/icon.png"
+                alt="Zayit"
+                className="w-10 h-10 rounded-xl shadow-lg"
+                style={{ border: '1px solid rgba(139, 115, 85, 0.2)' }}
+              />
+              <span>{isRTL ? 'זית' : 'Zayit'}</span>
+            </motion.a>
+
+            {/* Source Code & Support - Desktop only */}
+            <div className="hidden md:flex items-center gap-2">
+              <motion.a
+                href="https://github.com/kdroidFilter/SeforimApp"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+                style={{
+                  color: 'var(--gold-soft)',
+                  border: `1px solid ${isDark ? 'rgba(230, 210, 140, 0.2)' : 'rgba(139, 115, 85, 0.2)'}`,
+                }}
+                whileHover={{
+                  scale: 1.05,
+                  background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)',
+                }}
+              >
+                <Github size={14} />
+                {t('footer.sourceCode')}
+              </motion.a>
+              <motion.a
+                href="https://ko-fi.com/lomityaesh"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+                style={{
+                  color: '#dc2626',
+                  border: '1px solid rgba(220, 38, 38, 0.2)',
+                  background: 'rgba(220, 38, 38, 0.05)',
+                }}
+                whileHover={{
+                  scale: 1.05,
+                  background: 'rgba(220, 38, 38, 0.1)',
+                }}
+              >
+                <Coffee size={14} />
+                {t('footer.support')}
+              </motion.a>
+            </div>
+          </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
@@ -272,6 +313,37 @@ export function Navigation() {
                   <Download size={16} />
                   {t('nav.download')}
                 </a>
+
+                {/* Source Code & Support - Mobile */}
+                <div className="flex gap-3 pt-2">
+                  <a
+                    href="https://github.com/kdroidFilter/SeforimApp"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 rounded-full text-sm"
+                    style={{
+                      color: 'var(--gold-soft)',
+                      border: `1px solid ${isDark ? 'rgba(230, 210, 140, 0.2)' : 'rgba(139, 115, 85, 0.2)'}`,
+                    }}
+                  >
+                    <Github size={16} />
+                    {t('footer.sourceCode')}
+                  </a>
+                  <a
+                    href="https://ko-fi.com/lomityaesh"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 rounded-full text-sm"
+                    style={{
+                      color: '#dc2626',
+                      border: '1px solid rgba(220, 38, 38, 0.2)',
+                      background: 'rgba(220, 38, 38, 0.05)',
+                    }}
+                  >
+                    <Coffee size={16} />
+                    {t('footer.support')}
+                  </a>
+                </div>
               </div>
             </motion.div>
           )}

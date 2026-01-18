@@ -28,6 +28,7 @@ import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalWindowInfo
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -583,9 +584,8 @@ private fun SearchResultItemGoogleStyle(
     // On macOS, some Hebrew fonts in our catalog don't include bold faces.
     // Apply a subtle boldScale to keep emphasis visible on those fonts.
     val boldScaleForPlatform = remember(bookFontCode) {
-        val isMac = System.getProperty("os.name")?.contains("Mac", ignoreCase = true) == true
         val lacksBold = bookFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
-        if (isMac && lacksBold) 1.08f else 1.0f
+        if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
     }
     val boldColor = JewelTheme.globalColors.outlines.focused
     val annotated: AnnotatedString = remember(result.snippet, textSize, boldScaleForPlatform, boldColor) {

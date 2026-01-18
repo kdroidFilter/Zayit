@@ -4,7 +4,12 @@ import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.logger.errorln
 import io.github.kdroidfilter.seforimapp.logger.infoln
 import io.github.kdroidfilter.seforimapp.logger.warnln
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
+import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.PrecomputedCatalog
+import io.github.kdroidfilter.seforimlibrary.core.models.extractAllBooks
+import io.github.kdroidfilter.seforimlibrary.core.models.extractCategoryChildren
+import io.github.kdroidfilter.seforimlibrary.core.models.extractRootCategories
 import io.github.kdroidfilter.seforimlibrary.dao.CatalogLoader
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
@@ -56,11 +61,17 @@ fun getDatabasePath(): String = cachedDatabasePath
 
 
 /**
- * Singleton holder for the precomputed catalog.
+ * Singleton holder for the precomputed catalog and its extracted data.
  * The catalog is loaded once at application startup and cached for the entire session.
+ * Extracted data (categories, books) is also cached to avoid re-traversing the tree on each tab open.
  */
 object CatalogCache {
     private var _catalog: PrecomputedCatalog? = null
+
+    // Cached extracted data - computed once from the catalog
+    private var _rootCategories: List<Category>? = null
+    private var _categoryChildren: Map<Long, List<Category>>? = null
+    private var _allBooks: Set<Book>? = null
 
     /**
      * Gets the cached catalog, loading it if necessary.
@@ -71,6 +82,39 @@ object CatalogCache {
             _catalog = loadCatalog()
         }
         return _catalog
+    }
+
+    /**
+     * Gets the cached root categories, extracting them from the catalog if necessary.
+     * Returns null if the catalog is not available.
+     */
+    fun getRootCategories(): List<Category>? {
+        if (_rootCategories == null) {
+            _rootCategories = getCatalog()?.extractRootCategories()
+        }
+        return _rootCategories
+    }
+
+    /**
+     * Gets the cached category children map, extracting it from the catalog if necessary.
+     * Returns null if the catalog is not available.
+     */
+    fun getCategoryChildren(): Map<Long, List<Category>>? {
+        if (_categoryChildren == null) {
+            _categoryChildren = getCatalog()?.extractCategoryChildren()
+        }
+        return _categoryChildren
+    }
+
+    /**
+     * Gets all books from the catalog, cached after first extraction.
+     * Returns null if the catalog is not available.
+     */
+    fun getAllBooks(): Set<Book>? {
+        if (_allBooks == null) {
+            _allBooks = getCatalog()?.extractAllBooks()
+        }
+        return _allBooks
     }
 
     /**
@@ -96,9 +140,13 @@ object CatalogCache {
 
     /**
      * Forces a reload of the catalog (useful after regeneration).
+     * Also clears extracted data caches.
      */
     fun reloadCatalog() {
         _catalog = loadCatalog()
+        _rootCategories = null
+        _categoryChildren = null
+        _allBooks = null
     }
 
     /**

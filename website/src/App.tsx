@@ -685,7 +685,7 @@ function App() {
             initial={{ opacity: 0, scale: 0.7, filter: 'blur(20px)' }}
             whileInView={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
             viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 2, ease: cinematicEase }}
+            transition={{ duration: 0.8, ease: cinematicEase }}
           >
             <h2
               className="text-3xl md:text-4xl font-bold mb-4"
@@ -697,8 +697,8 @@ function App() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {features.map((feature, index) => {
-              // Slow sequential reveal with generous delays
-              const delay = index * 0.35;
+              // Fast sequential reveal
+              const delay = index * 0.1;
 
               return (
                 <motion.div
@@ -706,7 +706,7 @@ function App() {
                   initial={{ opacity: 0, scale: 0.6, y: 80, filter: 'blur(15px)' }}
                   whileInView={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
                   viewport={{ once: true, amount: 0.2 }}
-                  transition={{ duration: 1.8, delay, ease: cinematicEase }}
+                  transition={{ duration: 0.6, delay, ease: cinematicEase }}
                   whileHover={{ scale: 1.02, y: -5 }}
                   className="p-6 rounded-2xl transition-colors"
                   style={{
@@ -724,7 +724,7 @@ function App() {
                     initial={{ rotate: -180, scale: 0 }}
                     whileInView={{ rotate: 0, scale: 1 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 1.2, delay: delay + 0.6, ease: cinematicEase }}
+                    transition={{ duration: 0.5, delay: delay + 0.2, ease: cinematicEase }}
                   >
                     <feature.icon size={24} style={{ color: 'var(--gold)' }} />
                   </motion.div>
@@ -734,7 +734,7 @@ function App() {
                     initial={{ opacity: 0 }}
                     whileInView={{ opacity: 1 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 1, delay: delay + 1 }}
+                    transition={{ duration: 0.4, delay: delay + 0.3 }}
                   >
                     {t(`features.${feature.key}`)}
                   </motion.p>
@@ -746,7 +746,7 @@ function App() {
       </section>
 
       
-      {/* Promise Section - Slow 3D reveal with suspense */}
+      {/* Promise Section - Fast 3D reveal */}
       <section className="py-12 md:py-20 px-4 md:px-6 overflow-hidden" style={{ background: 'var(--section-alt-bg)', perspective: '1200px' }}>
         <div className="max-w-5xl mx-auto">
           <motion.div
@@ -754,7 +754,7 @@ function App() {
             initial={{ opacity: 0, rotateX: 30, filter: 'blur(15px)' }}
             whileInView={{ opacity: 1, rotateX: 0, filter: 'blur(0px)' }}
             viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 2, ease: cinematicEase }}
+            transition={{ duration: 0.8, ease: cinematicEase }}
           >
             <h2
               className="text-3xl md:text-4xl font-bold"
@@ -776,7 +776,7 @@ function App() {
                 initial={{ opacity: 0, rotateY: index % 2 === 0 ? -45 : 45, scale: 0.8, filter: 'blur(10px)' }}
                 whileInView={{ opacity: 1, rotateY: 0, scale: 1, filter: 'blur(0px)' }}
                 viewport={{ once: true, amount: 0.25 }}
-                transition={{ duration: 2, delay: index * 0.5, ease: cinematicEase }}
+                transition={{ duration: 0.7, delay: index * 0.15, ease: cinematicEase }}
                 whileHover={{ scale: 1.02, y: -5 }}
                 className="p-6 md:p-8 rounded-2xl text-center"
                 style={{
@@ -794,7 +794,7 @@ function App() {
                   initial={{ scale: 0, rotate: -180 }}
                   whileInView={{ scale: 1, rotate: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 1.5, delay: index * 0.5 + 0.8, ease: cinematicEase }}
+                  transition={{ duration: 0.5, delay: index * 0.15 + 0.2, ease: cinematicEase }}
                 >
                   <item.icon size={32} style={{ color: 'var(--gold)' }} />
                 </motion.div>
@@ -804,7 +804,7 @@ function App() {
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 1.2, delay: index * 0.5 + 1.2 }}
+                  transition={{ duration: 0.4, delay: index * 0.15 + 0.3 }}
                 >
                   {t(`promise.${item.title}`)}
                 </motion.h3>
@@ -814,7 +814,7 @@ function App() {
                   initial={{ opacity: 0, y: 15 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 1.2, delay: index * 0.5 + 1.6 }}
+                  transition={{ duration: 0.4, delay: index * 0.15 + 0.4 }}
                 >
                   {t(`promise.${item.desc}`)}
                 </motion.p>
@@ -825,7 +825,7 @@ function App() {
       </section>
 
       
-      {/* Crafted Section - Slow elegant text reveal */}
+      {/* Crafted Section - Fast elegant text reveal */}
       <section className="py-12 md:py-20 px-4 md:px-6">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
@@ -837,13 +837,13 @@ function App() {
             initial={{ opacity: 0, y: -40, scale: 0.7 }}
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 1.5, ease: cinematicEase }}
+            transition={{ duration: 0.6, ease: cinematicEase }}
           >
             <motion.span
               initial={{ rotate: 0, scale: 0 }}
               whileInView={{ rotate: [0, -20, 20, -15, 15, 0], scale: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 1.5, delay: 0.8 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
             >
               <Heart size={16} />
             </motion.span>
@@ -856,7 +856,7 @@ function App() {
             initial={{ opacity: 0, y: 60, filter: 'blur(20px)' }}
             whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 2.5, delay: 0.5, ease: cinematicEase }}
+            transition={{ duration: 0.8, delay: 0.15, ease: cinematicEase }}
           >
             {t('crafted.description')}
           </motion.p>
@@ -864,7 +864,7 @@ function App() {
       </section>
 
       
-      {/* Download Section - Slow dramatic finale */}
+      {/* Download Section - Fast finale */}
       <section
         id="download"
         className="py-16 md:py-24 px-4 md:px-6 overflow-hidden"
@@ -879,7 +879,7 @@ function App() {
             initial={{ opacity: 0, scale: 2, filter: 'blur(30px)' }}
             whileInView={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
             viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 2.5, ease: cinematicEase }}
+            transition={{ duration: 0.8, ease: cinematicEase }}
           >
             {t('download.title')}
           </motion.h2>
@@ -890,7 +890,7 @@ function App() {
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 1.5, delay: 1.2, ease: cinematicEase }}
+            transition={{ duration: 0.5, delay: 0.3, ease: cinematicEase }}
           >
             {t('download.description')}
           </motion.p>
@@ -902,7 +902,7 @@ function App() {
               initial={{ opacity: 0, scale: 0.3 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 1.5, delay: 2, ease: cinematicEase }}
+              transition={{ duration: 0.5, delay: 0.5, ease: cinematicEase }}
             >
               +{downloadCount.toLocaleString()} {t('download.downloads')}
             </motion.p>
@@ -912,7 +912,7 @@ function App() {
             initial={{ opacity: 0, y: 50, scale: 0.8 }}
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: true }}
-            transition={{ duration: 1.8, delay: 2.5, ease: cinematicEase }}
+            transition={{ duration: 0.6, delay: 0.6, ease: cinematicEase }}
           >
             <Link to="/download">
               <motion.span
@@ -942,7 +942,7 @@ function App() {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ duration: 1.5, delay: 3.5 }}
+            transition={{ duration: 0.5, delay: 0.8 }}
           >
             {t('download.platforms')}
           </motion.p>

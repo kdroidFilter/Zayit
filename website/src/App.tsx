@@ -65,17 +65,17 @@ function App() {
 
   // Memoized particles for cinematic effect
   const particles = useMemo(() =>
-    [...Array(40)].map((_, i) => ({
+    [...Array(60)].map((_, i) => ({
       id: i,
-      size: Math.random() * 4 + 2,
+      size: Math.random() * 6 + 3,
       x: Math.random() * 100,
-      y: Math.random() * 100,
-      opacity: Math.random() * 0.5 + 0.2,
-      glow: Math.random() * 10 + 5,
-      duration: Math.random() * 10 + 8,
-      delay: Math.random() * 5,
-      yMove: -150 - Math.random() * 300,
-      xMove: (Math.random() - 0.5) * 150,
+      y: 50 + Math.random() * 60,
+      opacity: Math.random() * 0.6 + 0.4,
+      glow: Math.random() * 15 + 10,
+      duration: Math.random() * 12 + 8,
+      delay: Math.random() * 6,
+      yMove: -200 - Math.random() * 400,
+      xMove: (Math.random() - 0.5) * 200,
     }))
   , []);
 
@@ -90,7 +90,7 @@ function App() {
       <Navigation />
 
       {/* Hero Section - Cinematic Title + Image */}
-      <section ref={heroRef} className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden px-4 pt-24 pb-8">
+      <section ref={heroRef} className="relative min-h-[60vh] md:min-h-screen w-full flex flex-col items-center justify-center overflow-hidden px-4 pt-16 md:pt-24 pb-2 md:pb-8">
 
         {/* Floating Particles */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -105,15 +105,15 @@ function App() {
                 top: `${p.y}%`,
                 background: isDark
                   ? `rgba(230, 210, 140, ${p.opacity})`
-                  : `rgba(139, 115, 85, ${p.opacity * 0.8})`,
+                  : `rgba(180, 140, 60, ${p.opacity})`,
                 boxShadow: isDark
-                  ? `0 0 ${p.glow}px rgba(230, 210, 140, 0.6)`
-                  : `0 0 ${p.glow * 0.8}px rgba(139, 115, 85, 0.4)`,
+                  ? `0 0 ${p.glow}px rgba(230, 210, 140, 0.7)`
+                  : `0 0 ${p.glow * 1.5}px rgba(180, 140, 60, 0.8), 0 0 ${p.glow * 3}px rgba(180, 140, 60, 0.4)`,
               }}
               initial={{ opacity: 0, scale: 0 }}
               animate={{
                 opacity: [0, 1, 1, 0],
-                scale: [0, 1.2, 1, 0],
+                scale: [0, 1.5, 1, 0],
                 y: [0, p.yMove],
                 x: [0, p.xMove],
               }}
@@ -127,32 +127,69 @@ function App() {
           ))}
         </div>
 
-        {/* Additional shimmer/sparkle particles */}
+        {/* Secondary layer - larger glowing orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {[...Array(15)].map((_, i) => (
+          {[...Array(12)].map((_, i) => (
+            <motion.div
+              key={`orb-${i}`}
+              className="absolute rounded-full"
+              style={{
+                width: 8 + (i % 3) * 4,
+                height: 8 + (i % 3) * 4,
+                left: `${8 + i * 8}%`,
+                top: '70%',
+                background: isDark
+                  ? 'radial-gradient(circle, rgba(230, 210, 140, 0.8) 0%, rgba(230, 210, 140, 0) 70%)'
+                  : 'radial-gradient(circle, rgba(200, 160, 60, 0.9) 0%, rgba(200, 160, 60, 0) 70%)',
+                boxShadow: isDark
+                  ? '0 0 20px rgba(230, 210, 140, 0.5)'
+                  : '0 0 30px rgba(200, 160, 60, 0.7), 0 0 60px rgba(200, 160, 60, 0.3)',
+              }}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{
+                opacity: [0, 0.8, 0.8, 0],
+                scale: [0, 2, 1.5, 0],
+                y: [0, -300 - (i % 4) * 100],
+                x: [(i % 2 === 0 ? 1 : -1) * 50],
+              }}
+              transition={{
+                duration: 10 + (i % 3) * 2,
+                delay: i * 0.8,
+                repeat: Infinity,
+                ease: 'easeOut',
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Shimmer sparkles on title reveal */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(20)].map((_, i) => (
             <motion.div
               key={`sparkle-${i}`}
               className="absolute"
               style={{
-                width: 2,
-                height: 2,
-                left: `${10 + (i * 6)}%`,
-                top: '50%',
-                background: 'var(--gold)',
+                width: 3,
+                height: 3,
+                left: `${5 + (i * 4.5)}%`,
+                top: '45%',
+                background: isDark ? 'rgba(230, 210, 140, 1)' : 'rgba(200, 160, 60, 1)',
                 borderRadius: '50%',
               }}
               animate={{
                 opacity: [0, 1, 0],
-                scale: [0, 2, 0],
+                scale: [0, 2.5, 0],
                 boxShadow: [
-                  '0 0 0px var(--gold)',
-                  isDark ? '0 0 20px rgba(230, 210, 140, 0.8)' : '0 0 15px rgba(139, 115, 85, 0.6)',
-                  '0 0 0px var(--gold)',
+                  '0 0 0px transparent',
+                  isDark
+                    ? '0 0 15px rgba(230, 210, 140, 1), 0 0 30px rgba(230, 210, 140, 0.5)'
+                    : '0 0 20px rgba(200, 160, 60, 1), 0 0 40px rgba(200, 160, 60, 0.6)',
+                  '0 0 0px transparent',
                 ],
               }}
               transition={{
-                duration: 2,
-                delay: 1.5 + (i * 0.15),
+                duration: 1.5,
+                delay: 1.2 + (i * 0.08),
                 ease: 'easeOut',
               }}
             />
@@ -185,7 +222,7 @@ function App() {
         >
           {/* Title */}
           <motion.h1
-            className="text-8xl md:text-[12rem] font-bold mb-2"
+            className="text-6xl md:text-[12rem] font-bold mb-1 md:mb-2"
             style={{
               color: 'var(--gold)',
               textShadow: isDark
@@ -207,7 +244,7 @@ function App() {
 
           {/* Decorative line */}
           <motion.div
-            className="h-[2px] mb-8"
+            className="h-[2px] mb-4 md:mb-8"
             style={{ background: `linear-gradient(90deg, transparent, var(--gold), transparent)` }}
             variants={{
               hidden: { width: 0, opacity: 0 },
@@ -221,7 +258,7 @@ function App() {
 
           {/* Subtitle */}
           <motion.p
-            className="text-xl md:text-3xl font-light mb-4 max-w-3xl"
+            className="text-lg md:text-3xl font-light mb-2 md:mb-4 max-w-3xl px-2"
             style={{ color: 'var(--text-main)' }}
             variants={{
               hidden: { opacity: 0, y: 20 },
@@ -237,7 +274,7 @@ function App() {
 
           {/* Tagline */}
           <motion.p
-            className="text-lg md:text-xl tracking-[0.3em] uppercase mb-12"
+            className="text-base md:text-xl tracking-[0.2em] md:tracking-[0.3em] uppercase mb-6 md:mb-12"
             style={{ color: 'var(--gold-muted)' }}
             variants={{
               hidden: { opacity: 0, y: 10 },
@@ -254,7 +291,7 @@ function App() {
 
         {/* App Screenshot */}
         <motion.div
-          className="relative w-full max-w-6xl mt-8"
+          className="relative w-full max-w-6xl mt-4 md:mt-8 px-4 md:px-0"
           initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.2, delay: 2.8, ease: [0.16, 1, 0.3, 1] }}
@@ -277,7 +314,7 @@ function App() {
             animate={{ opacity: 1 }}
             transition={{ duration: 2, delay: 4 }}
           />
-          <div className="[&_img]:max-h-[50vh] [&_img]:md:max-h-[60vh] [&_img]:w-auto [&_img]:mx-auto">
+          <div className="[&_img]:max-h-[35vh] [&_img]:md:max-h-[60vh] [&_img]:w-auto [&_img]:mx-auto">
             <ImageComparison
               lightImage="art/HOME-LIGHT.png"
               darkImage="art/HOME-DARK.png"
@@ -288,7 +325,7 @@ function App() {
       </section>
 
       {/* Vision Section */}
-      <section className="py-20 px-6">
+      <section className="py-10 md:py-20 px-4 md:px-6">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}

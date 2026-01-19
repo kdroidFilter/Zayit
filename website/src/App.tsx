@@ -63,49 +63,8 @@ function App() {
     t('search.feature4'),
   ];
 
-  // Cinematic animation variants
+  // Cinematic easing curve
   const cinematicEase = [0.16, 1, 0.3, 1] as const;
-
-  const sectionVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30, filter: 'blur(10px)' },
-    visible: {
-      opacity: 1,
-      y: 0,
-      filter: 'blur(0px)',
-      transition: { duration: 0.8, ease: cinematicEase },
-    },
-  };
-
-  const cardVariants = {
-    hidden: { opacity: 0, y: 40, scale: 0.95 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: { duration: 0.6, ease: cinematicEase },
-    },
-  };
-
-  const imageVariants = {
-    hidden: { opacity: 0, y: 60, scale: 0.9 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: { duration: 1, ease: cinematicEase },
-    },
-  };
 
   // Memoized particles for cinematic effect (reduced for performance)
   const particles = useMemo(() =>
@@ -282,9 +241,9 @@ function App() {
       <section className="py-10 md:py-20 px-4 md:px-6">
         <motion.div
           className="max-w-4xl mx-auto text-center"
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 3.5, ease: cinematicEase }}
+          transition={{ duration: 1.5, delay: 3.5, ease: cinematicEase }}
         >
           <motion.div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
@@ -292,9 +251,9 @@ function App() {
               background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)',
               color: 'var(--gold)',
             }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 3.7, ease: cinematicEase }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1.2, delay: 4.2, ease: cinematicEase }}
           >
             <Sparkles size={16} />
             {t('vision.title')}
@@ -303,23 +262,23 @@ function App() {
           <motion.p
             className="text-xl md:text-2xl leading-relaxed"
             style={{ color: 'var(--text-muted)' }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 3.9, ease: cinematicEase }}
+            initial={{ opacity: 0, y: 30, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 1.8, delay: 4.8, ease: cinematicEase }}
           >
             {t('vision.description')}
           </motion.p>
         </motion.div>
       </section>
 
-      {/* Spirit Section */}
+      {/* Spirit Section - Slow dramatic scale reveal */}
       <section className="py-12 md:py-20 px-4 md:px-6" style={{ background: 'var(--section-alt-bg)' }}>
         <motion.div
           className="max-w-4xl mx-auto text-center"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={sectionVariants}
+          initial={{ opacity: 0, scale: 0.85, filter: 'blur(15px)' }}
+          whileInView={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+          viewport={{ once: true, amount: 0.4 }}
+          transition={{ duration: 2, ease: cinematicEase }}
         >
           <motion.div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
@@ -327,7 +286,10 @@ function App() {
               background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)',
               color: 'var(--gold)',
             }}
-            variants={itemVariants}
+            initial={{ opacity: 0, y: -30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.5, delay: 0.8 }}
           >
             <Shield size={16} />
             {t('spirit.title')}
@@ -336,78 +298,103 @@ function App() {
           <motion.p
             className="text-xl md:text-2xl leading-relaxed"
             style={{ color: 'var(--text-muted)' }}
-            variants={itemVariants}
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 2, delay: 1.5 }}
           >
             {t('spirit.description')}
           </motion.p>
         </motion.div>
       </section>
 
-      {/* Interface Section */}
-      <section className="py-12 md:py-20 px-4 md:px-6">
-        <motion.div
-          className="max-w-6xl mx-auto"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={sectionVariants}
-        >
-          <motion.div className="text-center mb-12" variants={itemVariants}>
+      {/* Interface Section - Slow cinematic slide */}
+      <section className="py-12 md:py-20 px-4 md:px-6 overflow-hidden">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            className="text-center mb-12"
+            initial={{ opacity: 0, x: -80, filter: 'blur(10px)' }}
+            whileInView={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 1.8, ease: cinematicEase }}
+          >
             <h2
               className="text-3xl md:text-4xl font-bold mb-4"
               style={{ color: 'var(--text-main)' }}
             >
               {t('interface.title')}
             </h2>
-            <p
+            <motion.p
               className="text-lg max-w-2xl mx-auto mb-4"
               style={{ color: 'var(--text-muted)' }}
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.5, delay: 1 }}
             >
               {t('interface.description')}
-            </p>
-            <p
+            </motion.p>
+            <motion.p
               className="text-base font-medium"
               style={{ color: 'var(--gold)' }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.2, delay: 2 }}
             >
               {t('interface.noLearning')}
-            </p>
+            </motion.p>
           </motion.div>
 
-          <motion.div variants={imageVariants}>
+          <motion.div
+            initial={{ opacity: 0, x: 150, scale: 0.9 }}
+            whileInView={{ opacity: 1, x: 0, scale: 1 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 2.5, ease: cinematicEase }}
+          >
             <ImageComparison
               lightImage="art/BOOK-SEARCH-LIGHT.png"
               darkImage="art/BOOK-SEARCH-DARK.png"
               alt={isRTL ? 'חיפוש ספרים' : 'Book Search'}
             />
           </motion.div>
-        </motion.div>
+        </div>
       </section>
 
-      {/* Modular Panels Section */}
-      <section className="py-12 md:py-20 px-4 md:px-6" style={{ background: 'var(--section-alt-bg)' }}>
-        <motion.div
-          className="max-w-6xl mx-auto space-y-12 md:space-y-16"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={sectionVariants}
-        >
-          <motion.div className="text-center mb-12" variants={itemVariants}>
+      {/* Modular Panels Section - Slow dramatic alternating reveals */}
+      <section className="py-12 md:py-20 px-4 md:px-6 overflow-hidden" style={{ background: 'var(--section-alt-bg)' }}>
+        <div className="max-w-6xl mx-auto space-y-16 md:space-y-24">
+          <motion.div
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 60, filter: 'blur(15px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 2, ease: cinematicEase }}
+          >
             <h2
               className="text-3xl md:text-4xl font-bold mb-4"
               style={{ color: 'var(--text-main)' }}
             >
               {t('panels.title')}
             </h2>
-            <p
+            <motion.p
               className="text-lg max-w-2xl mx-auto"
               style={{ color: 'var(--text-muted)' }}
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.5, delay: 1.2 }}
             >
               {t('panels.description')}
-            </p>
+            </motion.p>
           </motion.div>
 
-          <motion.div variants={imageVariants}>
+          <motion.div
+            initial={{ opacity: 0, x: -200, rotate: -3 }}
+            whileInView={{ opacity: 1, x: 0, rotate: 0 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 2.5, ease: cinematicEase }}
+          >
             <ImageComparison
               lightImage="art/PIRUSHIM-LIGHT.png"
               darkImage="art/PIRUSHIM-DARK.png"
@@ -415,7 +402,12 @@ function App() {
             />
           </motion.div>
 
-          <motion.div variants={imageVariants}>
+          <motion.div
+            initial={{ opacity: 0, x: 200, rotate: 3 }}
+            whileInView={{ opacity: 1, x: 0, rotate: 0 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 2.5, ease: cinematicEase }}
+          >
             <ImageComparison
               lightImage="art/PIRUSHIM-TARGUMIM-LIGHT.png"
               darkImage="art/PIRUSHIM-TARGUMIM-DARK.png"
@@ -423,55 +415,68 @@ function App() {
             />
           </motion.div>
 
-          <motion.div variants={imageVariants}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.7, filter: 'blur(20px)' }}
+            whileInView={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 2.5, ease: cinematicEase }}
+          >
             <ImageComparison
               lightImage="art/MEKOR-LIGHT.png"
               darkImage="art/MEKOR-DARK.png"
               alt={isRTL ? 'מקורות' : 'Sources'}
             />
           </motion.div>
-        </motion.div>
+        </div>
       </section>
 
-      {/* Search Section */}
-      <section id="search" className="py-12 md:py-20 px-4 md:px-6">
-        <motion.div
-          className="max-w-6xl mx-auto"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={sectionVariants}
-        >
-          <motion.div className="text-center mb-12" variants={itemVariants}>
+      {/* Search Section - Slow dramatic reveal with suspense */}
+      <section id="search" className="py-12 md:py-20 px-4 md:px-6 overflow-hidden">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 80, filter: 'blur(20px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{ duration: 2.2, ease: cinematicEase }}
+          >
             <h2
               className="text-3xl md:text-4xl font-bold mb-4"
               style={{ color: 'var(--text-main)' }}
             >
               {t('search.title')}
             </h2>
-            <p
+            <motion.p
               className="text-lg max-w-2xl mx-auto mb-6"
               style={{ color: 'var(--text-muted)' }}
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.5, delay: 1.2 }}
             >
               {t('search.description')}
-            </p>
-            <p
+            </motion.p>
+            <motion.p
               className="text-sm font-medium"
               style={{ color: 'var(--gold-soft)' }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.2, delay: 2 }}
             >
               {t('search.powered')}
-            </p>
+            </motion.p>
           </motion.div>
 
-          {/* Search Features Grid */}
-          <motion.div
-            className="grid md:grid-cols-2 gap-4 mb-12 max-w-3xl mx-auto"
-            variants={sectionVariants}
-          >
+          {/* Search Features Grid - slow sequential reveal */}
+          <div className="grid md:grid-cols-2 gap-4 mb-12 max-w-3xl mx-auto">
             {searchFeatures.map((feature, index) => (
               <motion.div
                 key={index}
-                variants={cardVariants}
+                initial={{ opacity: 0, x: index % 2 === 0 ? -100 : 100, scale: 0.9 }}
+                whileInView={{ opacity: 1, x: 0, scale: 1 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 1.5, delay: index * 0.4, ease: cinematicEase }}
                 className="flex items-start gap-3 p-4 rounded-xl"
                 style={isDark ? {
                   background: 'linear-gradient(135deg, rgba(18, 15, 10, 0.95) 0%, rgba(8, 6, 4, 0.98) 100%)',
@@ -484,17 +489,27 @@ function App() {
                   backdropFilter: 'blur(6px)',
                 }}
               >
-                <div
+                <motion.div
                   className="w-2 h-2 rounded-full mt-2 flex-shrink-0"
                   style={{ background: 'var(--gold)' }}
+                  initial={{ scale: 0 }}
+                  whileInView={{ scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8, delay: index * 0.4 + 0.8 }}
                 />
                 <p style={{ color: 'var(--text-muted)' }}>{feature}</p>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
 
           {/* Search Taglines */}
-          <motion.div className="flex justify-center gap-8 mb-12 flex-wrap" variants={itemVariants}>
+          <motion.div
+            className="flex justify-center gap-8 mb-12 flex-wrap"
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.5 }}
+          >
             <span className="text-lg font-medium" style={{ color: 'var(--gold)' }}>
               {t('search.simple')}
             </span>
@@ -504,7 +519,13 @@ function App() {
             </span>
           </motion.div>
 
-          <motion.div variants={imageVariants}>
+          <motion.div
+            initial={{ opacity: 0, y: 100, rotateX: 15, scale: 0.85 }}
+            whileInView={{ opacity: 1, y: 0, rotateX: 0, scale: 1 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 2.5, ease: cinematicEase }}
+            style={{ perspective: 1200 }}
+          >
             <ImageComparison
               lightImage="art/DB-SEARCH-SIMPLE-LIGHT.png"
               darkImage="art/DB-SEARCH-SIMPLE-DARK.png"
@@ -512,26 +533,33 @@ function App() {
             />
           </motion.div>
 
-          <motion.div className="mt-12 md:mt-16" variants={imageVariants}>
+          <motion.div
+            className="mt-16 md:mt-24"
+            initial={{ opacity: 0, y: 100, rotateX: -15, scale: 0.85 }}
+            whileInView={{ opacity: 1, y: 0, rotateX: 0, scale: 1 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 2.5, ease: cinematicEase }}
+            style={{ perspective: 1200 }}
+          >
             <ImageComparison
               lightImage="art/DB-SEARCH-ADVANCED-LIGHT.png"
               darkImage="art/DB-SEARCH-ADVANCED-DARK.png"
               alt={isRTL ? 'חיפוש מתקדם' : 'Advanced Search'}
             />
           </motion.div>
-        </motion.div>
+        </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-12 md:py-20 px-4 md:px-6">
-        <motion.div
-          className="max-w-6xl mx-auto"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={sectionVariants}
-        >
-          <motion.div className="text-center mb-12 md:mb-16" variants={itemVariants}>
+      {/* Features Section - Slow dramatic card reveal */}
+      <section id="features" className="py-12 md:py-20 px-4 md:px-6 overflow-hidden">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            className="text-center mb-12 md:mb-16"
+            initial={{ opacity: 0, scale: 0.7, filter: 'blur(20px)' }}
+            whileInView={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 2, ease: cinematicEase }}
+          >
             <h2
               className="text-3xl md:text-4xl font-bold mb-4"
               style={{ color: 'var(--text-main)' }}
@@ -540,59 +568,72 @@ function App() {
             </h2>
           </motion.div>
 
-          <motion.div
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"
-            variants={sectionVariants}
-          >
-            {features.map((feature) => (
-              <motion.div
-                key={feature.key}
-                variants={cardVariants}
-                whileHover={{ scale: 1.02, y: -5 }}
-                className="p-6 rounded-2xl transition-colors"
-                style={isDark ? {
-                  background: 'linear-gradient(145deg, rgba(18, 15, 10, 0.95) 0%, rgba(8, 6, 4, 0.98) 100%)',
-                  border: '1px solid rgba(230, 210, 140, 0.2)',
-                  backdropFilter: 'blur(8px)',
-                  boxShadow: 'inset 0 1px 0 rgba(230, 210, 140, 0.06), 0 8px 32px rgba(0, 0, 0, 0.5)',
-                } : {
-                  background: 'var(--feature-card-bg)',
-                  border: '1px solid var(--feature-card-border)',
-                  backdropFilter: 'blur(6px)',
-                }}
-              >
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-                  style={{
-                    background: isDark
-                      ? 'linear-gradient(135deg, rgba(230, 210, 140, 0.15) 0%, rgba(230, 210, 140, 0.05) 100%)'
-                      : 'linear-gradient(135deg, rgba(139, 115, 85, 0.15) 0%, rgba(139, 115, 85, 0.05) 100%)',
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {features.map((feature, index) => {
+              // Slow sequential reveal with generous delays
+              const delay = index * 0.35;
+
+              return (
+                <motion.div
+                  key={feature.key}
+                  initial={{ opacity: 0, scale: 0.6, y: 80, filter: 'blur(15px)' }}
+                  whileInView={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
+                  viewport={{ once: true, amount: 0.2 }}
+                  transition={{ duration: 1.8, delay, ease: cinematicEase }}
+                  whileHover={{ scale: 1.02, y: -5 }}
+                  className="p-6 rounded-2xl transition-colors"
+                  style={isDark ? {
+                    background: 'linear-gradient(145deg, rgba(18, 15, 10, 0.95) 0%, rgba(8, 6, 4, 0.98) 100%)',
+                    border: '1px solid rgba(230, 210, 140, 0.2)',
+                    backdropFilter: 'blur(8px)',
+                    boxShadow: 'inset 0 1px 0 rgba(230, 210, 140, 0.06), 0 8px 32px rgba(0, 0, 0, 0.5)',
+                  } : {
+                    background: 'var(--feature-card-bg)',
+                    border: '1px solid var(--feature-card-border)',
+                    backdropFilter: 'blur(6px)',
                   }}
                 >
-                  <feature.icon size={24} style={{ color: 'var(--gold)' }} />
-                </div>
-                <p
-                  className="text-base leading-relaxed"
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  {t(`features.${feature.key}`)}
-                </p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </motion.div>
+                  <motion.div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+                    style={{
+                      background: isDark
+                        ? 'linear-gradient(135deg, rgba(230, 210, 140, 0.15) 0%, rgba(230, 210, 140, 0.05) 100%)'
+                        : 'linear-gradient(135deg, rgba(139, 115, 85, 0.15) 0%, rgba(139, 115, 85, 0.05) 100%)',
+                    }}
+                    initial={{ rotate: -180, scale: 0 }}
+                    whileInView={{ rotate: 0, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1.2, delay: delay + 0.6, ease: cinematicEase }}
+                  >
+                    <feature.icon size={24} style={{ color: 'var(--gold)' }} />
+                  </motion.div>
+                  <motion.p
+                    className="text-base leading-relaxed"
+                    style={{ color: 'var(--text-muted)' }}
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1, delay: delay + 1 }}
+                  >
+                    {t(`features.${feature.key}`)}
+                  </motion.p>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
-      {/* Promise Section */}
-      <section className="py-12 md:py-20 px-4 md:px-6" style={{ background: 'var(--section-alt-bg)' }}>
-        <motion.div
-          className="max-w-5xl mx-auto"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={sectionVariants}
-        >
-          <motion.div className="text-center mb-12" variants={itemVariants}>
+      {/* Promise Section - Slow 3D reveal with suspense */}
+      <section className="py-12 md:py-20 px-4 md:px-6 overflow-hidden" style={{ background: 'var(--section-alt-bg)', perspective: '1200px' }}>
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            className="text-center mb-12"
+            initial={{ opacity: 0, rotateX: 30, filter: 'blur(15px)' }}
+            whileInView={{ opacity: 1, rotateX: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 2, ease: cinematicEase }}
+          >
             <h2
               className="text-3xl md:text-4xl font-bold"
               style={{ color: 'var(--text-main)' }}
@@ -601,107 +642,128 @@ function App() {
             </h2>
           </motion.div>
 
-          <motion.div className="grid md:grid-cols-2 gap-6 md:gap-8" variants={sectionVariants}>
+          <div className="grid md:grid-cols-2 gap-6 md:gap-8">
             {[
               { icon: Zap, title: 'speed', desc: 'speedDesc' },
               { icon: InfinityIcon, title: 'free', desc: 'freeDesc' },
               { icon: Library, title: 'library', desc: 'libraryDesc' },
               { icon: WifiOff, title: 'offline', desc: 'offlineDesc' },
-            ].map((item) => (
+            ].map((item, index) => (
               <motion.div
                 key={item.title}
-                variants={cardVariants}
+                initial={{ opacity: 0, rotateY: index % 2 === 0 ? -45 : 45, scale: 0.8, filter: 'blur(10px)' }}
+                whileInView={{ opacity: 1, rotateY: 0, scale: 1, filter: 'blur(0px)' }}
+                viewport={{ once: true, amount: 0.25 }}
+                transition={{ duration: 2, delay: index * 0.5, ease: cinematicEase }}
                 whileHover={{ scale: 1.02, y: -5 }}
                 className="p-6 md:p-8 rounded-2xl text-center"
                 style={isDark ? {
                   background: 'linear-gradient(145deg, rgba(18, 15, 10, 0.95) 0%, rgba(8, 6, 4, 0.98) 100%)',
                   border: '1px solid rgba(230, 210, 140, 0.2)',
                   boxShadow: 'inset 0 1px 0 rgba(230, 210, 140, 0.06), 0 8px 32px rgba(0, 0, 0, 0.5)',
+                  transformStyle: 'preserve-3d',
                 } : {
                   background: 'var(--feature-card-bg)',
                   border: '1px solid var(--feature-card-border)',
+                  transformStyle: 'preserve-3d',
                 }}
               >
-                <div
+                <motion.div
                   className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"
                   style={{
                     background: isDark
                       ? 'linear-gradient(135deg, rgba(230, 210, 140, 0.2) 0%, rgba(230, 210, 140, 0.05) 100%)'
                       : 'linear-gradient(135deg, rgba(139, 115, 85, 0.2) 0%, rgba(139, 115, 85, 0.05) 100%)',
                   }}
+                  initial={{ scale: 0, rotate: -180 }}
+                  whileInView={{ scale: 1, rotate: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 1.5, delay: index * 0.5 + 0.8, ease: cinematicEase }}
                 >
                   <item.icon size={32} style={{ color: 'var(--gold)' }} />
-                </div>
-                <h3
+                </motion.div>
+                <motion.h3
                   className="text-2xl md:text-3xl font-bold mb-4"
                   style={{ color: 'var(--gold)' }}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 1.2, delay: index * 0.5 + 1.2 }}
                 >
                   {t(`promise.${item.title}`)}
-                </h3>
-                <p
+                </motion.h3>
+                <motion.p
                   className="text-base md:text-lg leading-relaxed"
                   style={{ color: 'var(--text-muted)' }}
+                  initial={{ opacity: 0, y: 15 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 1.2, delay: index * 0.5 + 1.6 }}
                 >
                   {t(`promise.${item.desc}`)}
-                </p>
+                </motion.p>
               </motion.div>
             ))}
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </section>
 
-      {/* Crafted Section */}
+      {/* Crafted Section - Slow elegant text reveal */}
       <section className="py-12 md:py-20 px-4 md:px-6">
-        <motion.div
-          className="max-w-4xl mx-auto text-center"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={sectionVariants}
-        >
+        <div className="max-w-4xl mx-auto text-center">
           <motion.div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
             style={{
               background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)',
               color: 'var(--gold)',
             }}
-            variants={itemVariants}
+            initial={{ opacity: 0, y: -40, scale: 0.7 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 1.5, ease: cinematicEase }}
           >
-            <Heart size={16} />
+            <motion.span
+              initial={{ rotate: 0, scale: 0 }}
+              whileInView={{ rotate: [0, -20, 20, -15, 15, 0], scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.5, delay: 0.8 }}
+            >
+              <Heart size={16} />
+            </motion.span>
             {t('crafted.title')}
           </motion.div>
 
           <motion.p
             className="text-xl md:text-2xl leading-relaxed"
             style={{ color: 'var(--text-muted)' }}
-            variants={itemVariants}
+            initial={{ opacity: 0, y: 60, filter: 'blur(20px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 2.5, delay: 0.5, ease: cinematicEase }}
           >
             {t('crafted.description')}
           </motion.p>
-        </motion.div>
+        </div>
       </section>
 
-      {/* Download Section */}
+      {/* Download Section - Slow dramatic finale */}
       <section
         id="download"
-        className="py-16 md:py-24 px-4 md:px-6"
+        className="py-16 md:py-24 px-4 md:px-6 overflow-hidden"
         style={{
           background: isDark
             ? 'linear-gradient(180deg, rgba(230, 210, 140, 0.08) 0%, rgba(230, 210, 140, 0.02) 100%)'
             : 'linear-gradient(180deg, rgba(139, 115, 85, 0.08) 0%, rgba(139, 115, 85, 0.02) 100%)',
         }}
       >
-        <motion.div
-          className="max-w-4xl mx-auto text-center"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={sectionVariants}
-        >
+        <div className="max-w-4xl mx-auto text-center">
           <motion.h2
             className="text-4xl md:text-5xl font-bold mb-6"
             style={{ color: 'var(--text-main)' }}
-            variants={itemVariants}
+            initial={{ opacity: 0, scale: 2, filter: 'blur(30px)' }}
+            whileInView={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 2.5, ease: cinematicEase }}
           >
             {t('download.title')}
           </motion.h2>
@@ -709,7 +771,10 @@ function App() {
           <motion.p
             className="text-xl mb-8"
             style={{ color: 'var(--text-muted)' }}
-            variants={itemVariants}
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.5, delay: 1.2, ease: cinematicEase }}
           >
             {t('download.description')}
           </motion.p>
@@ -718,13 +783,21 @@ function App() {
             <motion.p
               className="text-2xl font-bold mb-8"
               style={{ color: 'var(--gold)' }}
-              variants={itemVariants}
+              initial={{ opacity: 0, scale: 0.3 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.5, delay: 2, ease: cinematicEase }}
             >
               +{downloadCount.toLocaleString()} {t('download.downloads')}
             </motion.p>
           )}
 
-          <motion.div variants={itemVariants}>
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.8 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.8, delay: 2.5, ease: cinematicEase }}
+          >
             <motion.a
               href="/Zayit/download"
               className="inline-flex items-center gap-3 px-8 md:px-10 py-4 md:py-5 rounded-full text-lg md:text-xl font-semibold text-white"
@@ -734,6 +807,14 @@ function App() {
               }}
               whileHover={{ scale: 1.05, boxShadow: '0 20px 50px rgba(139, 115, 85, 0.5)' }}
               whileTap={{ scale: 0.98 }}
+              animate={{
+                boxShadow: isDark
+                  ? ['0 15px 40px rgba(230, 210, 140, 0.3)', '0 20px 60px rgba(230, 210, 140, 0.5)', '0 15px 40px rgba(230, 210, 140, 0.3)']
+                  : ['0 15px 40px rgba(139, 115, 85, 0.4)', '0 20px 60px rgba(139, 115, 85, 0.6)', '0 15px 40px rgba(139, 115, 85, 0.4)'],
+              }}
+              transition={{
+                boxShadow: { duration: 3, repeat: Infinity, ease: 'easeInOut' }
+              }}
             >
               <Download size={26} />
               {t('download.cta')}
@@ -743,11 +824,14 @@ function App() {
           <motion.p
             className="mt-6 text-sm"
             style={{ color: 'var(--gold-muted)' }}
-            variants={itemVariants}
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.5, delay: 3.5 }}
           >
             {t('download.platforms')}
           </motion.p>
-        </motion.div>
+        </div>
       </section>
 
       {/* Footer */}

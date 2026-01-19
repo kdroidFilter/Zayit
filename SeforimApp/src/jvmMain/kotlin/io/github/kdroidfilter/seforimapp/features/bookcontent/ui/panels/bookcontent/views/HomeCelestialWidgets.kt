@@ -1087,11 +1087,11 @@ private fun ZmanimCardsGrid(
                                 titleAbbrev = item.titleAbbrev,
                                 leftLabel = item.mgaLabel,
                                 leftTime = item.mgaTime,
-                                leftTimeValue = item.mgaTimeValue,
+                                leftTimeAvailable = item.mgaTimeValue != null,
                                 leftSelected = isLeftSelected,
                                 rightLabel = item.graLabel,
                                 rightTime = item.graTime,
-                                rightTimeValue = item.graTimeValue,
+                                rightTimeAvailable = item.graTimeValue != null,
                                 rightSelected = isRightSelected,
                                 onLeftClick = item.onMgaClick,
                                 onRightClick = item.onGraClick,
@@ -1109,11 +1109,11 @@ private fun ZmanimCardsGrid(
                                 titleAbbrev = item.titleAbbrev,
                                 leftLabel = item.mgaLabel,
                                 leftTime = item.mgaTime,
-                                leftTimeValue = item.mgaTimeValue,
+                                leftTimeAvailable = item.mgaTimeValue != null,
                                 leftSelected = isLeftSelected,
                                 rightLabel = item.graLabel,
                                 rightTime = item.graTime,
-                                rightTimeValue = item.graTimeValue,
+                                rightTimeAvailable = item.graTimeValue != null,
                                 rightSelected = isRightSelected,
                                 onLeftClick = item.onMgaClick,
                                 onRightClick = item.onGraClick,
@@ -1132,12 +1132,12 @@ private fun ZmanimCardsGrid(
                                 leftLabel = item.geonimLabel,
                                 leftLabelAbbrev = item.geonimLabelAbbrev,
                                 leftTime = item.geonimTime,
-                                leftTimeValue = item.geonimTimeValue,
+                                leftTimeAvailable = item.geonimTimeValue != null,
                                 leftSelected = isLeftSelected,
                                 rightLabel = item.rabbeinuTamLabel,
                                 rightLabelAbbrev = item.rabbeinuTamLabelAbbrev,
                                 rightTime = item.rabbeinuTamTime,
-                                rightTimeValue = item.rabbeinuTamTimeValue,
+                                rightTimeAvailable = item.rabbeinuTamTimeValue != null,
                                 rightSelected = isRightSelected,
                                 onLeftClick = item.onGeonimClick,
                                 onRightClick = item.onRabbeinuTamClick,
@@ -1154,11 +1154,11 @@ private fun ZmanimCardsGrid(
                                 title = item.title,
                                 entryLabel = item.entryLabel,
                                 entryTime = item.entryTime,
-                                entryTimeValue = item.entryTimeValue,
+                                entryTimeAvailable = item.entryTimeValue != null,
                                 entrySelected = isLeftSelected,
                                 exitLabel = item.exitLabel,
                                 exitTime = item.exitTime,
-                                exitTimeValue = item.exitTimeValue,
+                                exitTimeAvailable = item.exitTimeValue != null,
                                 exitSelected = isRightSelected,
                                 onEntryClick = item.onEntryClick,
                                 onExitClick = item.onExitClick,
@@ -1378,12 +1378,12 @@ private fun DualTimeCard(
     leftLabel: StringResource,
     leftLabelAbbrev: StringResource? = null,
     leftTime: String,
-    leftTimeValue: Date?,
+    leftTimeAvailable: Boolean,
     leftSelected: Boolean,
     rightLabel: StringResource,
     rightLabelAbbrev: StringResource? = null,
     rightTime: String,
-    rightTimeValue: Date?,
+    rightTimeAvailable: Boolean,
     rightSelected: Boolean,
     onLeftClick: (() -> Unit)? = null,
     onRightClick: (() -> Unit)? = null,
@@ -1396,12 +1396,12 @@ private fun DualTimeCard(
         leftLabel = stringResource(leftLabel),
         leftLabelAbbrev = leftLabelAbbrev?.let { stringResource(it) },
         leftTime = leftTime,
-        leftTimeValue = leftTimeValue,
+        leftTimeAvailable = leftTimeAvailable,
         leftSelected = leftSelected,
         rightLabel = stringResource(rightLabel),
         rightLabelAbbrev = rightLabelAbbrev?.let { stringResource(it) },
         rightTime = rightTime,
-        rightTimeValue = rightTimeValue,
+        rightTimeAvailable = rightTimeAvailable,
         rightSelected = rightSelected,
         modifier = modifier,
         onLeftClick = onLeftClick,
@@ -1417,12 +1417,12 @@ private fun DualTimeCardContent(
     leftLabel: String,
     leftLabelAbbrev: String? = null,
     leftTime: String,
-    leftTimeValue: Date?,
+    leftTimeAvailable: Boolean,
     leftSelected: Boolean,
     rightLabel: String,
     rightLabelAbbrev: String? = null,
     rightTime: String,
-    rightTimeValue: Date?,
+    rightTimeAvailable: Boolean,
     rightSelected: Boolean,
     modifier: Modifier = Modifier,
     onLeftClick: (() -> Unit)? = null,
@@ -1467,8 +1467,8 @@ private fun DualTimeCardContent(
     val dividerColor = resolvedBorderColor.copy(alpha = 0.7f)
     val leftClick = onLeftClick
     val rightClick = onRightClick
-    val leftClickable = leftClick != null && leftTimeValue != null
-    val rightClickable = rightClick != null && rightTimeValue != null
+    val leftClickable = leftClick != null && leftTimeAvailable
+    val rightClickable = rightClick != null && rightTimeAvailable
     val leftHoverSource = remember { MutableInteractionSource() }
     val rightHoverSource = remember { MutableInteractionSource() }
     val isLeftHovered by leftHoverSource.collectIsHoveredAsState()
@@ -1477,19 +1477,19 @@ private fun DualTimeCardContent(
     val isSelected = leftSelected || rightSelected
     val selectionOverlay = JewelTheme.globalColors.text.selected.copy(alpha = if (isDark) 0.2f else 0.12f)
     val selectionBorder = JewelTheme.globalColors.borders.focused
-    val leftModifier = if (leftClick != null && leftTimeValue != null) {
+    val leftModifier = if (leftClickable) {
         Modifier
             .hoverable(leftHoverSource)
             .pointerHoverIcon(PointerIcon.Hand)
-            .clickable(onClick = leftClick)
+            .clickable(onClick = leftClick!!)
     } else {
         Modifier
     }
-    val rightModifier = if (rightClick != null && rightTimeValue != null) {
+    val rightModifier = if (rightClickable) {
         Modifier
             .hoverable(rightHoverSource)
             .pointerHoverIcon(PointerIcon.Hand)
-            .clickable(onClick = rightClick)
+            .clickable(onClick = rightClick!!)
     } else {
         Modifier
     }
@@ -1740,11 +1740,11 @@ private fun ShabbatDualTimeCard(
     title: String,
     entryLabel: StringResource,
     entryTime: String,
-    entryTimeValue: Date?,
+    entryTimeAvailable: Boolean,
     entrySelected: Boolean,
     exitLabel: StringResource,
     exitTime: String,
-    exitTimeValue: Date?,
+    exitTimeAvailable: Boolean,
     exitSelected: Boolean,
     modifier: Modifier = Modifier,
     onEntryClick: (() -> Unit)? = null,
@@ -1794,11 +1794,11 @@ private fun ShabbatDualTimeCard(
         title = title,
         leftLabel = stringResource(entryLabel),
         leftTime = entryTime,
-        leftTimeValue = entryTimeValue,
+        leftTimeAvailable = entryTimeAvailable,
         leftSelected = entrySelected,
         rightLabel = stringResource(exitLabel),
         rightTime = exitTime,
-        rightTimeValue = exitTimeValue,
+        rightTimeAvailable = exitTimeAvailable,
         rightSelected = exitSelected,
         modifier = modifier,
         onLeftClick = onEntryClick,

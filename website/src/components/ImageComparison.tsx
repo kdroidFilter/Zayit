@@ -1,5 +1,4 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 
 interface ImageComparisonProps {
@@ -10,27 +9,19 @@ interface ImageComparisonProps {
 }
 
 export function ImageComparison({ lightImage, darkImage, alt, fullscreen = false }: ImageComparisonProps) {
-  const { i18n } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [sliderPosition, setSliderPosition] = useState(99); // Default to 99% showing light image
   const [isDragging, setIsDragging] = useState(false);
-  const isRTL = i18n.language === 'he';
 
   const handleMove = useCallback(
     (clientX: number) => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      let percentage: number;
-      if (isRTL) {
-        const x = rect.right - clientX;
-        percentage = Math.min(Math.max((x / rect.width) * 100, 0), 100);
-      } else {
-        const x = clientX - rect.left;
-        percentage = Math.min(Math.max((x / rect.width) * 100, 0), 100);
-      }
+      const x = clientX - rect.left;
+      const percentage = Math.min(Math.max((x / rect.width) * 100, 0), 100);
       setSliderPosition(percentage);
     },
-    [isRTL]
+    []
   );
 
   const handleMouseDown = () => setIsDragging(true);
@@ -75,9 +66,10 @@ export function ImageComparison({ lightImage, darkImage, alt, fullscreen = false
       className={fullscreen ? "relative w-full h-full" : "relative w-full max-w-5xl mx-auto"}
     >
 
-      {/* Comparison Container */}
+      {/* Comparison Container - use dir="ltr" to prevent RTL interference on this visual component */}
       <div
         ref={containerRef}
+        dir="ltr"
         className={`relative overflow-hidden cursor-ew-resize select-none ${fullscreen ? 'w-full h-full flex items-center justify-center' : 'rounded-2xl shadow-2xl'}`}
         style={fullscreen ? {} : {
           boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.35)',
@@ -128,26 +120,14 @@ export function ImageComparison({ lightImage, darkImage, alt, fullscreen = false
               draggable={false}
             />
             <div
-              className="absolute top-0 h-full overflow-hidden"
-              style={isRTL ? {
-                right: 0,
-                width: `${sliderPosition}%`
-              } : {
-                left: 0,
-                width: `${sliderPosition}%`
-              }}
+              className="absolute top-0 left-0 h-full overflow-hidden"
+              style={{ width: `${sliderPosition}%` }}
             >
               <img
                 src={lightImage}
                 alt={`${alt} - Light mode`}
                 className="h-full object-cover"
-                style={isRTL ? {
-                  position: 'absolute',
-                  right: 0,
-                  width: `${100 / (sliderPosition / 100)}%`,
-                  maxWidth: 'none',
-                  objectPosition: 'right'
-                } : {
+                style={{
                   width: `${100 / (sliderPosition / 100)}%`,
                   maxWidth: 'none',
                   objectPosition: 'left'
@@ -161,10 +141,7 @@ export function ImageComparison({ lightImage, darkImage, alt, fullscreen = false
         {/* Slider */}
         <div
           className="absolute top-0 bottom-0 z-10 flex items-center justify-center"
-          style={isRTL ? {
-            right: `${sliderPosition}%`,
-            transform: 'translateX(50%)'
-          } : {
+          style={{
             left: `${sliderPosition}%`,
             transform: 'translateX(-50%)'
           }}
@@ -189,8 +166,8 @@ export function ImageComparison({ lightImage, darkImage, alt, fullscreen = false
             whileTap={{ scale: 0.95 }}
           >
             <div className={`flex items-center gap-1 text-white font-bold ${fullscreen ? 'text-sm' : 'text-xs'}`}>
-              <span>{isRTL ? '▶' : '◀'}</span>
-              <span>{isRTL ? '◀' : '▶'}</span>
+              <span>◀</span>
+              <span>▶</span>
             </div>
           </motion.div>
         </div>

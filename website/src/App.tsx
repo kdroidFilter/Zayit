@@ -134,7 +134,7 @@ function PanelsSlider({
         </motion.div>
 
         {/* Slider Container - All slides in a row, translate to show current */}
-        <div className="overflow-hidden">
+        <div className="overflow-hidden" dir="ltr">
           <motion.div
             className="flex"
             animate={{ x: `${-currentIndex * 100}%` }}
@@ -196,10 +196,11 @@ function PanelsSlider({
                   {/* Gold progress fill */}
                   {isActive && (
                     <motion.div
-                      className="absolute top-0 left-0 h-full rounded-full"
+                      className="absolute top-0 h-full rounded-full"
                       style={{
                         backgroundColor: 'var(--gold)',
                         width: `${progress * 100}%`,
+                        ...(isRTL ? { right: 0 } : { left: 0 }),
                       }}
                     />
                   )}

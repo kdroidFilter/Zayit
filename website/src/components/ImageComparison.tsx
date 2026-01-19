@@ -1,7 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { useTheme } from '../contexts/ThemeContext';
 
 interface ImageComparisonProps {
   lightImage: string;
@@ -12,24 +11,10 @@ interface ImageComparisonProps {
 
 export function ImageComparison({ lightImage, darkImage, alt, fullscreen = false }: ImageComparisonProps) {
   const { i18n } = useTranslation();
-  const { isDark } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [sliderPosition, setSliderPosition] = useState(isDark ? 1 : 99);
+  const [sliderPosition, setSliderPosition] = useState(99); // Default to 99% showing light image
   const [isDragging, setIsDragging] = useState(false);
-  const [hasUserMoved, setHasUserMoved] = useState(false);
   const isRTL = i18n.language === 'he';
-
-  // Update slider position when theme changes (only if user hasn't moved it)
-  useEffect(() => {
-    if (!hasUserMoved) {
-      setSliderPosition(isDark ? 1 : 99);
-    }
-  }, [isDark, hasUserMoved]);
-
-  // Reset hasUserMoved when theme changes to allow automatic repositioning
-  useEffect(() => {
-    setHasUserMoved(false);
-  }, [isDark]);
 
   const handleMove = useCallback(
     (clientX: number) => {
@@ -44,7 +29,6 @@ export function ImageComparison({ lightImage, darkImage, alt, fullscreen = false
         percentage = Math.min(Math.max((x / rect.width) * 100, 0), 100);
       }
       setSliderPosition(percentage);
-      setHasUserMoved(true);
     },
     [isRTL]
   );

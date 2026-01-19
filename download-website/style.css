@@ -1,65 +1,5 @@
 :root {
-  /* Light theme (default) - Premium Golden */
-  --bg-main: #faf8f3;
-  --bg-gradient-top: #fffdf8;
-  --bg-gradient-bottom: #f5f0e6;
-  --card-bg: rgba(255, 253, 248, 0.95);
-  --card-border: rgba(184, 134, 11, 0.2);
-  --card-highlight: rgba(212, 160, 23, 0.35);
-  --gold: #b8860b;
-  --gold-soft: #d4a017;
-  --gold-muted: #c9a227;
-  --text-main: #1a1408;
-  --text-muted: #4a4030;
-  --danger: #dc2626;
-  --danger-soft: rgba(220, 38, 38, 0.1);
-  --shadow-strong: 0 26px 60px rgba(0, 0, 0, 0.12);
-  --radius-lg: 26px;
-  --radius-md: 16px;
-  --radius-sm: 10px;
-  --transition-fast: 0.18s ease-out;
-  --scrollbar-track: rgba(0, 0, 0, 0.03);
-  --scrollbar-thumb: rgba(184, 134, 11, 0.4);
-  --scrollbar-thumb-hover: rgba(184, 134, 11, 0.6);
-  --glow-color: rgba(212, 160, 23, 0.2);
-  --section-bg: rgba(255, 253, 248, 0.9);
-  --asset-bg: rgba(255, 251, 240, 0.9);
-  --asset-hover-bg: linear-gradient(90deg, rgba(255, 253, 248, 0.95), rgba(250, 245, 235, 0.95));
-  --asset-border: rgba(184, 134, 11, 0.08);
-  --platform-bg: rgba(184, 134, 11, 0.05);
-  --platform-border: rgba(184, 134, 11, 0.18);
-  --chip-bg-start: rgba(184, 134, 11, 0.12);
-  --chip-bg-end: rgba(184, 134, 11, 0.06);
-  --chip-border: rgba(184, 134, 11, 0.25);
-  --chip-hover-bg-start: rgba(184, 134, 11, 0.2);
-  --chip-hover-bg-end: rgba(184, 134, 11, 0.12);
-  --chip-hover-border: rgba(184, 134, 11, 0.4);
-  --chip-hover-shadow: 0 4px 12px rgba(184, 134, 11, 0.25);
-  --spinner-border: rgba(184, 134, 11, 0.22);
-  --logo-border: rgba(184, 134, 11, 0.1);
-  /* Button colors - light theme */
-  --btn-border: rgba(184, 134, 11, 0.3);
-  --btn-bg: rgba(255, 253, 248, 0.85);
-  --btn-hover-bg: rgba(255, 251, 240, 0.95);
-  --btn-shadow: 0 12px 28px rgba(184, 134, 11, 0.15);
-  --btn-hover-shadow: 0 16px 34px rgba(184, 134, 11, 0.22);
-  --btn-secondary-bg: rgba(255, 253, 248, 0.6);
-  --btn-secondary-border: rgba(184, 134, 11, 0.2);
-  /* Card gradient colors - light theme */
-  --card-gradient-start: rgba(255, 253, 248, 0.15);
-  --card-gradient-end: rgba(184, 134, 11, 0.05);
-  --card-glow: rgba(212, 160, 23, 0.15);
-  /* Donate link colors - light theme */
-  --donate-border: rgba(220, 38, 38, 0.2);
-  --donate-bg: rgba(220, 38, 38, 0.05);
-  --donate-hover-bg: rgba(220, 38, 38, 0.15);
-  --donate-hover-border: rgba(220, 38, 38, 0.4);
-  --donate-hover-color: #dc2626;
-  --donate-icon-color: #dc2626;
-}
-
-/* Dark theme - applied via .dark class or system preference */
-:root.dark {
+  /* Dark theme (default and only) */
   --bg-main: #050509;
   --bg-gradient-top: #1a1a22;
   --bg-gradient-bottom: #111118;
@@ -74,6 +14,10 @@
   --danger: #ff6b6b;
   --danger-soft: rgba(220, 38, 38, 0.1);
   --shadow-strong: 0 26px 60px rgba(0, 0, 0, 0.9);
+  --radius-lg: 26px;
+  --radius-md: 16px;
+  --radius-sm: 10px;
+  --transition-fast: 0.18s ease-out;
   --scrollbar-track: rgba(255, 255, 255, 0.02);
   --scrollbar-thumb: rgba(255, 215, 0, 0.35);
   --scrollbar-thumb-hover: rgba(255, 215, 0, 0.6);
@@ -93,7 +37,7 @@
   --chip-hover-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
   --spinner-border: rgba(216, 198, 138, 0.22);
   --logo-border: rgba(255, 255, 255, 0.04);
-  /* Button colors - dark theme */
+  /* Button colors */
   --btn-border: rgba(255, 215, 0, 0.25);
   --btn-bg: rgba(10, 10, 18, 0.7);
   --btn-hover-bg: rgba(12, 12, 22, 0.8);
@@ -101,72 +45,17 @@
   --btn-hover-shadow: 0 16px 34px rgba(0, 0, 0, 0.68);
   --btn-secondary-bg: rgba(255, 255, 255, 0.04);
   --btn-secondary-border: rgba(255, 255, 255, 0.12);
-  /* Card gradient colors - dark theme */
+  /* Card gradient colors */
   --card-gradient-start: rgba(255, 255, 255, 0.04);
   --card-gradient-end: rgba(0, 0, 0, 0.35);
   --card-glow: rgba(255, 215, 0, 0.08);
-  /* Donate link colors - dark theme */
+  /* Donate link colors */
   --donate-border: rgba(255, 100, 100, 0.2);
   --donate-bg: rgba(255, 100, 100, 0.05);
   --donate-hover-bg: rgba(255, 100, 100, 0.15);
   --donate-hover-border: rgba(255, 100, 100, 0.4);
   --donate-hover-color: #ff9999;
   --donate-icon-color: #ff8888;
-}
-
-/* System preference fallback when no explicit theme is set */
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) {
-    --bg-main: #050509;
-    --bg-gradient-top: #1a1a22;
-    --bg-gradient-bottom: #111118;
-    --card-bg: rgba(16, 16, 24, 0.92);
-    --card-border: rgba(255, 215, 0, 0.12);
-    --card-highlight: rgba(255, 215, 0, 0.18);
-    --gold: #e6d28c;
-    --gold-soft: #d8c68a;
-    --gold-muted: #b8a876;
-    --text-main: #f9f5dd;
-    --text-muted: #c7bea0;
-    --danger: #ff6b6b;
-    --danger-soft: rgba(220, 38, 38, 0.1);
-    --shadow-strong: 0 26px 60px rgba(0, 0, 0, 0.9);
-    --scrollbar-track: rgba(255, 255, 255, 0.02);
-    --scrollbar-thumb: rgba(255, 215, 0, 0.35);
-    --scrollbar-thumb-hover: rgba(255, 215, 0, 0.6);
-    --glow-color: rgba(255, 215, 0, 0.12);
-    --section-bg: rgba(10, 10, 20, 0.9);
-    --asset-bg: rgba(18, 18, 28, 0.8);
-    --asset-hover-bg: linear-gradient(90deg, rgba(25, 25, 40, 0.7), rgba(0, 0, 0, 0.9));
-    --asset-border: rgba(255, 255, 255, 0.03);
-    --platform-bg: rgba(0, 0, 0, 0.3);
-    --platform-border: rgba(255, 215, 0, 0.08);
-    --chip-bg-start: rgba(255, 215, 0, 0.08);
-    --chip-bg-end: rgba(255, 215, 0, 0.04);
-    --chip-border: rgba(255, 215, 0, 0.2);
-    --chip-hover-bg-start: rgba(255, 215, 0, 0.15);
-    --chip-hover-bg-end: rgba(255, 215, 0, 0.08);
-    --chip-hover-border: rgba(255, 215, 0, 0.35);
-    --chip-hover-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
-    --spinner-border: rgba(216, 198, 138, 0.22);
-    --logo-border: rgba(255, 255, 255, 0.04);
-    --btn-border: rgba(255, 215, 0, 0.25);
-    --btn-bg: rgba(10, 10, 18, 0.7);
-    --btn-hover-bg: rgba(12, 12, 22, 0.8);
-    --btn-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
-    --btn-hover-shadow: 0 16px 34px rgba(0, 0, 0, 0.68);
-    --btn-secondary-bg: rgba(255, 255, 255, 0.04);
-    --btn-secondary-border: rgba(255, 255, 255, 0.12);
-    --card-gradient-start: rgba(255, 255, 255, 0.04);
-    --card-gradient-end: rgba(0, 0, 0, 0.35);
-    --card-glow: rgba(255, 215, 0, 0.08);
-    --donate-border: rgba(255, 100, 100, 0.2);
-    --donate-bg: rgba(255, 100, 100, 0.05);
-    --donate-hover-bg: rgba(255, 100, 100, 0.15);
-    --donate-hover-border: rgba(255, 100, 100, 0.4);
-    --donate-hover-color: #ff9999;
-    --donate-icon-color: #ff8888;
-  }
 }
 
 * {
@@ -192,6 +81,7 @@ body {
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  color-scheme: dark;
 }
 
 body {
@@ -844,7 +734,7 @@ body {
   display: none;
 }
 
-/* Command box for macOS - always dark */
+/* Command box for macOS */
 .command-box {
   position: relative;
   background: #0a0a0f;
@@ -1115,37 +1005,6 @@ body {
   color: var(--gold);
 }
 
-/* Theme Toggle */
-.theme-toggle {
-  all: unset;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  background: var(--glow-color);
-  border: 1px solid var(--card-border);
-  border-radius: 50%;
-  cursor: pointer;
-  color: var(--gold-soft);
-  transition: all var(--transition-fast);
-}
-
-.theme-toggle:hover {
-  background: var(--card-highlight);
-  border-color: var(--gold-soft);
-  color: var(--gold);
-  transform: scale(1.05);
-}
-
-.theme-toggle:active {
-  transform: scale(0.95);
-}
-
-.theme-toggle .material-symbols-outlined {
-  font-size: 1.2rem;
-}
-
 /* Header controls container */
 .header-controls {
   position: absolute;
@@ -1238,15 +1097,6 @@ html[dir="ltr"] .card::before {
   }
 
   .back-button .material-symbols-outlined {
-    font-size: 1.1rem;
-  }
-
-  .theme-toggle {
-    width: 2rem;
-    height: 2rem;
-  }
-
-  .theme-toggle .material-symbols-outlined {
     font-size: 1.1rem;
   }
 

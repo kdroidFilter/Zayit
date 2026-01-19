@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, Menu, X, Download, Sun, Moon, Github, Coffee } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
+import { Globe, Menu, X, Download, Github, Coffee } from 'lucide-react';
 import { LANGUAGE_STORAGE_KEY } from '../i18n';
 
 export function Navigation() {
   const { t, i18n } = useTranslation();
-  const { isDark, toggleTheme } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
 
@@ -34,10 +32,8 @@ export function Navigation() {
       transition={{ duration: 0.6 }}
       className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl"
       style={{
-        background: isDark
-          ? 'rgba(5, 5, 9, 0.85)'
-          : 'rgba(245, 243, 238, 0.85)',
-        borderBottom: `1px solid ${isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)'}`,
+        background: 'rgba(5, 5, 9, 0.85)',
+        borderBottom: '1px solid rgba(230, 210, 140, 0.1)',
       }}
     >
       <div className="max-w-7xl mx-auto px-6 py-4">
@@ -54,7 +50,7 @@ export function Navigation() {
                 src="/Zayit/icon.png"
                 alt="Zayit"
                 className="w-10 h-10 rounded-xl shadow-lg"
-                style={{ border: '1px solid rgba(139, 115, 85, 0.2)' }}
+                style={{ border: '1px solid rgba(230, 210, 140, 0.2)' }}
               />
               <span>{isRTL ? 'זית' : 'Zayit'}</span>
             </motion.a>
@@ -68,11 +64,11 @@ export function Navigation() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
                 style={{
                   color: 'var(--gold-soft)',
-                  border: `1px solid ${isDark ? 'rgba(230, 210, 140, 0.2)' : 'rgba(139, 115, 85, 0.2)'}`,
+                  border: '1px solid rgba(230, 210, 140, 0.2)',
                 }}
                 whileHover={{
                   scale: 1.05,
-                  background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)',
+                  background: 'rgba(230, 210, 140, 0.1)',
                 }}
               >
                 <Github size={14} />
@@ -113,47 +109,6 @@ export function Navigation() {
               </motion.a>
             ))}
 
-            {/* Theme Toggle */}
-            <motion.button
-              onClick={toggleTheme}
-              className="flex items-center justify-center w-10 h-10 rounded-full transition-all"
-              style={{
-                background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)',
-                border: `1px solid ${isDark ? 'rgba(230, 210, 140, 0.2)' : 'rgba(139, 115, 85, 0.2)'}`,
-                color: 'var(--gold)',
-              }}
-              whileHover={{
-                scale: 1.1,
-                background: isDark ? 'rgba(230, 210, 140, 0.2)' : 'rgba(139, 115, 85, 0.15)',
-              }}
-              whileTap={{ scale: 0.95 }}
-              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              <AnimatePresence mode="wait">
-                {isDark ? (
-                  <motion.div
-                    key="sun"
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Sun size={18} />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="moon"
-                    initial={{ rotate: 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Moon size={18} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.button>
-
             {/* Language Selector */}
             <div className="relative">
               <motion.button
@@ -161,12 +116,12 @@ export function Navigation() {
                 className="flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all"
                 style={{
                   color: 'var(--gold-soft)',
-                  background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)',
-                  border: `1px solid ${isDark ? 'rgba(230, 210, 140, 0.2)' : 'rgba(139, 115, 85, 0.2)'}`,
+                  background: 'rgba(230, 210, 140, 0.1)',
+                  border: '1px solid rgba(230, 210, 140, 0.2)',
                 }}
                 whileHover={{
-                  background: isDark ? 'rgba(230, 210, 140, 0.15)' : 'rgba(139, 115, 85, 0.15)',
-                  borderColor: isDark ? 'rgba(230, 210, 140, 0.3)' : 'rgba(139, 115, 85, 0.3)',
+                  background: 'rgba(230, 210, 140, 0.15)',
+                  borderColor: 'rgba(230, 210, 140, 0.3)',
                 }}
               >
                 <Globe size={16} />
@@ -181,8 +136,8 @@ export function Navigation() {
                     exit={{ opacity: 0, y: -10 }}
                     className="absolute top-full mt-2 rounded-xl overflow-hidden shadow-xl"
                     style={{
-                      background: isDark ? 'rgba(16, 16, 24, 0.98)' : 'rgba(255, 255, 255, 0.98)',
-                      border: `1px solid ${isDark ? 'rgba(230, 210, 140, 0.2)' : 'rgba(139, 115, 85, 0.2)'}`,
+                      background: 'rgba(16, 16, 24, 0.98)',
+                      border: '1px solid rgba(230, 210, 140, 0.2)',
                       [isRTL ? 'left' : 'right']: 0,
                       minWidth: '140px',
                     }}
@@ -193,7 +148,7 @@ export function Navigation() {
                       style={{
                         color: currentLang === 'en' ? 'var(--gold)' : 'var(--text-muted)',
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)'}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(230, 210, 140, 0.1)'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
                       <span>English</span>
@@ -205,7 +160,7 @@ export function Navigation() {
                       style={{
                         color: currentLang === 'he' ? 'var(--gold)' : 'var(--text-muted)',
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)'}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(230, 210, 140, 0.1)'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
                       <span>עברית</span>
@@ -222,9 +177,9 @@ export function Navigation() {
               className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white"
               style={{
                 background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)',
-                boxShadow: isDark ? '0 4px 15px rgba(230, 210, 140, 0.2)' : '0 4px 15px rgba(139, 115, 85, 0.3)',
+                boxShadow: '0 4px 15px rgba(230, 210, 140, 0.2)',
               }}
-              whileHover={{ scale: 1.05, boxShadow: isDark ? '0 6px 20px rgba(230, 210, 140, 0.3)' : '0 6px 20px rgba(139, 115, 85, 0.4)' }}
+              whileHover={{ scale: 1.05, boxShadow: '0 6px 20px rgba(230, 210, 140, 0.3)' }}
               whileTap={{ scale: 0.98 }}
             >
               <Download size={16} />
@@ -234,19 +189,6 @@ export function Navigation() {
 
           {/* Mobile buttons */}
           <div className="flex items-center gap-2 md:hidden">
-            {/* Theme Toggle Mobile */}
-            <motion.button
-              onClick={toggleTheme}
-              className="flex items-center justify-center w-10 h-10 rounded-full"
-              style={{
-                background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)',
-                color: 'var(--gold)',
-              }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {isDark ? <Sun size={18} /> : <Moon size={18} />}
-            </motion.button>
-
             {/* Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -286,8 +228,8 @@ export function Navigation() {
                     className="px-4 py-2 rounded-full text-sm font-medium"
                     style={{
                       color: 'var(--gold-soft)',
-                      border: `1px solid ${isDark ? 'rgba(230, 210, 140, 0.2)' : 'rgba(139, 115, 85, 0.2)'}`,
-                      background: currentLang === 'en' ? (isDark ? 'rgba(230, 210, 140, 0.2)' : 'rgba(139, 115, 85, 0.2)') : 'transparent',
+                      border: '1px solid rgba(230, 210, 140, 0.2)',
+                      background: currentLang === 'en' ? 'rgba(230, 210, 140, 0.2)' : 'transparent',
                     }}
                   >
                     English
@@ -297,8 +239,8 @@ export function Navigation() {
                     className="px-4 py-2 rounded-full text-sm font-medium"
                     style={{
                       color: 'var(--gold-soft)',
-                      border: `1px solid ${isDark ? 'rgba(230, 210, 140, 0.2)' : 'rgba(139, 115, 85, 0.2)'}`,
-                      background: currentLang === 'he' ? (isDark ? 'rgba(230, 210, 140, 0.2)' : 'rgba(139, 115, 85, 0.2)') : 'transparent',
+                      border: '1px solid rgba(230, 210, 140, 0.2)',
+                      background: currentLang === 'he' ? 'rgba(230, 210, 140, 0.2)' : 'transparent',
                     }}
                   >
                     עברית
@@ -325,7 +267,7 @@ export function Navigation() {
                     className="flex items-center gap-2 px-4 py-2 rounded-full text-sm"
                     style={{
                       color: 'var(--gold-soft)',
-                      border: `1px solid ${isDark ? 'rgba(230, 210, 140, 0.2)' : 'rgba(139, 115, 85, 0.2)'}`,
+                      border: '1px solid rgba(230, 210, 140, 0.2)',
                     }}
                   >
                     <Github size={16} />

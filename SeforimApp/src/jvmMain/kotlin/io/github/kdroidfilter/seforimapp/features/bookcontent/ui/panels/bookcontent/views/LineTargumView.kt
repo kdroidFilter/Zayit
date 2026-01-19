@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
@@ -365,11 +366,15 @@ private fun LinkItem(
             if (showDiacritics) targetText else HebrewTextUtils.removeAllDiacritics(targetText)
         }
 
-        val annotated = remember(linkId, processedText, commentTextSize, boldScale, showDiacritics) {
+        // Footnote marker color from theme
+        val footnoteMarkerColor = JewelTheme.globalColors.outlines.focused
+
+        val annotated = remember(linkId, processedText, commentTextSize, boldScale, showDiacritics, footnoteMarkerColor) {
             buildAnnotatedFromHtml(
                 processedText,
                 commentTextSize,
-                boldScale = if (boldScale < 1f) 1f else boldScale
+                boldScale = if (boldScale < 1f) 1f else boldScale,
+                footnoteMarkerColor = footnoteMarkerColor
             )
         }
 

@@ -107,7 +107,7 @@
                 </button>
                 
                 <div class="alternatives-content" id="alternativesContent">
-                    <a href="downloads/windows/Zayit-0.4.5_x64.msi" class="download-btn alt">
+                    <a href="https://github.com/kdroidFilter/Zayit/releases/download/v0.4.5/Zayit-0.4.5_x64.msi" class="download-btn alt" target="_blank" rel="noopener noreferrer">
                         <svg class="icon-sm">
                             <use href="images/icons.svg#download"></use>
                         </svg>
@@ -116,7 +116,7 @@
                             <span class="filesize">137 MB</span>
                         </span>
                     </a>
-                    <a href="downloads/windows/Zayit-0.4.5_arm64.exe" class="download-btn alt">
+                    <a href="https://github.com/kdroidFilter/Zayit/releases/download/v0.4.5/Zayit-0.4.5_arm64.exe" class="download-btn alt" target="_blank" rel="noopener noreferrer">
                         <svg class="icon-sm">
                             <use href="images/icons.svg#download"></use>
                         </svg>
@@ -125,7 +125,7 @@
                             <span class="filesize">135 MB</span>
                         </span>
                     </a>
-                    <a href="downloads/windows/Zayit-0.4.5_arm64.msi" class="download-btn alt">
+                    <a href="https://github.com/kdroidFilter/Zayit/releases/download/v0.4.5/Zayit-0.4.5_arm64.msi" class="download-btn alt" target="_blank" rel="noopener noreferrer">
                         <svg class="icon-sm">
                             <use href="images/icons.svg#download"></use>
                         </svg>
@@ -148,7 +148,7 @@
                 </button>
                 
                 <div class="platforms-content" id="platformsContent">
-                    <a href="downloads/macos/Zayit-0.4.5_universal.dmg" class="download-btn alt">
+                    <a href="https://github.com/kdroidFilter/Zayit/releases/download/v0.4.5/Zayit-0.4.5_universal.dmg" class="download-btn alt" target="_blank" rel="noopener noreferrer">
                         <svg class="icon-sm">
                             <use href="images/icons.svg#download"></use>
                         </svg>
@@ -157,7 +157,7 @@
                             <span class="filesize">142 MB • macOS</span>
                         </span>
                     </a>
-                    <a href="downloads/linux/Zayit-0.4.5_amd64.deb" class="download-btn alt">
+                    <a href="https://github.com/kdroidFilter/Zayit/releases/download/v0.4.5/Zayit-0.4.5_amd64.deb" class="download-btn alt" target="_blank" rel="noopener noreferrer">
                         <svg class="icon-sm">
                             <use href="images/icons.svg#download"></use>
                         </svg>
@@ -166,7 +166,7 @@
                             <span class="filesize">139 MB • Linux</span>
                         </span>
                     </a>
-                    <a href="downloads/linux/Zayit-0.4.5_x86_64.rpm" class="download-btn alt">
+                    <a href="https://github.com/kdroidFilter/Zayit/releases/download/v0.4.5/Zayit-0.4.5_x86_64.rpm" class="download-btn alt" target="_blank" rel="noopener noreferrer">
                         <svg class="icon-sm">
                             <use href="images/icons.svg#download"></use>
                         </svg>
@@ -178,96 +178,343 @@
                 </div>
             </div>
 
+            <div class="other-platforms">
+                <button class="expand-toggle" onclick="toggleOtherFiles()">
+                    <span class="en-text">Other files</span>
+                    <span class="he-text hidden">קבצים נוספים</span>
+                    <svg class="icon-sm chevron-icon">
+                        <use href="images/icons.svg#chevron-down"></use>
+                    </svg>
+                </button>
+                
+                <div class="platforms-content" id="otherFilesContent"></div>
+            </div>
+
             <!-- Database Files -->
             <div class="database-section">
                 <button class="expand-toggle" onclick="toggleDatabase()">
                     <span class="en-text">Offline database</span>
-                    <span class="he-text hidden">מסד נתונים אופליין</span>
+                    <span class="he-text hidden">ספרי קבצי מסד נתונים</span>
                     <svg class="icon-sm chevron-icon">
                         <use href="images/icons.svg#chevron-down"></use>
                     </svg>
                 </button>
                 
                 <div class="database-content" id="databaseContent">
-                    <a href="downloads/database/Zayit-Database-v0.4.5.zip" class="download-btn alt">
-                        <svg class="icon-sm">
-                            <use href="images/icons.svg#download"></use>
-                        </svg>
-                        <span class="download-text">
-                            <span class="filename">Zayit-Database-v0.4.5.zip</span>
-                            <span class="filesize">2.1 GB</span>
-                        </span>
-                    </a>
+                    <div class="database-info">
+                        <p class="database-description">
+                            <span class="en-text">Complete database of Jewish texts for offline use</span>
+                            <span class="he-text hidden">מסד נתונים מלא של טקסטים יהודיים לשימוש לא מקוון</span>
+                        </p>
+                        <p class="database-size">
+                            <span class="en-text">Total database size: 2,865 MB</span>
+                            <span class="he-text hidden">גודל כולל של קבצי מסד הנתונים: 2865 מ״ב</span>
+                        </p>
+                    </div>
+                    
+                    <div class="database-files">
+                        <a href="https://github.com/kdroidFilter/SeforimLibrary/releases/download/20260114122617/seforim_bundle.tar.zst.part01" class="download-btn alt" target="_blank" rel="noopener noreferrer">
+                            <svg class="icon-sm">
+                                <use href="images/icons.svg#download"></use>
+                            </svg>
+                            <span class="download-text">
+                                <span class="filename">seforim_bundle.tar.zst.part01</span>
+                                <span class="filesize">1,946 MB</span>
+                                <span class="file-part">Part 1 of 2</span>
+                            </span>
+                        </a>
+                        
+                        <a href="https://github.com/kdroidFilter/SeforimLibrary/releases/download/20260114122617/seforim_bundle.tar.zst.part02" class="download-btn alt" target="_blank" rel="noopener noreferrer">
+                            <svg class="icon-sm">
+                                <use href="images/icons.svg#download"></use>
+                            </svg>
+                            <span class="download-text">
+                                <span class="filename">seforim_bundle.tar.zst.part02</span>
+                                <span class="filesize">919 MB</span>
+                                <span class="file-part">Part 2 of 2</span>
+                            </span>
+                        </a>
+                    </div>
+                    
+                    <div class="database-instructions">
+                        <p class="instruction-text">
+                            <span class="en-text">Download both parts and extract to get the complete database</span>
+                            <span class="he-text hidden">הורד את שני החלקים וחלץ כדי לקבל את מסד הנתונים המלא</span>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
     </main>
 
     <script>
-        // Platform detection
         function detectPlatform() {
             const userAgent = navigator.userAgent.toLowerCase();
             const platform = navigator.platform.toLowerCase();
-            
+
             let os = 'windows';
             let arch = 'x64';
-            let filename = '';
-            let href = '';
-            let size = '';
-            let displayName = '';
-            
-            // Detect OS
+            let displayName = 'Windows x64';
+
             if (userAgent.includes('mac') || platform.includes('mac')) {
                 os = 'macos';
-                filename = 'Zayit-0.4.5_universal.dmg';
-                href = 'downloads/macos/Zayit-0.4.5_universal.dmg';
-                size = '142 MB';
-                displayName = 'macOS Universal';
+                arch = 'universal';
+                displayName = 'macOS';
             } else if (userAgent.includes('linux') || platform.includes('linux')) {
                 os = 'linux';
-                filename = 'Zayit-0.4.5_amd64.deb';
-                href = 'downloads/linux/Zayit-0.4.5_amd64.deb';
-                size = '139 MB';
-                displayName = 'Linux x64';
+                arch = userAgent.includes('arm') || userAgent.includes('aarch64') ? 'arm64' : 'x64';
+                displayName = arch === 'arm64' ? 'Linux ARM64' : 'Linux x64';
             } else {
-                // Windows (default)
                 os = 'windows';
-                
-                // Detect architecture for Windows
-                if (userAgent.includes('arm') || userAgent.includes('aarch64')) {
-                    arch = 'arm64';
-                    filename = 'Zayit-0.4.5_arm64.exe';
-                    href = 'downloads/windows/Zayit-0.4.5_arm64.exe';
-                    size = '135 MB';
-                    displayName = 'Windows ARM64';
-                } else {
-                    arch = 'x64';
-                    filename = 'Zayit-0.4.5_x64.exe';
-                    href = 'downloads/windows/Zayit-0.4.5_x64.exe';
-                    size = '138 MB';
-                    displayName = 'Windows x64';
-                }
+                arch = userAgent.includes('arm') || userAgent.includes('aarch64') ? 'arm64' : 'x64';
+                displayName = arch === 'arm64' ? 'Windows ARM64' : 'Windows x64';
             }
-            
-            return { os, arch, filename, href, size, displayName };
+
+            return { os, arch, displayName };
         }
-        
-        function updateDownloadUI() {
+
+        function formatBytes(bytes) {
+            if (!Number.isFinite(bytes) || bytes <= 0) return '';
+            const mb = bytes / (1024 * 1024);
+            if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+            return `${Math.round(mb)} MB`;
+        }
+
+        function classifyAsset(name) {
+            const lower = name.toLowerCase();
+
+            const isWindows = lower.endsWith('.exe') || lower.endsWith('.msi');
+            const isMac = lower.endsWith('.dmg');
+            const isLinux = lower.endsWith('.deb') || lower.endsWith('.rpm') || lower.endsWith('.appimage');
+            const isArchive = lower.endsWith('.zip') || lower.endsWith('.tar.gz') || lower.endsWith('.tgz') || lower.endsWith('.tar.xz');
+
+            let os = 'other';
+            if (isWindows) os = 'windows';
+            else if (isMac) os = 'macos';
+            else if (isLinux) os = 'linux';
+
+            let arch = 'any';
+            if (lower.includes('arm64') || lower.includes('aarch64')) arch = 'arm64';
+            else if (lower.includes('x64') || lower.includes('x86_64') || lower.includes('amd64')) arch = 'x64';
+            else if (lower.includes('universal')) arch = 'universal';
+
+            let ext = '';
+            const lastDot = lower.lastIndexOf('.');
+            if (lastDot >= 0) ext = lower.slice(lastDot + 1);
+
+            return { os, arch, ext, isArchive };
+        }
+
+        function assetPriority(asset, platform) {
+            const name = asset.name.toLowerCase();
+
+            const osMatches = asset.os === platform.os;
+            const archMatches = asset.arch === platform.arch || asset.arch === 'any' || (platform.os === 'macos' && asset.arch === 'universal');
+            const base = (osMatches ? 1000 : 0) + (archMatches ? 100 : 0);
+
+            if (asset.os === 'windows') {
+                if (name.endsWith('.exe')) return base + 30;
+                if (name.endsWith('.msi')) return base + 20;
+            }
+
+            if (asset.os === 'macos') {
+                if (name.endsWith('.dmg')) return base + 30;
+            }
+
+            if (asset.os === 'linux') {
+                if (name.endsWith('.deb')) return base + 30;
+                if (name.endsWith('.rpm')) return base + 20;
+                if (name.endsWith('.appimage')) return base + 10;
+            }
+
+            if (asset.isArchive) return base + 1;
+
+            return base;
+        }
+
+        async function fetchLatestRelease() {
+            const response = await fetch('https://api.github.com/repos/kdroidFilter/Zayit/releases/latest', {
+                headers: {
+                    'Accept': 'application/vnd.github+json'
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`GitHub API error: ${response.status}`);
+            }
+            return response.json();
+        }
+
+        function renderDownloadButton(asset) {
+            const a = document.createElement('a');
+            a.href = asset.url;
+            a.className = 'download-btn alt';
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+
+            const sizeLabel = formatBytes(asset.size);
+            const extra = asset.os === 'windows' ? 'Windows' : asset.os === 'macos' ? 'macOS' : asset.os === 'linux' ? 'Linux' : '';
+            const suffix = extra ? ` • ${extra}` : '';
+
+            a.innerHTML = `
+                        <svg class="icon-sm">
+                            <use href="images/icons.svg#download"></use>
+                        </svg>
+                        <span class="download-text">
+                            <span class="filename">${asset.name}</span>
+                            <span class="filesize">${sizeLabel}${suffix}</span>
+                        </span>
+                    `;
+            return a;
+        }
+
+        function updateContainersVisibility() {
+            const alternatives = document.getElementById('alternativesContent');
+            const platforms = document.getElementById('platformsContent');
+            const otherFiles = document.getElementById('otherFilesContent');
+            const altSection = alternatives?.closest('.alternative-options');
+            const platformSection = platforms?.closest('.other-platforms');
+            const otherFilesSection = otherFiles?.closest('.other-platforms');
+
+            if (alternatives && altSection) {
+                altSection.style.display = alternatives.children.length > 0 ? '' : 'none';
+            }
+            if (platforms && platformSection) {
+                platformSection.style.display = platforms.children.length > 0 ? '' : 'none';
+            }
+            if (otherFiles && otherFilesSection) {
+                otherFilesSection.style.display = otherFiles.children.length > 0 ? '' : 'none';
+            }
+        }
+
+        function getFallbackAssetsFromDom() {
+            const containers = ['alternativesContent', 'platformsContent', 'otherFilesContent']
+                .map(id => document.getElementById(id))
+                .filter(Boolean);
+
+            const links = containers.flatMap(container => Array.from(container.querySelectorAll('a[href]')));
+
+            return links
+                .map(a => {
+                    const filenameEl = a.querySelector('.filename');
+                    const name = filenameEl?.textContent?.trim() || (a.href ? a.href.split('/').pop() : '');
+                    const meta = classifyAsset(name);
+                    return {
+                        name,
+                        url: a.href,
+                        size: NaN,
+                        os: meta.os,
+                        arch: meta.arch,
+                        ext: meta.ext,
+                        isArchive: meta.isArchive
+                    };
+                })
+                .filter(a => !!a.name && !!a.url);
+        }
+
+        async function updateDownloadUI() {
             const platform = detectPlatform();
-            
-            // Update system detection
+
             const detectedSystem = document.getElementById('detectedSystem');
             if (detectedSystem) {
-                detectedSystem.textContent = `${platform.displayName} • v0.4.5 • ${platform.size}`;
+                detectedSystem.textContent = `${platform.displayName} • ${'Loading...'}`;
             }
-            
-            // Update main download button
-            const mainDownloadBtn = document.getElementById('mainDownloadBtn');
-            const mainFilename = document.getElementById('mainFilename');
-            
-            if (mainDownloadBtn && mainFilename) {
-                mainDownloadBtn.href = platform.href;
-                mainFilename.textContent = platform.filename;
+
+            try {
+                const release = await fetchLatestRelease();
+                const tag = release.tag_name || '';
+                const releaseUrl = release.html_url || 'https://github.com/kdroidFilter/Zayit/releases/latest';
+
+                const assets = (release.assets || [])
+                    .map(a => {
+                        const meta = classifyAsset(a.name || '');
+                        return {
+                            name: a.name || '',
+                            url: a.browser_download_url,
+                            size: a.size,
+                            os: meta.os,
+                            arch: meta.arch,
+                            ext: meta.ext,
+                            isArchive: meta.isArchive
+                        };
+                    })
+                    .filter(a => !!a.url && !!a.name);
+
+                const best = assets
+                    .slice()
+                    .sort((a, b) => assetPriority(b, platform) - assetPriority(a, platform))[0];
+
+                const mainDownloadBtn = document.getElementById('mainDownloadBtn');
+                const mainFilename = document.getElementById('mainFilename');
+
+                if (mainDownloadBtn && mainFilename) {
+                    if (best) {
+                        mainDownloadBtn.href = best.url;
+                        mainFilename.textContent = best.name;
+                    } else {
+                        mainDownloadBtn.href = releaseUrl;
+                        mainFilename.textContent = tag || 'Latest release';
+                    }
+                }
+
+                if (detectedSystem) {
+                    const sizeLabel = best ? formatBytes(best.size) : '';
+                    const parts = [`${platform.displayName}`];
+                    if (tag) parts.push(tag);
+                    if (sizeLabel) parts.push(sizeLabel);
+                    detectedSystem.textContent = parts.join(' • ');
+                }
+
+                const alternativesContent = document.getElementById('alternativesContent');
+                const platformsContent = document.getElementById('platformsContent');
+                const otherFilesContent = document.getElementById('otherFilesContent');
+
+                if (alternativesContent) alternativesContent.innerHTML = '';
+                if (platformsContent) platformsContent.innerHTML = '';
+                if (otherFilesContent) otherFilesContent.innerHTML = '';
+
+                const mainUrl = best?.url;
+                const sameOs = assets.filter(a => a.os === platform.os && a.url !== mainUrl);
+                const otherPlatforms = assets.filter(a => a.os !== platform.os && a.os !== 'other');
+                const otherFiles = assets.filter(a => a.os === 'other');
+
+                const sortByName = (a, b) => a.name.localeCompare(b.name);
+                sameOs.sort(sortByName);
+                otherPlatforms.sort(sortByName);
+                otherFiles.sort(sortByName);
+
+                if (alternativesContent) {
+                    sameOs.forEach(a => alternativesContent.appendChild(renderDownloadButton(a)));
+                }
+
+                if (platformsContent) {
+                    otherPlatforms.forEach(a => platformsContent.appendChild(renderDownloadButton(a)));
+                }
+
+                if (otherFilesContent) {
+                    otherFiles.forEach(a => otherFilesContent.appendChild(renderDownloadButton(a)));
+                }
+
+                updateContainersVisibility();
+            } catch (error) {
+                const mainDownloadBtn = document.getElementById('mainDownloadBtn');
+                const mainFilename = document.getElementById('mainFilename');
+
+                const fallbackAssets = getFallbackAssetsFromDom();
+                const bestFallback = fallbackAssets
+                    .slice()
+                    .sort((a, b) => assetPriority(b, platform) - assetPriority(a, platform))[0];
+
+                if (bestFallback && mainDownloadBtn && mainFilename) {
+                    mainDownloadBtn.href = bestFallback.url;
+                    mainFilename.textContent = bestFallback.name;
+                } else if (mainDownloadBtn && mainFilename) {
+                    mainDownloadBtn.href = 'https://github.com/kdroidFilter/Zayit/releases/latest';
+                    mainFilename.textContent = 'Latest release';
+                }
+
+                if (detectedSystem) {
+                    detectedSystem.textContent = `${platform.displayName} • ${'Latest release unavailable'}`;
+                }
             }
         }
 
@@ -372,6 +619,26 @@
             }
         }
 
+        function toggleOtherFiles() {
+            const content = document.getElementById('otherFilesContent');
+            const button = content.previousElementSibling;
+            const isHidden = content.style.display === 'none' || !content.style.display;
+            
+            content.style.display = isHidden ? 'block' : 'none';
+            button.classList.toggle('expanded', isHidden);
+            
+            const enText = button.querySelector('.en-text');
+            const heText = button.querySelector('.he-text');
+            
+            if (isHidden) {
+                enText.textContent = 'Hide files';
+                heText.textContent = 'הסתר קבצים';
+            } else {
+                enText.textContent = 'Other files';
+                heText.textContent = 'קבצים נוספים';
+            }
+        }
+
         function toggleDatabase() {
             const content = document.getElementById('databaseContent');
             const button = content.previousElementSibling;
@@ -393,13 +660,14 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            updateDownloadUI(); // Initialize platform detection
+            updateDownloadUI();
             applyTheme();
             loadDownloadCount();
             
             // Initialize expandable sections as hidden
             document.getElementById('alternativesContent').style.display = 'none';
             document.getElementById('platformsContent').style.display = 'none';
+            document.getElementById('otherFilesContent').style.display = 'none';
             document.getElementById('databaseContent').style.display = 'none';
             
             if (isHebrew) {

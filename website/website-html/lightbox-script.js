@@ -6,7 +6,7 @@ let currentImageIndex = 0;
 
 // --- Initialization ---
 
-document.addEventListener('DOMContentLoaded', function() {
+function initialize() {
     console.log('DOM loaded, initializing...');
     
     // Set initial theme
@@ -24,10 +24,9 @@ document.addEventListener('DOMContentLoaded', function() {
     loadDownloadCount();
     initializePageIndicators();
     initializeLightbox();
+    initializeScrollPanels();
 
-    // Event listeners
-    document.querySelector('.theme-toggle')?.addEventListener('click', toggleTheme);
-    document.querySelector('.lang-toggle')?.addEventListener('click', toggleLanguage);
+    // Event listeners for theme/language are handled by onclick attributes in HTML
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
         if (!localStorage.getItem('theme')) {
             isDark = e.matches;
@@ -36,18 +35,48 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const targetId = this.getAttribute('href');
-            const target = document.querySelector(targetId);
-            if (target) {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        });
+        const href = anchor.getAttribute('href');
+        if (href && href !== '#') {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = href;
+                const target = document.querySelector(targetId);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        }
     });
 
     console.log('Initialization complete.');
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize);
+} else {
+    initialize();
+}
+
+function initializeScrollPanels() {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
+    const frames = document.querySelectorAll('.preview-frame');
+    if (frames.length === 0) return;
+
+    frames.forEach(frame => frame.classList.add('scroll-reveal'));
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            entry.target.classList.toggle('in-view', entry.isIntersecting);
+        });
+    }, {
+        threshold: 0.35,
+        rootMargin: '0px 0px -10% 0px'
+    });
+
+    frames.forEach(frame => observer.observe(frame));
+}
 
 // --- Theme Management ---
 
@@ -186,12 +215,25 @@ function initializePageIndicators() {
     if (sections.length === 0) return;
     
     const observer = new IntersectionObserver((entries) => {
+        // Find the most visible section
+        let mostVisibleSection = null;
+        let maxVisibility = 0;
+        
         entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                updateActiveIndicator(entry.target.id);
+            if (entry.isIntersecting && entry.intersectionRatio > maxVisibility) {
+                maxVisibility = entry.intersectionRatio;
+                mostVisibleSection = entry.target;
             }
         });
-    }, { threshold: 0.3, rootMargin: '-20% 0px -20% 0px' });
+        
+        // Update the active indicator if we found a visible section
+        if (mostVisibleSection) {
+            updateActiveIndicator(mostVisibleSection.id);
+        }
+    }, { 
+        threshold: [0.1, 0.3, 0.5, 0.7, 0.9], // Multiple thresholds for better detection
+        rootMargin: '-10% 0px -10% 0px' // Reduce top/bottom margin to focus on center
+    });
 
     sections.forEach(section => observer.observe(section));
     updatePageIndicatorLabels();

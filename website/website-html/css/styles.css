@@ -12,10 +12,10 @@
     --color-text-muted: #5c4d35;
 
     /* Dark theme colors */
-    --color-dark-bg-main: #050509;
-    --color-dark-bg-gradient-top: #1a1a22;
-    --color-dark-bg-gradient-bottom: #111118;
-    --color-dark-card-bg: rgba(16, 16, 24, 0.92);
+    --color-dark-bg-main: #0b0b12;
+    --color-dark-bg-gradient-top: #232331;
+    --color-dark-bg-gradient-bottom: #15151f;
+    --color-dark-card-bg: rgba(20, 20, 30, 0.92);
     --color-dark-gold: #e6d28c;
     --color-dark-gold-soft: #d8c68a;
     --color-dark-gold-muted: #b8a876;
@@ -373,9 +373,9 @@ body {
 
 .vision-quote, .spirit-quote, .interface-quote {
     position: relative;
-    max-width: 800px;
-    margin: 0 auto 2rem;
-    padding: 2rem 1rem;
+    max-width: 900px;
+    margin: 0 auto 1.5rem;
+    padding: 1.5rem 0;
     text-align: center;
 }
 
@@ -384,18 +384,24 @@ body {
 }
 
 .quote-mark {
-    font-size: 6rem;
+    font-size: 5rem;
     font-weight: 300;
     color: var(--gold);
-    opacity: 0.3;
+    opacity: 0.4;
     line-height: 1;
-    margin-bottom: -2rem;
+    margin-bottom: -1.5rem;
     font-family: Georgia, serif;
+    display: block;
+}
+
+.dark .quote-mark {
+    color: var(--dark-gold);
+    opacity: 0.3;
 }
 
 .vision-text, .spirit-text {
-    font-size: clamp(1.2rem, 2.5vw, 1.8rem);
-    line-height: 1.8;
+    font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+    line-height: 1.6;
     color: var(--text-main);
     font-style: italic;
     font-weight: 400;
@@ -404,13 +410,7 @@ body {
     z-index: 1;
 }
 
-.vision-highlight {
-    color: var(--gold);
-    font-weight: 600;
-    font-style: normal;
-}
-
-.spirit-highlight {
+.vision-highlight, .spirit-highlight {
     color: var(--gold);
     font-weight: 600;
     font-style: normal;
@@ -557,7 +557,7 @@ body {
 }
 
 .dark .title-bar {
-    background: rgba(5, 5, 9, 0.85);
+    background: rgba(20, 20, 30, 0.85);
     border-bottom: 1px solid rgba(230, 210, 140, 0.1);
 }
 
@@ -817,6 +817,34 @@ body {
     max-width: 100%;
     height: auto;
 }
+
+ .preview-frame.scroll-reveal {
+     opacity: 0;
+     transform: perspective(1200px) rotateX(14deg) scale(0.94);
+     transition: transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 700ms ease;
+     will-change: transform, opacity;
+ }
+
+ .preview-frame.scroll-reveal.tilt-left {
+     transform: perspective(1200px) rotateY(-18deg) rotateX(14deg) scale(0.94);
+ }
+
+ .preview-frame.scroll-reveal.tilt-right {
+     transform: perspective(1200px) rotateY(18deg) rotateX(14deg) scale(0.94);
+ }
+
+ .preview-frame.scroll-reveal.in-view {
+     opacity: 1;
+     transform: perspective(1000px) rotateX(0deg) scale(1);
+ }
+
+ .preview-frame.scroll-reveal.in-view.tilt-left {
+     transform: perspective(1000px) rotateY(-5deg) rotateX(2deg);
+ }
+
+ .preview-frame.scroll-reveal.in-view.tilt-right {
+     transform: perspective(1000px) rotateY(5deg) rotateX(2deg);
+ }
 
 .preview-frame.tilt-left {
     transform: perspective(1000px) rotateY(-5deg) rotateX(2deg);
@@ -1311,6 +1339,39 @@ body {
 
 /* Mobile adjustments for panels */
 @media (max-width: 768px) {
+    .vision-quote, .spirit-quote, .interface-quote {
+        padding: 1rem 0;
+        margin: 0 auto 1rem;
+    }
+    
+    .quote-mark {
+        font-size: 3rem;
+        margin-bottom: -0.5rem;
+    }
+    
+    .vision-text, .spirit-text {
+        font-size: clamp(1.1rem, 3vw, 1.4rem);
+        line-height: 1.5;
+    }
+}
+
+@media (max-width: 480px) {
+    .vision-quote, .spirit-quote, .interface-quote {
+        padding: 0.8rem 0;
+        margin: 0 auto 0.8rem;
+    }
+    
+    .quote-mark {
+        font-size: 2.5rem;
+        margin-bottom: -0.3rem;
+    }
+    
+    .vision-text, .spirit-text {
+        font-size: clamp(1rem, 3.5vw, 1.2rem);
+        line-height: 1.4;
+    }
+}
+@media (max-width: 768px) {
     .panels-showcase {
         gap: 2rem;
     }
@@ -1769,7 +1830,10 @@ body {
 .download-main {
     min-height: 100vh;
     padding: 5rem 1.5rem 3rem;
-    background: var(--bg-main);
+    background: linear-gradient(180deg,
+        var(--bg-gradient-top) 0%,
+        var(--bg-main) 55%,
+        var(--bg-gradient-bottom) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1976,10 +2040,76 @@ body {
     display: none;
     margin-top: 0.75rem;
     padding: 1rem;
-    background: var(--feature-card-bg);
+    background: var(--card-bg);
     border-radius: 0.75rem;
     border: 1px solid var(--card-border);
     animation: slideDown 0.2s ease-out;
+}
+
+.database-info {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.database-description {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.database-size {
+    font-size: 0.9rem;
+    color: var(--gold);
+    font-weight: 500;
+    margin: 0;
+}
+
+.database-files {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.database-files .download-btn {
+    justify-content: space-between;
+    align-items: center;
+}
+
+.file-part {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: rgba(139, 115, 85, 0.1);
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: 500;
+}
+
+.dark .file-part {
+    background: rgba(230, 210, 140, 0.1);
+}
+
+.database-instructions {
+    text-align: center;
+    padding: 1rem;
+    background: rgba(139, 115, 85, 0.05);
+    border-radius: 0.5rem;
+    border-left: 3px solid var(--gold);
+    border-right: 3px solid var(--gold);
+}
+
+.dark .database-instructions {
+    background: rgba(230, 210, 140, 0.05);
+    border-left-color: var(--dark-gold);
+    border-right-color: var(--dark-gold);
+}
+
+.instruction-text {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.4;
 }
 
 @keyframes slideDown {

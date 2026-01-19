@@ -721,18 +721,23 @@ private fun LineItem(
         }
     }
 
+    // Footnote marker color from theme
+    val footnoteMarkerColor = JewelTheme.globalColors.outlines.focused
+
     // Memoize the annotated string with proper keys
-    val annotated = remember(lineId, processedContent, baseTextSize, boldScale, annotatedCache, showDiacritics) {
+    val annotated = remember(lineId, processedContent, baseTextSize, boldScale, annotatedCache, showDiacritics, footnoteMarkerColor) {
         annotatedCache?.getOrPut(lineId) {
             buildAnnotatedFromHtml(
                 processedContent,
                 baseTextSize,
-                boldScale = if (boldScale < 1f) 1f else boldScale
+                boldScale = if (boldScale < 1f) 1f else boldScale,
+                footnoteMarkerColor = footnoteMarkerColor
             )
         } ?: buildAnnotatedFromHtml(
             processedContent,
             baseTextSize,
-            boldScale = if (boldScale < 1f) 1f else boldScale
+            boldScale = if (boldScale < 1f) 1f else boldScale,
+            footnoteMarkerColor = footnoteMarkerColor
         )
     }
 

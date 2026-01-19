@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -126,6 +127,7 @@ private val MIN_ZMANIM_CARD_WIDTH = 99.dp
 private val MIN_EARTH_WIDGET_WIDTH = 230.dp
 private val MIN_WIDTH_FOR_EXTRA_CARDS = 443.dp
 
+@Immutable
 private data class DayMarker(
     val label: StringResource,
     val time: String,
@@ -133,6 +135,7 @@ private data class DayMarker(
     val color: Color
 )
 
+@Immutable
 private data class DayMomentCardData(
     val title: StringResource,
     val titleAbbrev: StringResource? = null,
@@ -142,6 +145,7 @@ private data class DayMomentCardData(
     val accentEnd: Color
 )
 
+@Immutable
 private data class LunarCycleData(
     val dayValue: String,
     val illuminationPercent: Int,
@@ -150,18 +154,22 @@ private data class LunarCycleData(
     val nextFullMoonIn: String
 )
 
+@Immutable
 private data class ShabbatTimes(
     val parashaName: String,
     val entryTime: Date?,
     val exitTime: Date?,
 )
 
+@Immutable
 private sealed class ZmanimGridItem {
+    @Immutable
     data class Moment(
         val data: DayMomentCardData,
         val onClick: (() -> Unit)?,
     ) : ZmanimGridItem()
 
+    @Immutable
     data class Shema(
         val title: StringResource,
         val titleAbbrev: StringResource? = null,
@@ -175,6 +183,7 @@ private sealed class ZmanimGridItem {
         val onMgaClick: (() -> Unit)?,
     ) : ZmanimGridItem()
 
+    @Immutable
     data class Tefila(
         val title: StringResource,
         val titleAbbrev: StringResource? = null,
@@ -188,6 +197,7 @@ private sealed class ZmanimGridItem {
         val onMgaClick: (() -> Unit)?,
     ) : ZmanimGridItem()
 
+    @Immutable
     data class VisibleStars(
         val title: StringResource,
         val titleAbbrev: StringResource? = null,
@@ -203,6 +213,7 @@ private sealed class ZmanimGridItem {
         val onRabbeinuTamClick: (() -> Unit)?,
     ) : ZmanimGridItem()
 
+    @Immutable
     data class Shabbat(
         val title: String,
         val entryLabel: StringResource,
@@ -215,6 +226,7 @@ private sealed class ZmanimGridItem {
         val onExitClick: (() -> Unit)?,
     ) : ZmanimGridItem()
 
+    @Immutable
     data class MoonSky(
         val referenceTime: Date,
         val location: EarthWidgetLocation,
@@ -1033,198 +1045,6 @@ private fun MoonPhaseIcon(isDark: Boolean, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun DayCycleCard(markers: List<DayMarker>, modifier: Modifier = Modifier) {
-    if (markers.isEmpty()) return
-    val isDark = JewelTheme.isDark
-    val shape = RoundedCornerShape(22.dp)
-    val panelBackground = JewelTheme.globalColors.panelBackground
-    val background = if (isDark) {
-        Brush.verticalGradient(
-            listOf(
-                panelBackground.blendTowards(Color.White, 0.06f),
-                panelBackground.blendTowards(Color.Black, 0.18f)
-            )
-        )
-    } else {
-        Brush.verticalGradient(
-            listOf(
-                panelBackground.blendTowards(Color.White, 0.10f),
-                panelBackground.blendTowards(JewelTheme.globalColors.text.info, 0.05f)
-            )
-        )
-    }
-    val borderColor = if (isDark) {
-        JewelTheme.globalColors.borders.disabled
-    } else {
-        JewelTheme.globalColors.borders.normal
-    }
-    val chipBackground = if (isDark) {
-        panelBackground.blendTowards(Color.White, 0.16f)
-    } else {
-        panelBackground.blendTowards(Color.White, 0.9f)
-    }
-    val chipBorder = if (isDark) {
-        JewelTheme.globalColors.borders.disabled
-    } else {
-        JewelTheme.globalColors.borders.normal
-    }
-    val barGradient = if (isDark) {
-        Brush.horizontalGradient(
-            listOf(
-                Color(0xFF161C46),
-                Color(0xFF1E3A8A),
-                Color(0xFFFFC857),
-                Color(0xFFD97706),
-                Color(0xFF0B132B)
-            )
-        )
-    } else {
-        Brush.horizontalGradient(
-            listOf(
-                panelBackground.blendTowards(Color.Black, 0.15f),
-                JewelTheme.globalColors.text.info,
-                panelBackground.blendTowards(Color.White, 0.35f)
-            )
-        )
-    }
-    val textColor = JewelTheme.globalColors.text.normal
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(background)
-            .border(1.dp, borderColor, shape)
-            .padding(16.dp)
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    GradientDot(
-                        colorStart = JewelTheme.globalColors.text.info,
-                        colorEnd = panelBackground.blendTowards(JewelTheme.globalColors.text.info, 0.4f),
-                        size = 12.dp
-                    )
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = stringResource(Res.string.home_cycle_card_title),
-                            color = textColor,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = stringResource(Res.string.home_cycle_card_subtitle),
-                            color = textColor.copy(alpha = 0.7f),
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    PillChip(
-                        text = stringResource(Res.string.home_cycle_chip_twilight, markers.first().time),
-                        backgroundColor = chipBackground,
-                        borderColor = chipBorder,
-                        dotStart = JewelTheme.globalColors.text.info,
-                        dotEnd = panelBackground.blendTowards(JewelTheme.globalColors.text.info, 0.4f)
-                    )
-                    val noonTime = markers.getOrNull(2)?.time ?: ""
-                    PillChip(
-                        text = stringResource(Res.string.home_cycle_chip_solar_noon, noonTime),
-                        backgroundColor = chipBackground,
-                        borderColor = chipBorder,
-                        dotStart = JewelTheme.globalColors.text.info,
-                        dotEnd = panelBackground.blendTowards(Color.White, 0.7f)
-                    )
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(34.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(barGradient)
-                    .border(1.dp, borderColor.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
-                    .padding(horizontal = 6.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val sorted = markers.sortedBy { it.position }
-                    var previous = 0f
-                    sorted.forEachIndexed { index, marker ->
-                        val gap = (marker.position - previous).coerceAtLeast(0f)
-                        if (gap > 0f) {
-                            Spacer(Modifier.weight(gap))
-                        }
-                        Box(
-                            modifier = Modifier
-                                .width(4.dp)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(marker.color.copy(alpha = 0.95f))
-                        )
-                        previous = marker.position
-                        if (index == sorted.lastIndex) {
-                            val tail = (1f - previous).coerceAtLeast(0f)
-                            if (tail > 0f) {
-                                Spacer(Modifier.weight(tail))
-                            }
-                        }
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                markers.forEach { marker ->
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        GradientDot(
-                            colorStart = marker.color,
-                            colorEnd = marker.color.copy(alpha = 0.9f),
-                            size = 10.dp
-                        )
-                        Text(
-                            text = marker.time,
-                            color = textColor,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = stringResource(marker.label),
-                            color = textColor.copy(alpha = 0.7f),
-                            fontSize = 12.sp,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun ZmanimCardsGrid(
     items: List<ZmanimGridItem>,
     columns: Int,
@@ -1267,11 +1087,11 @@ private fun ZmanimCardsGrid(
                                 titleAbbrev = item.titleAbbrev,
                                 leftLabel = item.mgaLabel,
                                 leftTime = item.mgaTime,
-                                leftTimeValue = item.mgaTimeValue,
+                                leftTimeAvailable = item.mgaTimeValue != null,
                                 leftSelected = isLeftSelected,
                                 rightLabel = item.graLabel,
                                 rightTime = item.graTime,
-                                rightTimeValue = item.graTimeValue,
+                                rightTimeAvailable = item.graTimeValue != null,
                                 rightSelected = isRightSelected,
                                 onLeftClick = item.onMgaClick,
                                 onRightClick = item.onGraClick,
@@ -1289,11 +1109,11 @@ private fun ZmanimCardsGrid(
                                 titleAbbrev = item.titleAbbrev,
                                 leftLabel = item.mgaLabel,
                                 leftTime = item.mgaTime,
-                                leftTimeValue = item.mgaTimeValue,
+                                leftTimeAvailable = item.mgaTimeValue != null,
                                 leftSelected = isLeftSelected,
                                 rightLabel = item.graLabel,
                                 rightTime = item.graTime,
-                                rightTimeValue = item.graTimeValue,
+                                rightTimeAvailable = item.graTimeValue != null,
                                 rightSelected = isRightSelected,
                                 onLeftClick = item.onMgaClick,
                                 onRightClick = item.onGraClick,
@@ -1312,12 +1132,12 @@ private fun ZmanimCardsGrid(
                                 leftLabel = item.geonimLabel,
                                 leftLabelAbbrev = item.geonimLabelAbbrev,
                                 leftTime = item.geonimTime,
-                                leftTimeValue = item.geonimTimeValue,
+                                leftTimeAvailable = item.geonimTimeValue != null,
                                 leftSelected = isLeftSelected,
                                 rightLabel = item.rabbeinuTamLabel,
                                 rightLabelAbbrev = item.rabbeinuTamLabelAbbrev,
                                 rightTime = item.rabbeinuTamTime,
-                                rightTimeValue = item.rabbeinuTamTimeValue,
+                                rightTimeAvailable = item.rabbeinuTamTimeValue != null,
                                 rightSelected = isRightSelected,
                                 onLeftClick = item.onGeonimClick,
                                 onRightClick = item.onRabbeinuTamClick,
@@ -1334,11 +1154,11 @@ private fun ZmanimCardsGrid(
                                 title = item.title,
                                 entryLabel = item.entryLabel,
                                 entryTime = item.entryTime,
-                                entryTimeValue = item.entryTimeValue,
+                                entryTimeAvailable = item.entryTimeValue != null,
                                 entrySelected = isLeftSelected,
                                 exitLabel = item.exitLabel,
                                 exitTime = item.exitTime,
-                                exitTimeValue = item.exitTimeValue,
+                                exitTimeAvailable = item.exitTimeValue != null,
                                 exitSelected = isRightSelected,
                                 onEntryClick = item.onEntryClick,
                                 onExitClick = item.onExitClick,
@@ -1348,7 +1168,7 @@ private fun ZmanimCardsGrid(
                         }
                         is ZmanimGridItem.MoonSky -> {
                             MoonSkyCard(
-                                referenceTime = item.referenceTime,
+                                referenceTimeMillis = item.referenceTime.time,
                                 location = item.location,
                                 modifier = Modifier.weight(1f),
                             )
@@ -1558,12 +1378,12 @@ private fun DualTimeCard(
     leftLabel: StringResource,
     leftLabelAbbrev: StringResource? = null,
     leftTime: String,
-    leftTimeValue: Date?,
+    leftTimeAvailable: Boolean,
     leftSelected: Boolean,
     rightLabel: StringResource,
     rightLabelAbbrev: StringResource? = null,
     rightTime: String,
-    rightTimeValue: Date?,
+    rightTimeAvailable: Boolean,
     rightSelected: Boolean,
     onLeftClick: (() -> Unit)? = null,
     onRightClick: (() -> Unit)? = null,
@@ -1576,12 +1396,12 @@ private fun DualTimeCard(
         leftLabel = stringResource(leftLabel),
         leftLabelAbbrev = leftLabelAbbrev?.let { stringResource(it) },
         leftTime = leftTime,
-        leftTimeValue = leftTimeValue,
+        leftTimeAvailable = leftTimeAvailable,
         leftSelected = leftSelected,
         rightLabel = stringResource(rightLabel),
         rightLabelAbbrev = rightLabelAbbrev?.let { stringResource(it) },
         rightTime = rightTime,
-        rightTimeValue = rightTimeValue,
+        rightTimeAvailable = rightTimeAvailable,
         rightSelected = rightSelected,
         modifier = modifier,
         onLeftClick = onLeftClick,
@@ -1597,12 +1417,12 @@ private fun DualTimeCardContent(
     leftLabel: String,
     leftLabelAbbrev: String? = null,
     leftTime: String,
-    leftTimeValue: Date?,
+    leftTimeAvailable: Boolean,
     leftSelected: Boolean,
     rightLabel: String,
     rightLabelAbbrev: String? = null,
     rightTime: String,
-    rightTimeValue: Date?,
+    rightTimeAvailable: Boolean,
     rightSelected: Boolean,
     modifier: Modifier = Modifier,
     onLeftClick: (() -> Unit)? = null,
@@ -1647,8 +1467,8 @@ private fun DualTimeCardContent(
     val dividerColor = resolvedBorderColor.copy(alpha = 0.7f)
     val leftClick = onLeftClick
     val rightClick = onRightClick
-    val leftClickable = leftClick != null && leftTimeValue != null
-    val rightClickable = rightClick != null && rightTimeValue != null
+    val leftClickable = leftClick != null && leftTimeAvailable
+    val rightClickable = rightClick != null && rightTimeAvailable
     val leftHoverSource = remember { MutableInteractionSource() }
     val rightHoverSource = remember { MutableInteractionSource() }
     val isLeftHovered by leftHoverSource.collectIsHoveredAsState()
@@ -1657,19 +1477,19 @@ private fun DualTimeCardContent(
     val isSelected = leftSelected || rightSelected
     val selectionOverlay = JewelTheme.globalColors.text.selected.copy(alpha = if (isDark) 0.2f else 0.12f)
     val selectionBorder = JewelTheme.globalColors.borders.focused
-    val leftModifier = if (leftClick != null && leftTimeValue != null) {
+    val leftModifier = if (leftClickable) {
         Modifier
             .hoverable(leftHoverSource)
             .pointerHoverIcon(PointerIcon.Hand)
-            .clickable(onClick = leftClick)
+            .clickable(onClick = leftClick!!)
     } else {
         Modifier
     }
-    val rightModifier = if (rightClick != null && rightTimeValue != null) {
+    val rightModifier = if (rightClickable) {
         Modifier
             .hoverable(rightHoverSource)
             .pointerHoverIcon(PointerIcon.Hand)
-            .clickable(onClick = rightClick)
+            .clickable(onClick = rightClick!!)
     } else {
         Modifier
     }
@@ -1920,11 +1740,11 @@ private fun ShabbatDualTimeCard(
     title: String,
     entryLabel: StringResource,
     entryTime: String,
-    entryTimeValue: Date?,
+    entryTimeAvailable: Boolean,
     entrySelected: Boolean,
     exitLabel: StringResource,
     exitTime: String,
-    exitTimeValue: Date?,
+    exitTimeAvailable: Boolean,
     exitSelected: Boolean,
     modifier: Modifier = Modifier,
     onEntryClick: (() -> Unit)? = null,
@@ -1974,11 +1794,11 @@ private fun ShabbatDualTimeCard(
         title = title,
         leftLabel = stringResource(entryLabel),
         leftTime = entryTime,
-        leftTimeValue = entryTimeValue,
+        leftTimeAvailable = entryTimeAvailable,
         leftSelected = entrySelected,
         rightLabel = stringResource(exitLabel),
         rightTime = exitTime,
-        rightTimeValue = exitTimeValue,
+        rightTimeAvailable = exitTimeAvailable,
         rightSelected = exitSelected,
         modifier = modifier,
         onLeftClick = onEntryClick,
@@ -1994,7 +1814,7 @@ private fun ShabbatDualTimeCard(
 
 @Composable
 private fun MoonSkyCard(
-    referenceTime: Date,
+    referenceTimeMillis: Long,
     location: EarthWidgetLocation,
     modifier: Modifier = Modifier,
 ) {
@@ -2005,6 +1825,7 @@ private fun MoonSkyCard(
     } else {
         JewelTheme.globalColors.borders.normal
     }
+    val referenceTime = remember(referenceTimeMillis) { Date(referenceTimeMillis) }
 
     Box(
         modifier = modifier

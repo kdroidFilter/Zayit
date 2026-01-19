@@ -17,8 +17,6 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.Selectable
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.VisibleTocEntry
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.core.models.LineTocMapping
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
@@ -52,8 +50,6 @@ fun BookTocView(
     onEntryClick: (TocEntry) -> Unit,
     onEntryExpand: (TocEntry) -> Unit,
     onScroll: (Int, Int) -> Unit,
-    lines: List<Line> = emptyList(),
-    lineTocMappings: List<LineTocMapping> = emptyList(),
     selectedTocEntryId: Long? = null,
     modifier: Modifier = Modifier,
     // Search integration

@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
   Search,
@@ -814,25 +815,26 @@ function App() {
             viewport={{ once: true }}
             transition={{ duration: 1.8, delay: 2.5, ease: cinematicEase }}
           >
-            <motion.a
-              href="/Zayit/download"
-              className="inline-flex items-center gap-3 px-8 md:px-10 py-4 md:py-5 rounded-full text-lg md:text-xl font-semibold text-white"
-              style={{
-                background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)',
-                boxShadow: '0 15px 40px rgba(230, 210, 140, 0.3)',
-              }}
-              whileHover={{ scale: 1.05, boxShadow: '0 20px 50px rgba(230, 210, 140, 0.5)' }}
-              whileTap={{ scale: 0.98 }}
-              animate={{
-                boxShadow: ['0 15px 40px rgba(230, 210, 140, 0.3)', '0 20px 60px rgba(230, 210, 140, 0.5)', '0 15px 40px rgba(230, 210, 140, 0.3)'],
-              }}
-              transition={{
-                boxShadow: { duration: 3, repeat: Infinity, ease: 'easeInOut' }
-              }}
-            >
-              <Download size={26} />
-              {t('download.cta')}
-            </motion.a>
+            <Link to="/download">
+              <motion.span
+                className="inline-flex items-center gap-3 px-8 md:px-10 py-4 md:py-5 rounded-full text-lg md:text-xl font-semibold text-white"
+                style={{
+                  background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)',
+                  boxShadow: '0 15px 40px rgba(230, 210, 140, 0.3)',
+                }}
+                whileHover={{ scale: 1.05, boxShadow: '0 20px 50px rgba(230, 210, 140, 0.5)' }}
+                whileTap={{ scale: 0.98 }}
+                animate={{
+                  boxShadow: ['0 15px 40px rgba(230, 210, 140, 0.3)', '0 20px 60px rgba(230, 210, 140, 0.5)', '0 15px 40px rgba(230, 210, 140, 0.3)'],
+                }}
+                transition={{
+                  boxShadow: { duration: 3, repeat: Infinity, ease: 'easeInOut' }
+                }}
+              >
+                <Download size={26} />
+                {t('download.cta')}
+              </motion.span>
+            </Link>
           </motion.div>
 
           <motion.p

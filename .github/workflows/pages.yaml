@@ -1,4 +1,4 @@
-name: Deploy Websites to GitHub Pages
+name: Deploy Website to GitHub Pages
 
 on:
   push:
@@ -6,7 +6,6 @@ on:
       - master
     paths:
       - 'website/**'
-      - 'download-website/**'
       - '.github/workflows/pages.yaml'
   workflow_dispatch:
 
@@ -37,26 +36,17 @@ jobs:
         working-directory: website
         run: npm ci
 
-      - name: Build main website
+      - name: Build website
         working-directory: website
         run: npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Prepare deployment folder
-        run: |
-          mkdir -p _site
-          # Copy main website to root
-          cp -r website/dist/* _site/
-          # Copy download website to /download
-          mkdir -p _site/download
-          cp -r download-website/* _site/download/
-
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '_site'
+          path: 'website/dist'
 
   deploy:
     environment:

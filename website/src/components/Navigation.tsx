@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, Menu, X, Download, Github, Coffee } from 'lucide-react';
 import { LANGUAGE_STORAGE_KEY } from '../i18n';
@@ -172,19 +173,20 @@ export function Navigation() {
             </div>
 
             {/* CTA Button */}
-            <motion.a
-              href="/Zayit/download"
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white"
-              style={{
-                background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)',
-                boxShadow: '0 4px 15px rgba(230, 210, 140, 0.2)',
-              }}
-              whileHover={{ scale: 1.05, boxShadow: '0 6px 20px rgba(230, 210, 140, 0.3)' }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Download size={16} />
-              {t('nav.download')}
-            </motion.a>
+            <Link to="/download">
+              <motion.span
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white"
+                style={{
+                  background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)',
+                  boxShadow: '0 4px 15px rgba(230, 210, 140, 0.2)',
+                }}
+                whileHover={{ scale: 1.05, boxShadow: '0 6px 20px rgba(230, 210, 140, 0.3)' }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Download size={16} />
+                {t('nav.download')}
+              </motion.span>
+            </Link>
           </div>
 
           {/* Mobile buttons */}
@@ -247,16 +249,17 @@ export function Navigation() {
                   </button>
                 </div>
 
-                <a
-                  href="/Zayit/download"
+                <Link
+                  to="/download"
                   className="flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold text-white"
                   style={{
                     background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)',
                   }}
+                  onClick={() => setIsMenuOpen(false)}
                 >
                   <Download size={16} />
                   {t('nav.download')}
-                </a>
+                </Link>
 
                 {/* Source Code & Support - Mobile */}
                 <div className="flex gap-3 pt-2">

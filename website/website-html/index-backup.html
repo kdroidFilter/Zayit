@@ -150,7 +150,7 @@
             </div>
             
             <!-- Interface Quote Block -->
-            <div class="interface-quote">
+            <!-- <div class="interface-quote">
                 <div class="quote-mark">"</div>
                 <blockquote class="interface-text">
                     <span class="en-text"><span class="interface-highlight">A pro and natural interface:</span> Built on JetBrains technologies, including Compose Desktop and Jewel. Inspired by Google Chrome and IntelliJ IDEA, it offers a professional interface that is fluid and natural, enhances study experience, and does not strain the eyes.</span>
@@ -160,7 +160,7 @@
                     <span class="en-text">Professional Interface</span>
                     <span class="he-text hidden">ממשק מקצועי</span>
                 </div>
-            </div>
+            </div> -->
         </div>
     </section>
 
@@ -274,8 +274,6 @@
         </div>
     </section>
 
-
-
     <!-- Features Section -->
     <section id="features" class="section page-section features-section">
         <div class="section-container">
@@ -358,6 +356,8 @@
                         <span class="he-text hidden">העתק קטע נקי לשיתוף בשיעור או עם חברותא</span>
                     </p>
                 </div>
+
+              
             </div>
         </div>
     </section>
@@ -595,224 +595,15 @@
         <div class="lightbox-overlay" onclick="closeLightbox()"></div>
         <div class="lightbox-content">
             <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+            <button class="lightbox-prev" onclick="prevImage()">&lt;</button>
+            <button class="lightbox-next" onclick="nextImage()">&gt;</button>
             <img class="lightbox-image" id="lightboxImage" src="" alt="">
+            <div class="lightbox-caption" id="lightboxCaption"></div>
         </div>
     </div>
 
     <script>
-        console.log('Script starting...');
-        
-        // Theme and language variables
         let isDark = localStorage.getItem('theme') === 'light' ? false : 
-                    (localStorage.getItem('theme') === 'dark' || !localStorage.getItem('theme') || window.matchMedia('(prefers-color-scheme: dark)').matches);
-        
-        let isHebrew = localStorage.getItem('language') === 'he' || 
-                      (localStorage.getItem('language') === 'en' ? false : 
-                       (navigator.language.startsWith('he') || navigator.languages.some(lang => lang.startsWith('he'))));
-
-        // Simple lightbox
-        function openLightbox(src) {
-            console.log('Opening:', src);
-            document.getElementById('lightbox').style.display = 'flex';
-            document.getElementById('lightboxImage').src = src;
-        }
-        
-        function closeLightbox() {
-            document.getElementById('lightbox').style.display = 'none';
-        }
-        
-        // Theme management
-        function applyTheme() {
-            const lightImages = document.querySelectorAll('.light-image');
-            const darkImages = document.querySelectorAll('.dark-image');
-            
-            if (isDark) {
-                document.documentElement.classList.add('dark');
-                document.querySelector('.theme-icon-light').classList.add('hidden');
-                document.querySelector('.theme-icon-dark').classList.remove('hidden');
-                
-                lightImages.forEach(img => img.classList.add('hidden'));
-                darkImages.forEach(img => img.classList.remove('hidden'));
-            } else {
-                document.documentElement.classList.remove('dark');
-                document.querySelector('.theme-icon-light').classList.remove('hidden');
-                document.querySelector('.theme-icon-dark').classList.add('hidden');
-                
-                lightImages.forEach(img => img.classList.remove('hidden'));
-                darkImages.forEach(img => img.classList.add('hidden'));
-            }
-        }
-
-        function toggleTheme() {
-            isDark = !isDark;
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            applyTheme();
-        }
-
-        // Language toggle
-        function toggleLanguage() {
-            isHebrew = !isHebrew;
-            localStorage.setItem('language', isHebrew ? 'he' : 'en');
-            
-            document.documentElement.dir = isHebrew ? 'rtl' : 'ltr';
-            
-            const langToggle = document.getElementById('langToggle');
-            if (langToggle) {
-                langToggle.textContent = isHebrew ? 'en' : 'ע';
-            }
-            
-            const enTexts = document.querySelectorAll('.en-text');
-            const heTexts = document.querySelectorAll('.he-text');
-            
-            if (isHebrew) {
-                enTexts.forEach(el => el.classList.add('hidden'));
-                heTexts.forEach(el => el.classList.remove('hidden'));
-            } else {
-                enTexts.forEach(el => el.classList.remove('hidden'));
-                heTexts.forEach(el => el.classList.add('hidden'));
-            }
-            
-            updatePageIndicatorLabels();
-        }
-
-        // Load download count
-        async function loadDownloadCount() {
-            try {
-                const response = await fetch('download-count.json');
-                const data = await response.json();
-                const downloadStats = document.getElementById('downloadStats');
-                if (downloadStats && data.count) {
-                    downloadStats.innerHTML = `
-                        <div class="stat-number">+${data.count.toLocaleString()}</div>
-                        <div class="stat-label">
-                            <span class="en-text">Downloads</span>
-                            <span class="he-text ${isHebrew ? '' : 'hidden'}">הורדות</span>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.log('Could not load download count');
-            }
-        }
-
-        // Initialize when page loads
-        window.addEventListener('load', function() {
-            console.log('Page loaded, initializing...');
-            
-            applyTheme();
-            loadDownloadCount();
-            
-            // Add lightbox click handlers
-            document.querySelectorAll('.screenshot').forEach(function(img) {
-                img.onclick = function() {
-                    openLightbox(this.src);
-                };
-            });
-            
-            // Set initial language
-            if (isHebrew) {
-                document.documentElement.dir = 'rtl';
-                document.getElementById('langToggle').textContent = 'en';
-                
-                document.querySelectorAll('.en-text').forEach(el => el.classList.add('hidden'));
-                document.querySelectorAll('.he-text').forEach(el => el.classList.remove('hidden'));
-            }
-        });
-        
-        console.log('Script loaded successfully');
-
-        // Update page indicator labels based on current language
-        function updatePageIndicatorLabels() {
-            const indicators = document.querySelectorAll('.page-indicator');
-            indicators.forEach(indicator => {
-                const labelKey = isHebrew ? 'data-label-he' : 'data-label-en';
-                const label = indicator.getAttribute(labelKey);
-                indicator.setAttribute('data-current-label', label);
-            });
-        }
-
-        // Page indicators functionality
-        function initializePageIndicators() {
-            const sections = document.querySelectorAll('.page-section');
-            const indicators = document.querySelectorAll('.page-indicator');
-            
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const sectionId = entry.target.id;
-                        updateActiveIndicator(sectionId);
-                    }
-                });
-            }, {
-                threshold: 0.3,
-                rootMargin: '-20% 0px -20% 0px'
-            });
-
-            sections.forEach(section => {
-                observer.observe(section);
-            });
-        }
-
-        function updateActiveIndicator(sectionId) {
-            const indicators = document.querySelectorAll('.page-indicator');
-            indicators.forEach(indicator => {
-                if (indicator.dataset.section === sectionId) {
-                    indicator.classList.add('active');
-                } else {
-                    indicator.classList.remove('active');
-                }
-            });
-            
-            document.body.setAttribute('data-section', sectionId);
-        }
-
-        function scrollToSection(sectionId) {
-            const section = document.getElementById(sectionId);
-            if (section) {
-                section.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
-        }
-
-        // Initialize page indicators after load
-        document.addEventListener('DOMContentLoaded', function() {
-            initializePageIndicators();
-            updatePageIndicatorLabels();
-        });
-
-        // Handle system theme changes
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-            if (!localStorage.getItem('theme')) {
-                isDark = e.matches;
-                applyTheme();
-            }
-        });
-
-        // Smooth scrolling for navigation links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            });
-        });
-
-        // Keyboard navigation
-        document.addEventListener('keydown', (e) => {
-            const lightbox = document.getElementById('lightbox');
-            if (!lightbox.classList.contains('active')) return;
-            
-            if (e.key === 'Escape') {
-                closeLightbox();
-            }
-        }); 
                     (localStorage.getItem('theme') === 'dark' || !localStorage.getItem('theme') || window.matchMedia('(prefers-color-scheme: dark)').matches);
         
         // Detect system language - default to Hebrew if system is Hebrew, otherwise English
@@ -910,16 +701,10 @@
 
         // Initialize everything when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing...');
             applyTheme();
             loadDownloadCount();
             initializePageIndicators();
-            updatePageIndicatorLabels();
-            
-            // Initialize lightbox with a small delay to ensure images are loaded
-            setTimeout(() => {
-                initializeLightbox();
-            }, 100);
+            updatePageIndicatorLabels(); // Initialize page indicator labels
             
             // Set initial language
             if (isHebrew) {
@@ -931,11 +716,6 @@
                 document.querySelectorAll('.he-text').forEach(el => el.classList.remove('hidden'));
             }
         });
-
-        // Test function - you can call this in browser console
-        function testLightbox() {
-            openLightbox('images/art/HOME-LIGHT.png');
-        }
 
         // Page indicators functionality
         function initializePageIndicators() {
@@ -1007,6 +787,5 @@
             });
         });
     </script>
-    <script src="lightbox-script.js"></script>
 </body>
 </html>

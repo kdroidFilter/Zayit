@@ -3,222 +3,420 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
     <title>Download Zayit - Jewish Study Library</title>
     <meta name="description" content="Download Zayit for Windows, macOS, and Linux. Free Jewish study library application.">
     
-    <link rel="icon" type="image/png" href="public/favicon-96x96.png" sizes="96x96">
-    <link rel="icon" type="image/svg+xml" href="public/favicon.svg">
-    <link rel="shortcut icon" href="public/favicon.ico">
-    
-    <style>
-        :root {
-            --bg-main: #f5f3ee;
-            --bg-gradient-top: #faf9f5;
-            --gold: #8b7355;
-            --gold-soft: #9a8265;
-            --text-main: #2c2416;
-            --text-muted: #5c5040;
-            --card-bg: rgba(255, 255, 255, 0.95);
-            --card-border: rgba(139, 115, 85, 0.1);
-            --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        }
+    <link rel="icon" type="image/png" href="images/favicon-96x96.png" sizes="96x96">
+    <link rel="icon" type="image/svg+xml" href="images/favicon.svg">
+    <link rel="shortcut icon" href="images/favicon.ico">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Title Bar -->
+    <header class="title-bar">
+        <div class="title-bar-container">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <a href="index.html" class="title-bar-logo">
+                    <img src="images/icon.png" alt="Zayit">
+                    <span>Zayit</span>
+                </a>
+            </div>
 
-        .dark {
-            --bg-main: #050509;
-            --bg-gradient-top: #1a1a22;
-            --gold: #e6d28c;
-            --gold-soft: #d8c68a;
-            --text-main: #f9f5dd;
-            --text-muted: #c7bea0;
-            --card-bg: rgba(16, 16, 24, 0.92);
-            --card-border: rgba(230, 210, 140, 0.12);
-        }
+            <div class="title-bar-controls">
+                <a href="https://github.com/kdroidFilter/SeforimApp" target="_blank" rel="noopener noreferrer" class="title-bar-button source-button">
+                    <svg class="icon-sm">
+                        <use href="images/icons.svg#github"></use>
+                    </svg>
+                    <span class="en-text">Source</span>
+                    <span class="he-text hidden">קוד</span>
+                </a>
+                <a href="https://ko-fi.com/lomityaesh" target="_blank" rel="noopener noreferrer" class="title-bar-button support-button">
+                    <svg class="icon-sm">
+                        <use href="images/icons.svg#coffee"></use>
+                    </svg>
+                    <span class="en-text">Support</span>
+                    <span class="he-text hidden">תמיכה</span>
+                </a>
+                <button class="title-bar-button theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                    <svg class="icon theme-icon-light">
+                        <use href="images/icons.svg#sun"></use>
+                    </svg>
+                    <svg class="icon theme-icon-dark hidden">
+                        <use href="images/icons.svg#moon"></use>
+                    </svg>
+                </button>
+                <button class="title-bar-button lang-toggle" onclick="toggleLanguage()" id="langToggle">
+                    ע
+                </button>
+                <a href="index.html" class="title-bar-button">
+                    <svg class="icon-sm">
+                        <use href="images/icons.svg#arrow-left"></use>
+                    </svg>
+                    <span class="en-text">Back</span>
+                    <span class="he-text hidden">חזרה</span>
+                </a>
+            </div>
+        </div>
+    </header>
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+    <!-- Compact Download Section -->
+    <main class="download-main">
+        <div class="download-container">
+            <h1 class="download-title">
+                <span class="en-text">Download Zayit</span>
+                <span class="he-text hidden">הורדת זית</span>
+            </h1>
+            
+            <p class="download-description">
+                <span class="en-text">Your digital study hall awaits. Fast, reliable, and completely free.</span>
+                <span class="he-text hidden">בית המדרש הדיגיטלי שלכם מחכה. מהיר, אמין וחינמי לחלוטין.</span>
+            </p>
+            
+            <div class="download-stats">
+                <span class="stat-item">6,800+ <span class="en-text">Books</span><span class="he-text hidden">ספרים</span></span>
+                <span class="stat-item">100% <span class="en-text">Offline</span><span class="he-text hidden">אופליין</span></span>
+                <span class="stat-item" id="downloadStats"><!-- Download count --></span>
+            </div>
+            
+            <!-- System Detection -->
+            <div class="system-detection">
+                <span class="detected-system" id="detectedSystem">Detecting platform...</span>
+            </div>
 
-        body {
-            font-family: var(--font-sans);
-            background: radial-gradient(ellipse at top, var(--bg-gradient-top) 0%, var(--bg-main) 60%);
-            color: var(--text-main);
-            min-height: 100vh;
-            line-height: 1.6;
-        }
+            <!-- Main Download -->
+            <div class="main-download">
+                <a href="#" class="download-btn main" id="mainDownloadBtn">
+                    <svg class="icon-sm">
+                        <use href="images/icons.svg#download"></use>
+                    </svg>
+                    <span class="download-text">
+                        <span class="filename" id="mainFilename">Loading...</span>
+                    </span>
+                </a>
+            </div>
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 4rem 2rem;
-            text-align: center;
-        }
+            <!-- Alternative Options -->
+            <div class="alternative-options">
+                <button class="expand-toggle" onclick="toggleAlternatives()">
+                    <span class="en-text">More options</span>
+                    <span class="he-text hidden">אפשרויות נוספות</span>
+                    <svg class="icon-sm chevron-icon">
+                        <use href="images/icons.svg#chevron-down"></use>
+                    </svg>
+                </button>
+                
+                <div class="alternatives-content" id="alternativesContent">
+                    <a href="downloads/windows/Zayit-0.4.5_x64.msi" class="download-btn alt">
+                        <svg class="icon-sm">
+                            <use href="images/icons.svg#download"></use>
+                        </svg>
+                        <span class="download-text">
+                            <span class="filename">Zayit-0.4.5_x64.msi</span>
+                            <span class="filesize">137 MB</span>
+                        </span>
+                    </a>
+                    <a href="downloads/windows/Zayit-0.4.5_arm64.exe" class="download-btn alt">
+                        <svg class="icon-sm">
+                            <use href="images/icons.svg#download"></use>
+                        </svg>
+                        <span class="download-text">
+                            <span class="filename">Zayit-0.4.5_arm64.exe</span>
+                            <span class="filesize">135 MB</span>
+                        </span>
+                    </a>
+                    <a href="downloads/windows/Zayit-0.4.5_arm64.msi" class="download-btn alt">
+                        <svg class="icon-sm">
+                            <use href="images/icons.svg#download"></use>
+                        </svg>
+                        <span class="download-text">
+                            <span class="filename">Zayit-0.4.5_arm64.msi</span>
+                            <span class="filesize">134 MB</span>
+                        </span>
+                    </a>
+                </div>
+            </div>
 
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--gold);
-            text-decoration: none;
-            margin-bottom: 2rem;
-            font-weight: 500;
-        }
+            <!-- Other Platforms -->
+            <div class="other-platforms">
+                <button class="expand-toggle" onclick="togglePlatforms()">
+                    <span class="en-text">Other platforms</span>
+                    <span class="he-text hidden">פלטפורמות אחרות</span>
+                    <svg class="icon-sm chevron-icon">
+                        <use href="images/icons.svg#chevron-down"></use>
+                    </svg>
+                </button>
+                
+                <div class="platforms-content" id="platformsContent">
+                    <a href="downloads/macos/Zayit-0.4.5_universal.dmg" class="download-btn alt">
+                        <svg class="icon-sm">
+                            <use href="images/icons.svg#download"></use>
+                        </svg>
+                        <span class="download-text">
+                            <span class="filename">Zayit-0.4.5_universal.dmg</span>
+                            <span class="filesize">142 MB • macOS</span>
+                        </span>
+                    </a>
+                    <a href="downloads/linux/Zayit-0.4.5_amd64.deb" class="download-btn alt">
+                        <svg class="icon-sm">
+                            <use href="images/icons.svg#download"></use>
+                        </svg>
+                        <span class="download-text">
+                            <span class="filename">Zayit-0.4.5_amd64.deb</span>
+                            <span class="filesize">139 MB • Linux</span>
+                        </span>
+                    </a>
+                    <a href="downloads/linux/Zayit-0.4.5_x86_64.rpm" class="download-btn alt">
+                        <svg class="icon-sm">
+                            <use href="images/icons.svg#download"></use>
+                        </svg>
+                        <span class="download-text">
+                            <span class="filename">Zayit-0.4.5_x86_64.rpm</span>
+                            <span class="filesize">140 MB • Linux</span>
+                        </span>
+                    </a>
+                </div>
+            </div>
 
-        .back-link:hover {
-            color: var(--gold-soft);
-        }
+            <!-- Database Files -->
+            <div class="database-section">
+                <button class="expand-toggle" onclick="toggleDatabase()">
+                    <span class="en-text">Offline database</span>
+                    <span class="he-text hidden">מסד נתונים אופליין</span>
+                    <svg class="icon-sm chevron-icon">
+                        <use href="images/icons.svg#chevron-down"></use>
+                    </svg>
+                </button>
+                
+                <div class="database-content" id="databaseContent">
+                    <a href="downloads/database/Zayit-Database-v0.4.5.zip" class="download-btn alt">
+                        <svg class="icon-sm">
+                            <use href="images/icons.svg#download"></use>
+                        </svg>
+                        <span class="download-text">
+                            <span class="filename">Zayit-Database-v0.4.5.zip</span>
+                            <span class="filesize">2.1 GB</span>
+                        </span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
 
-        h1 {
-            font-size: 3rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            color: var(--text-main);
+    <script>
+        // Platform detection
+        function detectPlatform() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const platform = navigator.platform.toLowerCase();
+            
+            let os = 'windows';
+            let arch = 'x64';
+            let filename = '';
+            let href = '';
+            let size = '';
+            let displayName = '';
+            
+            // Detect OS
+            if (userAgent.includes('mac') || platform.includes('mac')) {
+                os = 'macos';
+                filename = 'Zayit-0.4.5_universal.dmg';
+                href = 'downloads/macos/Zayit-0.4.5_universal.dmg';
+                size = '142 MB';
+                displayName = 'macOS Universal';
+            } else if (userAgent.includes('linux') || platform.includes('linux')) {
+                os = 'linux';
+                filename = 'Zayit-0.4.5_amd64.deb';
+                href = 'downloads/linux/Zayit-0.4.5_amd64.deb';
+                size = '139 MB';
+                displayName = 'Linux x64';
+            } else {
+                // Windows (default)
+                os = 'windows';
+                
+                // Detect architecture for Windows
+                if (userAgent.includes('arm') || userAgent.includes('aarch64')) {
+                    arch = 'arm64';
+                    filename = 'Zayit-0.4.5_arm64.exe';
+                    href = 'downloads/windows/Zayit-0.4.5_arm64.exe';
+                    size = '135 MB';
+                    displayName = 'Windows ARM64';
+                } else {
+                    arch = 'x64';
+                    filename = 'Zayit-0.4.5_x64.exe';
+                    href = 'downloads/windows/Zayit-0.4.5_x64.exe';
+                    size = '138 MB';
+                    displayName = 'Windows x64';
+                }
+            }
+            
+            return { os, arch, filename, href, size, displayName };
         }
-
-        .subtitle {
-            font-size: 1.25rem;
-            color: var(--text-muted);
-            margin-bottom: 3rem;
-        }
-
-        .download-grid {
-            display: grid;
-            gap: 2rem;
-            margin: 3rem 0;
-        }
-
-        @media (min-width: 768px) {
-            .download-grid {
-                grid-template-columns: repeat(3, 1fr);
+        
+        function updateDownloadUI() {
+            const platform = detectPlatform();
+            
+            // Update system detection
+            const detectedSystem = document.getElementById('detectedSystem');
+            if (detectedSystem) {
+                detectedSystem.textContent = `${platform.displayName} • v0.4.5 • ${platform.size}`;
+            }
+            
+            // Update main download button
+            const mainDownloadBtn = document.getElementById('mainDownloadBtn');
+            const mainFilename = document.getElementById('mainFilename');
+            
+            if (mainDownloadBtn && mainFilename) {
+                mainDownloadBtn.href = platform.href;
+                mainFilename.textContent = platform.filename;
             }
         }
 
-        .download-card {
-            padding: 2rem;
-            border-radius: 1rem;
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        let isDark = localStorage.getItem('theme') === 'light' ? false : 
+                    (localStorage.getItem('theme') === 'dark' || !localStorage.getItem('theme') || window.matchMedia('(prefers-color-scheme: dark)').matches);
+        
+        let isHebrew = localStorage.getItem('language') === 'he' || 
+                      (localStorage.getItem('language') === 'en' ? false : 
+                       (navigator.language.startsWith('he') || navigator.languages.some(lang => lang.startsWith('he'))));
+
+        function applyTheme() {
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                document.querySelector('.theme-icon-light').classList.add('hidden');
+                document.querySelector('.theme-icon-dark').classList.remove('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.querySelector('.theme-icon-light').classList.remove('hidden');
+                document.querySelector('.theme-icon-dark').classList.add('hidden');
+            }
         }
 
-        .download-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        function toggleTheme() {
+            isDark = !isDark;
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            applyTheme();
         }
 
-        .platform-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
+        function toggleLanguage() {
+            isHebrew = !isHebrew;
+            localStorage.setItem('language', isHebrew ? 'he' : 'en');
+            
+            document.documentElement.dir = isHebrew ? 'rtl' : 'ltr';
+            
+            const langToggle = document.getElementById('langToggle');
+            if (langToggle) {
+                langToggle.textContent = isHebrew ? 'en' : 'ע';
+            }
+            
+            const enTexts = document.querySelectorAll('.en-text');
+            const heTexts = document.querySelectorAll('.he-text');
+            
+            if (isHebrew) {
+                enTexts.forEach(el => el.classList.add('hidden'));
+                heTexts.forEach(el => el.classList.remove('hidden'));
+            } else {
+                enTexts.forEach(el => el.classList.remove('hidden'));
+                heTexts.forEach(el => el.classList.add('hidden'));
+            }
         }
 
-        .platform-name {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: var(--text-main);
+        async function loadDownloadCount() {
+            try {
+                const response = await fetch('download-count.json');
+                const data = await response.json();
+                const downloadStats = document.getElementById('downloadStats');
+                if (downloadStats && data.count) {
+                    downloadStats.innerHTML = `+${data.count.toLocaleString()} <span class="en-text">Downloads</span><span class="he-text ${isHebrew ? '' : 'hidden'}">הורדות</span>`;
+                }
+            } catch (error) {
+                console.log('Could not load download count');
+            }
         }
 
-        .platform-desc {
-            color: var(--text-muted);
-            margin-bottom: 1.5rem;
-            font-size: 0.875rem;
+        function toggleAlternatives() {
+            const content = document.getElementById('alternativesContent');
+            const button = content.previousElementSibling;
+            const isHidden = content.style.display === 'none' || !content.style.display;
+            
+            content.style.display = isHidden ? 'block' : 'none';
+            button.classList.toggle('expanded', isHidden);
+            
+            const enText = button.querySelector('.en-text');
+            const heText = button.querySelector('.he-text');
+            
+            if (isHidden) {
+                enText.textContent = 'Hide options';
+                heText.textContent = 'הסתר אפשרויות';
+            } else {
+                enText.textContent = 'More options';
+                heText.textContent = 'אפשרויות נוספות';
+            }
         }
 
-        .download-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%);
-            color: white;
-            text-decoration: none;
-            font-weight: 600;
-            transition: transform 0.2s ease;
+        function togglePlatforms() {
+            const content = document.getElementById('platformsContent');
+            const button = content.previousElementSibling;
+            const isHidden = content.style.display === 'none' || !content.style.display;
+            
+            content.style.display = isHidden ? 'block' : 'none';
+            button.classList.toggle('expanded', isHidden);
+            
+            const enText = button.querySelector('.en-text');
+            const heText = button.querySelector('.he-text');
+            
+            if (isHidden) {
+                enText.textContent = 'Hide platforms';
+                heText.textContent = 'הסתר פלטפורמות';
+            } else {
+                enText.textContent = 'Other platforms';
+                heText.textContent = 'פלטפורמות אחרות';
+            }
         }
 
-        .download-btn:hover {
-            transform: scale(1.05);
+        function toggleDatabase() {
+            const content = document.getElementById('databaseContent');
+            const button = content.previousElementSibling;
+            const isHidden = content.style.display === 'none' || !content.style.display;
+            
+            content.style.display = isHidden ? 'block' : 'none';
+            button.classList.toggle('expanded', isHidden);
+            
+            const enText = button.querySelector('.en-text');
+            const heText = button.querySelector('.he-text');
+            
+            if (isHidden) {
+                enText.textContent = 'Hide database';
+                heText.textContent = 'הסתר מסד נתונים';
+            } else {
+                enText.textContent = 'Offline database';
+                heText.textContent = 'מסד נתונים אופליין';
+            }
         }
 
-        .coming-soon {
-            background: #6b7280;
-            cursor: not-allowed;
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDownloadUI(); // Initialize platform detection
+            applyTheme();
+            loadDownloadCount();
+            
+            // Initialize expandable sections as hidden
+            document.getElementById('alternativesContent').style.display = 'none';
+            document.getElementById('platformsContent').style.display = 'none';
+            document.getElementById('databaseContent').style.display = 'none';
+            
+            if (isHebrew) {
+                document.documentElement.dir = 'rtl';
+                document.getElementById('langToggle').textContent = 'en';
+                
+                document.querySelectorAll('.en-text').forEach(el => el.classList.add('hidden'));
+                document.querySelectorAll('.he-text').forEach(el => el.classList.remove('hidden'));
+            }
+        });
 
-        .coming-soon:hover {
-            transform: none;
-        }
-
-        .note {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            margin: 3rem 0;
-            text-align: left;
-        }
-
-        .note h3 {
-            color: var(--gold);
-            margin-bottom: 0.5rem;
-        }
-
-        .note p {
-            color: var(--text-muted);
-            font-size: 0.875rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <a href="index.html" class="back-link">
-            ← Back to Home
-        </a>
-
-        <h1>Download Zayit</h1>
-        <p class="subtitle">Choose your platform and start studying</p>
-
-        <div class="download-grid">
-            <div class="download-card">
-                <div class="platform-icon">🪟</div>
-                <h3 class="platform-name">Windows</h3>
-                <p class="platform-desc">Windows 10 or later</p>
-                <a href="#" class="download-btn">
-                    Download for Windows
-                </a>
-            </div>
-
-            <div class="download-card">
-                <div class="platform-icon">🍎</div>
-                <h3 class="platform-name">macOS</h3>
-                <p class="platform-desc">macOS 11.0 or later</p>
-                <a href="#" class="download-btn">
-                    Download for Mac
-                </a>
-            </div>
-
-            <div class="download-card">
-                <div class="platform-icon">🐧</div>
-                <h3 class="platform-name">Linux</h3>
-                <p class="platform-desc">Ubuntu, Fedora, Arch</p>
-                <a href="#" class="download-btn">
-                    Download for Linux
-                </a>
-            </div>
-        </div>
-
-        <div class="note">
-            <h3>Installation Notes</h3>
-            <p>Zayit is a desktop application that runs completely offline once installed. No internet connection required for studying. The application includes a comprehensive library of Jewish texts and requires approximately 2GB of storage space.</p>
-        </div>
-
-        <div class="note">
-            <h3>System Requirements</h3>
-            <p><strong>Minimum:</strong> 4GB RAM, 2GB free storage<br>
-            <strong>Recommended:</strong> 8GB RAM, 4GB free storage for optimal performance</p>
-        </div>
-    </div>
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            if (!localStorage.getItem('theme')) {
+                isDark = e.matches;
+                applyTheme();
+            }
+        });
+    </script>
 </body>
 </html>

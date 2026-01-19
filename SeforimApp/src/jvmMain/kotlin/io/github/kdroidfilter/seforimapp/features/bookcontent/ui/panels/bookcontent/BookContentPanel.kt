@@ -9,6 +9,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
@@ -234,6 +237,7 @@ private fun SourcesPane(
     showDiacritics: Boolean
 ) {
     val providers = uiState.providers ?: return
+    val windowInfo = LocalWindowInfo.current
     LineTargumView(
         selectedLine = uiState.content.selectedLine,
         buildLinksPagerFor = providers.buildSourcesPagerFor,
@@ -249,7 +253,10 @@ private fun SourcesPane(
             }
         },
         onLinkClick = { commentary ->
-            onEvent(BookContentEvent.OpenBookAtLine(commentary.link.targetBookId, commentary.link.targetLineId))
+            val mods = windowInfo.keyboardModifiers
+            if (mods.isCtrlPressed || mods.isMetaPressed) {
+                onEvent(BookContentEvent.OpenCommentaryTarget(commentary.link.targetBookId, commentary.link.targetLineId))
+            }
         },
         onScroll = { index, offset ->
             onEvent(BookContentEvent.CommentariesScrolled(index, offset))

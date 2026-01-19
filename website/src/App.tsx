@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
@@ -13,7 +13,7 @@ import {
   Shield,
   BookMarked,
   Languages,
-  Infinity,
+  Infinity as InfinityIcon,
   Library,
   WifiOff,
 } from 'lucide-react';
@@ -63,6 +63,22 @@ function App() {
     t('search.feature4'),
   ];
 
+  // Memoized particles for cinematic effect
+  const particles = useMemo(() =>
+    [...Array(40)].map((_, i) => ({
+      id: i,
+      size: Math.random() * 4 + 2,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      opacity: Math.random() * 0.5 + 0.2,
+      glow: Math.random() * 10 + 5,
+      duration: Math.random() * 10 + 8,
+      delay: Math.random() * 5,
+      yMove: -150 - Math.random() * 300,
+      xMove: (Math.random() - 0.5) * 150,
+    }))
+  , []);
+
   return (
     <div
       className="min-h-screen"
@@ -73,20 +89,201 @@ function App() {
     >
       <Navigation />
 
-      {/* Hero Section - Responsive Fullscreen Image with Comparison */}
-      <section ref={heroRef} className="relative min-h-[40vh] md:min-h-screen w-full flex items-center justify-center overflow-hidden px-4 py-8 pt-24">
+      {/* Hero Section - Cinematic Title + Image */}
+      <section ref={heroRef} className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden px-4 pt-24 pb-8">
+
+        {/* Floating Particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {particles.map((p) => (
+            <motion.div
+              key={p.id}
+              className="absolute rounded-full"
+              style={{
+                width: p.size,
+                height: p.size,
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                background: isDark
+                  ? `rgba(230, 210, 140, ${p.opacity})`
+                  : `rgba(139, 115, 85, ${p.opacity * 0.8})`,
+                boxShadow: isDark
+                  ? `0 0 ${p.glow}px rgba(230, 210, 140, 0.6)`
+                  : `0 0 ${p.glow * 0.8}px rgba(139, 115, 85, 0.4)`,
+              }}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{
+                opacity: [0, 1, 1, 0],
+                scale: [0, 1.2, 1, 0],
+                y: [0, p.yMove],
+                x: [0, p.xMove],
+              }}
+              transition={{
+                duration: p.duration,
+                delay: p.delay,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Additional shimmer/sparkle particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(15)].map((_, i) => (
+            <motion.div
+              key={`sparkle-${i}`}
+              className="absolute"
+              style={{
+                width: 2,
+                height: 2,
+                left: `${10 + (i * 6)}%`,
+                top: '50%',
+                background: 'var(--gold)',
+                borderRadius: '50%',
+              }}
+              animate={{
+                opacity: [0, 1, 0],
+                scale: [0, 2, 0],
+                boxShadow: [
+                  '0 0 0px var(--gold)',
+                  isDark ? '0 0 20px rgba(230, 210, 140, 0.8)' : '0 0 15px rgba(139, 115, 85, 0.6)',
+                  '0 0 0px var(--gold)',
+                ],
+              }}
+              transition={{
+                duration: 2,
+                delay: 1.5 + (i * 0.15),
+                ease: 'easeOut',
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Cinematic Dark Overlay that fades away */}
         <motion.div
-          className="relative w-full max-w-6xl [&_img]:max-h-[40vh] [&_img]:md:max-h-none [&_img]:w-auto [&_img]:mx-auto"
+          className="absolute inset-0 z-10 pointer-events-none"
+          style={{ background: 'var(--bg-main)' }}
+          initial={{ opacity: 1 }}
+          animate={{ opacity: 0 }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+        />
+
+        {/* Hero Content with staggered children */}
+        <motion.div
+          className="flex flex-col items-center text-center"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: {
+              transition: {
+                staggerChildren: 0.4,
+                delayChildren: 0.8,
+              },
+            },
+          }}
+        >
+          {/* Title */}
+          <motion.h1
+            className="text-8xl md:text-[12rem] font-bold mb-2"
+            style={{
+              color: 'var(--gold)',
+              textShadow: isDark
+                ? '0 0 60px rgba(230, 210, 140, 0.5), 0 0 120px rgba(230, 210, 140, 0.3)'
+                : '0 0 40px rgba(139, 115, 85, 0.3), 0 0 80px rgba(139, 115, 85, 0.2)',
+            }}
+            variants={{
+              hidden: { opacity: 0, scale: 1.3, filter: 'blur(20px)' },
+              visible: {
+                opacity: 1,
+                scale: 1,
+                filter: 'blur(0px)',
+                transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] }
+              },
+            }}
+          >
+            {t('hero.title')}
+          </motion.h1>
+
+          {/* Decorative line */}
+          <motion.div
+            className="h-[2px] mb-8"
+            style={{ background: `linear-gradient(90deg, transparent, var(--gold), transparent)` }}
+            variants={{
+              hidden: { width: 0, opacity: 0 },
+              visible: {
+                width: 200,
+                opacity: 1,
+                transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] }
+              },
+            }}
+          />
+
+          {/* Subtitle */}
+          <motion.p
+            className="text-xl md:text-3xl font-light mb-4 max-w-3xl"
+            style={{ color: 'var(--text-main)' }}
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: {
+                opacity: 1,
+                y: 0,
+                transition: { duration: 0.8, ease: 'easeOut' }
+              },
+            }}
+          >
+            {t('hero.subtitle')}
+          </motion.p>
+
+          {/* Tagline */}
+          <motion.p
+            className="text-lg md:text-xl tracking-[0.3em] uppercase mb-12"
+            style={{ color: 'var(--gold-muted)' }}
+            variants={{
+              hidden: { opacity: 0, y: 10 },
+              visible: {
+                opacity: 1,
+                y: 0,
+                transition: { duration: 0.8, ease: 'easeOut' }
+              },
+            }}
+          >
+            {t('hero.tagline')}
+          </motion.p>
+        </motion.div>
+
+        {/* App Screenshot */}
+        <motion.div
+          className="relative w-full max-w-6xl mt-8"
+          initial={{ opacity: 0, y: 60 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.2, delay: 2.8, ease: [0.16, 1, 0.3, 1] }}
           style={{
             scale: imageScale,
             y: imageY,
           }}
         >
-          <ImageComparison
-            lightImage="art/HOME-LIGHT.png"
-            darkImage="art/HOME-DARK.png"
-            alt=""
+          {/* Glow behind the image */}
+          <motion.div
+            className="absolute inset-0 -z-10 rounded-2xl"
+            style={{
+              background: isDark
+                ? 'radial-gradient(ellipse at center, rgba(230, 210, 140, 0.15) 0%, transparent 70%)'
+                : 'radial-gradient(ellipse at center, rgba(139, 115, 85, 0.1) 0%, transparent 70%)',
+              filter: 'blur(40px)',
+              transform: 'scale(1.2)',
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 2, delay: 4 }}
           />
+          <div className="[&_img]:max-h-[50vh] [&_img]:md:max-h-[60vh] [&_img]:w-auto [&_img]:mx-auto">
+            <ImageComparison
+              lightImage="art/HOME-LIGHT.png"
+              darkImage="art/HOME-DARK.png"
+              alt=""
+            />
+          </div>
         </motion.div>
       </section>
 
@@ -462,7 +659,7 @@ function App() {
                     : 'linear-gradient(135deg, rgba(139, 115, 85, 0.2) 0%, rgba(139, 115, 85, 0.05) 100%)',
                 }}
               >
-                <Infinity size={32} style={{ color: 'var(--gold)' }} />
+                <InfinityIcon size={32} style={{ color: 'var(--gold)' }} />
               </div>
               <h3
                 className="text-2xl md:text-3xl font-bold mb-4"

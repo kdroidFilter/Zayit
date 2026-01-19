@@ -92,7 +92,6 @@ private fun SearchField(
 fun SearchCategoryTreePanel(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    searchUi: io.github.kdroidfilter.seforimapp.features.search.SearchUiState,
     searchTree: List<io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory>,
     isFiltering: Boolean,
     selectedCategoryIds: Set<Long>,

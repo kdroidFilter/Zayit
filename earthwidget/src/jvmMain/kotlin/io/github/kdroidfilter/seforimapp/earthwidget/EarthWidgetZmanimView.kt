@@ -143,6 +143,7 @@ private data class KnownLocation(
     val timeZoneId: String,
 )
 
+@Stable
 data class EarthWidgetLocation(
     val latitude: Double,
     val longitude: Double,

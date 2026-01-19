@@ -222,13 +222,14 @@ fun LineTargumView(
                                     ) { index ->
                                         section.items[index]?.let { item ->
                                             LinkItem(
-                                                item = item,
+                                                linkId = item.link.id,
+                                                targetText = item.targetText,
                                                 commentTextSize = commentTextSize,
                                                 lineHeight = lineHeight,
                                                 fontFamily = targumFontFamily,
                                                 boldScale = boldScaleForPlatform,
                                                 highlightQuery = highlightQuery,
-                                                onLinkClick = onLinkClick,
+                                                onClick = { onLinkClick(item) },
                                                 showDiacritics = showDiacritics
                                             )
                                         }
@@ -342,33 +343,29 @@ private data class SourceMeta(
 
 @Composable
 private fun LinkItem(
-    item: CommentaryWithText,
+    linkId: Long,
+    targetText: String,
     commentTextSize: Float,
     lineHeight: Float,
     fontFamily: FontFamily,
     boldScale: Float = 1.0f,
     highlightQuery: String,
-    onLinkClick: (CommentaryWithText) -> Unit,
+    onClick: () -> Unit,
     showDiacritics: Boolean
 ) {
-    // Optimisation : mémorisation du callback pour éviter recréation
-    val onClick = remember(item, onLinkClick) {
-        { onLinkClick(item) }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp, horizontal = 16.dp)
-            .pointerInput(item) {
+            .pointerInput(linkId) {
                 detectTapGestures(onTap = { onClick() })
             }
     ) {
-        val processedText = remember(item.link.id, item.targetText, showDiacritics) {
-            if (showDiacritics) item.targetText else HebrewTextUtils.removeAllDiacritics(item.targetText)
+        val processedText = remember(linkId, targetText, showDiacritics) {
+            if (showDiacritics) targetText else HebrewTextUtils.removeAllDiacritics(targetText)
         }
 
-        val annotated = remember(item.link.id, processedText, commentTextSize, boldScale, showDiacritics) {
+        val annotated = remember(linkId, processedText, commentTextSize, boldScale, showDiacritics) {
             buildAnnotatedFromHtml(
                 processedText,
                 commentTextSize,

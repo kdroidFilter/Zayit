@@ -49,7 +49,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.Pane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.FlowPreview
@@ -102,14 +101,14 @@ fun LineCommentsView(
             when (selectedLine) {
                 null -> CenteredMessage(stringResource(Res.string.select_line_for_commentaries))
                 else -> CommentariesContent(
-                    selectedLine = selectedLine,
+                    selectedLineId = selectedLine.id,
                     uiState = uiState,
                     onEvent = onEvent,
                     textSizes = textSizes,
                     onShowMaxLimit = { onEvent(BookContentEvent.CommentatorsSelectionLimitExceeded) },
                     findQueryText = activeQuery,
                     isCommentatorsListVisible = showCommentatorsList,
-                    prefetchedGroups = selectedLine.let { lineConnections[it.id]?.commentatorGroups },
+                    prefetchedGroups = lineConnections[selectedLine.id]?.commentatorGroups,
                     showDiacritics = showDiacritics
                 )
             }
@@ -120,7 +119,7 @@ fun LineCommentsView(
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 private fun CommentariesContent(
-    selectedLine: Line,
+    selectedLineId: Long,
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
@@ -134,7 +133,7 @@ private fun CommentariesContent(
     val contentState = uiState.content
 
     val commentatorSelection = rememberCommentarySelectionData(
-        lineId = selectedLine.id,
+        lineId = selectedLineId,
         getCommentatorGroupsForLine = providers.getCommentatorGroupsForLine,
         prefetchedGroups = prefetchedGroups
     )
@@ -158,7 +157,7 @@ private fun CommentariesContent(
         initiallySelectedIds = contentState.selectedCommentatorIds,
         titleToIdMap = titleToIdMap,
         onSelectionChange = { ids ->
-            onEvent(BookContentEvent.SelectedCommentatorsChanged(selectedLine.id, ids))
+            onEvent(BookContentEvent.SelectedCommentatorsChanged(selectedLineId, ids))
         }
     )
 
@@ -207,7 +206,7 @@ private fun CommentariesContent(
             CommentariesDisplay(
                 selectedCommentators = selectedInDisplayOrder,
                 titleToIdMap = titleToIdMap,
-                selectedLine = selectedLine,
+                selectedLineId = selectedLineId,
                 uiState = uiState,
                 onEvent = onEvent,
                 textSizes = textSizes,
@@ -298,7 +297,7 @@ private fun CommentatorsList(
 private fun CommentariesDisplay(
     selectedCommentators: List<String>,
     titleToIdMap: Map<String, Long>,
-    selectedLine: Line,
+    selectedLineId: Long,
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
@@ -328,7 +327,7 @@ private fun CommentariesDisplay(
     val layoutConfig = remember(
         selectedCommentators,
         titleToIdMap,
-        selectedLine.id,
+        selectedLineId,
         contentState.commentariesScrollIndex,
         contentState.commentariesScrollOffset,
         textSizes,
@@ -340,7 +339,7 @@ private fun CommentariesDisplay(
         CommentariesLayoutConfig(
             selectedCommentators = selectedCommentators,
             titleToIdMap = titleToIdMap,
-            lineId = selectedLine.id,
+            lineId = selectedLineId,
             scrollIndex = contentState.commentariesScrollIndex,
             scrollOffset = contentState.commentariesScrollOffset,
             onScroll = { index, offset ->
@@ -517,7 +516,8 @@ private fun CommentaryListView(
         ) { index ->
             lazyPagingItems[index]?.let { commentary ->
                 CommentaryItem(
-                    commentary = commentary,
+                    linkId = commentary.link.id,
+                    targetText = commentary.targetText,
                     textSizes = config.textSizes,
                     fontFamily = config.fontFamily,
                     boldScale = config.boldScale,
@@ -541,7 +541,8 @@ private fun CommentaryListView(
 
 @Composable
 private fun CommentaryItem(
-    commentary: CommentaryWithText,
+    linkId: Long,
+    targetText: String,
     textSizes: AnimatedTextSizes,
     fontFamily: FontFamily,
     boldScale: Float = 1.0f,
@@ -570,12 +571,12 @@ private fun CommentaryItem(
                 }
             }
     ) {
-        val processedText = remember(commentary.link.id, commentary.targetText, showDiacritics) {
-            if (showDiacritics) commentary.targetText else HebrewTextUtils.removeAllDiacritics(commentary.targetText)
+        val processedText = remember(linkId, targetText, showDiacritics) {
+            if (showDiacritics) targetText else HebrewTextUtils.removeAllDiacritics(targetText)
         }
 
         val annotated = remember(
-            commentary.link.id,
+            linkId,
             processedText,
             textSizes.commentTextSize,
             boldScale,

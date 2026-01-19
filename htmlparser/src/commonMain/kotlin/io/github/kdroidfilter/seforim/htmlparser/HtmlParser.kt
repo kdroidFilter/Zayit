@@ -14,7 +14,9 @@ data class ParsedHtmlElement(
     val headerLevel: Int? = null,
     val commentator: String? = null,
     val commentatorOrder: String? = null,
-    val isLineBreak: Boolean = false
+    val isLineBreak: Boolean = false,
+    val isFootnoteMarker: Boolean = false,
+    val isFootnoteContent: Boolean = false
 )
 
 class HtmlParser {
@@ -32,7 +34,9 @@ class HtmlParser {
                 isHeader = false,
                 headerLevel = null,
                 commentator = null,
-                commentatorOrder = null
+                commentatorOrder = null,
+                isFootnoteMarker = false,
+                isFootnoteContent = false
             )
         }
         // Avoids a "line after": removes terminal <br> tags
@@ -51,7 +55,9 @@ class HtmlParser {
         isHeader: Boolean,
         headerLevel: Int?,
         commentator: String?,
-        commentatorOrder: String?
+        commentatorOrder: String?,
+        isFootnoteMarker: Boolean,
+        isFootnoteContent: Boolean
     ) {
         when (node) {
             is TextNode -> {
@@ -64,7 +70,9 @@ class HtmlParser {
                     isHeader = isHeader,
                     headerLevel = headerLevel,
                     commentator = commentator,
-                    commentatorOrder = commentatorOrder
+                    commentatorOrder = commentatorOrder,
+                    isFootnoteMarker = isFootnoteMarker,
+                    isFootnoteContent = isFootnoteContent
                 )
             }
             is Element -> {
@@ -75,12 +83,20 @@ class HtmlParser {
                     return
                 }
 
+                // Detect footnote marker: <sup class="footnote-marker">
+                val isFootnoteMarkerTag = tag == "sup" && node.hasClass("footnote-marker")
+                // Detect footnote content: <i class="footnote">
+                val isFootnoteContentTag = tag == "i" && node.hasClass("footnote")
+
                 val nextBold = isBold || tag == "b" || tag == "strong"
-                val nextItalic = isItalic || tag == "i" || tag == "em"
+                // Don't set italic for footnote content tags (we handle them separately)
+                val nextItalic = isItalic || ((tag == "i" || tag == "em") && !isFootnoteContentTag)
                 val nextSmall = isSmall || tag == "small"
                 val isHeaderTag = tag.length == 2 && tag[0] == 'h' && tag[1].isDigit()
                 val nextHeader = isHeader || isHeaderTag
                 val nextHeaderLevel = if (isHeaderTag) tag.substring(1).toInt() else headerLevel
+                val nextFootnoteMarker = isFootnoteMarker || isFootnoteMarkerTag
+                val nextFootnoteContent = isFootnoteContent || isFootnoteContentTag
 
                 if (node.childNodeSize() == 1 && node.childNode(0) is TextNode) {
                     appendSegment(
@@ -92,7 +108,9 @@ class HtmlParser {
                         isHeader = nextHeader,
                         headerLevel = nextHeaderLevel,
                         commentator = commentator,
-                        commentatorOrder = commentatorOrder
+                        commentatorOrder = commentatorOrder,
+                        isFootnoteMarker = nextFootnoteMarker,
+                        isFootnoteContent = nextFootnoteContent
                     )
                     return
                 }
@@ -107,7 +125,9 @@ class HtmlParser {
                         isHeader = nextHeader,
                         headerLevel = nextHeaderLevel,
                         commentator = commentator,
-                        commentatorOrder = commentatorOrder
+                        commentatorOrder = commentatorOrder,
+                        isFootnoteMarker = nextFootnoteMarker,
+                        isFootnoteContent = nextFootnoteContent
                     )
                 }
             }
@@ -123,7 +143,9 @@ class HtmlParser {
         isHeader: Boolean,
         headerLevel: Int?,
         commentator: String?,
-        commentatorOrder: String?
+        commentatorOrder: String?,
+        isFootnoteMarker: Boolean,
+        isFootnoteContent: Boolean
     ) {
         // Normalizes multiple spaces into a single space, but preserves leading/trailing spaces
         val normalizedText = textRaw.replace(Regex("\\s+"), " ")
@@ -158,7 +180,9 @@ class HtmlParser {
                         last.isHeader == isHeader &&
                         last.headerLevel == headerLevel &&
                         last.commentator == commentator &&
-                        last.commentatorOrder == commentatorOrder
+                        last.commentatorOrder == commentatorOrder &&
+                        last.isFootnoteMarker == isFootnoteMarker &&
+                        last.isFootnoteContent == isFootnoteContent
 
             if (sameStyle) {
                 // Fusion avec le segment précédent du même style
@@ -206,7 +230,9 @@ class HtmlParser {
                 isHeader = isHeader,
                 headerLevel = headerLevel,
                 commentator = commentator,
-                commentatorOrder = commentatorOrder
+                commentatorOrder = commentatorOrder,
+                isFootnoteMarker = isFootnoteMarker,
+                isFootnoteContent = isFootnoteContent
             )
         )
     }

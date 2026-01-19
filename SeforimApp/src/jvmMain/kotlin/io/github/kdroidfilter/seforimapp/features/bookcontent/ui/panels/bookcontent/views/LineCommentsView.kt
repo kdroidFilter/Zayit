@@ -575,17 +575,22 @@ private fun CommentaryItem(
             if (showDiacritics) targetText else HebrewTextUtils.removeAllDiacritics(targetText)
         }
 
+        // Footnote marker color from theme
+        val footnoteMarkerColor = JewelTheme.globalColors.outlines.focused
+
         val annotated = remember(
             linkId,
             processedText,
             textSizes.commentTextSize,
             boldScale,
-            showDiacritics
+            showDiacritics,
+            footnoteMarkerColor
         ) {
             buildAnnotatedFromHtml(
                 processedText,
                 textSizes.commentTextSize,
-                boldScale = if (boldScale < 1f) 1f else boldScale
+                boldScale = if (boldScale < 1f) 1f else boldScale,
+                footnoteMarkerColor = footnoteMarkerColor
             )
         }
 

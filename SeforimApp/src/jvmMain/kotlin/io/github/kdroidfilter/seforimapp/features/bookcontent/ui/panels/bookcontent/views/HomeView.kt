@@ -73,8 +73,11 @@ import kotlin.math.roundToInt
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 
 // Suggestion models for the scope picker
+@Immutable
 private data class CategorySuggestion(val category: Category, val path: List<String>)
+@Immutable
 private data class BookSuggestion(val book: BookModel, val path: List<String>)
+@Immutable
 private data class TocSuggestion(val toc: TocEntry, val path: List<String>)
 private data class AnchorBounds(val windowOffset: IntOffset, val size: IntSize)
 
@@ -334,9 +337,7 @@ private fun HomeBody(
                             }
                             val breadcrumbSeparatorTop = stringResource(Res.string.breadcrumb_separator)
                             val isTocInTopBar = isReferenceMode && searchUi.selectedScopeBook != null
-                            val tocHintsForBar = if (searchUi.tocPreviewHints.isNotEmpty()) {
-                                searchUi.tocPreviewHints
-                            } else {
+                            val tocHintsForBar = searchUi.tocPreviewHints.ifEmpty {
                                 listOf(
                                     stringResource(Res.string.reference_toc_hint_1),
                                     stringResource(Res.string.reference_toc_hint_2),
@@ -679,13 +680,15 @@ private fun ReferenceByCategorySection(
         stringResource(Res.string.reference_book_hint_4),
         stringResource(Res.string.reference_book_hint_5)
     )
-    val tocHints = if (tocPreviewHints.isNotEmpty()) tocPreviewHints else listOf(
+    val tocHints = tocPreviewHints.ifEmpty {
+        listOf(
         stringResource(Res.string.reference_toc_hint_1),
         stringResource(Res.string.reference_toc_hint_2),
         stringResource(Res.string.reference_toc_hint_3),
         stringResource(Res.string.reference_toc_hint_4),
         stringResource(Res.string.reference_toc_hint_5)
     )
+    }
     val activeState = if (isTocMode) tocTfState else refState
 
     Column(Modifier.fillMaxWidth()) {

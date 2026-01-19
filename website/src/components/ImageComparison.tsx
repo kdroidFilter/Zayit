@@ -220,12 +220,6 @@ export function ImageComparison({ lightImage, darkImage, alt, fullscreen = false
         />
       </div>
 
-      {/* Bottom caption - hidden in fullscreen */}
-      {!fullscreen && (
-        <p className="text-center mt-6 text-xl md:text-2xl font-semibold" style={{ color: 'var(--gold)' }}>
-          {alt}
-        </p>
-      )}
     </motion.div>
   );
 }

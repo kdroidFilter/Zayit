@@ -29,11 +29,19 @@
   "interface": {
     "title": "A pro and natural interface",
     "description": "Built on JetBrains technologies, including Compose Desktop and Jewel. Inspired by Google Chrome and IntelliJ IDEA, it offers a professional interface that is fluid and natural, respects study, and does not strain the eyes.",
-    "noLearning": "You already know how to use it. No learning curve."
+    "noLearning": "You already know how to use it. No learning curve.",
+    "bookSearch": "Book Search",
+    "bookSearchDesc": "Use book acronyms to find any sefer instantly"
   },
   "panels": {
     "title": "Modular panels",
-    "description": "The layout adapts instantly: organize the screen the way you want. Show, hide, compare, and tailor reading to your study style."
+    "description": "The layout adapts instantly: organize the screen the way you want. Show, hide, compare, and tailor reading to your study style.",
+    "commentaries": "Commentaries",
+    "commentariesDesc": "Display multiple commentaries alongside the main text",
+    "translations": "Commentaries & Translations",
+    "translationsDesc": "Compare translations and commentaries side by side",
+    "sources": "Sources",
+    "sourcesDesc": "Instantly access source references and citations"
   },
   "search": {
     "title": "An exceptional search engine",
@@ -43,6 +51,8 @@
     "feature3": "A partial phrase is often enough to reach the right place",
     "feature4": "Clean, readable, immediate results, useful for review and lesson prep",
     "simple": "Simple to go fast",
+    "simpleTitle": "Database Search",
+    "simpleDesc": "Simple mode for core texts, advanced mode for the entire library.",
     "advanced": "Advanced to go far",
     "powered": "Powered by Lucene and enhanced by AI for precision"
   },

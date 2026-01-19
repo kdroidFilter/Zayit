@@ -2,6 +2,7 @@
 
 package io.github.kdroidfilter.seforimapp.features.search
 
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.createSavedStateHandle
@@ -39,6 +40,7 @@ import kotlin.collections.ArrayDeque
 
 private const val PARALLEL_FILTER_THRESHOLD = 2_000
 
+@Stable
 data class SearchUiState(
     val query: String = "",
     val globalExtended: Boolean = false,

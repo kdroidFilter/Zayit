@@ -65,16 +65,16 @@ function PanelsSlider({
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [resetKey, setResetKey] = useState(0);
-  const cancelRef = useRef(false);
+  const sessionRef = useRef(0);
 
   // Progress timer and auto-advance
   useEffect(() => {
-    cancelRef.current = false;
+    const sessionId = ++sessionRef.current;
     const startTime = Date.now();
 
     const animationFrame = () => {
-      if (cancelRef.current) return;
+      // Stop if a new session started (user clicked)
+      if (sessionRef.current !== sessionId) return;
 
       const elapsed = Date.now() - startTime;
       const newProgress = Math.min(elapsed / SLIDE_DURATION, 1);
@@ -83,22 +83,23 @@ function PanelsSlider({
       if (newProgress < 1) {
         requestAnimationFrame(animationFrame);
       } else {
-        setCurrentIndex((prev) => (prev + 1) % panelsData.length);
+        // Double-check session is still valid before advancing
+        if (sessionRef.current === sessionId) {
+          setCurrentIndex((prev) => (prev + 1) % panelsData.length);
+        }
       }
     };
 
     const frameId = requestAnimationFrame(animationFrame);
     return () => {
-      cancelRef.current = true;
       cancelAnimationFrame(frameId);
     };
-  }, [currentIndex, resetKey]);
+  }, [currentIndex]);
 
   const goToSlide = useCallback((index: number) => {
-    cancelRef.current = true;
+    sessionRef.current++; // Invalidate current session
     setProgress(0);
     setCurrentIndex(index);
-    setResetKey((k) => k + 1);
   }, []);
 
   return (

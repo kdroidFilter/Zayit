@@ -195,7 +195,6 @@ fun SearchResultInBookShellMvi(
                     io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree.SearchCategoryTreePanel(
                         uiState = bookUiState,
                         onEvent = onEvent,
-                        searchUi = searchUi,
                         searchTree = searchTree,
                         isFiltering = isFiltering,
                         selectedCategoryIds = selectedCategoryIds,

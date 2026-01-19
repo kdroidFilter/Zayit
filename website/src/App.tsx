@@ -80,14 +80,91 @@ function App() {
     }))
   , []);
 
+  // Crystal sparkle particles - spread across the entire page
+  const crystalParticles = useMemo(() =>
+    [...Array(50)].map((_, i) => ({
+      id: i,
+      size: Math.random() * 4 + 2,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      baseOpacity: Math.random() * 0.5 + 0.3,
+      floatDuration: Math.random() * 25 + 20,
+      twinkleDuration: Math.random() * 2 + 1,
+      delay: Math.random() * 15,
+      twinkleDelay: Math.random() * 3,
+      yMove: Math.random() * 200 + 80,
+      xMove: (Math.random() - 0.5) * 60,
+      color: i % 2 === 0 ? 'gold' : 'silver',
+    }))
+  , []);
+
   return (
     <div
-      className="min-h-screen"
+      className="min-h-screen relative"
       style={{
         background: `radial-gradient(ellipse at top, var(--bg-gradient-top) 0%, var(--bg-main) 60%)`,
         color: 'var(--text-main)',
       }}
     >
+      {/* Crystal Sparkle Particles Layer */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        {crystalParticles.map((p) => {
+          const goldCore = isDark ? '255, 235, 180' : '218, 165, 32';
+          const goldGlow = isDark ? '230, 210, 140' : '255, 215, 0';
+          const silverCore = isDark ? '255, 255, 255' : '220, 220, 235';
+          const silverGlow = isDark ? '200, 200, 230' : '192, 192, 210';
+
+          const coreColor = p.color === 'gold' ? goldCore : silverCore;
+          const glowColor = p.color === 'gold' ? goldGlow : silverGlow;
+
+          return (
+            <motion.div
+              key={`crystal-${p.id}`}
+              className="absolute"
+              style={{
+                width: p.size,
+                height: p.size,
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+              }}
+              animate={{
+                y: [0, -p.yMove, 0],
+                x: [0, p.xMove, 0],
+              }}
+              transition={{
+                duration: p.floatDuration,
+                delay: p.delay,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+            >
+              {/* Crystal core with twinkling glow */}
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: `radial-gradient(circle, rgba(${coreColor}, 1) 0%, rgba(${coreColor}, 0.5) 50%, transparent 100%)`,
+                  boxShadow: `
+                    0 0 ${p.size * 2}px rgba(${glowColor}, 0.9),
+                    0 0 ${p.size * 5}px rgba(${glowColor}, 0.6),
+                    0 0 ${p.size * 8}px rgba(${glowColor}, 0.3)
+                  `,
+                }}
+                animate={{
+                  opacity: [0.2, 1, 0.2],
+                  scale: [0.6, 1.5, 0.6],
+                }}
+                transition={{
+                  duration: p.twinkleDuration,
+                  delay: p.twinkleDelay,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+            </motion.div>
+          );
+        })}
+      </div>
+
       <Navigation />
 
       {/* Hero Section - Cinematic Title + Image */}
@@ -235,6 +312,7 @@ function App() {
         </motion.div>
       </section>
 
+      
       {/* Vision Section - delayed to appear after hero */}
       <section className="py-10 md:py-20 px-4 md:px-6">
         <motion.div
@@ -269,6 +347,7 @@ function App() {
         </motion.div>
       </section>
 
+      
       {/* Spirit Section - Slow dramatic scale reveal */}
       <section className="py-12 md:py-20 px-4 md:px-6" style={{ background: 'var(--section-alt-bg)' }}>
         <motion.div
@@ -306,6 +385,7 @@ function App() {
         </motion.div>
       </section>
 
+      
       {/* Interface Section - Slow cinematic slide */}
       <section className="py-12 md:py-20 px-4 md:px-6 overflow-hidden">
         <div className="max-w-6xl mx-auto">
@@ -367,6 +447,7 @@ function App() {
         </div>
       </section>
 
+      
       {/* Modular Panels Section - Slow dramatic alternating reveals */}
       <section className="py-12 md:py-20 px-4 md:px-6 overflow-hidden" style={{ background: 'var(--section-alt-bg)' }}>
         <div className="max-w-6xl mx-auto space-y-16 md:space-y-24">
@@ -463,6 +544,7 @@ function App() {
         </div>
       </section>
 
+      
       {/* Search Section - Slow dramatic reveal with suspense */}
       <section id="search" className="py-12 md:py-20 px-4 md:px-6 overflow-hidden">
         <div className="max-w-6xl mx-auto">
@@ -576,6 +658,7 @@ function App() {
         </div>
       </section>
 
+      
       {/* Features Section - Slow dramatic card reveal */}
       <section id="features" className="py-12 md:py-20 px-4 md:px-6 overflow-hidden">
         <div className="max-w-6xl mx-auto">
@@ -650,6 +733,7 @@ function App() {
         </div>
       </section>
 
+      
       {/* Promise Section - Slow 3D reveal with suspense */}
       <section className="py-12 md:py-20 px-4 md:px-6 overflow-hidden" style={{ background: 'var(--section-alt-bg)', perspective: '1200px' }}>
         <div className="max-w-5xl mx-auto">
@@ -734,6 +818,7 @@ function App() {
         </div>
       </section>
 
+      
       {/* Crafted Section - Slow elegant text reveal */}
       <section className="py-12 md:py-20 px-4 md:px-6">
         <div className="max-w-4xl mx-auto text-center">
@@ -772,6 +857,7 @@ function App() {
         </div>
       </section>
 
+      
       {/* Download Section - Slow dramatic finale */}
       <section
         id="download"

@@ -106,7 +106,7 @@ function App() {
                 top: `${p.y}%`,
                 background: isDark
                   ? `rgba(230, 210, 140, ${p.opacity})`
-                  : `rgba(180, 140, 60, ${p.opacity + 0.2})`,
+                  : `rgba(212, 160, 23, ${p.opacity + 0.25})`,
               }}
               initial={{ opacity: 0 }}
               animate={{
@@ -154,7 +154,7 @@ function App() {
               color: 'var(--gold)',
               textShadow: isDark
                 ? '0 0 60px rgba(230, 210, 140, 0.5), 0 0 120px rgba(230, 210, 140, 0.3)'
-                : '0 0 40px rgba(139, 115, 85, 0.3), 0 0 80px rgba(139, 115, 85, 0.2)',
+                : '0 0 40px rgba(184, 134, 11, 0.3), 0 0 80px rgba(184, 134, 11, 0.2)',
             }}
             variants={{
               hidden: { opacity: 0, scale: 1.3, filter: 'blur(20px)' },
@@ -248,7 +248,7 @@ function App() {
           <motion.div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
             style={{
-              background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)',
+              background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(184, 134, 11, 0.1)',
               color: 'var(--gold)',
             }}
             initial={{ opacity: 0, scale: 0.8 }}
@@ -283,7 +283,7 @@ function App() {
           <motion.div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
             style={{
-              background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)',
+              background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(184, 134, 11, 0.1)',
               color: 'var(--gold)',
             }}
             initial={{ opacity: 0, y: -30 }}
@@ -598,7 +598,7 @@ function App() {
                     style={{
                       background: isDark
                         ? 'linear-gradient(135deg, rgba(230, 210, 140, 0.15) 0%, rgba(230, 210, 140, 0.05) 100%)'
-                        : 'linear-gradient(135deg, rgba(139, 115, 85, 0.15) 0%, rgba(139, 115, 85, 0.05) 100%)',
+                        : 'linear-gradient(135deg, rgba(184, 134, 11, 0.15) 0%, rgba(184, 134, 11, 0.05) 100%)',
                     }}
                     initial={{ rotate: -180, scale: 0 }}
                     whileInView={{ rotate: 0, scale: 1 }}
@@ -673,7 +673,7 @@ function App() {
                   style={{
                     background: isDark
                       ? 'linear-gradient(135deg, rgba(230, 210, 140, 0.2) 0%, rgba(230, 210, 140, 0.05) 100%)'
-                      : 'linear-gradient(135deg, rgba(139, 115, 85, 0.2) 0%, rgba(139, 115, 85, 0.05) 100%)',
+                      : 'linear-gradient(135deg, rgba(184, 134, 11, 0.2) 0%, rgba(184, 134, 11, 0.05) 100%)',
                   }}
                   initial={{ scale: 0, rotate: -180 }}
                   whileInView={{ scale: 1, rotate: 0 }}
@@ -714,7 +714,7 @@ function App() {
           <motion.div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
             style={{
-              background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(139, 115, 85, 0.1)',
+              background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(184, 134, 11, 0.1)',
               color: 'var(--gold)',
             }}
             initial={{ opacity: 0, y: -40, scale: 0.7 }}
@@ -753,7 +753,7 @@ function App() {
         style={{
           background: isDark
             ? 'linear-gradient(180deg, rgba(230, 210, 140, 0.08) 0%, rgba(230, 210, 140, 0.02) 100%)'
-            : 'linear-gradient(180deg, rgba(139, 115, 85, 0.08) 0%, rgba(139, 115, 85, 0.02) 100%)',
+            : 'linear-gradient(180deg, rgba(184, 134, 11, 0.08) 0%, rgba(184, 134, 11, 0.02) 100%)',
         }}
       >
         <div className="max-w-4xl mx-auto text-center">
@@ -803,14 +803,14 @@ function App() {
               className="inline-flex items-center gap-3 px-8 md:px-10 py-4 md:py-5 rounded-full text-lg md:text-xl font-semibold text-white"
               style={{
                 background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)',
-                boxShadow: isDark ? '0 15px 40px rgba(230, 210, 140, 0.3)' : '0 15px 40px rgba(139, 115, 85, 0.4)',
+                boxShadow: isDark ? '0 15px 40px rgba(230, 210, 140, 0.3)' : '0 15px 40px rgba(184, 134, 11, 0.4)',
               }}
-              whileHover={{ scale: 1.05, boxShadow: '0 20px 50px rgba(139, 115, 85, 0.5)' }}
+              whileHover={{ scale: 1.05, boxShadow: '0 20px 50px rgba(184, 134, 11, 0.5)' }}
               whileTap={{ scale: 0.98 }}
               animate={{
                 boxShadow: isDark
                   ? ['0 15px 40px rgba(230, 210, 140, 0.3)', '0 20px 60px rgba(230, 210, 140, 0.5)', '0 15px 40px rgba(230, 210, 140, 0.3)']
-                  : ['0 15px 40px rgba(139, 115, 85, 0.4)', '0 20px 60px rgba(139, 115, 85, 0.6)', '0 15px 40px rgba(139, 115, 85, 0.4)'],
+                  : ['0 15px 40px rgba(184, 134, 11, 0.4)', '0 20px 60px rgba(184, 134, 11, 0.6)', '0 15px 40px rgba(184, 134, 11, 0.4)'],
               }}
               transition={{
                 boxShadow: { duration: 3, repeat: Infinity, ease: 'easeInOut' }

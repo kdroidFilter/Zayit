@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 @theme {
-  /* Light theme colors */
-  --color-bg-main: #f5f3ee;
-  --color-bg-gradient-top: #faf9f5;
-  --color-bg-gradient-bottom: #eae8e0;
-  --color-card-bg: rgba(255, 255, 255, 0.95);
-  --color-gold: #8b7355;
-  --color-gold-soft: #9a8265;
-  --color-gold-muted: #a69070;
-  --color-text-main: #2c2416;
-  --color-text-muted: #5c5040;
+  /* Light theme colors - Premium Golden */
+  --color-bg-main: #faf8f3;
+  --color-bg-gradient-top: #fffdf8;
+  --color-bg-gradient-bottom: #f5f0e6;
+  --color-card-bg: rgba(255, 253, 248, 0.95);
+  --color-gold: #b8860b;
+  --color-gold-soft: #d4a017;
+  --color-gold-muted: #c9a227;
+  --color-text-main: #1a1408;
+  --color-text-muted: #4a4030;
 
   /* Dark theme colors */
   --color-dark-bg-main: #050509;
@@ -78,13 +78,13 @@ body {
 }
 
 :root {
-  /* Light theme - original */
-  --section-alt-bg: rgba(139, 115, 85, 0.03);
-  --card-border: rgba(139, 115, 85, 0.1);
-  --feature-card-bg: rgba(255, 255, 255, 0.6);
-  --feature-card-border: rgba(139, 115, 85, 0.1);
-  --glow-color: rgba(180, 160, 100, 0.15);
-  --card-highlight: rgba(180, 160, 100, 0.3);
+  /* Light theme - Premium Golden */
+  --section-alt-bg: rgba(184, 134, 11, 0.04);
+  --card-border: rgba(184, 134, 11, 0.15);
+  --feature-card-bg: rgba(255, 253, 245, 0.85);
+  --feature-card-border: rgba(184, 134, 11, 0.18);
+  --glow-color: rgba(212, 160, 23, 0.2);
+  --card-highlight: rgba(212, 160, 23, 0.35);
 }
 
 /* Smooth theme transitions */

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Navigation } from './components/Navigation';
 import { ImageComparison } from './components/ImageComparison';
+import { CrystalParticlesGL } from './components/CrystalParticlesGL';
 import './i18n';
 
 function App() {
@@ -78,23 +79,6 @@ function App() {
     }))
   , []);
 
-  // Crystal sparkle particles - spread across the entire page
-  const crystalParticles = useMemo(() =>
-    [...Array(50)].map((_, i) => ({
-      id: i,
-      size: Math.random() * 4 + 2,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      baseOpacity: Math.random() * 0.5 + 0.3,
-      floatDuration: Math.random() * 25 + 20,
-      twinkleDuration: Math.random() * 2 + 1,
-      delay: Math.random() * 15,
-      twinkleDelay: Math.random() * 3,
-      yMove: Math.random() * 200 + 80,
-      xMove: (Math.random() - 0.5) * 60,
-      color: i % 2 === 0 ? 'gold' : 'silver',
-    }))
-  , []);
 
   return (
     <div
@@ -104,64 +88,8 @@ function App() {
         color: 'var(--text-main)',
       }}
     >
-      {/* Crystal Sparkle Particles Layer */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        {crystalParticles.map((p) => {
-          const goldCore = '255, 235, 180';
-          const goldGlow = '230, 210, 140';
-          const silverCore = '255, 255, 255';
-          const silverGlow = '200, 200, 230';
-
-          const coreColor = p.color === 'gold' ? goldCore : silverCore;
-          const glowColor = p.color === 'gold' ? goldGlow : silverGlow;
-
-          return (
-            <motion.div
-              key={`crystal-${p.id}`}
-              className="absolute"
-              style={{
-                width: p.size,
-                height: p.size,
-                left: `${p.x}%`,
-                top: `${p.y}%`,
-              }}
-              animate={{
-                y: [0, -p.yMove, 0],
-                x: [0, p.xMove, 0],
-              }}
-              transition={{
-                duration: p.floatDuration,
-                delay: p.delay,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-            >
-              {/* Crystal core with twinkling glow */}
-              <motion.div
-                className="absolute inset-0 rounded-full"
-                style={{
-                  background: `radial-gradient(circle, rgba(${coreColor}, 1) 0%, rgba(${coreColor}, 0.5) 50%, transparent 100%)`,
-                  boxShadow: `
-                    0 0 ${p.size * 2}px rgba(${glowColor}, 0.9),
-                    0 0 ${p.size * 5}px rgba(${glowColor}, 0.6),
-                    0 0 ${p.size * 8}px rgba(${glowColor}, 0.3)
-                  `,
-                }}
-                animate={{
-                  opacity: [0.2, 1, 0.2],
-                  scale: [0.6, 1.5, 0.6],
-                }}
-                transition={{
-                  duration: p.twinkleDuration,
-                  delay: p.twinkleDelay,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                }}
-              />
-            </motion.div>
-          );
-        })}
-      </div>
+      {/* Crystal Sparkle Particles Layer - WebGL with shaders for GPU acceleration */}
+      <CrystalParticlesGL count={50} />
 
       <Navigation />
 

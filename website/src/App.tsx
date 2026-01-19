@@ -218,7 +218,7 @@ function App() {
 
         {/* App Screenshot */}
         <motion.div
-          className="relative z-20 w-full max-w-6xl mt-4 md:mt-8 px-4 md:px-0"
+          className="relative z-20 w-full max-w-5xl mt-4 md:mt-8 px-4 md:px-0"
           initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.2, delay: 2.8, ease: [0.16, 1, 0.3, 1] }}
@@ -227,13 +227,11 @@ function App() {
             y: imageY,
           }}
         >
-          <div className="[&_img]:max-h-[35vh] [&_img]:md:max-h-[60vh] [&_img]:w-auto [&_img]:mx-auto">
-            <ImageComparison
-              lightImage="art/HOME-LIGHT.png"
-              darkImage="art/HOME-DARK.png"
-              alt=""
-            />
-          </div>
+          <ImageComparison
+            lightImage="art/HOME-LIGHT.png"
+            darkImage="art/HOME-DARK.png"
+            alt=""
+          />
         </motion.div>
       </section>
 

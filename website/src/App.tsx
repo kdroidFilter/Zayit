@@ -352,6 +352,14 @@ function App() {
             viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 2.5, ease: cinematicEase }}
           >
+            <div className="text-center mb-4">
+              <h3 className="text-lg md:text-xl font-medium mb-1" style={{ color: 'var(--gold)' }}>
+                {t('interface.bookSearch')}
+              </h3>
+              <p className="text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
+                {t('interface.bookSearchDesc')}
+              </p>
+            </div>
             <ImageComparison
               lightImage="art/BOOK-SEARCH-LIGHT.png"
               darkImage="art/BOOK-SEARCH-DARK.png"
@@ -389,12 +397,21 @@ function App() {
             </motion.p>
           </motion.div>
 
+          {/* Commentaries */}
           <motion.div
             initial={{ opacity: 0, x: -200, rotate: -3 }}
             whileInView={{ opacity: 1, x: 0, rotate: 0 }}
             viewport={{ once: true, amount: 0.15 }}
             transition={{ duration: 2.5, ease: cinematicEase }}
           >
+            <div className="text-center mb-4">
+              <h3 className="text-lg md:text-xl font-medium mb-1" style={{ color: 'var(--gold)' }}>
+                {t('panels.commentaries')}
+              </h3>
+              <p className="text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
+                {t('panels.commentariesDesc')}
+              </p>
+            </div>
             <ImageComparison
               lightImage="art/PIRUSHIM-LIGHT.png"
               darkImage="art/PIRUSHIM-DARK.png"
@@ -402,12 +419,21 @@ function App() {
             />
           </motion.div>
 
+          {/* Commentaries & Translations */}
           <motion.div
             initial={{ opacity: 0, x: 200, rotate: 3 }}
             whileInView={{ opacity: 1, x: 0, rotate: 0 }}
             viewport={{ once: true, amount: 0.15 }}
             transition={{ duration: 2.5, ease: cinematicEase }}
           >
+            <div className="text-center mb-4">
+              <h3 className="text-lg md:text-xl font-medium mb-1" style={{ color: 'var(--gold)' }}>
+                {t('panels.translations')}
+              </h3>
+              <p className="text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
+                {t('panels.translationsDesc')}
+              </p>
+            </div>
             <ImageComparison
               lightImage="art/PIRUSHIM-TARGUMIM-LIGHT.png"
               darkImage="art/PIRUSHIM-TARGUMIM-DARK.png"
@@ -415,12 +441,21 @@ function App() {
             />
           </motion.div>
 
+          {/* Sources */}
           <motion.div
             initial={{ opacity: 0, scale: 0.7, filter: 'blur(20px)' }}
             whileInView={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
             viewport={{ once: true, amount: 0.15 }}
             transition={{ duration: 2.5, ease: cinematicEase }}
           >
+            <div className="text-center mb-4">
+              <h3 className="text-lg md:text-xl font-medium mb-1" style={{ color: 'var(--gold)' }}>
+                {t('panels.sources')}
+              </h3>
+              <p className="text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
+                {t('panels.sourcesDesc')}
+              </p>
+            </div>
             <ImageComparison
               lightImage="art/MEKOR-LIGHT.png"
               darkImage="art/MEKOR-DARK.png"
@@ -526,25 +561,18 @@ function App() {
             transition={{ duration: 2.5, ease: cinematicEase }}
             style={{ perspective: 1200 }}
           >
+            <div className="text-center mb-4">
+              <h3 className="text-lg md:text-xl font-medium mb-1" style={{ color: 'var(--gold)' }}>
+                {t('search.simpleTitle')}
+              </h3>
+              <p className="text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
+                {t('search.simpleDesc')}
+              </p>
+            </div>
             <ImageComparison
               lightImage="art/DB-SEARCH-SIMPLE-LIGHT.png"
               darkImage="art/DB-SEARCH-SIMPLE-DARK.png"
-              alt={isRTL ? 'חיפוש פשוט' : 'Simple Search'}
-            />
-          </motion.div>
-
-          <motion.div
-            className="mt-16 md:mt-24"
-            initial={{ opacity: 0, y: 100, rotateX: -15, scale: 0.85 }}
-            whileInView={{ opacity: 1, y: 0, rotateX: 0, scale: 1 }}
-            viewport={{ once: true, amount: 0.15 }}
-            transition={{ duration: 2.5, ease: cinematicEase }}
-            style={{ perspective: 1200 }}
-          >
-            <ImageComparison
-              lightImage="art/DB-SEARCH-ADVANCED-LIGHT.png"
-              darkImage="art/DB-SEARCH-ADVANCED-DARK.png"
-              alt={isRTL ? 'חיפוש מתקדם' : 'Advanced Search'}
+              alt={isRTL ? 'חיפוש בבסיס הנתונים' : 'Database Search'}
             />
           </motion.div>
         </div>

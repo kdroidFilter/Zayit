@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
@@ -22,6 +22,196 @@ import { Navigation } from './components/Navigation';
 import { ImageComparison } from './components/ImageComparison';
 import { CrystalParticlesGL } from './components/CrystalParticlesGL';
 import './i18n';
+
+// Panels data for the slider
+const panelsData = [
+  {
+    titleKey: 'panels.commentaries',
+    descKey: 'panels.commentariesDesc',
+    lightImage: 'art/PIRUSHIM-LIGHT.png',
+    darkImage: 'art/PIRUSHIM-DARK.png',
+    altHe: 'פירושים',
+    altEn: 'Commentaries',
+  },
+  {
+    titleKey: 'panels.translations',
+    descKey: 'panels.translationsDesc',
+    lightImage: 'art/PIRUSHIM-TARGUMIM-LIGHT.png',
+    darkImage: 'art/PIRUSHIM-TARGUMIM-DARK.png',
+    altHe: 'פירושים ותרגומים',
+    altEn: 'Commentaries and Translations',
+  },
+  {
+    titleKey: 'panels.sources',
+    descKey: 'panels.sourcesDesc',
+    lightImage: 'art/MEKOR-LIGHT.png',
+    darkImage: 'art/MEKOR-DARK.png',
+    altHe: 'מקורות',
+    altEn: 'Sources',
+  },
+];
+
+const SLIDE_DURATION = 10000; // 10 seconds
+
+// Apple-style Panels Slider Component
+function PanelsSlider({
+  t,
+  isRTL,
+  cinematicEase
+}: {
+  t: (key: string) => string;
+  isRTL: boolean;
+  cinematicEase: readonly [number, number, number, number];
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [resetKey, setResetKey] = useState(0);
+  const cancelRef = useRef(false);
+
+  // Progress timer and auto-advance
+  useEffect(() => {
+    cancelRef.current = false;
+    const startTime = Date.now();
+
+    const animationFrame = () => {
+      if (cancelRef.current) return;
+
+      const elapsed = Date.now() - startTime;
+      const newProgress = Math.min(elapsed / SLIDE_DURATION, 1);
+      setProgress(newProgress);
+
+      if (newProgress < 1) {
+        requestAnimationFrame(animationFrame);
+      } else {
+        setCurrentIndex((prev) => (prev + 1) % panelsData.length);
+      }
+    };
+
+    const frameId = requestAnimationFrame(animationFrame);
+    return () => {
+      cancelRef.current = true;
+      cancelAnimationFrame(frameId);
+    };
+  }, [currentIndex, resetKey]);
+
+  const goToSlide = useCallback((index: number) => {
+    cancelRef.current = true;
+    setProgress(0);
+    setCurrentIndex(index);
+    setResetKey((k) => k + 1);
+  }, []);
+
+  return (
+    <section
+      className="py-12 md:py-20 px-4 md:px-6 overflow-hidden"
+      style={{ background: 'var(--section-alt-bg)' }}
+    >
+      <div className="max-w-6xl mx-auto">
+        {/* Section Header */}
+        <motion.div
+          className="text-center mb-8 md:mb-12"
+          initial={{ opacity: 0, y: 60, filter: 'blur(15px)' }}
+          whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ duration: 2, ease: cinematicEase }}
+        >
+          <h2
+            className="text-3xl md:text-4xl font-bold mb-4"
+            style={{ color: 'var(--text-main)' }}
+          >
+            {t('panels.title')}
+          </h2>
+          <motion.p
+            className="text-lg max-w-2xl mx-auto"
+            style={{ color: 'var(--text-muted)' }}
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.5, delay: 1.2 }}
+          >
+            {t('panels.description')}
+          </motion.p>
+        </motion.div>
+
+        {/* Slider Container - All slides in a row, translate to show current */}
+        <div className="overflow-hidden">
+          <motion.div
+            className="flex"
+            animate={{ x: `${-currentIndex * 100}%` }}
+            transition={{ duration: 0.7, ease: [0.32, 0.72, 0, 1] }}
+          >
+            {panelsData.map((panel, index) => (
+              <div key={index} className="w-full flex-shrink-0">
+                <div className="text-center mb-4">
+                  <h3
+                    className="text-lg md:text-xl font-medium mb-1"
+                    style={{ color: 'var(--gold)' }}
+                  >
+                    {t(panel.titleKey)}
+                  </h3>
+                  <p
+                    className="text-sm md:text-base"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    {t(panel.descKey)}
+                  </p>
+                </div>
+                <ImageComparison
+                  lightImage={panel.lightImage}
+                  darkImage={panel.darkImage}
+                  alt={isRTL ? panel.altHe : panel.altEn}
+                />
+              </div>
+            ))}
+          </motion.div>
+        </div>
+
+        {/* Apple-style Dot Indicators with Progress */}
+        <div className="flex justify-center items-center gap-3 mt-8">
+          {panelsData.map((_, index) => {
+            const isActive = index === currentIndex;
+            return (
+              <button
+                key={index}
+                onClick={() => goToSlide(index)}
+                className="group relative focus:outline-none py-2 cursor-pointer"
+                aria-label={`Go to slide ${index + 1}`}
+              >
+                {/* Background track */}
+                <motion.div
+                  className="rounded-full relative"
+                  style={{
+                    backgroundColor: isActive ? 'rgba(128, 128, 128, 0.3)' : 'rgba(128, 128, 128, 0.4)',
+                  }}
+                  animate={{
+                    width: isActive ? 40 : 8,
+                    height: 8,
+                  }}
+                  whileHover={{
+                    scale: 1.2,
+                    backgroundColor: isActive ? 'rgba(128, 128, 128, 0.4)' : 'rgba(128, 128, 128, 0.6)',
+                  }}
+                  transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                >
+                  {/* Gold progress fill */}
+                  {isActive && (
+                    <motion.div
+                      className="absolute top-0 left-0 h-full rounded-full"
+                      style={{
+                        backgroundColor: 'var(--gold)',
+                        width: `${progress * 100}%`,
+                      }}
+                    />
+                  )}
+                </motion.div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -371,101 +561,8 @@ function App() {
       </section>
 
       
-      {/* Modular Panels Section - Slow dramatic alternating reveals */}
-      <section className="py-12 md:py-20 px-4 md:px-6 overflow-hidden" style={{ background: 'var(--section-alt-bg)' }}>
-        <div className="max-w-6xl mx-auto space-y-16 md:space-y-24">
-          <motion.div
-            className="text-center mb-12"
-            initial={{ opacity: 0, y: 60, filter: 'blur(15px)' }}
-            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 2, ease: cinematicEase }}
-          >
-            <h2
-              className="text-3xl md:text-4xl font-bold mb-4"
-              style={{ color: 'var(--text-main)' }}
-            >
-              {t('panels.title')}
-            </h2>
-            <motion.p
-              className="text-lg max-w-2xl mx-auto"
-              style={{ color: 'var(--text-muted)' }}
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 1.5, delay: 1.2 }}
-            >
-              {t('panels.description')}
-            </motion.p>
-          </motion.div>
-
-          {/* Commentaries */}
-          <motion.div
-            initial={{ opacity: 0, x: -200, rotate: -3 }}
-            whileInView={{ opacity: 1, x: 0, rotate: 0 }}
-            viewport={{ once: true, amount: 0.15 }}
-            transition={{ duration: 2.5, ease: cinematicEase }}
-          >
-            <div className="text-center mb-4">
-              <h3 className="text-lg md:text-xl font-medium mb-1" style={{ color: 'var(--gold)' }}>
-                {t('panels.commentaries')}
-              </h3>
-              <p className="text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
-                {t('panels.commentariesDesc')}
-              </p>
-            </div>
-            <ImageComparison
-              lightImage="art/PIRUSHIM-LIGHT.png"
-              darkImage="art/PIRUSHIM-DARK.png"
-              alt={isRTL ? 'פירושים' : 'Commentaries'}
-            />
-          </motion.div>
-
-          {/* Commentaries & Translations */}
-          <motion.div
-            initial={{ opacity: 0, x: 200, rotate: 3 }}
-            whileInView={{ opacity: 1, x: 0, rotate: 0 }}
-            viewport={{ once: true, amount: 0.15 }}
-            transition={{ duration: 2.5, ease: cinematicEase }}
-          >
-            <div className="text-center mb-4">
-              <h3 className="text-lg md:text-xl font-medium mb-1" style={{ color: 'var(--gold)' }}>
-                {t('panels.translations')}
-              </h3>
-              <p className="text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
-                {t('panels.translationsDesc')}
-              </p>
-            </div>
-            <ImageComparison
-              lightImage="art/PIRUSHIM-TARGUMIM-LIGHT.png"
-              darkImage="art/PIRUSHIM-TARGUMIM-DARK.png"
-              alt={isRTL ? 'פירושים ותרגומים' : 'Commentaries and Translations'}
-            />
-          </motion.div>
-
-          {/* Sources */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.7, filter: 'blur(20px)' }}
-            whileInView={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-            viewport={{ once: true, amount: 0.15 }}
-            transition={{ duration: 2.5, ease: cinematicEase }}
-          >
-            <div className="text-center mb-4">
-              <h3 className="text-lg md:text-xl font-medium mb-1" style={{ color: 'var(--gold)' }}>
-                {t('panels.sources')}
-              </h3>
-              <p className="text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
-                {t('panels.sourcesDesc')}
-              </p>
-            </div>
-            <ImageComparison
-              lightImage="art/MEKOR-LIGHT.png"
-              darkImage="art/MEKOR-DARK.png"
-              alt={isRTL ? 'מקורות' : 'Sources'}
-            />
-          </motion.div>
-        </div>
-      </section>
+      {/* Modular Panels Section - Apple-style horizontal slider */}
+      <PanelsSlider t={t} isRTL={isRTL} cinematicEase={cinematicEase} />
 
       
       {/* Search Section - Slow dramatic reveal with suspense */}

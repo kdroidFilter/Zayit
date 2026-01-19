@@ -12,59 +12,6 @@ const STORAGE_KEY = 'language'; // Synced with /website
 let translations = {};
 let currentLanguage = DEFAULT_LANGUAGE;
 
-// ==================== Theme System ====================
-const THEME_STORAGE_KEY = 'theme'; // Synced with /website
-let currentTheme = 'system'; // 'light', 'dark', or 'system'
-
-function initTheme() {
-  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-  if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
-    currentTheme = savedTheme;
-  }
-  applyTheme();
-
-  // Listen for system preference changes
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    if (currentTheme === 'system') {
-      applyTheme();
-    }
-  });
-}
-
-function applyTheme() {
-  const root = document.documentElement;
-  root.classList.remove('light', 'dark');
-
-  if (currentTheme === 'light') {
-    root.classList.add('light');
-  } else if (currentTheme === 'dark') {
-    root.classList.add('dark');
-  }
-  // If 'system', no class is added, CSS media query handles it
-}
-
-function isDarkMode() {
-  if (currentTheme === 'dark') return true;
-  if (currentTheme === 'light') return false;
-  // System preference
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
-}
-
-function toggleTheme() {
-  // Cycle: system -> light -> dark -> system
-  // Or simpler: just toggle between light and dark based on current resolved state
-  if (isDarkMode()) {
-    currentTheme = 'light';
-  } else {
-    currentTheme = 'dark';
-  }
-  localStorage.setItem(THEME_STORAGE_KEY, currentTheme);
-  applyTheme();
-  renderApp();
-}
-
-window.toggleTheme = toggleTheme;
-
 async function loadTranslations(lang) {
   try {
     const response = await fetch(`i18n/${lang}.json`);
@@ -413,15 +360,9 @@ function renderBackButton() {
 
 function renderHeaderControls() {
   const currentLangInfo = getLanguageInfo(currentLanguage);
-  const isDark = isDarkMode();
-  const themeIcon = isDark ? 'light_mode' : 'dark_mode';
-  const themeLabel = isDark ? t('theme.light') : t('theme.dark');
 
   return `
     <div class="header-controls">
-      <button class="theme-toggle" onclick="toggleTheme()" title="${themeLabel}" aria-label="${themeLabel}">
-        <span class="material-symbols-outlined">${themeIcon}</span>
-      </button>
       <div class="language-selector">
         <button class="lang-btn" onclick="toggleLanguageMenu(event)">
           <span class="material-symbols-outlined">translate</span>
@@ -1355,9 +1296,6 @@ window.addEventListener("DOMContentLoaded", async function () {
 
   // Initialize i18n system first
   await initI18n();
-
-  // Initialize theme system
-  initTheme();
 
   renderApp(); // Render loading state
 

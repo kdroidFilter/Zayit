@@ -1,27 +1,16 @@
 @import "tailwindcss";
 
 @theme {
-  /* Light theme colors - Premium Golden */
-  --color-bg-main: #faf8f3;
-  --color-bg-gradient-top: #fffdf8;
-  --color-bg-gradient-bottom: #f5f0e6;
-  --color-card-bg: rgba(255, 253, 248, 0.95);
-  --color-gold: #b8860b;
-  --color-gold-soft: #d4a017;
-  --color-gold-muted: #c9a227;
-  --color-text-main: #1a1408;
-  --color-text-muted: #4a4030;
-
   /* Dark theme colors */
-  --color-dark-bg-main: #050509;
-  --color-dark-bg-gradient-top: #1a1a22;
-  --color-dark-bg-gradient-bottom: #111118;
-  --color-dark-card-bg: rgba(16, 16, 24, 0.92);
-  --color-dark-gold: #e6d28c;
-  --color-dark-gold-soft: #d8c68a;
-  --color-dark-gold-muted: #b8a876;
-  --color-dark-text-main: #f9f5dd;
-  --color-dark-text-muted: #c7bea0;
+  --color-bg-main: #050509;
+  --color-bg-gradient-top: #1a1a22;
+  --color-bg-gradient-bottom: #111118;
+  --color-card-bg: rgba(16, 16, 24, 0.92);
+  --color-gold: #e6d28c;
+  --color-gold-soft: #d8c68a;
+  --color-gold-muted: #b8a876;
+  --color-text-main: #f9f5dd;
+  --color-text-muted: #c7bea0;
 
   /* Fonts */
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', 'Noto Sans Hebrew', sans-serif;
@@ -33,6 +22,7 @@
 
 html {
   scroll-behavior: smooth;
+  color-scheme: dark;
 }
 
 body {
@@ -43,7 +33,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Light theme (default) */
+/* Dark theme (default and only) */
 :root {
   --bg-main: var(--color-bg-main);
   --bg-gradient-top: var(--color-bg-gradient-top);
@@ -54,20 +44,6 @@ body {
   --gold-muted: var(--color-gold-muted);
   --text-main: var(--color-text-main);
   --text-muted: var(--color-text-muted);
-}
-
-/* Dark theme */
-.dark {
-  --bg-main: var(--color-dark-bg-main);
-  --bg-gradient-top: var(--color-dark-bg-gradient-top);
-  --bg-gradient-bottom: var(--color-dark-bg-gradient-bottom);
-  --card-bg: var(--color-dark-card-bg);
-  --gold: var(--color-dark-gold);
-  --gold-soft: var(--color-dark-gold-soft);
-  --gold-muted: var(--color-dark-gold-muted);
-  --text-main: var(--color-dark-text-main);
-  --text-muted: var(--color-dark-text-muted);
-  /* Dark theme cards - elegant deep warm black with gold accent */
   --section-alt-bg: rgba(230, 210, 140, 0.02);
   --card-border: rgba(230, 210, 140, 0.12);
   --section-bg: rgba(8, 8, 12, 0.95);
@@ -75,25 +51,6 @@ body {
   --feature-card-border: rgba(230, 210, 140, 0.2);
   --glow-color: rgba(230, 210, 140, 0.15);
   --card-highlight: rgba(230, 210, 140, 0.18);
-}
-
-:root {
-  /* Light theme - Premium Golden */
-  --section-alt-bg: rgba(184, 134, 11, 0.04);
-  --card-border: rgba(184, 134, 11, 0.15);
-  --feature-card-bg: rgba(255, 253, 245, 0.85);
-  --feature-card-border: rgba(184, 134, 11, 0.18);
-  --glow-color: rgba(212, 160, 23, 0.2);
-  --card-highlight: rgba(212, 160, 23, 0.35);
-}
-
-/* Smooth theme transitions */
-html {
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-html.dark {
-  color-scheme: dark;
 }
 
 /* RTL support */
@@ -113,12 +70,8 @@ html.dark {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--gold-muted);
-  border-radius: 999px;
-}
-
-.dark ::-webkit-scrollbar-thumb {
   background: rgba(255, 215, 0, 0.35);
+  border-radius: 999px;
 }
 
 /* Image comparison slider */

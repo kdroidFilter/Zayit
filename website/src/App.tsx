@@ -19,12 +19,10 @@ import {
 } from 'lucide-react';
 import { Navigation } from './components/Navigation';
 import { ImageComparison } from './components/ImageComparison';
-import { useTheme } from './contexts/ThemeContext';
 import './i18n';
 
 function App() {
   const { t, i18n } = useTranslation();
-  const { isDark } = useTheme();
   const isRTL = i18n.language === 'he';
 
   // Scroll-based animation for hero image
@@ -109,10 +107,10 @@ function App() {
       {/* Crystal Sparkle Particles Layer */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         {crystalParticles.map((p) => {
-          const goldCore = isDark ? '255, 235, 180' : '218, 165, 32';
-          const goldGlow = isDark ? '230, 210, 140' : '255, 215, 0';
-          const silverCore = isDark ? '255, 255, 255' : '220, 220, 235';
-          const silverGlow = isDark ? '200, 200, 230' : '192, 192, 210';
+          const goldCore = '255, 235, 180';
+          const goldGlow = '230, 210, 140';
+          const silverCore = '255, 255, 255';
+          const silverGlow = '200, 200, 230';
 
           const coreColor = p.color === 'gold' ? goldCore : silverCore;
           const glowColor = p.color === 'gold' ? goldGlow : silverGlow;
@@ -181,9 +179,7 @@ function App() {
                 height: p.size,
                 left: `${p.x}%`,
                 top: `${p.y}%`,
-                background: isDark
-                  ? `rgba(230, 210, 140, ${p.opacity})`
-                  : `rgba(212, 160, 23, ${p.opacity + 0.25})`,
+                background: `rgba(230, 210, 140, ${p.opacity})`,
               }}
               initial={{ opacity: 0 }}
               animate={{
@@ -229,9 +225,7 @@ function App() {
             className="text-6xl md:text-[12rem] font-bold mb-1 md:mb-2"
             style={{
               color: 'var(--gold)',
-              textShadow: isDark
-                ? '0 0 60px rgba(230, 210, 140, 0.5), 0 0 120px rgba(230, 210, 140, 0.3)'
-                : '0 0 40px rgba(184, 134, 11, 0.3), 0 0 80px rgba(184, 134, 11, 0.2)',
+              textShadow: '0 0 60px rgba(230, 210, 140, 0.5), 0 0 120px rgba(230, 210, 140, 0.3)',
             }}
             variants={{
               hidden: { opacity: 0, scale: 1.3, filter: 'blur(20px)' },
@@ -324,7 +318,7 @@ function App() {
           <motion.div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
             style={{
-              background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(184, 134, 11, 0.1)',
+              background: 'rgba(230, 210, 140, 0.1)',
               color: 'var(--gold)',
             }}
             initial={{ opacity: 0, scale: 0.8 }}
@@ -360,7 +354,7 @@ function App() {
           <motion.div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
             style={{
-              background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(184, 134, 11, 0.1)',
+              background: 'rgba(230, 210, 140, 0.1)',
               color: 'var(--gold)',
             }}
             initial={{ opacity: 0, y: -30 }}
@@ -593,15 +587,11 @@ function App() {
                 viewport={{ once: true, amount: 0.5 }}
                 transition={{ duration: 1.5, delay: index * 0.4, ease: cinematicEase }}
                 className="flex items-start gap-3 p-4 rounded-xl"
-                style={isDark ? {
+                style={{
                   background: 'linear-gradient(135deg, rgba(18, 15, 10, 0.95) 0%, rgba(8, 6, 4, 0.98) 100%)',
                   border: '1px solid rgba(230, 210, 140, 0.25)',
                   backdropFilter: 'blur(8px)',
                   boxShadow: 'inset 0 1px 0 rgba(230, 210, 140, 0.08), 0 4px 20px rgba(0, 0, 0, 0.4)',
-                } : {
-                  background: 'var(--feature-card-bg)',
-                  border: '1px solid var(--feature-card-border)',
-                  backdropFilter: 'blur(6px)',
                 }}
               >
                 <motion.div
@@ -691,23 +681,17 @@ function App() {
                   transition={{ duration: 1.8, delay, ease: cinematicEase }}
                   whileHover={{ scale: 1.02, y: -5 }}
                   className="p-6 rounded-2xl transition-colors"
-                  style={isDark ? {
+                  style={{
                     background: 'linear-gradient(145deg, rgba(18, 15, 10, 0.95) 0%, rgba(8, 6, 4, 0.98) 100%)',
                     border: '1px solid rgba(230, 210, 140, 0.2)',
                     backdropFilter: 'blur(8px)',
                     boxShadow: 'inset 0 1px 0 rgba(230, 210, 140, 0.06), 0 8px 32px rgba(0, 0, 0, 0.5)',
-                  } : {
-                    background: 'var(--feature-card-bg)',
-                    border: '1px solid var(--feature-card-border)',
-                    backdropFilter: 'blur(6px)',
                   }}
                 >
                   <motion.div
                     className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
                     style={{
-                      background: isDark
-                        ? 'linear-gradient(135deg, rgba(230, 210, 140, 0.15) 0%, rgba(230, 210, 140, 0.05) 100%)'
-                        : 'linear-gradient(135deg, rgba(184, 134, 11, 0.15) 0%, rgba(184, 134, 11, 0.05) 100%)',
+                      background: 'linear-gradient(135deg, rgba(230, 210, 140, 0.15) 0%, rgba(230, 210, 140, 0.05) 100%)',
                     }}
                     initial={{ rotate: -180, scale: 0 }}
                     whileInView={{ rotate: 0, scale: 1 }}
@@ -767,23 +751,17 @@ function App() {
                 transition={{ duration: 2, delay: index * 0.5, ease: cinematicEase }}
                 whileHover={{ scale: 1.02, y: -5 }}
                 className="p-6 md:p-8 rounded-2xl text-center"
-                style={isDark ? {
+                style={{
                   background: 'linear-gradient(145deg, rgba(18, 15, 10, 0.95) 0%, rgba(8, 6, 4, 0.98) 100%)',
                   border: '1px solid rgba(230, 210, 140, 0.2)',
                   boxShadow: 'inset 0 1px 0 rgba(230, 210, 140, 0.06), 0 8px 32px rgba(0, 0, 0, 0.5)',
-                  transformStyle: 'preserve-3d',
-                } : {
-                  background: 'var(--feature-card-bg)',
-                  border: '1px solid var(--feature-card-border)',
                   transformStyle: 'preserve-3d',
                 }}
               >
                 <motion.div
                   className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"
                   style={{
-                    background: isDark
-                      ? 'linear-gradient(135deg, rgba(230, 210, 140, 0.2) 0%, rgba(230, 210, 140, 0.05) 100%)'
-                      : 'linear-gradient(135deg, rgba(184, 134, 11, 0.2) 0%, rgba(184, 134, 11, 0.05) 100%)',
+                    background: 'linear-gradient(135deg, rgba(230, 210, 140, 0.2) 0%, rgba(230, 210, 140, 0.05) 100%)',
                   }}
                   initial={{ scale: 0, rotate: -180 }}
                   whileInView={{ scale: 1, rotate: 0 }}
@@ -825,7 +803,7 @@ function App() {
           <motion.div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
             style={{
-              background: isDark ? 'rgba(230, 210, 140, 0.1)' : 'rgba(184, 134, 11, 0.1)',
+              background: 'rgba(230, 210, 140, 0.1)',
               color: 'var(--gold)',
             }}
             initial={{ opacity: 0, y: -40, scale: 0.7 }}
@@ -863,9 +841,7 @@ function App() {
         id="download"
         className="py-16 md:py-24 px-4 md:px-6 overflow-hidden"
         style={{
-          background: isDark
-            ? 'linear-gradient(180deg, rgba(230, 210, 140, 0.08) 0%, rgba(230, 210, 140, 0.02) 100%)'
-            : 'linear-gradient(180deg, rgba(184, 134, 11, 0.08) 0%, rgba(184, 134, 11, 0.02) 100%)',
+          background: 'linear-gradient(180deg, rgba(230, 210, 140, 0.08) 0%, rgba(230, 210, 140, 0.02) 100%)',
         }}
       >
         <div className="max-w-4xl mx-auto text-center">
@@ -915,14 +891,12 @@ function App() {
               className="inline-flex items-center gap-3 px-8 md:px-10 py-4 md:py-5 rounded-full text-lg md:text-xl font-semibold text-white"
               style={{
                 background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)',
-                boxShadow: isDark ? '0 15px 40px rgba(230, 210, 140, 0.3)' : '0 15px 40px rgba(184, 134, 11, 0.4)',
+                boxShadow: '0 15px 40px rgba(230, 210, 140, 0.3)',
               }}
-              whileHover={{ scale: 1.05, boxShadow: '0 20px 50px rgba(184, 134, 11, 0.5)' }}
+              whileHover={{ scale: 1.05, boxShadow: '0 20px 50px rgba(230, 210, 140, 0.5)' }}
               whileTap={{ scale: 0.98 }}
               animate={{
-                boxShadow: isDark
-                  ? ['0 15px 40px rgba(230, 210, 140, 0.3)', '0 20px 60px rgba(230, 210, 140, 0.5)', '0 15px 40px rgba(230, 210, 140, 0.3)']
-                  : ['0 15px 40px rgba(184, 134, 11, 0.4)', '0 20px 60px rgba(184, 134, 11, 0.6)', '0 15px 40px rgba(184, 134, 11, 0.4)'],
+                boxShadow: ['0 15px 40px rgba(230, 210, 140, 0.3)', '0 20px 60px rgba(230, 210, 140, 0.5)', '0 15px 40px rgba(230, 210, 140, 0.3)'],
               }}
               transition={{
                 boxShadow: { duration: 3, repeat: Infinity, ease: 'easeInOut' }

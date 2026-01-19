@@ -1168,7 +1168,7 @@ private fun ZmanimCardsGrid(
                         }
                         is ZmanimGridItem.MoonSky -> {
                             MoonSkyCard(
-                                referenceTime = item.referenceTime,
+                                referenceTimeMillis = item.referenceTime.time,
                                 location = item.location,
                                 modifier = Modifier.weight(1f),
                             )
@@ -1814,7 +1814,7 @@ private fun ShabbatDualTimeCard(
 
 @Composable
 private fun MoonSkyCard(
-    referenceTime: Date,
+    referenceTimeMillis: Long,
     location: EarthWidgetLocation,
     modifier: Modifier = Modifier,
 ) {
@@ -1825,6 +1825,7 @@ private fun MoonSkyCard(
     } else {
         JewelTheme.globalColors.borders.normal
     }
+    val referenceTime = remember(referenceTimeMillis) { Date(referenceTimeMillis) }
 
     Box(
         modifier = modifier

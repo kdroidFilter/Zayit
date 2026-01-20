@@ -34,11 +34,11 @@ fun SplitPaneState.asStable(): StableSplitPaneState = StableSplitPaneState(this)
 @Composable
 fun EnhancedHorizontalSplitPane(
     splitPaneState: StableSplitPaneState,
+    firstContent: @Composable BoxScope.() -> Unit,
+    secondContent: (@Composable BoxScope.() -> Unit)?,
     modifier: Modifier = Modifier,
     firstMinSize: Float = 200f,
     secondMinSize: Float = 200f,
-    firstContent: @Composable BoxScope.() -> Unit,
-    secondContent: (@Composable BoxScope.() -> Unit)?,
     showSplitter: Boolean = true,
 ) {
     val state = splitPaneState.value
@@ -120,11 +120,11 @@ fun EnhancedHorizontalSplitPane(
 @Composable
 fun EnhancedVerticalSplitPane(
     splitPaneState: StableSplitPaneState,
+    firstContent: @Composable BoxScope.() -> Unit,
+    secondContent: (@Composable BoxScope.() -> Unit)?,
     modifier: Modifier = Modifier,
     firstMinSize: Float = 200f,
     secondMinSize: Float = 200f,
-    firstContent: @Composable BoxScope.() -> Unit,
-    secondContent: (@Composable BoxScope.() -> Unit)?,
     showSplitter: Boolean = true,
 ) {
     val state = splitPaneState.value

@@ -126,8 +126,8 @@ fun HomeView(
     onEvent: (BookContentEvent) -> Unit,
     searchUi: SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
-    homeCelestialWidgetsState: HomeCelestialWidgetsState? = null,
     modifier: Modifier = Modifier,
+    homeCelestialWidgetsState: HomeCelestialWidgetsState? = null,
 ) {
     CatalogRow(onEvent = onEvent)
 
@@ -580,9 +580,9 @@ private fun LogoImage(modifier: Modifier = Modifier) {
  * a slider. The slider and cards mirror the same selection index.
  */
 private fun SearchLevelsPanel(
-    modifier: Modifier = Modifier,
     selectedIndex: Int,
     onSelectedIndexChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val filterCards: List<SearchFilterCard> =
         listOf(

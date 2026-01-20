@@ -615,11 +615,11 @@ private fun SearchResultItemGoogleStyle(
     lineHeight: Float,
     fontFamily: FontFamily,
     findQuery: String?,
-    currentMatchStart: Int? = null,
     onClick: () -> Unit,
     breadcrumbs: Map<Long, List<String>>,
     onRequestBreadcrumb: (SearchResult) -> Unit,
     bookFontCode: String,
+    currentMatchStart: Int? = null,
 ) {
     // Breadcrumb pieces come from state; request on-demand via callback
     val pieces = breadcrumbs[result.lineId]

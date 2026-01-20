@@ -59,6 +59,7 @@ fun LineTargumView(
     selectedLine: Line?,
     buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
+    showDiacritics: Boolean,
     commentariesScrollIndex: Int = 0,
     commentariesScrollOffset: Int = 0,
     initiallySelectedSourceIds: Set<Long> = emptySet(),
@@ -73,7 +74,6 @@ fun LineTargumView(
     titleRes: StringResource = Res.string.links,
     selectLineRes: StringResource = Res.string.select_line_for_links,
     emptyRes: StringResource = Res.string.no_links_for_line,
-    showDiacritics: Boolean,
 ) {
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val commentTextSize by animateFloatAsState(
@@ -286,9 +286,9 @@ fun LineTargumView(
 fun LineTargumView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
+    showDiacritics: Boolean,
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     availabilityType: ConnectionType = ConnectionType.TARGUM,
-    showDiacritics: Boolean,
 ) {
     val providers = uiState.providers ?: return
     val contentState = uiState.content
@@ -370,10 +370,10 @@ private fun LinkItem(
     commentTextSize: Float,
     lineHeight: Float,
     fontFamily: FontFamily,
-    boldScale: Float = 1.0f,
     highlightQuery: String,
     onClick: () -> Unit,
     showDiacritics: Boolean,
+    boldScale: Float = 1.0f,
 ) {
     Column(
         modifier =

@@ -42,8 +42,8 @@ private data class SettingsItem(
 
 @Composable
 fun SettingsSidebar(
-    modifier: Modifier = Modifier,
     navController: NavHostController,
+    modifier: Modifier = Modifier,
 ) {
     val backStack = navController.currentBackStackEntryAsState()
     val currentRoute =

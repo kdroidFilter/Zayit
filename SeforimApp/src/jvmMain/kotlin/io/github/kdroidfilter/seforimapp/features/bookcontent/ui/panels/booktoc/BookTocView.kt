@@ -50,8 +50,8 @@ fun BookTocView(
     onEntryClick: (TocEntry) -> Unit,
     onEntryExpand: (TocEntry) -> Unit,
     onScroll: (Int, Int) -> Unit,
-    selectedTocEntryId: Long? = null,
     modifier: Modifier = Modifier,
+    selectedTocEntryId: Long? = null,
     // Search integration
     showCounts: Boolean = false,
     onlyWithResults: Boolean = false,

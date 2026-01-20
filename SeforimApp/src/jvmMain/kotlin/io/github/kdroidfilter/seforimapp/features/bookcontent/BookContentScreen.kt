@@ -255,9 +255,9 @@ fun BookContentScreen(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     showDiacritics: Boolean,
-    isRestoringSession: Boolean = false,
     searchUi: SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
+    isRestoringSession: Boolean = false,
     isSelected: Boolean = true,
 ) {
     // Toaster for transient messages (e.g., selection limits)

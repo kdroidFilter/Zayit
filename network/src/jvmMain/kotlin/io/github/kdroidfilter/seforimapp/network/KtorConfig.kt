@@ -11,7 +11,6 @@ import kotlinx.serialization.json.Json
  * Provides a configured Ktor HttpClient that uses native OS certificate stores.
  */
 object KtorConfig {
-
     /**
      * Creates a Ktor HttpClient configured with native trusted roots
      *
@@ -19,20 +18,21 @@ object KtorConfig {
      * @return Configured HttpClient instance
      */
     fun createHttpClient(
-        json: Json = Json {
-            ignoreUnknownKeys = true
-            isLenient = true
-        }
-    ): HttpClient = HttpClient(CIO) {
-        engine {
-            https {
-                trustManager = TrustedRootsSSL.trustManager
+        json: Json =
+            Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+            },
+    ): HttpClient =
+        HttpClient(CIO) {
+            engine {
+                https {
+                    trustManager = TrustedRootsSSL.trustManager
+                }
+            }
+
+            install(ContentNegotiation) {
+                json(json)
             }
         }
-
-        install(ContentNegotiation) {
-            json(json)
-        }
-
-    }
 }

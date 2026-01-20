@@ -5,7 +5,11 @@ plugins {
 
 kotlin {
     jvm()
-    jvmToolchain(libs.versions.jvmToolchain.get().toInt())
+    jvmToolchain(
+        libs.versions.jvmToolchain
+            .get()
+            .toInt(),
+    )
 
     sourceSets {
         jvmMain.dependencies {

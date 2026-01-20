@@ -23,7 +23,11 @@ import androidx.compose.ui.graphics.asImageBitmap
  * @param height Image height.
  * @return Compose ImageBitmap backed by Android Bitmap.
  */
-internal actual fun imageBitmapFromArgb(argb: IntArray, width: Int, height: Int): ImageBitmap {
+internal actual fun imageBitmapFromArgb(
+    argb: IntArray,
+    width: Int,
+    height: Int,
+): ImageBitmap {
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     bitmap.setPixels(argb, 0, width, 0, 0, width, height)
     return bitmap.asImageBitmap()

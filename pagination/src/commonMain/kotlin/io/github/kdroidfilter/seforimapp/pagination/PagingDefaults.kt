@@ -19,7 +19,7 @@ object PagingDefaults {
                 pageSize = PAGE_SIZE,
                 prefetchDistance = PREFETCH_DISTANCE,
                 initialLoadSize = INITIAL_LOAD_SIZE,
-                enablePlaceholders = placeholders
+                enablePlaceholders = placeholders,
             )
     }
 
@@ -33,7 +33,7 @@ object PagingDefaults {
                 pageSize = PAGE_SIZE,
                 prefetchDistance = PREFETCH_DISTANCE,
                 initialLoadSize = INITIAL_LOAD_SIZE,
-                enablePlaceholders = placeholders
+                enablePlaceholders = placeholders,
             )
     }
 }

@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.asStateFlow
 @ViewModelKey(SettingsWindowViewModel::class)
 @Inject
 class SettingsWindowViewModel : ViewModel() {
-
     private val _state = MutableStateFlow(SettingsWindowState(isVisible = false))
     val state: StateFlow<SettingsWindowState> = _state.asStateFlow()
 

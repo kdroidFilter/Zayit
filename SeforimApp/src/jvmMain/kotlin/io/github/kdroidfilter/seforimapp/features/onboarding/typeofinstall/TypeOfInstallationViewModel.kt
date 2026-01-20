@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.asStateFlow
 class TypeOfInstallationViewModel(
     private val processRepository: OnboardingProcessRepository,
 ) : ViewModel() {
-
     private val _state = MutableStateFlow(TypeOfInstallationState())
     val state: StateFlow<TypeOfInstallationState> = _state.asStateFlow()
 

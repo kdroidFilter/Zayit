@@ -23,9 +23,9 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 
-
 enum class VerticalLateralBarPosition {
-    Start, End
+    Start,
+    End,
 }
 
 @Composable
@@ -37,9 +37,10 @@ fun VerticalLateralBar(
     modifier: Modifier = Modifier,
     position: VerticalLateralBarPosition,
 ) {
-    val boxModifier = Modifier
-        .fillMaxWidth()
-        .padding(4.dp)
+    val boxModifier =
+        Modifier
+            .fillMaxWidth()
+            .padding(4.dp)
     val lazyColumnVerticalArrangement = Arrangement.spacedBy(4.dp)
 
     Row(modifier = modifier.width(64.dp).fillMaxHeight()) {
@@ -51,11 +52,12 @@ fun VerticalLateralBar(
         Column(modifier = Modifier.weight(1f)) {
             Box(
                 modifier = boxModifier,
-                contentAlignment = Alignment.TopCenter
+                contentAlignment = Alignment.TopCenter,
             ) {
                 LazyColumn(
                     verticalArrangement = lazyColumnVerticalArrangement,
-                    horizontalAlignment = Alignment.CenterHorizontally) {
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     item {
                         Spacer(Modifier.height(4.dp))
                         if (topContentLabel != null) {
@@ -68,24 +70,25 @@ fun VerticalLateralBar(
                         }
                         Column(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             topContent()
                         }
                         Divider(
                             orientation = Orientation.Horizontal,
-                            modifier = Modifier
-                                .fillMaxWidth(0.5f)
-                                .width(1.dp)
-                                .padding(vertical = 4.dp),
-                            color = JewelTheme.globalColors.borders.disabled
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth(0.5f)
+                                    .width(1.dp)
+                                    .padding(vertical = 4.dp),
+                            color = JewelTheme.globalColors.borders.disabled,
                         )
                     }
                 }
             }
             Box(
                 modifier = boxModifier,
-                contentAlignment = Alignment.TopCenter
+                contentAlignment = Alignment.TopCenter,
             ) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -97,13 +100,13 @@ fun VerticalLateralBar(
                             Text(
                                 text = bottomContentLabel,
                                 fontSize = 14.sp,
-                                textDecoration = TextDecoration.Underline
+                                textDecoration = TextDecoration.Underline,
                             )
                             Spacer(Modifier.height(4.dp))
                         }
                         Column(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             bottomContent()
                         }

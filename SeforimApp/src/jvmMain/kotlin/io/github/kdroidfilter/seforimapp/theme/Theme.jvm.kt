@@ -14,16 +14,16 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 
-
 @Composable
 fun PreviewContainer(content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         IntUiTheme(isDark = isSystemInDarkTheme()) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(JewelTheme.globalColors.panelBackground)
-                    .padding(16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(JewelTheme.globalColors.panelBackground)
+                        .padding(16.dp),
                 contentAlignment = androidx.compose.ui.Alignment.Center,
             ) {
                 content()

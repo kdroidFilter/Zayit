@@ -14,39 +14,41 @@ class LineTargumPagingSource(
     private val repository: SeforimRepository,
     private val baseLineId: Long,
     private val sourceBookIds: Set<Long> = emptySet(),
-    private val connectionTypes: Set<ConnectionType> = setOf(ConnectionType.TARGUM)
+    private val connectionTypes: Set<ConnectionType> = setOf(ConnectionType.TARGUM),
 ) : PagingSource<Int, CommentaryWithText>() {
-
     private var resolvedLineIds: List<Long>? = null
 
-    override fun getRefreshKey(state: PagingState<Int, CommentaryWithText>): Int? {
-        return state.anchorPosition?.let { anchorPosition ->
+    override fun getRefreshKey(state: PagingState<Int, CommentaryWithText>): Int? =
+        state.anchorPosition?.let { anchorPosition ->
             val anchorPage = state.closestPageToPosition(anchorPosition)
             anchorPage?.prevKey?.plus(1) ?: anchorPage?.nextKey?.minus(1)
         }
-    }
 
-    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, CommentaryWithText> {
-        return try {
+    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, CommentaryWithText> =
+        try {
             val page = params.key ?: 0
             val limit = params.loadSize
             val offset = page * limit
 
             if (resolvedLineIds == null) {
                 val headingToc = repository.getHeadingTocEntryByLineId(baseLineId)
-                resolvedLineIds = if (headingToc != null) {
-                    repository.getLineIdsForTocEntry(headingToc.id).filter { it != baseLineId }
-                } else listOf(baseLineId)
+                resolvedLineIds =
+                    if (headingToc != null) {
+                        repository.getLineIdsForTocEntry(headingToc.id).filter { it != baseLineId }
+                    } else {
+                        listOf(baseLineId)
+                    }
             }
             val ids = resolvedLineIds ?: listOf(baseLineId)
 
-            val links = repository.getCommentariesForLineRange(
-                lineIds = ids,
-                activeCommentatorIds = sourceBookIds, // reuse filtering by target book IDs
-                connectionTypes = connectionTypes,
-                offset = offset,
-                limit = limit
-            )
+            val links =
+                repository.getCommentariesForLineRange(
+                    lineIds = ids,
+                    activeCommentatorIds = sourceBookIds, // reuse filtering by target book IDs
+                    connectionTypes = connectionTypes,
+                    offset = offset,
+                    limit = limit,
+                )
 
             val prevKey = if (page == 0) null else page - 1
             val nextKey = if (links.isEmpty()) null else page + 1
@@ -54,10 +56,9 @@ class LineTargumPagingSource(
             LoadResult.Page(
                 data = links,
                 prevKey = prevKey,
-                nextKey = nextKey
+                nextKey = nextKey,
             )
         } catch (e: Exception) {
             LoadResult.Error(e)
         }
-    }
 }

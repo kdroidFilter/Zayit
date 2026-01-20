@@ -36,11 +36,12 @@ internal fun computeSunLightDirectionForEarth(
     earthRotationDegrees: Float,
     earthTiltDegrees: Float,
 ): LightDirection {
-    val solarPosition = computeSolarPositionNoaaUtc(
-        referenceTime = referenceTime,
-        latitude = latitude,
-        longitude = longitude,
-    )
+    val solarPosition =
+        computeSolarPositionNoaaUtc(
+            referenceTime = referenceTime,
+            latitude = latitude,
+            longitude = longitude,
+        )
     return computeSunDirectionWorld(
         latitude = latitude,
         longitude = longitude,
@@ -64,31 +65,38 @@ internal fun computeSolarPositionNoaaUtc(
     val julianDay = computeJulianDayUtc(referenceTime)
     val julianCenturies = (julianDay - 2451545.0) / 36525.0
 
-    val meanLongitude = normalizeDegrees360(
-        280.46646 + julianCenturies * (36000.76983 + julianCenturies * 0.0003032),
-    )
-    val meanAnomaly = normalizeDegrees360(
-        357.52911 + julianCenturies * (35999.05029 - 0.0001537 * julianCenturies),
-    )
-    val earthOrbitEccentricity = 0.016708634 -
-        julianCenturies * (0.000042037 + 0.0000001267 * julianCenturies)
+    val meanLongitude =
+        normalizeDegrees360(
+            280.46646 + julianCenturies * (36000.76983 + julianCenturies * 0.0003032),
+        )
+    val meanAnomaly =
+        normalizeDegrees360(
+            357.52911 + julianCenturies * (35999.05029 - 0.0001537 * julianCenturies),
+        )
+    val earthOrbitEccentricity =
+        0.016708634 -
+            julianCenturies * (0.000042037 + 0.0000001267 * julianCenturies)
 
     val meanAnomalyRad = Math.toRadians(meanAnomaly)
     val sinM = sin(meanAnomalyRad)
     val sin2M = sin(2.0 * meanAnomalyRad)
     val sin3M = sin(3.0 * meanAnomalyRad)
 
-    val equationOfCenter = sinM * (1.914602 - julianCenturies * (0.004817 + 0.000014 * julianCenturies)) +
-        sin2M * (0.019993 - 0.000101 * julianCenturies) +
-        sin3M * 0.000289
+    val equationOfCenter =
+        sinM * (1.914602 - julianCenturies * (0.004817 + 0.000014 * julianCenturies)) +
+            sin2M * (0.019993 - 0.000101 * julianCenturies) +
+            sin3M * 0.000289
 
     val trueLongitude = meanLongitude + equationOfCenter
     val omega = 125.04 - 1934.136 * julianCenturies
     val apparentLongitude = trueLongitude - 0.00569 - 0.00478 * sin(Math.toRadians(omega))
 
-    val meanObliquity = 23.0 + (26.0 + (
-        (21.448 - julianCenturies * (46.815 + julianCenturies * (0.00059 - julianCenturies * 0.001813))) / 60.0
-        )) / 60.0
+    val meanObliquity =
+        23.0 + (
+            26.0 + (
+                (21.448 - julianCenturies * (46.815 + julianCenturies * (0.00059 - julianCenturies * 0.001813))) / 60.0
+            )
+        ) / 60.0
     val obliquityCorrection = meanObliquity + 0.00256 * cos(Math.toRadians(omega))
 
     val obliquityRad = Math.toRadians(obliquityCorrection)
@@ -102,13 +110,15 @@ internal fun computeSolarPositionNoaaUtc(
     val y2 = y * y
     val meanLongitudeRad = Math.toRadians(meanLongitude)
 
-    val equationOfTimeMinutes = 4.0 * Math.toDegrees(
-        y2 * sin(2.0 * meanLongitudeRad) -
-            2.0 * earthOrbitEccentricity * sinM +
-            4.0 * earthOrbitEccentricity * y2 * sinM * cos(2.0 * meanLongitudeRad) -
-            0.5 * y2 * y2 * sin(4.0 * meanLongitudeRad) -
-            1.25 * earthOrbitEccentricity * earthOrbitEccentricity * sin(2.0 * meanAnomalyRad),
-    )
+    val equationOfTimeMinutes =
+        4.0 *
+            Math.toDegrees(
+                y2 * sin(2.0 * meanLongitudeRad) -
+                    2.0 * earthOrbitEccentricity * sinM +
+                    4.0 * earthOrbitEccentricity * y2 * sinM * cos(2.0 * meanLongitudeRad) -
+                    0.5 * y2 * y2 * sin(4.0 * meanLongitudeRad) -
+                    1.25 * earthOrbitEccentricity * earthOrbitEccentricity * sin(2.0 * meanAnomalyRad),
+            )
 
     val utcMinutes = utcMinutesOfDay(referenceTime)
     val trueSolarTimeMinutes = normalizeMinutes1440(utcMinutes + equationOfTimeMinutes + 4.0 * longitude)
@@ -125,10 +135,11 @@ internal fun computeSolarPositionNoaaUtc(
     val zenithRad = acos(cosZenith)
     val elevationDegrees = 90.0 - Math.toDegrees(zenithRad)
 
-    val azimuthRad = atan2(
-        sin(hourAngleRad),
-        cos(hourAngleRad) * sinLat - tan(declinationRad) * cosLat,
-    )
+    val azimuthRad =
+        atan2(
+            sin(hourAngleRad),
+            cos(hourAngleRad) * sinLat - tan(declinationRad) * cosLat,
+        )
     val azimuthDegreesFromNorth = normalizeDegrees360(Math.toDegrees(azimuthRad) + 180.0)
 
     return SolarPosition(
@@ -158,11 +169,12 @@ internal fun computeJulianDayUtc(date: Date): Double {
     val A = year / 100
     val B = 2 - A + A / 4
 
-    val dayFraction = (
-        hour +
-            minute / 60.0 +
-            second / 3600.0 +
-            millisecond / 3_600_000.0
+    val dayFraction =
+        (
+            hour +
+                minute / 60.0 +
+                second / 3600.0 +
+                millisecond / 3_600_000.0
         ) / 24.0
 
     return floor(365.25 * (year + 4716)) +
@@ -229,20 +241,21 @@ private fun computeSunDirectionWorld(
     val cosEl = cos(elRad)
     val sinEl = sin(elRad)
 
-    val earthDir = combineHorizontalDirection(
-        sinAz = sinAz,
-        cosAz = cosAz,
-        cosEl = cosEl,
-        sinEl = sinEl,
-        eastX = eastX,
-        eastZ = eastZ,
-        northX = northX,
-        northZ = northZ,
-        upX = upX,
-        upZ = upZ,
-        cosLat = cosLat,
-        sinLat = sinLat,
-    ).normalized()
+    val earthDir =
+        combineHorizontalDirection(
+            sinAz = sinAz,
+            cosAz = cosAz,
+            cosEl = cosEl,
+            sinEl = sinEl,
+            eastX = eastX,
+            eastZ = eastZ,
+            northX = northX,
+            northZ = northZ,
+            upX = upX,
+            upZ = upZ,
+            cosLat = cosLat,
+            sinLat = sinLat,
+        ).normalized()
     val worldDir = earthToWorld(earthDir, earthRotationDegrees, earthTiltDegrees).normalized()
 
     return LightDirection(

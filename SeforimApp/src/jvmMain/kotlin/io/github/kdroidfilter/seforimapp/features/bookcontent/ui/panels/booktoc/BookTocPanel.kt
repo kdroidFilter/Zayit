@@ -6,10 +6,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
-import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import org.jetbrains.compose.resources.stringResource
@@ -23,25 +23,30 @@ import seforimapp.seforimapp.generated.resources.table_of_contents
 fun BookTocPanel(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    val paneHoverSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val paneHoverSource =
+        remember {
+            androidx.compose.foundation.interaction
+                .MutableInteractionSource()
+        }
     Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .hoverable(paneHoverSource)
+        modifier =
+            modifier
+                .fillMaxHeight()
+                .hoverable(paneHoverSource),
     ) {
         PaneHeader(
             label = stringResource(Res.string.table_of_contents),
             interactionSource = paneHoverSource,
-            onHide = { onEvent(BookContentEvent.ToggleToc) }
+            onHide = { onEvent(BookContentEvent.ToggleToc) },
         )
         Column(modifier = Modifier.padding(horizontal = 8.dp)) {
             when {
                 uiState.navigation.selectedBook == null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(stringResource(Res.string.select_book_for_toc))
                     }
@@ -52,7 +57,7 @@ fun BookTocPanel(
                         BookTocView(
                             uiState = uiState,
                             onEvent = onEvent,
-                            modifier = if (hasAlt) Modifier.weight(1f) else Modifier.fillMaxHeight()
+                            modifier = if (hasAlt) Modifier.weight(1f) else Modifier.fillMaxHeight(),
                         )
                         if (hasAlt) {
                             Box(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -61,7 +66,7 @@ fun BookTocPanel(
                             AltBookTocSection(
                                 uiState = uiState,
                                 onEvent = onEvent,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             )
                         }
                     }
@@ -81,18 +86,23 @@ fun SearchBookTocPanel(
     selectedTocIds: Set<Long>,
     onToggle: (TocEntry, Boolean) -> Unit,
     onTocFilter: (TocEntry) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    val paneHoverSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val paneHoverSource =
+        remember {
+            androidx.compose.foundation.interaction
+                .MutableInteractionSource()
+        }
     Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .hoverable(paneHoverSource)
+        modifier =
+            modifier
+                .fillMaxHeight()
+                .hoverable(paneHoverSource),
     ) {
         PaneHeader(
             label = stringResource(Res.string.table_of_contents),
             interactionSource = paneHoverSource,
-            onHide = { onEvent(BookContentEvent.ToggleToc) }
+            onHide = { onEvent(BookContentEvent.ToggleToc) },
         )
         Column(modifier = Modifier.padding(horizontal = 8.dp)) {
             if (searchUi.scopeBook != null) {
@@ -152,13 +162,13 @@ fun SearchBookTocPanel(
                         selectedTocOverride = searchUi.scopeTocId,
                         onTocFilter = null,
                         multiSelectIds = selectedTocIds,
-                        onToggle = onToggle
+                        onToggle = onToggle,
                     )
                 }
             } else {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(stringResource(Res.string.select_book_for_toc))
                 }
@@ -171,7 +181,7 @@ fun SearchBookTocPanel(
 private fun AltBookTocSection(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val altState = uiState.altToc
     val bookId = uiState.navigation.selectedBook?.id ?: return
@@ -181,43 +191,47 @@ private fun AltBookTocSection(
             Text(stringResource(Res.string.no_alt_toc_available))
             return
         }
-        val rootEntries = remember(altState.entries, bookId) {
-            altState.entries.map { it.toTocEntry(bookId) }
-        }
-        val cachedChildren = remember(bookId) { mutableMapOf<Long, List<TocEntry>>() }
-        val altTocUi = remember(altState.children, altState.entries, altState.entriesById, bookId, rootEntries) {
-            val mappedChildren = mutableMapOf<Long, List<TocEntry>>()
-
-            altState.children.forEach { (parentId, children) ->
-                val cached = cachedChildren[parentId]
-                val needsRefresh = if (cached == null) {
-                    true
-                } else if (cached.size != children.size) {
-                    true
-                } else {
-                    cached.zip(children).any { (toc, alt) -> toc.id != alt.id || toc.parentId != alt.parentId }
-                }
-
-                val convertedChildren = if (needsRefresh) {
-                    children.map { it.toTocEntry(bookId) }.also { cachedChildren[parentId] = it }
-                } else {
-                    cached
-                }
-
-                if (convertedChildren != null) {
-                    mappedChildren[parentId] = convertedChildren
-                }
+        val rootEntries =
+            remember(altState.entries, bookId) {
+                altState.entries.map { it.toTocEntry(bookId) }
             }
+        val cachedChildren = remember(bookId) { mutableMapOf<Long, List<TocEntry>>() }
+        val altTocUi =
+            remember(altState.children, altState.entries, altState.entriesById, bookId, rootEntries) {
+                val mappedChildren = mutableMapOf<Long, List<TocEntry>>()
 
-            val removedParents = cachedChildren.keys - altState.children.keys
-            removedParents.forEach { cachedChildren.remove(it) }
+                altState.children.forEach { (parentId, children) ->
+                    val cached = cachedChildren[parentId]
+                    val needsRefresh =
+                        if (cached == null) {
+                            true
+                        } else if (cached.size != children.size) {
+                            true
+                        } else {
+                            cached.zip(children).any { (toc, alt) -> toc.id != alt.id || toc.parentId != alt.parentId }
+                        }
 
-            AltTocUi(
-                rootEntries = rootEntries,
-                childrenMap = mappedChildren,
-                altEntryById = altState.entriesById
-            )
-        }
+                    val convertedChildren =
+                        if (needsRefresh) {
+                            children.map { it.toTocEntry(bookId) }.also { cachedChildren[parentId] = it }
+                        } else {
+                            cached
+                        }
+
+                    if (convertedChildren != null) {
+                        mappedChildren[parentId] = convertedChildren
+                    }
+                }
+
+                val removedParents = cachedChildren.keys - altState.children.keys
+                removedParents.forEach { cachedChildren.remove(it) }
+
+                AltTocUi(
+                    rootEntries = rootEntries,
+                    childrenMap = mappedChildren,
+                    altEntryById = altState.entriesById,
+                )
+            }
 
         BookTocView(
             tocEntries = altTocUi.rootEntries,
@@ -233,7 +247,7 @@ private fun AltBookTocSection(
             },
             onScroll = { index, offset -> onEvent(BookContentEvent.AltTocScrolled(index, offset)) },
             selectedTocEntryId = altState.selectedEntryId,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }
@@ -241,7 +255,7 @@ private fun AltBookTocSection(
 private data class AltTocUi(
     val rootEntries: List<TocEntry>,
     val childrenMap: Map<Long, List<TocEntry>>,
-    val altEntryById: Map<Long, AltTocEntry>
+    val altEntryById: Map<Long, AltTocEntry>,
 )
 
 private fun AltTocEntry.toTocEntry(bookId: Long): TocEntry =
@@ -254,5 +268,5 @@ private fun AltTocEntry.toTocEntry(bookId: Long): TocEntry =
         level = level,
         lineId = lineId,
         isLastChild = isLastChild,
-        hasChildren = hasChildren
+        hasChildren = hasChildren,
     )

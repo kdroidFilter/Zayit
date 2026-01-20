@@ -25,8 +25,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.zacsweers.metrox.viewmodel.metroViewModel
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigState
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigViewModel
@@ -67,7 +67,7 @@ fun ProfileSettingsScreen() {
         userProfileState = userProfileState,
         onUserProfileEvent = userProfileViewModel::onEvent,
         regionState = regionState,
-        onRegionEvent = regionViewModel::onEvent
+        onRegionEvent = regionViewModel::onEvent,
     )
 }
 
@@ -76,14 +76,15 @@ private fun ProfileSettingsView(
     userProfileState: UserProfileState,
     onUserProfileEvent: (UserProfileEvents) -> Unit,
     regionState: RegionConfigState,
-    onRegionEvent: (RegionConfigEvents) -> Unit
+    onRegionEvent: (RegionConfigEvents) -> Unit,
 ) {
     VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Profile Section
             SectionCard(title = stringResource(Res.string.settings_category_profile)) {
@@ -130,17 +131,18 @@ private fun ProfileSettingsView(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
                         text = stringResource(Res.string.onboarding_user_community_label),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
-                    val communityLabels = listOf(
-                        stringResource(Res.string.onboarding_user_community_sepharade),
-                        stringResource(Res.string.onboarding_user_community_ashkenaze),
-                        stringResource(Res.string.onboarding_user_community_sefard),
-                    )
+                    val communityLabels =
+                        listOf(
+                            stringResource(Res.string.onboarding_user_community_sepharade),
+                            stringResource(Res.string.onboarding_user_community_ashkenaze),
+                            stringResource(Res.string.onboarding_user_community_sefard),
+                        )
                     ListComboBox(
                         items = communityLabels,
                         selectedIndex = userProfileState.selectedCommunityIndex,
@@ -149,7 +151,7 @@ private fun ProfileSettingsView(
                             val community = userProfileState.communities.getOrNull(index)
                             AppSettings.setUserCommunityCode(community?.name)
                         },
-                        modifier = Modifier.fillMaxWidth(0.33f)
+                        modifier = Modifier.fillMaxWidth(0.33f),
                     )
                 }
             }
@@ -159,11 +161,11 @@ private fun ProfileSettingsView(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
                         text = stringResource(Res.string.onboarding_region_country_label),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                     ListComboBox(
                         items = regionState.countries,
@@ -173,18 +175,18 @@ private fun ProfileSettingsView(
                             val country = regionState.countries.getOrNull(index)
                             AppSettings.setRegionCountry(country)
                         },
-                        modifier = Modifier.fillMaxWidth(0.33f)
+                        modifier = Modifier.fillMaxWidth(0.33f),
                     )
                 }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
                         text = stringResource(Res.string.onboarding_region_city_label),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                     ListComboBox(
                         items = regionState.cities,
@@ -195,7 +197,7 @@ private fun ProfileSettingsView(
                             AppSettings.setRegionCity(city)
                         },
                         enabled = regionState.selectedCountryIndex >= 0,
-                        modifier = Modifier.fillMaxWidth(0.33f)
+                        modifier = Modifier.fillMaxWidth(0.33f),
                     )
                 }
             }
@@ -206,22 +208,23 @@ private fun ProfileSettingsView(
 @Composable
 private fun SectionCard(
     title: String,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-            .background(JewelTheme.globalColors.panelBackground)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                .background(JewelTheme.globalColors.panelBackground)
+                .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
             text = title,
-            fontSize = 15.sp
+            fontSize = 15.sp,
         )
         content()
     }
@@ -232,15 +235,16 @@ private fun SectionCard(
 private fun ProfileSettingsView_Preview() {
     PreviewContainer {
         ProfileSettingsView(
-            userProfileState = UserProfileState(
-                firstName = "אברהם",
-                lastName = "כהן",
-                communities = listOf(Community.SEPHARADE, Community.ASHKENAZE, Community.SEFARD),
-                selectedCommunityIndex = 0
-            ),
+            userProfileState =
+                UserProfileState(
+                    firstName = "אברהם",
+                    lastName = "כהן",
+                    communities = listOf(Community.SEPHARADE, Community.ASHKENAZE, Community.SEFARD),
+                    selectedCommunityIndex = 0,
+                ),
             onUserProfileEvent = {},
             regionState = RegionConfigState.preview,
-            onRegionEvent = {}
+            onRegionEvent = {},
         )
     }
 }

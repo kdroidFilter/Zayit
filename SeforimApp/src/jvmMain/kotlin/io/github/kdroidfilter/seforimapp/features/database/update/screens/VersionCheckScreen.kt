@@ -12,7 +12,6 @@ import io.github.kdroidfilter.seforimapp.features.database.update.navigation.Dat
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
 import org.jetbrains.compose.resources.stringResource
-import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.*
@@ -20,26 +19,31 @@ import seforimapp.seforimapp.generated.resources.*
 @Composable
 fun VersionCheckScreen(
     navController: NavController,
-    isDatabaseMissing: Boolean = false
+    isDatabaseMissing: Boolean = false,
 ) {
     val currentVersion = remember { DatabaseVersionManager.getCurrentDatabaseVersion() }
     val minRequiredVersion = remember { DatabaseVersionManager.getMinimumRequiredVersion() }
-    
+
     LaunchedEffect(Unit) {
         DatabaseUpdateProgressBarState.resetProgress()
     }
-    
+
     OnBoardingScaffold(
-        title = stringResource(
-            if (isDatabaseMissing) Res.string.db_update_reinstall_title 
-            else Res.string.db_update_version_check_title
-        )
+        title =
+            stringResource(
+                if (isDatabaseMissing) {
+                    Res.string.db_update_reinstall_title
+                } else {
+                    Res.string.db_update_version_check_title
+                },
+            ),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize(),
+            modifier =
+                Modifier
+                    .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         ) {
             // Warning icon
             Image(
@@ -52,42 +56,45 @@ fun VersionCheckScreen(
             if (!isDatabaseMissing) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = stringResource(
-                            Res.string.db_update_current_version,
-                            currentVersion?.let { DatabaseVersionManager.formatVersionForDisplay(it) } 
-                                ?: stringResource(Res.string.db_update_version_unknown)
-                        ),
-                        textAlign = TextAlign.Center
+                        text =
+                            stringResource(
+                                Res.string.db_update_current_version,
+                                currentVersion?.let { DatabaseVersionManager.formatVersionForDisplay(it) }
+                                    ?: stringResource(Res.string.db_update_version_unknown),
+                            ),
+                        textAlign = TextAlign.Center,
                     )
                     Text(
-                        text = stringResource(
-                            Res.string.db_update_required_version,
-                            DatabaseVersionManager.formatVersionForDisplay(minRequiredVersion)
-                        ),
-                        textAlign = TextAlign.Center
+                        text =
+                            stringResource(
+                                Res.string.db_update_required_version,
+                                DatabaseVersionManager.formatVersionForDisplay(minRequiredVersion),
+                            ),
+                        textAlign = TextAlign.Center,
                     )
                 }
             }
-            
+
             // Description
             Text(
-                text = if (isDatabaseMissing) {
-                    stringResource(Res.string.db_update_database_missing_error)
-                } else {
-                    stringResource(Res.string.db_update_need_to_update)
-                },
+                text =
+                    if (isDatabaseMissing) {
+                        stringResource(Res.string.db_update_database_missing_error)
+                    } else {
+                        stringResource(Res.string.db_update_need_to_update)
+                    },
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(0.8f)
+                modifier = Modifier.fillMaxWidth(0.8f),
             )
-            
+
             // Continue button
             DefaultButton(
                 onClick = {
                     navController.navigate(DatabaseUpdateDestination.UpdateOptionsScreen)
-                }
+                },
             ) {
                 Text(stringResource(Res.string.db_update_continue))
             }

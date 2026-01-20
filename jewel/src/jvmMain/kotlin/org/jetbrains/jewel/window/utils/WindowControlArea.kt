@@ -9,16 +9,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.onPointerEvent
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
@@ -53,7 +52,7 @@ private fun TitleBarScope.ControlButton(
     description: String,
     style: TitleBarStyle = JewelTheme.defaultTitleBarStyle,
     iconButtonStyle: IconButtonStyle = style.paneButtonStyle,
-    iconHoveredEffect: Boolean
+    iconHoveredEffect: Boolean,
 ) {
     IconButton(
         onClick,
@@ -72,8 +71,7 @@ private fun TitleBarScope.ControlButton(
                             // Lighten only the icon by overlaying a subtle white tint
                             drawRect(Color.White.copy(alpha = 0.02f), blendMode = BlendMode.SrcOver)
                         }
-                    }
-                    .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Enter) { hovered = true }
+                    }.onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Enter) { hovered = true }
                     .onPointerEvent(androidx.compose.ui.input.pointer.PointerEventType.Exit) { hovered = false }
             } else {
                 Modifier
@@ -84,8 +82,7 @@ private fun TitleBarScope.ControlButton(
             description,
             hint = if (state.isActive) PainterHint else Inactive,
             modifier = hoverModifier,
-            )
-
+        )
     }
 }
 
@@ -105,7 +102,9 @@ internal fun TitleBarScope.WindowControlArea(
     // Show maximize/restore button only if window is resizable
     if (window.isResizable) {
         if (state.isMaximized) {
-            ControlButton({ window.extendedState = Frame.NORMAL }, state, style.icons.restoreButton, "Restore", iconHoveredEffect = iconHoveredEffect, style = style, iconButtonStyle = style.paneButtonStyle)
+            ControlButton({
+                window.extendedState = Frame.NORMAL
+            }, state, style.icons.restoreButton, "Restore", iconHoveredEffect = iconHoveredEffect, style = style, iconButtonStyle = style.paneButtonStyle)
         } else {
             ControlButton(
                 { window.extendedState = Frame.MAXIMIZED_BOTH },
@@ -114,7 +113,7 @@ internal fun TitleBarScope.WindowControlArea(
                 "Maximize",
                 iconHoveredEffect = iconHoveredEffect,
                 style = style,
-                iconButtonStyle = style.paneButtonStyle
+                iconButtonStyle = style.paneButtonStyle,
             )
         }
     }
@@ -125,6 +124,6 @@ internal fun TitleBarScope.WindowControlArea(
         "Minimize",
         iconHoveredEffect = iconHoveredEffect,
         style = style,
-        iconButtonStyle = style.paneButtonStyle
+        iconButtonStyle = style.paneButtonStyle,
     )
 }

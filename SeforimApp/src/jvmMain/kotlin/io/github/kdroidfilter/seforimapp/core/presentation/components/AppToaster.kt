@@ -9,9 +9,9 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.dokar.sonner.ToastWidthPolicy
 import com.dokar.sonner.Toaster
 import com.dokar.sonner.ToasterState
-import com.dokar.sonner.ToastWidthPolicy
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 
 /**
@@ -22,9 +22,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
  * `rememberToasterState()` in your screen and pass it here.
  */
 @Composable
-fun AppToaster(
-    state: ToasterState,
-) {
+fun AppToaster(state: ToasterState) {
     Toaster(
         state = state,
         darkTheme = JewelTheme.isDark,
@@ -41,6 +39,6 @@ fun AppToaster(
         border = { BorderStroke(1.dp, JewelTheme.globalColors.borders.disabled) },
         background = { SolidColor(JewelTheme.globalColors.panelBackground) },
         shape = { RectangleShape },
-        offset = IntOffset(0, 0)
+        offset = IntOffset(0, 0),
     )
 }

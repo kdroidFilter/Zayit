@@ -9,7 +9,10 @@ import kotlin.math.sin
 /**
  * Converts azimuth and elevation angles to a direction vector.
  */
-internal fun sunVectorFromAngles(lightDegrees: Float, sunElevationDegrees: Float): Vec3f {
+internal fun sunVectorFromAngles(
+    lightDegrees: Float,
+    sunElevationDegrees: Float,
+): Vec3f {
     val az = lightDegrees * DEG_TO_RAD_F
     val el = sunElevationDegrees * DEG_TO_RAD_F
     val cosEl = cos(el)
@@ -55,20 +58,21 @@ internal fun horizontalToWorld(
     val cosEl = cos(elRad)
     val sinEl = sin(elRad)
 
-    val dir = combineHorizontalDirection(
-        sinAz = sinAz,
-        cosAz = cosAz,
-        cosEl = cosEl,
-        sinEl = sinEl,
-        eastX = cosLon,
-        eastZ = eastZ,
-        northX = northX,
-        northZ = northZ,
-        upX = upX,
-        upZ = upZ,
-        cosLat = cosLat,
-        sinLat = sinLat,
-    )
+    val dir =
+        combineHorizontalDirection(
+            sinAz = sinAz,
+            cosAz = cosAz,
+            cosEl = cosEl,
+            sinEl = sinEl,
+            eastX = cosLon,
+            eastZ = eastZ,
+            northX = northX,
+            northZ = northZ,
+            upX = upX,
+            upZ = upZ,
+            cosLat = cosLat,
+            sinLat = sinLat,
+        )
 
     val earthDir = dir.normalized()
 
@@ -118,7 +122,10 @@ internal fun transformMoonOrbitPosition(
 /**
  * Calculates perspective scale factor based on depth.
  */
-internal fun perspectiveScale(cameraZ: Float, z: Float): Float {
+internal fun perspectiveScale(
+    cameraZ: Float,
+    z: Float,
+): Float {
     val denom = max(1f, cameraZ - z)
     return cameraZ / denom
 }
@@ -155,18 +162,21 @@ internal fun computeSceneGeometry(
     val earthLeft = (sceneHalf - earthSizePx / 2f).roundToInt()
     val earthTop = (sceneHalf - earthSizePx / 2f).roundToInt()
 
-    val moonBaseSizePx = (earthSizePx * MOON_TO_EARTH_DIAMETER_RATIO).roundToInt()
-        .coerceAtLeast(MIN_SPHERE_SIZE_PX)
+    val moonBaseSizePx =
+        (earthSizePx * MOON_TO_EARTH_DIAMETER_RATIO)
+            .roundToInt()
+            .coerceAtLeast(MIN_SPHERE_SIZE_PX)
     val moonRadiusWorldPx = (moonBaseSizePx - 1) / 2f
     val edgeMarginPx = max(6f, outputSizePx * 0.02f)
     val orbitRadius = (sceneHalf - moonRadiusWorldPx - edgeMarginPx).coerceAtLeast(0f)
 
     val desiredSeparation = earthRadiusPx + moonRadiusWorldPx + 1.5f
-    val viewPitchRad = if (orbitRadius > EPSILON) {
-        asin((desiredSeparation / orbitRadius).coerceIn(0f, 0.999f))
-    } else {
-        0f
-    }
+    val viewPitchRad =
+        if (orbitRadius > EPSILON) {
+            asin((desiredSeparation / orbitRadius).coerceIn(0f, 0.999f))
+        } else {
+            0f
+        }
 
     val orbitInclinationRad = MOON_ORBIT_INCLINATION_DEG * DEG_TO_RAD_F
     val cosInc = cos(orbitInclinationRad)

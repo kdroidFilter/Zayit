@@ -1,6 +1,5 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.userprofile
 
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,11 +17,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import dev.zacsweers.metrox.viewmodel.metroViewModel
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
@@ -45,15 +45,15 @@ import seforimapp.seforimapp.generated.resources.onboarding_user_community_ashke
 import seforimapp.seforimapp.generated.resources.onboarding_user_community_label
 import seforimapp.seforimapp.generated.resources.onboarding_user_community_sefard
 import seforimapp.seforimapp.generated.resources.onboarding_user_community_sepharade
+import seforimapp.seforimapp.generated.resources.onboarding_user_first_name_label
 import seforimapp.seforimapp.generated.resources.onboarding_user_info_description
 import seforimapp.seforimapp.generated.resources.onboarding_user_info_title
-import seforimapp.seforimapp.generated.resources.onboarding_user_first_name_label
 import seforimapp.seforimapp.generated.resources.onboarding_user_last_name_label
 
 @Composable
 fun UserProfileScreen(
     navController: NavController,
-    progressBarState: ProgressBarState = ProgressBarState
+    progressBarState: ProgressBarState = ProgressBarState,
 ) {
     val viewModel: UserProfileViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
@@ -76,7 +76,7 @@ fun UserProfileScreen(
             AppSettings.setUserCommunityCode(community?.name)
             navController.navigate(OnBoardingDestination.RegionConfigScreen)
         },
-        canProceed = canProceed
+        canProceed = canProceed,
     )
 }
 
@@ -86,7 +86,7 @@ private fun UserProfileView(
     state: UserProfileState,
     onEvent: (UserProfileEvents) -> Unit,
     onNext: () -> Unit,
-    canProceed: Boolean
+    canProceed: Boolean,
 ) {
     OnBoardingScaffold(
         title = stringResource(Res.string.onboarding_user_info_title),
@@ -94,11 +94,11 @@ private fun UserProfileView(
             DefaultButton(onClick = onNext, enabled = canProceed) {
                 Text(stringResource(Res.string.next_button))
             }
-        }
+        },
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             InlineInformationBanner(
                 style = JewelTheme.inlineBannerStyle.information,
@@ -109,7 +109,7 @@ private fun UserProfileView(
                 Column(
                     Modifier.fillMaxSize().weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
                 ) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         Column {
@@ -133,7 +133,6 @@ private fun UserProfileView(
                             )
                         }
                         Column {
-
                             // Last name
                             Text(stringResource(Res.string.onboarding_user_last_name_label))
                             Spacer(Modifier.height(8.dp))
@@ -151,7 +150,6 @@ private fun UserProfileView(
                                 state = lastNameState,
                                 modifier = Modifier.widthIn(max = 240.dp),
                             )
-
                         }
                     }
                     Spacer(Modifier.height(12.dp))
@@ -159,11 +157,12 @@ private fun UserProfileView(
                     // Community selection
                     Text(stringResource(Res.string.onboarding_user_community_label))
                     Spacer(Modifier.height(8.dp))
-                    val communityLabels = listOf(
-                        stringResource(Res.string.onboarding_user_community_sepharade),
-                        stringResource(Res.string.onboarding_user_community_ashkenaze),
-                        stringResource(Res.string.onboarding_user_community_sefard),
-                    )
+                    val communityLabels =
+                        listOf(
+                            stringResource(Res.string.onboarding_user_community_sepharade),
+                            stringResource(Res.string.onboarding_user_community_ashkenaze),
+                            stringResource(Res.string.onboarding_user_community_sefard),
+                        )
                     SpeedSearchArea(Modifier.widthIn(min = 240.dp, max = 320.dp)) {
                         ListComboBox(
                             items = communityLabels,
@@ -179,7 +178,7 @@ private fun UserProfileView(
                         Ink_pen,
                         null,
                         modifier = Modifier.fillMaxSize().padding(16.dp),
-                        tint = JewelTheme.globalColors.text.normal
+                        tint = JewelTheme.globalColors.text.normal,
                     )
                 }
             }
@@ -192,15 +191,16 @@ private fun UserProfileView(
 private fun UserProfileView_Preview() {
     PreviewContainer {
         UserProfileView(
-            state = UserProfileState(
-                firstName = "",
-                lastName = "",
-                communities = listOf(Community.SEPHARADE, Community.ASHKENAZE, Community.SEFARD),
-                selectedCommunityIndex = -1
-            ),
+            state =
+                UserProfileState(
+                    firstName = "",
+                    lastName = "",
+                    communities = listOf(Community.SEPHARADE, Community.ASHKENAZE, Community.SEFARD),
+                    selectedCommunityIndex = -1,
+                ),
             onEvent = {},
             onNext = {},
-            canProceed = false
+            canProceed = false,
         )
     }
 }

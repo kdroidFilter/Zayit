@@ -28,19 +28,19 @@ fun SelectableRow(
     content: @Composable () -> Unit,
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
-            .pointerHoverIcon(PointerIcon.Hand)
-            .clip(RoundedCornerShape(4.dp))
-            .background(if (isSelected) JewelTheme.iconButtonStyle.colors.backgroundFocused else Color.Transparent)
-            .padding(vertical = 4.dp, horizontal = 12.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick,
+                ).pointerHoverIcon(PointerIcon.Hand)
+                .clip(RoundedCornerShape(4.dp))
+                .background(if (isSelected) JewelTheme.iconButtonStyle.colors.backgroundFocused else Color.Transparent)
+                .padding(vertical = 4.dp, horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         content()
     }

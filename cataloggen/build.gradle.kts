@@ -19,28 +19,32 @@ application {
     mainClass.set("io.github.kdroidfilter.seforimapp.cataloggen.GenerateKt")
 }
 
-val defaultDbPath = rootProject.layout.projectDirectory
-    .dir("SeforimLibrary/generator/build")
-    .file("seforim.db")
-    .asFile
-    .absolutePath
-val defaultOutputDir = rootProject.layout.projectDirectory
-    .dir("SeforimApp/src/commonMain/kotlin")
-    .asFile
-    .absolutePath
+val defaultDbPath =
+    rootProject.layout.projectDirectory
+        .dir("SeforimLibrary/generator/build")
+        .file("seforim.db")
+        .asFile
+        .absolutePath
+val defaultOutputDir =
+    rootProject.layout.projectDirectory
+        .dir("SeforimApp/src/commonMain/kotlin")
+        .asFile
+        .absolutePath
 
 tasks.register<JavaExec>("generatePrecomputedCatalog") {
     group = "codegen"
     description = "Generates PrecomputedCatalog.kt from the seforim.db database"
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("io.github.kdroidfilter.seforimapp.cataloggen.GenerateKt")
-    val dbPathProvider = providers
-        .gradleProperty("catalogDb")
-        .orElse(providers.environmentVariable("SEFORIM_DB"))
-        .orElse(defaultDbPath)
-    val outputDirProvider = providers
-        .gradleProperty("catalogOutputDir")
-        .orElse(defaultOutputDir)
+    val dbPathProvider =
+        providers
+            .gradleProperty("catalogDb")
+            .orElse(providers.environmentVariable("SEFORIM_DB"))
+            .orElse(defaultDbPath)
+    val outputDirProvider =
+        providers
+            .gradleProperty("catalogOutputDir")
+            .orElse(defaultOutputDir)
 
     doFirst {
         if (args.isEmpty()) {

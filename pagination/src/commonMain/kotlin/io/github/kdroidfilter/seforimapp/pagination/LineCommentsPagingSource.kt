@@ -8,29 +8,28 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 class LineCommentsPagingSource(
     private val repository: SeforimRepository,
     private val lineId: Long,
-    private val commentatorIds: Set<Long> = emptySet()
+    private val commentatorIds: Set<Long> = emptySet(),
 ) : PagingSource<Int, CommentaryWithText>() {
-
-    override fun getRefreshKey(state: PagingState<Int, CommentaryWithText>): Int? {
-        return state.anchorPosition?.let { anchorPosition ->
+    override fun getRefreshKey(state: PagingState<Int, CommentaryWithText>): Int? =
+        state.anchorPosition?.let { anchorPosition ->
             val anchorPage = state.closestPageToPosition(anchorPosition)
             anchorPage?.prevKey?.plus(1) ?: anchorPage?.nextKey?.minus(1)
         }
-    }
 
-    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, CommentaryWithText> {
-        return try {
+    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, CommentaryWithText> =
+        try {
             val page = params.key ?: 0
             val limit = params.loadSize
             val offset = page * limit
 
-            val commentaries = repository.getCommentariesForLineRange(
-                lineIds = listOf(lineId),
-                activeCommentatorIds = commentatorIds,
-                connectionTypes = setOf(io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType.COMMENTARY),
-                offset = offset,
-                limit = limit
-            )
+            val commentaries =
+                repository.getCommentariesForLineRange(
+                    lineIds = listOf(lineId),
+                    activeCommentatorIds = commentatorIds,
+                    connectionTypes = setOf(io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType.COMMENTARY),
+                    offset = offset,
+                    limit = limit,
+                )
 
             val prevKey = if (page == 0) null else page - 1
             val nextKey = if (commentaries.isEmpty()) null else page + 1
@@ -38,10 +37,9 @@ class LineCommentsPagingSource(
             LoadResult.Page(
                 data = commentaries,
                 prevKey = prevKey,
-                nextKey = nextKey
+                nextKey = nextKey,
             )
         } catch (e: Exception) {
             LoadResult.Error(e)
         }
-    }
 }

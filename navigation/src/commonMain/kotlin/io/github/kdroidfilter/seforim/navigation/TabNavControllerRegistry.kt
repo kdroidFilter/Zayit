@@ -10,7 +10,10 @@ import androidx.navigation.NavHostController
 class TabNavControllerRegistry {
     private val controllers = mutableMapOf<Int, NavHostController>()
 
-    fun set(tabInternalId: Int, controller: NavHostController) {
+    fun set(
+        tabInternalId: Int,
+        controller: NavHostController,
+    ) {
         controllers[tabInternalId] = controller
     }
 
@@ -22,4 +25,3 @@ class TabNavControllerRegistry {
 
     fun snapshot(): Map<Int, NavHostController> = controllers.toMap()
 }
-

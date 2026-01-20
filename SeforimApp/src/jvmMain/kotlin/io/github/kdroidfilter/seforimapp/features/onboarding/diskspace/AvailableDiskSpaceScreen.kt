@@ -1,6 +1,5 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.diskspace
 
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -10,11 +9,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import dev.zacsweers.metrox.viewmodel.metroViewModel
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
@@ -35,7 +35,7 @@ import seforimapp.seforimapp.generated.resources.*
 @Composable
 fun AvailableDiskSpaceScreen(
     navController: NavController,
-    progressBarState: ProgressBarState = ProgressBarState
+    progressBarState: ProgressBarState = ProgressBarState,
 ) {
     val viewModel: AvailableDiskSpaceViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
@@ -46,7 +46,7 @@ fun AvailableDiskSpaceScreen(
     AvailableDiskSpaceView(
         state = state,
         onEvent = viewModel::onEvent,
-        onNext = { navController.navigate(OnBoardingDestination.TypeOfInstallationScreen) }
+        onNext = { navController.navigate(OnBoardingDestination.TypeOfInstallationScreen) },
     )
 }
 
@@ -55,7 +55,7 @@ fun AvailableDiskSpaceScreen(
 fun AvailableDiskSpaceView(
     state: AvailableDiskSpaceState,
     onEvent: (AvailableDiskSpaceEvents) -> Unit,
-    onNext: () -> Unit = {}
+    onNext: () -> Unit = {},
 ) {
     val requiredBytes = AvailableDiskSpaceUseCase.REQUIRED_SPACE_BYTES
     // Space breakdown: permanent (8.5 GB) + temporary (2.5 GB) = total required (11 GB)
@@ -72,12 +72,13 @@ fun AvailableDiskSpaceView(
             val total = state.totalDiskSpace
             val used = (total - state.availableDiskSpace).coerceAtLeast(0)
             val freeAfter = (state.availableDiskSpace - requiredBytes).coerceAtLeast(0)
-            val slices = listOf(
-                used.toFloat(),
-                permanentSpaceBytes.toFloat(),
-                temporarySpaceBytes.toFloat(),
-                freeAfter.toFloat()
-            )
+            val slices =
+                listOf(
+                    used.toFloat(),
+                    permanentSpaceBytes.toFloat(),
+                    temporarySpaceBytes.toFloat(),
+                    freeAfter.toFloat(),
+                )
             val colors = generateHueColorPalette(slices.size)
 
             Row(Modifier.weight(0.9f)) {
@@ -85,19 +86,20 @@ fun AvailableDiskSpaceView(
                     values = slices,
                     modifier = Modifier.size(240.dp).weight(1f),
                     slice = { i: Int ->
-                        val labelText = when (i) {
-                            0 -> stringResource(Res.string.disk_pie_used_with_value, formatBytes(used))
-                            1 -> stringResource(Res.string.disk_pie_permanent_space, formatBytes(permanentSpaceBytes))
-                            2 -> stringResource(Res.string.disk_pie_temporary_space, formatBytes(temporarySpaceBytes))
-                            else -> stringResource(Res.string.disk_pie_free_after_with_value, formatBytes(freeAfter))
-                        }
+                        val labelText =
+                            when (i) {
+                                0 -> stringResource(Res.string.disk_pie_used_with_value, formatBytes(used))
+                                1 -> stringResource(Res.string.disk_pie_permanent_space, formatBytes(permanentSpaceBytes))
+                                2 -> stringResource(Res.string.disk_pie_temporary_space, formatBytes(temporarySpaceBytes))
+                                else -> stringResource(Res.string.disk_pie_free_after_with_value, formatBytes(freeAfter))
+                            }
                         DefaultSlice(
                             color = colors[i],
                             hoverExpandFactor = 1.05f,
-                            hoverElement = { Text(labelText) }
+                            hoverElement = { Text(labelText) },
                         )
                     },
-                    labelConnector = {}
+                    labelConnector = {},
                 )
 
                 // Simple legend with sizes
@@ -119,7 +121,7 @@ fun AvailableDiskSpaceView(
                 if (state.hasEnoughSpace) {
                     DefaultSuccessBanner(
                         text = stringResource(Res.string.onboarding_disk_success_continue),
-                        style = JewelTheme.defaultBannerStyle.success
+                        style = JewelTheme.defaultBannerStyle.success,
                     )
                 } else {
                     DefaultErrorBanner(
@@ -127,7 +129,7 @@ fun AvailableDiskSpaceView(
                         style = JewelTheme.defaultBannerStyle.error,
                         linkActions = {
                             action(recheckLabel, onClick = { onEvent(AvailableDiskSpaceEvents.Refresh) })
-                        }
+                        },
                     )
                 }
             }
@@ -136,7 +138,10 @@ fun AvailableDiskSpaceView(
 }
 
 @Composable
-private fun LegendItem(color: Color, text: String) {
+private fun LegendItem(
+    color: Color,
+    text: String,
+) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.size(12.dp).background(color))
         Text(text)
@@ -151,9 +156,9 @@ private fun AvailableDiskSpaceScreenEnoughSpacePreview() {
             AvailableDiskSpaceState(
                 hasEnoughSpace = true,
                 availableDiskSpace = 20L * 1024 * 1024 * 1024,
-                remainingDiskSpaceAfterInstall = 9L * 1024 * 1024 * 1024
+                remainingDiskSpaceAfterInstall = 9L * 1024 * 1024 * 1024,
             ),
-            {}
+            {},
         )
     }
 }
@@ -166,9 +171,9 @@ private fun AvailableDiskSpaceScreenNoEnoughSpacePreview() {
             AvailableDiskSpaceState(
                 hasEnoughSpace = false,
                 availableDiskSpace = 8L * 1024 * 1024 * 1024,
-                remainingDiskSpaceAfterInstall = -3L * 1024 * 1024 * 1024
+                remainingDiskSpaceAfterInstall = -3L * 1024 * 1024 * 1024,
             ),
-            {}
+            {},
         )
     }
 }

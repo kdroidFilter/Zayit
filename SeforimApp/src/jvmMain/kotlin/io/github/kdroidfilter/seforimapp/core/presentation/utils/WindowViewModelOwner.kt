@@ -29,4 +29,3 @@ private class WindowViewModelStoreOwner : ViewModelStoreOwner {
         viewModelStore.clear()
     }
 }
-

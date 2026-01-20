@@ -13,15 +13,22 @@ class TabPersistedStateStore {
 
     fun get(tabId: String): TabPersistedState? = synchronized(lock) { states[tabId] }
 
-    fun getOrCreate(tabId: String): TabPersistedState = synchronized(lock) {
-        states.getOrPut(tabId) { TabPersistedState() }
-    }
+    fun getOrCreate(tabId: String): TabPersistedState =
+        synchronized(lock) {
+            states.getOrPut(tabId) { TabPersistedState() }
+        }
 
-    fun set(tabId: String, state: TabPersistedState) {
+    fun set(
+        tabId: String,
+        state: TabPersistedState,
+    ) {
         synchronized(lock) { states[tabId] = state }
     }
 
-    fun update(tabId: String, transform: (TabPersistedState) -> TabPersistedState) {
+    fun update(
+        tabId: String,
+        transform: (TabPersistedState) -> TabPersistedState,
+    ) {
         synchronized(lock) {
             val current = states[tabId] ?: TabPersistedState()
             states[tabId] = transform(current)

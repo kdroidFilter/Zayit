@@ -8,15 +8,19 @@ data class RegionConfigState(
     val countries: List<String> = emptyList(),
     val selectedCountryIndex: Int = -1,
     val cities: List<String> = emptyList(),
-    val selectedCityIndex: Int = -1
+    val selectedCityIndex: Int = -1,
 ) {
     companion object {
-        val preview = RegionConfigState(
-            countries =  worldPlaces.keys.toList(),
-            selectedCountryIndex = 0,
-            cities = worldPlaces.values.first().keys.toList(),
-            selectedCityIndex = 0
-        )
+        val preview =
+            RegionConfigState(
+                countries = worldPlaces.keys.toList(),
+                selectedCountryIndex = 0,
+                cities =
+                    worldPlaces.values
+                        .first()
+                        .keys
+                        .toList(),
+                selectedCityIndex = 0,
+            )
     }
 }
-

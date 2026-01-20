@@ -26,12 +26,12 @@ fun SelectableIconButtonWithToolip(
     toolTipText: String,
     onClick: () -> Unit,
     isSelected: Boolean,
-    icon : ImageVector,
-    iconDescription : String = "",
+    icon: ImageVector,
+    iconDescription: String = "",
     label: String,
     enabled: Boolean = true,
     shortcutHint: String? = null,
-){
+) {
     Tooltip({
         if (shortcutHint.isNullOrBlank()) {
             Text(toolTipText)
@@ -45,43 +45,46 @@ fun SelectableIconButtonWithToolip(
     }) {
         ActionButton(
             onClick = onClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .pointerHoverIcon(PointerIcon.Hand),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .pointerHoverIcon(PointerIcon.Hand),
             focusable = false,
             enabled = enabled,
-            style = IconButtonStyle(
-                colors = IconButtonColors(
-                    foregroundSelectedActivated = JewelTheme.iconButtonStyle.colors.foregroundSelectedActivated,
-                    background = if (isSelected) JewelTheme.iconButtonStyle.colors.backgroundSelected else JewelTheme.iconButtonStyle.colors.background,
-                    backgroundDisabled = JewelTheme.iconButtonStyle.colors.backgroundDisabled,
-                    backgroundSelected = JewelTheme.iconButtonStyle.colors.backgroundSelected,
-                    backgroundSelectedActivated = JewelTheme.iconButtonStyle.colors.backgroundSelectedActivated,
-                    backgroundFocused = JewelTheme.iconButtonStyle.colors.backgroundFocused,
-                    backgroundPressed = JewelTheme.iconButtonStyle.colors.backgroundPressed,
-                    backgroundHovered = if (isSelected) JewelTheme.iconButtonStyle.colors.backgroundSelected else JewelTheme.iconButtonStyle.colors.backgroundHovered,
-                    border = JewelTheme.iconButtonStyle.colors.border,
-                    borderDisabled = JewelTheme.iconButtonStyle.colors.borderDisabled,
-                    borderSelected = JewelTheme.iconButtonStyle.colors.borderSelected,
-                    borderSelectedActivated = JewelTheme.iconButtonStyle.colors.borderSelectedActivated,
-                    borderFocused = JewelTheme.iconButtonStyle.colors.borderFocused,
-                    borderPressed = JewelTheme.iconButtonStyle.colors.borderPressed,
-                    borderHovered = if (isSelected) JewelTheme.iconButtonStyle.colors.borderSelected else JewelTheme.iconButtonStyle.colors.borderHovered,
+            style =
+                IconButtonStyle(
+                    colors =
+                        IconButtonColors(
+                            foregroundSelectedActivated = JewelTheme.iconButtonStyle.colors.foregroundSelectedActivated,
+                            background = if (isSelected) JewelTheme.iconButtonStyle.colors.backgroundSelected else JewelTheme.iconButtonStyle.colors.background,
+                            backgroundDisabled = JewelTheme.iconButtonStyle.colors.backgroundDisabled,
+                            backgroundSelected = JewelTheme.iconButtonStyle.colors.backgroundSelected,
+                            backgroundSelectedActivated = JewelTheme.iconButtonStyle.colors.backgroundSelectedActivated,
+                            backgroundFocused = JewelTheme.iconButtonStyle.colors.backgroundFocused,
+                            backgroundPressed = JewelTheme.iconButtonStyle.colors.backgroundPressed,
+                            backgroundHovered = if (isSelected) JewelTheme.iconButtonStyle.colors.backgroundSelected else JewelTheme.iconButtonStyle.colors.backgroundHovered,
+                            border = JewelTheme.iconButtonStyle.colors.border,
+                            borderDisabled = JewelTheme.iconButtonStyle.colors.borderDisabled,
+                            borderSelected = JewelTheme.iconButtonStyle.colors.borderSelected,
+                            borderSelectedActivated = JewelTheme.iconButtonStyle.colors.borderSelectedActivated,
+                            borderFocused = JewelTheme.iconButtonStyle.colors.borderFocused,
+                            borderPressed = JewelTheme.iconButtonStyle.colors.borderPressed,
+                            borderHovered = if (isSelected) JewelTheme.iconButtonStyle.colors.borderSelected else JewelTheme.iconButtonStyle.colors.borderHovered,
+                        ),
+                    metrics = JewelTheme.iconButtonStyle.metrics,
                 ),
-                metrics = JewelTheme.iconButtonStyle.metrics
-            )
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(4.dp)
+                modifier = Modifier.padding(4.dp),
             ) {
                 Icon(
                     icon,
                     iconDescription,
-                    tint = if (enabled )JewelTheme.globalColors.text.selected else JewelTheme.globalColors.text.disabled,
-                    modifier = Modifier.size(24.dp)
+                    tint = if (enabled)JewelTheme.globalColors.text.selected else JewelTheme.globalColors.text.disabled,
+                    modifier = Modifier.size(24.dp),
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(

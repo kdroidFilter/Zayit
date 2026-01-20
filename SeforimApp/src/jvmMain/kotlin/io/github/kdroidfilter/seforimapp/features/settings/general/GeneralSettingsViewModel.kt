@@ -11,17 +11,16 @@ import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
-import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import java.io.File
 
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey(GeneralSettingsViewModel::class)
 @Inject
 class GeneralSettingsViewModel : ViewModel() {
-
     private val dbPath = MutableStateFlow(AppSettings.getDatabasePath())
     private val closeTree = MutableStateFlow(AppSettings.getCloseBookTreeOnNewBookSelected())
     private val persist = MutableStateFlow(AppSettings.isPersistSessionEnabled())
@@ -29,30 +28,31 @@ class GeneralSettingsViewModel : ViewModel() {
     private val useOpenGl = MutableStateFlow(AppSettings.isUseOpenGlEnabled())
     private val resetDone = MutableStateFlow(false)
 
-    val state = combine(
-        combine(dbPath, closeTree, persist) { path, c, p -> Triple(path, c, p) },
-        combine(showZmanim, useOpenGl, resetDone) { z, gl, r -> Triple(z, gl, r) }
-    ) { (path, c, p), (z, gl, r) ->
-        GeneralSettingsState(
-            databasePath = path,
-            closeTreeOnNewBook = c,
-            persistSession = p,
-            showZmanimWidgets = z,
-            useOpenGl = gl,
-            resetDone = r
+    val state =
+        combine(
+            combine(dbPath, closeTree, persist) { path, c, p -> Triple(path, c, p) },
+            combine(showZmanim, useOpenGl, resetDone) { z, gl, r -> Triple(z, gl, r) },
+        ) { (path, c, p), (z, gl, r) ->
+            GeneralSettingsState(
+                databasePath = path,
+                closeTreeOnNewBook = c,
+                persistSession = p,
+                showZmanimWidgets = z,
+                useOpenGl = gl,
+                resetDone = r,
+            )
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            GeneralSettingsState(
+                databasePath = dbPath.value,
+                closeTreeOnNewBook = closeTree.value,
+                persistSession = persist.value,
+                showZmanimWidgets = showZmanim.value,
+                useOpenGl = useOpenGl.value,
+                resetDone = resetDone.value,
+            ),
         )
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5_000),
-        GeneralSettingsState(
-            databasePath = dbPath.value,
-            closeTreeOnNewBook = closeTree.value,
-            persistSession = persist.value,
-            showZmanimWidgets = showZmanim.value,
-            useOpenGl = useOpenGl.value,
-            resetDone = resetDone.value,
-        )
-    )
 
     fun onEvent(event: GeneralSettingsEvents) {
         when (event) {
@@ -105,13 +105,14 @@ class GeneralSettingsViewModel : ViewModel() {
 
                     // Delete related files in the custom directory
                     if (customBaseDir != null && customBaseDir.exists() && customBaseDir != dbDir) {
-                        val relatedPatterns = listOf(
-                            customDbFile.name + ".lucene",
-                            customDbFile.name + ".lookup.lucene",
-                            "lexical.db",
-                            "catalog.pb",
-                            "release_info.txt"
-                        )
+                        val relatedPatterns =
+                            listOf(
+                                customDbFile.name + ".lucene",
+                                customDbFile.name + ".lookup.lucene",
+                                "lexical.db",
+                                "catalog.pb",
+                                "release_info.txt",
+                            )
                         relatedPatterns.forEach { name ->
                             val f = File(customBaseDir, name)
                             if (f.exists()) {

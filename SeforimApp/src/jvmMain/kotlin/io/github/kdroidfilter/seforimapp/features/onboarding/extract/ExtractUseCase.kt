@@ -17,67 +17,82 @@ import java.io.InputStream
 import java.io.SequenceInputStream
 
 class ExtractUseCase {
-
     suspend fun extractToDatabase(
         sourcePath: String,
-        onProgress: (Float) -> Unit
-    ): String = withContext(Dispatchers.Default) {
-        val dbDirV = FileKit.databasesDir
-        val dbDir = File(dbDirV.path).apply { mkdirs() }
-        val source = File(sourcePath)
-        require(source.exists()) { "Selected file not found" }
+        onProgress: (Float) -> Unit,
+    ): String =
+        withContext(Dispatchers.Default) {
+            val dbDirV = FileKit.databasesDir
+            val dbDir = File(dbDirV.path).apply { mkdirs() }
+            val source = File(sourcePath)
+            require(source.exists()) { "Selected file not found" }
 
-        onProgress(0f)
-        val dbFile: File = withContext(Dispatchers.IO) {
-            val lower = source.name.lowercase()
-            when {
-                lower.endsWith(".tar.zst.part01") || lower.endsWith(".tar.zst.part02") -> {
-                    val (p1, p2) = findSplitParts(source)
-                    val result = extractTarZstFromPartsStreaming(listOf(p1, p2), dbDir) { mapped ->
-                        onProgress(mapped)
+            onProgress(0f)
+            val dbFile: File =
+                withContext(Dispatchers.IO) {
+                    val lower = source.name.lowercase()
+                    when {
+                        lower.endsWith(".tar.zst.part01") || lower.endsWith(".tar.zst.part02") -> {
+                            val (p1, p2) = findSplitParts(source)
+                            val result =
+                                extractTarZstFromPartsStreaming(listOf(p1, p2), dbDir) { mapped ->
+                                    onProgress(mapped)
+                                }
+                            // Only cleanup if parts live in our databases directory (downloaded by the app)
+                            val canDelete =
+                                runCatching {
+                                    val base = dbDir.canonicalFile
+                                    (p1.parentFile?.canonicalFile == base) && (p2.parentFile?.canonicalFile == base)
+                                }.getOrDefault(false)
+                            if (canDelete) {
+                                runCatching { p1.delete() }
+                                runCatching { p2.delete() }
+                            }
+                            result
+                        }
+                        lower.endsWith(".tar.zst") -> {
+                            val result = extractTarZstFile(source, dbDir) { p -> onProgress(p.coerceIn(0f, 1f)) }
+                            runCatching { maybeCleanupSources(source, dbDir) }
+                            result
+                        }
+                        lower.endsWith(".zst") -> {
+                            val baseName = source.name.removeSuffix(".zst")
+                            val targetName = if (baseName.endsWith(".db")) baseName else "$baseName.db"
+                            val targetDb = File(dbDir, targetName)
+                            val result = extractDbZst(source, targetDb) { p -> onProgress(p.coerceIn(0f, 1f)) }
+                            runCatching { maybeCleanupSources(source, dbDir) }
+                            result
+                        }
+                        else -> error("Unsupported file type: ${source.name}")
                     }
-                    // Only cleanup if parts live in our databases directory (downloaded by the app)
-                    val canDelete = runCatching {
-                        val base = dbDir.canonicalFile
-                        (p1.parentFile?.canonicalFile == base) && (p2.parentFile?.canonicalFile == base)
-                    }.getOrDefault(false)
-                    if (canDelete) {
-                        runCatching { p1.delete() }
-                        runCatching { p2.delete() }
-                    }
-                    result
                 }
-                lower.endsWith(".tar.zst") -> {
-                    val result = extractTarZstFile(source, dbDir) { p -> onProgress(p.coerceIn(0f, 1f)) }
-                    runCatching { maybeCleanupSources(source, dbDir) }
-                    result
-                }
-                lower.endsWith(".zst") -> {
-                    val baseName = source.name.removeSuffix(".zst")
-                    val targetName = if (baseName.endsWith(".db")) baseName else "$baseName.db"
-                    val targetDb = File(dbDir, targetName)
-                    val result = extractDbZst(source, targetDb) { p -> onProgress(p.coerceIn(0f, 1f)) }
-                    runCatching { maybeCleanupSources(source, dbDir) }
-                    result
-                }
-                else -> error("Unsupported file type: ${source.name}")
-            }
+            onProgress(1f)
+            AppSettings.setDatabasePath(dbFile.absolutePath)
+            runCatching { maybeCleanupSources(source, dbDir) }
+            return@withContext dbFile.absolutePath
         }
-        onProgress(1f)
-        AppSettings.setDatabasePath(dbFile.absolutePath)
-        runCatching { maybeCleanupSources(source, dbDir) }
-        return@withContext dbFile.absolutePath
-    }
 
-    private fun extractDbZst(sourceZst: File, targetDb: File, onProgress: (Float) -> Unit): File {
-        class CountingInputStream(`in`: FileInputStream) : FilterInputStream(`in`) {
+    private fun extractDbZst(
+        sourceZst: File,
+        targetDb: File,
+        onProgress: (Float) -> Unit,
+    ): File {
+        class CountingInputStream(
+            `in`: FileInputStream,
+        ) : FilterInputStream(`in`) {
             var count: Long = 0
                 private set
-            override fun read(b: ByteArray, off: Int, len: Int): Int {
+
+            override fun read(
+                b: ByteArray,
+                off: Int,
+                len: Int,
+            ): Int {
                 val r = super.read(b, off, len)
                 if (r > 0) count += r
                 return r
             }
+
             override fun read(): Int {
                 val r = super.read()
                 if (r >= 0) count += 1
@@ -105,15 +120,27 @@ class ExtractUseCase {
         return targetDb
     }
 
-    private fun extractTarZstFile(zstFile: File, destDir: File, onProgress: (Float) -> Unit): File {
-        class CountingInputStream(`in`: InputStream) : FilterInputStream(`in`) {
+    private fun extractTarZstFile(
+        zstFile: File,
+        destDir: File,
+        onProgress: (Float) -> Unit,
+    ): File {
+        class CountingInputStream(
+            `in`: InputStream,
+        ) : FilterInputStream(`in`) {
             var count: Long = 0
                 private set
-            override fun read(b: ByteArray, off: Int, len: Int): Int {
+
+            override fun read(
+                b: ByteArray,
+                off: Int,
+                len: Int,
+            ): Int {
                 val r = super.read(b, off, len)
                 if (r > 0) count += r
                 return r
             }
+
             override fun read(): Int {
                 val r = super.read()
                 if (r >= 0) count += 1
@@ -161,17 +188,30 @@ class ExtractUseCase {
         return extractedDb ?: error("No .db file found in archive")
     }
 
-    private fun extractTarZstFromPartsStreaming(parts: List<File>, destDir: File, onUiProgress: (Float) -> Unit): File {
+    private fun extractTarZstFromPartsStreaming(
+        parts: List<File>,
+        destDir: File,
+        onUiProgress: (Float) -> Unit,
+    ): File {
         require(parts.size >= 2)
+
         // Counting wrapper to report compressed bytes consumed
-        class CountingInputStream(`in`: InputStream) : FilterInputStream(`in`) {
+        class CountingInputStream(
+            `in`: InputStream,
+        ) : FilterInputStream(`in`) {
             var count: Long = 0
                 private set
-            override fun read(b: ByteArray, off: Int, len: Int): Int {
+
+            override fun read(
+                b: ByteArray,
+                off: Int,
+                len: Int,
+            ): Int {
                 val r = super.read(b, off, len)
                 if (r > 0) count += r
                 return r
             }
+
             override fun read(): Int {
                 val r = super.read()
                 if (r >= 0) count += 1
@@ -234,11 +274,14 @@ class ExtractUseCase {
         return extractedDb ?: error("No .db file found in archive")
     }
 
-    private fun <T> List<T>.toEnumeration(): java.util.Enumeration<T> = object : java.util.Enumeration<T> {
-        private var index = 0
-        override fun hasMoreElements(): Boolean = index < this@toEnumeration.size
-        override fun nextElement(): T = this@toEnumeration[index++]
-    }
+    private fun <T> List<T>.toEnumeration(): java.util.Enumeration<T> =
+        object : java.util.Enumeration<T> {
+            private var index = 0
+
+            override fun hasMoreElements(): Boolean = index < this@toEnumeration.size
+
+            override fun nextElement(): T = this@toEnumeration[index++]
+        }
 
     private fun findSplitParts(anyPart: File): Pair<File, File> {
         val dir = anyPart.parentFile ?: error("Invalid parts path")
@@ -250,7 +293,10 @@ class ExtractUseCase {
         return p1 to p2
     }
 
-    private fun maybeCleanupSources(source: File, dbDir: File) {
+    private fun maybeCleanupSources(
+        source: File,
+        dbDir: File,
+    ) {
         if (source.parentFile?.canonicalFile == dbDir.canonicalFile) {
             if (source.name.endsWith(".tar.zst", true)) {
                 runCatching { source.delete() }

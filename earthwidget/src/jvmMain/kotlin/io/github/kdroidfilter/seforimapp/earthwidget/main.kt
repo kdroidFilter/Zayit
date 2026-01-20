@@ -20,15 +20,16 @@ fun main() {
     Locale.setDefault(Locale.Builder().setLanguage("he").build())
     singleWindowApplication(
         title = "Hello World !",
-        state = WindowState(placement = WindowPlacement.Maximized)
+        state = WindowState(placement = WindowPlacement.Maximized),
     ) {
         IntUiTheme(isDark = true) {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(JewelTheme.globalColors.panelBackground)
-                        .padding(16.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .background(JewelTheme.globalColors.panelBackground)
+                            .padding(16.dp),
                 ) {
                     EarthWidgetZmanimView(modifier = Modifier.fillMaxSize())
                 }

@@ -28,7 +28,11 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 
 /** Quick TOC jump menu for a specific book. */
-data class TocQuickLink(val label: String, val tocId: Long, val firstLineId: Long?)
+data class TocQuickLink(
+    val label: String,
+    val tocId: Long,
+    val firstLineId: Long?,
+)
 
 @Composable
 fun TocJumpDropdown(
@@ -65,12 +69,14 @@ fun TocJumpDropdown(
                 val hoverSource = remember { MutableInteractionSource() }
                 val isHovered by hoverSource.collectIsHoveredAsState()
                 val backgroundColor by animateColorAsState(
-                    targetValue = if (isHovered) {
-                        JewelTheme.globalColors.outlines.focused.copy(alpha = 0.12f)
-                    } else {
-                        Color.Transparent
-                    },
-                    animationSpec = tween(durationMillis = 150)
+                    targetValue =
+                        if (isHovered) {
+                            JewelTheme.globalColors.outlines.focused
+                                .copy(alpha = 0.12f)
+                        } else {
+                            Color.Transparent
+                        },
+                    animationSpec = tween(durationMillis = 150),
                 )
                 Row(
                     Modifier
@@ -79,7 +85,7 @@ fun TocJumpDropdown(
                         .background(backgroundColor)
                         .clickable(
                             indication = null,
-                            interactionSource = hoverSource
+                            interactionSource = hoverSource,
                         ) {
                             close()
                             val lineId = quick.firstLineId
@@ -88,20 +94,19 @@ fun TocJumpDropdown(
                             } else {
                                 onEvent(BookContentEvent.OpenBookById(bookId))
                             }
-                        }
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        }.padding(horizontal = 12.dp, vertical = 8.dp)
                         .pointerHoverIcon(PointerIcon.Hand),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = quick.label,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        fontSize = 13.sp
+                        fontSize = 13.sp,
                     )
                 }
             }
-        }
+        },
     )
 }
 
@@ -133,7 +138,7 @@ fun TocJumpDropdownByIds(
         popupWidthMultiplier = popupWidthMultiplier,
         minPopupHeight = minPopupHeight,
         maxPopupHeight = maxPopupHeight,
-        prepareItems = loader
+        prepareItems = loader,
     )
 }
 
@@ -157,7 +162,7 @@ fun TocJumpDropdownByIds(
             modifier = modifier,
             popupWidthMultiplier = popupWidthMultiplier,
             minPopupHeight = minPopupHeight,
-            maxPopupHeight = maxPopupHeight
+            maxPopupHeight = maxPopupHeight,
         )
     }
 }

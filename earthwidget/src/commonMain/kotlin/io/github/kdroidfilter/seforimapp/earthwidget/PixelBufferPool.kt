@@ -154,7 +154,8 @@ internal suspend inline fun <T> PixelBufferPool.withBuffer(
  * - Up to 3 buffers per size (handles main + Earth + Moon buffers)
  * - Up to 12 total buffers (handles multiple concurrent renders)
  */
-internal val globalPixelBufferPool = PixelBufferPool(
-    maxBuffersPerSize = 3,
-    maxTotalBuffers = 12,
-)
+internal val globalPixelBufferPool =
+    PixelBufferPool(
+        maxBuffersPerSize = 3,
+        maxTotalBuffers = 12,
+    )

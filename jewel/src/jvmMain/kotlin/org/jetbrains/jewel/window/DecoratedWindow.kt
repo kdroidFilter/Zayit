@@ -32,16 +32,16 @@ import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
 import com.jetbrains.JBR
-import java.awt.event.ComponentEvent
-import java.awt.event.ComponentListener
-import java.awt.event.WindowAdapter
-import java.awt.event.WindowEvent
 import org.jetbrains.jewel.foundation.Stroke
 import org.jetbrains.jewel.foundation.modifier.border
 import org.jetbrains.jewel.foundation.modifier.trackWindowActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.window.styling.DecoratedWindowStyle
 import org.jetbrains.jewel.window.utils.DesktopPlatform
+import java.awt.event.ComponentEvent
+import java.awt.event.ComponentListener
+import java.awt.event.WindowAdapter
+import java.awt.event.WindowEvent
 
 @Composable
 public fun DecoratedWindow(
@@ -63,7 +63,7 @@ public fun DecoratedWindow(
         if (!JBR.isAvailable()) {
             error(
                 "DecoratedWindow can only be used on JetBrainsRuntime(JBR) platform, " +
-                    "please check the document https://github.com/JetBrains/jewel#int-ui-standalone-theme"
+                    "please check the document https://github.com/JetBrains/jewel#int-ui-standalone-theme",
             )
         }
     }
@@ -141,13 +141,13 @@ public fun DecoratedWindow(
 
         val undecoratedWindowBorder =
             if (undecorated && !decoratedWindowState.isMaximized) {
-                Modifier.border(
+                Modifier
+                    .border(
                         Stroke.Alignment.Inside,
                         style.metrics.borderWidth,
                         style.colors.borderFor(decoratedWindowState).value,
                         RectangleShape,
-                    )
-                    .padding(style.metrics.borderWidth)
+                    ).padding(style.metrics.borderWidth)
             } else {
                 Modifier
             }
@@ -180,7 +180,10 @@ public interface DecoratedWindowScope : FrameWindowScope {
 }
 
 private object DecoratedWindowMeasurePolicy : MeasurePolicy {
-    override fun MeasureScope.measure(measurables: List<Measurable>, constraints: Constraints): MeasureResult {
+    override fun MeasureScope.measure(
+        measurables: List<Measurable>,
+        constraints: Constraints,
+    ): MeasureResult {
         if (measurables.isEmpty()) {
             return layout(width = constraints.minWidth, height = constraints.minHeight) {}
         }
@@ -220,7 +223,9 @@ private object DecoratedWindowMeasurePolicy : MeasurePolicy {
 
 @Immutable
 @JvmInline
-public value class DecoratedWindowState(public val state: ULong) {
+public value class DecoratedWindowState(
+    public val state: ULong,
+) {
     public val isActive: Boolean
         get() = state and Active != 0UL
 
@@ -258,7 +263,7 @@ public value class DecoratedWindowState(public val state: ULong) {
                 (if (fullscreen) Fullscreen else 0UL) or
                     (if (minimized) Minimize else 0UL) or
                     (if (maximized) Maximize else 0UL) or
-                    (if (active) Active else 0UL)
+                    (if (active) Active else 0UL),
             )
 
         public fun of(window: ComposeWindow): DecoratedWindowState =
@@ -271,8 +276,12 @@ public value class DecoratedWindowState(public val state: ULong) {
     }
 }
 
-internal data class TitleBarInfo(val title: String, val icon: Painter?)
+internal data class TitleBarInfo(
+    val title: String,
+    val icon: Painter?,
+)
 
-internal val LocalTitleBarInfo: ProvidableCompositionLocal<TitleBarInfo> = compositionLocalOf {
-    error("LocalTitleBarInfo not provided, TitleBar must be used in DecoratedWindow")
-}
+internal val LocalTitleBarInfo: ProvidableCompositionLocal<TitleBarInfo> =
+    compositionLocalOf {
+        error("LocalTitleBarInfo not provided, TitleBar must be used in DecoratedWindow")
+    }

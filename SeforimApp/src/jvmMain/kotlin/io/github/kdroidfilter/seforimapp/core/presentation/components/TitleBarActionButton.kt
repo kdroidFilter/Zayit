@@ -10,8 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.IconActionButton
-import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.icon.IconKey
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -39,7 +39,7 @@ fun TitleBarActionButton(
             onClick = onClick,
             enabled = enabled,
             contentDescription = contentDescription,
-            modifier = Modifier.width(40.dp).fillMaxHeight()
+            modifier = Modifier.width(40.dp).fillMaxHeight(),
         )
     }
 }

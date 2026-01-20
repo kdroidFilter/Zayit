@@ -12,7 +12,7 @@ import androidx.compose.ui.text.SpanStyle
 fun highlightAnnotated(
     annotated: AnnotatedString,
     query: String?,
-    highlightColor: Color = Color(0x66FFC107)
+    highlightColor: Color = Color(0x66FFC107),
 ): AnnotatedString {
     val q = query?.trim().orEmpty()
     if (q.length < 2) return annotated

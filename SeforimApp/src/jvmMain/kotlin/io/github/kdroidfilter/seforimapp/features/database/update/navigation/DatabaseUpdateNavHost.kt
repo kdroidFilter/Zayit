@@ -16,71 +16,71 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import io.github.kdroidfilter.seforim.navigation.NavigationAnimations
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AnimatedHorizontalProgressBar
-import io.github.kdroidfilter.seforimapp.features.database.update.screens.VersionCheckScreen
-import io.github.kdroidfilter.seforimapp.features.database.update.screens.UpdateOptionsScreen
-import io.github.kdroidfilter.seforimapp.features.database.update.screens.OnlineUpdateScreen
-import io.github.kdroidfilter.seforimapp.features.database.update.screens.OfflineUpdateScreen
 import io.github.kdroidfilter.seforimapp.features.database.update.screens.CompletionScreen
+import io.github.kdroidfilter.seforimapp.features.database.update.screens.OfflineUpdateScreen
+import io.github.kdroidfilter.seforimapp.features.database.update.screens.OnlineUpdateScreen
+import io.github.kdroidfilter.seforimapp.features.database.update.screens.UpdateOptionsScreen
+import io.github.kdroidfilter.seforimapp.features.database.update.screens.VersionCheckScreen
 
 @Composable
 fun DatabaseUpdateNavHost(
     navController: NavHostController,
     onUpdateCompleted: () -> Unit = {},
-    isDatabaseMissing: Boolean = false
+    isDatabaseMissing: Boolean = false,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         val progressBarState = DatabaseUpdateProgressBarState
         val progress by progressBarState.progress.collectAsState()
         AnimatedHorizontalProgressBar(progress, Modifier.fillMaxWidth())
-        
+
         NavHost(
             navController = navController,
             modifier = Modifier.fillMaxSize().padding(16.dp),
-            startDestination = DatabaseUpdateDestination.VersionCheckScreen
+            startDestination = DatabaseUpdateDestination.VersionCheckScreen,
         ) {
-        noAnimatedComposable<DatabaseUpdateDestination.VersionCheckScreen> {
-            VersionCheckScreen(
-                navController = navController,
-                isDatabaseMissing = isDatabaseMissing
-            )
-        }
-        
-        noAnimatedComposable<DatabaseUpdateDestination.UpdateOptionsScreen> {
-            UpdateOptionsScreen(navController = navController)
-        }
-        
-        noAnimatedComposable<DatabaseUpdateDestination.OnlineUpdateScreen> {
-            OnlineUpdateScreen(
-                navController = navController,
-                onUpdateCompleted = onUpdateCompleted
-            )
-        }
-        
-        noAnimatedComposable<DatabaseUpdateDestination.OfflineUpdateScreen> {
-            OfflineUpdateScreen(
-                navController = navController,
-                onUpdateCompleted = onUpdateCompleted
-            )
-        }
-        
-        noAnimatedComposable<DatabaseUpdateDestination.CompletionScreen> {
-            CompletionScreen(
-                navController = navController,
-                onUpdateCompleted = onUpdateCompleted
-            )
-        }
+            noAnimatedComposable<DatabaseUpdateDestination.VersionCheckScreen> {
+                VersionCheckScreen(
+                    navController = navController,
+                    isDatabaseMissing = isDatabaseMissing,
+                )
+            }
+
+            noAnimatedComposable<DatabaseUpdateDestination.UpdateOptionsScreen> {
+                UpdateOptionsScreen(navController = navController)
+            }
+
+            noAnimatedComposable<DatabaseUpdateDestination.OnlineUpdateScreen> {
+                OnlineUpdateScreen(
+                    navController = navController,
+                    onUpdateCompleted = onUpdateCompleted,
+                )
+            }
+
+            noAnimatedComposable<DatabaseUpdateDestination.OfflineUpdateScreen> {
+                OfflineUpdateScreen(
+                    navController = navController,
+                    onUpdateCompleted = onUpdateCompleted,
+                )
+            }
+
+            noAnimatedComposable<DatabaseUpdateDestination.CompletionScreen> {
+                CompletionScreen(
+                    navController = navController,
+                    onUpdateCompleted = onUpdateCompleted,
+                )
+            }
         }
     }
 }
 
 inline fun <reified T : DatabaseUpdateDestination> NavGraphBuilder.noAnimatedComposable(
-    noinline content: @Composable (NavBackStackEntry) -> Unit
+    noinline content: @Composable (NavBackStackEntry) -> Unit,
 ) {
     composable<T>(
         enterTransition = { NavigationAnimations.enterTransition(this) },
         exitTransition = { NavigationAnimations.exitTransition(this) },
         popEnterTransition = { NavigationAnimations.popEnterTransition(this) },
-        popExitTransition = { NavigationAnimations.popExitTransition(this) }
+        popExitTransition = { NavigationAnimations.popExitTransition(this) },
     ) {
         content(it)
     }

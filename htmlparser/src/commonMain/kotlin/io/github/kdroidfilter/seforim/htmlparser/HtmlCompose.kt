@@ -32,19 +32,20 @@ fun buildAnnotatedFromHtml(
     showFootnoteMarkers: Boolean = false,
     showFootnoteContent: Boolean = true,
     footnoteMarkerColor: Color = Color(0xFF1976D2),
-    footnoteContentColor: Color = Color.Unspecified
+    footnoteContentColor: Color = Color.Unspecified,
 ): AnnotatedString {
     val parsedElements = HtmlParser().parse(html)
 
     // Optimization: we only add styles if necessary
-    val headerSizes = floatArrayOf(
-        baseTextSize * 1.5f,    // h1
-        baseTextSize * 1.25f,   // h2
-        baseTextSize * 1.125f,  // h3
-        baseTextSize,           // h4
-        baseTextSize,           // h5
-        baseTextSize            // h6
-    )
+    val headerSizes =
+        floatArrayOf(
+            baseTextSize * 1.5f, // h1
+            baseTextSize * 1.25f, // h2
+            baseTextSize * 1.125f, // h3
+            baseTextSize, // h4
+            baseTextSize, // h5
+            baseTextSize, // h6
+        )
     val defaultSize = baseTextSize
     val effectiveBoldScale = if (boldScale < 1f) 1f else boldScale
 
@@ -81,10 +82,10 @@ fun buildAnnotatedFromHtml(
                         color = footnoteMarkerColor,
                         fontSize = (defaultSize * 0.7f).sp,
                         fontWeight = FontWeight.Bold,
-                        baselineShift = BaselineShift.Superscript
+                        baselineShift = BaselineShift.Superscript,
                     ),
                     start,
-                    end
+                    end,
                 )
                 // Add a thin space after footnote marker for visual separation
                 append("\u2009") // Thin space character
@@ -93,29 +94,31 @@ fun buildAnnotatedFromHtml(
 
             // Handle footnote content styling (smaller, italic, optionally colored)
             if (e.isFootnoteContent) {
-                val footnoteStyle = if (footnoteContentColor != Color.Unspecified) {
-                    SpanStyle(
-                        color = footnoteContentColor,
-                        fontSize = (defaultSize * 0.75f).sp,
-                        fontStyle = FontStyle.Italic
-                    )
-                } else {
-                    SpanStyle(
-                        fontSize = (defaultSize * 0.75f).sp,
-                        fontStyle = FontStyle.Italic
-                    )
-                }
+                val footnoteStyle =
+                    if (footnoteContentColor != Color.Unspecified) {
+                        SpanStyle(
+                            color = footnoteContentColor,
+                            fontSize = (defaultSize * 0.75f).sp,
+                            fontStyle = FontStyle.Italic,
+                        )
+                    } else {
+                        SpanStyle(
+                            fontSize = (defaultSize * 0.75f).sp,
+                            fontStyle = FontStyle.Italic,
+                        )
+                    }
                 addStyle(footnoteStyle, start, end)
                 return@forEach
             }
 
             // Optimization: we only add styles if necessary
             if (e.isBold) {
-                val boldStyle = if (boldColor != null) {
-                    SpanStyle(fontWeight = FontWeight.Bold, color = boldColor)
-                } else {
-                    SpanStyle(fontWeight = FontWeight.Bold)
-                }
+                val boldStyle =
+                    if (boldColor != null) {
+                        SpanStyle(fontWeight = FontWeight.Bold, color = boldColor)
+                    } else {
+                        SpanStyle(fontWeight = FontWeight.Bold)
+                    }
                 addStyle(boldStyle, start, end)
             }
             if (e.isItalic) {
@@ -123,18 +126,20 @@ fun buildAnnotatedFromHtml(
             }
 
             // Optimized font size calculation
-            val baseSize = when {
-                e.headerLevel != null && e.headerLevel in 1..6 -> {
-                    headerSizes[e.headerLevel - 1]
+            val baseSize =
+                when {
+                    e.headerLevel != null && e.headerLevel in 1..6 -> {
+                        headerSizes[e.headerLevel - 1]
+                    }
+                    e.isSmall -> defaultSize * 0.85f // Small text (הגה) is 85% of base size
+                    else -> defaultSize
                 }
-                e.isSmall -> defaultSize * 0.85f  // Small text (הגה) is 85% of base size
-                else -> defaultSize
-            }
-            val fontSize = if (!e.isHeader && e.isBold) {
-                (baseSize * effectiveBoldScale).sp
-            } else {
-                baseSize.sp
-            }
+            val fontSize =
+                if (!e.isHeader && e.isBold) {
+                    (baseSize * effectiveBoldScale).sp
+                } else {
+                    baseSize.sp
+                }
             addStyle(SpanStyle(fontSize = fontSize), start, end)
         }
     }

@@ -5,6 +5,5 @@ package io.github.kdroidfilter.seforimapp.features.search
  */
 enum class SearchFilter {
     REFERENCE,
-    TEXT
+    TEXT,
 }
-

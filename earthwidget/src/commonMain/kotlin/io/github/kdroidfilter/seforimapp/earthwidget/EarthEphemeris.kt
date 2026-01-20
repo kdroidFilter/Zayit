@@ -14,8 +14,9 @@ import kotlin.math.tan
 
 private fun meanObliquityRad(julianDay: Double): Double {
     val T = (julianDay - J2000_EPOCH_JD) / DAYS_PER_JULIAN_CENTURY
-    val seconds = MEAN_OBLIQUITY_COEFF0 -
-        T * (MEAN_OBLIQUITY_COEFF1 + T * (MEAN_OBLIQUITY_COEFF2 - MEAN_OBLIQUITY_COEFF3 * T))
+    val seconds =
+        MEAN_OBLIQUITY_COEFF0 -
+            T * (MEAN_OBLIQUITY_COEFF1 + T * (MEAN_OBLIQUITY_COEFF2 - MEAN_OBLIQUITY_COEFF3 * T))
     val degrees = 23.0 + (26.0 + seconds / 60.0) / 60.0
     return degrees * DEG_TO_RAD
 }
@@ -37,16 +38,18 @@ internal fun computeMoonEclipticPosition(julianDay: Double): EclipticPosition {
     val MsRad = Ms * DEG_TO_RAD
     val FRad = F * DEG_TO_RAD
 
-    val dL = 6.289 * sin(MpRad) +
-        1.274 * sin(2.0 * DRad - MpRad) +
-        0.658 * sin(2.0 * DRad) +
-        0.214 * sin(2.0 * MpRad) -
-        0.186 * sin(MsRad) -
-        0.114 * sin(2.0 * FRad)
+    val dL =
+        6.289 * sin(MpRad) +
+            1.274 * sin(2.0 * DRad - MpRad) +
+            0.658 * sin(2.0 * DRad) +
+            0.214 * sin(2.0 * MpRad) -
+            0.186 * sin(MsRad) -
+            0.114 * sin(2.0 * FRad)
 
-    val dB = 5.128 * sin(FRad) +
-        0.281 * sin(MpRad + FRad) +
-        0.278 * sin(MpRad - FRad)
+    val dB =
+        5.128 * sin(FRad) +
+            0.281 * sin(MpRad + FRad) +
+            0.278 * sin(MpRad - FRad)
 
     return EclipticPosition(
         longitude = normalizeAngleDeg(Lp + dL).toFloat(),
@@ -84,15 +87,17 @@ internal fun computeMoonEquatorialPosition(julianDay: Double): EquatorialPositio
 
 internal fun greenwichMeanSiderealTimeRad(julianDay: Double): Double {
     val T = (julianDay - J2000_EPOCH_JD) / DAYS_PER_JULIAN_CENTURY
-    val gmstDeg = 280.46061837 +
-        360.98564736629 * (julianDay - J2000_EPOCH_JD) +
-        T * T * (0.000387933 - T / 38710000.0)
+    val gmstDeg =
+        280.46061837 +
+            360.98564736629 * (julianDay - J2000_EPOCH_JD) +
+            T * T * (0.000387933 - T / 38710000.0)
     return normalizeRad(gmstDeg * DEG_TO_RAD)
 }
 
-internal fun localSiderealTimeRad(julianDay: Double, longitudeDeg: Double): Double {
-    return normalizeRad(greenwichMeanSiderealTimeRad(julianDay) + longitudeDeg * DEG_TO_RAD)
-}
+internal fun localSiderealTimeRad(
+    julianDay: Double,
+    longitudeDeg: Double,
+): Double = normalizeRad(greenwichMeanSiderealTimeRad(julianDay) + longitudeDeg * DEG_TO_RAD)
 
 /**
  * Computes Moon azimuth/elevation for the observer.
@@ -115,10 +120,11 @@ internal fun computeMoonHorizontalPosition(
     val cosH = cos(hourAngleRad)
 
     val elevationRad = asin((sinDec * sinLat + cosDec * cosLat * cosH).coerceIn(-1.0, 1.0))
-    val azimuthRad = atan2(
-        -sinH,
-        tan(eq.declinationRad) * cosLat - sinLat * cosH,
-    )
+    val azimuthRad =
+        atan2(
+            -sinH,
+            tan(eq.declinationRad) * cosLat - sinLat * cosH,
+        )
 
     return HorizontalPosition(
         azimuthFromNorthDeg = normalizeAngleDeg(Math.toDegrees(azimuthRad)),
@@ -216,34 +222,37 @@ internal fun computeMoonLightFromPhaseWithObserverUp(
     val thetaDegrees = 180f - normalizedPhase
     val thetaRad = Math.toRadians(thetaDegrees.toDouble())
 
-    val baseUp = projectOntoViewPlane(viewDir, observerUp)
-        ?: projectOntoViewPlane(viewDir, Vec3f.WORLD_UP)
-        ?: run {
-            val fallbackRight = if (abs(viewDir.x) < 0.9f) Vec3f(1f, 0f, 0f) else Vec3f(0f, 0f, 1f)
-            cross(viewDir, fallbackRight).normalized()
-        }
+    val baseUp =
+        projectOntoViewPlane(viewDir, observerUp)
+            ?: projectOntoViewPlane(viewDir, Vec3f.WORLD_UP)
+            ?: run {
+                val fallbackRight = if (abs(viewDir.x) < 0.9f) Vec3f(1f, 0f, 0f) else Vec3f(0f, 0f, 1f)
+                cross(viewDir, fallbackRight).normalized()
+            }
     val baseRight = cross(viewDir, baseUp).normalized()
 
-    val sunAngle: Float = if (sunHint != null) {
-        val sunProj = projectOntoViewPlane(viewDir, sunHint)
-        if (sunProj != null) {
-            val sunUpComponent = dot(sunProj, baseUp)
-            val sunRightComponent = dot(sunProj, baseRight)
-            atan2(sunRightComponent, sunUpComponent)
+    val sunAngle: Float =
+        if (sunHint != null) {
+            val sunProj = projectOntoViewPlane(viewDir, sunHint)
+            if (sunProj != null) {
+                val sunUpComponent = dot(sunProj, baseUp)
+                val sunRightComponent = dot(sunProj, baseRight)
+                atan2(sunRightComponent, sunUpComponent)
+            } else {
+                0f
+            }
         } else {
             0f
         }
-    } else {
-        0f
-    }
 
     val cosAngle = cos(sunAngle)
     val sinAngle = sin(sunAngle)
-    val planeUp = Vec3f(
-        baseUp.x * cosAngle + baseRight.x * sinAngle,
-        baseUp.y * cosAngle + baseRight.y * sinAngle,
-        baseUp.z * cosAngle + baseRight.z * sinAngle,
-    ).normalized()
+    val planeUp =
+        Vec3f(
+            baseUp.x * cosAngle + baseRight.x * sinAngle,
+            baseUp.y * cosAngle + baseRight.y * sinAngle,
+            baseUp.z * cosAngle + baseRight.z * sinAngle,
+        ).normalized()
 
     val cosT = cos(thetaRad).toFloat()
     val sinT = sin(thetaRad).toFloat()

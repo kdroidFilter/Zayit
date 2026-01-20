@@ -28,12 +28,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.platformtools.getAppVersion
+import io.github.kdroidfilter.seforimapp.core.presentation.components.ExpandCollapseIcon
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsViewModel
-import io.github.kdroidfilter.seforimapp.core.presentation.components.ExpandCollapseIcon
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -50,8 +50,6 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.inlineBannerStyle
-import java.awt.Desktop
-import java.net.URI
 import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
@@ -62,18 +60,20 @@ import seforimapp.seforimapp.generated.resources.settings_info_license
 import seforimapp.seforimapp.generated.resources.settings_info_license_usage
 import seforimapp.seforimapp.generated.resources.settings_persist_session
 import seforimapp.seforimapp.generated.resources.settings_persist_session_description
-import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets
-import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets_description
 import seforimapp.seforimapp.generated.resources.settings_reset_app
 import seforimapp.seforimapp.generated.resources.settings_reset_confirm
 import seforimapp.seforimapp.generated.resources.settings_reset_confirm_no
 import seforimapp.seforimapp.generated.resources.settings_reset_confirm_yes
 import seforimapp.seforimapp.generated.resources.settings_reset_done
 import seforimapp.seforimapp.generated.resources.settings_reset_warning
+import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets
+import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets_description
 import seforimapp.seforimapp.generated.resources.settings_use_opengl
 import seforimapp.seforimapp.generated.resources.settings_use_opengl_description
 import seforimapp.seforimapp.generated.resources.update_available_banner
 import seforimapp.seforimapp.generated.resources.update_download_action
+import java.awt.Desktop
+import java.net.URI
 
 @Composable
 fun GeneralSettingsScreen() {
@@ -81,7 +81,8 @@ fun GeneralSettingsScreen() {
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
     val version = getAppVersion()
-    val updateVersion by io.github.kdroidfilter.seforimapp.core.MainAppState.updateAvailable.collectAsState()
+    val updateVersion by io.github.kdroidfilter.seforimapp.core.MainAppState.updateAvailable
+        .collectAsState()
     GeneralSettingsView(state = state, version = version, updateVersion = updateVersion, onEvent = viewModel::onEvent)
 }
 
@@ -90,14 +91,15 @@ private fun GeneralSettingsView(
     state: GeneralSettingsState,
     version: String,
     updateVersion: String?,
-    onEvent: (GeneralSettingsEvents) -> Unit
+    onEvent: (GeneralSettingsEvents) -> Unit,
 ) {
     VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             AppHeader(version = version, updateVersion = updateVersion)
 
@@ -105,21 +107,21 @@ private fun GeneralSettingsView(
                 title = Res.string.close_book_tree_on_new_book,
                 description = Res.string.close_book_tree_on_new_book_description,
                 checked = state.closeTreeOnNewBook,
-                onCheckedChange = { onEvent(GeneralSettingsEvents.SetCloseTreeOnNewBook(it)) }
+                onCheckedChange = { onEvent(GeneralSettingsEvents.SetCloseTreeOnNewBook(it)) },
             )
 
             SettingCard(
                 title = Res.string.settings_persist_session,
                 description = Res.string.settings_persist_session_description,
                 checked = state.persistSession,
-                onCheckedChange = { onEvent(GeneralSettingsEvents.SetPersistSession(it)) }
+                onCheckedChange = { onEvent(GeneralSettingsEvents.SetPersistSession(it)) },
             )
 
             SettingCard(
                 title = Res.string.settings_show_zmanim_widgets,
                 description = Res.string.settings_show_zmanim_widgets_description,
                 checked = state.showZmanimWidgets,
-                onCheckedChange = { onEvent(GeneralSettingsEvents.SetShowZmanimWidgets(it)) }
+                onCheckedChange = { onEvent(GeneralSettingsEvents.SetShowZmanimWidgets(it)) },
             )
 
             // OpenGL setting - Windows only
@@ -128,30 +130,34 @@ private fun GeneralSettingsView(
                     title = Res.string.settings_use_opengl,
                     description = Res.string.settings_use_opengl_description,
                     checked = state.useOpenGl,
-                    onCheckedChange = { onEvent(GeneralSettingsEvents.SetUseOpenGl(it)) }
+                    onCheckedChange = { onEvent(GeneralSettingsEvents.SetUseOpenGl(it)) },
                 )
             }
 
             ResetSection(
                 resetDone = state.resetDone,
-                onReset = { onEvent(GeneralSettingsEvents.ResetApp) }
+                onReset = { onEvent(GeneralSettingsEvents.ResetApp) },
             )
         }
     }
 }
 
 @Composable
-private fun AppHeader(version: String, updateVersion: String? = null) {
+private fun AppHeader(
+    version: String,
+    updateVersion: String? = null,
+) {
     val shape = RoundedCornerShape(8.dp)
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-            .background(JewelTheme.globalColors.panelBackground)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                .background(JewelTheme.globalColors.panelBackground)
+                .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Update available banner
         if (updateVersion != null) {
@@ -163,42 +169,45 @@ private fun AppHeader(version: String, updateVersion: String? = null) {
                     action(
                         downloadLabel,
                         onClick = {
-                            Desktop.getDesktop().browse(URI(io.github.kdroidfilter.seforimapp.framework.update.AppUpdateChecker.DOWNLOAD_URL))
-                        }
+                            Desktop.getDesktop().browse(
+                                URI(io.github.kdroidfilter.seforimapp.framework.update.AppUpdateChecker.DOWNLOAD_URL),
+                            )
+                        },
                     )
-                }
+                },
             )
         }
 
         Row(
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(
                 painter = painterResource(Res.drawable.AppIcon),
                 contentDescription = "App Icon",
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                modifier =
+                    Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(12.dp)),
             )
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
                     text = "זית",
-                    fontSize = 22.sp
+                    fontSize = 22.sp,
                 )
                 Text(
                     text = stringResource(Res.string.settings_info_app_version, version),
                     fontSize = 13.sp,
-                    color = JewelTheme.globalColors.text.info
+                    color = JewelTheme.globalColors.text.info,
                 )
                 Text(
                     text = stringResource(Res.string.settings_info_created_by),
                     fontSize = 12.sp,
-                    color = JewelTheme.globalColors.text.info
+                    color = JewelTheme.globalColors.text.info,
                 )
             }
         }
@@ -206,33 +215,33 @@ private fun AppHeader(version: String, updateVersion: String? = null) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
                     text = stringResource(Res.string.settings_info_license),
                     fontSize = 12.sp,
-                    color = JewelTheme.globalColors.text.info
+                    color = JewelTheme.globalColors.text.info,
                 )
                 Text(
                     text = stringResource(Res.string.settings_info_license_usage),
                     fontSize = 12.sp,
-                    color = JewelTheme.globalColors.text.info
+                    color = JewelTheme.globalColors.text.info,
                 )
             }
             IconButton(
                 onClick = {
                     Desktop.getDesktop().browse(URI("https://github.com/kdroidFilter/Zayit"))
                 },
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(32.dp),
             ) {
                 Icon(
                     key = AllIconsKeys.Vcs.Vendors.Github,
                     contentDescription = "GitHub",
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }
@@ -244,39 +253,40 @@ private fun SettingCard(
     title: StringResource,
     description: StringResource,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
     var expanded by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-            .background(JewelTheme.globalColors.panelBackground)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                .background(JewelTheme.globalColors.panelBackground)
+                .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Checkbox(
                     checked = checked,
-                    onCheckedChange = onCheckedChange
+                    onCheckedChange = onCheckedChange,
                 )
                 Text(text = stringResource(title))
             }
 
             IconButton(
                 onClick = { expanded = !expanded },
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
             ) {
                 ExpandCollapseIcon(expanded = expanded, size = 16.dp)
             }
@@ -287,7 +297,7 @@ private fun SettingCard(
                 text = stringResource(description),
                 fontSize = 12.sp,
                 color = JewelTheme.globalColors.text.info,
-                modifier = Modifier.padding(start = 28.dp)
+                modifier = Modifier.padding(start = 28.dp),
             )
         }
     }
@@ -296,28 +306,29 @@ private fun SettingCard(
 @Composable
 private fun ResetSection(
     resetDone: Boolean,
-    onReset: () -> Unit
+    onReset: () -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
     var showConfirmation by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-            .background(JewelTheme.globalColors.panelBackground)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                .background(JewelTheme.globalColors.panelBackground)
+                .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (showConfirmation) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = stringResource(Res.string.settings_reset_confirm),
-                    color = JewelTheme.globalColors.text.warning
+                    color = JewelTheme.globalColors.text.warning,
                 )
                 DefaultButton(onClick = {
                     showConfirmation = false

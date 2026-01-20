@@ -58,36 +58,58 @@ fun BookContentPanel(
         ),
     isSelected: Boolean = true,
 ) {
-    if (uiState.navigation.selectedBook == null) {
-        // If we're actively loading a book for this tab, avoid flashing the Home screen.
-        // Show a minimal loader until the selected book is ready.
-        if (uiState.isLoading || isRestoringSession) {
-            LoaderPanel(modifier = modifier)
-        } else {
-            HomeView(
-                onEvent = onEvent,
-                searchUi = searchUi,
-                searchCallbacks = searchCallbacks,
-                modifier = modifier,
-            )
-        }
-        return
-    }
+    Box(modifier = modifier.fillMaxSize()) {
+        when {
+            // If no book is selected
+            uiState.navigation.selectedBook == null -> {
+                // If we're actively loading a book for this tab, avoid flashing the Home screen.
+                // Show a minimal loader until the selected book is ready.
+                if (uiState.isLoading || isRestoringSession) {
+                    LoaderPanel()
+                } else {
+                    HomeView(
+                        onEvent = onEvent,
+                        searchUi = searchUi,
+                        searchCallbacks = searchCallbacks,
+                    )
+                }
+            }
 
-    // Use providers from uiState for paging data and builder functions
-    val providers = uiState.providers
-    if (providers == null || uiState.isLoading) {
-        // Book is selected but providers are not ready yet (initialization in progress)
-        // Show a centered loader to avoid flash of partial content.
-        LoaderPanel(modifier = modifier)
-        return
+            // Book is selected but providers are not ready yet (initialization in progress)
+            // Show a centered loader to avoid flash of partial content.
+            uiState.providers == null || uiState.isLoading -> {
+                LoaderPanel()
+            }
+
+            // Main content when book and providers are ready
+            else -> {
+                BookContentPanelContent(
+                    uiState = uiState,
+                    onEvent = onEvent,
+                    showDiacritics = showDiacritics,
+                    isSelected = isSelected,
+                )
+            }
+        }
     }
+}
+
+@OptIn(ExperimentalSplitPaneApi::class)
+@Composable
+private fun BookContentPanelContent(
+    uiState: BookContentState,
+    onEvent: (BookContentEvent) -> Unit,
+    showDiacritics: Boolean,
+    isSelected: Boolean,
+) {
+    val providers = uiState.providers ?: return
+    val selectedBook = uiState.navigation.selectedBook ?: return
 
     // Create LazyListState AFTER loading check, so anchorId is correctly set
     // When restoring with an anchor, use the computed anchorIndex which accounts for
     // lines near the beginning of the book (where target isn't at INITIAL_LOAD_SIZE/2)
     val bookListState =
-        remember(uiState.navigation.selectedBook.id) {
+        remember(selectedBook.id) {
             val hasAnchor = uiState.content.anchorId != -1L
             val initialIndex = if (hasAnchor) uiState.content.anchorIndex else uiState.content.scrollIndex
             LazyListState(
@@ -97,7 +119,7 @@ fun BookContentPanel(
         }
 
     val connectionsCache =
-        remember(uiState.navigation.selectedBook.id) {
+        remember(selectedBook.id) {
             mutableStateMapOf<Long, LineConnectionsSnapshot>()
         }
     val prefetchScope = rememberCoroutineScope()
@@ -114,7 +136,7 @@ fun BookContentPanel(
             }
         }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
         EnhancedVerticalSplitPane(
             splitPaneState = uiState.layout.contentSplitState.asStable(),
             modifier = Modifier.weight(1f),
@@ -123,7 +145,7 @@ fun BookContentPanel(
                     splitPaneState = uiState.layout.targumSplitState.asStable(),
                     firstContent = {
                         BookContentView(
-                            bookId = uiState.navigation.selectedBook.id,
+                            bookId = selectedBook.id,
                             linesPagingData = providers.linesPagingData,
                             selectedLineId = uiState.content.selectedLine?.id,
                             onLineSelect = { line ->

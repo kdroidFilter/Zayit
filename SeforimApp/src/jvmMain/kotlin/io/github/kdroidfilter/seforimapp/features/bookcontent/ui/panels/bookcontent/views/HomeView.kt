@@ -621,32 +621,34 @@ private fun SearchLevelsPanel(
     val maxIndex = (filterCards.size - 1).coerceAtLeast(0)
     val coercedSelected = sliderPosition.coerceIn(0f, maxIndex.toFloat()).toInt()
 
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        filterCards.forEachIndexed { index, filterCard ->
-            SearchLevelCard(
-                data = filterCard,
-                selected = index == coercedSelected,
-                onClick = {
-                    sliderPosition = index.toFloat()
-                    onSelectedIndexChange(index)
-                },
-            )
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            filterCards.forEachIndexed { index, filterCard ->
+                SearchLevelCard(
+                    data = filterCard,
+                    selected = index == coercedSelected,
+                    onClick = {
+                        sliderPosition = index.toFloat()
+                        onSelectedIndexChange(index)
+                    },
+                )
+            }
         }
-    }
 
-    Slider(
-        value = sliderPosition,
-        onValueChange = { newValue ->
-            sliderPosition = newValue
-            onSelectedIndexChange(newValue.coerceIn(0f, maxIndex.toFloat()).toInt())
-        },
-        valueRange = 0f..maxIndex.toFloat(),
-        steps = (filterCards.size - 2).coerceAtLeast(0),
-        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
-    )
+        Slider(
+            value = sliderPosition,
+            onValueChange = { newValue ->
+                sliderPosition = newValue
+                onSelectedIndexChange(newValue.coerceIn(0f, maxIndex.toFloat()).toInt())
+            },
+            valueRange = 0f..maxIndex.toFloat(),
+            steps = (filterCards.size - 2).coerceAtLeast(0),
+            modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
+        )
+    }
 }
 
 @Composable
@@ -689,27 +691,6 @@ private fun ReferenceByCategorySection(
     focusRequester: FocusRequester? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-
-    if (showHeader) {
-        GroupHeader(
-            text = stringResource(Res.string.search_by_category_or_book),
-            modifier =
-                modifier
-                    .clickable(indication = null, interactionSource = interactionSource) {
-                        onExpandedChange(!isExpanded)
-                    }.hoverable(interactionSource)
-                    .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))),
-            startComponent = {
-                if (isExpanded) {
-                    Icon(AllIconsKeys.General.ChevronDown, stringResource(Res.string.chevron_icon_description))
-                } else {
-                    Icon(AllIconsKeys.General.ChevronLeft, stringResource(Res.string.chevron_icon_description))
-                }
-            },
-        )
-        if (!isExpanded) return
-    }
-
     val refState = state ?: remember { TextFieldState() }
     val tocTfState = tocState ?: remember { TextFieldState() }
     val isTocMode = selectedBook != null
@@ -734,51 +715,72 @@ private fun ReferenceByCategorySection(
         }
     val activeState = if (isTocMode) tocTfState else refState
 
-    Column(Modifier.fillMaxWidth()) {
-        SearchBar(
-            state = activeState,
-            selectedFilter = SearchFilter.REFERENCE,
-            onFilterChange = {},
-            showToggle = false,
-            showIcon = false,
-            enabled = true,
-            suggestionsVisible = suggestionsVisible && !isTocMode,
-            categorySuggestions = if (isTocMode) emptyList() else categorySuggestions,
-            bookSuggestions = if (isTocMode) emptyList() else bookSuggestions,
-            selectedBook = selectedBook,
-            selectedCategory = selectedCategory,
-            placeholderHints = if (isTocMode) tocHints else bookHints,
-            tocSuggestionsVisible = tocSuggestionsVisible && isTocMode,
-            tocSuggestions = if (isTocMode) tocSuggestions else emptyList(),
-            onPickCategory = { picked ->
-                onPickCategory(picked)
-            },
-            onPickBook = { picked ->
-                onPickBook(picked)
-                refState.edit { replace(0, length, "") }
-                tocTfState.edit { replace(0, length, "") }
-            },
-            onPickToc = { picked ->
-                onPickToc(picked)
-                val dedup = dedupAdjacent(picked.path)
-                val display = stripBookPrefixFromTocPath(selectedBook, dedup).joinToString(breadcrumbSeparator)
-                tocTfState.edit { replace(0, length, display) }
-                if (submitAfterPick) onSubmit()
-            },
-            onSubmit = onSubmit,
-            submitOnEnterIfSelection = submitOnEnterIfSelection,
-            submitOnEnterInReference = submitAfterPick,
-            autoFocus = false,
-            onClearBook = {
-                onClearBook()
-                refState.edit { replace(0, length, "") }
-                tocTfState.edit { replace(0, length, "") }
-            },
-            parentScale = parentScale,
-            isBookLoading = isBookLoading,
-            isTocLoading = isTocLoading,
-            focusRequester = focusRequester,
-        )
+    Column(modifier.fillMaxWidth()) {
+        if (showHeader) {
+            GroupHeader(
+                text = stringResource(Res.string.search_by_category_or_book),
+                modifier =
+                    Modifier
+                        .clickable(indication = null, interactionSource = interactionSource) {
+                            onExpandedChange(!isExpanded)
+                        }.hoverable(interactionSource)
+                        .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))),
+                startComponent = {
+                    if (isExpanded) {
+                        Icon(AllIconsKeys.General.ChevronDown, stringResource(Res.string.chevron_icon_description))
+                    } else {
+                        Icon(AllIconsKeys.General.ChevronLeft, stringResource(Res.string.chevron_icon_description))
+                    }
+                },
+            )
+        }
+
+        if (!showHeader || isExpanded) {
+            SearchBar(
+                state = activeState,
+                selectedFilter = SearchFilter.REFERENCE,
+                onFilterChange = {},
+                showToggle = false,
+                showIcon = false,
+                enabled = true,
+                suggestionsVisible = suggestionsVisible && !isTocMode,
+                categorySuggestions = if (isTocMode) emptyList() else categorySuggestions,
+                bookSuggestions = if (isTocMode) emptyList() else bookSuggestions,
+                selectedBook = selectedBook,
+                selectedCategory = selectedCategory,
+                placeholderHints = if (isTocMode) tocHints else bookHints,
+                tocSuggestionsVisible = tocSuggestionsVisible && isTocMode,
+                tocSuggestions = if (isTocMode) tocSuggestions else emptyList(),
+                onPickCategory = { picked ->
+                    onPickCategory(picked)
+                },
+                onPickBook = { picked ->
+                    onPickBook(picked)
+                    refState.edit { replace(0, length, "") }
+                    tocTfState.edit { replace(0, length, "") }
+                },
+                onPickToc = { picked ->
+                    onPickToc(picked)
+                    val dedup = dedupAdjacent(picked.path)
+                    val display = stripBookPrefixFromTocPath(selectedBook, dedup).joinToString(breadcrumbSeparator)
+                    tocTfState.edit { replace(0, length, display) }
+                    if (submitAfterPick) onSubmit()
+                },
+                onSubmit = onSubmit,
+                submitOnEnterIfSelection = submitOnEnterIfSelection,
+                submitOnEnterInReference = submitAfterPick,
+                autoFocus = false,
+                onClearBook = {
+                    onClearBook()
+                    refState.edit { replace(0, length, "") }
+                    tocTfState.edit { replace(0, length, "") }
+                },
+                parentScale = parentScale,
+                isBookLoading = isBookLoading,
+                isTocLoading = isTocLoading,
+                focusRequester = focusRequester,
+            )
+        }
     }
 }
 

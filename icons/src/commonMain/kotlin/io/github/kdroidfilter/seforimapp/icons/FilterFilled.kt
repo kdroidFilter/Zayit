@@ -9,32 +9,33 @@ import androidx.compose.ui.unit.dp
 val FilterFilled: ImageVector
     get() {
         if (_FilterFilled != null) return _FilterFilled!!
-        
-        _FilterFilled = ImageVector.Builder(
-            name = "FilterFilled",
-            defaultWidth = 16.dp,
-            defaultHeight = 16.dp,
-            viewportWidth = 16f,
-            viewportHeight = 16f
-        ).apply {
-            path(
-                fill = SolidColor(Color.Black)
-            ) {
-                moveTo(15f, 2f)
-                verticalLineToRelative(1.67f)
-                lineToRelative(-5f, 4.759f)
-                verticalLineTo(14f)
-                horizontalLineTo(6f)
-                verticalLineTo(8.429f)
-                lineToRelative(-5f, -4.76f)
-                verticalLineTo(2f)
-                horizontalLineToRelative(14f)
-                close()
-            }
-        }.build()
-        
+
+        _FilterFilled =
+            ImageVector
+                .Builder(
+                    name = "FilterFilled",
+                    defaultWidth = 16.dp,
+                    defaultHeight = 16.dp,
+                    viewportWidth = 16f,
+                    viewportHeight = 16f,
+                ).apply {
+                    path(
+                        fill = SolidColor(Color.Black),
+                    ) {
+                        moveTo(15f, 2f)
+                        verticalLineToRelative(1.67f)
+                        lineToRelative(-5f, 4.759f)
+                        verticalLineTo(14f)
+                        horizontalLineTo(6f)
+                        verticalLineTo(8.429f)
+                        lineToRelative(-5f, -4.76f)
+                        verticalLineTo(2f)
+                        horizontalLineToRelative(14f)
+                        close()
+                    }
+                }.build()
+
         return _FilterFilled!!
     }
 
 private var _FilterFilled: ImageVector? = null
-

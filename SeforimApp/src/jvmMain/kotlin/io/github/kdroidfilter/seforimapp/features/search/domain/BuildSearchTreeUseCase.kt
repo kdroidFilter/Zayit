@@ -7,7 +7,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 
 class BuildSearchTreeUseCase(
-    private val repository: SeforimRepository
+    private val repository: SeforimRepository,
 ) {
     private val bookCache: MutableMap<Long, Book> = mutableMapOf()
     private val categoryPathCache: MutableMap<Long, List<Category>> = mutableMapOf()
@@ -31,9 +31,10 @@ class BuildSearchTreeUseCase(
             val book = resolveBook(res.bookId) ?: continue
             booksById[book.id] = book
             bookCounts[book.id] = (bookCounts[book.id] ?: 0) + 1
-            val path = categoryPathCache[book.categoryId] ?: buildCategoryPath(book.categoryId).also {
-                categoryPathCache[book.categoryId] = it
-            }
+            val path =
+                categoryPathCache[book.categoryId] ?: buildCategoryPath(book.categoryId).also {
+                    categoryPathCache[book.categoryId] = it
+                }
             for (cat in path) {
                 categoriesById[cat.id] = cat
                 categoryCounts[cat.id] = (categoryCounts[cat.id] ?: 0) + 1
@@ -51,23 +52,25 @@ class BuildSearchTreeUseCase(
 
         fun buildNode(cat: Category): SearchResultViewModel.SearchTreeCategory {
             val childCats = childrenByParent[cat.id].orEmpty().map { buildNode(it) }
-            val booksInCat = booksById.values
-                .filter { it.categoryId == cat.id }
-                .sortedBy { it.title }
-                .map { b -> SearchResultViewModel.SearchTreeBook(b, bookCounts[b.id] ?: 0) }
+            val booksInCat =
+                booksById.values
+                    .filter { it.categoryId == cat.id }
+                    .sortedBy { it.title }
+                    .map { b -> SearchResultViewModel.SearchTreeBook(b, bookCounts[b.id] ?: 0) }
             return SearchResultViewModel.SearchTreeCategory(
                 category = cat,
                 count = categoryCounts[cat.id] ?: 0,
                 children = childCats,
-                books = booksInCat
+                books = booksInCat,
             )
         }
 
         val encounteredIds = categoriesById.keys
-        val roots = categoriesById.values
-            .filter { it.parentId == null || it.parentId !in encounteredIds }
-            .sortedBy { it.title }
-            .map { buildNode(it) }
+        val roots =
+            categoriesById.values
+                .filter { it.parentId == null || it.parentId !in encounteredIds }
+                .sortedBy { it.title }
+                .map { buildNode(it) }
         return roots
     }
 

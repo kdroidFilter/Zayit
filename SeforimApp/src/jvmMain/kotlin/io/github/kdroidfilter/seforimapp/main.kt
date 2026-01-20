@@ -1,42 +1,63 @@
+@file:Suppress("ktlint:standard:filename")
+
 package io.github.kdroidfilter.seforimapp
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.kdroid.composetray.tray.api.ExperimentalTrayAppApi
 import com.kdroid.composetray.utils.SingleInstanceManager
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.metroViewModel
-import io.github.kdroidfilter.platformtools.OperatingSystem
+import io.github.kdroidfilter.knotify.compose.builder.notification
 import io.github.kdroidfilter.platformtools.darkmodedetector.mac.setMacOsAdaptiveTitleBar
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforim.tabs.TabType
+import io.github.kdroidfilter.seforim.tabs.TabsDestination
+import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.MainAppState
+import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsNavHost
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseUpdateWindow
+import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
-import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
+import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
+import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateChecker
+import io.github.kdroidfilter.seforimapp.logger.allowLogging
+import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.vinceglb.filekit.FileKit
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
@@ -48,35 +69,15 @@ import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.ui.ComponentStyling
 import org.jetbrains.jewel.window.DecoratedWindow
 import seforimapp.seforimapp.generated.resources.*
+import java.awt.Desktop
 import java.awt.Dimension
+import java.awt.KeyboardFocusManager
 import java.awt.Toolkit
 import java.awt.Window
-import java.util.*
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isCtrlPressed
-import androidx.compose.ui.input.key.isAltPressed
-import androidx.compose.ui.input.key.isMetaPressed
-import androidx.compose.ui.input.key.isShiftPressed
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import androidx.compose.foundation.Image
-import io.github.kdroidfilter.knotify.compose.builder.notification
-import io.github.kdroidfilter.seforim.tabs.TabsEvents
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforimapp.logger.allowLogging
-import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
-import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
-import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateChecker
 import java.awt.datatransfer.StringSelection
-import java.awt.Desktop
-import java.awt.KeyboardFocusManager
 import java.awt.event.KeyEvent
 import java.net.URI
+import java.util.*
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
@@ -109,23 +110,29 @@ fun main() {
     allowLogging = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"
 
     val appId = "io.github.kdroidfilter.seforimapp"
-    SingleInstanceManager.configuration = SingleInstanceManager.Configuration(
-        lockIdentifier = appId
-    )
+    SingleInstanceManager.configuration =
+        SingleInstanceManager.Configuration(
+            lockIdentifier = appId,
+        )
 
     Locale.setDefault(Locale.Builder().setLanguage("he").build())
     application {
         FileKit.init(appId)
 
         val screen = Toolkit.getDefaultToolkit().screenSize
-        val windowState = if (!PlatformInfo.isWindows) rememberWindowState(
-            position = WindowPosition.Aligned(Alignment.Center),
-            placement = WindowPlacement.Maximized,
-            size = DpSize(screen.width.dp, screen.height.dp)
-        ) else rememberWindowState(
-            position = WindowPosition.Aligned(Alignment.Center),
-            placement = WindowPlacement.Maximized,
-        )
+        val windowState =
+            if (!PlatformInfo.isWindows) {
+                rememberWindowState(
+                    position = WindowPosition.Aligned(Alignment.Center),
+                    placement = WindowPlacement.Maximized,
+                    size = DpSize(screen.width.dp, screen.height.dp),
+                )
+            } else {
+                rememberWindowState(
+                    position = WindowPosition.Aligned(Alignment.Center),
+                    placement = WindowPlacement.Maximized,
+                )
+            }
 
         var isWindowVisible by remember { mutableStateOf(true) }
 
@@ -134,11 +141,12 @@ fun main() {
         var showDatabaseUpdate by remember { mutableStateOf<Boolean?>(null) }
         var isDatabaseMissing by remember { mutableStateOf(false) }
 
-        val isSingleInstance = SingleInstanceManager.isSingleInstance(onRestoreRequest = {
-            isWindowVisible = true
-            windowState.isMinimized = false
-            Window.getWindows().first().toFront()
-        })
+        val isSingleInstance =
+            SingleInstanceManager.isSingleInstance(onRestoreRequest = {
+                isWindowVisible = true
+                windowState.isMinimized = false
+                Window.getWindows().first().toFront()
+            })
         if (!isSingleInstance) {
             exitApplication()
             return@application
@@ -162,19 +170,21 @@ fun main() {
             val themeDefinition = ThemeUtils.buildThemeDefinition()
 
             IntUiTheme(
-                theme = themeDefinition, styling = ComponentStyling.default().decoratedWindow(
-                    titleBarStyle = ThemeUtils.pickTitleBarStyle(),
-                )
+                theme = themeDefinition,
+                styling =
+                    ComponentStyling.default().decoratedWindow(
+                        titleBarStyle = ThemeUtils.pickTitleBarStyle(),
+                    ),
             ) {
                 // Decide whether to show onboarding, database update, or main app
                 LaunchedEffect(Unit) {
                     try {
                         // getDatabasePath() throws if not configured or file missing
                         getDatabasePath()
-                        
+
                         // Check if onboarding is finished
                         val onboardingFinished = AppSettings.isOnboardingFinished()
-                        
+
                         if (!onboardingFinished) {
                             // Show onboarding if not finished
                             mainState.setShowOnBoarding(true)
@@ -182,7 +192,7 @@ fun main() {
                         } else {
                             // Onboarding is finished, check database version
                             val isVersionCompatible = DatabaseVersionManager.isDatabaseVersionCompatible()
-                            
+
                             if (!isVersionCompatible) {
                                 // Database needs update
                                 mainState.setShowOnBoarding(false)
@@ -197,7 +207,7 @@ fun main() {
                     } catch (_: Exception) {
                         // If DB is missing but app is configured, show database update with error message
                         val onboardingFinished = AppSettings.isOnboardingFinished()
-                        
+
                         if (!onboardingFinished) {
                             // App not configured, show onboarding
                             mainState.setShowOnBoarding(true)
@@ -216,11 +226,11 @@ fun main() {
                     OnBoardingWindow()
                 } else if (showDatabaseUpdate == true) {
                     DatabaseUpdateWindow(
-                        onUpdateCompleted = {
+                        onUpdateComplete = {
                             // After database update, refresh the version check and show main app
                             showDatabaseUpdate = false
                         },
-                        isDatabaseMissing = isDatabaseMissing
+                        isDatabaseMissing = isDatabaseMissing,
                     )
                 } else if (showOnboarding == false && showDatabaseUpdate == false) {
                     val windowViewModelOwner = rememberWindowViewModelStoreOwner()
@@ -235,14 +245,18 @@ fun main() {
                     val selectedTab = tabs.getOrNull(selectedIndex)
                     val rawTitle = selectedTab?.title.orEmpty()
                     val tabType = selectedTab?.tabType
-                    val formattedTabTitle = when {
-                        rawTitle.isEmpty() -> stringResource(Res.string.home)
-                        tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, rawTitle)
-                        else -> rawTitle
-                    }
-                    val windowTitle = if (formattedTabTitle.isNotBlank())
-                        stringResource(Res.string.window_title_with_tab, appTitle, formattedTabTitle)
-                    else appTitle
+                    val formattedTabTitle =
+                        when {
+                            rawTitle.isEmpty() -> stringResource(Res.string.home)
+                            tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, rawTitle)
+                            else -> rawTitle
+                        }
+                    val windowTitle =
+                        if (formattedTabTitle.isNotBlank()) {
+                            stringResource(Res.string.window_title_with_tab, appTitle, formattedTabTitle)
+                        } else {
+                            appTitle
+                        }
 
                     DecoratedWindow(
                         onCloseRequest = {
@@ -258,18 +272,18 @@ fun main() {
                             if (keyEvent.type == KeyEventType.KeyDown) {
                                 val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
                                 if (isCtrlOrCmd && keyEvent.key == Key.T) {
-                                    tabsVm.onEvent(TabsEvents.onAdd)
+                                    tabsVm.onEvent(TabsEvents.OnAdd)
                                     true
                                 } else if (isCtrlOrCmd && keyEvent.key == Key.W) {
                                     // Close current tab with Ctrl/Cmd + W
-                                    tabsVm.onEvent(TabsEvents.onClose(selectedIndex))
+                                    tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))
                                     true
                                 } else if (isCtrlOrCmd && keyEvent.key == Key.Tab) {
                                     val count = tabs.size
                                     if (count > 0) {
                                         val direction = if (keyEvent.isShiftPressed) -1 else 1
                                         val newIndex = (selectedIndex + direction + count) % count
-                                        tabsVm.onEvent(TabsEvents.onSelected(newIndex))
+                                        tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
                                     }
                                     true
                                 } else if ((keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
@@ -285,7 +299,7 @@ fun main() {
                                     }
                                 } else if (isCtrlOrCmd && keyEvent.key == Key.Comma) {
                                     // Open settings with Cmd+, or Ctrl+,
-                                    settingsWindowViewModel.onEvent(SettingsWindowEvents.onOpen)
+                                    settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
                                     true
                                 } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
                                     // Minimize window with Cmd+M on macOS
@@ -295,7 +309,7 @@ fun main() {
                                     processKeyShortcuts(
                                         keyEvent = keyEvent,
                                         onNavigateTo = { /* no-op: legacy shortcuts not used here */ },
-                                        tabId = tabs.getOrNull(selectedIndex)?.destination?.tabId ?: ""
+                                        tabId = tabs.getOrNull(selectedIndex)?.destination?.tabId ?: "",
                                     )
                                 }
                             } else {
@@ -350,12 +364,12 @@ fun main() {
                                                     Image(
                                                         painter = painterResource(Res.drawable.AppIcon),
                                                         contentDescription = null,
-                                                        modifier = Modifier.fillMaxSize()
+                                                        modifier = Modifier.fillMaxSize(),
                                                     )
                                                 },
                                                 onActivated = {
                                                     Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
-                                                }
+                                                },
                                             ) {
                                                 button(title = updateNotificationButton) {
                                                     Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
@@ -374,63 +388,68 @@ fun main() {
 
                             // Intercept key combos early to avoid focus traversal consuming Tab
                             Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .onPreviewKeyEvent { keyEvent ->
-                                        if (keyEvent.type == KeyEventType.KeyDown) {
-                                            val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                                            when {
-                                                // Ctrl/Cmd + W => close current tab
-                                                isCtrlOrCmd && keyEvent.key == Key.W -> {
-                                                    tabsVm.onEvent(TabsEvents.onClose(selectedIndex))
-                                                    true
-                                                }
-                                                // Ctrl/Cmd + Shift + Tab => previous tab
-                                                isCtrlOrCmd && keyEvent.key == Key.Tab && keyEvent.isShiftPressed -> {
-                                                    val count = tabs.size
-                                                    if (count > 0) {
-                                                        val newIndex = (selectedIndex - 1 + count) % count
-                                                        tabsVm.onEvent(TabsEvents.onSelected(newIndex))
-                                                    }
-                                                    true
-                                                }
-                                                // Ctrl/Cmd + Tab => next tab
-                                                isCtrlOrCmd && keyEvent.key == Key.Tab -> {
-                                                    val count = tabs.size
-                                                    if (count > 0) {
-                                                        val newIndex = (selectedIndex + 1) % count
-                                                        tabsVm.onEvent(TabsEvents.onSelected(newIndex))
-                                                    }
-                                                    true
-                                                }
-                                                // Ctrl/Cmd + T => new tab
-                                                isCtrlOrCmd && keyEvent.key == Key.T -> {
-                                                    tabsVm.onEvent(TabsEvents.onAdd)
-                                                    true
-                                                }
-                                                // Alt + Home (Windows) or Cmd + Shift + H (macOS) => go Home on current tab
-                                                (keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
-                                                        (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H) -> {
-                                                    val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
-                                                    if (currentTabId != null) {
-                                                        tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .onPreviewKeyEvent { keyEvent ->
+                                            if (keyEvent.type == KeyEventType.KeyDown) {
+                                                val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                                                when {
+                                                    // Ctrl/Cmd + W => close current tab
+                                                    isCtrlOrCmd && keyEvent.key == Key.W -> {
+                                                        tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))
                                                         true
-                                                    } else false
+                                                    }
+                                                    // Ctrl/Cmd + Shift + Tab => previous tab
+                                                    isCtrlOrCmd && keyEvent.key == Key.Tab && keyEvent.isShiftPressed -> {
+                                                        val count = tabs.size
+                                                        if (count > 0) {
+                                                            val newIndex = (selectedIndex - 1 + count) % count
+                                                            tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
+                                                        }
+                                                        true
+                                                    }
+                                                    // Ctrl/Cmd + Tab => next tab
+                                                    isCtrlOrCmd && keyEvent.key == Key.Tab -> {
+                                                        val count = tabs.size
+                                                        if (count > 0) {
+                                                            val newIndex = (selectedIndex + 1) % count
+                                                            tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
+                                                        }
+                                                        true
+                                                    }
+                                                    // Ctrl/Cmd + T => new tab
+                                                    isCtrlOrCmd && keyEvent.key == Key.T -> {
+                                                        tabsVm.onEvent(TabsEvents.OnAdd)
+                                                        true
+                                                    }
+                                                    // Alt + Home (Windows) or Cmd + Shift + H (macOS) => go Home on current tab
+                                                    (keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
+                                                        (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H) -> {
+                                                        val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
+                                                        if (currentTabId != null) {
+                                                            tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
+                                                            true
+                                                        } else {
+                                                            false
+                                                        }
+                                                    }
+                                                    // Ctrl/Cmd + Comma => open settings
+                                                    isCtrlOrCmd && keyEvent.key == Key.Comma -> {
+                                                        settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
+                                                        true
+                                                    }
+                                                    // Cmd + M => minimize window (macOS only)
+                                                    PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
+                                                        windowState.isMinimized = true
+                                                        true
+                                                    }
+                                                    else -> false
                                                 }
-                                                // Ctrl/Cmd + Comma => open settings
-                                                isCtrlOrCmd && keyEvent.key == Key.Comma -> {
-                                                    settingsWindowViewModel.onEvent(SettingsWindowEvents.onOpen)
-                                                    true
-                                                }
-                                                // Cmd + M => minimize window (macOS only)
-                                                PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
-                                                    windowState.isMinimized = true
-                                                    true
-                                                }
-                                                else -> false
+                                            } else {
+                                                false
                                             }
-                                        } else false
-                                    }
+                                        },
                             ) { TabsNavHost() }
                         }
                     }

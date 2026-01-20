@@ -1,0 +1,50 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+max_line_length = 140
+
+# Disable rules that conflict with Compose conventions
+ktlint_function_naming_ignore_when_annotated_with = Composable
+ktlint_standard_function-naming = disabled
+ktlint_standard_backing-property-naming = disabled
+
+# Allow wildcard imports for common packages
+ktlint_standard_no-wildcard-imports = disabled
+
+# Compose rules configuration
+# Disabled: CompositionLocals are used for DI (LocalAppGraph, LocalWindowViewModelStoreOwner)
+ktlint_compose_compositionlocal-allowlist = disabled
+ktlint_compose_content-emitter-returning-values-check = enabled
+# Disabled: screens, windows, navhosts and scaffolds don't need modifier parameter by architecture
+ktlint_compose_modifier-missing-check = disabled
+ktlint_compose_modifier-reused-check = enabled
+ktlint_compose_multiple-emitters-check = enabled
+ktlint_compose_mutable-state-param-check = enabled
+ktlint_compose_naming-check = enabled
+ktlint_compose_parameter-order-check = enabled
+ktlint_compose_preview-annotation-naming-check = enabled
+ktlint_compose_remember-missing-check = enabled
+ktlint_compose_unstable-collections = enabled
+ktlint_compose_vm-forwarding-check = enabled
+ktlint_compose_vm-injection-check = disabled
+
+# Exclude generated code from ktlint
+[**/build/**/*.{kt,kts}]
+ktlint = disabled
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.gradle.kts]
+indent_size = 4

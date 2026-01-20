@@ -23,8 +23,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.Enha
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedVerticalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.*
-import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -35,7 +35,6 @@ import seforimapp.seforimapp.generated.resources.no_sources_for_line
 import seforimapp.seforimapp.generated.resources.select_line_for_sources
 import seforimapp.seforimapp.generated.resources.sources
 
-
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 fun BookContentPanel(
@@ -45,74 +44,99 @@ fun BookContentPanel(
     modifier: Modifier = Modifier,
     isRestoringSession: Boolean = false,
     searchUi: SearchHomeUiState = SearchHomeUiState(),
-    searchCallbacks: HomeSearchCallbacks = HomeSearchCallbacks(
-        onReferenceQueryChanged = {},
-        onTocQueryChanged = {},
-        onFilterChange = {},
-        onGlobalExtendedChange = {},
-        onSubmitTextSearch = {},
-        onOpenReference = {},
-        onPickCategory = {},
-        onPickBook = {},
-        onPickToc = {}
-    ),
-    isSelected: Boolean = true
+    searchCallbacks: HomeSearchCallbacks =
+        HomeSearchCallbacks(
+            onReferenceQueryChanged = {},
+            onTocQueryChanged = {},
+            onFilterChange = {},
+            onGlobalExtendedChange = {},
+            onSubmitTextSearch = {},
+            onOpenReference = {},
+            onPickCategory = {},
+            onPickBook = {},
+            onPickToc = {},
+        ),
+    isSelected: Boolean = true,
 ) {
-    if (uiState.navigation.selectedBook == null) {
-        // If we're actively loading a book for this tab, avoid flashing the Home screen.
-        // Show a minimal loader until the selected book is ready.
-        if (uiState.isLoading || isRestoringSession) {
-            LoaderPanel(modifier = modifier)
-        } else {
-            HomeView(
-                onEvent = onEvent,
-                searchUi = searchUi,
-                searchCallbacks = searchCallbacks,
-                modifier = modifier
-            )
-        }
-        return
-    }
+    Box(modifier = modifier.fillMaxSize()) {
+        when {
+            // If no book is selected
+            uiState.navigation.selectedBook == null -> {
+                // If we're actively loading a book for this tab, avoid flashing the Home screen.
+                // Show a minimal loader until the selected book is ready.
+                if (uiState.isLoading || isRestoringSession) {
+                    LoaderPanel()
+                } else {
+                    HomeView(
+                        onEvent = onEvent,
+                        searchUi = searchUi,
+                        searchCallbacks = searchCallbacks,
+                    )
+                }
+            }
 
-    // Use providers from uiState for paging data and builder functions
-    val providers = uiState.providers
-    if (providers == null || uiState.isLoading) {
-        // Book is selected but providers are not ready yet (initialization in progress)
-        // Show a centered loader to avoid flash of partial content.
-        LoaderPanel(modifier = modifier)
-        return
+            // Book is selected but providers are not ready yet (initialization in progress)
+            // Show a centered loader to avoid flash of partial content.
+            uiState.providers == null || uiState.isLoading -> {
+                LoaderPanel()
+            }
+
+            // Main content when book and providers are ready
+            else -> {
+                BookContentPanelContent(
+                    uiState = uiState,
+                    onEvent = onEvent,
+                    showDiacritics = showDiacritics,
+                    isSelected = isSelected,
+                )
+            }
+        }
     }
+}
+
+@OptIn(ExperimentalSplitPaneApi::class)
+@Composable
+private fun BookContentPanelContent(
+    uiState: BookContentState,
+    onEvent: (BookContentEvent) -> Unit,
+    showDiacritics: Boolean,
+    isSelected: Boolean,
+) {
+    val providers = uiState.providers ?: return
+    val selectedBook = uiState.navigation.selectedBook ?: return
 
     // Create LazyListState AFTER loading check, so anchorId is correctly set
     // When restoring with an anchor, use the computed anchorIndex which accounts for
     // lines near the beginning of the book (where target isn't at INITIAL_LOAD_SIZE/2)
-    val bookListState = remember(uiState.navigation.selectedBook.id) {
-        val hasAnchor = uiState.content.anchorId != -1L
-        val initialIndex = if (hasAnchor) uiState.content.anchorIndex else uiState.content.scrollIndex
-        LazyListState(
-            firstVisibleItemIndex = initialIndex.coerceAtLeast(0),
-            firstVisibleItemScrollOffset = uiState.content.scrollOffset.coerceAtLeast(0)
-        )
-    }
+    val bookListState =
+        remember(selectedBook.id) {
+            val hasAnchor = uiState.content.anchorId != -1L
+            val initialIndex = if (hasAnchor) uiState.content.anchorIndex else uiState.content.scrollIndex
+            LazyListState(
+                firstVisibleItemIndex = initialIndex.coerceAtLeast(0),
+                firstVisibleItemScrollOffset = uiState.content.scrollOffset.coerceAtLeast(0),
+            )
+        }
 
-    val connectionsCache = remember(uiState.navigation.selectedBook.id) {
-        mutableStateMapOf<Long, LineConnectionsSnapshot>()
-    }
+    val connectionsCache =
+        remember(selectedBook.id) {
+            mutableStateMapOf<Long, LineConnectionsSnapshot>()
+        }
     val prefetchScope = rememberCoroutineScope()
-    val prefetchConnections = remember(providers, connectionsCache) {
-        { ids: List<Long> ->
-            if (ids.isEmpty()) return@remember
-            val missing = ids.filterNot { connectionsCache.containsKey(it) }.distinct()
-            if (missing.isEmpty()) return@remember
-            prefetchScope.launch {
-                runCatching { providers.loadLineConnections(missing) }
-                    .onSuccess { connectionsCache.putAll(it) }
+    val prefetchConnections =
+        remember(providers, connectionsCache) {
+            { ids: List<Long> ->
+                if (ids.isEmpty()) return@remember
+                val missing = ids.filterNot { connectionsCache.containsKey(it) }.distinct()
+                if (missing.isEmpty()) return@remember
+                prefetchScope.launch {
+                    runCatching { providers.loadLineConnections(missing) }
+                        .onSuccess { connectionsCache.putAll(it) }
+                }
             }
         }
-    }
 
-    Column(modifier = modifier.fillMaxSize()) {
-
+    Column(modifier = Modifier.fillMaxSize()) {
         EnhancedVerticalSplitPane(
             splitPaneState = uiState.layout.contentSplitState.asStable(),
             modifier = Modifier.weight(1f),
@@ -121,14 +145,15 @@ fun BookContentPanel(
                     splitPaneState = uiState.layout.targumSplitState.asStable(),
                     firstContent = {
                         BookContentView(
-                            bookId = uiState.navigation.selectedBook.id,
+                            bookId = selectedBook.id,
                             linesPagingData = providers.linesPagingData,
                             selectedLineId = uiState.content.selectedLine?.id,
-                            onLineSelected = { line ->
+                            onLineSelect = { line ->
                                 onEvent(BookContentEvent.LineSelected(line))
                             },
                             onEvent = onEvent,
                             tabId = uiState.tabId,
+                            showDiacritics = showDiacritics,
                             modifier = Modifier,
                             preservedListState = bookListState,
                             scrollIndex = uiState.content.scrollIndex,
@@ -144,61 +169,63 @@ fun BookContentPanel(
                                         anchorId = anchorId,
                                         anchorIndex = anchorIndex,
                                         scrollIndex = scrollIndex,
-                                        scrollOffset = scrollOffset
-                                    )
+                                        scrollOffset = scrollOffset,
+                                    ),
                                 )
                             },
                             altHeadingsByLineId = uiState.altToc.lineHeadingsByLineId.asStableAltHeadings(),
                             lineConnections = connectionsCache,
                             onPrefetchLineConnections = prefetchConnections,
-                            showDiacritics = showDiacritics,
-                            isSelected = isSelected
+                            isSelected = isSelected,
                         )
                     },
-                    secondContent = if (uiState.content.showTargum) {
+                    secondContent =
+                        if (uiState.content.showTargum) {
+                            {
+                                TargumPane(
+                                    uiState = uiState,
+                                    onEvent = onEvent,
+                                    lineConnections = connectionsCache,
+                                    showDiacritics = showDiacritics,
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                )
+            },
+            secondContent =
+                when {
+                    uiState.content.showCommentaries -> {
                         {
-                            TargumPane(
+                            CommentsPane(
                                 uiState = uiState,
                                 onEvent = onEvent,
                                 lineConnections = connectionsCache,
-                                showDiacritics = showDiacritics
+                                showDiacritics = showDiacritics,
                             )
                         }
-                    } else {
-                        null
                     }
-                )
-            },
-            secondContent = when {
-                uiState.content.showCommentaries -> {
-                    {
-                        CommentsPane(
-                            uiState = uiState,
-                            onEvent = onEvent,
-                            lineConnections = connectionsCache,
-                            showDiacritics = showDiacritics
-                        )
-                    }
-                }
 
-                uiState.content.showSources -> {
-                    {
-                        SourcesPane(
-                            uiState = uiState,
-                            onEvent = onEvent,
-                            lineConnections = connectionsCache,
-                            showDiacritics = showDiacritics
-                        )
+                    uiState.content.showSources -> {
+                        {
+                            SourcesPane(
+                                uiState = uiState,
+                                onEvent = onEvent,
+                                lineConnections = connectionsCache,
+                                showDiacritics = showDiacritics,
+                            )
+                        }
                     }
-                }
 
-                else -> null
-            })
+                    else -> null
+                },
+        )
 
         BreadcrumbSection(
             uiState = uiState,
             onEvent = onEvent,
-            verticalPadding = 8.dp
+            verticalPadding = 8.dp,
         )
     }
 }
@@ -206,9 +233,10 @@ fun BookContentPanel(
 @Composable
 private fun LoaderPanel(modifier: Modifier = Modifier) {
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .wrapContentSize(Alignment.Center)
+        modifier =
+            modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center),
     ) {
         CircularProgressIndicator()
     }
@@ -219,13 +247,13 @@ private fun CommentsPane(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     lineConnections: Map<Long, LineConnectionsSnapshot>,
-    showDiacritics: Boolean
+    showDiacritics: Boolean,
 ) {
     LineCommentsView(
         uiState = uiState,
         onEvent = onEvent,
         lineConnections = lineConnections,
-        showDiacritics = showDiacritics
+        showDiacritics = showDiacritics,
     )
 }
 
@@ -234,7 +262,7 @@ private fun SourcesPane(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     lineConnections: Map<Long, LineConnectionsSnapshot>,
-    showDiacritics: Boolean
+    showDiacritics: Boolean,
 ) {
     val providers = uiState.providers ?: return
     val windowInfo = LocalWindowInfo.current
@@ -267,7 +295,7 @@ private fun SourcesPane(
         titleRes = Res.string.sources,
         selectLineRes = Res.string.select_line_for_sources,
         emptyRes = Res.string.no_sources_for_line,
-        showDiacritics = showDiacritics
+        showDiacritics = showDiacritics,
     )
 }
 
@@ -276,13 +304,13 @@ private fun TargumPane(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     lineConnections: Map<Long, LineConnectionsSnapshot>,
-    showDiacritics: Boolean
+    showDiacritics: Boolean,
 ) {
     LineTargumView(
         uiState = uiState,
         onEvent = onEvent,
         lineConnections = lineConnections,
-        showDiacritics = showDiacritics
+        showDiacritics = showDiacritics,
     )
 }
 
@@ -291,16 +319,16 @@ private fun BreadcrumbSection(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     verticalPadding: Dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth().background(JewelTheme.globalColors.panelBackground)
+        modifier = modifier.fillMaxWidth().background(JewelTheme.globalColors.panelBackground),
     ) {
         HorizontalDivider()
         BreadcrumbView(
             uiState = uiState,
             onEvent = onEvent,
-            modifier = Modifier.fillMaxWidth().padding(vertical = verticalPadding, horizontal = 16.dp)
+            modifier = Modifier.fillMaxWidth().padding(vertical = verticalPadding, horizontal = 16.dp),
         )
     }
 }

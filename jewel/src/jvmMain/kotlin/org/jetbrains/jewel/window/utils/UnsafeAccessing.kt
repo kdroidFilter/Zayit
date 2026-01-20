@@ -1,9 +1,9 @@
 package org.jetbrains.jewel.window.utils
 
+import sun.misc.Unsafe
 import java.lang.reflect.AccessibleObject
 import java.util.logging.Level
 import java.util.logging.Logger
-import sun.misc.Unsafe
 
 internal object UnsafeAccessing {
     private val logger = Logger.getLogger(UnsafeAccessing::class.java.simpleName)
@@ -13,7 +13,9 @@ internal object UnsafeAccessing {
             val theUnsafe = Unsafe::class.java.getDeclaredField("theUnsafe")
             theUnsafe.isAccessible = true
             theUnsafe.get(null) as Unsafe
-        } catch (@Suppress("TooGenericExceptionCaught") error: Throwable) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
             logger.log(Level.WARNING, "Unsafe accessing initializing failed.", error)
             null
         }
@@ -49,7 +51,10 @@ internal object UnsafeAccessing {
         }
     }
 
-    fun assignAccessibility(module: Module, packages: List<String>) {
+    fun assignAccessibility(
+        module: Module,
+        packages: List<String>,
+    ) {
         try {
             packages.forEach { implAddOpens?.invoke(module, it, ownerModule) }
         } catch (_: Throwable) {

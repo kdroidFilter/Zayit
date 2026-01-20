@@ -34,6 +34,7 @@ import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
 import com.kosherjava.zmanim.hebrewcalendar.JewishDate
 import com.kosherjava.zmanim.util.GeoLocation
+import io.github.kdroidfilter.seforimapp.hebrewcalendar.CalendarMode
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -41,21 +42,13 @@ import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.component.LocalMenuController
-import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.component.styling.MenuStyle
-import org.jetbrains.jewel.ui.theme.segmentedControlButtonStyle
-import io.github.kdroidfilter.seforimapp.hebrewcalendar.CalendarMode
-import io.github.kdroidfilter.seforimapp.hebrewcalendar.HebrewCalendarPicker
-import io.github.kdroidfilter.seforimapp.hebrewcalendar.HebrewYearMonth
-import io.github.kdroidfilter.seforimapp.hebrewcalendar.hebrewYearMonthFromLocalDate
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
+import org.jetbrains.jewel.ui.theme.segmentedControlButtonStyle
 import seforimapp.earthwidget.generated.resources.*
 import java.text.SimpleDateFormat
-import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.YearMonth
-import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
 import java.util.*
 import kotlin.math.roundToInt
 
@@ -133,7 +126,9 @@ private data class ZmanimModel(
  * Uses reference equality for stability checks.
  */
 @Stable
-private class StableOrbitLabels(val list: List<OrbitLabelData>)
+private class StableOrbitLabels(
+    val list: List<OrbitLabelData>,
+)
 
 private data class KnownLocation(
     val name: StringResource,
@@ -217,8 +212,8 @@ fun EarthWidgetZmanimView(
     locationOptions: Map<String, Map<String, EarthWidgetLocation>> = emptyMap(),
     targetTime: Date? = null,
     targetDate: LocalDate? = null,
-    onDateSelected: ((LocalDate) -> Unit)? = null,
-    onLocationSelected: ((country: String, city: String, location: EarthWidgetLocation) -> Unit)? = null,
+    onDateSelect: ((LocalDate) -> Unit)? = null,
+    onLocationSelect: ((country: String, city: String, location: EarthWidgetLocation) -> Unit)? = null,
     allowLocationSelection: Boolean = true,
     containerBackground: Color? = null,
     contentPadding: Dp = 12.dp,
@@ -233,74 +228,75 @@ fun EarthWidgetZmanimView(
     initialShowKiddushLevana: Boolean = true,
 ) {
     // Location state
-    val knownLocations = remember {
-        listOf(
-            KnownLocation(
-                name = Res.string.earthwidget_city_jerusalem,
-                latitude = DEFAULT_MARKER_LAT,
-                longitude = DEFAULT_MARKER_LON,
-                elevationMeters = DEFAULT_MARKER_ELEVATION,
-                timeZoneId = "Asia/Jerusalem",
-            ),
-            KnownLocation(
-                name = Res.string.earthwidget_city_paris,
-                latitude = 48.8566,
-                longitude = 2.3522,
-                elevationMeters = 35.0,
-                timeZoneId = "Europe/Paris",
-            ),
-            KnownLocation(
-                name = Res.string.earthwidget_city_new_york,
-                latitude = 40.7128,
-                longitude = -74.0060,
-                elevationMeters = 10.0,
-                timeZoneId = "America/New_York",
-            ),
-            KnownLocation(
-                name = Res.string.earthwidget_city_london,
-                latitude = 51.5074,
-                longitude = -0.1278,
-                elevationMeters = 11.0,
-                timeZoneId = "Europe/London",
-            ),
-            KnownLocation(
-                name = Res.string.earthwidget_city_los_angeles,
-                latitude = 34.0522,
-                longitude = -118.2437,
-                elevationMeters = 71.0,
-                timeZoneId = "America/Los_Angeles",
-            ),
-            KnownLocation(
-                name = Res.string.earthwidget_city_moscow,
-                latitude = 55.7558,
-                longitude = 37.6173,
-                elevationMeters = 156.0,
-                timeZoneId = "Europe/Moscow",
-            ),
-            // Southern hemisphere and equator locations for testing moon crescent orientation
-            KnownLocation(
-                name = Res.string.earthwidget_city_sydney,
-                latitude = -33.8688,
-                longitude = 151.2093,
-                elevationMeters = 58.0,
-                timeZoneId = "Australia/Sydney",
-            ),
-            KnownLocation(
-                name = Res.string.earthwidget_city_singapore,
-                latitude = 1.3521,
-                longitude = 103.8198,
-                elevationMeters = 15.0,
-                timeZoneId = "Asia/Singapore",
-            ),
-            KnownLocation(
-                name = Res.string.earthwidget_city_buenos_aires,
-                latitude = -34.6037,
-                longitude = -58.3816,
-                elevationMeters = 25.0,
-                timeZoneId = "America/Argentina/Buenos_Aires",
-            ),
-        )
-    }
+    val knownLocations =
+        remember {
+            listOf(
+                KnownLocation(
+                    name = Res.string.earthwidget_city_jerusalem,
+                    latitude = DEFAULT_MARKER_LAT,
+                    longitude = DEFAULT_MARKER_LON,
+                    elevationMeters = DEFAULT_MARKER_ELEVATION,
+                    timeZoneId = "Asia/Jerusalem",
+                ),
+                KnownLocation(
+                    name = Res.string.earthwidget_city_paris,
+                    latitude = 48.8566,
+                    longitude = 2.3522,
+                    elevationMeters = 35.0,
+                    timeZoneId = "Europe/Paris",
+                ),
+                KnownLocation(
+                    name = Res.string.earthwidget_city_new_york,
+                    latitude = 40.7128,
+                    longitude = -74.0060,
+                    elevationMeters = 10.0,
+                    timeZoneId = "America/New_York",
+                ),
+                KnownLocation(
+                    name = Res.string.earthwidget_city_london,
+                    latitude = 51.5074,
+                    longitude = -0.1278,
+                    elevationMeters = 11.0,
+                    timeZoneId = "Europe/London",
+                ),
+                KnownLocation(
+                    name = Res.string.earthwidget_city_los_angeles,
+                    latitude = 34.0522,
+                    longitude = -118.2437,
+                    elevationMeters = 71.0,
+                    timeZoneId = "America/Los_Angeles",
+                ),
+                KnownLocation(
+                    name = Res.string.earthwidget_city_moscow,
+                    latitude = 55.7558,
+                    longitude = 37.6173,
+                    elevationMeters = 156.0,
+                    timeZoneId = "Europe/Moscow",
+                ),
+                // Southern hemisphere and equator locations for testing moon crescent orientation
+                KnownLocation(
+                    name = Res.string.earthwidget_city_sydney,
+                    latitude = -33.8688,
+                    longitude = 151.2093,
+                    elevationMeters = 58.0,
+                    timeZoneId = "Australia/Sydney",
+                ),
+                KnownLocation(
+                    name = Res.string.earthwidget_city_singapore,
+                    latitude = 1.3521,
+                    longitude = 103.8198,
+                    elevationMeters = 15.0,
+                    timeZoneId = "Asia/Singapore",
+                ),
+                KnownLocation(
+                    name = Res.string.earthwidget_city_buenos_aires,
+                    latitude = -34.6037,
+                    longitude = -58.3816,
+                    elevationMeters = 25.0,
+                    timeZoneId = "America/Argentina/Buenos_Aires",
+                ),
+            )
+        }
 
     var selectedLocation by remember { mutableStateOf(knownLocations.first()) }
     var markerLatitudeDegrees by remember { mutableFloatStateOf(selectedLocation.latitude.toFloat()) }
@@ -320,9 +316,10 @@ fun EarthWidgetZmanimView(
     var isDraggingEarth by remember { mutableStateOf(false) }
 
     // Date/time selection - initialized once with the default timezone, then preserved across location changes
-    val initialCalendar = remember {
-        Calendar.getInstance(TimeZone.getTimeZone(knownLocations.first().timeZoneId)).apply { time = Date() }
-    }
+    val initialCalendar =
+        remember {
+            Calendar.getInstance(TimeZone.getTimeZone(knownLocations.first().timeZoneId)).apply { time = Date() }
+        }
     var selectedDate by remember {
         mutableStateOf(
             LocalDate.of(
@@ -343,11 +340,12 @@ fun EarthWidgetZmanimView(
     val isDateTimeModified by remember(selectedDate, selectedHour, selectedMinute, timeZone) {
         derivedStateOf {
             val now = Calendar.getInstance(timeZone)
-            val currentDate = LocalDate.of(
-                now.get(Calendar.YEAR),
-                now.get(Calendar.MONTH) + 1,
-                now.get(Calendar.DAY_OF_MONTH),
-            )
+            val currentDate =
+                LocalDate.of(
+                    now.get(Calendar.YEAR),
+                    now.get(Calendar.MONTH) + 1,
+                    now.get(Calendar.DAY_OF_MONTH),
+                )
             val currentHour = now.get(Calendar.HOUR_OF_DAY)
             val currentMinute = now.get(Calendar.MINUTE)
             selectedDate != currentDate || selectedHour != currentHour || selectedMinute != currentMinute
@@ -364,11 +362,12 @@ fun EarthWidgetZmanimView(
 
             if (targetTime == null) {
                 val now = Calendar.getInstance(override.timeZone)
-                selectedDate = LocalDate.of(
-                    now.get(Calendar.YEAR),
-                    now.get(Calendar.MONTH) + 1,
-                    now.get(Calendar.DAY_OF_MONTH),
-                )
+                selectedDate =
+                    LocalDate.of(
+                        now.get(Calendar.YEAR),
+                        now.get(Calendar.MONTH) + 1,
+                        now.get(Calendar.DAY_OF_MONTH),
+                    )
                 selectedHour = now.get(Calendar.HOUR_OF_DAY).coerceIn(0, 23)
                 selectedMinute = now.get(Calendar.MINUTE).coerceIn(0, 59)
             }
@@ -378,11 +377,12 @@ fun EarthWidgetZmanimView(
     LaunchedEffect(targetTime, timeZone) {
         targetTime?.let { date ->
             val cal = Calendar.getInstance(timeZone).apply { time = date }
-            selectedDate = LocalDate.of(
-                cal.get(Calendar.YEAR),
-                cal.get(Calendar.MONTH) + 1,
-                cal.get(Calendar.DAY_OF_MONTH),
-            )
+            selectedDate =
+                LocalDate.of(
+                    cal.get(Calendar.YEAR),
+                    cal.get(Calendar.MONTH) + 1,
+                    cal.get(Calendar.DAY_OF_MONTH),
+                )
             selectedHour = cal.get(Calendar.HOUR_OF_DAY).coerceIn(0, 23)
             selectedMinute = cal.get(Calendar.MINUTE).coerceIn(0, 59)
         }
@@ -397,85 +397,93 @@ fun EarthWidgetZmanimView(
         }
     }
 
-    val referenceTime = remember(selectedDate, selectedHour, selectedMinute, timeZone) {
-        Calendar.getInstance(timeZone).apply {
-            set(Calendar.YEAR, selectedDate.year)
-            set(Calendar.MONTH, selectedDate.monthValue - 1)
-            set(Calendar.DAY_OF_MONTH, selectedDate.dayOfMonth)
-            set(Calendar.HOUR_OF_DAY, selectedHour.coerceIn(0, 23))
-            set(Calendar.MINUTE, selectedMinute.coerceIn(0, 59))
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.time
-    }
+    val referenceTime =
+        remember(selectedDate, selectedHour, selectedMinute, timeZone) {
+            Calendar
+                .getInstance(timeZone)
+                .apply {
+                    set(Calendar.YEAR, selectedDate.year)
+                    set(Calendar.MONTH, selectedDate.monthValue - 1)
+                    set(Calendar.DAY_OF_MONTH, selectedDate.dayOfMonth)
+                    set(Calendar.HOUR_OF_DAY, selectedHour.coerceIn(0, 23))
+                    set(Calendar.MINUTE, selectedMinute.coerceIn(0, 59))
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.time
+        }
 
     // Compute astronomical model
-    val model = remember(
-        referenceTime,
-        markerLatitudeDegrees,
-        markerLongitudeDegrees,
-        markerElevationMeters,
-        timeZone,
-    ) {
-        computeZmanimModel(
-            referenceTime = referenceTime,
-            latitude = markerLatitudeDegrees.toDouble(),
-            longitude = markerLongitudeDegrees.toDouble(),
-            elevation = markerElevationMeters,
-            timeZone = timeZone,
-            earthRotationDegrees = markerLongitudeDegrees,
-            earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
-        )
-    }
+    val model =
+        remember(
+            referenceTime,
+            markerLatitudeDegrees,
+            markerLongitudeDegrees,
+            markerElevationMeters,
+            timeZone,
+        ) {
+            computeZmanimModel(
+                referenceTime = referenceTime,
+                latitude = markerLatitudeDegrees.toDouble(),
+                longitude = markerLongitudeDegrees.toDouble(),
+                elevation = markerElevationMeters,
+                timeZone = timeZone,
+                earthRotationDegrees = markerLongitudeDegrees,
+                earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
+            )
+        }
 
-    val stableOrbitLabels = remember(referenceTime, timeZone, showOrbitLabels) {
-        StableOrbitLabels(
-            if (showOrbitLabels) {
-                computeHebrewMonthOrbitLabels(
-                    referenceTime = referenceTime,
-                    timeZone = timeZone,
-                )
-            } else {
-                emptyList()
-            }
-        )
-    }
+    val stableOrbitLabels =
+        remember(referenceTime, timeZone, showOrbitLabels) {
+            StableOrbitLabels(
+                if (showOrbitLabels) {
+                    computeHebrewMonthOrbitLabels(
+                        referenceTime = referenceTime,
+                        timeZone = timeZone,
+                    )
+                } else {
+                    emptyList()
+                },
+            )
+        }
 
     // Compute Kiddush Levana data
-    val kiddushLevanaData = remember(
-        referenceTime,
-        timeZone,
-        showKiddushLevana,
-        kiddushLevanaEarliestOpinion,
-        kiddushLevanaLatestOpinion,
-    ) {
-        if (showKiddushLevana) {
-            computeKiddushLevanaData(
-                referenceTime = referenceTime,
-                timeZone = timeZone,
-                earliestOpinion = kiddushLevanaEarliestOpinion,
-                latestOpinion = kiddushLevanaLatestOpinion,
-            )
-        } else {
-            null
+    val kiddushLevanaData =
+        remember(
+            referenceTime,
+            timeZone,
+            showKiddushLevana,
+            kiddushLevanaEarliestOpinion,
+            kiddushLevanaLatestOpinion,
+        ) {
+            if (showKiddushLevana) {
+                computeKiddushLevanaData(
+                    referenceTime = referenceTime,
+                    timeZone = timeZone,
+                    earliestOpinion = kiddushLevanaEarliestOpinion,
+                    latestOpinion = kiddushLevanaLatestOpinion,
+                )
+            } else {
+                null
+            }
         }
-    }
 
     // Format time for display
-    val formatter = remember(timeZone) {
-        SimpleDateFormat("yyyy-MM-dd HH:mm").apply { this.timeZone = timeZone }
-    }
+    val formatter =
+        remember(timeZone) {
+            SimpleDateFormat("yyyy-MM-dd HH:mm").apply { this.timeZone = timeZone }
+        }
     val formattedTime = remember(referenceTime, formatter) { formatter.format(referenceTime) }
     val selectedLocationLabel = stringResource(selectedLocation.name)
-    val normalizedLocationOptions = remember(locationOptions) {
-        locationOptions.filterValues { it.isNotEmpty() }
-    }
+    val normalizedLocationOptions =
+        remember(locationOptions) {
+            locationOptions.filterValues { it.isNotEmpty() }
+        }
     var selectedLocationSelection by remember(normalizedLocationOptions) {
         mutableStateOf(resolveInitialLocationSelection(normalizedLocationOptions, locationLabel))
     }
     var menuCountrySelection by remember(normalizedLocationOptions) {
         mutableStateOf(
-            selectedLocationSelection?.country ?: normalizedLocationOptions.keys.firstOrNull()
+            selectedLocationSelection?.country ?: normalizedLocationOptions.keys.firstOrNull(),
         )
     }
     LaunchedEffect(locationLabel, normalizedLocationOptions) {
@@ -486,47 +494,53 @@ fun EarthWidgetZmanimView(
             menuCountrySelection = selectedLocationSelection?.country ?: normalizedLocationOptions.keys.firstOrNull()
         }
     }
-    val resolvedLocationLabel = when {
-        normalizedLocationOptions.isNotEmpty() ->
-            selectedLocationSelection?.city ?: locationLabel?.takeIf { it.isNotBlank() }
-        !locationLabel.isNullOrBlank() -> locationLabel
-        locationOverride == null -> selectedLocationLabel
-        else -> null
-    }
-    val hebrewDateLabel = remember(referenceTime, timeZone) {
-        val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
-        val jewishDate = JewishDate().apply { setDate(calendar) }
-        val dateFormatter = HebrewDateFormatter().apply {
-            isHebrewFormat = true
-            isUseGershGershayim = false
+    val resolvedLocationLabel =
+        when {
+            normalizedLocationOptions.isNotEmpty() ->
+                selectedLocationSelection?.city ?: locationLabel?.takeIf { it.isNotBlank() }
+            !locationLabel.isNullOrBlank() -> locationLabel
+            locationOverride == null -> selectedLocationLabel
+            else -> null
         }
-        val dayOfMonth = dateFormatter.formatHebrewNumber(jewishDate.jewishDayOfMonth)
-        val month = dateFormatter.formatMonth(jewishDate)
-        val year = dateFormatter.formatHebrewNumber(jewishDate.getJewishYear())
-        "$dayOfMonth $month $year"
-    }
+    val hebrewDateLabel =
+        remember(referenceTime, timeZone) {
+            val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
+            val jewishDate = JewishDate().apply { setDate(calendar) }
+            val dateFormatter =
+                HebrewDateFormatter().apply {
+                    isHebrewFormat = true
+                    isUseGershGershayim = false
+                }
+            val dayOfMonth = dateFormatter.formatHebrewNumber(jewishDate.jewishDayOfMonth)
+            val month = dateFormatter.formatMonth(jewishDate)
+            val year = dateFormatter.formatHebrewNumber(jewishDate.getJewishYear())
+            "$dayOfMonth $month $year"
+        }
 
-    val presetTimeFormatter = remember(timeZone) {
-        SimpleDateFormat("HH:mm").apply { this.timeZone = timeZone }
-    }
+    val presetTimeFormatter =
+        remember(timeZone) {
+            SimpleDateFormat("HH:mm").apply { this.timeZone = timeZone }
+        }
 
-    val zmanimPresets = remember(selectedDate, markerLatitudeDegrees, markerLongitudeDegrees, markerElevationMeters, timeZone) {
-        computeZmanimPresetTimes(
-            date = selectedDate,
-            latitude = markerLatitudeDegrees.toDouble(),
-            longitude = markerLongitudeDegrees.toDouble(),
-            elevationMeters = markerElevationMeters,
-            timeZone = timeZone,
-        )
-    }
+    val zmanimPresets =
+        remember(selectedDate, markerLatitudeDegrees, markerLongitudeDegrees, markerElevationMeters, timeZone) {
+            computeZmanimPresetTimes(
+                date = selectedDate,
+                latitude = markerLatitudeDegrees.toDouble(),
+                longitude = markerLongitudeDegrees.toDouble(),
+                elevationMeters = markerElevationMeters,
+                timeZone = timeZone,
+            )
+        }
 
     fun applyPreset(date: Date) {
         val cal = Calendar.getInstance(timeZone).apply { time = date }
-        selectedDate = LocalDate.of(
-            cal.get(Calendar.YEAR),
-            cal.get(Calendar.MONTH) + 1,
-            cal.get(Calendar.DAY_OF_MONTH),
-        )
+        selectedDate =
+            LocalDate.of(
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.DAY_OF_MONTH),
+            )
         selectedHour = cal.get(Calendar.HOUR_OF_DAY).coerceIn(0, 23)
         selectedMinute = cal.get(Calendar.MINUTE).coerceIn(0, 59)
     }
@@ -543,15 +557,16 @@ fun EarthWidgetZmanimView(
     // Use rememberUpdatedState to keep the lambda stable while accessing latest values
     val currentTimeZone by rememberUpdatedState(timeZone)
     val currentReferenceTime by rememberUpdatedState(referenceTime)
-    val currentOnDateSelected by rememberUpdatedState(onDateSelected)
+    val currentOnDateSelected by rememberUpdatedState(onDateSelect)
 
     val onResetDateTimeCallback: () -> Unit = {
         val now = Calendar.getInstance(timeZone)
-        selectedDate = LocalDate.of(
-            now.get(Calendar.YEAR),
-            now.get(Calendar.MONTH) + 1,
-            now.get(Calendar.DAY_OF_MONTH),
-        )
+        selectedDate =
+            LocalDate.of(
+                now.get(Calendar.YEAR),
+                now.get(Calendar.MONTH) + 1,
+                now.get(Calendar.DAY_OF_MONTH),
+            )
         selectedHour = now.get(Calendar.HOUR_OF_DAY).coerceIn(0, 23)
         selectedMinute = now.get(Calendar.MINUTE).coerceIn(0, 59)
         currentOnDateSelected?.invoke(selectedDate)
@@ -560,19 +575,22 @@ fun EarthWidgetZmanimView(
         selectedDate = date
         currentOnDateSelected?.invoke(date)
     }
-    val onOrbitLabelClickHandler: (OrbitLabelData) -> Unit = remember {
-        { label: OrbitLabelData ->
-            val calendar = Calendar.getInstance(currentTimeZone).apply { time = currentReferenceTime }
-            val jewishCalendar = JewishCalendar().apply { setDate(calendar) }
-            val newDate = JewishDate().apply {
-                setJewishDate(jewishCalendar.jewishYear, jewishCalendar.jewishMonth, label.dayOfMonth)
-            }.localDate
-            selectedDate = newDate
-            currentOnDateSelected?.invoke(newDate)
-            Unit
+    val onOrbitLabelClickHandler: (OrbitLabelData) -> Unit =
+        remember {
+            { label: OrbitLabelData ->
+                val calendar = Calendar.getInstance(currentTimeZone).apply { time = currentReferenceTime }
+                val jewishCalendar = JewishCalendar().apply { setDate(calendar) }
+                val newDate =
+                    JewishDate()
+                        .apply {
+                            setJewishDate(jewishCalendar.jewishYear, jewishCalendar.jewishMonth, label.dayOfMonth)
+                        }.localDate
+                selectedDate = newDate
+                currentOnDateSelected?.invoke(newDate)
+                Unit
+            }
         }
-    }
-    val onLocationSelectedInternal: (String, String) -> Unit = selection@{ country, city ->
+    val onLocationSelectInternal: (String, String) -> Unit = selection@{ country, city ->
         val location = normalizedLocationOptions[country]?.get(city) ?: return@selection
         selectedLocationSelection = LocationSelection(country, city)
         menuCountrySelection = country
@@ -581,15 +599,16 @@ fun EarthWidgetZmanimView(
         markerElevationMeters = location.elevationMeters
         timeZone = location.timeZone
         earthRotationOffset = 0f
-        onLocationSelected?.invoke(country, city, location)
+        onLocationSelect?.invoke(country, city, location)
     }
 
     if (useScroll) {
         LazyColumn(
-            modifier = modifier
-                .fillMaxSize()
-                .background(backgroundColor)
-                .padding(contentPadding),
+            modifier =
+                modifier
+                    .fillMaxSize()
+                    .background(backgroundColor)
+                    .padding(contentPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -604,11 +623,12 @@ fun EarthWidgetZmanimView(
                             DateSelectionSplitButton(
                                 label = hebrewDateLabel,
                                 selectedDate = selectedDate,
-                                onDateSelected = onCalendarDateSelected,
+                                onDateSelect = onCalendarDateSelected,
                                 menuStyle = globalMenuStyle,
-                                modifier = Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(start = 8.dp, top = 8.dp),
+                                modifier =
+                                    Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(start = 8.dp, top = 8.dp),
                             )
                         }
                         if (resolvedLocationLabel != null) {
@@ -618,8 +638,8 @@ fun EarthWidgetZmanimView(
                                     locations = normalizedLocationOptions,
                                     selectedCountry = menuCountrySelection,
                                     selectedSelection = selectedLocationSelection,
-                                    onCountrySelected = { menuCountrySelection = it },
-                                    onCitySelected = { country, city -> onLocationSelectedInternal(country, city) },
+                                    onCountrySelect = { menuCountrySelection = it },
+                                    onCitySelect = { country, city -> onLocationSelectInternal(country, city) },
                                     menuStyle = globalMenuStyle,
                                     modifier =
                                         Modifier
@@ -665,9 +685,10 @@ fun EarthWidgetZmanimView(
                     if (showKiddushLevanaLegend) {
                         Box(modifier = Modifier.fillMaxWidth()) {
                             KiddushLevanaLegend(
-                                modifier = Modifier
-                                    .align(Alignment.CenterStart)
-                                    .padding(start = 8.dp),
+                                modifier =
+                                    Modifier
+                                        .align(Alignment.CenterStart)
+                                        .padding(start = 8.dp),
                             )
                         }
                     }
@@ -678,12 +699,13 @@ fun EarthWidgetZmanimView(
                 item {
                     val panelShape = RoundedCornerShape(10.dp)
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .widthIn(max = 560.dp)
-                            .background(JewelTheme.globalColors.toolwindowBackground, panelShape)
-                            .border(1.dp, JewelTheme.globalColors.borders.normal, panelShape)
-                            .padding(12.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .widthIn(max = 560.dp)
+                                .background(JewelTheme.globalColors.toolwindowBackground, panelShape)
+                                .border(1.dp, JewelTheme.globalColors.borders.normal, panelShape)
+                                .padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         GroupHeader(text = stringResource(Res.string.earthwidget_datetime_label))
@@ -696,7 +718,7 @@ fun EarthWidgetZmanimView(
                             DateSelectionSplitButton(
                                 label = hebrewDateLabel,
                                 selectedDate = selectedDate,
-                                onDateSelected = onCalendarDateSelected,
+                                onDateSelect = onCalendarDateSelected,
                             )
                         }
 
@@ -836,10 +858,11 @@ fun EarthWidgetZmanimView(
         }
     } else {
         Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(backgroundColor)
-                .padding(contentPadding),
+            modifier =
+                modifier
+                    .fillMaxSize()
+                    .background(backgroundColor)
+                    .padding(contentPadding),
             contentAlignment = Alignment.Center,
         ) {
             EarthSceneContent(
@@ -864,16 +887,18 @@ fun EarthWidgetZmanimView(
             )
             if (showKiddushLevanaLegend) {
                 KiddushLevanaLegend(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 8.dp, bottom = 8.dp),
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 8.dp, bottom = 8.dp),
                 )
             }
             if (earthRotationOffset != 0f || isDateTimeModified) {
                 Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 8.dp, bottom = 8.dp),
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 8.dp, bottom = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalAlignment = Alignment.End,
                 ) {
@@ -891,11 +916,12 @@ fun EarthWidgetZmanimView(
                 DateSelectionSplitButton(
                     label = hebrewDateLabel,
                     selectedDate = selectedDate,
-                    onDateSelected = onCalendarDateSelected,
+                    onDateSelect = onCalendarDateSelected,
                     menuStyle = globalMenuStyle,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 8.dp, top = 8.dp),
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(start = 8.dp, top = 8.dp),
                 )
             }
             if (resolvedLocationLabel != null) {
@@ -905,8 +931,8 @@ fun EarthWidgetZmanimView(
                         locations = normalizedLocationOptions,
                         selectedCountry = menuCountrySelection,
                         selectedSelection = selectedLocationSelection,
-                        onCountrySelected = { menuCountrySelection = it },
-                        onCitySelected = { country, city -> onLocationSelectedInternal(country, city) },
+                        onCountrySelect = { menuCountrySelection = it },
+                        onCitySelect = { country, city -> onLocationSelectInternal(country, city) },
                         menuStyle = globalMenuStyle,
                         modifier =
                             Modifier
@@ -921,68 +947,71 @@ fun EarthWidgetZmanimView(
 
 @Composable
 fun EarthWidgetMoonSkyView(
+    location: EarthWidgetLocation,
+    referenceTime: Date,
     modifier: Modifier = Modifier,
     sphereSize: Dp = 140.dp,
     renderSizePx: Int = 0,
-    location: EarthWidgetLocation,
-    referenceTime: Date,
     showBackground: Boolean = true,
     earthSizeFraction: Float = EARTH_SIZE_FRACTION,
 ) {
     val markerLatitudeDegrees = location.latitude.toFloat()
     val markerLongitudeDegrees = location.longitude.toFloat()
-    val model = remember(
-        referenceTime,
-        markerLatitudeDegrees,
-        markerLongitudeDegrees,
-        location.elevationMeters,
-        location.timeZone,
-    ) {
-        computeZmanimModel(
-            referenceTime = referenceTime,
-            latitude = markerLatitudeDegrees.toDouble(),
-            longitude = markerLongitudeDegrees.toDouble(),
-            elevation = location.elevationMeters,
-            timeZone = location.timeZone,
-            earthRotationDegrees = markerLongitudeDegrees,
-            earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
-        )
-    }
+    val model =
+        remember(
+            referenceTime,
+            markerLatitudeDegrees,
+            markerLongitudeDegrees,
+            location.elevationMeters,
+            location.timeZone,
+        ) {
+            computeZmanimModel(
+                referenceTime = referenceTime,
+                latitude = markerLatitudeDegrees.toDouble(),
+                longitude = markerLongitudeDegrees.toDouble(),
+                elevation = location.elevationMeters,
+                timeZone = location.timeZone,
+                earthRotationDegrees = markerLongitudeDegrees,
+                earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
+            )
+        }
 
     val density = LocalDensity.current
-    val resolvedRenderSizePx = remember(sphereSize, renderSizePx, density) {
-        if (renderSizePx > 0) {
-            renderSizePx
-        } else {
-            (with(density) { sphereSize.toPx() } * 1.35f).roundToInt().coerceAtLeast(160)
+    val resolvedRenderSizePx =
+        remember(sphereSize, renderSizePx, density) {
+            if (renderSizePx > 0) {
+                renderSizePx
+            } else {
+                (with(density) { sphereSize.toPx() } * 1.35f).roundToInt().coerceAtLeast(160)
+            }
         }
-    }
     val renderer = remember { EarthWidgetRenderer() }
-    val moonState = remember(
-        resolvedRenderSizePx,
-        markerLatitudeDegrees,
-        markerLongitudeDegrees,
-        showBackground,
-        earthSizeFraction,
-        model,
-    ) {
-        MoonFromMarkerRenderState(
-            renderSizePx = resolvedRenderSizePx,
-            earthRotationDegrees = markerLongitudeDegrees,
-            lightDegrees = model.lightDegrees,
-            sunElevationDegrees = model.sunElevationDegrees,
-            earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
-            moonOrbitDegrees = model.moonOrbitDegrees,
-            markerLatitudeDegrees = markerLatitudeDegrees,
-            markerLongitudeDegrees = markerLongitudeDegrees,
-            showBackgroundStars = showBackground,
-            moonLightDegrees = model.lightDegrees,
-            moonSunElevationDegrees = model.sunElevationDegrees,
-            moonPhaseAngleDegrees = model.moonPhaseAngleDegrees,
-            julianDay = model.julianDay,
-            earthSizeFraction = earthSizeFraction,
-        )
-    }
+    val moonState =
+        remember(
+            resolvedRenderSizePx,
+            markerLatitudeDegrees,
+            markerLongitudeDegrees,
+            showBackground,
+            earthSizeFraction,
+            model,
+        ) {
+            MoonFromMarkerRenderState(
+                renderSizePx = resolvedRenderSizePx,
+                earthRotationDegrees = markerLongitudeDegrees,
+                lightDegrees = model.lightDegrees,
+                sunElevationDegrees = model.sunElevationDegrees,
+                earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
+                moonOrbitDegrees = model.moonOrbitDegrees,
+                markerLatitudeDegrees = markerLatitudeDegrees,
+                markerLongitudeDegrees = markerLongitudeDegrees,
+                showBackgroundStars = showBackground,
+                moonLightDegrees = model.lightDegrees,
+                moonSunElevationDegrees = model.sunElevationDegrees,
+                moonPhaseAngleDegrees = model.moonPhaseAngleDegrees,
+                julianDay = model.julianDay,
+                earthSizeFraction = earthSizeFraction,
+            )
+        }
 
     MoonFromMarkerWidgetView(
         renderer = renderer,
@@ -1004,7 +1033,6 @@ fun EarthWidgetMoonSkyView(
  */
 @Composable
 private fun EarthSceneContent(
-    modifier: Modifier,
     sphereSize: Dp,
     renderSizePx: Int,
     markerLongitudeDegrees: Float,
@@ -1021,28 +1049,31 @@ private fun EarthSceneContent(
     showMoonInOrbit: Boolean,
     earthSizeFraction: Float,
     isDraggingEarth: Boolean,
+    modifier: Modifier = Modifier,
     kiddushLevanaData: KiddushLevanaData? = null,
 ) {
     val density = LocalDensity.current
-    val degreesPerPx = remember(sphereSize) {
-        // Calculate how many degrees of rotation per pixel of drag
-        // A full drag across the sphere width = 180 degrees
-        with(density) { 180f / sphereSize.toPx() }
-    }
+    val degreesPerPx =
+        remember(sphereSize) {
+            // Calculate how many degrees of rotation per pixel of drag
+            // A full drag across the sphere width = 180 degrees
+            with(density) { 180f / sphereSize.toPx() }
+        }
 
     Box(
-        modifier = modifier.pointerInput(Unit) {
-            detectDragGestures(
-                onDragStart = { onDragStateChange(true) },
-                onDragEnd = { onDragStateChange(false) },
-                onDragCancel = { onDragStateChange(false) },
-            ) { change, dragAmount ->
-                change.consume()
-                // Horizontal drag rotates the Earth (negative because dragging right
-                // should rotate the Earth to show what's on the left)
-                onEarthRotationDelta(-dragAmount.x * degreesPerPx)
-            }
-        },
+        modifier =
+            modifier.pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { onDragStateChange(true) },
+                    onDragEnd = { onDragStateChange(false) },
+                    onDragCancel = { onDragStateChange(false) },
+                ) { change, dragAmount ->
+                    change.consume()
+                    // Horizontal drag rotates the Earth (negative because dragging right
+                    // should rotate the Earth to show what's on the left)
+                    onEarthRotationDelta(-dragAmount.x * degreesPerPx)
+                }
+            },
         contentAlignment = Alignment.Center,
     ) {
         EarthWidgetScene(
@@ -1168,19 +1199,21 @@ private fun KiddushLevanaLegend(modifier: Modifier = Modifier) {
         val textColor = JewelTheme.globalColors.text.normal
 
         Row(
-            modifier = modifier
-                .clip(shape)
-                .background(background, shape)
-                .border(1.dp, borderColor, shape)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier =
+                modifier
+                    .clip(shape)
+                    .background(background, shape)
+                    .border(1.dp, borderColor, shape)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .background(KIDDUSH_LEVANA_LEGEND_COLOR, CircleShape)
-                    .border(1.dp, borderColor, CircleShape)
+                modifier =
+                    Modifier
+                        .size(10.dp)
+                        .background(KIDDUSH_LEVANA_LEGEND_COLOR, CircleShape)
+                        .border(1.dp, borderColor, CircleShape),
             )
             Text(
                 text = stringResource(Res.string.earthwidget_kiddush_levana_legend),
@@ -1199,9 +1232,10 @@ private fun TimePresetButtonLabel(
     time: Date?,
     timeFormatter: SimpleDateFormat,
 ) {
-    val timeText = remember(time, timeFormatter) {
-        time?.let { "\u2066${timeFormatter.format(it)}\u2069" }
-    }
+    val timeText =
+        remember(time, timeFormatter) {
+            time?.let { "\u2066${timeFormatter.format(it)}\u2069" }
+        }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1222,14 +1256,14 @@ private fun TimePresetButtonLabel(
 private fun DateSelectionSplitButton(
     label: String,
     selectedDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit,
-    menuStyle: MenuStyle = JewelTheme.menuStyle,
+    onDateSelect: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
+    menuStyle: MenuStyle = JewelTheme.menuStyle,
 ) {
     io.github.kdroidfilter.seforimapp.hebrewcalendar.DateSelectionSplitButton(
         label = label,
         selectedDate = selectedDate,
-        onDateSelected = onDateSelected,
+        onDateSelect = onDateSelect,
         initialMode = CalendarMode.HEBREW,
         menuStyle = menuStyle,
         modifier = modifier,
@@ -1242,10 +1276,10 @@ private fun LocationSelectionSplitButton(
     locations: Map<String, Map<String, EarthWidgetLocation>>,
     selectedCountry: String?,
     selectedSelection: LocationSelection?,
-    onCountrySelected: (String) -> Unit,
-    onCitySelected: (String, String) -> Unit,
-    menuStyle: MenuStyle = JewelTheme.menuStyle,
+    onCountrySelect: (String) -> Unit,
+    onCitySelect: (String, String) -> Unit,
     modifier: Modifier = Modifier,
+    menuStyle: MenuStyle = JewelTheme.menuStyle,
 ) {
     Box(modifier = modifier) {
         OutlinedSplitButton(
@@ -1275,11 +1309,12 @@ private fun LocationSelectionSplitButton(
                             LocationMenuContent(
                                 locations = locations,
                                 selectedCountry = selectedCountry,
-                                selectedCity = selectedSelection
-                                    ?.takeIf { it.country == selectedCountry }
-                                    ?.city,
-                                onCountrySelected = onCountrySelected,
-                                onCitySelected = onCitySelected,
+                                selectedCity =
+                                    selectedSelection
+                                        ?.takeIf { it.country == selectedCountry }
+                                        ?.city,
+                                onCountrySelect = onCountrySelect,
+                                onCitySelect = onCitySelect,
                             )
                         }
                     }
@@ -1294,8 +1329,8 @@ private fun LocationMenuContent(
     locations: Map<String, Map<String, EarthWidgetLocation>>,
     selectedCountry: String?,
     selectedCity: String?,
-    onCountrySelected: (String) -> Unit,
-    onCitySelected: (String, String) -> Unit,
+    onCountrySelect: (String) -> Unit,
+    onCitySelect: (String, String) -> Unit,
 ) {
     val menuController = LocalMenuController.current
     val inputModeManager = LocalInputModeManager.current
@@ -1304,22 +1339,24 @@ private fun LocationMenuContent(
     }
     val countries = remember(locations) { locations.keys.toList() }
     val activeCountry = selectedCountry ?: countries.firstOrNull()
-    val cities = remember(activeCountry, locations) {
-        activeCountry?.let { locations[it]?.keys?.toList().orEmpty() }.orEmpty()
-    }
+    val cities =
+        remember(activeCountry, locations) {
+            activeCountry?.let { locations[it]?.keys?.toList().orEmpty() }.orEmpty()
+        }
 
     Row(
-        modifier = Modifier
-            .width(LOCATION_MENU_WIDTH)
-            .heightIn(max = LOCATION_MENU_HEIGHT)
-            .padding(8.dp),
+        modifier =
+            Modifier
+                .width(LOCATION_MENU_WIDTH)
+                .heightIn(max = LOCATION_MENU_HEIGHT)
+                .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.Top,
     ) {
         LocationListColumn(
             items = countries,
             selectedItem = activeCountry,
-            onItemSelected = onCountrySelected,
+            onItemSelect = onCountrySelect,
             modifier = Modifier.weight(1f),
         )
         Divider(
@@ -1329,9 +1366,9 @@ private fun LocationMenuContent(
         LocationListColumn(
             items = cities,
             selectedItem = selectedCity,
-            onItemSelected = { city ->
+            onItemSelect = { city ->
                 activeCountry?.let { country ->
-                    onCitySelected(country, city)
+                    onCitySelect(country, city)
                     closeMenu()
                 }
             },
@@ -1345,7 +1382,7 @@ private fun LocationMenuContent(
 private fun LocationListColumn(
     items: List<String>,
     selectedItem: String?,
-    onItemSelected: (String) -> Unit,
+    onItemSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var hoveredItem by remember(items) { mutableStateOf<String?>(null) }
@@ -1356,34 +1393,36 @@ private fun LocationListColumn(
     val normalTextColor = JewelTheme.globalColors.text.normal
 
     Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .verticalScroll(rememberScrollState()),
+        modifier =
+            modifier
+                .fillMaxHeight()
+                .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         for (item in items) {
             val isSelected = item == selectedItem
             val isHovered = item == hoveredItem
-            val background: Brush = when {
-                isSelected -> selectedBg
-                isHovered -> hoverBg
-                else -> SolidColor(Color.Transparent)
-            }
+            val background: Brush =
+                when {
+                    isSelected -> selectedBg
+                    isHovered -> hoverBg
+                    else -> SolidColor(Color.Transparent)
+                }
             val textColor = if (isSelected) selectedTextColor else normalTextColor
 
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(itemShape)
-                    .background(background, itemShape)
-                    .onPointerEvent(PointerEventType.Enter) { hoveredItem = item }
-                    .onPointerEvent(PointerEventType.Exit) {
-                        if (hoveredItem == item) {
-                            hoveredItem = null
-                        }
-                    }
-                    .clickable { onItemSelected(item) }
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(itemShape)
+                        .background(background, itemShape)
+                        .onPointerEvent(PointerEventType.Enter) { hoveredItem = item }
+                        .onPointerEvent(PointerEventType.Exit) {
+                            if (hoveredItem == item) {
+                                hoveredItem = null
+                            }
+                        }.clickable { onItemSelect(item) }
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
             ) {
                 Text(
                     text = item,
@@ -1426,31 +1465,33 @@ private fun computeZmanimModel(
     earthRotationDegrees: Float,
     earthTiltDegrees: Float,
 ): ZmanimModel {
-    val sunDirection = computeSunLightDirectionForEarth(
-        referenceTime = referenceTime,
-        latitude = latitude,
-        longitude = longitude,
-        earthRotationDegrees = earthRotationDegrees,
-        earthTiltDegrees = earthTiltDegrees,
-    )
+    val sunDirection =
+        computeSunLightDirectionForEarth(
+            referenceTime = referenceTime,
+            latitude = latitude,
+            longitude = longitude,
+            earthRotationDegrees = earthRotationDegrees,
+            earthTiltDegrees = earthTiltDegrees,
+        )
 
     // Calculate moon position
     val julianDay = computeJulianDayUtc(referenceTime)
     val phaseAngle = computeHalakhicPhaseAngle(referenceTime, timeZone)
-    val moonOrbitDegrees = run {
-        val jewishCalendar = JewishCalendar()
-        val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
-        jewishCalendar.setDate(calendar)
+    val moonOrbitDegrees =
+        run {
+            val jewishCalendar = JewishCalendar()
+            val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
+            jewishCalendar.setDate(calendar)
 
-        val daysInMonth = jewishCalendar.daysInJewishMonth
-        val dayOfMonth = jewishCalendar.jewishDayOfMonth
-        if (daysInMonth > 0 && dayOfMonth in 1..daysInMonth) {
-            val stepDegrees = 360f / daysInMonth.toFloat()
-            normalizeOrbitDegrees(ORBIT_DAY_LABEL_START_DEGREES + (dayOfMonth - 1) * stepDegrees)
-        } else {
-            normalizeOrbitDegrees(phaseAngle + ORBIT_DAY_LABEL_START_DEGREES)
+            val daysInMonth = jewishCalendar.daysInJewishMonth
+            val dayOfMonth = jewishCalendar.jewishDayOfMonth
+            if (daysInMonth > 0 && dayOfMonth in 1..daysInMonth) {
+                val stepDegrees = 360f / daysInMonth.toFloat()
+                normalizeOrbitDegrees(ORBIT_DAY_LABEL_START_DEGREES + (dayOfMonth - 1) * stepDegrees)
+            } else {
+                normalizeOrbitDegrees(phaseAngle + ORBIT_DAY_LABEL_START_DEGREES)
+            }
         }
-    }
 
     return ZmanimModel(
         lightDegrees = sunDirection.lightDegrees,
@@ -1476,10 +1517,11 @@ private fun computeHebrewMonthOrbitLabels(
     val daysInMonth = jewishCalendar.daysInJewishMonth
     if (daysInMonth <= 0) return emptyList()
 
-    val formatter = HebrewDateFormatter().apply {
-        isHebrewFormat = true
-        isUseGershGershayim = false
-    }
+    val formatter =
+        HebrewDateFormatter().apply {
+            isHebrewFormat = true
+            isUseGershGershayim = false
+        }
 
     val stepDegrees = 360f / daysInMonth.toFloat()
 
@@ -1500,17 +1542,19 @@ private fun computeZmanimPresetTimes(
     timeZone: TimeZone,
 ): ZmanimPresetTimes {
     val geoLocation = GeoLocation("earthwidget", latitude, longitude, elevationMeters, timeZone)
-    val calendar = ComplexZmanimCalendar(geoLocation).apply {
-        this.calendar = Calendar.getInstance(timeZone).apply {
-            set(Calendar.YEAR, date.year)
-            set(Calendar.MONTH, date.monthValue - 1)
-            set(Calendar.DAY_OF_MONTH, date.dayOfMonth)
-            set(Calendar.HOUR_OF_DAY, 12)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
+    val calendar =
+        ComplexZmanimCalendar(geoLocation).apply {
+            this.calendar =
+                Calendar.getInstance(timeZone).apply {
+                    set(Calendar.YEAR, date.year)
+                    set(Calendar.MONTH, date.monthValue - 1)
+                    set(Calendar.DAY_OF_MONTH, date.dayOfMonth)
+                    set(Calendar.HOUR_OF_DAY, 12)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
         }
-    }
 
     return ZmanimPresetTimes(
         sunrise = calendar.sunrise,
@@ -1525,23 +1569,25 @@ fun computeZmanimTimes(
     location: EarthWidgetLocation,
     opinion: ZmanimOpinion = ZmanimOpinion.DEFAULT,
 ): ZmanimTimes {
-    val geoLocation = GeoLocation(
-        "earthwidget",
-        location.latitude,
-        location.longitude,
-        location.elevationMeters,
-        location.timeZone,
-    )
+    val geoLocation =
+        GeoLocation(
+            "earthwidget",
+            location.latitude,
+            location.longitude,
+            location.elevationMeters,
+            location.timeZone,
+        )
 
-    val javaCalendar = Calendar.getInstance(location.timeZone).apply {
-        set(Calendar.YEAR, date.year)
-        set(Calendar.MONTH, date.monthValue - 1)
-        set(Calendar.DAY_OF_MONTH, date.dayOfMonth)
-        set(Calendar.HOUR_OF_DAY, 12)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }
+    val javaCalendar =
+        Calendar.getInstance(location.timeZone).apply {
+            set(Calendar.YEAR, date.year)
+            set(Calendar.MONTH, date.monthValue - 1)
+            set(Calendar.DAY_OF_MONTH, date.dayOfMonth)
+            set(Calendar.HOUR_OF_DAY, 12)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
 
     return when (opinion) {
         ZmanimOpinion.SEPHARDIC -> computeZmanimTimesSephardic(geoLocation, javaCalendar)
@@ -1556,9 +1602,10 @@ private fun computeZmanimTimesDefault(
     geoLocation: GeoLocation,
     javaCalendar: Calendar,
 ): ZmanimTimes {
-    val calendar = ComplexZmanimCalendar(geoLocation).apply {
-        this.calendar = javaCalendar
-    }
+    val calendar =
+        ComplexZmanimCalendar(geoLocation).apply {
+            this.calendar = javaCalendar
+        }
 
     return ZmanimTimes(
         alosHashachar = calendar.alosHashachar,
@@ -1595,17 +1642,19 @@ private fun computeZmanimTimesSephardic(
 ): ZmanimTimes {
     val isInIsrael = geoLocation.timeZone.id == "Asia/Jerusalem"
     val useAmudehHoraah = !isInIsrael
-    val roCalendar = ROZmanimCalendar(geoLocation).apply {
-        this.calendar = javaCalendar
-        isUseElevation = false
-        isUseAmudehHoraah = useAmudehHoraah
-    }
+    val roCalendar =
+        ROZmanimCalendar(geoLocation).apply {
+            this.calendar = javaCalendar
+            isUseElevation = false
+            isUseAmudehHoraah = useAmudehHoraah
+        }
 
     // For GRA times, we still use the standard calculation
-    val complexCalendar = ComplexZmanimCalendar(geoLocation).apply {
-        this.calendar = javaCalendar
-        isUseElevation = false
-    }
+    val complexCalendar =
+        ComplexZmanimCalendar(geoLocation).apply {
+            this.calendar = javaCalendar
+            isUseElevation = false
+        }
 
     return ZmanimTimes(
         alosHashachar = roCalendar.getAlotHashachar72Zmaniyot(),
@@ -1620,11 +1669,12 @@ private fun computeZmanimTimesSephardic(
         plagHamincha = roCalendar.getPlagHaminchaYalkutYosef(),
         sunset = roCalendar.sunset,
         tzais = roCalendar.getTzeit(),
-        tzaisRabbeinuTam = if (useAmudehHoraah) {
-            roCalendar.getTzais72ZmanisLkulah()
-        } else {
-            roCalendar.getTzais72Zmanis()
-        },
+        tzaisRabbeinuTam =
+            if (useAmudehHoraah) {
+                roCalendar.getTzais72ZmanisLkulah()
+            } else {
+                roCalendar.getTzais72Zmanis()
+            },
         chatzosLayla = roCalendar.getChatzotLayla(),
     )
 }
@@ -1644,7 +1694,10 @@ private fun computeZmanimTimesSephardic(
  * @param timeZone Local timezone.
  * @return Moon phase angle in degrees (0 = new moon, 180 = full moon).
  */
-private fun computeHalakhicPhaseAngle(referenceTime: Date, timeZone: TimeZone): Float {
+private fun computeHalakhicPhaseAngle(
+    referenceTime: Date,
+    timeZone: TimeZone,
+): Float {
     val jewishCalendar = JewishCalendar()
     val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
     jewishCalendar.setDate(calendar)
@@ -1682,11 +1735,12 @@ private fun goToPreviousHebrewMonth(jewishCalendar: JewishCalendar) {
         }
         JewishDate.NISSAN -> {
             // Nissan -> Adar (or Adar II in leap year)
-            val prevMonth = if (jewishCalendar.isJewishLeapYear) {
-                JewishDate.ADAR_II
-            } else {
-                JewishDate.ADAR
-            }
+            val prevMonth =
+                if (jewishCalendar.isJewishLeapYear) {
+                    JewishDate.ADAR_II
+                } else {
+                    JewishDate.ADAR
+                }
             jewishCalendar.jewishMonth = prevMonth
         }
         else -> {
@@ -1703,17 +1757,18 @@ private fun goToPreviousHebrewMonth(jewishCalendar: JewishCalendar) {
 /**
  * Normalizes an orbit angle to [0, 360) range.
  */
-private fun normalizeOrbitDegrees(angleDegrees: Float): Float {
-    return ((angleDegrees % 360f) + 360f) % 360f
-}
+private fun normalizeOrbitDegrees(angleDegrees: Float): Float = ((angleDegrees % 360f) + 360f) % 360f
 
-internal fun orbitDegreesForDaysSinceMolad(daysSinceMolad: Double, daysInMonth: Int): Float {
+internal fun orbitDegreesForDaysSinceMolad(
+    daysSinceMolad: Double,
+    daysInMonth: Int,
+): Float {
     if (daysInMonth <= 0) return normalizeOrbitDegrees(ORBIT_DAY_LABEL_START_DEGREES)
     val stepDegrees = 360f / daysInMonth.toFloat()
     // Align "day N after molad" with the same day label (labels are 1-based).
     val alignedDaysSinceMolad = daysSinceMolad - 1.0
     return normalizeOrbitDegrees(
-        ORBIT_DAY_LABEL_START_DEGREES + (alignedDaysSinceMolad * stepDegrees).toFloat()
+        ORBIT_DAY_LABEL_START_DEGREES + (alignedDaysSinceMolad * stepDegrees).toFloat(),
     )
 }
 
@@ -1744,16 +1799,22 @@ private fun resolveInitialLocationSelection(
  * @param longitude Location longitude.
  * @return Appropriate timezone.
  */
-fun timeZoneForLocation(latitude: Double, longitude: Double): TimeZone {
+fun timeZoneForLocation(
+    latitude: Double,
+    longitude: Double,
+): TimeZone {
     // Use Israel timezone for coordinates within Israel
     if (latitude in ISRAEL_LAT_MIN..ISRAEL_LAT_MAX &&
-        longitude in ISRAEL_LON_MIN..ISRAEL_LON_MAX) {
+        longitude in ISRAEL_LON_MIN..ISRAEL_LON_MAX
+    ) {
         return TimeZone.getTimeZone("Asia/Jerusalem")
     }
 
     // Calculate GMT offset from longitude
-    val offsetHours = (longitude / DEGREES_PER_HOUR).roundToInt()
-        .coerceIn(MIN_GMT_OFFSET, MAX_GMT_OFFSET)
+    val offsetHours =
+        (longitude / DEGREES_PER_HOUR)
+            .roundToInt()
+            .coerceIn(MIN_GMT_OFFSET, MAX_GMT_OFFSET)
     val zoneId = if (offsetHours >= 0) "GMT+$offsetHours" else "GMT$offsetHours"
 
     return TimeZone.getTimeZone(zoneId)
@@ -1786,16 +1847,18 @@ private fun computeKiddushLevanaData(
     jewishCalendar.setDate(calendar)
 
     // Get earliest time based on opinion
-    val earliestTime: Date? = when (earliestOpinion) {
-        KiddushLevanaEarliestOpinion.DAYS_3 -> jewishCalendar.tchilasZmanKidushLevana3Days
-        KiddushLevanaEarliestOpinion.DAYS_7 -> jewishCalendar.tchilasZmanKidushLevana7Days
-    }
+    val earliestTime: Date? =
+        when (earliestOpinion) {
+            KiddushLevanaEarliestOpinion.DAYS_3 -> jewishCalendar.tchilasZmanKidushLevana3Days
+            KiddushLevanaEarliestOpinion.DAYS_7 -> jewishCalendar.tchilasZmanKidushLevana7Days
+        }
 
     // Get latest time based on opinion
-    val latestTime: Date? = when (latestOpinion) {
-        KiddushLevanaLatestOpinion.BETWEEN_MOLDOS -> jewishCalendar.sofZmanKidushLevanaBetweenMoldos
-        KiddushLevanaLatestOpinion.DAYS_15 -> jewishCalendar.sofZmanKidushLevana15Days
-    }
+    val latestTime: Date? =
+        when (latestOpinion) {
+            KiddushLevanaLatestOpinion.BETWEEN_MOLDOS -> jewishCalendar.sofZmanKidushLevanaBetweenMoldos
+            KiddushLevanaLatestOpinion.DAYS_15 -> jewishCalendar.sofZmanKidushLevana15Days
+        }
 
     if (earliestTime == null || latestTime == null) {
         return KiddushLevanaData.EMPTY

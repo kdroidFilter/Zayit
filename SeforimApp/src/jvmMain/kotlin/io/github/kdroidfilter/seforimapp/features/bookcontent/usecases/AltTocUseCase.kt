@@ -14,20 +14,20 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 
 class AltTocUseCase(
     private val repository: SeforimRepository,
-    private val stateManager: BookContentStateManager
+    private val stateManager: BookContentStateManager,
 ) {
-
     suspend fun loadStructures(book: Book?) {
         if (book == null) {
             resetAltToc()
             return
         }
         // If the catalog-provided book lacks the flag, re-read from DB to get the truth.
-        val effectiveBook = if (!book.hasAltStructures) {
-            withContext(Dispatchers.IO) { repository.getBookCore(book.id) } ?: book
-        } else {
-            book
-        }
+        val effectiveBook =
+            if (!book.hasAltStructures) {
+                withContext(Dispatchers.IO) { repository.getBookCore(book.id) } ?: book
+            } else {
+                book
+            }
         if (effectiveBook.hasAltStructures && effectiveBook != book) {
             stateManager.updateNavigation(save = false) { copy(selectedBook = effectiveBook) }
         }
@@ -36,17 +36,19 @@ class AltTocUseCase(
             return
         }
 
-        val structures = withContext(Dispatchers.IO) {
-            repository.getAltTocStructuresForBook(effectiveBook.id)
-        }
+        val structures =
+            withContext(Dispatchers.IO) {
+                repository.getAltTocStructuresForBook(effectiveBook.id)
+            }
         if (structures.isEmpty()) {
             resetAltToc()
             return
         }
 
         val preferredId = stateManager.state.value.altToc.selectedStructureId
-        val targetStructureId = structures.firstOrNull { it.id == preferredId }?.id
-            ?: pickPreferredStructure(structures).id
+        val targetStructureId =
+            structures.firstOrNull { it.id == preferredId }?.id
+                ?: pickPreferredStructure(structures).id
 
         stateManager.updateAltToc {
             AltTocState(
@@ -57,7 +59,7 @@ class AltTocUseCase(
                 children = emptyMap(),
                 selectedEntryId = null,
                 scrollIndex = 0,
-                scrollOffset = 0
+                scrollOffset = 0,
             )
         }
 
@@ -65,26 +67,29 @@ class AltTocUseCase(
     }
 
     suspend fun loadRoot(structureId: Long) {
-        val (root, allEntries) = withContext(Dispatchers.IO) {
-            repository.getAltRootToc(structureId) to repository.getAltTocEntriesForStructure(structureId)
-        }
-        val lineHeadings = allEntries
-            .filter { it.lineId != null }
-            .groupBy { it.lineId!! }
+        val (root, allEntries) =
+            withContext(Dispatchers.IO) {
+                repository.getAltRootToc(structureId) to repository.getAltTocEntriesForStructure(structureId)
+            }
+        val lineHeadings =
+            allEntries
+                .filter { it.lineId != null }
+                .groupBy { it.lineId!! }
 
         stateManager.updateAltToc {
             copy(
                 selectedStructureId = structureId,
                 entries = root,
                 children = mapOf(-1L to root),
-                expandedEntries = expandedEntries.ifEmpty {
-                    root.firstOrNull()?.takeIf { it.hasChildren }?.let { setOf(it.id) } ?: emptySet()
-                },
+                expandedEntries =
+                    expandedEntries.ifEmpty {
+                        root.firstOrNull()?.takeIf { it.hasChildren }?.let { setOf(it.id) } ?: emptySet()
+                    },
                 selectedEntryId = null,
                 scrollIndex = 0,
                 scrollOffset = 0,
                 lineHeadingsByLineId = lineHeadings,
-                entriesById = allEntries.associateBy { it.id }
+                entriesById = allEntries.associateBy { it.id },
             )
         }
 
@@ -97,14 +102,15 @@ class AltTocUseCase(
     }
 
     private fun pickPreferredStructure(structures: List<AltTocStructure>): AltTocStructure {
-        fun priority(key: String): Int = when (key.lowercase()) {
-            "daf" -> 0
-            "parasha" -> 1
-            "chapters" -> 2
-            "topic" -> 3
-            "section" -> 4
-            else -> 100
-        }
+        fun priority(key: String): Int =
+            when (key.lowercase()) {
+                "daf" -> 0
+                "parasha" -> 1
+                "chapters" -> 2
+                "topic" -> 3
+                "section" -> 4
+                else -> 100
+            }
         return structures.minByOrNull { priority(it.key) } ?: structures.first()
     }
 
@@ -114,7 +120,7 @@ class AltTocUseCase(
             stateManager.updateAltToc {
                 copy(
                     children = this.children + (parentId to children),
-                    entriesById = entriesById + children.associateBy { it.id }
+                    entriesById = entriesById + children.associateBy { it.id },
                 )
             }
         }
@@ -140,7 +146,10 @@ class AltTocUseCase(
         }
     }
 
-    fun updateAltTocScrollPosition(index: Int, offset: Int) {
+    fun updateAltTocScrollPosition(
+        index: Int,
+        offset: Int,
+    ) {
         stateManager.updateAltToc {
             copy(scrollIndex = index, scrollOffset = offset)
         }
@@ -161,11 +170,12 @@ class AltTocUseCase(
     suspend fun selectAltEntryForLine(lineId: Long) {
         val altState = stateManager.state.value.altToc
         val structureId = altState.selectedStructureId ?: return
-        val altEntryId = altState.lineHeadingsByLineId[lineId]?.firstOrNull()?.id
-            ?: withContext(Dispatchers.IO) {
-                repository.getAltTocEntryIdForLine(lineId, structureId)
-            }
-            ?: return
+        val altEntryId =
+            altState.lineHeadingsByLineId[lineId]?.firstOrNull()?.id
+                ?: withContext(Dispatchers.IO) {
+                    repository.getAltTocEntryIdForLine(lineId, structureId)
+                }
+                ?: return
         stateManager.updateAltToc {
             copy(selectedEntryId = altEntryId)
         }
@@ -179,9 +189,10 @@ class AltTocUseCase(
         var guard = 0
         while (currentId != null && guard++ < 512) {
             val cached = stateManager.state.value.altToc.entriesById[currentId]
-            val entry = cached ?: withContext(Dispatchers.IO) {
-                runCatching { repository.getAltTocEntry(currentId) }.getOrNull()
-            }
+            val entry =
+                cached ?: withContext(Dispatchers.IO) {
+                    runCatching { repository.getAltTocEntry(currentId) }.getOrNull()
+                }
             if (entry == null) break
             path += entry
             currentId = entry.parentId
@@ -205,11 +216,12 @@ class AltTocUseCase(
 
     private fun getAllDescendantIds(
         entryId: Long,
-        childrenMap: Map<Long, List<AltTocEntry>>
-    ): Set<Long> = buildSet {
-        childrenMap[entryId]?.forEach { child ->
-            add(child.id)
-            addAll(getAllDescendantIds(child.id, childrenMap))
+        childrenMap: Map<Long, List<AltTocEntry>>,
+    ): Set<Long> =
+        buildSet {
+            childrenMap[entryId]?.forEach { child ->
+                add(child.id)
+                addAll(getAllDescendantIds(child.id, childrenMap))
+            }
         }
-    }
 }

@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.asSharedFlow
  */
 enum class TabType {
     BOOK,
-    SEARCH
+    SEARCH,
 }
 
 /**
@@ -22,7 +22,7 @@ enum class TabType {
 data class TabTitleUpdate(
     val tabId: String,
     val newTitle: String,
-    val tabType: TabType = TabType.SEARCH
+    val tabType: TabType = TabType.SEARCH,
 )
 
 /**
@@ -42,7 +42,9 @@ class TabTitleUpdateManager {
      * @param tabType The type of content in the tab
      * @return true if the update was successful, false otherwise
      */
-    fun updateTabTitle(tabId: String, newTitle: String, tabType: TabType = TabType.SEARCH): Boolean {
-        return _titleUpdates.tryEmit(TabTitleUpdate(tabId, newTitle, tabType))
-    }
+    fun updateTabTitle(
+        tabId: String,
+        newTitle: String,
+        tabType: TabType = TabType.SEARCH,
+    ): Boolean = _titleUpdates.tryEmit(TabTitleUpdate(tabId, newTitle, tabType))
 }

@@ -5,12 +5,11 @@ import androidx.compose.runtime.Immutable
 @Immutable
 data class CommentatorItem(
     val name: String,
-    val bookId: Long
+    val bookId: Long,
 )
 
 @Immutable
 data class CommentatorGroup(
     val label: String,
-    val commentators: List<CommentatorItem>
+    val commentators: List<CommentatorItem>,
 )
-

@@ -23,8 +23,9 @@ import java.util.GregorianCalendar
  *
  * Based on: https://github.com/Elyahu41/RabbiOvadiahYosefCalendarApp
  */
-class ROZmanimCalendar(geoLocation: GeoLocation) : ZmanimCalendar(geoLocation) {
-
+class ROZmanimCalendar(
+    geoLocation: GeoLocation,
+) : ZmanimCalendar(geoLocation) {
     companion object {
         private const val MINUTES_PER_HOUR = 60
         private const val MILLISECONDS_PER_MINUTE = 60_000L
@@ -55,34 +56,43 @@ class ROZmanimCalendar(geoLocation: GeoLocation) : ZmanimCalendar(geoLocation) {
         }
     }
 
-    private fun getPercentOfShaahZmanisFromDegrees(degrees: Double, sunset: Boolean): Double {
+    private fun getPercentOfShaahZmanisFromDegrees(
+        degrees: Double,
+        sunset: Boolean,
+    ): Double {
         val seaLevelSunrise = seaLevelSunrise
         val seaLevelSunset = seaLevelSunset
-        val twilight = if (sunset) {
-            getSunsetOffsetByDegrees(AstronomicalCalendar.GEOMETRIC_ZENITH + degrees)
-        } else {
-            getSunriseOffsetByDegrees(AstronomicalCalendar.GEOMETRIC_ZENITH + degrees)
-        }
+        val twilight =
+            if (sunset) {
+                getSunsetOffsetByDegrees(AstronomicalCalendar.GEOMETRIC_ZENITH + degrees)
+            } else {
+                getSunriseOffsetByDegrees(AstronomicalCalendar.GEOMETRIC_ZENITH + degrees)
+            }
 
         if (seaLevelSunrise == null || seaLevelSunset == null || twilight == null) {
             return Double.MIN_VALUE
         }
 
         val shaahZmanis = (seaLevelSunset.time - seaLevelSunrise.time) / 12.0
-        val riseSetToTwilight = if (sunset) {
-            twilight.time - seaLevelSunset.time
-        } else {
-            seaLevelSunrise.time - twilight.time
-        }
+        val riseSetToTwilight =
+            if (sunset) {
+                twilight.time - seaLevelSunset.time
+            } else {
+                seaLevelSunrise.time - twilight.time
+            }
         return riseSetToTwilight / shaahZmanis
     }
 
-    private fun getEquinoxPercentage(degrees: Double, sunset: Boolean): Double? {
+    private fun getEquinoxPercentage(
+        degrees: Double,
+        sunset: Boolean,
+    ): Double? {
         val originalCalendar = calendar
-        val equinoxCalendar = GregorianCalendar(originalCalendar.timeZone).apply {
-            set(originalCalendar.get(Calendar.YEAR), Calendar.MARCH, 17, 0, 0, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
+        val equinoxCalendar =
+            GregorianCalendar(originalCalendar.timeZone).apply {
+                set(originalCalendar.get(Calendar.YEAR), Calendar.MARCH, 17, 0, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
         calendar = equinoxCalendar
         return try {
             val percentage = getPercentOfShaahZmanisFromDegrees(degrees, sunset)
@@ -151,17 +161,13 @@ class ROZmanimCalendar(geoLocation: GeoLocation) : ZmanimCalendar(geoLocation) {
      * The day is calculated from alos 72 zmaniyot to tzais 72 zmaniyot,
      * and sof zman shema is 3 shaos zmaniyos into this day.
      */
-    fun getSofZmanShmaMGA72MinutesZmanis(): Date? {
-        return getSofZmanShma(getAlotHashachar72Zmaniyot(), getTzais72Zmanis())
-    }
+    fun getSofZmanShmaMGA72MinutesZmanis(): Date? = getSofZmanShma(getAlotHashachar72Zmaniyot(), getTzais72Zmanis())
 
     /**
      * Returns the latest time for the morning prayer (Shacharis) according to the MGA,
      * using 72 zmaniyot minutes for both alos and tzais.
      */
-    fun getSofZmanTfilaMGA72MinutesZmanis(): Date? {
-        return getSofZmanTfila(getAlotHashachar72Zmaniyot(), getTzais72Zmanis())
-    }
+    fun getSofZmanTfilaMGA72MinutesZmanis(): Date? = getSofZmanTfila(getAlotHashachar72Zmaniyot(), getTzais72Zmanis())
 
     /**
      * Returns the latest time for burning chametz according to the MGA.
@@ -181,10 +187,9 @@ class ROZmanimCalendar(geoLocation: GeoLocation) : ZmanimCalendar(geoLocation) {
      * While this has almost no practical effect on the time, the Ohr HaChaim
      * calendar uses elevation-adjusted times throughout.
      */
-    fun getChatzotHayom(): Date? {
-        return getSunTransit(elevationAdjustedSunrise, elevationAdjustedSunset)
+    fun getChatzotHayom(): Date? =
+        getSunTransit(elevationAdjustedSunrise, elevationAdjustedSunset)
             ?: chatzos
-    }
 
     /**
      * Returns mincha gedola, the earliest time for the afternoon prayer.
@@ -278,9 +283,8 @@ class ROZmanimCalendar(geoLocation: GeoLocation) : ZmanimCalendar(geoLocation) {
      *
      * @param offsetMinutes Minutes after sunset (default 40 for outside Israel).
      */
-    fun getTzaisAteretTorah(offsetMinutes: Double = 40.0): Date? {
-        return getTimeOffset(elevationAdjustedSunset, (offsetMinutes * MILLISECONDS_PER_MINUTE).toLong())
-    }
+    fun getTzaisAteretTorah(offsetMinutes: Double = 40.0): Date? =
+        getTimeOffset(elevationAdjustedSunset, (offsetMinutes * MILLISECONDS_PER_MINUTE).toLong())
 
     /**
      * Returns the earlier of the two Rabbeinu Tam times.
@@ -344,16 +348,13 @@ class ROZmanimCalendar(geoLocation: GeoLocation) : ZmanimCalendar(geoLocation) {
      *
      * The MGA day is calculated from alos 72 zmaniyot to tzais 72 zmaniyot.
      */
-    fun getShaahZmanis72MinutesZmanis(): Long {
-        return getTemporalHour(getAlotHashachar72Zmaniyot(), getTzais72Zmanis())
-    }
+    fun getShaahZmanis72MinutesZmanis(): Long = getTemporalHour(getAlotHashachar72Zmaniyot(), getTzais72Zmanis())
 
     /**
      * Returns candle lighting time using elevation-adjusted sunset.
      *
      * @param offsetMinutes Minutes before sunset for candle lighting (typically 18-40).
      */
-    fun getCandleLightingWithElevation(offsetMinutes: Double = 20.0): Date? {
-        return getTimeOffset(elevationAdjustedSunset, -(offsetMinutes * MILLISECONDS_PER_MINUTE).toLong())
-    }
+    fun getCandleLightingWithElevation(offsetMinutes: Double = 20.0): Date? =
+        getTimeOffset(elevationAdjustedSunset, -(offsetMinutes * MILLISECONDS_PER_MINUTE).toLong())
 }

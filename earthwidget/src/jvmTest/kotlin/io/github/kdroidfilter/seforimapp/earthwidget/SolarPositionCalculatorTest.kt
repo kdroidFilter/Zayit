@@ -17,29 +17,32 @@ class SolarPositionCalculatorTest {
         val earthRotationDegrees = 0f
         val earthTiltDegrees = 23.44f
 
-        val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
-            set(2025, Calendar.JUNE, 1, 0, 0, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
+        val calendar =
+            Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+                set(2025, Calendar.JUNE, 1, 0, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
 
-        var previous = computeSunLightDirectionForEarth(
-            referenceTime = calendar.time,
-            latitude = latitude,
-            longitude = longitude,
-            earthRotationDegrees = earthRotationDegrees,
-            earthTiltDegrees = earthTiltDegrees,
-        )
-        var previousVec: TestVec3d = sunVectorFromAngles(previous.lightDegrees, previous.sunElevationDegrees)
-
-        repeat(24 * 60) { minuteIndex ->
-            calendar.add(Calendar.MINUTE, 1)
-            val current = computeSunLightDirectionForEarth(
+        var previous =
+            computeSunLightDirectionForEarth(
                 referenceTime = calendar.time,
                 latitude = latitude,
                 longitude = longitude,
                 earthRotationDegrees = earthRotationDegrees,
                 earthTiltDegrees = earthTiltDegrees,
             )
+        var previousVec: TestVec3d = sunVectorFromAngles(previous.lightDegrees, previous.sunElevationDegrees)
+
+        repeat(24 * 60) { minuteIndex ->
+            calendar.add(Calendar.MINUTE, 1)
+            val current =
+                computeSunLightDirectionForEarth(
+                    referenceTime = calendar.time,
+                    latitude = latitude,
+                    longitude = longitude,
+                    earthRotationDegrees = earthRotationDegrees,
+                    earthTiltDegrees = earthTiltDegrees,
+                )
 
             val currentVec = sunVectorFromAngles(current.lightDegrees, current.sunElevationDegrees)
             val angleDegrees = angleBetweenDegrees(previousVec, currentVec)
@@ -55,9 +58,16 @@ class SolarPositionCalculatorTest {
     }
 }
 
-private data class TestVec3d(val x: Double, val y: Double, val z: Double)
+private data class TestVec3d(
+    val x: Double,
+    val y: Double,
+    val z: Double,
+)
 
-private fun sunVectorFromAngles(lightDegrees: Float, sunElevationDegrees: Float): TestVec3d {
+private fun sunVectorFromAngles(
+    lightDegrees: Float,
+    sunElevationDegrees: Float,
+): TestVec3d {
     val az = lightDegrees.toDouble() * PI / 180.0
     val el = sunElevationDegrees.toDouble() * PI / 180.0
     val cosEl = cos(el)
@@ -68,8 +78,10 @@ private fun sunVectorFromAngles(lightDegrees: Float, sunElevationDegrees: Float)
     )
 }
 
-private fun angleBetweenDegrees(a: TestVec3d, b: TestVec3d): Double {
+private fun angleBetweenDegrees(
+    a: TestVec3d,
+    b: TestVec3d,
+): Double {
     val dot = (a.x * b.x + a.y * b.y + a.z * b.z).coerceIn(-1.0, 1.0)
     return acos(dot) * 180.0 / PI
 }
-

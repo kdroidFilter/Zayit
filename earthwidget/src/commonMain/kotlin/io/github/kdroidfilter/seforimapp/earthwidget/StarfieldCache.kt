@@ -37,7 +37,10 @@ internal class StarfieldCache(
      * @param height Starfield height in pixels.
      * @return Cached starfield pixel data (ARGB format).
      */
-    suspend fun getOrCreate(width: Int, height: Int): IntArray {
+    suspend fun getOrCreate(
+        width: Int,
+        height: Int,
+    ): IntArray {
         val key = cacheKey(width, height)
 
         mutex.withLock {
@@ -45,9 +48,10 @@ internal class StarfieldCache(
             cache[key]?.let { return it }
 
             // Create new starfield
-            val starfield = IntArray(width * height).apply {
-                fill(OPAQUE_BLACK)
-            }
+            val starfield =
+                IntArray(width * height).apply {
+                    fill(OPAQUE_BLACK)
+                }
             renderStarfieldInternal(starfield, width, height, STARFIELD_SEED)
 
             // Evict oldest if cache is full
@@ -86,7 +90,10 @@ internal class StarfieldCache(
         }
     }
 
-    private fun cacheKey(width: Int, height: Int): Int {
+    private fun cacheKey(
+        width: Int,
+        height: Int,
+    ): Int {
         // Combine width and height into single key
         // Assumes width/height < 65536
         return (width shl 16) or height
@@ -104,7 +111,12 @@ internal class StarfieldCache(
  *
  * Uses xorshift32 PRNG for fast, reproducible star placement.
  */
-private fun renderStarfieldInternal(dst: IntArray, width: Int, height: Int, seed: Int) {
+private fun renderStarfieldInternal(
+    dst: IntArray,
+    width: Int,
+    height: Int,
+    seed: Int,
+) {
     val pixelCount = width * height
     val starCount = (pixelCount / PIXELS_PER_STAR).coerceIn(MIN_STAR_COUNT, MAX_STAR_COUNT)
     var state = seed xor (width shl 16) xor height
@@ -128,9 +140,21 @@ private fun renderStarfieldInternal(dst: IntArray, width: Int, height: Int, seed
         val g: Int
         val b: Int
         when (tint) {
-            0 -> { r = intensity; g = intensity; b = (intensity * 1.1f).toInt().coerceAtMost(255) } // Slight blue
-            1 -> { r = (intensity * 1.05f).toInt().coerceAtMost(255); g = intensity; b = (intensity * 0.95f).toInt() } // Slight yellow
-            else -> { r = intensity; g = intensity; b = intensity } // White
+            0 -> {
+                r = intensity
+                g = intensity
+                b = (intensity * 1.1f).toInt().coerceAtMost(255)
+            } // Slight blue
+            1 -> {
+                r = (intensity * 1.05f).toInt().coerceAtMost(255)
+                g = intensity
+                b = (intensity * 0.95f).toInt()
+            } // Slight yellow
+            else -> {
+                r = intensity
+                g = intensity
+                b = intensity
+            } // White
         }
 
         dst[y * width + x] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b

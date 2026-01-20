@@ -8,8 +8,9 @@ import androidx.compose.runtime.Immutable
 enum class KiddushLevanaEarliestOpinion {
     /** 3 days after the molad - strict opinion */
     DAYS_3,
+
     /** 7 days after the molad - Mechaber (Shulchan Aruch) opinion */
-    DAYS_7
+    DAYS_7,
 }
 
 /**
@@ -18,8 +19,9 @@ enum class KiddushLevanaEarliestOpinion {
 enum class KiddushLevanaLatestOpinion {
     /** Approximately 14 days, 18 hours, 22 minutes after molad - Maharil opinion */
     BETWEEN_MOLDOS,
+
     /** 15 days after the molad - Shulchan Aruch opinion */
-    DAYS_15
+    DAYS_15,
 }
 
 /**
@@ -37,15 +39,16 @@ data class KiddushLevanaData(
     val endDegrees: Float,
     val isCurrentlyAllowed: Boolean,
     val startTimeMillis: Long,
-    val endTimeMillis: Long
+    val endTimeMillis: Long,
 ) {
     companion object {
-        val EMPTY = KiddushLevanaData(
-            startDegrees = 0f,
-            endDegrees = 0f,
-            isCurrentlyAllowed = false,
-            startTimeMillis = 0L,
-            endTimeMillis = 0L
-        )
+        val EMPTY =
+            KiddushLevanaData(
+                startDegrees = 0f,
+                endDegrees = 0f,
+                isCurrentlyAllowed = false,
+                startTimeMillis = 0L,
+                endTimeMillis = 0L,
+            )
     }
 }

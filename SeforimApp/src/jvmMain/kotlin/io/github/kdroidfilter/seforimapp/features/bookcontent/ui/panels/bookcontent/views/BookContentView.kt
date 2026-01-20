@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -20,16 +21,14 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.foundation.focusable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -49,11 +48,12 @@ import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOr
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.logger.debugln
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
-import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
+import io.github.kdroidfilter.seforimapp.logger.debugln
+import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
+import io.github.kdroidfilter.seforimlibrary.core.models.Line
+import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -69,9 +69,10 @@ fun BookContentView(
     bookId: Long,
     linesPagingData: Flow<PagingData<Line>>,
     selectedLineId: Long?,
-    onLineSelected: (Line) -> Unit,
+    onLineSelect: (Line) -> Unit,
     onEvent: (BookContentEvent) -> Unit,
     tabId: String,
+    showDiacritics: Boolean,
     modifier: Modifier = Modifier,
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
@@ -85,18 +86,18 @@ fun BookContentView(
     altHeadingsByLineId: StableAltHeadings = StableAltHeadings.Empty,
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
-    showDiacritics: Boolean,
-    isSelected: Boolean = true
+    isSelected: Boolean = true,
 ) {
     // Collect paging data
     val lazyPagingItems: LazyPagingItems<Line> = linesPagingData.collectAsLazyPagingItems()
 
     // Don't use the saved scroll position initially if we have an anchor
     // The restoration will be handled after pagination loads
-    val listState = preservedListState ?: rememberLazyListState(
-        initialFirstVisibleItemIndex = if (anchorId != -1L) 0 else scrollIndex,
-        initialFirstVisibleItemScrollOffset = if (anchorId != -1L) 0 else scrollOffset
-    )
+    val listState =
+        preservedListState ?: rememberLazyListState(
+            initialFirstVisibleItemIndex = if (anchorId != -1L) 0 else scrollIndex,
+            initialFirstVisibleItemScrollOffset = if (anchorId != -1L) 0 else scrollOffset,
+        )
 
     // Collect text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -105,7 +106,7 @@ fun BookContentView(
     val textSize by animateFloatAsState(
         targetValue = rawTextSize,
         animationSpec = tween(durationMillis = 300),
-        label = "textSizeAnimation"
+        label = "textSizeAnimation",
     )
 
     // Collect line height from settings
@@ -115,17 +116,18 @@ fun BookContentView(
     val lineHeight by animateFloatAsState(
         targetValue = rawLineHeight,
         animationSpec = tween(durationMillis = 300),
-        label = "lineHeightAnimation"
+        label = "lineHeightAnimation",
     )
 
     // Selected font for main book content
     val bookFontCode by AppSettings.bookFontCodeFlow.collectAsState()
     val hebrewFontFamily = FontCatalog.familyFor(bookFontCode)
     // macOS fallback: some Hebrew fonts have no Bold face; slightly scale bold text for visibility
-    val boldScaleForPlatform = remember(bookFontCode) {
-        val lacksBold = bookFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
-        if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
-    }
+    val boldScaleForPlatform =
+        remember(bookFontCode) {
+            val lacksBold = bookFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
+            if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
+        }
 
     // Track restoration state per book
     var hasRestored by remember(bookId) { mutableStateOf(false) }
@@ -142,7 +144,7 @@ fun BookContentView(
     val contentAlpha by animateFloatAsState(
         targetValue = if (needsInitialPositioning) 0f else 1f,
         animationSpec = tween(durationMillis = if (needsInitialPositioning) 0 else 50),
-        label = "contentAlpha"
+        label = "contentAlpha",
     )
 
     // selectedLineId is now passed as a parameter for stability
@@ -150,15 +152,19 @@ fun BookContentView(
     // Prefetch connection data for visible lines to avoid per-line DB calls
     LaunchedEffect(listState, lazyPagingItems, onPrefetchLineConnections) {
         snapshotFlow {
-            if (lazyPagingItems.itemCount == 0) emptyList() else {
-                listState.layoutInfo.visibleItemsInfo.mapNotNull { info ->
-                    if (info.index < lazyPagingItems.itemCount) {
-                        lazyPagingItems.peek(info.index)?.id
-                    } else null
-                }.distinct()
+            if (lazyPagingItems.itemCount == 0) {
+                emptyList()
+            } else {
+                listState.layoutInfo.visibleItemsInfo
+                    .mapNotNull { info ->
+                        if (info.index < lazyPagingItems.itemCount) {
+                            lazyPagingItems.peek(info.index)?.id
+                        } else {
+                            null
+                        }
+                    }.distinct()
             }
-        }
-            .map { ids -> ids.distinct() }
+        }.map { ids -> ids.distinct() }
             .filter { it.isNotEmpty() }
             .distinctUntilChanged()
             .debounce(150)
@@ -190,10 +196,13 @@ fun BookContentView(
         val index = snapshot.indices.firstOrNull { snapshot[it]?.id == selectedLineId }
         if (index != null) {
             val first = listState.firstVisibleItemIndex
-            val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: first
+            val last =
+                listState.layoutInfo.visibleItemsInfo
+                    .lastOrNull()
+                    ?.index ?: first
             if (index < first || index > last) {
                 // Scroll just enough so the item is not glued to the top
-                val targetOffsetPx = 32  // small top padding in px; minimal jump
+                val targetOffsetPx = 32 // small top padding in px; minimal jump
                 listState.scrollToItem(index, targetOffsetPx)
             }
         }
@@ -225,7 +234,8 @@ fun BookContentView(
                 snapshotFlow { lazyPagingItems.itemSnapshotList.items }
                     .map { items -> items.indices.firstOrNull { items[it].id == topAnchorLineId } }
                     .filterNotNull()
-                    .first().also { idx -> targetIndex = idx }
+                    .first()
+                    .also { idx -> targetIndex = idx }
             }
         }
 
@@ -292,30 +302,32 @@ fun BookContentView(
     }
 
     // Save scroll position with anchor information - optimized with derivedStateOf
-    val scrollData = remember(listState, lazyPagingItems) {
-        derivedStateOf {
-            val firstVisibleInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull()
-            val firstVisibleIndex = firstVisibleInfo?.index ?: listState.firstVisibleItemIndex
-            val itemCount = lazyPagingItems.itemCount
-            val safeIndex = firstVisibleIndex.coerceIn(0, maxOf(0, itemCount - 1))
+    val scrollData =
+        remember(listState, lazyPagingItems) {
+            derivedStateOf {
+                val firstVisibleInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+                val firstVisibleIndex = firstVisibleInfo?.index ?: listState.firstVisibleItemIndex
+                val itemCount = lazyPagingItems.itemCount
+                val safeIndex = firstVisibleIndex.coerceIn(0, maxOf(0, itemCount - 1))
 
-            // Prefer the LazyColumn item key to avoid relying on paging snapshot access.
-            val currentAnchorId: Long = when (val key = firstVisibleInfo?.key) {
-                is Long -> key
-                is Int -> key.toLong()
-                else -> if (safeIndex in 0 until itemCount) lazyPagingItems[safeIndex]?.id ?: -1L else -1L
+                // Prefer the LazyColumn item key to avoid relying on paging snapshot access.
+                val currentAnchorId: Long =
+                    when (val key = firstVisibleInfo?.key) {
+                        is Long -> key
+                        is Int -> key.toLong()
+                        else -> if (safeIndex in 0 until itemCount) lazyPagingItems[safeIndex]?.id ?: -1L else -1L
+                    }
+
+                val scrollOff = listState.firstVisibleItemScrollOffset.coerceAtLeast(0)
+
+                AnchorData(
+                    anchorId = currentAnchorId,
+                    anchorIndex = safeIndex,
+                    scrollIndex = firstVisibleIndex,
+                    scrollOffset = scrollOff,
+                )
             }
-
-            val scrollOff = listState.firstVisibleItemScrollOffset.coerceAtLeast(0)
-
-            AnchorData(
-                anchorId = currentAnchorId,
-                anchorIndex = safeIndex,
-                scrollIndex = firstVisibleIndex,
-                scrollOffset = scrollOff
-            )
         }
-    }
 
     val onScrollUpdated by rememberUpdatedState(onScroll)
     val hasRestoredUpdated by rememberUpdatedState(hasRestored)
@@ -379,12 +391,14 @@ fun BookContentView(
     var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
     var currentMatchStart by remember { mutableIntStateOf(-1) }
     val plainTextCache = remember(bookId) { mutableStateMapOf<Long, String>() }
-    val stableAnnotatedCache = remember(bookId, textSize, boldScaleForPlatform, showDiacritics) {
-        StableAnnotatedCache(mutableStateMapOf())
-    }
+    val stableAnnotatedCache =
+        remember(bookId, textSize, boldScaleForPlatform, showDiacritics) {
+            StableAnnotatedCache(mutableStateMapOf())
+        }
 
     // Navigate to next/previous line containing the query (wrap-around)
     val scope = rememberCoroutineScope()
+
     fun navigateToMatch(next: Boolean) {
         val query = findState.text.toString()
         if (query.length < 2) return
@@ -399,9 +413,10 @@ fun BookContentView(
         while (guard++ < size) {
             i = (i + step + size) % size
             val line = snapshot[i] ?: continue
-            val text = plainTextCache.getOrPut(line.id) {
-                buildAnnotatedFromHtml(line.content, textSize).text
-            }
+            val text =
+                plainTextCache.getOrPut(line.id) {
+                    buildAnnotatedFromHtml(line.content, textSize).text
+                }
             val start = findAllMatchesOriginal(text, query).firstOrNull()?.first ?: -1
             if (start >= 0) {
                 currentHitLineIndex = i
@@ -417,30 +432,38 @@ fun BookContentView(
     }
 
     // Global preview handler: handle basic navigation keys regardless of inner focus
-    val previewKeyHandler = remember(onEvent) {
-        { keyEvent: KeyEvent ->
-            // Ctrl/Cmd+F handled globally at window level; do not intercept here
-            if (keyEvent.type == KeyEventType.KeyDown) {
-                when (keyEvent.key) {
-                    Key.DirectionUp -> {
-                        onEvent(BookContentEvent.NavigateToPreviousLine); true
-                    }
+    val previewKeyHandler =
+        remember(onEvent) {
+            { keyEvent: KeyEvent ->
+                // Ctrl/Cmd+F handled globally at window level; do not intercept here
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    when (keyEvent.key) {
+                        Key.DirectionUp -> {
+                            onEvent(BookContentEvent.NavigateToPreviousLine)
+                            true
+                        }
 
-                    Key.DirectionDown -> {
-                        onEvent(BookContentEvent.NavigateToNextLine); true
-                    }
+                        Key.DirectionDown -> {
+                            onEvent(BookContentEvent.NavigateToNextLine)
+                            true
+                        }
 
-                    Key.Escape -> {
-                        if (showFind) {
-                            AppSettings.closeFindBar(tabId); true
-                        } else false
-                    }
+                        Key.Escape -> {
+                            if (showFind) {
+                                AppSettings.closeFindBar(tabId)
+                                true
+                            } else {
+                                false
+                            }
+                        }
 
-                    else -> false
+                        else -> false
+                    }
+                } else {
+                    false
                 }
-            } else false
+            }
         }
-    }
 
     // Request initial focus so arrow keys work as soon as the view appears
     val focusRequester = remember { FocusRequester() }
@@ -462,162 +485,168 @@ fun BookContentView(
     // the container level to avoid the extend-selection path, while preserving normal drag
     // selection and regular clicks.
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .graphicsLayer { alpha = contentAlpha }  // Hide until positioned to prevent glitch
-            .focusRequester(focusRequester)
-            .focusable()
-            .onPreviewKeyEvent(previewKeyHandler)
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    val event = awaitPointerEvent(PointerEventPass.Initial)
-                    val isShiftPrimaryPress = event.buttons.isPrimaryPressed && event.keyboardModifiers.isShiftPressed
-                    if (isShiftPrimaryPress) {
-                        // Consume to prevent SelectionContainer from handling extend-selection
-                        event.changes.forEach { it.consume() }
+        modifier =
+            modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = contentAlpha } // Hide until positioned to prevent glitch
+                .focusRequester(focusRequester)
+                .focusable()
+                .onPreviewKeyEvent(previewKeyHandler)
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val isShiftPrimaryPress = event.buttons.isPrimaryPressed && event.keyboardModifiers.isShiftPressed
+                        if (isShiftPrimaryPress) {
+                            // Consume to prevent SelectionContainer from handling extend-selection
+                            event.changes.forEach { it.consume() }
+                        }
                     }
-                }
-            }
+                },
     ) {
         SelectionContainer {
             Box(modifier = Modifier.fillMaxSize().padding(bottom = 8.dp)) {
-            // Content list. Avoid a single SelectionContainer around the entire
-            // paged list to prevent cross-item selection spanning unloaded pages,
-            // which can crash when paging composes/uncomposes items.
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().padding(end = 16.dp)
-            ) {
-                items(
-                    count = lazyPagingItems.itemCount,
-                    key = lazyPagingItems.itemKey { it.id },
-                    contentType = { "line" }  // Optimization: specify content type
-                ) { index ->
-                    val line = lazyPagingItems[index]
+                // Content list. Avoid a single SelectionContainer around the entire
+                // paged list to prevent cross-item selection spanning unloaded pages,
+                // which can crash when paging composes/uncomposes items.
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().padding(end = 16.dp),
+                ) {
+                    items(
+                        count = lazyPagingItems.itemCount,
+                        key = lazyPagingItems.itemKey { it.id },
+                        contentType = { "line" }, // Optimization: specify content type
+                    ) { index ->
+                        val line = lazyPagingItems[index]
 
-                    if (line != null) {
-                        val altHeadings = altHeadingsByLineId[line.id]
-                        Column {
-                            altHeadings.forEach { entry ->
-                                AltHeadingItem(
-                                    entryId = entry.id,
-                                    level = entry.level,
-                                    text = entry.text,
-                                    onClick = { onLineSelected(line) }
+                        if (line != null) {
+                            val altHeadings = altHeadingsByLineId[line.id]
+                            Column {
+                                altHeadings.forEach { entry ->
+                                    AltHeadingItem(
+                                        entryId = entry.id,
+                                        level = entry.level,
+                                        text = entry.text,
+                                        onClick = { onLineSelect(line) },
+                                    )
+                                }
+                                LineItem(
+                                    lineId = line.id,
+                                    lineContent = line.content,
+                                    isSelected = selectedLineId == line.id,
+                                    fontFamily = hebrewFontFamily,
+                                    onClick = { onLineSelect(line) },
+                                    scrollToLineTimestamp = scrollToLineTimestamp,
+                                    baseTextSize = textSize,
+                                    lineHeight = lineHeight,
+                                    boldScale = boldScaleForPlatform,
+                                    highlightQuery = findState.text.toString().takeIf { showFind },
+                                    currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
+                                    annotatedCache = stableAnnotatedCache,
+                                    showDiacritics = showDiacritics,
                                 )
                             }
-                            LineItem(
-                                lineId = line.id,
-                                lineContent = line.content,
-                                isSelected = selectedLineId == line.id,
-                                baseTextSize = textSize,
-                                lineHeight = lineHeight,
-                                fontFamily = hebrewFontFamily,
-                                boldScale = boldScaleForPlatform,
-                                onClick = { onLineSelected(line) },
-                                scrollToLineTimestamp = scrollToLineTimestamp,
-                                highlightQuery = findState.text.toString().takeIf { showFind },
-                                currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
-                                annotatedCache = stableAnnotatedCache,
-                                showDiacritics = showDiacritics
-                            )
+                        } else {
+                            // Placeholder while loading
+                            LoadingPlaceholder()
                         }
-                    } else {
-                        // Placeholder while loading
-                        LoadingPlaceholder()
                     }
-                }
 
-                // Show loading indicators
-                lazyPagingItems.apply {
-                    when {
-                        // Avoid flicker: only show full loader on refresh if we have no items yet
-                        loadState.refresh is LoadState.Loading && itemCount == 0 -> {
-                            item(contentType = "loading") {
-                                LoadingIndicator()
+                    // Show loading indicators
+                    lazyPagingItems.apply {
+                        when {
+                            // Avoid flicker: only show full loader on refresh if we have no items yet
+                            loadState.refresh is LoadState.Loading && itemCount == 0 -> {
+                                item(contentType = "loading") {
+                                    LoadingIndicator()
+                                }
                             }
-                        }
-                        // Keep small loader for pagination append
-                        loadState.append is LoadState.Loading -> {
-                            item(contentType = "loading") {
-                                LoadingIndicator(isSmall = true)
+                            // Keep small loader for pagination append
+                            loadState.append is LoadState.Loading -> {
+                                item(contentType = "loading") {
+                                    LoadingIndicator(isSmall = true)
+                                }
                             }
-                        }
 
-                        loadState.refresh is LoadState.Error -> {
-                            val error = (loadState.refresh as LoadState.Error).error
-                            item(contentType = "error") {
-                                ErrorIndicator(message = "Error: ${error.message}")
+                            loadState.refresh is LoadState.Error -> {
+                                val error = (loadState.refresh as LoadState.Error).error
+                                item(contentType = "error") {
+                                    ErrorIndicator(message = "Error: ${error.message}")
+                                }
                             }
-                        }
 
-                        loadState.append is LoadState.Error -> {
-                            val error = (loadState.append as LoadState.Error).error
-                            item(contentType = "error") {
-                                ErrorIndicator(message = "Error loading more: ${error.message}")
+                            loadState.append is LoadState.Error -> {
+                                val error = (loadState.append as LoadState.Error).error
+                                item(contentType = "error") {
+                                    ErrorIndicator(message = "Error loading more: ${error.message}")
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        // Find-in-page bar overlay with result count badge (uniform style)
-        if (showFind) {
-            // Compute total matches across currently loaded snapshot (approximate)
-            val queryText = findState.text.toString()
-            val snapshotItems = lazyPagingItems.itemSnapshotList.items
-            val matchCount = remember(queryText, snapshotItems) {
-                if (queryText.length < 2) 0 else {
-                    var total = 0
-                    // Count non-overlapping occurrences per visible/loaded line
-                    for (ln in snapshotItems) {
-                        val text = try {
-                            buildAnnotatedFromHtml(ln.content, textSize).text
-                        } catch (_: Throwable) {
-                            ln.content
+            // Find-in-page bar overlay with result count badge (uniform style)
+            if (showFind) {
+                // Compute total matches across currently loaded snapshot (approximate)
+                val queryText = findState.text.toString()
+                val snapshotItems = lazyPagingItems.itemSnapshotList.items
+                val matchCount =
+                    remember(queryText, snapshotItems) {
+                        if (queryText.length < 2) {
+                            0
+                        } else {
+                            var total = 0
+                            // Count non-overlapping occurrences per visible/loaded line
+                            for (ln in snapshotItems) {
+                                val text =
+                                    try {
+                                        buildAnnotatedFromHtml(ln.content, textSize).text
+                                    } catch (_: Throwable) {
+                                        ln.content
+                                    }
+                                total += findAllMatchesOriginal(text, queryText).size
+                            }
+                            total
                         }
-                        total += findAllMatchesOriginal(text, queryText).size
                     }
-                    total
-                }
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp)
-                    .zIndex(2f),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (queryText.length >= 2) {
-                    // Wrap badge in a small panel background to improve border contrast,
-                    // keeping the badge's own border color (disabled) identical to the tree.
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(JewelTheme.globalColors.panelBackground)
-                            .padding(2.dp)
-                    ) {
-                        CountBadge(count = matchCount)
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                            .zIndex(2f),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (queryText.length >= 2) {
+                        // Wrap badge in a small panel background to improve border contrast,
+                        // keeping the badge's own border color (disabled) identical to the tree.
+                        Box(
+                            modifier =
+                                Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(JewelTheme.globalColors.panelBackground)
+                                    .padding(2.dp),
+                        ) {
+                            CountBadge(count = matchCount)
+                        }
+                        Spacer(Modifier.width(8.dp))
                     }
-                    Spacer(Modifier.width(8.dp))
-                }
-                FindInPageBar(
-                    state = findState,
-                    onEnterNext = { navigateToMatch(true) },
-                    onEnterPrev = { navigateToMatch(false) },
-                    onClose = { AppSettings.closeFindBar(tabId) }
-                )
-                LaunchedEffect(findState.text, showFind) {
-                    val q = findState.text.toString()
-                    AppSettings.setFindQuery(tabId, if (q.length >= 2) q else "")
+                    FindInPageBar(
+                        state = findState,
+                        onEnterNext = { navigateToMatch(true) },
+                        onEnterPrev = { navigateToMatch(false) },
+                        onClose = { AppSettings.closeFindBar(tabId) },
+                    )
+                    LaunchedEffect(findState.text, showFind) {
+                        val q = findState.text.toString()
+                        AppSettings.setFindQuery(tabId, if (q.length >= 2) q else "")
+                    }
                 }
             }
         }
     }
-}
-
 }
 
 // Data class for anchor information
@@ -625,7 +654,7 @@ private data class AnchorData(
     val anchorId: Long,
     val anchorIndex: Int,
     val scrollIndex: Int,
-    val scrollOffset: Int
+    val scrollOffset: Int,
 )
 
 /**
@@ -633,7 +662,9 @@ private data class AnchorData(
  * The map content is considered stable once created.
  */
 @Stable
-class StableAltHeadings(val map: Map<Long, List<AltTocEntry>>) {
+class StableAltHeadings(
+    val map: Map<Long, List<AltTocEntry>>,
+) {
     operator fun get(lineId: Long): List<AltTocEntry> = map[lineId].orEmpty()
 
     companion object {
@@ -647,9 +678,13 @@ fun Map<Long, List<AltTocEntry>>.asStableAltHeadings(): StableAltHeadings = Stab
  * Stable wrapper for annotated string cache to avoid unnecessary recompositions.
  */
 @Stable
-class StableAnnotatedCache(val cache: MutableMap<Long, AnnotatedString>) {
-    fun getOrPut(lineId: Long, defaultValue: () -> AnnotatedString): AnnotatedString =
-        cache.getOrPut(lineId, defaultValue)
+class StableAnnotatedCache(
+    val cache: MutableMap<Long, AnnotatedString>,
+) {
+    fun getOrPut(
+        lineId: Long,
+        defaultValue: () -> AnnotatedString,
+    ): AnnotatedString = cache.getOrPut(lineId, defaultValue)
 }
 
 @Composable
@@ -657,39 +692,43 @@ private fun AltHeadingItem(
     entryId: Long,
     level: Int,
     text: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
-    val fontSize = when (level) {
-        0 -> 20.sp
-        1 -> 18.sp
-        else -> 16.sp
-    }
+    val fontSize =
+        when (level) {
+            0 -> 20.sp
+            1 -> 18.sp
+            else -> 16.sp
+        }
     val paddingTop = if (level == 0) 12.dp else 8.dp
     val paddingBottom = 4.dp
 
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 8.dp, end = 8.dp, top = paddingTop, bottom = paddingBottom)
-            .pointerInput(entryId) {
-                detectTapGestures(onTap = { onClick() })
-            }
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 8.dp, end = 8.dp, top = paddingTop, bottom = paddingBottom)
+                .pointerInput(entryId) {
+                    detectTapGestures(onTap = { onClick() })
+                },
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
         ) {
             Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
+                modifier =
+                    Modifier
+                        .width(4.dp)
+                        .fillMaxHeight(),
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = text,
                 fontSize = fontSize,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
             )
         }
     }
@@ -701,59 +740,66 @@ private fun LineItem(
     lineId: Long,
     lineContent: String,
     isSelected: Boolean,
-    baseTextSize: Float = 16f,
-    lineHeight: Float = 1.5f,
     fontFamily: FontFamily,
-    boldScale: Float = 1.0f,
     onClick: () -> Unit,
     scrollToLineTimestamp: Long,
+    baseTextSize: Float = 16f,
+    lineHeight: Float = 1.5f,
+    boldScale: Float = 1.0f,
     highlightQuery: String? = null,
     currentMatchStart: Int? = null,
     annotatedCache: StableAnnotatedCache? = null,
-    showDiacritics: Boolean = true
+    showDiacritics: Boolean = true,
 ) {
     // Process content: remove diacritics if setting is disabled
-    val processedContent = remember(lineContent, showDiacritics) {
-        if (showDiacritics) {
-            lineContent
-        } else {
-            HebrewTextUtils.removeAllDiacritics(lineContent)
+    val processedContent =
+        remember(lineContent, showDiacritics) {
+            if (showDiacritics) {
+                lineContent
+            } else {
+                HebrewTextUtils.removeAllDiacritics(lineContent)
+            }
         }
-    }
 
     // Footnote marker color from theme
     val footnoteMarkerColor = JewelTheme.globalColors.outlines.focused
 
     // Memoize the annotated string with proper keys
-    val annotated = remember(lineId, processedContent, baseTextSize, boldScale, annotatedCache, showDiacritics, footnoteMarkerColor) {
-        annotatedCache?.getOrPut(lineId) {
-            buildAnnotatedFromHtml(
+    val annotated =
+        remember(lineId, processedContent, baseTextSize, boldScale, annotatedCache, showDiacritics, footnoteMarkerColor) {
+            annotatedCache?.getOrPut(lineId) {
+                buildAnnotatedFromHtml(
+                    processedContent,
+                    baseTextSize,
+                    boldScale = if (boldScale < 1f) 1f else boldScale,
+                    footnoteMarkerColor = footnoteMarkerColor,
+                )
+            } ?: buildAnnotatedFromHtml(
                 processedContent,
                 baseTextSize,
                 boldScale = if (boldScale < 1f) 1f else boldScale,
-                footnoteMarkerColor = footnoteMarkerColor
+                footnoteMarkerColor = footnoteMarkerColor,
             )
-        } ?: buildAnnotatedFromHtml(
-            processedContent,
-            baseTextSize,
-            boldScale = if (boldScale < 1f) 1f else boldScale,
-            footnoteMarkerColor = footnoteMarkerColor
-        )
-    }
+        }
 
     // Build highlighted text when a query is active (>= 2 chars)
-    val baseHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.22f)
-    val currentHl = JewelTheme.globalColors.outlines.focused.copy(alpha = 0.42f)
-    val displayText: AnnotatedString = remember(annotated, highlightQuery, currentMatchStart, baseHl, currentHl) {
-        io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
-            annotated = annotated,
-            query = highlightQuery,
-            currentStart = currentMatchStart?.takeIf { it >= 0 },
-            currentLength = highlightQuery?.length,
-            baseColor = baseHl,
-            currentColor = currentHl
-        )
-    }
+    val baseHl =
+        JewelTheme.globalColors.outlines.focused
+            .copy(alpha = 0.22f)
+    val currentHl =
+        JewelTheme.globalColors.outlines.focused
+            .copy(alpha = 0.42f)
+    val displayText: AnnotatedString =
+        remember(annotated, highlightQuery, currentMatchStart, baseHl, currentHl) {
+            io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
+                annotated = annotated,
+                query = highlightQuery,
+                currentStart = currentMatchStart?.takeIf { it >= 0 },
+                currentLength = highlightQuery?.length,
+                baseColor = baseHl,
+                currentColor = currentHl,
+            )
+        }
 
     // Get theme color in composable context
     val borderColor = if (isSelected) JewelTheme.globalColors.outlines.focused else Color.Transparent
@@ -765,35 +811,39 @@ private fun LineItem(
         if (isSelected && scrollToLineTimestamp != 0L) {
             try {
                 bringRequester.bringIntoView()
-            } catch (_: Throwable) { /* no-op: layout might not be ready yet */
+            } catch (_: Throwable) {
+                // no-op: layout might not be ready yet
             }
         }
     }
 
-    val textModifier = remember {
-        Modifier.fillMaxWidth()
-    }
-        .bringIntoViewRequester(bringRequester)
-        .pointerInput(lineId) {
-            detectTapGestures(onTap = { onClick() })
-        }
+    val textModifier =
+        remember {
+            Modifier.fillMaxWidth()
+        }.bringIntoViewRequester(bringRequester)
+            .pointerInput(lineId) {
+                detectTapGestures(onTap = { onClick() })
+            }
 
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
         ) {
             Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(borderColor)
-                    .zIndex(1f)
+                modifier =
+                    Modifier
+                        .width(4.dp)
+                        .fillMaxHeight()
+                        .background(borderColor)
+                        .zIndex(1f),
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
@@ -801,7 +851,7 @@ private fun LineItem(
                 textAlign = TextAlign.Justify,
                 fontFamily = fontFamily,
                 lineHeight = (baseTextSize * lineHeight).sp,
-                modifier = textModifier
+                modifier = textModifier,
             )
         }
     }
@@ -811,13 +861,14 @@ private fun LineItem(
 @Composable
 private fun LoadingPlaceholder() {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(50.dp)
-            .padding(8.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .padding(8.dp),
     ) {
         CircularProgressIndicator(
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(24.dp),
         )
     }
 }
@@ -825,13 +876,14 @@ private fun LoadingPlaceholder() {
 @Composable
 private fun LoadingIndicator(isSmall: Boolean = false) {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        contentAlignment = Alignment.Center,
     ) {
         CircularProgressIndicator(
-            modifier = if (isSmall) Modifier.size(24.dp) else Modifier
+            modifier = if (isSmall) Modifier.size(24.dp) else Modifier,
         )
     }
 }
@@ -839,14 +891,15 @@ private fun LoadingIndicator(isSmall: Boolean = false) {
 @Composable
 private fun ErrorIndicator(message: String) {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = message,
-            color = Color.Red
+            color = Color.Red,
         )
     }
 }

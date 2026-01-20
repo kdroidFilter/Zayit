@@ -17,28 +17,27 @@ import androidx.navigation.compose.composable
 import io.github.kdroidfilter.seforim.navigation.NavigationAnimations
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AnimatedHorizontalProgressBar
 import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceScreen
-import io.github.kdroidfilter.seforimapp.features.onboarding.init.InitScreen
-import io.github.kdroidfilter.seforimapp.features.onboarding.licence.LicenceScreen
-import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeOfInstallationScreen
-import io.github.kdroidfilter.seforimapp.features.onboarding.offline.OfflineFileSelectionScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractScreen
-import io.github.kdroidfilter.seforimapp.features.onboarding.version.VersionVerificationScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.finish.FinishScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.init.InitScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.licence.LicenceScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.offline.OfflineFileSelectionScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeOfInstallationScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileScreen
+import io.github.kdroidfilter.seforimapp.features.onboarding.version.VersionVerificationScreen
 
 @Composable
 fun OnBoardingNavHost(navController: NavHostController) {
     Column(modifier = Modifier.fillMaxSize()) {
-
         val progressBarState = ProgressBarState
         val progress by progressBarState.progress.collectAsState()
         AnimatedHorizontalProgressBar(progress, Modifier.fillMaxWidth())
         NavHost(
             modifier = Modifier.fillMaxSize().padding(16.dp),
             navController = navController,
-            startDestination = OnBoardingDestination.InitScreen
+            startDestination = OnBoardingDestination.InitScreen,
         ) {
             noAnimatedComposable<OnBoardingDestination.InitScreen> {
                 InitScreen(navController)
@@ -75,17 +74,16 @@ fun OnBoardingNavHost(navController: NavHostController) {
             }
         }
     }
-
 }
 
 inline fun <reified T : OnBoardingDestination> NavGraphBuilder.noAnimatedComposable(
-    noinline content: @Composable (NavBackStackEntry) -> Unit
+    noinline content: @Composable (NavBackStackEntry) -> Unit,
 ) {
     composable<T>(
         enterTransition = { NavigationAnimations.enterTransition(this) },
         exitTransition = { NavigationAnimations.exitTransition(this) },
         popEnterTransition = { NavigationAnimations.popEnterTransition(this) },
-        popExitTransition = { NavigationAnimations.popExitTransition(this) }
+        popExitTransition = { NavigationAnimations.popExitTransition(this) },
     ) {
         content(it)
     }

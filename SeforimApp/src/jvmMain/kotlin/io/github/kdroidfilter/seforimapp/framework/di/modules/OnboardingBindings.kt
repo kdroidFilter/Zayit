@@ -19,16 +19,16 @@ import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 @ContributesTo(AppScope::class)
 @BindingContainer
 object OnboardingBindings {
-
     @Provides
     @SingleIn(AppScope::class)
     fun provideOnboardingProcessRepository(): OnboardingProcessRepository = OnboardingProcessRepository()
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideDownloadUseCase(): DownloadUseCase = DownloadUseCase(
-        gitHubReleaseFetcher = databaseFetcher
-    )
+    fun provideDownloadUseCase(): DownloadUseCase =
+        DownloadUseCase(
+            gitHubReleaseFetcher = databaseFetcher,
+        )
 
     @Provides
     @SingleIn(AppScope::class)

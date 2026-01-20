@@ -6,14 +6,11 @@ import androidx.compose.ui.graphics.asSkiaBitmap
 import org.jetbrains.skia.Bitmap
 
 /**
- * JVM/Desktop implementation using Skia graphics library.
+ * Creates an ImageBitmap from ARGB pixel data.
  *
+ * JVM/Desktop implementation using Skia graphics library.
  * Skia uses BGRA byte order (native little-endian), so we must
  * convert from ARGB integer format during bitmap creation.
- */
-
-/**
- * Creates an ImageBitmap from ARGB pixel data.
  *
  * Converts ARGB integers to BGRA byte array for Skia.
  * Each pixel is stored as 4 bytes: Blue, Green, Red, Alpha.
@@ -23,24 +20,29 @@ import org.jetbrains.skia.Bitmap
  * @param height Image height.
  * @return Compose ImageBitmap backed by Skia.
  */
-internal actual fun imageBitmapFromArgb(argb: IntArray, width: Int, height: Int): ImageBitmap {
+internal actual fun imageBitmapFromArgb(
+    argb: IntArray,
+    width: Int,
+    height: Int,
+): ImageBitmap {
     val pixelCount = width * height
     val bytes = ByteArray(pixelCount * 4)
 
     var byteIndex = 0
     for (color in argb) {
         // Convert ARGB to BGRA byte order
-        bytes[byteIndex] = (color and 0xFF).toByte()         // Blue
-        bytes[byteIndex + 1] = ((color ushr 8) and 0xFF).toByte()  // Green
+        bytes[byteIndex] = (color and 0xFF).toByte() // Blue
+        bytes[byteIndex + 1] = ((color ushr 8) and 0xFF).toByte() // Green
         bytes[byteIndex + 2] = ((color ushr 16) and 0xFF).toByte() // Red
         bytes[byteIndex + 3] = ((color ushr 24) and 0xFF).toByte() // Alpha
         byteIndex += 4
     }
 
-    val bitmap = Bitmap().apply {
-        allocN32Pixels(width, height, false)
-        installPixels(bytes)
-    }
+    val bitmap =
+        Bitmap().apply {
+            allocN32Pixels(width, height, false)
+            installPixels(bytes)
+        }
 
     return bitmap.asComposeImageBitmap()
 }
@@ -56,9 +58,10 @@ internal actual fun imageBitmapFromArgb(argb: IntArray, width: Int, height: Int)
  */
 internal actual fun earthTextureFromImageBitmap(image: ImageBitmap): EarthTexture {
     val bitmap = image.asSkiaBitmap()
-    val pixmap = requireNotNull(bitmap.peekPixels()) {
-        "Failed to access pixel data from Skia bitmap"
-    }
+    val pixmap =
+        requireNotNull(bitmap.peekPixels()) {
+            "Failed to access pixel data from Skia bitmap"
+        }
 
     val bytes = pixmap.buffer.bytes
     val width = pixmap.info.width

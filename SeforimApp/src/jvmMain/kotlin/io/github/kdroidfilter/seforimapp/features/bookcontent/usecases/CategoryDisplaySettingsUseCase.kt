@@ -7,38 +7,42 @@ import kotlinx.coroutines.flow.SharedFlow
 
 class CategoryDisplaySettingsUseCase(
     private val repository: SeforimRepository,
-    private val settingsStore: CategoryDisplaySettingsStore
+    private val settingsStore: CategoryDisplaySettingsStore,
 ) {
     data class RootCategorySetting(
         val rootCategoryId: Long?,
-        val showDiacritics: Boolean
+        val showDiacritics: Boolean,
     )
 
     val categoryChanges: SharedFlow<Long> = settingsStore.categoryChanges
 
     suspend fun getShowDiacriticsForCategory(
         categoryId: Long,
-        navigation: NavigationState
+        navigation: NavigationState,
     ): RootCategorySetting {
         val rootCategoryId = resolveRootCategoryId(categoryId, navigation)
-        val show = if (rootCategoryId == null) {
-            true
-        } else {
-            settingsStore.getShowDiacritics(rootCategoryId)
-        }
+        val show =
+            if (rootCategoryId == null) {
+                true
+            } else {
+                settingsStore.getShowDiacritics(rootCategoryId)
+            }
         return RootCategorySetting(rootCategoryId, show)
     }
 
     suspend fun toggleShowDiacriticsForCategory(
         categoryId: Long,
-        navigation: NavigationState
+        navigation: NavigationState,
     ): RootCategorySetting? {
         val rootCategoryId = resolveRootCategoryId(categoryId, navigation) ?: return null
         val show = settingsStore.toggleShowDiacritics(rootCategoryId)
         return RootCategorySetting(rootCategoryId, show)
     }
 
-    suspend fun resolveRootCategoryId(categoryId: Long, navigation: NavigationState): Long? {
+    suspend fun resolveRootCategoryId(
+        categoryId: Long,
+        navigation: NavigationState,
+    ): Long? {
         if (categoryId <= 0) return null
         val parentIndex = buildParentIndex(navigation)
         if (parentIndex.containsKey(categoryId)) {
@@ -56,7 +60,9 @@ class CategoryDisplaySettingsUseCase(
     private fun buildParentIndex(nav: NavigationState): Map<Long, Long?> {
         val parentById = mutableMapOf<Long, Long?>()
         nav.rootCategories.forEach { parentById[it.id] = it.parentId }
-        nav.categoryChildren.values.flatten().forEach { parentById[it.id] = it.parentId }
+        nav.categoryChildren.values
+            .flatten()
+            .forEach { parentById[it.id] = it.parentId }
         return parentById
     }
 

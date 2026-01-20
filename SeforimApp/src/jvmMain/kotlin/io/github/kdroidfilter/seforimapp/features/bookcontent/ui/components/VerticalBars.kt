@@ -5,12 +5,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.*
 import org.jetbrains.compose.resources.stringResource
 import seforimapp.seforimapp.generated.resources.*
@@ -18,7 +18,7 @@ import seforimapp.seforimapp.generated.resources.*
 @Composable
 fun StartVerticalBar(
     uiState: BookContentState,
-    onEvent: (BookContentEvent) -> Unit
+    onEvent: (BookContentEvent) -> Unit,
 ) {
     VerticalLateralBar(
         position = VerticalLateralBarPosition.Start,
@@ -30,7 +30,7 @@ fun StartVerticalBar(
                 icon = Library,
                 iconDescription = stringResource(Res.string.books),
                 label = stringResource(Res.string.books),
-                shortcutHint = if (PlatformInfo.isMacOS) "B+⌘" else "B+Ctrl"
+                shortcutHint = if (PlatformInfo.isMacOS) "B+⌘" else "B+Ctrl",
             )
             SelectableIconButtonWithToolip(
                 toolTipText = stringResource(Res.string.book_content),
@@ -39,8 +39,7 @@ fun StartVerticalBar(
                 icon = TableOfContents,
                 iconDescription = stringResource(Res.string.table_of_contents),
                 label = stringResource(Res.string.table_of_contents),
-                shortcutHint = if (PlatformInfo.isMacOS) "B+⇧+⌘" else "B+Shift+Ctrl"
-
+                shortcutHint = if (PlatformInfo.isMacOS) "B+⇧+⌘" else "B+Shift+Ctrl",
             )
         },
         bottomContent = {
@@ -68,7 +67,7 @@ fun StartVerticalBar(
 //                iconDescription = stringResource(Res.string.write_note),
 //                label = stringResource(Res.string.write_note)
 //            )
-        }
+        },
     )
 }
 
@@ -76,7 +75,7 @@ fun StartVerticalBar(
 fun EndVerticalBar(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    showDiacritics: Boolean
+    showDiacritics: Boolean,
 ) {
     // Collect current text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -94,28 +93,32 @@ fun EndVerticalBar(
     val lineAvailability by produceState(
         initialValue = LineResourceAvailability(),
         key1 = selectedLine?.id,
-        key2 = providers
+        key2 = providers,
     ) {
         if (selectedLine == null || providers == null) {
             value = LineResourceAvailability()
             return@produceState
         }
 
-        val targumAvailable = runCatching {
-            providers.getAvailableLinksForLine(selectedLine.id)
-        }.getOrNull()?.isNotEmpty()
-        val commentariesAvailable = runCatching {
-            providers.getAvailableCommentatorsForLine(selectedLine.id)
-        }.getOrNull()?.isNotEmpty()
-        val sourcesAvailable = runCatching {
-            providers.getAvailableSourcesForLine(selectedLine.id)
-        }.getOrNull()?.isNotEmpty()
+        val targumAvailable =
+            runCatching {
+                providers.getAvailableLinksForLine(selectedLine.id)
+            }.getOrNull()?.isNotEmpty()
+        val commentariesAvailable =
+            runCatching {
+                providers.getAvailableCommentatorsForLine(selectedLine.id)
+            }.getOrNull()?.isNotEmpty()
+        val sourcesAvailable =
+            runCatching {
+                providers.getAvailableSourcesForLine(selectedLine.id)
+            }.getOrNull()?.isNotEmpty()
 
-        value = LineResourceAvailability(
-            targumAvailable = targumAvailable,
-            commentariesAvailable = commentariesAvailable,
-            sourcesAvailable = sourcesAvailable
-        )
+        value =
+            LineResourceAvailability(
+                targumAvailable = targumAvailable,
+                commentariesAvailable = commentariesAvailable,
+                sourcesAvailable = sourcesAvailable,
+            )
     }
 
     VerticalLateralBar(
@@ -123,46 +126,54 @@ fun EndVerticalBar(
         topContent = {
             // Platform-specific shortcut hint for Zoom In
             SelectableIconButtonWithToolip(
-                toolTipText = if (canZoomIn)
-                    stringResource(Res.string.zoom_in_tooltip)
-                else
-                    stringResource(Res.string.zoom_in_tooltip) + " (${AppSettings.MAX_TEXT_SIZE.toInt()}sp max)",
+                toolTipText =
+                    if (canZoomIn) {
+                        stringResource(Res.string.zoom_in_tooltip)
+                    } else {
+                        stringResource(Res.string.zoom_in_tooltip) + " (${AppSettings.MAX_TEXT_SIZE.toInt()}sp max)"
+                    },
                 onClick = { AppSettings.increaseTextSize() },
                 isSelected = false,
                 enabled = canZoomIn,
                 icon = ZoomIn,
                 iconDescription = stringResource(Res.string.zoom_in),
                 label = stringResource(Res.string.zoom_in),
-                shortcutHint = if (PlatformInfo.isMacOS) "+⌘" else "+Ctrl"
+                shortcutHint = if (PlatformInfo.isMacOS) "+⌘" else "+Ctrl",
             )
             SelectableIconButtonWithToolip(
-                toolTipText = if (canZoomOut)
-                    stringResource(Res.string.zoom_out_tooltip)
-                else
-                    stringResource(Res.string.zoom_out_tooltip) + " (${AppSettings.MIN_TEXT_SIZE.toInt()}sp min)",
+                toolTipText =
+                    if (canZoomOut) {
+                        stringResource(Res.string.zoom_out_tooltip)
+                    } else {
+                        stringResource(Res.string.zoom_out_tooltip) + " (${AppSettings.MIN_TEXT_SIZE.toInt()}sp min)"
+                    },
                 onClick = { AppSettings.decreaseTextSize() },
                 isSelected = false,
                 enabled = canZoomOut,
                 icon = ZoomOut,
                 iconDescription = stringResource(Res.string.zoom_out),
                 label = stringResource(Res.string.zoom_out),
-                shortcutHint = if (PlatformInfo.isMacOS) "-⌘" else "-Ctrl"
+                shortcutHint = if (PlatformInfo.isMacOS) "-⌘" else "-Ctrl",
             )
 
             // Diacritics toggle button - only show when book has nekudot or teamim
             val bookHasDiacritics = selectedBook?.hasNekudot == true || selectedBook?.hasTeamim == true
             if (bookHasDiacritics) {
                 SelectableIconButtonWithToolip(
-                    toolTipText = stringResource(
-                        if (showDiacritics) Res.string.hide_diacritics_tooltip
-                        else Res.string.show_diacritics_tooltip
-                    ),
+                    toolTipText =
+                        stringResource(
+                            if (showDiacritics) {
+                                Res.string.hide_diacritics_tooltip
+                            } else {
+                                Res.string.show_diacritics_tooltip
+                            },
+                        ),
                     onClick = { onEvent(BookContentEvent.ToggleDiacritics) },
                     isSelected = showDiacritics,
                     icon = TextDiacritics,
                     iconDescription = stringResource(Res.string.toggle_diacritics),
                     label = stringResource(Res.string.toggle_diacritics),
-                    shortcutHint = if (PlatformInfo.isMacOS) "J+⌘" else "J+Ctrl"
+                    shortcutHint = if (PlatformInfo.isMacOS) "J+⌘" else "J+Ctrl",
                 )
             }
 //            SelectableIconButtonWithToolip(
@@ -185,31 +196,37 @@ fun EndVerticalBar(
 
             // Hide both buttons on Home (no book selected)
             if (!noBookSelected) {
-                val targumDisabledForLine = selectedLine != null &&
-                    lineAvailability.targumAvailable == false &&
-                    !uiState.content.showTargum
-                val commentaryDisabledForLine = selectedLine != null &&
-                    lineAvailability.commentariesAvailable == false &&
-                    !uiState.content.showCommentaries
-                val sourcesDisabledForLine = selectedLine != null &&
-                    lineAvailability.sourcesAvailable == false &&
-                    !uiState.content.showSources
+                val targumDisabledForLine =
+                    selectedLine != null &&
+                        lineAvailability.targumAvailable == false &&
+                        !uiState.content.showTargum
+                val commentaryDisabledForLine =
+                    selectedLine != null &&
+                        lineAvailability.commentariesAvailable == false &&
+                        !uiState.content.showCommentaries
+                val sourcesDisabledForLine =
+                    selectedLine != null &&
+                        lineAvailability.sourcesAvailable == false &&
+                        !uiState.content.showSources
 
-                val targumTooltip = when {
-                    targumDisabledForLine -> stringResource(Res.string.no_links_for_line)
-                    selectedLine == null -> stringResource(Res.string.select_line_for_links)
-                    else -> stringResource(Res.string.show_targumim_tooltip)
-                }
-                val commentaryTooltip = when {
-                    commentaryDisabledForLine -> stringResource(Res.string.no_commentaries_for_line)
-                    selectedLine == null -> stringResource(Res.string.select_line_for_commentaries)
-                    else -> stringResource(Res.string.show_commentaries_tooltip)
-                }
-                val sourcesTooltip = when {
-                    sourcesDisabledForLine -> stringResource(Res.string.no_sources_for_line)
-                    selectedLine == null -> stringResource(Res.string.select_line_for_sources)
-                    else -> stringResource(Res.string.show_sources_tooltip)
-                }
+                val targumTooltip =
+                    when {
+                        targumDisabledForLine -> stringResource(Res.string.no_links_for_line)
+                        selectedLine == null -> stringResource(Res.string.select_line_for_links)
+                        else -> stringResource(Res.string.show_targumim_tooltip)
+                    }
+                val commentaryTooltip =
+                    when {
+                        commentaryDisabledForLine -> stringResource(Res.string.no_commentaries_for_line)
+                        selectedLine == null -> stringResource(Res.string.select_line_for_commentaries)
+                        else -> stringResource(Res.string.show_commentaries_tooltip)
+                    }
+                val sourcesTooltip =
+                    when {
+                        sourcesDisabledForLine -> stringResource(Res.string.no_sources_for_line)
+                        selectedLine == null -> stringResource(Res.string.select_line_for_sources)
+                        else -> stringResource(Res.string.show_sources_tooltip)
+                    }
 
                 // Show Targum only when available for the book
                 if (targumEnabled) {
@@ -221,7 +238,7 @@ fun EndVerticalBar(
                         iconDescription = stringResource(Res.string.show_targumim),
                         label = stringResource(Res.string.show_targumim),
                         enabled = !targumDisabledForLine,
-                        shortcutHint = if (PlatformInfo.isMacOS) "K+⇧+⌘" else "K+Shift+Ctrl"
+                        shortcutHint = if (PlatformInfo.isMacOS) "K+⇧+⌘" else "K+Shift+Ctrl",
                     )
                 }
 
@@ -234,7 +251,7 @@ fun EndVerticalBar(
                         iconDescription = stringResource(Res.string.show_sources),
                         label = stringResource(Res.string.show_sources),
                         enabled = !sourcesDisabledForLine,
-                        shortcutHint = if (PlatformInfo.isMacOS) "K+⌥+⌘" else "K+Alt+Ctrl"
+                        shortcutHint = if (PlatformInfo.isMacOS) "K+⌥+⌘" else "K+Alt+Ctrl",
                     )
                 }
 
@@ -248,7 +265,7 @@ fun EndVerticalBar(
                         iconDescription = stringResource(Res.string.show_commentaries),
                         label = stringResource(Res.string.show_commentaries),
                         enabled = !commentaryDisabledForLine,
-                        shortcutHint = if (PlatformInfo.isMacOS) "K+⌘" else "K+Ctrl"
+                        shortcutHint = if (PlatformInfo.isMacOS) "K+⌘" else "K+Ctrl",
                     )
                 }
             }
@@ -266,13 +283,12 @@ fun EndVerticalBar(
 //                label = stringResource(Res.string.show_links),
 //                enabled = linksEnabled
 //            )
-
-        }
+        },
     )
 }
 
 private data class LineResourceAvailability(
     val targumAvailable: Boolean? = null,
     val commentariesAvailable: Boolean? = null,
-    val sourcesAvailable: Boolean? = null
+    val sourcesAvailable: Boolean? = null,
 )

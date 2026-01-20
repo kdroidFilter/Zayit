@@ -16,20 +16,19 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.database.getUserSettingsDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
+import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.LuceneSearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
-import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
-import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
-import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
 import java.nio.file.Paths
 import java.util.UUID
 
 @ContributesTo(AppScope::class)
 @BindingContainer
 object AppCoreBindings {
-
     @Provides
     @SingleIn(AppScope::class)
     fun provideTabPersistedStateStore(): TabPersistedStateStore = TabPersistedStateStore()
@@ -76,15 +75,11 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideAcronymFrequencyCache(): AcronymFrequencyCache {
-        return AcronymFrequencyCache()
-    }
+    fun provideAcronymFrequencyCache(): AcronymFrequencyCache = AcronymFrequencyCache()
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideLuceneLookupSearchService(
-        acronymCache: AcronymFrequencyCache
-    ): LuceneLookupSearchService {
+    fun provideLuceneLookupSearchService(acronymCache: AcronymFrequencyCache): LuceneLookupSearchService {
         val dbPath = getDatabasePath()
         val indexPath = if (dbPath.endsWith(".db")) "$dbPath.lookup.lucene" else "$dbPath.lookupindex"
         return LuceneLookupSearchService(Paths.get(indexPath), acronymCache = acronymCache)
@@ -92,16 +87,15 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideTabsViewModel(
-        titleUpdateManager: TabTitleUpdateManager,
-    ): TabsViewModel = TabsViewModel(
-        titleUpdateManager = titleUpdateManager,
-        startDestination = TabsDestination.BookContent(
-            bookId = -1,
-            tabId = UUID.randomUUID().toString()
+    fun provideTabsViewModel(titleUpdateManager: TabTitleUpdateManager): TabsViewModel =
+        TabsViewModel(
+            titleUpdateManager = titleUpdateManager,
+            startDestination =
+                TabsDestination.BookContent(
+                    bookId = -1,
+                    tabId = UUID.randomUUID().toString(),
+                ),
         )
-    )
-
 
     @Provides
     @SingleIn(AppScope::class)
@@ -109,11 +103,12 @@ object AppCoreBindings {
         persistedStore: TabPersistedStateStore,
         repository: SeforimRepository,
         lookup: LuceneLookupSearchService,
-        settings: Settings
-    ): SearchHomeViewModel = SearchHomeViewModel(
-        persistedStore = persistedStore,
-        repository = repository,
-        lookup = lookup,
-        settings = settings
-    )
+        settings: Settings,
+    ): SearchHomeViewModel =
+        SearchHomeViewModel(
+            persistedStore = persistedStore,
+            repository = repository,
+            lookup = lookup,
+            settings = settings,
+        )
 }

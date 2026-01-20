@@ -16,11 +16,10 @@ data class ParsedHtmlElement(
     val commentatorOrder: String? = null,
     val isLineBreak: Boolean = false,
     val isFootnoteMarker: Boolean = false,
-    val isFootnoteContent: Boolean = false
+    val isFootnoteContent: Boolean = false,
 )
 
 class HtmlParser {
-
     fun parse(html: String): List<ParsedHtmlElement> {
         val doc = Jsoup.parse(html)
         val out = mutableListOf<ParsedHtmlElement>()
@@ -36,7 +35,7 @@ class HtmlParser {
                 commentator = null,
                 commentatorOrder = null,
                 isFootnoteMarker = false,
-                isFootnoteContent = false
+                isFootnoteContent = false,
             )
         }
         // Avoids a "line after": removes terminal <br> tags
@@ -57,7 +56,7 @@ class HtmlParser {
         commentator: String?,
         commentatorOrder: String?,
         isFootnoteMarker: Boolean,
-        isFootnoteContent: Boolean
+        isFootnoteContent: Boolean,
     ) {
         when (node) {
             is TextNode -> {
@@ -72,7 +71,7 @@ class HtmlParser {
                     commentator = commentator,
                     commentatorOrder = commentatorOrder,
                     isFootnoteMarker = isFootnoteMarker,
-                    isFootnoteContent = isFootnoteContent
+                    isFootnoteContent = isFootnoteContent,
                 )
             }
             is Element -> {
@@ -110,7 +109,7 @@ class HtmlParser {
                         commentator = commentator,
                         commentatorOrder = commentatorOrder,
                         isFootnoteMarker = nextFootnoteMarker,
-                        isFootnoteContent = nextFootnoteContent
+                        isFootnoteContent = nextFootnoteContent,
                     )
                     return
                 }
@@ -127,7 +126,7 @@ class HtmlParser {
                         commentator = commentator,
                         commentatorOrder = commentatorOrder,
                         isFootnoteMarker = nextFootnoteMarker,
-                        isFootnoteContent = nextFootnoteContent
+                        isFootnoteContent = nextFootnoteContent,
                     )
                 }
             }
@@ -145,7 +144,7 @@ class HtmlParser {
         commentator: String?,
         commentatorOrder: String?,
         isFootnoteMarker: Boolean,
-        isFootnoteContent: Boolean
+        isFootnoteContent: Boolean,
     ) {
         // Normalizes multiple spaces into a single space, but preserves leading/trailing spaces
         val normalizedText = textRaw.replace(Regex("\\s+"), " ")
@@ -174,27 +173,28 @@ class HtmlParser {
             val last = list.last()
             val sameStyle =
                 !last.isLineBreak &&
-                        last.isBold == isBold &&
-                        last.isItalic == isItalic &&
-                        last.isSmall == isSmall &&
-                        last.isHeader == isHeader &&
-                        last.headerLevel == headerLevel &&
-                        last.commentator == commentator &&
-                        last.commentatorOrder == commentatorOrder &&
-                        last.isFootnoteMarker == isFootnoteMarker &&
-                        last.isFootnoteContent == isFootnoteContent
+                    last.isBold == isBold &&
+                    last.isItalic == isItalic &&
+                    last.isSmall == isSmall &&
+                    last.isHeader == isHeader &&
+                    last.headerLevel == headerLevel &&
+                    last.commentator == commentator &&
+                    last.commentatorOrder == commentatorOrder &&
+                    last.isFootnoteMarker == isFootnoteMarker &&
+                    last.isFootnoteContent == isFootnoteContent
 
             if (sameStyle) {
                 // Fusion avec le segment précédent du même style
                 val lastEndsWithWhitespace = last.text.lastOrNull()?.isWhitespace() == true
-                val separator = when {
-                    // Préserve explicitement un espace de tête si le texte brut en contenait un
-                    hasLeadingSpace && !lastEndsWithWhitespace -> " "
-                    lastEndsWithWhitespace -> ""
-                    // Sinon, vérifie si on a besoin d'un espace entre les deux (texte latin uniquement)
-                    needsSpaceBetween(last.text, trimmedText) -> " "
-                    else -> ""
-                }
+                val separator =
+                    when {
+                        // Préserve explicitement un espace de tête si le texte brut en contenait un
+                        hasLeadingSpace && !lastEndsWithWhitespace -> " "
+                        lastEndsWithWhitespace -> ""
+                        // Sinon, vérifie si on a besoin d'un espace entre les deux (texte latin uniquement)
+                        needsSpaceBetween(last.text, trimmedText) -> " "
+                        else -> ""
+                    }
 
                 val newText = last.text + separator + trimmedText
                 list[list.lastIndex] = last.copy(text = newText)
@@ -209,17 +209,19 @@ class HtmlParser {
 
         // New segment with a different style
         // Adds a space at the beginning if necessary and if the previous segment does not end with a space
-        val needsLeadingSpace = hasLeadingSpace &&
+        val needsLeadingSpace =
+            hasLeadingSpace &&
                 list.isNotEmpty() &&
                 !list.last().isLineBreak &&
                 !list.last().text.endsWith(" ")
 
-        val finalText = when {
-            needsLeadingSpace && hasTrailingSpace -> " $trimmedText "
-            needsLeadingSpace -> " $trimmedText"
-            hasTrailingSpace -> "$trimmedText "
-            else -> trimmedText
-        }
+        val finalText =
+            when {
+                needsLeadingSpace && hasTrailingSpace -> " $trimmedText "
+                needsLeadingSpace -> " $trimmedText"
+                hasTrailingSpace -> "$trimmedText "
+                else -> trimmedText
+            }
 
         list.add(
             ParsedHtmlElement(
@@ -232,21 +234,24 @@ class HtmlParser {
                 commentator = commentator,
                 commentatorOrder = commentatorOrder,
                 isFootnoteMarker = isFootnoteMarker,
-                isFootnoteContent = isFootnoteContent
-            )
+                isFootnoteContent = isFootnoteContent,
+            ),
         )
     }
 
     // Adds a line break element only if necessary
     private fun appendLineBreak(list: MutableList<ParsedHtmlElement>) {
-        if (list.isEmpty()) return                         // no <br> at the beginning
+        if (list.isEmpty()) return // no <br> at the beginning
         val last = list.last()
-        if (!last.isLineBreak) {                           // avoids <br><br> → double line
+        if (!last.isLineBreak) { // avoids <br><br> → double line
             list.add(ParsedHtmlElement(text = "", isLineBreak = true))
         }
     }
 
-    private fun needsSpaceBetween(a: String, b: String): Boolean {
+    private fun needsSpaceBetween(
+        a: String,
+        b: String,
+    ): Boolean {
         if (a.isEmpty() || b.isEmpty()) return false
 
         val lastChar = a.last()
@@ -266,10 +271,14 @@ class HtmlParser {
 
     private fun isHebrewOrRTL(char: Char): Boolean {
         val code = char.code
-        return (code in 0x0590..0x05FF) ||  // Hebrew
-                (code in 0xFB1D..0xFB4F) ||  // Hebrew Presentation Forms
-                (code in 0x0600..0x06FF) ||  // Arabic
-                (code in 0x0750..0x077F) ||  // Arabic Supplement
-                (code >= 0x0300 && code <= 0x036F)  // Combining Diacritical Marks (niqqud, etc.)
+        return (code in 0x0590..0x05FF) ||
+            // Hebrew
+            (code in 0xFB1D..0xFB4F) ||
+            // Hebrew Presentation Forms
+            (code in 0x0600..0x06FF) ||
+            // Arabic
+            (code in 0x0750..0x077F) ||
+            // Arabic Supplement
+            (code >= 0x0300 && code <= 0x036F) // Combining Diacritical Marks (niqqud, etc.)
     }
 }

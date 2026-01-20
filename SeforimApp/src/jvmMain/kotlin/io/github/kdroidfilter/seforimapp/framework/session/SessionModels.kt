@@ -38,14 +38,12 @@ data class BookContentPersistedState(
     val isBookTreeVisible: Boolean = true,
     val bookTreeScrollIndex: Int = 0,
     val bookTreeScrollOffset: Int = 0,
-
     // TOC
     val isTocVisible: Boolean = false,
     val expandedTocEntryIds: Set<Long> = emptySet(),
     val selectedTocEntryId: Long = -1L,
     val tocScrollIndex: Int = 0,
     val tocScrollOffset: Int = 0,
-
     // Content
     val selectedLineId: Long = -1L,
     val showCommentaries: Boolean = false,
@@ -58,7 +56,6 @@ data class BookContentPersistedState(
     val contentScrollOffset: Int = 0,
     val contentAnchorLineId: Long = -1L,
     val contentAnchorIndex: Int = 0,
-
     // Commentaries
     val commentariesSelectedTab: Int = 0,
     val commentariesScrollIndex: Int = 0,
@@ -73,7 +70,6 @@ data class BookContentPersistedState(
     val selectedTargumSourcesByBook: Map<Long, Set<Long>> = emptyMap(),
     val selectedSourcesByLine: Map<Long, Set<Long>> = emptyMap(),
     val selectedSourcesByBook: Map<Long, Set<Long>> = emptyMap(),
-
     // Layout
     val mainSplitPosition: Float = SplitDefaults.MAIN,
     val tocSplitPosition: Float = SplitDefaults.TOC,
@@ -97,18 +93,15 @@ data class SearchPersistedState(
     val fetchCategoryId: Long = 0L,
     val fetchBookId: Long = 0L,
     val fetchTocId: Long = 0L,
-
     // View filters (multi-select)
     val selectedCategoryIds: Set<Long> = emptySet(),
     val selectedBookIds: Set<Long> = emptySet(),
     val selectedTocIds: Set<Long> = emptySet(),
-
     // Scroll/anchor persistence
     val scrollIndex: Int = 0,
     val scrollOffset: Int = 0,
     val anchorId: Long = -1L,
     val anchorIndex: Int = 0,
-
     // Full search snapshot (results + aggregates) for identical restore
     val snapshot: SearchTabCache.Snapshot? = null,
     val breadcrumbs: Map<Long, List<String>> = emptyMap(),

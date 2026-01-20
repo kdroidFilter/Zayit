@@ -34,6 +34,7 @@ object AppSettings {
 
     // Tab display constants
     const val MAX_TAB_TITLE_LENGTH = 20
+
     // Preferred max width for tabs in dp units (UI caps to this, shrinks below as needed)
     const val TAB_FIXED_WIDTH_DP = 180
 
@@ -145,18 +146,29 @@ object AppSettings {
     private val findQueryFlowByTab = mutableMapOf<String, MutableStateFlow<String>>()
     private val findBarOpenFlowByTab = mutableMapOf<String, MutableStateFlow<Boolean>>()
 
-    private fun queryFlowFor(tabId: String): MutableStateFlow<String> =
-        findQueryFlowByTab.getOrPut(tabId) { MutableStateFlow("") }
+    private fun queryFlowFor(tabId: String): MutableStateFlow<String> = findQueryFlowByTab.getOrPut(tabId) { MutableStateFlow("") }
 
-    private fun findOpenFlowFor(tabId: String): MutableStateFlow<Boolean> =
-        findBarOpenFlowByTab.getOrPut(tabId) { MutableStateFlow(false) }
+    private fun findOpenFlowFor(tabId: String): MutableStateFlow<Boolean> = findBarOpenFlowByTab.getOrPut(tabId) { MutableStateFlow(false) }
 
     fun findQueryFlow(tabId: String): StateFlow<String> = queryFlowFor(tabId).asStateFlow()
-    fun setFindQuery(tabId: String, q: String) { queryFlowFor(tabId).value = q }
+
+    fun setFindQuery(
+        tabId: String,
+        q: String,
+    ) {
+        queryFlowFor(tabId).value = q
+    }
 
     fun findBarOpenFlow(tabId: String): StateFlow<Boolean> = findOpenFlowFor(tabId).asStateFlow()
-    fun openFindBar(tabId: String) { findOpenFlowFor(tabId).value = true }
-    fun closeFindBar(tabId: String) { findOpenFlowFor(tabId).value = false }
+
+    fun openFindBar(tabId: String) {
+        findOpenFlowFor(tabId).value = true
+    }
+
+    fun closeFindBar(tabId: String) {
+        findOpenFlowFor(tabId).value = false
+    }
+
     fun toggleFindBar(tabId: String) {
         val flow = findOpenFlowFor(tabId)
         flow.value = !flow.value
@@ -165,9 +177,7 @@ object AppSettings {
         }
     }
 
-    fun getTextSize(): Float {
-        return settings[KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE]
-    }
+    fun getTextSize(): Float = settings[KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE]
 
     fun setTextSize(size: Float) {
         settings[KEY_TEXT_SIZE] = size
@@ -186,9 +196,7 @@ object AppSettings {
         setTextSize(newSize)
     }
 
-    fun getLineHeight(): Float {
-        return settings[KEY_LINE_HEIGHT, DEFAULT_LINE_HEIGHT]
-    }
+    fun getLineHeight(): Float = settings[KEY_LINE_HEIGHT, DEFAULT_LINE_HEIGHT]
 
     fun setLineHeight(height: Float) {
         settings[KEY_LINE_HEIGHT] = height
@@ -208,45 +216,35 @@ object AppSettings {
     }
 
     // Font settings (persist codes for cross-platform stability)
-    fun getBookFontCode(): String {
-        return settings[KEY_FONT_BOOK, DEFAULT_BOOK_FONT]
-    }
+    fun getBookFontCode(): String = settings[KEY_FONT_BOOK, DEFAULT_BOOK_FONT]
 
     fun setBookFontCode(code: String) {
         settings[KEY_FONT_BOOK] = code
         _bookFontCodeFlow.value = code
     }
 
-    fun getCommentaryFontCode(): String {
-        return settings[KEY_FONT_COMMENTARY, DEFAULT_COMMENTARY_FONT]
-    }
+    fun getCommentaryFontCode(): String = settings[KEY_FONT_COMMENTARY, DEFAULT_COMMENTARY_FONT]
 
     fun setCommentaryFontCode(code: String) {
         settings[KEY_FONT_COMMENTARY] = code
         _commentaryFontCodeFlow.value = code
     }
 
-    fun getTargumFontCode(): String {
-        return settings[KEY_FONT_TARGUM, DEFAULT_TARGUM_FONT]
-    }
+    fun getTargumFontCode(): String = settings[KEY_FONT_TARGUM, DEFAULT_TARGUM_FONT]
 
     fun setTargumFontCode(code: String) {
         settings[KEY_FONT_TARGUM] = code
         _targumFontCodeFlow.value = code
     }
 
-    fun getSourceFontCode(): String {
-        return settings[KEY_FONT_SOURCE, DEFAULT_SOURCE_FONT]
-    }
+    fun getSourceFontCode(): String = settings[KEY_FONT_SOURCE, DEFAULT_SOURCE_FONT]
 
     fun setSourceFontCode(code: String) {
         settings[KEY_FONT_SOURCE] = code
         _sourceFontCodeFlow.value = code
     }
 
-    fun getCloseBookTreeOnNewBookSelected(): Boolean {
-        return settings[KEY_CLOSE_TREE_ON_NEW_BOOK, false]
-    }
+    fun getCloseBookTreeOnNewBookSelected(): Boolean = settings[KEY_CLOSE_TREE_ON_NEW_BOOK, false]
 
     fun setCloseBookTreeOnNewBookSelected(value: Boolean) {
         settings[KEY_CLOSE_TREE_ON_NEW_BOOK] = value
@@ -272,9 +270,7 @@ object AppSettings {
     }
 
     // Session persistence preference
-    fun isPersistSessionEnabled(): Boolean {
-        return settings[KEY_PERSIST_SESSION, true]
-    }
+    fun isPersistSessionEnabled(): Boolean = settings[KEY_PERSIST_SESSION, true]
 
     fun setPersistSessionEnabled(enabled: Boolean) {
         settings[KEY_PERSIST_SESSION] = enabled
@@ -286,9 +282,7 @@ object AppSettings {
     }
 
     // Zmanim widgets visibility
-    fun isShowZmanimWidgetsEnabled(): Boolean {
-        return settings[KEY_SHOW_ZMANIM_WIDGETS, true]
-    }
+    fun isShowZmanimWidgetsEnabled(): Boolean = settings[KEY_SHOW_ZMANIM_WIDGETS, true]
 
     fun setShowZmanimWidgetsEnabled(enabled: Boolean) {
         settings[KEY_SHOW_ZMANIM_WIDGETS] = enabled
@@ -296,18 +290,14 @@ object AppSettings {
     }
 
     // OpenGL rendering backend (Windows only)
-    fun isUseOpenGlEnabled(): Boolean {
-        return settings[KEY_USE_OPENGL, false]
-    }
+    fun isUseOpenGlEnabled(): Boolean = settings[KEY_USE_OPENGL, false]
 
     fun setUseOpenGlEnabled(enabled: Boolean) {
         settings[KEY_USE_OPENGL] = enabled
     }
 
     // RAM saver setting
-    fun isRamSaverEnabled(): Boolean {
-        return settings[KEY_RAM_SAVER_ENABLED, false]
-    }
+    fun isRamSaverEnabled(): Boolean = settings[KEY_RAM_SAVER_ENABLED, false]
 
     fun setRamSaverEnabled(enabled: Boolean) {
         settings[KEY_RAM_SAVER_ENABLED] = enabled
@@ -352,9 +342,7 @@ object AppSettings {
     }
 
     // Onboarding finished flag
-    fun isOnboardingFinished(): Boolean {
-        return settings[KEY_ONBOARDING_FINISHED, false]
-    }
+    fun isOnboardingFinished(): Boolean = settings[KEY_ONBOARDING_FINISHED, false]
 
     fun setOnboardingFinished(finished: Boolean) {
         settings[KEY_ONBOARDING_FINISHED] = finished

@@ -1,15 +1,15 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree
 
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
@@ -17,24 +17,24 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.search_placeholder
 import seforimapp.seforimapp.generated.resources.book_list
+import seforimapp.seforimapp.generated.resources.search_placeholder
 
 @Composable
 fun CategoryTreePanel(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val paneHoverSource = remember { MutableInteractionSource() }
     Column(modifier = modifier.hoverable(paneHoverSource)) {
         PaneHeader(
             label = stringResource(Res.string.book_list),
             interactionSource = paneHoverSource,
-            onHide = { onEvent(BookContentEvent.ToggleBookTree) }
+            onHide = { onEvent(BookContentEvent.ToggleBookTree) },
         )
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp)
+            modifier = Modifier.padding(horizontal = 8.dp),
         ) {
 //            SearchField(
 //                searchText = uiState.navigation.searchText,
@@ -56,7 +56,7 @@ fun CategoryTreePanel(
                         onEvent(BookContentEvent.BookSelected(it))
                     }
                 },
-                onScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) }
+                onScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) },
             )
         }
     }
@@ -65,9 +65,10 @@ fun CategoryTreePanel(
 @Composable
 private fun SearchField(
     searchText: String,
-    onSearchTextChange: (String) -> Unit
+    onSearchTextChange: (String) -> Unit,
 ) {
     val textFieldState = rememberTextFieldState(searchText)
+    val currentOnSearchTextChange by rememberUpdatedState(onSearchTextChange)
 
     LaunchedEffect(searchText) {
         if (textFieldState.text.toString() != searchText) {
@@ -76,13 +77,13 @@ private fun SearchField(
     }
 
     LaunchedEffect(textFieldState.text) {
-        onSearchTextChange(textFieldState.text.toString())
+        currentOnSearchTextChange(textFieldState.text.toString())
     }
 
     TextField(
         state = textFieldState,
         modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text(stringResource(Res.string.search_placeholder)) }
+        placeholder = { Text(stringResource(Res.string.search_placeholder)) },
     )
 }
 
@@ -99,17 +100,17 @@ fun SearchCategoryTreePanel(
     onCategoryCheckedChange: (Long, Boolean) -> Unit,
     onBookCheckedChange: (Long, Boolean) -> Unit,
     onEnsureScopeBookForToc: (Long) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val paneHoverSource = remember { MutableInteractionSource() }
     Column(modifier = modifier.hoverable(paneHoverSource)) {
         PaneHeader(
             label = stringResource(Res.string.book_list),
             interactionSource = paneHoverSource,
-            onHide = { onEvent(BookContentEvent.ToggleBookTree) }
+            onHide = { onEvent(BookContentEvent.ToggleBookTree) },
         )
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp)
+            modifier = Modifier.padding(horizontal = 8.dp),
         ) {
             SearchResultCategoryTreeView(
                 expandedCategoryIds = uiState.navigation.expandedCategories,
@@ -123,7 +124,7 @@ fun SearchCategoryTreePanel(
                 onPersistScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) },
                 onCategoryCheckedChange = onCategoryCheckedChange,
                 onBookCheckedChange = onBookCheckedChange,
-                onEnsureScopeBookForToc = onEnsureScopeBookForToc
+                onEnsureScopeBookForToc = onEnsureScopeBookForToc,
             )
         }
     }

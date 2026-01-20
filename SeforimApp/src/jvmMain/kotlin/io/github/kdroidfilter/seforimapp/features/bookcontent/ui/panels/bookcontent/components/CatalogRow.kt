@@ -24,28 +24,28 @@ fun CatalogRow(
     modifier: Modifier = Modifier,
     buttonWidth: Dp = 130.dp,
     spacing: Dp = 8.dp,
-)
-{
+) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .zIndex(1f)
-            .padding(6.dp),
-        contentAlignment = Alignment.TopStart
+        modifier =
+            modifier
+                .fillMaxSize()
+                .zIndex(1f)
+                .padding(6.dp),
+        contentAlignment = Alignment.TopStart,
     ) {
-
-        BoxWithConstraints(modifier.fillMaxWidth()) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
             val totalButtons = 7
             // Compute how many catalog buttons we can show fully without overflow.
-            val maxVisible = run {
-                var count = totalButtons
-                while (count > 1) {
-                    val required = buttonWidth * count + spacing * (count - 1)
-                    if (required <= maxWidth) break
-                    count--
+            val maxVisible =
+                run {
+                    var count = totalButtons
+                    while (count > 1) {
+                        val required = buttonWidth * count + spacing * (count - 1)
+                        if (required <= maxWidth) break
+                        count--
+                    }
+                    count
                 }
-                count
-            }
 
             var rendered = 0
 
@@ -58,7 +58,7 @@ fun CatalogRow(
                         spec = PrecomputedCatalog.Dropdowns.TANAKH,
                         onEvent = onEvent,
                         modifier = Modifier.widthIn(max = buttonWidth),
-                        popupWidthMultiplier = 1.50f
+                        popupWidthMultiplier = 1.50f,
                     )
                     rendered++
                 }
@@ -66,7 +66,7 @@ fun CatalogRow(
                     CatalogDropdown(
                         spec = PrecomputedCatalog.Dropdowns.MISHNA,
                         onEvent = onEvent,
-                        modifier = Modifier.widthIn(max = buttonWidth)
+                        modifier = Modifier.widthIn(max = buttonWidth),
                     )
                     rendered++
                 }
@@ -75,7 +75,7 @@ fun CatalogRow(
                         spec = PrecomputedCatalog.Dropdowns.BAVLI,
                         onEvent = onEvent,
                         modifier = Modifier.widthIn(max = buttonWidth),
-                        popupWidthMultiplier = 1.1f
+                        popupWidthMultiplier = 1.1f,
                     )
                     rendered++
                 }
@@ -84,7 +84,7 @@ fun CatalogRow(
                         spec = PrecomputedCatalog.Dropdowns.YERUSHALMI,
                         onEvent = onEvent,
                         modifier = Modifier.widthIn(max = buttonWidth),
-                        popupWidthMultiplier = 1.1f
+                        popupWidthMultiplier = 1.1f,
                     )
                     rendered++
                 }
@@ -93,7 +93,7 @@ fun CatalogRow(
                         spec = PrecomputedCatalog.Dropdowns.MISHNE_TORAH,
                         onEvent = onEvent,
                         modifier = Modifier.widthIn(max = buttonWidth),
-                        popupWidthMultiplier = 1.5f
+                        popupWidthMultiplier = 1.5f,
                     )
                     rendered++
                 }
@@ -102,7 +102,7 @@ fun CatalogRow(
                         spec = PrecomputedCatalog.Dropdowns.TUR_QUICK_LINKS,
                         onEvent = onEvent,
                         modifier = Modifier.widthIn(max = buttonWidth),
-                        maxPopupHeight = 130.dp
+                        maxPopupHeight = 130.dp,
                     )
                     rendered++
                 }
@@ -112,7 +112,7 @@ fun CatalogRow(
                         onEvent = onEvent,
                         modifier = Modifier.widthIn(max = buttonWidth),
                         maxPopupHeight = 160.dp,
-                        popupWidthMultiplier = 1.1f
+                        popupWidthMultiplier = 1.1f,
                     )
                 }
             }

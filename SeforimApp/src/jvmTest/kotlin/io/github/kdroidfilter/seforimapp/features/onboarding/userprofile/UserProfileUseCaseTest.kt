@@ -13,4 +13,3 @@ class UserProfileUseCaseTest {
         assertTrue(communities.containsAll(listOf(Community.SEPHARADE, Community.ASHKENAZE, Community.SEFARD)))
     }
 }
-

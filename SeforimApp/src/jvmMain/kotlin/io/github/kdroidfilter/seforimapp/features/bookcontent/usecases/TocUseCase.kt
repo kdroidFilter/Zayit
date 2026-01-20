@@ -13,29 +13,30 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
  */
 class TocUseCase(
     private val repository: SeforimRepository,
-    private val stateManager: BookContentStateManager
+    private val stateManager: BookContentStateManager,
 ) {
-    
     /**
      * Charge les entrées racine du TOC pour un livre
      */
     suspend fun loadRootToc(bookId: Long) {
         val rootToc = repository.getBookRootToc(bookId)
-        
+
         stateManager.updateToc {
             copy(
                 entries = rootToc,
                 children = mapOf(-1L to rootToc),
                 // Auto-expand la première entrée si elle a des enfants
-                expandedEntries = expandedEntries.ifEmpty {
-                    rootToc.firstOrNull()
-                        ?.takeIf { it.hasChildren }
-                        ?.let { setOf(it.id) }
-                        ?: emptySet()
-                }
+                expandedEntries =
+                    expandedEntries.ifEmpty {
+                        rootToc
+                            .firstOrNull()
+                            ?.takeIf { it.hasChildren }
+                            ?.let { setOf(it.id) }
+                            ?: emptySet()
+                    },
             )
         }
-        
+
         // Charger les enfants des entrées déjà expandées
         val currentState = stateManager.state.first().toc
         currentState.expandedEntries.forEach { id ->
@@ -44,7 +45,7 @@ class TocUseCase(
             }
         }
     }
-    
+
     /**
      * Charge les enfants d'une entrée TOC
      */
@@ -56,20 +57,20 @@ class TocUseCase(
             }
         }
     }
-    
+
     /**
      * Expand/collapse une entrée TOC
      */
     suspend fun toggleTocEntry(entry: TocEntry) {
         val currentState = stateManager.state.first().toc
         val isExpanded = currentState.expandedEntries.contains(entry.id)
-        
+
         if (isExpanded) {
             // Collapse - retirer l'entrée et tous ses descendants
             val descendants = getAllDescendantIds(entry.id, currentState.children)
             stateManager.updateToc {
                 copy(
-                    expandedEntries = expandedEntries - entry.id - descendants
+                    expandedEntries = expandedEntries - entry.id - descendants,
                 )
             }
         } else {
@@ -77,27 +78,28 @@ class TocUseCase(
             stateManager.updateToc {
                 copy(expandedEntries = expandedEntries + entry.id)
             }
-            
+
             // Charger les enfants si nécessaire
             if (entry.hasChildren && !currentState.children.containsKey(entry.id)) {
                 loadTocChildren(entry.id)
             }
         }
     }
-    
+
     /**
      * Récupère tous les IDs descendants d'une entrée
      */
     private fun getAllDescendantIds(
         entryId: Long,
-        childrenMap: Map<Long, List<TocEntry>>
-    ): Set<Long> = buildSet {
-        childrenMap[entryId]?.forEach { child ->
-            add(child.id)
-            addAll(getAllDescendantIds(child.id, childrenMap))
+        childrenMap: Map<Long, List<TocEntry>>,
+    ): Set<Long> =
+        buildSet {
+            childrenMap[entryId]?.forEach { child ->
+                add(child.id)
+                addAll(getAllDescendantIds(child.id, childrenMap))
+            }
         }
-    }
-    
+
     /**
      * Toggle la visibilité du TOC
      */
@@ -105,15 +107,16 @@ class TocUseCase(
         val currentState = stateManager.state.value
         val isVisible = currentState.toc.isVisible
         val newPosition: Float
-        
+
         if (isVisible) {
             // Cacher
             val prev = currentState.layout.tocSplitState.positionPercentage
             stateManager.updateLayout {
                 copy(
-                    previousPositions = previousPositions.copy(
-                        toc = prev
-                    )
+                    previousPositions =
+                        previousPositions.copy(
+                            toc = prev,
+                        ),
                 )
             }
             newPosition = 0f
@@ -123,26 +126,29 @@ class TocUseCase(
             newPosition = currentState.layout.previousPositions.toc
             currentState.layout.tocSplitState.positionPercentage = newPosition
         }
-        
+
         stateManager.updateToc {
             copy(isVisible = !isVisible)
         }
-        
+
         return !isVisible
     }
-    
+
     /**
      * Met à jour la position de scroll du TOC
      */
-    fun updateTocScrollPosition(index: Int, offset: Int) {
+    fun updateTocScrollPosition(
+        index: Int,
+        offset: Int,
+    ) {
         stateManager.updateToc {
             copy(
                 scrollIndex = index,
-                scrollOffset = offset
+                scrollOffset = offset,
             )
         }
     }
-    
+
     /**
      * Réinitialise le TOC
      */
@@ -155,7 +161,7 @@ class TocUseCase(
                 selectedEntryId = null,
                 breadcrumbPath = emptyList(),
                 scrollIndex = 0,
-                scrollOffset = 0
+                scrollOffset = 0,
             )
         }
     }
@@ -180,7 +186,12 @@ class TocUseCase(
         // Ensure children for each ancestor are loaded and mark as expanded
         for ((idx, e) in ordered.withIndex()) {
             // Skip the last element (leaf) for children loading; expanding its parent is enough
-            if (e.hasChildren && !stateManager.state.first().toc.children.containsKey(e.id)) {
+            if (e.hasChildren &&
+                !stateManager.state
+                    .first()
+                    .toc.children
+                    .containsKey(e.id)
+            ) {
                 runCatching { loadTocChildren(e.id) }
             }
             // Expand all ancestors (and optionally the leaf if it has children)

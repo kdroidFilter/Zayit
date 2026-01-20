@@ -16,35 +16,36 @@ import kotlinx.coroutines.flow.stateIn
 @ViewModelKey(UserProfileViewModel::class)
 @Inject
 class UserProfileViewModel(
-    private val useCase: UserProfileUseCase
+    private val useCase: UserProfileUseCase,
 ) : ViewModel() {
-
     private val communities = useCase.getCommunities()
 
     private val firstName = MutableStateFlow(AppSettings.getUserFirstName() ?: "")
     private val lastName = MutableStateFlow(AppSettings.getUserLastName() ?: "")
-    private val selectedCommunityIndex = MutableStateFlow(
-        AppSettings.getUserCommunityCode()?.let { code ->
-            communities.indexOfFirst { it.name.equals(code, ignoreCase = true) }
-        } ?: -1
-    )
-
-    val state = combine(
-        firstName,
-        lastName,
-        selectedCommunityIndex,
-    ) { f, l, cIdx ->
-        UserProfileState(
-            firstName = f,
-            lastName = l,
-            communities = communities,
-            selectedCommunityIndex = if (cIdx in communities.indices) cIdx else -1
+    private val selectedCommunityIndex =
+        MutableStateFlow(
+            AppSettings.getUserCommunityCode()?.let { code ->
+                communities.indexOfFirst { it.name.equals(code, ignoreCase = true) }
+            } ?: -1,
         )
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5_000),
-        UserProfileState(communities = communities)
-    )
+
+    val state =
+        combine(
+            firstName,
+            lastName,
+            selectedCommunityIndex,
+        ) { f, l, cIdx ->
+            UserProfileState(
+                firstName = f,
+                lastName = l,
+                communities = communities,
+                selectedCommunityIndex = if (cIdx in communities.indices) cIdx else -1,
+            )
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            UserProfileState(communities = communities),
+        )
 
     fun onEvent(event: UserProfileEvents) {
         when (event) {

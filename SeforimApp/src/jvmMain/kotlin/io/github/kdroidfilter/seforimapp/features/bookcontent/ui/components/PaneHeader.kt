@@ -3,7 +3,6 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -20,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
@@ -35,25 +35,27 @@ import seforimapp.seforimapp.generated.resources.commentaries
 @Composable
 fun PaneHeader(
     label: String,
-    interactionSource: MutableInteractionSource? = null,
     onHide: () -> Unit,
-    actions: (@Composable RowScope.() -> Unit)? = null
+    interactionSource: MutableInteractionSource? = null,
+    actions: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val headerHoverSource = interactionSource ?: remember { MutableInteractionSource() }
     val isHovered by headerHoverSource.collectIsHoveredAsState()
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .hoverable(headerHoverSource)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .hoverable(headerHoverSource),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(32.dp)
-                .padding(horizontal = 8.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(32.dp)
+                    .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
@@ -66,47 +68,46 @@ fun PaneHeader(
             AnimatedVisibility(
                 visible = isHovered,
                 enter = fadeIn(),
-                exit = fadeOut()
+                exit = fadeOut(),
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     actions?.invoke(this)
                     IconActionButton(
                         key = AllIconsKeys.Windows.Minimize,
                         onClick = onHide,
-                        contentDescription = "Hide panel"
+                        contentDescription = "Hide panel",
                     )
                 }
             }
         }
 
         HorizontalDivider(
-            color = JewelTheme.globalColors.borders.normal
-        )
-    }
-}
-
-
-@Preview
-@Composable
-fun PaneHeaderPreview() {
-    PreviewContainer {
-        PaneHeader(
-            label = stringResource(Res.string.commentaries),
-            onHide = {}
+            color = JewelTheme.globalColors.borders.normal,
         )
     }
 }
 
 @Preview
 @Composable
-fun PaneHeaderWithWarningPreview() {
+private fun PaneHeaderPreview() {
     PreviewContainer {
         PaneHeader(
             label = stringResource(Res.string.commentaries),
-            onHide = {}
+            onHide = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun PaneHeaderWithWarningPreview() {
+    PreviewContainer {
+        PaneHeader(
+            label = stringResource(Res.string.commentaries),
+            onHide = {},
         )
     }
 }

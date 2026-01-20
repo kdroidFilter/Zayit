@@ -1,5 +1,4 @@
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
-import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -9,7 +8,11 @@ plugins {
 }
 
 kotlin {
-    jvmToolchain(libs.versions.jvmToolchain.get().toInt())
+    jvmToolchain(
+        libs.versions.jvmToolchain
+            .get()
+            .toInt(),
+    )
 
     androidLibrary {
         namespace = "io.github.kdroidfilter.seforimapp"
@@ -30,7 +33,6 @@ kotlin {
 
         jvmMain.dependencies {
         }
-
     }
 }
 

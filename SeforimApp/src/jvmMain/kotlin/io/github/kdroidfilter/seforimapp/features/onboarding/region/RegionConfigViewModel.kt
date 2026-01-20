@@ -16,30 +16,30 @@ import kotlinx.coroutines.flow.stateIn
 @ViewModelKey(RegionConfigViewModel::class)
 @Inject
 class RegionConfigViewModel(
-    private val useCase: RegionConfigUseCase
+    private val useCase: RegionConfigUseCase,
 ) : ViewModel() {
-
     private val countries = useCase.getCountries()
 
     private val selectedCountryIndex = MutableStateFlow(-1)
     private val selectedCityIndex = MutableStateFlow(-1)
 
-    val state = combine(
-        selectedCountryIndex,
-        selectedCityIndex,
-    ) { countryIdx, cityIdx ->
-        val cities = if (countryIdx >= 0) useCase.getCities(countryIdx) else emptyList()
-        RegionConfigState(
-            countries = countries,
-            selectedCountryIndex = countryIdx,
-            cities = cities,
-            selectedCityIndex = if (cityIdx in cities.indices) cityIdx else -1
+    val state =
+        combine(
+            selectedCountryIndex,
+            selectedCityIndex,
+        ) { countryIdx, cityIdx ->
+            val cities = if (countryIdx >= 0) useCase.getCities(countryIdx) else emptyList()
+            RegionConfigState(
+                countries = countries,
+                selectedCountryIndex = countryIdx,
+                cities = cities,
+                selectedCityIndex = if (cityIdx in cities.indices) cityIdx else -1,
+            )
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            RegionConfigState(countries = countries),
         )
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5_000),
-        RegionConfigState(countries = countries)
-    )
 
     init {
         // Initialize from persisted settings when available

@@ -22,7 +22,7 @@ import kotlin.collections.iterator
 
 /**
  * A breadcrumb component that displays the hierarchical path from the category root to the selected line.
- * 
+ *
  * @param book The book being displayed
  * @param selectedLine The currently selected line
  * @param tocEntries All TOC entries for the book
@@ -44,37 +44,38 @@ fun BreadcrumbView(
     categoryChildren: Map<Long, List<Category>>,
     onTocEntryClick: (TocEntry) -> Unit,
     onCategoryClick: (Category) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     // Build the breadcrumb path from the category root through book to the owning TOC hierarchy
-    val breadcrumbPath = remember(
-        book,
-        selectedLine?.id,
-        tocPath,
-        tocEntries,
-        tocChildren,
-        rootCategories,
-        categoryChildren
-    ) {
-        val result = mutableListOf<BreadcrumbItem>()
+    val breadcrumbPath =
+        remember(
+            book,
+            selectedLine?.id,
+            tocPath,
+            tocEntries,
+            tocChildren,
+            rootCategories,
+            categoryChildren,
+        ) {
+            val result = mutableListOf<BreadcrumbItem>()
 
-        // Categories path then book
-        result += buildCategoryPath(book.categoryId, rootCategories, categoryChildren)
-        result += BreadcrumbItem.BookItem(book)
+            // Categories path then book
+            result += buildCategoryPath(book.categoryId, rootCategories, categoryChildren)
+            result += BreadcrumbItem.BookItem(book)
 
-        // Append the TOC path computed by use case, deduplicating consecutive identical names anywhere
-        if (tocPath.isNotEmpty()) {
-            // If first TOC equals book title, drop it to avoid duplication with the book item
-            val adjustedToc = if (tocPath.first().text == book.title) tocPath.drop(1) else tocPath
-            result += adjustedToc.map { BreadcrumbItem.TocItem(it) }
+            // Append the TOC path computed by use case, deduplicating consecutive identical names anywhere
+            if (tocPath.isNotEmpty()) {
+                // If first TOC equals book title, drop it to avoid duplication with the book item
+                val adjustedToc = if (tocPath.first().text == book.title) tocPath.drop(1) else tocPath
+                result += adjustedToc.map { BreadcrumbItem.TocItem(it) }
+            }
+
+            result
         }
-
-        result
-    }
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.End
+        horizontalArrangement = Arrangement.End,
     ) {
         // Display each item in the breadcrumb path
         breadcrumbPath.forEachIndexed { index, item ->
@@ -83,7 +84,7 @@ fun BreadcrumbView(
                 Text(
                     text = " > ",
                     modifier = Modifier.padding(horizontal = 4.dp),
-                    fontSize = 12.sp
+                    fontSize = 12.sp,
                 )
             }
 
@@ -93,28 +94,27 @@ fun BreadcrumbView(
                     Text(
                         text = item.category.title,
                         fontWeight = if (index == breadcrumbPath.lastIndex) FontWeight.Bold else FontWeight.Normal,
-                        modifier = Modifier
-                            .clickable { onCategoryClick(item.category) },
-                        fontSize = 12.sp
-
+                        modifier =
+                            Modifier
+                                .clickable { onCategoryClick(item.category) },
+                        fontSize = 12.sp,
                     )
                 }
                 is BreadcrumbItem.BookItem -> {
                     Text(
                         text = item.book.title,
                         fontWeight = if (index == breadcrumbPath.lastIndex) FontWeight.Bold else FontWeight.Normal,
-                        fontSize = 12.sp
-
+                        fontSize = 12.sp,
                     )
                 }
                 is BreadcrumbItem.TocItem -> {
                     Text(
                         text = item.tocEntry.text,
                         fontWeight = if (index == breadcrumbPath.lastIndex) FontWeight.Bold else FontWeight.Normal,
-                        modifier = Modifier
-                            .clickable { onTocEntryClick(item.tocEntry) },
-                        fontSize = 12.sp
-
+                        modifier =
+                            Modifier
+                                .clickable { onTocEntryClick(item.tocEntry) },
+                        fontSize = 12.sp,
                     )
                 }
             }
@@ -124,7 +124,7 @@ fun BreadcrumbView(
 
 /**
  * Builds a breadcrumb path from the category root through the book to the selected line.
- * 
+ *
  * @param book The book being displayed
  * @param selectedLine The currently selected line
  * @param tocEntries All TOC entries for the book
@@ -137,7 +137,7 @@ fun BreadcrumbView(
 fun BreadcrumbView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val book = uiState.navigation.selectedBook ?: return
     BreadcrumbView(
@@ -156,7 +156,7 @@ fun BreadcrumbView(
         onCategoryClick = { category ->
             onEvent(BookContentEvent.CategorySelected(category))
         },
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
@@ -168,14 +168,14 @@ fun BreadcrumbView(
 private fun buildCategoryPath(
     categoryId: Long,
     rootCategories: List<Category>,
-    categoryChildren: Map<Long, List<Category>>
+    categoryChildren: Map<Long, List<Category>>,
 ): List<BreadcrumbItem> {
     // Find the category in the root categories
     val rootCategory = rootCategories.find { it.id == categoryId }
     if (rootCategory != null) {
         return listOf(BreadcrumbItem.CategoryItem(rootCategory))
     }
-    
+
     // Search for the category in the children
     for (root in rootCategories) {
         val path = findCategoryPath(root, categoryId, categoryChildren)
@@ -183,7 +183,7 @@ private fun buildCategoryPath(
             return path
         }
     }
-    
+
     return emptyList()
 }
 
@@ -193,13 +193,13 @@ private fun buildCategoryPath(
 private fun findCategoryPath(
     current: Category,
     targetId: Long,
-    categoryChildren: Map<Long, List<Category>>
+    categoryChildren: Map<Long, List<Category>>,
 ): List<BreadcrumbItem> {
     // If this is the target, return a path with just this category
     if (current.id == targetId) {
         return listOf(BreadcrumbItem.CategoryItem(current))
     }
-    
+
     // Check children
     val children = categoryChildren[current.id] ?: return emptyList()
     for (child in children) {
@@ -209,7 +209,7 @@ private fun findCategoryPath(
             return listOf(BreadcrumbItem.CategoryItem(current)) + path
         }
     }
-    
+
     return emptyList()
 }
 
@@ -217,8 +217,15 @@ private fun findCategoryPath(
  * Represents an item in the breadcrumb path.
  */
 sealed class BreadcrumbItem {
-    class CategoryItem(val category: Category) : BreadcrumbItem()
-    class BookItem(val book: Book) : BreadcrumbItem()
-    class TocItem(val tocEntry: TocEntry) : BreadcrumbItem()
-}
+    class CategoryItem(
+        val category: Category,
+    ) : BreadcrumbItem()
 
+    class BookItem(
+        val book: Book,
+    ) : BreadcrumbItem()
+
+    class TocItem(
+        val tocEntry: TocEntry,
+    ) : BreadcrumbItem()
+}

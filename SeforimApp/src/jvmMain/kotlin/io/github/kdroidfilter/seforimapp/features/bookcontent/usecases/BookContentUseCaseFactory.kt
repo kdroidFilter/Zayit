@@ -19,31 +19,27 @@ import kotlinx.coroutines.CoroutineScope
 @SingleIn(AppScope::class)
 class BookContentUseCaseFactory(
     private val repository: SeforimRepository,
-    private val categoryDisplaySettingsStore: CategoryDisplaySettingsStore
+    private val categoryDisplaySettingsStore: CategoryDisplaySettingsStore,
 ) {
     /**
      * Creates a [TocUseCase] for managing table of contents.
      */
-    fun createTocUseCase(stateManager: BookContentStateManager): TocUseCase =
-        TocUseCase(repository, stateManager)
+    fun createTocUseCase(stateManager: BookContentStateManager): TocUseCase = TocUseCase(repository, stateManager)
 
     /**
      * Creates a [ContentUseCase] for managing book content and line navigation.
      */
-    fun createContentUseCase(stateManager: BookContentStateManager): ContentUseCase =
-        ContentUseCase(repository, stateManager)
+    fun createContentUseCase(stateManager: BookContentStateManager): ContentUseCase = ContentUseCase(repository, stateManager)
 
     /**
      * Creates a [NavigationUseCase] for managing category/book tree navigation.
      */
-    fun createNavigationUseCase(stateManager: BookContentStateManager): NavigationUseCase =
-        NavigationUseCase(repository, stateManager)
+    fun createNavigationUseCase(stateManager: BookContentStateManager): NavigationUseCase = NavigationUseCase(repository, stateManager)
 
     /**
      * Creates an [AltTocUseCase] for managing alternative TOC structures.
      */
-    fun createAltTocUseCase(stateManager: BookContentStateManager): AltTocUseCase =
-        AltTocUseCase(repository, stateManager)
+    fun createAltTocUseCase(stateManager: BookContentStateManager): AltTocUseCase = AltTocUseCase(repository, stateManager)
 
     /**
      * Creates a [CommentariesUseCase] for managing commentaries and links.
@@ -51,9 +47,8 @@ class BookContentUseCaseFactory(
      */
     fun createCommentariesUseCase(
         stateManager: BookContentStateManager,
-        scope: CoroutineScope
-    ): CommentariesUseCase =
-        CommentariesUseCase(repository, stateManager, scope)
+        scope: CoroutineScope,
+    ): CommentariesUseCase = CommentariesUseCase(repository, stateManager, scope)
 
     /**
      * Creates a [CategoryDisplaySettingsUseCase] for managing category display settings.

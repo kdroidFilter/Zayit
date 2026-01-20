@@ -8,9 +8,10 @@ object StateKeys {
     const val TAB_ID = "tabId"
     const val BOOK_ID = "bookId"
     const val LINE_ID = "lineId"
+
     // Source hints for book opening (ephemeral)
     const val OPEN_SOURCE = "bookOpenSource"
-    
+
     // Navigation
     const val SELECTED_BOOK = "selectedBook"
     const val SELECTED_CATEGORY = "selectedCategory"
@@ -21,14 +22,14 @@ object StateKeys {
     const val BOOKS_IN_CATEGORY = "booksInCategory"
     const val BOOK_TREE_SCROLL_INDEX = "bookTreeScrollIndex"
     const val BOOK_TREE_SCROLL_OFFSET = "bookTreeScrollOffset"
-    
+
     // TOC
     const val SHOW_TOC = "showToc"
     const val EXPANDED_TOC_ENTRIES = "expandedTocEntries"
     const val TOC_CHILDREN = "tocChildren"
     const val TOC_SCROLL_INDEX = "tocScrollIndex"
     const val TOC_SCROLL_OFFSET = "tocScrollOffset"
-    
+
     // Content
     const val SELECTED_LINE = "selectedLine"
     const val SELECTED_LINE_ID = "selectedLineId"
@@ -42,7 +43,7 @@ object StateKeys {
     const val CONTENT_SCROLL_OFFSET = "contentScrollOffset"
     const val CONTENT_ANCHOR_ID = "contentAnchorId"
     const val CONTENT_ANCHOR_INDEX = "contentAnchorIndex"
-    
+
     // Commentaries
     const val COMMENTARIES_SELECTED_TAB = "commentariesSelectedTab"
     const val COMMENTARIES_SCROLL_INDEX = "commentariesScrollIndex"
@@ -57,7 +58,7 @@ object StateKeys {
     const val SELECTED_TARGUM_SOURCES_BY_BOOK = "selectedTargumSourcesByBook"
     const val SELECTED_SOURCES_BY_LINE = "selectedSourcesByLine"
     const val SELECTED_SOURCES_BY_BOOK = "selectedSourcesByBook"
-    
+
     // Layout - Split Panes
     const val SPLIT_PANE_POSITION = "splitPanePosition"
     const val TOC_SPLIT_PANE_POSITION = "tocSplitPanePosition"

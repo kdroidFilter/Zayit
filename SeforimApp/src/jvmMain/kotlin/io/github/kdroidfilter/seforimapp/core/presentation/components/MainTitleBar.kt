@@ -26,32 +26,36 @@ fun DecoratedWindowScope.MainTitleBar() {
             // Compute the available width for the tab strip in pixel space and then
             // quantize to an integer number of pixels before converting back to Dp.
             // This avoids subtle 1px oscillations on small or non-integer window sizes.
-            val tabsAreaWidth: Dp = with(density) {
-                val windowWidthPx = windowWidth.toPx()
-                val iconsAreaWidthDp = when (PlatformInfo.currentOS) {
-                    OperatingSystem.MACOS -> iconWidth * (iconsNumber + 2)
-                    OperatingSystem.WINDOWS -> iconWidth * (iconsNumber + 3.5f)
-                    else -> iconWidth * iconsNumber
+            val tabsAreaWidth: Dp =
+                with(density) {
+                    val windowWidthPx = windowWidth.toPx()
+                    val iconsAreaWidthDp =
+                        when (PlatformInfo.currentOS) {
+                            OperatingSystem.MACOS -> iconWidth * (iconsNumber + 2)
+                            OperatingSystem.WINDOWS -> iconWidth * (iconsNumber + 3.5f)
+                            else -> iconWidth * iconsNumber
+                        }
+                    val iconsAreaWidthPx = iconsAreaWidthDp.toPx()
+                    val availablePx = (windowWidthPx - iconsAreaWidthPx).coerceAtLeast(0f)
+                    val quantizedPx = availablePx.toInt()
+                    quantizedPx.toDp()
                 }
-                val iconsAreaWidthPx = iconsAreaWidthDp.toPx()
-                val availablePx = (windowWidthPx - iconsAreaWidthPx).coerceAtLeast(0f)
-                val quantizedPx = availablePx.toInt()
-                quantizedPx.toDp()
-            }
             Row {
                 Row(
-                    modifier = Modifier
-                        .padding(start = 0.dp)
-                        .align(Alignment.Start)
-                        .width(tabsAreaWidth)
+                    modifier =
+                        Modifier
+                            .padding(start = 0.dp)
+                            .align(Alignment.Start)
+                            .width(tabsAreaWidth),
                 ) {
                     TabsView()
                 }
                 Row(
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .fillMaxHeight(),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier =
+                        Modifier
+                            .align(Alignment.End)
+                            .fillMaxHeight(),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TitleBarActionsButtonsView()
                 }

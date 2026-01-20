@@ -89,7 +89,7 @@ internal fun DecoratedWindowScope.TitleBarImpl(
                 .layoutId(TITLE_BAR_LAYOUT_ID)
                 .height(style.metrics.height)
                 .onSizeChanged { with(density) { applyTitleBar(it.height.toDp(), state) } }
-                .fillMaxWidth()
+                .fillMaxWidth(),
     ) {
         backgroundContent()
         Layout(
@@ -110,7 +110,13 @@ internal fun DecoratedWindowScope.TitleBarImpl(
         )
     }
 
-    Spacer(Modifier.layoutId(TITLE_BAR_BORDER_LAYOUT_ID).height(1.dp).fillMaxWidth().background(style.colors.border))
+    Spacer(
+        Modifier
+            .layoutId(TITLE_BAR_BORDER_LAYOUT_ID)
+            .height(1.dp)
+            .fillMaxWidth()
+            .background(style.colors.border),
+    )
 }
 
 internal class TitleBarMeasurePolicy(
@@ -118,7 +124,10 @@ internal class TitleBarMeasurePolicy(
     private val state: DecoratedWindowState,
     private val applyTitleBar: (Dp, DecoratedWindowState) -> PaddingValues,
 ) : MeasurePolicy {
-    override fun MeasureScope.measure(measurables: List<Measurable>, constraints: Constraints): MeasureResult {
+    override fun MeasureScope.measure(
+        measurables: List<Measurable>,
+        constraints: Constraints,
+    ): MeasureResult {
         if (measurables.isEmpty()) {
             return layout(width = constraints.minWidth, height = constraints.minHeight) {}
         }
@@ -218,7 +227,10 @@ public interface TitleBarScope {
     @Stable public fun Modifier.align(alignment: Alignment.Horizontal): Modifier
 }
 
-private class TitleBarScopeImpl(override val title: String, override val icon: Painter?) : TitleBarScope {
+private class TitleBarScopeImpl(
+    override val title: String,
+    override val icon: Painter?,
+) : TitleBarScope {
     override fun Modifier.align(alignment: Alignment.Horizontal): Modifier =
         this then
             TitleBarChildDataElement(
@@ -233,7 +245,8 @@ private class TitleBarScopeImpl(override val title: String, override val icon: P
 private class TitleBarChildDataElement(
     val horizontalAlignment: Alignment.Horizontal,
     val inspectorInfo: InspectorInfo.() -> Unit = NoInspectorInfo,
-) : ModifierNodeElement<TitleBarChildDataNode>(), InspectableValue {
+) : ModifierNodeElement<TitleBarChildDataNode>(),
+    InspectableValue {
     override fun create(): TitleBarChildDataNode = TitleBarChildDataNode(horizontalAlignment)
 
     override fun equals(other: Any?): Boolean {
@@ -253,7 +266,9 @@ private class TitleBarChildDataElement(
     }
 }
 
-private class TitleBarChildDataNode(var horizontalAlignment: Alignment.Horizontal) :
-    ParentDataModifierNode, Modifier.Node() {
+private class TitleBarChildDataNode(
+    var horizontalAlignment: Alignment.Horizontal,
+) : Modifier.Node(),
+    ParentDataModifierNode {
     override fun Density.modifyParentData(parentData: Any?) = this@TitleBarChildDataNode
 }

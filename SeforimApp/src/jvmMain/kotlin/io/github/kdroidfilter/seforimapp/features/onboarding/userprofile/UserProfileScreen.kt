@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -88,6 +89,7 @@ private fun UserProfileView(
     onNext: () -> Unit,
     canProceed: Boolean,
 ) {
+    val currentOnEvent by rememberUpdatedState(onEvent)
     OnBoardingScaffold(
         title = stringResource(Res.string.onboarding_user_info_title),
         bottomAction = {
@@ -125,7 +127,7 @@ private fun UserProfileView(
                             }
                             LaunchedEffect(firstNameState.text) {
                                 val value = firstNameState.text.toString()
-                                if (value != state.firstName) onEvent(UserProfileEvents.FirstNameChanged(value))
+                                if (value != state.firstName) currentOnEvent(UserProfileEvents.FirstNameChanged(value))
                             }
                             TextField(
                                 state = firstNameState,
@@ -144,7 +146,7 @@ private fun UserProfileView(
                             }
                             LaunchedEffect(lastNameState.text) {
                                 val value = lastNameState.text.toString()
-                                if (value != state.lastName) onEvent(UserProfileEvents.LastNameChanged(value))
+                                if (value != state.lastName) currentOnEvent(UserProfileEvents.LastNameChanged(value))
                             }
                             TextField(
                                 state = lastNameState,

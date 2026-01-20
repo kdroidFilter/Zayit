@@ -43,6 +43,7 @@ metro = "0.10.0"
 lucene = "10.3.2"
 ktlint = "14.0.1"
 detekt = "1.23.8"
+kover = "0.9.4"
 
 [libraries]
 
@@ -137,3 +138,4 @@ linux-deps = { id = "io.github.kdroidfilter.compose.linux.packagedeps", version 
 stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version = "0.6.6" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

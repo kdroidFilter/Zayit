@@ -69,8 +69,8 @@ private const val SCROLL_DEBOUNCE_MS = 100L
 fun LineCommentsView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     showDiacritics: Boolean,
+    lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
 ) {
     val contentState = uiState.content
     val selectedLine = contentState.selectedLine
@@ -568,9 +568,9 @@ private fun CommentaryItem(
     targetText: String,
     textSizes: AnimatedTextSizes,
     fontFamily: FontFamily,
-    boldScale: Float = 1.0f,
     highlightQuery: String,
     showDiacritics: Boolean,
+    boldScale: Float = 1.0f,
     onClick: () -> Unit,
 ) {
     Column(

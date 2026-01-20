@@ -35,8 +35,8 @@ import seforimapp.seforimapp.generated.resources.commentaries
 @Composable
 fun PaneHeader(
     label: String,
-    interactionSource: MutableInteractionSource? = null,
     onHide: () -> Unit,
+    interactionSource: MutableInteractionSource? = null,
     actions: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val headerHoverSource = interactionSource ?: remember { MutableInteractionSource() }

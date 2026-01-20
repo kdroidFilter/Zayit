@@ -31,6 +31,7 @@ import org.jetbrains.jewel.ui.theme.menuStyle
  */
 @Composable
 fun DropdownButton(
+    popupContent: @Composable ColumnScope.(close: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     textStyle: TextStyle = JewelTheme.defaultTextStyle,
@@ -41,7 +42,6 @@ fun DropdownButton(
     showScrollbar: Boolean = true,
     alignToEndOfAnchor: Boolean = true,
     content: @Composable RowScope.() -> Unit,
-    popupContent: @Composable ColumnScope.(close: () -> Unit) -> Unit,
 ) {
     var popupOpen by remember { mutableStateOf(false) }
     var anchorOffset by remember { mutableStateOf(IntOffset.Zero) }

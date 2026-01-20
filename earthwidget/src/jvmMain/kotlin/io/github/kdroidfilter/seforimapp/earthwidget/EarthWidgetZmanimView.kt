@@ -212,8 +212,8 @@ fun EarthWidgetZmanimView(
     locationOptions: Map<String, Map<String, EarthWidgetLocation>> = emptyMap(),
     targetTime: Date? = null,
     targetDate: LocalDate? = null,
-    onDateSelected: ((LocalDate) -> Unit)? = null,
-    onLocationSelected: ((country: String, city: String, location: EarthWidgetLocation) -> Unit)? = null,
+    onDateSelect: ((LocalDate) -> Unit)? = null,
+    onLocationSelect: ((country: String, city: String, location: EarthWidgetLocation) -> Unit)? = null,
     allowLocationSelection: Boolean = true,
     containerBackground: Color? = null,
     contentPadding: Dp = 12.dp,
@@ -557,7 +557,7 @@ fun EarthWidgetZmanimView(
     // Use rememberUpdatedState to keep the lambda stable while accessing latest values
     val currentTimeZone by rememberUpdatedState(timeZone)
     val currentReferenceTime by rememberUpdatedState(referenceTime)
-    val currentOnDateSelected by rememberUpdatedState(onDateSelected)
+    val currentOnDateSelected by rememberUpdatedState(onDateSelect)
 
     val onResetDateTimeCallback: () -> Unit = {
         val now = Calendar.getInstance(timeZone)
@@ -590,7 +590,7 @@ fun EarthWidgetZmanimView(
                 Unit
             }
         }
-    val onLocationSelectedInternal: (String, String) -> Unit = selection@{ country, city ->
+    val onLocationSelectInternal: (String, String) -> Unit = selection@{ country, city ->
         val location = normalizedLocationOptions[country]?.get(city) ?: return@selection
         selectedLocationSelection = LocationSelection(country, city)
         menuCountrySelection = country
@@ -599,7 +599,7 @@ fun EarthWidgetZmanimView(
         markerElevationMeters = location.elevationMeters
         timeZone = location.timeZone
         earthRotationOffset = 0f
-        onLocationSelected?.invoke(country, city, location)
+        onLocationSelect?.invoke(country, city, location)
     }
 
     if (useScroll) {
@@ -623,7 +623,7 @@ fun EarthWidgetZmanimView(
                             DateSelectionSplitButton(
                                 label = hebrewDateLabel,
                                 selectedDate = selectedDate,
-                                onDateSelected = onCalendarDateSelected,
+                                onDateSelect = onCalendarDateSelected,
                                 menuStyle = globalMenuStyle,
                                 modifier =
                                     Modifier
@@ -638,8 +638,8 @@ fun EarthWidgetZmanimView(
                                     locations = normalizedLocationOptions,
                                     selectedCountry = menuCountrySelection,
                                     selectedSelection = selectedLocationSelection,
-                                    onCountrySelected = { menuCountrySelection = it },
-                                    onCitySelected = { country, city -> onLocationSelectedInternal(country, city) },
+                                    onCountrySelect = { menuCountrySelection = it },
+                                    onCitySelect = { country, city -> onLocationSelectInternal(country, city) },
                                     menuStyle = globalMenuStyle,
                                     modifier =
                                         Modifier
@@ -718,7 +718,7 @@ fun EarthWidgetZmanimView(
                             DateSelectionSplitButton(
                                 label = hebrewDateLabel,
                                 selectedDate = selectedDate,
-                                onDateSelected = onCalendarDateSelected,
+                                onDateSelect = onCalendarDateSelected,
                             )
                         }
 
@@ -916,7 +916,7 @@ fun EarthWidgetZmanimView(
                 DateSelectionSplitButton(
                     label = hebrewDateLabel,
                     selectedDate = selectedDate,
-                    onDateSelected = onCalendarDateSelected,
+                    onDateSelect = onCalendarDateSelected,
                     menuStyle = globalMenuStyle,
                     modifier =
                         Modifier
@@ -931,8 +931,8 @@ fun EarthWidgetZmanimView(
                         locations = normalizedLocationOptions,
                         selectedCountry = menuCountrySelection,
                         selectedSelection = selectedLocationSelection,
-                        onCountrySelected = { menuCountrySelection = it },
-                        onCitySelected = { country, city -> onLocationSelectedInternal(country, city) },
+                        onCountrySelect = { menuCountrySelection = it },
+                        onCitySelect = { country, city -> onLocationSelectInternal(country, city) },
                         menuStyle = globalMenuStyle,
                         modifier =
                             Modifier
@@ -1256,14 +1256,14 @@ private fun TimePresetButtonLabel(
 private fun DateSelectionSplitButton(
     label: String,
     selectedDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit,
+    onDateSelect: (LocalDate) -> Unit,
     menuStyle: MenuStyle = JewelTheme.menuStyle,
     modifier: Modifier = Modifier,
 ) {
     io.github.kdroidfilter.seforimapp.hebrewcalendar.DateSelectionSplitButton(
         label = label,
         selectedDate = selectedDate,
-        onDateSelected = onDateSelected,
+        onDateSelect = onDateSelect,
         initialMode = CalendarMode.HEBREW,
         menuStyle = menuStyle,
         modifier = modifier,
@@ -1276,8 +1276,8 @@ private fun LocationSelectionSplitButton(
     locations: Map<String, Map<String, EarthWidgetLocation>>,
     selectedCountry: String?,
     selectedSelection: LocationSelection?,
-    onCountrySelected: (String) -> Unit,
-    onCitySelected: (String, String) -> Unit,
+    onCountrySelect: (String) -> Unit,
+    onCitySelect: (String, String) -> Unit,
     menuStyle: MenuStyle = JewelTheme.menuStyle,
     modifier: Modifier = Modifier,
 ) {
@@ -1313,8 +1313,8 @@ private fun LocationSelectionSplitButton(
                                     selectedSelection
                                         ?.takeIf { it.country == selectedCountry }
                                         ?.city,
-                                onCountrySelected = onCountrySelected,
-                                onCitySelected = onCitySelected,
+                                onCountrySelect = onCountrySelect,
+                                onCitySelect = onCitySelect,
                             )
                         }
                     }
@@ -1329,8 +1329,8 @@ private fun LocationMenuContent(
     locations: Map<String, Map<String, EarthWidgetLocation>>,
     selectedCountry: String?,
     selectedCity: String?,
-    onCountrySelected: (String) -> Unit,
-    onCitySelected: (String, String) -> Unit,
+    onCountrySelect: (String) -> Unit,
+    onCitySelect: (String, String) -> Unit,
 ) {
     val menuController = LocalMenuController.current
     val inputModeManager = LocalInputModeManager.current
@@ -1356,7 +1356,7 @@ private fun LocationMenuContent(
         LocationListColumn(
             items = countries,
             selectedItem = activeCountry,
-            onItemSelected = onCountrySelected,
+            onItemSelect = onCountrySelect,
             modifier = Modifier.weight(1f),
         )
         Divider(
@@ -1366,9 +1366,9 @@ private fun LocationMenuContent(
         LocationListColumn(
             items = cities,
             selectedItem = selectedCity,
-            onItemSelected = { city ->
+            onItemSelect = { city ->
                 activeCountry?.let { country ->
-                    onCitySelected(country, city)
+                    onCitySelect(country, city)
                     closeMenu()
                 }
             },
@@ -1382,7 +1382,7 @@ private fun LocationMenuContent(
 private fun LocationListColumn(
     items: List<String>,
     selectedItem: String?,
-    onItemSelected: (String) -> Unit,
+    onItemSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var hoveredItem by remember(items) { mutableStateOf<String?>(null) }
@@ -1421,7 +1421,7 @@ private fun LocationListColumn(
                             if (hoveredItem == item) {
                                 hoveredItem = null
                             }
-                        }.clickable { onItemSelected(item) }
+                        }.clickable { onItemSelect(item) }
                         .padding(horizontal = 8.dp, vertical = 6.dp),
             ) {
                 Text(

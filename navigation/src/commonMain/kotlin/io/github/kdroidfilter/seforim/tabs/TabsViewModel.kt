@@ -49,9 +49,9 @@ class TabsViewModel(
 
     fun onEvent(event: TabsEvents) {
         when (event) {
-            is TabsEvents.onClose -> closeTab(event.index)
-            is TabsEvents.onSelected -> selectTab(event.index)
-            TabsEvents.onAdd -> addTab()
+            is TabsEvents.OnClose -> closeTab(event.index)
+            is TabsEvents.OnSelect -> selectTab(event.index)
+            TabsEvents.OnAdd -> addTab()
             is TabsEvents.OnReorder -> reorderTabs(event.fromIndex, event.toIndex)
             TabsEvents.CloseAll -> closeAllTabs()
             is TabsEvents.CloseOthers -> closeOthers(event.index)

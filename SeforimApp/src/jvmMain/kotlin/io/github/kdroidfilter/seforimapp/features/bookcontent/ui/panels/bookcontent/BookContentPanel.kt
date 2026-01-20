@@ -126,11 +126,12 @@ fun BookContentPanel(
                             bookId = uiState.navigation.selectedBook.id,
                             linesPagingData = providers.linesPagingData,
                             selectedLineId = uiState.content.selectedLine?.id,
-                            onLineSelected = { line ->
+                            onLineSelect = { line ->
                                 onEvent(BookContentEvent.LineSelected(line))
                             },
                             onEvent = onEvent,
                             tabId = uiState.tabId,
+                            showDiacritics = showDiacritics,
                             modifier = Modifier,
                             preservedListState = bookListState,
                             scrollIndex = uiState.content.scrollIndex,
@@ -153,7 +154,6 @@ fun BookContentPanel(
                             altHeadingsByLineId = uiState.altToc.lineHeadingsByLineId.asStableAltHeadings(),
                             lineConnections = connectionsCache,
                             onPrefetchLineConnections = prefetchConnections,
-                            showDiacritics = showDiacritics,
                             isSelected = isSelected,
                         )
                     },

@@ -13,10 +13,10 @@ import kotlin.math.tan
 // ============================================================================
 
 private fun meanObliquityRad(julianDay: Double): Double {
-    val T = (julianDay - J2000_EPOCH_JD) / DAYS_PER_JULIAN_CENTURY
+    val t = (julianDay - J2000_EPOCH_JD) / DAYS_PER_JULIAN_CENTURY
     val seconds =
         MEAN_OBLIQUITY_COEFF0 -
-            T * (MEAN_OBLIQUITY_COEFF1 + T * (MEAN_OBLIQUITY_COEFF2 - MEAN_OBLIQUITY_COEFF3 * T))
+            t * (MEAN_OBLIQUITY_COEFF1 + t * (MEAN_OBLIQUITY_COEFF2 - MEAN_OBLIQUITY_COEFF3 * t))
     val degrees = 23.0 + (26.0 + seconds / 60.0) / 60.0
     return degrees * DEG_TO_RAD
 }
@@ -25,34 +25,34 @@ private fun meanObliquityRad(julianDay: Double): Double {
  * Computes the Moon's ecliptic position using the Meeus algorithm.
  */
 internal fun computeMoonEclipticPosition(julianDay: Double): EclipticPosition {
-    val T = (julianDay - J2000_EPOCH_JD) / DAYS_PER_JULIAN_CENTURY
+    val t = (julianDay - J2000_EPOCH_JD) / DAYS_PER_JULIAN_CENTURY
 
-    val Lp = normalizeAngleDeg(MOON_MEAN_LONGITUDE_J2000 + MOON_MEAN_LONGITUDE_RATE * T)
-    val Mp = normalizeAngleDeg(MOON_MEAN_ANOMALY_J2000 + MOON_MEAN_ANOMALY_RATE * T)
-    val D = normalizeAngleDeg(MOON_MEAN_ELONGATION_J2000 + MOON_MEAN_ELONGATION_RATE * T)
-    val Ms = normalizeAngleDeg(SUN_MEAN_ANOMALY_J2000 + SUN_MEAN_ANOMALY_RATE * T)
-    val F = normalizeAngleDeg(MOON_ARG_LATITUDE_J2000 + MOON_ARG_LATITUDE_RATE * T)
+    val lp = normalizeAngleDeg(MOON_MEAN_LONGITUDE_J2000 + MOON_MEAN_LONGITUDE_RATE * t)
+    val mp = normalizeAngleDeg(MOON_MEAN_ANOMALY_J2000 + MOON_MEAN_ANOMALY_RATE * t)
+    val d = normalizeAngleDeg(MOON_MEAN_ELONGATION_J2000 + MOON_MEAN_ELONGATION_RATE * t)
+    val ms = normalizeAngleDeg(SUN_MEAN_ANOMALY_J2000 + SUN_MEAN_ANOMALY_RATE * t)
+    val f = normalizeAngleDeg(MOON_ARG_LATITUDE_J2000 + MOON_ARG_LATITUDE_RATE * t)
 
-    val MpRad = Mp * DEG_TO_RAD
-    val DRad = D * DEG_TO_RAD
-    val MsRad = Ms * DEG_TO_RAD
-    val FRad = F * DEG_TO_RAD
+    val mpRad = mp * DEG_TO_RAD
+    val dRad = d * DEG_TO_RAD
+    val msRad = ms * DEG_TO_RAD
+    val fRad = f * DEG_TO_RAD
 
     val dL =
-        6.289 * sin(MpRad) +
-            1.274 * sin(2.0 * DRad - MpRad) +
-            0.658 * sin(2.0 * DRad) +
-            0.214 * sin(2.0 * MpRad) -
-            0.186 * sin(MsRad) -
-            0.114 * sin(2.0 * FRad)
+        6.289 * sin(mpRad) +
+            1.274 * sin(2.0 * dRad - mpRad) +
+            0.658 * sin(2.0 * dRad) +
+            0.214 * sin(2.0 * mpRad) -
+            0.186 * sin(msRad) -
+            0.114 * sin(2.0 * fRad)
 
     val dB =
-        5.128 * sin(FRad) +
-            0.281 * sin(MpRad + FRad) +
-            0.278 * sin(MpRad - FRad)
+        5.128 * sin(fRad) +
+            0.281 * sin(mpRad + fRad) +
+            0.278 * sin(mpRad - fRad)
 
     return EclipticPosition(
-        longitude = normalizeAngleDeg(Lp + dL).toFloat(),
+        longitude = normalizeAngleDeg(lp + dL).toFloat(),
         latitude = dB.toFloat(),
     )
 }
@@ -86,11 +86,11 @@ internal fun computeMoonEquatorialPosition(julianDay: Double): EquatorialPositio
 }
 
 internal fun greenwichMeanSiderealTimeRad(julianDay: Double): Double {
-    val T = (julianDay - J2000_EPOCH_JD) / DAYS_PER_JULIAN_CENTURY
+    val t = (julianDay - J2000_EPOCH_JD) / DAYS_PER_JULIAN_CENTURY
     val gmstDeg =
         280.46061837 +
             360.98564736629 * (julianDay - J2000_EPOCH_JD) +
-            T * T * (0.000387933 - T / 38710000.0)
+            t * t * (0.000387933 - t / 38710000.0)
     return normalizeRad(gmstDeg * DEG_TO_RAD)
 }
 
@@ -136,14 +136,14 @@ internal fun computeMoonHorizontalPosition(
  * Computes the Sun's ecliptic longitude using a simplified algorithm.
  */
 internal fun computeSunEclipticLongitude(julianDay: Double): Float {
-    val T = (julianDay - J2000_EPOCH_JD) / DAYS_PER_JULIAN_CENTURY
-    val L0 = normalizeAngleDeg(SUN_MEAN_LONGITUDE_J2000 + SUN_MEAN_LONGITUDE_RATE * T)
-    val M = normalizeAngleDeg(SUN_MEAN_ANOMALY_J2000 + SUN_MEAN_ANOMALY_RATE * T)
-    val Mrad = M * DEG_TO_RAD
+    val t = (julianDay - J2000_EPOCH_JD) / DAYS_PER_JULIAN_CENTURY
+    val l0 = normalizeAngleDeg(SUN_MEAN_LONGITUDE_J2000 + SUN_MEAN_LONGITUDE_RATE * t)
+    val m = normalizeAngleDeg(SUN_MEAN_ANOMALY_J2000 + SUN_MEAN_ANOMALY_RATE * t)
+    val mRad = m * DEG_TO_RAD
 
-    val C = 1.9146 * sin(Mrad) + 0.02 * sin(2.0 * Mrad)
+    val c = 1.9146 * sin(mRad) + 0.02 * sin(2.0 * mRad)
 
-    return normalizeAngleDeg(L0 + C).toFloat()
+    return normalizeAngleDeg(l0 + c).toFloat()
 }
 
 /**

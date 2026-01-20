@@ -172,8 +172,8 @@ private fun DefaultTabShowcase(
                         key = tabItem.destination.tabId,
                         data = tabData,
                         labelProvider = labelProvider,
-                        onClose = { onEvents(TabsEvents.onClose(actualIndex)) },
-                        onClick = { onEvents(TabsEvents.onSelected(actualIndex)) },
+                        onClose = { onEvents(TabsEvents.OnClose(actualIndex)) },
+                        onClick = { onEvents(TabsEvents.OnSelect(actualIndex)) },
                         onCloseAll = { onEvents(TabsEvents.CloseAll) },
                         onCloseOthers = { onEvents(TabsEvents.CloseOthers(actualIndex)) },
                         // RTL: visual "left" corresponds to higher indices (right of actual index)
@@ -240,8 +240,8 @@ private fun DefaultTabShowcase(
                         key = tabItem.destination.tabId,
                         data = tabData,
                         labelProvider = labelProvider,
-                        onClose = { onEvents(TabsEvents.onClose(index)) },
-                        onClick = { onEvents(TabsEvents.onSelected(index)) },
+                        onClose = { onEvents(TabsEvents.OnClose(index)) },
+                        onClick = { onEvents(TabsEvents.OnSelect(index)) },
                         onCloseAll = { onEvents(TabsEvents.CloseAll) },
                         onCloseOthers = { onEvents(TabsEvents.CloseOthers(index)) },
                         onCloseLeft = { onEvents(TabsEvents.CloseLeft(index)) },
@@ -264,7 +264,7 @@ private fun DefaultTabShowcase(
             onEvents(TabsEvents.OnReorder(actualFrom, actualTo))
         },
     ) {
-        onEvents(TabsEvents.onAdd)
+        onEvents(TabsEvents.OnAdd)
     }
 }
 
@@ -321,7 +321,8 @@ private fun RtlAwareTabStripContent(
         val maxWidthDp = this.maxWidth
         // Reserve a non-interactive draggable area at the trailing edge to allow window move
         val reservedDragArea = 40.dp
-        val extrasWidth = 40.dp /* + button */ + 1.dp /* divider */ + 8.dp /* divider padding */ + reservedDragArea
+        // + button (40.dp) + divider (1.dp) + divider padding (8.dp) + reserved drag area
+        val extrasWidth = 40.dp + 1.dp + 8.dp + reservedDragArea
         val availableForTabs = (maxWidthDp - extrasWidth).coerceAtLeast(0.dp)
         val tabsCount = tabs.size.coerceAtLeast(1)
         // Chrome-like: tabs shrink to fill available width, capped by a max width
@@ -361,7 +362,7 @@ private fun RtlAwareTabStripContent(
             }
 
             // Helper to render all tab items with animations and reordering support
-            val TabsOnly: @Composable RowScope.() -> Unit = {
+            val tabsOnly: @Composable RowScope.() -> Unit = {
                 val reorderingEnabled = closingKeys.isEmpty()
                 val rowModifier = if (shrinkToFitActive) Modifier.fillMaxWidth() else Modifier
                 val tabEntriesByKey = remember(tabs) { tabs.associateBy { it.key } }
@@ -456,7 +457,7 @@ private fun RtlAwareTabStripContent(
                         .animateContentSize(animationSpec = tabsContainerAnimationSpec),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TabsOnly()
+                tabsOnly()
             }
 
             Divider(
@@ -510,11 +511,11 @@ private fun RtlAwareTab(
     onCloseOthers: () -> Unit,
     onCloseLeft: () -> Unit,
     onCloseRight: () -> Unit,
+    modifier: Modifier = Modifier,
     animateWidth: Boolean = true,
     enterFromSmall: Boolean = false,
     enterDurationMs: Int = 200,
     isDragging: Boolean = false,
-    modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var tabState by remember { mutableStateOf(TabState.of(selected = tabData.selected, active = isActive)) }

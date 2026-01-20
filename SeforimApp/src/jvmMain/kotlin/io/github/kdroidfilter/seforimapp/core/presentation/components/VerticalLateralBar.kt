@@ -30,12 +30,12 @@ enum class VerticalLateralBarPosition {
 
 @Composable
 fun VerticalLateralBar(
-    topContentLabel: String? = null,
     topContent: @Composable () -> Unit,
-    bottomContentLabel: String? = null,
     bottomContent: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
     position: VerticalLateralBarPosition,
+    modifier: Modifier = Modifier,
+    topContentLabel: String? = null,
+    bottomContentLabel: String? = null,
 ) {
     val boxModifier =
         Modifier

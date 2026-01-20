@@ -38,9 +38,9 @@ data class TocQuickLink(
 fun TocJumpDropdown(
     title: String,
     bookId: Long,
-    items: List<TocQuickLink> = emptyList(),
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier,
+    items: List<TocQuickLink> = emptyList(),
     popupWidthMultiplier: Float = 1.5f,
     minPopupHeight: Dp = Dp.Unspecified,
     maxPopupHeight: Dp = 360.dp,
@@ -132,9 +132,9 @@ fun TocJumpDropdownByIds(
     TocJumpDropdown(
         title = title,
         bookId = bookId,
-        items = emptyList(),
         onEvent = onEvent,
         modifier = modifier,
+        items = emptyList(),
         popupWidthMultiplier = popupWidthMultiplier,
         minPopupHeight = minPopupHeight,
         maxPopupHeight = maxPopupHeight,

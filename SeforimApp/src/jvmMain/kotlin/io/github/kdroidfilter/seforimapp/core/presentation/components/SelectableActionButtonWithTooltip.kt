@@ -27,8 +27,9 @@ fun SelectableIconButtonWithToolip(
     onClick: () -> Unit,
     isSelected: Boolean,
     icon: ImageVector,
-    iconDescription: String = "",
     label: String,
+    modifier: Modifier = Modifier,
+    iconDescription: String = "",
     enabled: Boolean = true,
     shortcutHint: String? = null,
 ) {
@@ -56,21 +57,39 @@ fun SelectableIconButtonWithToolip(
                 IconButtonStyle(
                     colors =
                         IconButtonColors(
-                            foregroundSelectedActivated = JewelTheme.iconButtonStyle.colors.foregroundSelectedActivated,
-                            background = if (isSelected) JewelTheme.iconButtonStyle.colors.backgroundSelected else JewelTheme.iconButtonStyle.colors.background,
+                            foregroundSelectedActivated =
+                                JewelTheme.iconButtonStyle.colors.foregroundSelectedActivated,
+                            background =
+                                if (isSelected) {
+                                    JewelTheme.iconButtonStyle.colors.backgroundSelected
+                                } else {
+                                    JewelTheme.iconButtonStyle.colors.background
+                                },
                             backgroundDisabled = JewelTheme.iconButtonStyle.colors.backgroundDisabled,
                             backgroundSelected = JewelTheme.iconButtonStyle.colors.backgroundSelected,
-                            backgroundSelectedActivated = JewelTheme.iconButtonStyle.colors.backgroundSelectedActivated,
+                            backgroundSelectedActivated =
+                                JewelTheme.iconButtonStyle.colors.backgroundSelectedActivated,
                             backgroundFocused = JewelTheme.iconButtonStyle.colors.backgroundFocused,
                             backgroundPressed = JewelTheme.iconButtonStyle.colors.backgroundPressed,
-                            backgroundHovered = if (isSelected) JewelTheme.iconButtonStyle.colors.backgroundSelected else JewelTheme.iconButtonStyle.colors.backgroundHovered,
+                            backgroundHovered =
+                                if (isSelected) {
+                                    JewelTheme.iconButtonStyle.colors.backgroundSelected
+                                } else {
+                                    JewelTheme.iconButtonStyle.colors.backgroundHovered
+                                },
                             border = JewelTheme.iconButtonStyle.colors.border,
                             borderDisabled = JewelTheme.iconButtonStyle.colors.borderDisabled,
                             borderSelected = JewelTheme.iconButtonStyle.colors.borderSelected,
-                            borderSelectedActivated = JewelTheme.iconButtonStyle.colors.borderSelectedActivated,
+                            borderSelectedActivated =
+                                JewelTheme.iconButtonStyle.colors.borderSelectedActivated,
                             borderFocused = JewelTheme.iconButtonStyle.colors.borderFocused,
                             borderPressed = JewelTheme.iconButtonStyle.colors.borderPressed,
-                            borderHovered = if (isSelected) JewelTheme.iconButtonStyle.colors.borderSelected else JewelTheme.iconButtonStyle.colors.borderHovered,
+                            borderHovered =
+                                if (isSelected) {
+                                    JewelTheme.iconButtonStyle.colors.borderSelected
+                                } else {
+                                    JewelTheme.iconButtonStyle.colors.borderHovered
+                                },
                         ),
                     metrics = JewelTheme.iconButtonStyle.metrics,
                 ),

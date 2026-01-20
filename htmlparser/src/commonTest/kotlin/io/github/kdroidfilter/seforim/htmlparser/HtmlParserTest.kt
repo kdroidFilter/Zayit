@@ -88,7 +88,8 @@ class HtmlParserTest {
     @Test
     fun parsesRealFootnoteFromRaahOnBerakhot() {
         // Real example from רא"ה על ברכות
-        val html = """פי'<sup class="footnote-marker">34</sup><i class="footnote">כיון שאמרו בגמ' אע"פ שקרא אדם ק"ש בבהכ"נ וכו'</i> ועכשיו נהגו לקרות"""
+        val html =
+            """פי'<sup class="footnote-marker">34</sup><i class="footnote">כיון שאמרו בגמ' אע"פ שקרא אדם ק"ש בבהכ"נ וכו'</i> ועכשיו נהגו לקרות"""
 
         val result = HtmlParser().parse(html)
 

@@ -1,15 +1,15 @@
 package io.github.kdroidfilter.seforim.tabs
 
 sealed class TabsEvents {
-    data class onClose(
+    data class OnClose(
         val index: Int,
     ) : TabsEvents()
 
-    data class onSelected(
+    data class OnSelect(
         val index: Int,
     ) : TabsEvents()
 
-    data object onAdd : TabsEvents()
+    data object OnAdd : TabsEvents()
 
     data class OnReorder(
         val fromIndex: Int,

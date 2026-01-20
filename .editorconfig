@@ -20,7 +20,8 @@ ktlint_standard_backing-property-naming = disabled
 ktlint_standard_no-wildcard-imports = disabled
 
 # Compose rules configuration
-ktlint_compose_compositionlocal-allowlist = enabled
+# Disabled: CompositionLocals are used for DI (LocalAppGraph, LocalWindowViewModelStoreOwner)
+ktlint_compose_compositionlocal-allowlist = disabled
 ktlint_compose_content-emitter-returning-values-check = enabled
 # Disabled: screens, windows, navhosts and scaffolds don't need modifier parameter by architecture
 ktlint_compose_modifier-missing-check = disabled

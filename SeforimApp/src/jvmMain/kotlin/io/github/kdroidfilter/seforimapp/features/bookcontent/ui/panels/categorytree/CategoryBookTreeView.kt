@@ -438,12 +438,12 @@ private fun CategoryItem(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(4.dp))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = onClick,
-                ).clip(RoundedCornerShape(4.dp))
-                .background(
+                ).background(
                     if (showCount && isSelected) {
                         // highlight only in search mode (showCount signifies search mode here)
                         JewelTheme.iconButtonStyle.colors.backgroundFocused

@@ -814,9 +814,8 @@ private fun SuggestionsPanel(
                 if (lastVisible != null && focusedIndex == lastVisible) {
                     val nextIndex = (focusedIndex + 1).coerceAtMost(total - 1)
                     if (nextIndex != focusedIndex) listState.scrollToItem(nextIndex)
-                }
-                // Scroll up when at first visible
-                else if (firstVisible != null && focusedIndex == firstVisible) {
+                } else if (firstVisible != null && focusedIndex == firstVisible) {
+                    // Scroll up when at first visible
                     val prevIndex = (focusedIndex - 1).coerceAtLeast(0)
                     if (prevIndex != focusedIndex) listState.scrollToItem(prevIndex)
                 }

@@ -44,6 +44,8 @@ lucene = "10.3.2"
 ktlint = "14.0.1"
 detekt = "1.23.8"
 kover = "0.9.4"
+mockk = "1.14.0"
+kotlinx-coroutines-test = "1.10.2"
 
 [libraries]
 
@@ -115,6 +117,10 @@ lucene-core = { module = "org.apache.lucene:lucene-core", version.ref = "lucene"
 lucene-analysis-common = { module = "org.apache.lucene:lucene-analysis-common", version.ref = "lucene" }
 lucene-queryparser = { module = "org.apache.lucene:lucene-queryparser", version.ref = "lucene" }
 lucene-highlighter = { module = "org.apache.lucene:lucene-highlighter", version.ref = "lucene" }
+
+# Testing
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines-test" }
 
 # Metro
 metro-runtime = { module = "dev.zacsweers.metro:runtime", version.ref = "metro" }

@@ -127,6 +127,11 @@ kotlin {
             @OptIn(ExperimentalComposeLibrary::class)
             implementation(compose.uiTest)
         }
+
+        jvmTest.dependencies {
+            implementation(libs.mockk)
+            implementation(libs.kotlinx.coroutines.test)
+        }
 //
 //        androidMain.dependencies {
 //            implementation(compose.uiTooling)

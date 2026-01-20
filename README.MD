@@ -181,6 +181,34 @@ git clone --recurse-submodules https://github.com/kdroidFilter/Zayit.git
 
 **Important:** You must use JetBrains Runtime 25 (JBR 25) as your `JAVA_HOME`.
 
+### Architecture guidelines
+
+**Project structure:**
+- `SeforimApp/` — Main desktop application (Compose Multiplatform)
+- `SeforimLibrary/` — Composite build: `core` (domain models), `dao` (SQLDelight persistence), `generator` (data pipeline, JVM only)
+
+**Dependency injection (Metro):**
+- Access the DI graph via `LocalAppGraph.current`
+- Use `@AssistedInject` + `@AssistedFactory` for ViewModels
+
+**Naming conventions:**
+- `*ViewModel` for ViewModels
+- `*View` for UI components
+- `*State` for UI state data classes
+- `*Event` for user action types
+
+**Tab system:**
+- Each screen must know its `tabId`
+- Use `remember(appGraph, tabId)` to create ViewModels
+- Use `TabStateManager` for tab-scoped state persistence
+
+**Source sets:**
+- Shared code in `commonMain`
+- Platform-specific code in `jvmMain`
+- Platform types must not leak from `jvmMain` to `commonMain`
+
+For detailed documentation, see `CLAUDE.md` and `TAB_SYSTEM_README.md`.
+
 ### Roadmap 0.5.0
 
 - Navigation history
@@ -192,11 +220,11 @@ git clone --recurse-submodules https://github.com/kdroidFilter/Zayit.git
 
 ### Before submitting a PR
 
-Run the tests and linter:
+Run the linter and tests:
 
 ```bash
-./gradlew test
-./gradlew ktlintCheck detekt
+./gradlew ktlintCheck
+./gradlew :SeforimApp:jvmTest
 ```
 
 ## Thanks

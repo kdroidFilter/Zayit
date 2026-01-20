@@ -1,11 +1,11 @@
 # Robots.txt for Zayit - Jewish Study Library
-# https://kdroidfilter.github.io/Zayit/
+# https://www.zayitapp.com/
 
 User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://kdroidfilter.github.io/Zayit/sitemap.xml
+Sitemap: https://www.zayitapp.com/sitemap.xml
 
 # Crawl delay (optional, be polite to search engines)
 Crawl-delay: 1

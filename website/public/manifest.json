@@ -2,8 +2,8 @@
   "name": "Zayit - Jewish Study Library",
   "short_name": "Zayit",
   "description": "The study library that goes straight to the text. A free app to read, search, and explore Jewish study texts.",
-  "start_url": "/Zayit/",
-  "scope": "/Zayit/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#faf8f5",
   "theme_color": "#8b7355",
@@ -50,11 +50,11 @@
   "related_applications": [
     {
       "platform": "windows",
-      "url": "https://kdroidfilter.github.io/Zayit/#download"
+      "url": "https://www.zayitapp.com/#download"
     },
     {
       "platform": "macos",
-      "url": "https://kdroidfilter.github.io/Zayit/#download"
+      "url": "https://www.zayitapp.com/#download"
     }
   ],
   "prefer_related_applications": true

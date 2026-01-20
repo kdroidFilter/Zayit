@@ -48,7 +48,7 @@ export function Navigation() {
               whileHover={{ scale: 1.02 }}
             >
               <img
-                src="/Zayit/icon.png"
+                src="/icon.png"
                 alt="Zayit"
                 className="w-10 h-10 rounded-xl shadow-lg"
                 style={{ border: '1px solid rgba(230, 210, 140, 0.2)' }}

@@ -203,7 +203,7 @@ function groupAssetsByArch(assets: Asset[]): ArchGroups {
 
 function getLaunchCommand(kind: 'mac' | 'linux'): string {
   const file = kind === 'mac' ? 'launch.mac' : 'launch.linux';
-  const base = window.location.origin + '/Zayit/download/';
+  const base = window.location.origin + '/download/';
   return `curl -L ${base}${file} | bash`;
 }
 
@@ -370,7 +370,7 @@ export function DownloadModal() {
       return (
         <>
           <div className="text-center mb-7">
-            <img src="/Zayit/icon.png" alt="Zayit" className="download-logo mx-auto" />
+            <img src="/icon.png" alt="Zayit" className="download-logo mx-auto" />
             <h1 className="download-title">{t('dl.header.title')}</h1>
             <p className="download-subtitle flex items-center justify-center gap-2">
               {getOSIcon(platform.os)}
@@ -395,7 +395,7 @@ export function DownloadModal() {
       return (
         <>
           <div className="text-center mb-7">
-            <img src="/Zayit/icon.png" alt="Zayit" className="download-logo mx-auto" />
+            <img src="/icon.png" alt="Zayit" className="download-logo mx-auto" />
             <h1 className="download-title">{t('dl.header.title')} — {t('dl.common.download')}</h1>
           </div>
 
@@ -417,7 +417,7 @@ export function DownloadModal() {
       <>
         {/* Header */}
         <div className="text-center mb-7">
-          <img src="/Zayit/icon.png" alt="Zayit" className="download-logo mx-auto" />
+          <img src="/icon.png" alt="Zayit" className="download-logo mx-auto" />
           <h1 className="download-title">{t('dl.header.downloadTitle')}</h1>
           <p className="download-subtitle flex items-center justify-center gap-2 flex-wrap">
             {getOSIcon(platform.os)}

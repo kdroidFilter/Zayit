@@ -22,7 +22,7 @@ npm run preview
 
 This is the **landing page website** for Zayit (זית), a Jewish religious text study application. The website is built with React 19, TypeScript, Vite, and Tailwind CSS 4.
 
-**Base URL**: The site is deployed at `/Zayit/` (configured in `vite.config.ts`).
+**Base URL**: The site is deployed at `/` on `zayitapp.com` (configured in `vite.config.ts`).
 
 ## Architecture
 
@@ -66,7 +66,7 @@ src/
 - **Styling**: Use Tailwind utility classes combined with inline `style` props for theme-aware colors (e.g., `style={{ color: 'var(--gold)' }}`). Theme variables are defined in `index.css`.
 - **Translations**: All user-facing text uses `t()` from `useTranslation()`. Add new keys to both `en.json` and `he.json`.
 - **RTL Support**: Check `i18n.language === 'he'` for RTL-specific layout adjustments.
-- **Assets**: Static images go in `public/` and are referenced with `/Zayit/` prefix (e.g., `/Zayit/icon.png`).
+- **Assets**: Static images go in `public/` and are referenced with `/` prefix (e.g., `/icon.png`).
 
 ## Relationship to Parent Project
 

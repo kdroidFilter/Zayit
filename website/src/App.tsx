@@ -232,7 +232,7 @@ function App() {
   // Fetch download count
   const [downloadCount, setDownloadCount] = useState<number | null>(null);
   useEffect(() => {
-    fetch('/Zayit/download-count.json')
+    fetch('/download-count.json')
       .then(res => res.json())
       .then(data => setDownloadCount(data.count))
       .catch(() => setDownloadCount(null));

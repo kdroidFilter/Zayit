@@ -27,13 +27,13 @@ fun CatalogRow(
 ) {
     Box(
         modifier =
-            Modifier
+            modifier
                 .fillMaxSize()
                 .zIndex(1f)
                 .padding(6.dp),
         contentAlignment = Alignment.TopStart,
     ) {
-        BoxWithConstraints(modifier.fillMaxWidth()) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
             val totalButtons = 7
             // Compute how many catalog buttons we can show fully without overflow.
             val maxVisible =

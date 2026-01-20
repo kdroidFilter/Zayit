@@ -21,17 +21,17 @@ import seforimapp.seforimapp.generated.resources.*
 @Composable
 fun VersionVerificationScreen(
     navController: NavController,
-    progressBarState: ProgressBarState = ProgressBarState
+    progressBarState: ProgressBarState = ProgressBarState,
 ) {
     var isVersionCompatible by remember { mutableStateOf<Boolean?>(null) }
-    
+
     LaunchedEffect(Unit) {
         // Anchor progress at the end of extraction
         progressBarState.setProgress(0.85f)
         // Vérifier si la version de la base de données est compatible
         isVersionCompatible = DatabaseVersionManager.isDatabaseVersionCompatible()
     }
-    
+
     when (isVersionCompatible) {
         true -> {
             // Version compatible - naviguer vers le profil utilisateur
@@ -40,40 +40,42 @@ fun VersionVerificationScreen(
                     popUpTo<OnBoardingDestination.VersionVerificationScreen> { inclusive = true }
                 }
             }
-            
+
             // Afficher un message de succès temporaire
             OnBoardingScaffold(title = stringResource(Res.string.onboarding_extracting_message)) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
+                    verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically),
                 ) {
                     Icon(
                         CheckCircle,
                         contentDescription = null,
                         modifier = Modifier.size(72.dp),
-                        tint = JewelTheme.globalColors.text.normal
+                        tint = JewelTheme.globalColors.text.normal,
                     )
-                    
+
                     Text(
                         text = stringResource(Res.string.onboarding_ready),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
                     )
                 }
             }
         }
-        
+
         false -> {
             // Version incompatible - afficher écran d'erreur
             OnBoardingScaffold(title = stringResource(Res.string.onboarding_version_error_title)) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
+                    verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically),
                 ) {
                     // Error icon
                     Image(
@@ -85,16 +87,16 @@ fun VersionVerificationScreen(
                     // Error title
                     Text(
                         text = stringResource(Res.string.onboarding_version_error_title),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
                     )
-                    
+
                     // Description
                     Text(
                         text = stringResource(Res.string.onboarding_version_error_message),
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(0.8f)
+                        modifier = Modifier.fillMaxWidth(0.8f),
                     )
-                    
+
                     // Restart installation button
                     DefaultButton(
                         onClick = {
@@ -104,28 +106,29 @@ fun VersionVerificationScreen(
                                     inclusive = true
                                 }
                             }
-                        }
+                        },
                     ) {
                         Text(stringResource(Res.string.onboarding_restart_installation))
                     }
                 }
             }
         }
-        
+
         null -> {
             // Vérification en cours
             OnBoardingScaffold(title = stringResource(Res.string.onboarding_extracting_message)) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
+                    verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically),
                 ) {
                     CircularProgressIndicator()
                     Text(
                         text = stringResource(Res.string.onboarding_verifying_version),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
                     )
                 }
             }

@@ -21,33 +21,35 @@ import org.jetbrains.jewel.ui.typography
 fun OnBoardingScaffold(
     title: String,
     bottomAction: (@Composable () -> Unit)? = null,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier =
+            Modifier
+                .fillMaxSize(),
     ) {
         val scrollState = rememberLazyListState()
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = if (bottomAction != null) 66.dp else 0.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(bottom = if (bottomAction != null) 66.dp else 0.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 title,
                 fontSize = JewelTheme.typography.h0TextStyle.fontSize,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 16.dp),
             )
 
             VerticallyScrollableContainer(
                 scrollState = scrollState as ScrollableState,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     content()
                 }
@@ -55,11 +57,12 @@ fun OnBoardingScaffold(
         }
         if (bottomAction == null) return@Box
         Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            contentAlignment = Alignment.Center
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center,
         ) {
             bottomAction()
         }

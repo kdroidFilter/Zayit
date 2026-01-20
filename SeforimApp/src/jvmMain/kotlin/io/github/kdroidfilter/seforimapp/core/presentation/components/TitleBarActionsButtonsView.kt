@@ -7,13 +7,13 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.*
@@ -34,36 +34,53 @@ fun TitleBarActionsButtonsView() {
     val tabs = tabsViewModel.tabs.collectAsState().value
     val selectedTabIndex = tabsViewModel.selectedTabIndex.collectAsState().value
     val currentTab = tabs.getOrNull(selectedTabIndex)
-    val findEnabled = when (val dest = currentTab?.destination) {
-        is TabsDestination.Search -> true
-        is TabsDestination.BookContent -> {
-            (appGraph.tabPersistedStateStore.get(dest.tabId)?.bookContent?.selectedBookId ?: -1L) > 0L
+    val findEnabled =
+        when (val dest = currentTab?.destination) {
+            is TabsDestination.Search -> true
+            is TabsDestination.BookContent -> {
+                (
+                    appGraph.tabPersistedStateStore
+                        .get(dest.tabId)
+                        ?.bookContent
+                        ?.selectedBookId ?: -1L
+                ) > 0L
+            }
+            else -> false
         }
-        else -> false
-    }
 
-    val iconDescription = when (theme) {
-        IntUiThemes.Light -> stringResource(Res.string.light_theme)
-        IntUiThemes.Dark -> stringResource(Res.string.dark_theme)
-        IntUiThemes.System -> stringResource(Res.string.system_theme)
-    }
-    val iconToolTipText = when (theme) {
-        IntUiThemes.Light -> stringResource(Res.string.switch_to_dark_theme)
-        IntUiThemes.Dark -> stringResource(Res.string.switch_to_system_theme)
-        IntUiThemes.System -> stringResource(Res.string.switch_to_light_theme)
-    }
+    val iconDescription =
+        when (theme) {
+            IntUiThemes.Light -> stringResource(Res.string.light_theme)
+            IntUiThemes.Dark -> stringResource(Res.string.dark_theme)
+            IntUiThemes.System -> stringResource(Res.string.system_theme)
+        }
+    val iconToolTipText =
+        when (theme) {
+            IntUiThemes.Light -> stringResource(Res.string.switch_to_dark_theme)
+            IntUiThemes.Dark -> stringResource(Res.string.switch_to_system_theme)
+            IntUiThemes.System -> stringResource(Res.string.switch_to_light_theme)
+        }
 
-    val homeShortcutHint = if (PlatformInfo.isMacOS)
-        stringResource(Res.string.shortcut_home_mac)
-    else stringResource(Res.string.shortcut_home_windows)
+    val homeShortcutHint =
+        if (PlatformInfo.isMacOS) {
+            stringResource(Res.string.shortcut_home_mac)
+        } else {
+            stringResource(Res.string.shortcut_home_windows)
+        }
 
-    val findShortcutHint = if (PlatformInfo.isMacOS)
-        stringResource(Res.string.shortcut_find_mac)
-    else stringResource(Res.string.shortcut_find_windows)
+    val findShortcutHint =
+        if (PlatformInfo.isMacOS) {
+            stringResource(Res.string.shortcut_find_mac)
+        } else {
+            stringResource(Res.string.shortcut_find_windows)
+        }
 
-    val settingsShortcutHint = if (PlatformInfo.isMacOS)
-        stringResource(Res.string.shortcut_settings_mac)
-    else stringResource(Res.string.shortcut_settings_windows)
+    val settingsShortcutHint =
+        if (PlatformInfo.isMacOS) {
+            stringResource(Res.string.shortcut_settings_mac)
+        } else {
+            stringResource(Res.string.shortcut_settings_windows)
+        }
 
     TitleBarActionButton(
         key = AllIconsKeys.Nodes.HomeFolder,
@@ -96,16 +113,24 @@ fun TitleBarActionsButtonsView() {
             val isOpen = AppSettings.findBarOpenFlow(tabId).value
             if (isOpen) AppSettings.closeFindBar(tabId) else AppSettings.openFindBar(tabId)
         },
-        tooltipText = if (findEnabled) stringResource(Res.string.search_in_page_tooltip) else stringResource(Res.string.find_disabled_tooltip),
+        tooltipText =
+            if (findEnabled) {
+                stringResource(
+                    Res.string.search_in_page_tooltip,
+                )
+            } else {
+                stringResource(Res.string.find_disabled_tooltip)
+            },
         shortcutHint = findShortcutHint,
-        enabled = findEnabled
+        enabled = findEnabled,
     )
     TitleBarActionButton(
-        key = when (theme) {
-            IntUiThemes.Light -> AllIconsKeys.MeetNewUi.LightTheme
-            IntUiThemes.Dark -> AllIconsKeys.MeetNewUi.DarkTheme
-            IntUiThemes.System -> AllIconsKeys.MeetNewUi.SystemTheme
-        },
+        key =
+            when (theme) {
+                IntUiThemes.Light -> AllIconsKeys.MeetNewUi.LightTheme
+                IntUiThemes.Dark -> AllIconsKeys.MeetNewUi.DarkTheme
+                IntUiThemes.System -> AllIconsKeys.MeetNewUi.SystemTheme
+            },
         contentDescription = iconDescription,
         onClick = {
             themeViewModel.setTheme(
@@ -113,7 +138,7 @@ fun TitleBarActionsButtonsView() {
                     IntUiThemes.Light -> IntUiThemes.Dark
                     IntUiThemes.Dark -> IntUiThemes.System
                     IntUiThemes.System -> IntUiThemes.Light
-                }
+                },
             )
         },
         tooltipText = iconToolTipText,
@@ -122,13 +147,13 @@ fun TitleBarActionsButtonsView() {
         key = AllIconsKeys.General.Settings,
         contentDescription = stringResource(Res.string.settings),
         onClick = {
-            settingsViewModel.onEvent(SettingsWindowEvents.onOpen)
+            settingsViewModel.onEvent(SettingsWindowEvents.OnOpen)
         },
         tooltipText = stringResource(Res.string.settings_tooltip),
         shortcutHint = settingsShortcutHint,
     )
 
     if (settingsState.isVisible) {
-        SettingsWindow(onClose = { settingsViewModel.onEvent(SettingsWindowEvents.onClose) })
+        SettingsWindow(onClose = { settingsViewModel.onEvent(SettingsWindowEvents.OnClose) })
     }
 }

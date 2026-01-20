@@ -18,6 +18,7 @@ plugins {
     alias(libs.plugins.linux.deps)
     alias(libs.plugins.stability.analyzer)
     alias(libs.plugins.sqlDelight)
+    alias(libs.plugins.kover)
 }
 
 val version = Versioning.resolveVersion(project)
@@ -30,15 +31,14 @@ fun macSafeVersion(ver: String): String {
 
     return if (parts.isNotEmpty() && parts[0] == "0") {
         when (parts.size) {
-            1 -> "1.0"                 // "0"      -> "1.0"
-            2 -> "1.${parts[1]}"       // "0.1"    -> "1.1"
+            1 -> "1.0" // "0"      -> "1.0"
+            2 -> "1.${parts[1]}" // "0.1"    -> "1.1"
             else -> "1.${parts[1]}.${parts[2]}" // "0.1.2" -> "1.1.2"
         }
     } else {
         core // already >= 1.x or something else; leave as-is
     }
 }
-
 
 kotlin {
 //    androidTarget {
@@ -47,7 +47,11 @@ kotlin {
 //    }
 
     jvm()
-    jvmToolchain(libs.versions.jvmToolchain.get().toInt())
+    jvmToolchain(
+        libs.versions.jvmToolchain
+            .get()
+            .toInt(),
+    )
 
     sourceSets {
         commonMain.dependencies {
@@ -86,7 +90,7 @@ kotlin {
             implementation(libs.platformtools.appmanager)
             implementation(libs.platformtools.releasefetcher)
 
-            //FileKit
+            // FileKit
             implementation(libs.filekit.core)
             implementation(libs.filekit.dialogs)
             implementation(libs.filekit.dialogs.compose)
@@ -94,7 +98,6 @@ kotlin {
             // Project / domain libs
             implementation("io.github.kdroidfilter.seforimlibrary:core")
             implementation("io.github.kdroidfilter.seforimlibrary:dao")
-
 
             // Local projects
             implementation(project(":htmlparser"))
@@ -109,9 +112,8 @@ kotlin {
             implementation(libs.androidx.paging.common)
             implementation(libs.androidx.paging.compose)
 
-            //Oshi
+            // Oshi
             implementation(libs.oshi.core)
-
 
             implementation(libs.koalaplot.core)
 
@@ -124,6 +126,11 @@ kotlin {
             implementation(kotlin("test"))
             @OptIn(ExperimentalComposeLibrary::class)
             implementation(compose.uiTest)
+        }
+
+        jvmTest.dependencies {
+            implementation(libs.mockk)
+            implementation(libs.kotlinx.coroutines.test)
         }
 //
 //        androidMain.dependencies {
@@ -163,12 +170,11 @@ kotlin {
 
             implementation(libs.knotify)
             implementation(libs.knotify.compose)
-
         }
     }
 }
 
-//android {
+// android {
 //    namespace = "io.github.kdroidfilter.seforimapp"
 //    compileSdk = 35
 //
@@ -181,13 +187,13 @@ kotlin {
 //
 //        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 //    }
-//}
+// }
 //
-//// https://developer.android.com/develop/ui/compose/testing#setup
-//dependencies {
+// // https://developer.android.com/develop/ui/compose/testing#setup
+// dependencies {
 //    androidTestImplementation(libs.androidx.uitest.junit4)
 //    debugImplementation(libs.androidx.uitest.testManifest)
-//}
+// }
 
 compose.desktop {
     application {
@@ -196,18 +202,18 @@ compose.desktop {
             // Package-time resources root; include files under OS-specific subfolders (common, macos, windows, linux)
             appResourcesRootDir.set(layout.projectDirectory.dir("src/jvmMain/assets"))
             // Show splash image from the packaged resources directory
-            jvmArgs += listOf(
-                "-splash:\$APPDIR/resources/splash.png",
-                "--enable-native-access=ALL-UNNAMED",
-                "--add-modules=jdk.incubator.vector"
-            )
-            jvmArgs += listOf(
-                "-XX:+UseCompactObjectHeaders",
-                "-XX:+UseStringDeduplication",
-                "-XX:MaxGCPauseMillis=50",
+            jvmArgs +=
+                listOf(
+                    "-splash:\$APPDIR/resources/splash.png",
+                    "--enable-native-access=ALL-UNNAMED",
+                    "--add-modules=jdk.incubator.vector",
                 )
-
-
+            jvmArgs +=
+                listOf(
+                    "-XX:+UseCompactObjectHeaders",
+                    "-XX:+UseStringDeduplication",
+                    "-XX:MaxGCPauseMillis=50",
+                )
 
             modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility", "jdk.incubator.vector")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Dmg)
@@ -257,7 +263,7 @@ linuxDebConfig {
     // set StartupWMClass to fix dock/taskbar icon
     startupWMClass.set("io.github.kdroidfilter.seforimapp.MainKt")
 
-    //for Ubuntu 24 t64 dependencies compatibility with older OSes, see below Under Known jpackage issue: Ubuntu t64 transition
+    // for Ubuntu 24 t64 dependencies compatibility with older OSes, see below Under Known jpackage issue: Ubuntu t64 transition
     enableT64AlternativeDeps.set(true)
 }
 
@@ -276,22 +282,22 @@ tasks.withType<Jar> {
     exclude("META-INF/*.EC")
 }
 
-
-
 // --- macOS: rename generated .pkg to include architecture suffix (_arm64 or _x64)
 val isMacHost: Boolean = System.getProperty("os.name").lowercase().contains("mac")
-val macArchSuffix: String = run {
-    val arch = System.getProperty("os.arch").lowercase()
-    if (arch.contains("aarch64") || arch.contains("arm")) "_arm64" else "_x64"
-}
+val macArchSuffix: String =
+    run {
+        val arch = System.getProperty("os.arch").lowercase()
+        if (arch.contains("aarch64") || arch.contains("arm")) "_arm64" else "_x64"
+    }
 
 // Finds all .pkg files under build/compose/binaries and appends arch suffix if missing
-val renameMacPkg = tasks.register<RenameMacPkgTask>("renameMacPkg") {
-    enabled = isMacHost
-    group = "distribution"
-    description = "Rename generated macOS .pkg files to include architecture suffix (e.g., _arm64 or _x64)."
-    archSuffix.set(macArchSuffix)
-}
+val renameMacPkg =
+    tasks.register<RenameMacPkgTask>("renameMacPkg") {
+        enabled = isMacHost
+        group = "distribution"
+        description = "Rename generated macOS .pkg files to include architecture suffix (e.g., _arm64 or _x64)."
+        archSuffix.set(macArchSuffix)
+    }
 
 // Ensure the rename runs after any Compose Desktop task that produces a PKG or DMG
 // This covers tasks like `packageReleasePkg`, `packageDebugPkg`, `packageReleaseDmg`, etc.
@@ -305,18 +311,20 @@ tasks.matching { it.name.endsWith("Dmg") && it.name != "renameMacPkg" }.configur
 
 // --- Windows: rename generated .msi to include architecture suffix (_arm64 or _x64)
 val isWindowsHost: Boolean = System.getProperty("os.name").lowercase().contains("windows")
-val windowsArchSuffix: String = run {
-    val arch = System.getProperty("os.arch").lowercase()
-    if (arch.contains("aarch64") || arch.contains("arm")) "_arm64" else "_x64"
-}
+val windowsArchSuffix: String =
+    run {
+        val arch = System.getProperty("os.arch").lowercase()
+        if (arch.contains("aarch64") || arch.contains("arm")) "_arm64" else "_x64"
+    }
 
 // Finds all .msi files under build/compose/binaries and appends arch suffix if missing
-val renameMsi = tasks.register<RenameMsiTask>("renameMsi") {
-    enabled = isWindowsHost
-    group = "distribution"
-    description = "Rename generated Windows .msi files to include architecture suffix (e.g., _arm64 or _x64)."
-    archSuffix.set(windowsArchSuffix)
-}
+val renameMsi =
+    tasks.register<RenameMsiTask>("renameMsi") {
+        enabled = isWindowsHost
+        group = "distribution"
+        description = "Rename generated Windows .msi files to include architecture suffix (e.g., _arm64 or _x64)."
+        archSuffix.set(windowsArchSuffix)
+    }
 
 // Ensure the rename runs after any Compose Desktop task that produces an MSI
 // This covers tasks like `packageReleaseMsi`, `packageDebugMsi`, etc.
@@ -327,3 +335,18 @@ tasks.matching { it.name.endsWith("Msi") && it.name != "renameMsi" }.configureEa
 
 // --- Clean unused native binaries from JARs for smaller distribution size
 NativeCleanupHelper.registerCleanupTasks(project)
+
+// --- Kover code coverage configuration
+kover {
+    reports {
+        filters {
+            excludes {
+                // Exclude generated code
+                packages("*.generated.*", "*.sqldelight.*", "io.github.kdroidfilter.seforimapp.db")
+                classes("*_Factory", "*_MembersInjector", "*Hilt*", "*_Impl", "*\$\$serializer")
+                // Exclude Compose previews
+                annotatedBy("androidx.compose.ui.tooling.preview.Preview")
+            }
+        }
+    }
+}

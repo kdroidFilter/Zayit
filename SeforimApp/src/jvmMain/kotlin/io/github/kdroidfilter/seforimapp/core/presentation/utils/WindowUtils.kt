@@ -9,29 +9,31 @@ import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import java.awt.Toolkit
 
-fun getCenteredWindowState(width: Int, height: Int): WindowState {
+fun getCenteredWindowState(
+    width: Int,
+    height: Int,
+): WindowState {
     val screenSize = Toolkit.getDefaultToolkit().screenSize
     val windowX = (screenSize.width - width) / 2
     val windowY = (screenSize.height - height) / 2
 
     return WindowState(
         size = DpSize(width.dp, height.dp),
-        position = WindowPosition(windowX.dp, windowY.dp)
+        position = WindowPosition(windowX.dp, windowY.dp),
     )
 }
-
 
 fun processKeyShortcuts(
     keyEvent: KeyEvent,
     onNavigateTo: (String) -> Unit,
-    tabId: String = ""
+    tabId: String = "",
 ): Boolean {
     // Only process key down events
     if (keyEvent.type != KeyEventType.KeyDown) return false
-    
+
     // Debug log the key event
     // debugln { "[DEBUG_LOG] Key event: key=${keyEvent.key}, isCtrlPressed=${keyEvent.isCtrlPressed}, isMetaPressed=${keyEvent.isMetaPressed}, isShiftPressed=${keyEvent.isShiftPressed}" }
-    
+
     // Check for Ctrl/Cmd + and Ctrl/Cmd - for zooming
     val isCtrlOrCmdPressed = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
     if (isCtrlOrCmdPressed) {
@@ -59,7 +61,7 @@ fun processKeyShortcuts(
             }
         }
     }
-    
+
     // Process Alt key shortcuts for navigation
     if (keyEvent.isAltPressed) {
         return when (keyEvent.key) {
@@ -81,6 +83,6 @@ fun processKeyShortcuts(
             else -> false
         }
     }
-    
+
     return false
 }

@@ -55,8 +55,8 @@ public class TitleBarStyle(
         return result
     }
 
-    override fun toString(): String {
-        return "TitleBarStyle(" +
+    override fun toString(): String =
+        "TitleBarStyle(" +
             "colors=$colors, " +
             "metrics=$metrics, " +
             "icons=$icons, " +
@@ -65,7 +65,6 @@ public class TitleBarStyle(
             "paneButtonStyle=$paneButtonStyle, " +
             "paneCloseButtonStyle=$paneCloseButtonStyle" +
             ")"
-    }
 
     public companion object
 }
@@ -99,7 +98,7 @@ public class TitleBarColors(
             when {
                 !state.isActive -> inactiveBackground
                 else -> background
-            }
+            },
         )
 
     override fun equals(other: Any?): Boolean {
@@ -142,8 +141,8 @@ public class TitleBarColors(
         return result
     }
 
-    override fun toString(): String {
-        return "TitleBarColors(" +
+    override fun toString(): String =
+        "TitleBarColors(" +
             "background=$background, " +
             "inactiveBackground=$inactiveBackground, " +
             "content=$content, " +
@@ -158,7 +157,6 @@ public class TitleBarColors(
             "dropdownPressedBackground=$dropdownPressedBackground, " +
             "dropdownHoveredBackground=$dropdownHoveredBackground" +
             ")"
-    }
 
     public companion object
 }
@@ -193,14 +191,13 @@ public class TitleBarMetrics(
         return result
     }
 
-    override fun toString(): String {
-        return "TitleBarMetrics(" +
+    override fun toString(): String =
+        "TitleBarMetrics(" +
             "height=$height, " +
             "gradientStartX=$gradientStartX, " +
             "gradientEndX=$gradientEndX, " +
             "titlePaneButtonSize=$titlePaneButtonSize" +
             ")"
-    }
 
     public companion object
 }
@@ -235,18 +232,18 @@ public class TitleBarIcons(
         return result
     }
 
-    override fun toString(): String {
-        return "TitleBarIcons(" +
+    override fun toString(): String =
+        "TitleBarIcons(" +
             "minimizeButton=$minimizeButton, " +
             "maximizeButton=$maximizeButton, " +
             "restoreButton=$restoreButton, " +
             "closeButton=$closeButton" +
             ")"
-    }
 
     public companion object
 }
 
-public val LocalTitleBarStyle: ProvidableCompositionLocal<TitleBarStyle> = staticCompositionLocalOf {
-    error("No TitleBarStyle provided. Have you forgotten the theme?")
-}
+public val LocalTitleBarStyle: ProvidableCompositionLocal<TitleBarStyle> =
+    staticCompositionLocalOf {
+        error("No TitleBarStyle provided. Have you forgotten the theme?")
+    }

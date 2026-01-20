@@ -25,8 +25,10 @@ public fun Modifier.newFullscreenControls(newControls: Boolean = true): Modifier
             },
         )
 
-private class NewFullscreenControlsElement(val newControls: Boolean, val inspectorInfo: InspectorInfo.() -> Unit) :
-    ModifierNodeElement<NewFullscreenControlsNode>() {
+private class NewFullscreenControlsElement(
+    val newControls: Boolean,
+    val inspectorInfo: InspectorInfo.() -> Unit,
+) : ModifierNodeElement<NewFullscreenControlsNode>() {
     override fun create(): NewFullscreenControlsNode = NewFullscreenControlsNode(newControls)
 
     override fun equals(other: Any?): Boolean {
@@ -46,7 +48,9 @@ private class NewFullscreenControlsElement(val newControls: Boolean, val inspect
     }
 }
 
-private class NewFullscreenControlsNode(var newControls: Boolean) : Modifier.Node()
+private class NewFullscreenControlsNode(
+    var newControls: Boolean,
+) : Modifier.Node()
 
 @Composable
 internal fun DecoratedWindowScope.TitleBarOnMacOs(

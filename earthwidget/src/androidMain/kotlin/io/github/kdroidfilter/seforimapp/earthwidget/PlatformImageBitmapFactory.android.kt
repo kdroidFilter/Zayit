@@ -6,14 +6,11 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 
 /**
- * Android implementation using native Android graphics.
+ * Creates an ImageBitmap from ARGB pixel data.
  *
+ * Android implementation using native Android graphics.
  * Android Bitmap uses ARGB_8888 format which directly matches
  * our internal pixel format, so no byte reordering is needed.
- */
-
-/**
- * Creates an ImageBitmap from ARGB pixel data.
  *
  * Uses Android's native Bitmap API with ARGB_8888 configuration.
  * This format directly matches our internal ARGB representation.
@@ -23,7 +20,11 @@ import androidx.compose.ui.graphics.asImageBitmap
  * @param height Image height.
  * @return Compose ImageBitmap backed by Android Bitmap.
  */
-internal actual fun imageBitmapFromArgb(argb: IntArray, width: Int, height: Int): ImageBitmap {
+internal actual fun imageBitmapFromArgb(
+    argb: IntArray,
+    width: Int,
+    height: Int,
+): ImageBitmap {
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     bitmap.setPixels(argb, 0, width, 0, 0, width, height)
     return bitmap.asImageBitmap()

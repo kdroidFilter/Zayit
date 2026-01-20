@@ -12,13 +12,13 @@ import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
+import java.io.File
 
 /**
  * Persists and restores the navigation session (open tabs + per-tab persisted UI state) when enabled.
@@ -26,7 +26,6 @@ import kotlinx.serialization.protobuf.ProtoBuf
  * Persistence is performed only at app close.
  */
 object SessionManager {
-
     private val proto = ProtoBuf
 
     private val _isRestoringSession = MutableStateFlow(hasSavedSessionToRestore())
@@ -39,9 +38,7 @@ object SessionManager {
 
     private fun sessionFile(): File = File(sessionDir(), "session_v2.pb")
 
-    private fun hasSavedSessionToRestore(): Boolean {
-        return AppSettings.isPersistSessionEnabled() && sessionFile().exists()
-    }
+    private fun hasSavedSessionToRestore(): Boolean = AppSettings.isPersistSessionEnabled() && sessionFile().exists()
 
     /** Saves the current session snapshot if the user enabled persistence in settings. */
     fun saveIfEnabled(appGraph: AppGraph) {
@@ -55,18 +52,20 @@ object SessionManager {
 
         // `TabsDestination.BookContent.lineId` is an ephemeral navigation hint (e.g., open from search).
         // Session restore should rely on the per-tab persisted UI state (scroll/selection) instead.
-        val destinations = tabs.map { it.destination }.map { dest ->
-            when (dest) {
-                is TabsDestination.BookContent -> dest.copy(lineId = null)
-                else -> dest
+        val destinations =
+            tabs.map { it.destination }.map { dest ->
+                when (dest) {
+                    is TabsDestination.BookContent -> dest.copy(lineId = null)
+                    else -> dest
+                }
             }
-        }
         val selectedIndex = tabsVm.selectedTabIndex.value.coerceIn(0, destinations.lastIndex)
 
         val storeSnapshot = store.snapshot()
-        val tabStates = destinations.associate { dest ->
-            dest.tabId to (storeSnapshot[dest.tabId] ?: TabPersistedState())
-        }
+        val tabStates =
+            destinations.associate { dest ->
+                dest.tabId to (storeSnapshot[dest.tabId] ?: TabPersistedState())
+            }
 
         debugln {
             buildString {
@@ -80,7 +79,7 @@ object SessionManager {
                                     "persistedBookId=${bc?.selectedBookId} " +
                                     "selectedLineId=${bc?.selectedLineId} " +
                                     "anchorLineId=${bc?.contentAnchorLineId} " +
-                                    "scroll=(${bc?.contentScrollIndex},${bc?.contentScrollOffset})\n"
+                                    "scroll=(${bc?.contentScrollIndex},${bc?.contentScrollOffset})\n",
                             )
                         }
 
@@ -90,7 +89,7 @@ object SessionManager {
                                 "  - Search tabId=${dest.tabId} query=${dest.searchQuery} " +
                                     "persistedQuery=${s?.query} " +
                                     "scroll=(${s?.scrollIndex},${s?.scrollOffset}) " +
-                                    "anchorId=${s?.anchorId}\n"
+                                    "anchorId=${s?.anchorId}\n",
                             )
                         }
 
@@ -102,11 +101,12 @@ object SessionManager {
             }
         }
 
-        val saved = SavedSessionV2(
-            tabs = destinations,
-            selectedIndex = selectedIndex,
-            tabStates = tabStates
-        )
+        val saved =
+            SavedSessionV2(
+                tabs = destinations,
+                selectedIndex = selectedIndex,
+                tabStates = tabStates,
+            )
 
         runCatching {
             val bytes = proto.encodeToByteArray(SavedSessionV2.serializer(), saved)
@@ -124,23 +124,25 @@ object SessionManager {
         _isRestoringSession.value = true
         try {
             val bytes = withContext(Dispatchers.IO) { file.readBytes() }
-            val saved = runCatching {
-                proto.decodeFromByteArray(SavedSessionV2.serializer(), bytes)
-            }.getOrElse {
-                // Corrupt session; delete to avoid repeated restore attempts.
-                runCatching { file.delete() }
-                return
-            }
+            val saved =
+                runCatching {
+                    proto.decodeFromByteArray(SavedSessionV2.serializer(), bytes)
+                }.getOrElse {
+                    // Corrupt session; delete to avoid repeated restore attempts.
+                    runCatching { file.delete() }
+                    return
+                }
             if (saved.tabs.isEmpty()) return
 
             // Ignore ephemeral `lineId` navigation hints on cold boot restore.
             // Scroll/selection restoration is handled via `tabStates`.
-            val destinations = saved.tabs.map { dest ->
-                when (dest) {
-                    is TabsDestination.BookContent -> dest.copy(lineId = null)
-                    else -> dest
+            val destinations =
+                saved.tabs.map { dest ->
+                    when (dest) {
+                        is TabsDestination.BookContent -> dest.copy(lineId = null)
+                        else -> dest
+                    }
                 }
-            }
 
             debugln {
                 buildString {
@@ -154,7 +156,7 @@ object SessionManager {
                                         "persistedBookId=${bc?.selectedBookId} " +
                                         "selectedLineId=${bc?.selectedLineId} " +
                                         "anchorLineId=${bc?.contentAnchorLineId} " +
-                                        "scroll=(${bc?.contentScrollIndex},${bc?.contentScrollOffset})\n"
+                                        "scroll=(${bc?.contentScrollIndex},${bc?.contentScrollOffset})\n",
                                 )
                             }
 
@@ -164,7 +166,7 @@ object SessionManager {
                                     "  - Search tabId=${dest.tabId} query=${dest.searchQuery} " +
                                         "persistedQuery=${s?.query} " +
                                         "scroll=(${s?.scrollIndex},${s?.scrollOffset}) " +
-                                        "anchorId=${s?.anchorId}\n"
+                                        "anchorId=${s?.anchorId}\n",
                                 )
                             }
 
@@ -188,7 +190,7 @@ object SessionManager {
                 destinations = destinations,
                 tabStates = saved.tabStates,
                 titleUpdateManager = appGraph.tabTitleUpdateManager,
-                appGraph = appGraph
+                appGraph = appGraph,
             )
         } finally {
             _isRestoringSession.value = false
@@ -199,7 +201,7 @@ object SessionManager {
         destinations: List<TabsDestination>,
         tabStates: Map<String, TabPersistedState>,
         titleUpdateManager: TabTitleUpdateManager,
-        appGraph: AppGraph
+        appGraph: AppGraph,
     ) {
         for (dest in destinations) {
             val tabId = dest.tabId

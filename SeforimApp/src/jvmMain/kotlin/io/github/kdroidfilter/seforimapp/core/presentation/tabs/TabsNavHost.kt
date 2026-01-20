@@ -38,11 +38,11 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeNavigationEvent
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
+import io.github.kdroidfilter.seforimapp.features.search.SearchResultInBookShellMvi
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchShellActions
-import io.github.kdroidfilter.seforimapp.features.search.SearchResultInBookShellMvi
-import io.github.kdroidfilter.seforimapp.features.search.SearchHomeNavigationEvent
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import kotlinx.coroutines.launch
@@ -71,25 +71,26 @@ fun TabsNavHost() {
         }
     }
 
-    val homeSearchCallbacks = remember(searchHomeViewModel, scope) {
-        HomeSearchCallbacks(
-            onReferenceQueryChanged = searchHomeViewModel::onReferenceQueryChanged,
-            onTocQueryChanged = searchHomeViewModel::onTocQueryChanged,
-            onFilterChange = searchHomeViewModel::onFilterChange,
-            onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
-            onSubmitTextSearch = { query ->
-                val tabId = currentTabId ?: return@HomeSearchCallbacks
-                scope.launch { searchHomeViewModel.submitSearch(query, tabId) }
-            },
-            onOpenReference = {
-                val tabId = currentTabId ?: return@HomeSearchCallbacks
-                scope.launch { searchHomeViewModel.openSelectedReferenceInCurrentTab(tabId) }
-            },
-            onPickCategory = searchHomeViewModel::onPickCategory,
-            onPickBook = searchHomeViewModel::onPickBook,
-            onPickToc = searchHomeViewModel::onPickToc,
-        )
-    }
+    val homeSearchCallbacks =
+        remember(searchHomeViewModel, scope) {
+            HomeSearchCallbacks(
+                onReferenceQueryChanged = searchHomeViewModel::onReferenceQueryChanged,
+                onTocQueryChanged = searchHomeViewModel::onTocQueryChanged,
+                onFilterChange = searchHomeViewModel::onFilterChange,
+                onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
+                onSubmitTextSearch = { query ->
+                    val tabId = currentTabId ?: return@HomeSearchCallbacks
+                    scope.launch { searchHomeViewModel.submitSearch(query, tabId) }
+                },
+                onOpenReference = {
+                    val tabId = currentTabId ?: return@HomeSearchCallbacks
+                    scope.launch { searchHomeViewModel.openSelectedReferenceInCurrentTab(tabId) }
+                },
+                onPickCategory = searchHomeViewModel::onPickCategory,
+                onPickBook = searchHomeViewModel::onPickBook,
+                onPickToc = searchHomeViewModel::onPickToc,
+            )
+        }
 
     // Dismiss suggestions when navigating away from Home
     LaunchedEffect(tabs, selectedTabIndex) {
@@ -108,8 +109,8 @@ fun TabsNavHost() {
                     tabsViewModel.replaceCurrentTabDestination(
                         TabsDestination.Search(
                             searchQuery = event.query,
-                            tabId = event.tabId
-                        )
+                            tabId = event.tabId,
+                        ),
                     )
                 }
                 is SearchHomeNavigationEvent.NavigateToBookContent -> {
@@ -117,8 +118,8 @@ fun TabsNavHost() {
                         TabsDestination.BookContent(
                             bookId = event.bookId,
                             tabId = event.tabId,
-                            lineId = event.lineId
-                        )
+                            lineId = event.lineId,
+                        ),
                     )
                 }
             }
@@ -176,10 +177,11 @@ fun TabsNavHost() {
         NavHost(
             navController = navController,
             startDestination = tabs.firstOrNull()?.destination ?: TabsDestination.Home(tabId = "default"),
-            modifier = Modifier
-                .trackActivation()
-                .fillMaxSize()
-                .background(JewelTheme.globalColors.panelBackground)
+            modifier =
+                Modifier
+                    .trackActivation()
+                    .fillMaxSize()
+                    .background(JewelTheme.globalColors.panelBackground),
         ) {
             // Home destination renders the BookContent screen shell.
             nonAnimatedComposable<TabsDestination.Home> { backStackEntry ->
@@ -208,7 +210,7 @@ fun TabsNavHost() {
                     savedState {
                         putString(StateKeys.TAB_ID, destination.tabId)
                         putString("searchQuery", destination.searchQuery)
-                    }
+                    },
                 )
                 val viewModel: SearchResultViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                 val bookVm: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
@@ -230,49 +232,50 @@ fun TabsNavHost() {
                 val tocCounts by viewModel.tocCountsFlow.collectAsState()
                 val tocTree by viewModel.tocTreeFlow.collectAsState()
 
-                val actions = remember(viewModel) {
-                    SearchShellActions(
-                        onSubmit = { q ->
-                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q))
-                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
-                        },
-                        onQueryChange = { q -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
-                        onGlobalExtendedChange = { extended ->
-                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(extended))
-                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
-                        },
-                        onScroll = { anchorId, anchorIndex, index, offset ->
-                            viewModel.onEvent(
-                                SearchResultViewModel.SearchResultEvents.OnScroll(anchorId, anchorIndex, index, offset)
-                            )
-                        },
-                        onCancelSearch = {
-                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.CancelSearch)
-                        },
-                        onOpenResult = { r, newTab ->
-                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.OpenResult(r, newTab))
-                        },
-                        onRequestBreadcrumb = { r ->
-                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.RequestBreadcrumb(r))
-                        },
-                        onLoadMore = { viewModel.loadMore() },
-                        onCategoryCheckedChange = { id, checked ->
-                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetCategoryChecked(id, checked))
-                        },
-                        onBookCheckedChange = { id, checked ->
-                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetBookChecked(id, checked))
-                        },
-                        onEnsureScopeBookForToc = { id ->
-                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.EnsureScopeBookForToc(id))
-                        },
-                        onTocToggle = { entry, checked ->
-                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetTocChecked(entry.id, checked))
-                        },
-                        onTocFilter = { entry ->
-                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.FilterByTocId(entry.id))
-                        },
-                    )
-                }
+                val actions =
+                    remember(viewModel) {
+                        SearchShellActions(
+                            onSubmit = { q ->
+                                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q))
+                                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
+                            },
+                            onQueryChange = { q -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
+                            onGlobalExtendedChange = { extended ->
+                                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(extended))
+                                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
+                            },
+                            onScroll = { anchorId, anchorIndex, index, offset ->
+                                viewModel.onEvent(
+                                    SearchResultViewModel.SearchResultEvents.OnScroll(anchorId, anchorIndex, index, offset),
+                                )
+                            },
+                            onCancelSearch = {
+                                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.CancelSearch)
+                            },
+                            onOpenResult = { r, newTab ->
+                                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.OpenResult(r, newTab))
+                            },
+                            onRequestBreadcrumb = { r ->
+                                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.RequestBreadcrumb(r))
+                            },
+                            onLoadMore = { viewModel.loadMore() },
+                            onCategoryCheckedChange = { id, checked ->
+                                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetCategoryChecked(id, checked))
+                            },
+                            onBookCheckedChange = { id, checked ->
+                                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetBookChecked(id, checked))
+                            },
+                            onEnsureScopeBookForToc = { id ->
+                                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.EnsureScopeBookForToc(id))
+                            },
+                            onTocToggle = { entry, checked ->
+                                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetTocChecked(entry.id, checked))
+                            },
+                            onTocFilter = { entry ->
+                                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.FilterByTocId(entry.id))
+                            },
+                        )
+                    }
                 SearchResultInBookShellMvi(
                     bookUiState = bcUiState,
                     onEvent = bookVm::onEvent,
@@ -301,7 +304,7 @@ fun TabsNavHost() {
                         putString(StateKeys.TAB_ID, destination.tabId)
                         if (destination.bookId > 0) putLong(StateKeys.BOOK_ID, destination.bookId)
                         destination.lineId?.let { putLong(StateKeys.LINE_ID, it) }
-                    }
+                    },
                 )
                 val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                 val uiState by viewModel.uiState.collectAsState()
@@ -330,10 +333,11 @@ fun TabsNavHost() {
     } else {
         // Classic: one NavHost per tab
         Box(
-            modifier = Modifier
-                .trackActivation()
-                .fillMaxSize()
-                .background(JewelTheme.globalColors.panelBackground)
+            modifier =
+                Modifier
+                    .trackActivation()
+                    .fillMaxSize()
+                    .background(JewelTheme.globalColors.panelBackground),
         ) {
             tabs.forEachIndexed { index, tabItem ->
                 key(tabItem.id) {
@@ -353,10 +357,11 @@ fun TabsNavHost() {
                     NavHost(
                         navController = navController,
                         startDestination = tabItem.destination,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer { alpha = if (isSelected) 1f else 0f }
-                            .zIndex(if (isSelected) 1f else 0f)
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .graphicsLayer { alpha = if (isSelected) 1f else 0f }
+                                .zIndex(if (isSelected) 1f else 0f),
                     ) {
                         nonAnimatedComposable<TabsDestination.Home> { backStackEntry ->
                             val destination = backStackEntry.toRoute<TabsDestination.Home>()
@@ -385,7 +390,7 @@ fun TabsNavHost() {
                                 savedState {
                                     putString(StateKeys.TAB_ID, destination.tabId)
                                     putString("searchQuery", destination.searchQuery)
-                                }
+                                },
                             )
                             val viewModel: SearchResultViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                             val bookVm: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
@@ -409,49 +414,50 @@ fun TabsNavHost() {
                             val tocCounts by viewModel.tocCountsFlow.collectAsState()
                             val tocTree by viewModel.tocTreeFlow.collectAsState()
 
-                            val actions = remember(viewModel) {
-                                SearchShellActions(
-                                    onSubmit = { q ->
-                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q))
-                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
-                                    },
-                                    onQueryChange = { q -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
-                                    onGlobalExtendedChange = { extended ->
-                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(extended))
-                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
-                                    },
-                                    onScroll = { anchorId, anchorIndex, index, offset ->
-                                        viewModel.onEvent(
-                                            SearchResultViewModel.SearchResultEvents.OnScroll(anchorId, anchorIndex, index, offset)
-                                        )
-                                    },
-                                    onCancelSearch = {
-                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.CancelSearch)
-                                    },
-                                    onOpenResult = { r, newTab ->
-                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.OpenResult(r, newTab))
-                                    },
-                                    onRequestBreadcrumb = { r ->
-                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.RequestBreadcrumb(r))
-                                    },
-                                    onLoadMore = { viewModel.loadMore() },
-                                    onCategoryCheckedChange = { id, checked ->
-                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetCategoryChecked(id, checked))
-                                    },
-                                    onBookCheckedChange = { id, checked ->
-                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetBookChecked(id, checked))
-                                    },
-                                    onEnsureScopeBookForToc = { id ->
-                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.EnsureScopeBookForToc(id))
-                                    },
-                                    onTocToggle = { entry, checked ->
-                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetTocChecked(entry.id, checked))
-                                    },
-                                    onTocFilter = { entry ->
-                                        viewModel.onEvent(SearchResultViewModel.SearchResultEvents.FilterByTocId(entry.id))
-                                    },
-                                )
-                            }
+                            val actions =
+                                remember(viewModel) {
+                                    SearchShellActions(
+                                        onSubmit = { q ->
+                                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q))
+                                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
+                                        },
+                                        onQueryChange = { q -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
+                                        onGlobalExtendedChange = { extended ->
+                                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(extended))
+                                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
+                                        },
+                                        onScroll = { anchorId, anchorIndex, index, offset ->
+                                            viewModel.onEvent(
+                                                SearchResultViewModel.SearchResultEvents.OnScroll(anchorId, anchorIndex, index, offset),
+                                            )
+                                        },
+                                        onCancelSearch = {
+                                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.CancelSearch)
+                                        },
+                                        onOpenResult = { r, newTab ->
+                                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.OpenResult(r, newTab))
+                                        },
+                                        onRequestBreadcrumb = { r ->
+                                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.RequestBreadcrumb(r))
+                                        },
+                                        onLoadMore = { viewModel.loadMore() },
+                                        onCategoryCheckedChange = { id, checked ->
+                                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetCategoryChecked(id, checked))
+                                        },
+                                        onBookCheckedChange = { id, checked ->
+                                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetBookChecked(id, checked))
+                                        },
+                                        onEnsureScopeBookForToc = { id ->
+                                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.EnsureScopeBookForToc(id))
+                                        },
+                                        onTocToggle = { entry, checked ->
+                                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetTocChecked(entry.id, checked))
+                                        },
+                                        onTocFilter = { entry ->
+                                            viewModel.onEvent(SearchResultViewModel.SearchResultEvents.FilterByTocId(entry.id))
+                                        },
+                                    )
+                                }
                             SearchResultInBookShellMvi(
                                 bookUiState = bcUiState,
                                 onEvent = bookVm::onEvent,
@@ -480,7 +486,7 @@ fun TabsNavHost() {
                                     putString(StateKeys.TAB_ID, destination.tabId)
                                     if (destination.bookId > 0) putLong(StateKeys.BOOK_ID, destination.bookId)
                                     destination.lineId?.let { putLong(StateKeys.LINE_ID, it) }
-                                }
+                                },
                             )
                             val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
                             val uiState by viewModel.uiState.collectAsState()
@@ -506,15 +512,16 @@ fun TabsNavHost() {
                                 isSelected = isSelected,
                             )
                         }
+                    }
                 }
             }
-        }
         }
     }
 }
 
-private class TabViewModelOwner(private val tabId: String) :
-    ViewModelStoreOwner,
+private class TabViewModelOwner(
+    private val tabId: String,
+) : ViewModelStoreOwner,
     SavedStateRegistryOwner,
     HasDefaultViewModelProviderFactory {
     override val viewModelStore: ViewModelStore = ViewModelStore()

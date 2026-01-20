@@ -3,31 +3,31 @@ package io.github.kdroidfilter.seforimapp.features.search
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
-import io.github.kdroidfilter.seforimlibrary.core.models.Book
-import io.github.kdroidfilter.seforimlibrary.core.models.Category
-import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
-import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
-import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
+import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
+import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
+import io.github.kdroidfilter.seforimlibrary.core.models.Category
+import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Navigation events emitted by SearchHomeViewModel.
@@ -39,7 +39,10 @@ sealed class SearchHomeNavigationEvent {
      * @param query The search query
      * @param tabId The current tab ID
      */
-    data class NavigateToSearch(val query: String, val tabId: String) : SearchHomeNavigationEvent()
+    data class NavigateToSearch(
+        val query: String,
+        val tabId: String,
+    ) : SearchHomeNavigationEvent()
 
     /**
      * Navigate to book content screen.
@@ -50,18 +53,27 @@ sealed class SearchHomeNavigationEvent {
     data class NavigateToBookContent(
         val bookId: Long,
         val tabId: String,
-        val lineId: Long?
+        val lineId: Long?,
     ) : SearchHomeNavigationEvent()
 }
 
 @Immutable
-data class CategorySuggestionDto(val category: Category, val path: List<String>)
+data class CategorySuggestionDto(
+    val category: Category,
+    val path: List<String>,
+)
 
 @Immutable
-data class BookSuggestionDto(val book: Book, val path: List<String>)
+data class BookSuggestionDto(
+    val book: Book,
+    val path: List<String>,
+)
 
 @Immutable
-data class TocSuggestionDto(val toc: TocEntry, val path: List<String>)
+data class TocSuggestionDto(
+    val toc: TocEntry,
+    val path: List<String>,
+)
 
 @Immutable
 data class SearchHomeUiState(
@@ -80,7 +92,7 @@ data class SearchHomeUiState(
     val userDisplayName: String = "",
     val userCommunityCode: String? = null,
     val tocPreviewHints: List<String> = emptyList(),
-    val pairedReferenceHints: List<Pair<String, String>> = emptyList()
+    val pairedReferenceHints: List<Pair<String, String>> = emptyList(),
 )
 
 @OptIn(FlowPreview::class)
@@ -88,9 +100,8 @@ class SearchHomeViewModel(
     private val persistedStore: TabPersistedStateStore,
     private val repository: SeforimRepository,
     private val lookup: LuceneLookupSearchService,
-    private val settings: Settings
+    private val settings: Settings,
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(SearchHomeUiState())
     val uiState: StateFlow<SearchHomeUiState> = _uiState.asStateFlow()
 
@@ -101,32 +112,40 @@ class SearchHomeViewModel(
     private val referenceQuery = MutableStateFlow("")
     private val tocQuery = MutableStateFlow("")
 
-    private val MIN_BOOK_PREFIX_LEN = 2 // minimum characters before triggering book predictive queries
-    private val MIN_TOC_PREFIX_LEN = 1  // minimum characters before triggering TOC predictive queries
-    private val MAX_BOOK_PREDICTIVE = 120 // tighter ceiling to avoid heavy allocations
-    private val MAX_TOC_PREDICTIVE = 300  // TOC suggestions stay bounded
+    private val minBookPrefixLen = 2 // minimum characters before triggering book predictive queries
+    private val minTocPrefixLen = 1 // minimum characters before triggering TOC predictive queries
+    private val maxBookPredictive = 120 // tighter ceiling to avoid heavy allocations
+    private val maxTocPredictive = 300 // TOC suggestions stay bounded
 
     // Lightweight, thread-safe LRU caches to avoid repeated DB hits when typing fast
-    private class LruCache<K, V>(private val maxSize: Int) : LinkedHashMap<K, V>(maxSize, 0.75f, true) {
+    private class LruCache<K, V>(
+        private val maxSize: Int,
+    ) : LinkedHashMap<K, V>(maxSize, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean = size > maxSize
     }
+
     private val categoryDepthCache = LruCache<Long, Int>(512)
     private val categoryPathCache = LruCache<Long, List<String>>(512)
     private val tocPathCache = LruCache<Long, List<String>>(2048)
     private val tocCache = mutableMapOf<Long, List<TocSuggestionDto>>()
 
-    private fun matchRank(text: String, query: String): Int = when {
-        text.equals(query, ignoreCase = true) -> 0
-        text.startsWith(query, ignoreCase = true) -> 1
-        text.contains(query, ignoreCase = true) -> 2
-        else -> 3
-    }
+    private fun matchRank(
+        text: String,
+        query: String,
+    ): Int =
+        when {
+            text.equals(query, ignoreCase = true) -> 0
+            text.startsWith(query, ignoreCase = true) -> 1
+            text.contains(query, ignoreCase = true) -> 2
+            else -> 3
+        }
 
     private suspend fun getCategoryDepthCached(catId: Long): Int {
         synchronized(categoryDepthCache) { categoryDepthCache[catId]?.let { return it } }
-        val depth = withContext(Dispatchers.IO) {
-            runCatching { repository.getCategoryDepth(catId) }.getOrDefault(Int.MAX_VALUE)
-        }
+        val depth =
+            withContext(Dispatchers.IO) {
+                runCatching { repository.getCategoryDepth(catId) }.getOrDefault(Int.MAX_VALUE)
+            }
         synchronized(categoryDepthCache) { categoryDepthCache[catId] = depth }
         return depth
     }
@@ -178,99 +197,114 @@ class SearchHomeViewModel(
                     val q = qRaw.trim()
                     val qNorm = sanitizeHebrewForAcronym(q)
                     if (q.isBlank()) {
-                        _uiState.value = _uiState.value.copy(
-                            isReferenceLoading = false,
-                            categorySuggestions = emptyList(),
-                            bookSuggestions = emptyList(),
-                            suggestionsVisible = false
-                        )
+                        _uiState.value =
+                            _uiState.value.copy(
+                                isReferenceLoading = false,
+                                categorySuggestions = emptyList(),
+                                bookSuggestions = emptyList(),
+                                suggestionsVisible = false,
+                            )
                     } else {
-                        val startLoading = q.length >= MIN_BOOK_PREFIX_LEN
-                        _uiState.value = _uiState.value.copy(
-                            isReferenceLoading = startLoading,
-                            suggestionsVisible = true
-                        )
-                        val result = withContext(Dispatchers.Default) {
-                            coroutineScope {
-                                val pattern = "%$q%"
+                        val startLoading = q.length >= minBookPrefixLen
+                        _uiState.value =
+                            _uiState.value.copy(
+                                isReferenceLoading = startLoading,
+                                suggestionsVisible = true,
+                            )
+                        val result =
+                            withContext(Dispatchers.Default) {
+                                coroutineScope {
+                                    val pattern = "%$q%"
 
-                                // Helper ranks by quick string match only (cheap)
-                                fun catTitleRank(title: String): Int = when {
-                                    title.equals(q, ignoreCase = true) -> 0
-                                    title.startsWith(q, ignoreCase = true) -> 1
-                                    title.contains(q, ignoreCase = true) -> 2
-                                    else -> 3
-                                }
-                                fun titleRank(title: String): Int = when {
-                                    title.equals(q, ignoreCase = true) -> 0
-                                    title.startsWith(q, ignoreCase = true) -> 1
-                                    title.contains(q, ignoreCase = true) -> 2
-                                    else -> 3
-                                }
-
-                                // Categories: fetch, cheap-rank, compute depth for top-N, then build paths for final
-                                val catsDeferred = async(Dispatchers.IO) {
-                                    val catsRaw = repository
-                                        .findCategoriesByTitleLike(pattern, limit = 50)
-                                        .filter { it.title.isNotBlank() }
-                                        .distinctBy { it.id }
-                                    val topForDepth = catsRaw
-                                        .sortedBy { catTitleRank(it.title) }
-                                        .take(24)
-                                    val withDepth = topForDepth.map { cat ->
-                                        // Depth via cache for ranking
-                                        val depth = getCategoryDepthCached(cat.id)
-                                        cat to depth
-                                    }
-                                    val topFinal = withDepth
-                                        .sortedWith(compareBy<Pair<Category, Int>> { it.second }
-                                            .thenBy { catTitleRank(it.first.title) })
-                                        .take(12)
-                                        .map { it.first }
-                                    // Build display paths only for final items
-                                    topFinal.map { cat ->
-                                        val path = buildCategoryPathTitlesCached(cat.id)
-                                        CategorySuggestionDto(cat, path.ifEmpty { listOf(cat.title) })
-                                    }
-                                }
-
-                                // Books: enforce 2-char minimum; if shorter, return empty suggestions for books
-                                val booksDeferred = async(Dispatchers.Default) {
-                                    if (q.length < MIN_BOOK_PREFIX_LEN) {
-                                        emptyList<BookSuggestionDto>()
-                                    } else {
-                                        val bookHits = lookup.searchBooksWithScoring(qNorm, limit = MAX_BOOK_PREDICTIVE)
-                                        bookHits
-                                            // Already sorted by score in searchBooksWithScoring, no need to re-sort
-                                            .take(MAX_BOOK_PREDICTIVE)
-                                            .map { hit ->
-                                            val book = Book(
-                                                id = hit.id,
-                                                categoryId = hit.categoryId,
-                                                sourceId = 0,
-                                                title = hit.title,
-                                                order = hit.orderIndex.toFloat(),
-                                                isBaseBook = hit.isBaseBook
-                                            )
-                                            val catPath = buildCategoryPathTitlesCached(book.categoryId)
-                                            BookSuggestionDto(book, catPath + book.title)
+                                    // Helper ranks by quick string match only (cheap)
+                                    fun catTitleRank(title: String): Int =
+                                        when {
+                                            title.equals(q, ignoreCase = true) -> 0
+                                            title.startsWith(q, ignoreCase = true) -> 1
+                                            title.contains(q, ignoreCase = true) -> 2
+                                            else -> 3
                                         }
-                                    }
-                                }
 
-                                val cats = catsDeferred.await()
-                                val books = booksDeferred.await()
-                                cats to books
+                                    fun titleRank(title: String): Int =
+                                        when {
+                                            title.equals(q, ignoreCase = true) -> 0
+                                            title.startsWith(q, ignoreCase = true) -> 1
+                                            title.contains(q, ignoreCase = true) -> 2
+                                            else -> 3
+                                        }
+
+                                    // Categories: fetch, cheap-rank, compute depth for top-N, then build paths for final
+                                    val catsDeferred =
+                                        async(Dispatchers.IO) {
+                                            val catsRaw =
+                                                repository
+                                                    .findCategoriesByTitleLike(pattern, limit = 50)
+                                                    .filter { it.title.isNotBlank() }
+                                                    .distinctBy { it.id }
+                                            val topForDepth =
+                                                catsRaw
+                                                    .sortedBy { catTitleRank(it.title) }
+                                                    .take(24)
+                                            val withDepth =
+                                                topForDepth.map { cat ->
+                                                    // Depth via cache for ranking
+                                                    val depth = getCategoryDepthCached(cat.id)
+                                                    cat to depth
+                                                }
+                                            val topFinal =
+                                                withDepth
+                                                    .sortedWith(
+                                                        compareBy<Pair<Category, Int>> { it.second }
+                                                            .thenBy { catTitleRank(it.first.title) },
+                                                    ).take(12)
+                                                    .map { it.first }
+                                            // Build display paths only for final items
+                                            topFinal.map { cat ->
+                                                val path = buildCategoryPathTitlesCached(cat.id)
+                                                CategorySuggestionDto(cat, path.ifEmpty { listOf(cat.title) })
+                                            }
+                                        }
+
+                                    // Books: enforce 2-char minimum; if shorter, return empty suggestions for books
+                                    val booksDeferred =
+                                        async(Dispatchers.Default) {
+                                            if (q.length < minBookPrefixLen) {
+                                                emptyList<BookSuggestionDto>()
+                                            } else {
+                                                val bookHits = lookup.searchBooksWithScoring(qNorm, limit = maxBookPredictive)
+                                                bookHits
+                                                    // Already sorted by score in searchBooksWithScoring, no need to re-sort
+                                                    .take(maxBookPredictive)
+                                                    .map { hit ->
+                                                        val book =
+                                                            Book(
+                                                                id = hit.id,
+                                                                categoryId = hit.categoryId,
+                                                                sourceId = 0,
+                                                                title = hit.title,
+                                                                order = hit.orderIndex.toFloat(),
+                                                                isBaseBook = hit.isBaseBook,
+                                                            )
+                                                        val catPath = buildCategoryPathTitlesCached(book.categoryId)
+                                                        BookSuggestionDto(book, catPath + book.title)
+                                                    }
+                                            }
+                                        }
+
+                                    val cats = catsDeferred.await()
+                                    val books = booksDeferred.await()
+                                    cats to books
+                                }
                             }
-                        }
 
                         val (catSuggestions, bookSuggestions) = result
-                        _uiState.value = _uiState.value.copy(
-                            isReferenceLoading = false,
-                            categorySuggestions = catSuggestions,
-                            bookSuggestions = bookSuggestions,
-                            suggestionsVisible = true
-                        )
+                        _uiState.value =
+                            _uiState.value.copy(
+                                isReferenceLoading = false,
+                                categorySuggestions = catSuggestions,
+                                bookSuggestions = bookSuggestions,
+                                suggestionsVisible = true,
+                            )
                     }
                 }
         }
@@ -285,156 +319,174 @@ class SearchHomeViewModel(
                     val book = _uiState.value.selectedScopeBook
                     val cached = book?.let { tocCache[it.id] }.orEmpty()
                     when {
-                        book == null -> _uiState.value = _uiState.value.copy(
-                            tocSuggestions = emptyList(),
-                            tocSuggestionsVisible = false,
-                            isTocLoading = false
-                        )
-                        q.length < MIN_TOC_PREFIX_LEN -> _uiState.value = _uiState.value.copy(
-                            tocSuggestions = cached,
-                            tocSuggestionsVisible = cached.isNotEmpty(),
-                            isTocLoading = false
-                        )
-                        else -> {
-                            _uiState.value = _uiState.value.copy(
-                                isTocLoading = true,
-                                tocSuggestionsVisible = true
-                            )
-                            val suggestions = cached
-                                .asSequence()
-                                .filter { it.toc.text.contains(q, ignoreCase = true) }
-                                .sortedWith(
-                                    compareBy<TocSuggestionDto> { matchRank(it.toc.text, q) }
-                                        .thenBy { it.toc.level }
-                                        .thenBy { it.toc.text.length }
+                        book == null ->
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    tocSuggestions = emptyList(),
+                                    tocSuggestionsVisible = false,
+                                    isTocLoading = false,
                                 )
-                                .toList()
-                            _uiState.value = _uiState.value.copy(
-                                tocSuggestions = suggestions,
-                                tocSuggestionsVisible = true,
-                                isTocLoading = false
-                            )
+                        q.length < minTocPrefixLen ->
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    tocSuggestions = cached,
+                                    tocSuggestionsVisible = cached.isNotEmpty(),
+                                    isTocLoading = false,
+                                )
+                        else -> {
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    isTocLoading = true,
+                                    tocSuggestionsVisible = true,
+                                )
+                            val suggestions =
+                                cached
+                                    .asSequence()
+                                    .filter { it.toc.text.contains(q, ignoreCase = true) }
+                                    .sortedWith(
+                                        compareBy<TocSuggestionDto> { matchRank(it.toc.text, q) }
+                                            .thenBy { it.toc.level }
+                                            .thenBy { it.toc.text.length },
+                                    ).toList()
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    tocSuggestions = suggestions,
+                                    tocSuggestionsVisible = true,
+                                    isTocLoading = false,
+                                )
                         }
                     }
                 }
         }
-
     }
 
     fun onReferenceQueryChanged(query: String) {
         referenceQuery.value = query
         if (query.isBlank()) {
-            _uiState.value = _uiState.value.copy(
-                selectedScopeCategory = null,
-                selectedScopeBook = null,
-                selectedScopeToc = null,
-                tocPreviewHints = emptyList(),
-                isReferenceLoading = false
-            )
+            _uiState.value =
+                _uiState.value.copy(
+                    selectedScopeCategory = null,
+                    selectedScopeBook = null,
+                    selectedScopeToc = null,
+                    tocPreviewHints = emptyList(),
+                    isReferenceLoading = false,
+                )
         }
     }
 
     fun onTocQueryChanged(query: String) {
         tocQuery.value = query
         if (query.isBlank()) {
-            _uiState.value = _uiState.value.copy(
-                selectedScopeToc = null,
-                tocSuggestionsVisible = _uiState.value.tocSuggestions.isNotEmpty(),
-                isTocLoading = false
-            )
+            _uiState.value =
+                _uiState.value.copy(
+                    selectedScopeToc = null,
+                    tocSuggestionsVisible = _uiState.value.tocSuggestions.isNotEmpty(),
+                    isTocLoading = false,
+                )
         }
     }
 
     fun onPickCategory(category: Category) {
-        _uiState.value = _uiState.value.copy(
-            selectedScopeCategory = category,
-            selectedScopeBook = null,
-            selectedScopeToc = null,
-            suggestionsVisible = false,
-            tocSuggestionsVisible = false,
-            tocSuggestions = emptyList(),
-            tocPreviewHints = emptyList(),
-            isReferenceLoading = false,
-            isTocLoading = false
-        )
+        _uiState.value =
+            _uiState.value.copy(
+                selectedScopeCategory = category,
+                selectedScopeBook = null,
+                selectedScopeToc = null,
+                suggestionsVisible = false,
+                tocSuggestionsVisible = false,
+                tocSuggestions = emptyList(),
+                tocPreviewHints = emptyList(),
+                isReferenceLoading = false,
+                isTocLoading = false,
+            )
     }
 
     fun onPickBook(book: Book) {
         // Update synchronously first
-        _uiState.value = _uiState.value.copy(
-            selectedScopeCategory = null,
-            selectedScopeBook = book,
-            selectedScopeToc = null,
-            suggestionsVisible = false,
-            tocSuggestionsVisible = false,
-            tocSuggestions = emptyList(),
-            tocPreviewHints = emptyList(),
-            isReferenceLoading = false,
-            isTocLoading = true
-        )
+        _uiState.value =
+            _uiState.value.copy(
+                selectedScopeCategory = null,
+                selectedScopeBook = book,
+                selectedScopeToc = null,
+                suggestionsVisible = false,
+                tocSuggestionsVisible = false,
+                tocSuggestions = emptyList(),
+                tocPreviewHints = emptyList(),
+                isReferenceLoading = false,
+                isTocLoading = true,
+            )
         // Load preview hints and initial TOC suggestions asynchronously
         viewModelScope.launch {
-            val tocEntries = tocCache[book.id] ?: withContext(Dispatchers.Default) {
-                val entries = runCatching { repository.getBookToc(book.id) }.getOrElse { emptyList() }
-                val built = mutableListOf<TocSuggestionDto>()
-                val sorted = entries
-                    .asSequence()
-                    .filter { it.text.isNotBlank() }
-                    .sortedWith(compareBy<TocEntry> { it.level }.thenBy { it.text })
-                    .toList()
-                for (toc in sorted) {
-                    val path = buildTocPathTitlesCached(toc).filter { it.isNotBlank() }
-                    if (path.isNotEmpty()) {
-                        built += TocSuggestionDto(toc, path)
+            val tocEntries =
+                tocCache[book.id] ?: withContext(Dispatchers.Default) {
+                    val entries = runCatching { repository.getBookToc(book.id) }.getOrElse { emptyList() }
+                    val built = mutableListOf<TocSuggestionDto>()
+                    val sorted =
+                        entries
+                            .asSequence()
+                            .filter { it.text.isNotBlank() }
+                            .sortedWith(compareBy<TocEntry> { it.level }.thenBy { it.text })
+                            .toList()
+                    for (toc in sorted) {
+                        val path = buildTocPathTitlesCached(toc).filter { it.isNotBlank() }
+                        if (path.isNotEmpty()) {
+                            built += TocSuggestionDto(toc, path)
+                        }
                     }
+                    tocCache[book.id] = built
+                    built
                 }
-                tocCache[book.id] = built
-                built
-            }
-            val preview = tocEntries
-                .mapNotNull { it.toc.text.takeIf { t -> t.isNotBlank() } }
-                .distinct()
-                .take(5)
-                .toList()
-            val initialSuggestions = tocEntries.take(MAX_TOC_PREDICTIVE)
-            _uiState.value = _uiState.value.copy(
-                tocPreviewHints = preview,
-                tocSuggestions = initialSuggestions,
-                tocSuggestionsVisible = initialSuggestions.isNotEmpty(),
-                isTocLoading = false
-            )
+            val preview =
+                tocEntries
+                    .mapNotNull { it.toc.text.takeIf { t -> t.isNotBlank() } }
+                    .distinct()
+                    .take(5)
+                    .toList()
+            val initialSuggestions = tocEntries.take(maxTocPredictive)
+            _uiState.value =
+                _uiState.value.copy(
+                    tocPreviewHints = preview,
+                    tocSuggestions = initialSuggestions,
+                    tocSuggestionsVisible = initialSuggestions.isNotEmpty(),
+                    isTocLoading = false,
+                )
         }
     }
 
     fun onPickToc(toc: TocEntry) {
-        _uiState.value = _uiState.value.copy(
-            selectedScopeToc = toc,
-            tocSuggestionsVisible = false,
-            isTocLoading = false
-        )
+        _uiState.value =
+            _uiState.value.copy(
+                selectedScopeToc = toc,
+                tocSuggestionsVisible = false,
+                isTocLoading = false,
+            )
     }
 
     fun onFilterChange(filter: SearchFilter) {
         _uiState.value = _uiState.value.copy(selectedFilter = filter)
     }
 
-
-    fun onGlobalExtendedChange(extended: Boolean) { _uiState.value = _uiState.value.copy(globalExtended = extended) }
+    fun onGlobalExtendedChange(extended: Boolean) {
+        _uiState.value = _uiState.value.copy(globalExtended = extended)
+    }
 
     /**
      * Dismisses all suggestion popups. Called by the UI layer when navigating away from Home.
      */
     fun dismissSuggestions() {
-        _uiState.value = _uiState.value.copy(
-            suggestionsVisible = false,
-            tocSuggestionsVisible = false,
-            isReferenceLoading = false,
-            isTocLoading = false
-        )
+        _uiState.value =
+            _uiState.value.copy(
+                suggestionsVisible = false,
+                tocSuggestionsVisible = false,
+                isReferenceLoading = false,
+                isTocLoading = false,
+            )
     }
 
-    suspend fun submitSearch(query: String, currentTabId: String) {
-
+    suspend fun submitSearch(
+        query: String,
+        currentTabId: String,
+    ) {
         // Apply selected scope only (view filters) and persist dataset scope for fetch
         val selected = _uiState.value
         val datasetScope: String
@@ -487,26 +539,27 @@ class SearchHomeViewModel(
         }
 
         persistedStore.update(currentTabId) { current ->
-            val nextSearch = (current.search ?: SearchPersistedState()).copy(
-                query = query,
-                globalExtended = selected.globalExtended,
-                datasetScope = datasetScope,
-                filterCategoryId = filterCategoryId,
-                filterBookId = filterBookId,
-                filterTocId = filterTocId,
-                fetchCategoryId = fetchCategoryId,
-                fetchBookId = fetchBookId,
-                fetchTocId = fetchTocId,
-                selectedCategoryIds = emptySet(),
-                selectedBookIds = emptySet(),
-                selectedTocIds = emptySet(),
-                scrollIndex = 0,
-                scrollOffset = 0,
-                anchorId = -1L,
-                anchorIndex = 0,
-                snapshot = null,
-                breadcrumbs = emptyMap()
-            )
+            val nextSearch =
+                (current.search ?: SearchPersistedState()).copy(
+                    query = query,
+                    globalExtended = selected.globalExtended,
+                    datasetScope = datasetScope,
+                    filterCategoryId = filterCategoryId,
+                    filterBookId = filterBookId,
+                    filterTocId = filterTocId,
+                    fetchCategoryId = fetchCategoryId,
+                    fetchBookId = fetchBookId,
+                    fetchTocId = fetchTocId,
+                    selectedCategoryIds = emptySet(),
+                    selectedBookIds = emptySet(),
+                    selectedTocIds = emptySet(),
+                    scrollIndex = 0,
+                    scrollOffset = 0,
+                    anchorId = -1L,
+                    anchorIndex = 0,
+                    snapshot = null,
+                    breadcrumbs = emptyMap(),
+                )
             current.copy(search = nextSearch)
         }
 
@@ -529,16 +582,18 @@ class SearchHomeViewModel(
         val selectedBook = _uiState.value.selectedScopeBook
 
         // Resolve book and optional line anchor
-        val book = when {
-            selectedBook != null -> selectedBook
-            selectedToc != null -> runCatching { repository.getBookCore(selectedToc.bookId) }.getOrNull()
-            else -> null
-        } ?: return
+        val book =
+            when {
+                selectedBook != null -> selectedBook
+                selectedToc != null -> runCatching { repository.getBookCore(selectedToc.bookId) }.getOrNull()
+                else -> null
+            } ?: return
 
-        val anchorLineId: Long? = when (selectedToc) {
-            null -> null
-            else -> runCatching { repository.getLineIdsForTocEntry(selectedToc.id).firstOrNull() }.getOrNull()
-        }
+        val anchorLineId: Long? =
+            when (selectedToc) {
+                null -> null
+                else -> runCatching { repository.getLineIdsForTocEntry(selectedToc.id).firstOrNull() }.getOrNull()
+            }
 
         // Pre-seed minimal state so the BookContent shell can show a loader instead of flashing Home.
         persistedStore.update(currentTabId) { current ->
@@ -550,8 +605,8 @@ class SearchHomeViewModel(
             SearchHomeNavigationEvent.NavigateToBookContent(
                 bookId = book.id,
                 tabId = currentTabId,
-                lineId = anchorLineId
-            )
+                lineId = anchorLineId,
+            ),
         )
     }
 
@@ -617,7 +672,11 @@ class SearchHomeViewModel(
 
     private fun dedupAdjacent(parts: List<String>): List<String> {
         if (parts.isEmpty()) return parts
-        fun extends(prev: String, next: String): Boolean {
+
+        fun extends(
+            prev: String,
+            next: String,
+        ): Boolean {
             val a = prev.trim()
             val b = next.trim()
             if (b.length <= a.length) return false

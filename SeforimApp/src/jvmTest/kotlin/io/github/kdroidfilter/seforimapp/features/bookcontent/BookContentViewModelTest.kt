@@ -4,7 +4,6 @@ import androidx.lifecycle.SavedStateHandle
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
-import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.*
@@ -13,11 +12,6 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
-import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -31,16 +25,16 @@ import kotlin.test.assertTrue
  * without a full database.
  */
 class BookContentViewModelTest {
-
     private val testTabId = "test-tab-123"
     private val testBookId = 456L
 
     @Test
     fun `savedStateHandle extracts tabId correctly`() {
         // Given: A SavedStateHandle with tabId
-        val savedStateHandle = SavedStateHandle(
-            mapOf(StateKeys.TAB_ID to testTabId)
-        )
+        val savedStateHandle =
+            SavedStateHandle(
+                mapOf(StateKeys.TAB_ID to testTabId),
+            )
 
         // When: We extract the tabId
         val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
@@ -52,12 +46,13 @@ class BookContentViewModelTest {
     @Test
     fun `savedStateHandle extracts bookId correctly`() {
         // Given: A SavedStateHandle with bookId
-        val savedStateHandle = SavedStateHandle(
-            mapOf(
-                StateKeys.TAB_ID to testTabId,
-                StateKeys.BOOK_ID to testBookId
+        val savedStateHandle =
+            SavedStateHandle(
+                mapOf(
+                    StateKeys.TAB_ID to testTabId,
+                    StateKeys.BOOK_ID to testBookId,
+                ),
             )
-        )
 
         // When: We extract the bookId
         val bookId: Long? = savedStateHandle.get<Long>(StateKeys.BOOK_ID)
@@ -70,12 +65,13 @@ class BookContentViewModelTest {
     fun `savedStateHandle extracts lineId correctly`() {
         // Given: A SavedStateHandle with lineId
         val lineId = 789L
-        val savedStateHandle = SavedStateHandle(
-            mapOf(
-                StateKeys.TAB_ID to testTabId,
-                StateKeys.LINE_ID to lineId
+        val savedStateHandle =
+            SavedStateHandle(
+                mapOf(
+                    StateKeys.TAB_ID to testTabId,
+                    StateKeys.LINE_ID to lineId,
+                ),
             )
-        )
 
         // When: We extract the lineId
         val extractedLineId: Long? = savedStateHandle.get<Long>(StateKeys.LINE_ID)
@@ -150,11 +146,12 @@ class BookContentViewModelTest {
         val persistedStore = TabPersistedStateStore()
         persistedStore.update(testTabId) { current ->
             current.copy(
-                bookContent = current.bookContent.copy(
-                    selectedBookId = testBookId,
-                    isTocVisible = true,
-                    isBookTreeVisible = false
-                )
+                bookContent =
+                    current.bookContent.copy(
+                        selectedBookId = testBookId,
+                        isTocVisible = true,
+                        isBookTreeVisible = false,
+                    ),
             )
         }
 
@@ -202,16 +199,18 @@ class BookContentViewModelTest {
     fun `tabsViewModel can be created with start destination`() {
         // Given: A title update manager
         val titleManager = TabTitleUpdateManager()
-        val startDestination = TabsDestination.BookContent(
-            bookId = testBookId,
-            tabId = testTabId
-        )
+        val startDestination =
+            TabsDestination.BookContent(
+                bookId = testBookId,
+                tabId = testTabId,
+            )
 
         // When: We create a TabsViewModel
-        val tabsViewModel = TabsViewModel(
-            titleUpdateManager = titleManager,
-            startDestination = startDestination
-        )
+        val tabsViewModel =
+            TabsViewModel(
+                titleUpdateManager = titleManager,
+                startDestination = startDestination,
+            )
 
         // Then: It has one tab
         assertEquals(1, tabsViewModel.tabs.value.size)
@@ -220,19 +219,22 @@ class BookContentViewModelTest {
     @Test
     fun `BookContentEvent types are properly defined`() {
         // Test various event types can be created
-        val categoryEvent = BookContentEvent.CategorySelected(
-            Category(id = 1, parentId = null, title = "Test", order = 0)
-        )
+        val categoryEvent =
+            BookContentEvent.CategorySelected(
+                Category(id = 1, parentId = null, title = "Test", order = 0),
+            )
         assertNotNull(categoryEvent)
 
-        val bookEvent = BookContentEvent.BookSelected(
-            Book(id = 1, categoryId = 1, sourceId = 1, title = "Test", order = 0f)
-        )
+        val bookEvent =
+            BookContentEvent.BookSelected(
+                Book(id = 1, categoryId = 1, sourceId = 1, title = "Test", order = 0f),
+            )
         assertNotNull(bookEvent)
 
-        val lineEvent = BookContentEvent.LineSelected(
-            Line(id = 1, bookId = 1, lineIndex = 0, content = "Test")
-        )
+        val lineEvent =
+            BookContentEvent.LineSelected(
+                Line(id = 1, bookId = 1, lineIndex = 0, content = "Test"),
+            )
         assertNotNull(lineEvent)
 
         val toggleTocEvent = BookContentEvent.ToggleToc
@@ -270,12 +272,13 @@ class BookContentViewModelTest {
     @Test
     fun `BookContentEvent ContentScrolled contains scroll data`() {
         // Given: A ContentScrolled event
-        val event = BookContentEvent.ContentScrolled(
-            anchorId = 1L,
-            anchorIndex = 5,
-            scrollIndex = 10,
-            scrollOffset = 50
-        )
+        val event =
+            BookContentEvent.ContentScrolled(
+                anchorId = 1L,
+                anchorIndex = 5,
+                scrollIndex = 10,
+                scrollOffset = 50,
+            )
 
         // Then: All data is accessible
         assertEquals(1L, event.anchorId)
@@ -287,14 +290,15 @@ class BookContentViewModelTest {
     @Test
     fun `TocEntry has required properties`() {
         // Given: A TocEntry
-        val entry = TocEntry(
-            id = 1L,
-            bookId = 100L,
-            parentId = null,
-            text = "Chapter 1",
-            level = 0,
-            hasChildren = true
-        )
+        val entry =
+            TocEntry(
+                id = 1L,
+                bookId = 100L,
+                parentId = null,
+                text = "Chapter 1",
+                level = 0,
+                hasChildren = true,
+            )
 
         // Then: All properties are accessible
         assertEquals(1L, entry.id)
@@ -308,14 +312,15 @@ class BookContentViewModelTest {
     @Test
     fun `BookContentEvent TocEntryExpanded contains entry`() {
         // Given: A TocEntry and event
-        val entry = TocEntry(
-            id = 1L,
-            bookId = 100L,
-            parentId = null,
-            text = "Test",
-            level = 0,
-            hasChildren = true
-        )
+        val entry =
+            TocEntry(
+                id = 1L,
+                bookId = 100L,
+                parentId = null,
+                text = "Test",
+                level = 0,
+                hasChildren = true,
+            )
         val event = BookContentEvent.TocEntryExpanded(entry)
 
         // Then: The entry is accessible
@@ -328,7 +333,7 @@ class BookContentViewModelTest {
         val store = TabPersistedStateStore()
         store.update(testTabId) { current ->
             current.copy(
-                bookContent = current.bookContent.copy(selectedBookId = testBookId)
+                bookContent = current.bookContent.copy(selectedBookId = testBookId),
             )
         }
         assertNotNull(store.get(testTabId))

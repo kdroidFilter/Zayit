@@ -1,14 +1,12 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 
-import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
-import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.TestScope
 import kotlin.test.Test
-import kotlin.test.assertNotNull
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 
 /**
  * Tests for [BookContentUseCaseFactory].
@@ -17,7 +15,6 @@ import kotlin.test.assertIs
  * with proper dependencies.
  */
 class BookContentUseCaseFactoryTest {
-
     private val testTabId = "test-tab-id"
 
     // Create minimal test dependencies
@@ -69,9 +66,10 @@ class BookContentUseCaseFactoryTest {
         // When: We update the store
         store.update(testTabId) { current ->
             current.copy(
-                bookContent = current.bookContent.copy(
-                    selectedBookId = 123L
-                )
+                bookContent =
+                    current.bookContent.copy(
+                        selectedBookId = 123L,
+                    ),
             )
         }
 
@@ -104,12 +102,12 @@ class BookContentUseCaseFactoryTest {
         // When: We update one manager's persisted store
         store.update("tab-1") { current ->
             current.copy(
-                bookContent = current.bookContent.copy(selectedBookId = 100L)
+                bookContent = current.bookContent.copy(selectedBookId = 100L),
             )
         }
         store.update("tab-2") { current ->
             current.copy(
-                bookContent = current.bookContent.copy(selectedBookId = 200L)
+                bookContent = current.bookContent.copy(selectedBookId = 200L),
             )
         }
 

@@ -16,9 +16,8 @@ import kotlinx.coroutines.flow.stateIn
 @ViewModelKey(AvailableDiskSpaceViewModel::class)
 @Inject
 class AvailableDiskSpaceViewModel(
-    private val useCase: AvailableDiskSpaceUseCase
+    private val useCase: AvailableDiskSpaceUseCase,
 ) : ViewModel() {
-
     private var _hasEnoughSpace = MutableStateFlow(useCase.hasEnoughSpace())
     val hasEnoughSpace = _hasEnoughSpace.asStateFlow()
 
@@ -32,28 +31,30 @@ class AvailableDiskSpaceViewModel(
     var remainingDiskSpaceAfterInstall = _remainingDiskSpaceAfterInstall.asStateFlow()
 
     // Expose a single combined state with combine
-    val state = combine(
-        hasEnoughSpace,
-        availableDiskSpace,
-        remainingDiskSpaceAfterInstall,
-        totalDiskSpace
-    ) { hasEnough, available, remainingAfter, total ->
-        AvailableDiskSpaceState(
-            hasEnoughSpace = hasEnough,
-            availableDiskSpace = available,
-            remainingDiskSpaceAfterInstall = remainingAfter,
-            totalDiskSpace = total
+    val state =
+        combine(
+            hasEnoughSpace,
+            availableDiskSpace,
+            remainingDiskSpaceAfterInstall,
+            totalDiskSpace,
+        ) { hasEnough, available, remainingAfter, total ->
+            AvailableDiskSpaceState(
+                hasEnoughSpace = hasEnough,
+                availableDiskSpace = available,
+                remainingDiskSpaceAfterInstall = remainingAfter,
+                totalDiskSpace = total,
+            )
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue =
+                AvailableDiskSpaceState(
+                    hasEnoughSpace = _hasEnoughSpace.value,
+                    availableDiskSpace = _availableDiskSpace.value,
+                    remainingDiskSpaceAfterInstall = _remainingDiskSpaceAfterInstall.value,
+                    totalDiskSpace = _totalDiskSpace.value,
+                ),
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = AvailableDiskSpaceState(
-            hasEnoughSpace = _hasEnoughSpace.value,
-            availableDiskSpace = _availableDiskSpace.value,
-            remainingDiskSpaceAfterInstall = _remainingDiskSpaceAfterInstall.value,
-            totalDiskSpace = _totalDiskSpace.value
-        )
-    )
 
     private fun recheck() {
         _hasEnoughSpace.value = useCase.hasEnoughSpace()
@@ -67,6 +68,4 @@ class AvailableDiskSpaceViewModel(
             AvailableDiskSpaceEvents.Refresh -> recheck()
         }
     }
-
-
 }

@@ -56,23 +56,27 @@ fun FontsSettingsScreen() {
 private const val PREVIEW_TEXT = "דּוֹר הֹלֵךְ וְדוֹר בָּא וְהָאָרֶץ לְעוֹלָם עֹמָדֶת"
 
 @Composable
-private fun FontsSettingsView(state: FontsSettingsState, onEvent: (FontsSettingsEvents) -> Unit) {
+private fun FontsSettingsView(
+    state: FontsSettingsState,
+    onEvent: (FontsSettingsEvents) -> Unit,
+) {
     val options = remember { FontCatalog.options }
     val optionLabels = options.map { stringResource(it.label) }
 
     VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             FontSettingCard(
                 label = Res.string.settings_font_book_label,
                 fontCode = state.bookFontCode,
                 options = options,
                 optionLabels = optionLabels,
-                onFontChange = { code -> onEvent(FontsSettingsEvents.SetBookFont(code)) }
+                onFontChange = { code -> onEvent(FontsSettingsEvents.SetBookFont(code)) },
             )
 
             FontSettingCard(
@@ -80,7 +84,7 @@ private fun FontsSettingsView(state: FontsSettingsState, onEvent: (FontsSettings
                 fontCode = state.commentaryFontCode,
                 options = options,
                 optionLabels = optionLabels,
-                onFontChange = { code -> onEvent(FontsSettingsEvents.SetCommentaryFont(code)) }
+                onFontChange = { code -> onEvent(FontsSettingsEvents.SetCommentaryFont(code)) },
             )
 
             FontSettingCard(
@@ -88,7 +92,7 @@ private fun FontsSettingsView(state: FontsSettingsState, onEvent: (FontsSettings
                 fontCode = state.targumFontCode,
                 options = options,
                 optionLabels = optionLabels,
-                onFontChange = { code -> onEvent(FontsSettingsEvents.SetTargumFont(code)) }
+                onFontChange = { code -> onEvent(FontsSettingsEvents.SetTargumFont(code)) },
             )
 
             FontSettingCard(
@@ -96,14 +100,14 @@ private fun FontsSettingsView(state: FontsSettingsState, onEvent: (FontsSettings
                 fontCode = state.sourceFontCode,
                 options = options,
                 optionLabels = optionLabels,
-                onFontChange = { code -> onEvent(FontsSettingsEvents.SetSourceFont(code)) }
+                onFontChange = { code -> onEvent(FontsSettingsEvents.SetSourceFont(code)) },
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedButton(
                 onClick = { onEvent(FontsSettingsEvents.ResetToDefaults) },
-                modifier = Modifier.align(Alignment.End)
+                modifier = Modifier.align(Alignment.End),
             ) {
                 Text(text = stringResource(Res.string.settings_font_reset_defaults))
             }
@@ -117,60 +121,62 @@ private fun FontSettingCard(
     fontCode: String,
     options: List<FontOption>,
     optionLabels: List<String>,
-    onFontChange: (String) -> Unit
+    onFontChange: (String) -> Unit,
 ) {
     val selectedIndex = options.indexOfFirst { it.code == fontCode }.let { if (it >= 0) it else 0 }
     val fontFamily = FontCatalog.familyFor(fontCode)
     val shape = RoundedCornerShape(8.dp)
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-            .background(JewelTheme.globalColors.panelBackground)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                .background(JewelTheme.globalColors.panelBackground)
+                .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
                 text = stringResource(label),
                 fontSize = 15.sp,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             )
             ListComboBox(
                 items = optionLabels,
                 selectedIndex = selectedIndex,
                 onSelectedItemChange = { idx -> onFontChange(options[idx].code) },
-                modifier = Modifier.fillMaxWidth(0.4f)
+                modifier = Modifier.fillMaxWidth(0.4f),
             )
         }
 
         Spacer(modifier = Modifier.height(4.dp))
 
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(6.dp))
-                .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.5f))
-                .border(
-                    1.dp,
-                    JewelTheme.globalColors.borders.normal.copy(alpha = 0.5f),
-                    RoundedCornerShape(6.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 16.dp),
-            contentAlignment = Alignment.Center
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.5f))
+                    .border(
+                        1.dp,
+                        JewelTheme.globalColors.borders.normal
+                            .copy(alpha = 0.5f),
+                        RoundedCornerShape(6.dp),
+                    ).padding(horizontal = 12.dp, vertical = 16.dp),
+            contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = PREVIEW_TEXT,
                 fontFamily = fontFamily,
                 fontSize = 20.sp,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }

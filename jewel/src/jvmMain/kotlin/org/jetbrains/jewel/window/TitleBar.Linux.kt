@@ -31,51 +31,55 @@ internal fun DecoratedWindowScope.TitleBarOnLinux(
     content: @Composable TitleBarScope.(DecoratedWindowState) -> Unit,
 ) {
     // Replace icons with the ones appropriate for the current Linux DE
-    val linuxIconButtonStyle =  IconButtonStyle(
-        colors = IconButtonColors(
-            foregroundSelectedActivated =  Color.Transparent,
-            background = Color.Transparent,
-            backgroundDisabled = Color.Transparent,
-            backgroundSelected = Color.Transparent,
-            backgroundSelectedActivated = Color.Transparent,
-            backgroundFocused =  Color.Transparent,
-            backgroundPressed =  Color.Transparent,
-            backgroundHovered =  Color.Transparent,
-            border =  Color.Transparent,
-            borderDisabled =  Color.Transparent,
-            borderSelected =  Color.Transparent,
-            borderSelectedActivated =  Color.Transparent,
-            borderFocused =  Color.Transparent,
-            borderPressed =  Color.Transparent,
-            borderHovered =  Color.Transparent,
-        ),
-        metrics = style.iconButtonStyle.metrics,
-    )
+    val linuxIconButtonStyle =
+        IconButtonStyle(
+            colors =
+                IconButtonColors(
+                    foregroundSelectedActivated = Color.Transparent,
+                    background = Color.Transparent,
+                    backgroundDisabled = Color.Transparent,
+                    backgroundSelected = Color.Transparent,
+                    backgroundSelectedActivated = Color.Transparent,
+                    backgroundFocused = Color.Transparent,
+                    backgroundPressed = Color.Transparent,
+                    backgroundHovered = Color.Transparent,
+                    border = Color.Transparent,
+                    borderDisabled = Color.Transparent,
+                    borderSelected = Color.Transparent,
+                    borderSelectedActivated = Color.Transparent,
+                    borderFocused = Color.Transparent,
+                    borderPressed = Color.Transparent,
+                    borderHovered = Color.Transparent,
+                ),
+            metrics = style.iconButtonStyle.metrics,
+        )
 
     val linuxIcons = LinuxTitleBarIconsFactory.createForCurrentDesktop()
-    val linuxStyle = TitleBarStyle(
-        colors = TitleBarColors(
-            background = style.colors.background,
-            inactiveBackground = style.colors.inactiveBackground,
-            content = style.colors.content,
-            border = style.colors.border,
-            fullscreenControlButtonsBackground = style.colors.fullscreenControlButtonsBackground,
-            titlePaneButtonHoveredBackground = style.colors.titlePaneButtonHoveredBackground,
-            titlePaneButtonPressedBackground = style.colors.titlePaneButtonPressedBackground,
-            titlePaneCloseButtonHoveredBackground =Color.Transparent,
-            titlePaneCloseButtonPressedBackground =Color.Transparent,
-            iconButtonHoveredBackground = style.colors.iconButtonHoveredBackground,
-            iconButtonPressedBackground = style.colors.iconButtonPressedBackground,
-            dropdownPressedBackground = style.colors.dropdownPressedBackground,
-            dropdownHoveredBackground = style.colors.dropdownHoveredBackground,
-        ),
-        metrics = style.metrics,
-        icons = linuxIcons,
-        dropdownStyle = style.dropdownStyle,
-        iconButtonStyle = style.iconButtonStyle,
-        paneButtonStyle = linuxIconButtonStyle,
-        paneCloseButtonStyle = linuxIconButtonStyle
-    )
+    val linuxStyle =
+        TitleBarStyle(
+            colors =
+                TitleBarColors(
+                    background = style.colors.background,
+                    inactiveBackground = style.colors.inactiveBackground,
+                    content = style.colors.content,
+                    border = style.colors.border,
+                    fullscreenControlButtonsBackground = style.colors.fullscreenControlButtonsBackground,
+                    titlePaneButtonHoveredBackground = style.colors.titlePaneButtonHoveredBackground,
+                    titlePaneButtonPressedBackground = style.colors.titlePaneButtonPressedBackground,
+                    titlePaneCloseButtonHoveredBackground = Color.Transparent,
+                    titlePaneCloseButtonPressedBackground = Color.Transparent,
+                    iconButtonHoveredBackground = style.colors.iconButtonHoveredBackground,
+                    iconButtonPressedBackground = style.colors.iconButtonPressedBackground,
+                    dropdownPressedBackground = style.colors.dropdownPressedBackground,
+                    dropdownHoveredBackground = style.colors.dropdownHoveredBackground,
+                ),
+            metrics = style.metrics,
+            icons = linuxIcons,
+            dropdownStyle = style.dropdownStyle,
+            iconButtonStyle = style.iconButtonStyle,
+            paneButtonStyle = linuxIconButtonStyle,
+            paneCloseButtonStyle = linuxIconButtonStyle,
+        )
 
     var lastPress = 0L
     val viewConfig = LocalViewConfiguration.current
@@ -83,12 +87,12 @@ internal fun DecoratedWindowScope.TitleBarOnLinux(
         modifier.onPointerEvent(PointerEventType.Press, PointerEventPass.Main) {
             if (
                 this.currentEvent.button == PointerButton.Primary &&
-                    this.currentEvent.changes.any { changed -> !changed.isConsumed }
+                this.currentEvent.changes.any { changed -> !changed.isConsumed }
             ) {
                 JBR.getWindowMove()?.startMovingTogetherWithMouse(window, MouseEvent.BUTTON1)
                 if (
                     System.currentTimeMillis() - lastPress in
-                        viewConfig.doubleTapMinTimeMillis..viewConfig.doubleTapTimeoutMillis
+                    viewConfig.doubleTapMinTimeMillis..viewConfig.doubleTapTimeoutMillis
                 ) {
                     if (state.isMaximized) {
                         window.extendedState = Frame.NORMAL

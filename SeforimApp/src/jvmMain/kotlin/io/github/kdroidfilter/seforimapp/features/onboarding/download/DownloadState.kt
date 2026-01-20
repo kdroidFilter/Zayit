@@ -9,4 +9,3 @@ data class DownloadState(
     val errorMessage: String? = null,
     val completed: Boolean = false,
 )
-

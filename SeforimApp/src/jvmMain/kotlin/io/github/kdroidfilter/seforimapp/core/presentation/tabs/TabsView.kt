@@ -9,16 +9,13 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
@@ -28,7 +25,10 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondary
+import androidx.compose.ui.input.pointer.isTertiary
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -40,18 +40,17 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import io.github.kdroidfilter.seforim.tabs.*
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforimapp.icons.BookOpenTabs
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.CloseAll
 import io.github.kdroidfilter.seforimapp.icons.Tab_close
 import io.github.kdroidfilter.seforimapp.icons.Tab_close_right
+import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -63,10 +62,10 @@ import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.component.styling.MenuStyle
 import org.jetbrains.jewel.ui.component.styling.TabStyle
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
+import org.jetbrains.jewel.ui.theme.menuStyle
 import seforimapp.seforimapp.generated.resources.*
 import sh.calvin.reorderable.ReorderableRow
 import kotlin.math.roundToInt
@@ -85,6 +84,7 @@ private data class TabEntry(
     val onCloseLeft: () -> Unit,
     val onCloseRight: () -> Unit,
 )
+
 private val TabTooltipWidthThreshold = 140.dp
 
 @Composable
@@ -96,7 +96,10 @@ fun TabsView() {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState) {
+private fun DefaultTabShowcase(
+    onEvents: (TabsEvents) -> Unit,
+    state: TabsState,
+) {
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
 
@@ -106,126 +109,147 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
     LaunchedEffect(state.tabs.size) { previousTabCount = state.tabs.size }
 
     // Create TabData objects with RTL support
-    val tabs = remember(state.tabs, state.selectedTabIndex, isRtl) {
-        if (isRtl) {
-            // For RTL: reverse the list and use the reversed index for display
-            state.tabs.reversed().mapIndexed { visualIndex, tabItem ->
-                // The actual index in the original list
-                val actualIndex = state.tabs.size - 1 - visualIndex
-                val isSelected = actualIndex == state.selectedTabIndex
+    val tabs =
+        remember(state.tabs, state.selectedTabIndex, isRtl) {
+            if (isRtl) {
+                // For RTL: reverse the list and use the reversed index for display
+                state.tabs.reversed().mapIndexed { visualIndex, tabItem ->
+                    // The actual index in the original list
+                    val actualIndex = state.tabs.size - 1 - visualIndex
+                    val isSelected = actualIndex == state.selectedTabIndex
 
-                val tabData = TabData.Default(
-                    selected = isSelected,
-                    content = { tabState ->
-                        val icon: Painter = if (tabItem.tabType == TabType.BOOK) {
-                            rememberVectorPainter(BookOpenTabs(JewelTheme.contentColor))
-                        } else {
-                            if (tabItem.title.isEmpty()) {
-                                rememberVectorPainter(io.github.kdroidfilter.seforimapp.icons.homeTabs(JewelTheme.contentColor))
-                            } else {
-                                val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
-                                iconProvider.getPainter(Stateful(tabState)).value
-                            }
-                        }
+                    val tabData =
+                        TabData.Default(
+                            selected = isSelected,
+                            content = { tabState ->
+                                val icon: Painter =
+                                    if (tabItem.tabType == TabType.BOOK) {
+                                        rememberVectorPainter(bookOpenTabs(JewelTheme.contentColor))
+                                    } else {
+                                        if (tabItem.title.isEmpty()) {
+                                            rememberVectorPainter(
+                                                io.github.kdroidfilter.seforimapp.icons
+                                                    .homeTabs(JewelTheme.contentColor),
+                                            )
+                                        } else {
+                                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
+                                            iconProvider.getPainter(Stateful(tabState)).value
+                                        }
+                                    }
 
+                                val appTitle = stringResource(Res.string.app_name)
+                                val label =
+                                    when {
+                                        tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
+                                        tabItem.tabType == TabType.SEARCH ->
+                                            stringResource(
+                                                Res.string.search_results_tab_title,
+                                                tabItem.title,
+                                            )
+                                        else -> tabItem.title
+                                    }
+
+                                SingleLineTabContent(
+                                    label = label,
+                                    state = tabState,
+                                    icon = icon,
+                                )
+                            },
+                            onClose = {},
+                            onClick = {},
+                        )
+
+                    val labelProvider: @Composable () -> String = {
                         val appTitle = stringResource(Res.string.app_name)
-                        val label = when {
+                        when {
                             tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
                             tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
                             else -> tabItem.title
                         }
-
-                        SingleLineTabContent(
-                            label = label,
-                            state = tabState,
-                            icon = icon,
-                        )
-                    },
-                    onClose = {},
-                    onClick = {},
-                )
-
-                val labelProvider: @Composable () -> String = {
-                    val appTitle = stringResource(Res.string.app_name)
-                    when {
-                        tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
-                        tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
-                        else -> tabItem.title
                     }
+
+                    TabEntry(
+                        key = tabItem.destination.tabId,
+                        data = tabData,
+                        labelProvider = labelProvider,
+                        onClose = { onEvents(TabsEvents.OnClose(actualIndex)) },
+                        onClick = { onEvents(TabsEvents.OnSelect(actualIndex)) },
+                        onCloseAll = { onEvents(TabsEvents.CloseAll) },
+                        onCloseOthers = { onEvents(TabsEvents.CloseOthers(actualIndex)) },
+                        // RTL: visual "left" corresponds to higher indices (right of actual index)
+                        onCloseLeft = { onEvents(TabsEvents.CloseRight(actualIndex)) },
+                        onCloseRight = { onEvents(TabsEvents.CloseLeft(actualIndex)) },
+                    )
                 }
+            } else {
+                // For LTR: use normal order
+                state.tabs.mapIndexed { index, tabItem ->
+                    val isSelected = index == state.selectedTabIndex
 
-                TabEntry(
-                    key = tabItem.destination.tabId,
-                    data = tabData,
-                    labelProvider = labelProvider,
-                    onClose = { onEvents(TabsEvents.onClose(actualIndex)) },
-                    onClick = { onEvents(TabsEvents.onSelected(actualIndex)) },
-                    onCloseAll = { onEvents(TabsEvents.CloseAll) },
-                    onCloseOthers = { onEvents(TabsEvents.CloseOthers(actualIndex)) },
-                    // RTL: visual "left" corresponds to higher indices (right of actual index)
-                    onCloseLeft = { onEvents(TabsEvents.CloseRight(actualIndex)) },
-                    onCloseRight = { onEvents(TabsEvents.CloseLeft(actualIndex)) },
-                )
-            }
-        } else {
-            // For LTR: use normal order
-            state.tabs.mapIndexed { index, tabItem ->
-                val isSelected = index == state.selectedTabIndex
+                    val tabData =
+                        TabData.Default(
+                            selected = isSelected,
+                            content = { tabState ->
+                                val icon: Painter =
+                                    if (tabItem.tabType == TabType.BOOK) {
+                                        rememberVectorPainter(bookOpenTabs(JewelTheme.globalColors.text.normal))
+                                    } else {
+                                        if (tabItem.title.isEmpty()) {
+                                            rememberVectorPainter(
+                                                io.github.kdroidfilter.seforimapp.icons
+                                                    .homeTabs(JewelTheme.globalColors.text.normal),
+                                            )
+                                        } else {
+                                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
+                                            iconProvider.getPainter(Stateful(tabState)).value
+                                        }
+                                    }
 
-                val tabData = TabData.Default(
-                    selected = isSelected,
-                    content = { tabState ->
-                        val icon: Painter = if (tabItem.tabType == TabType.BOOK) {
-                            rememberVectorPainter(BookOpenTabs(JewelTheme.globalColors.text.normal))
-                        } else {
-                            if (tabItem.title.isEmpty()) {
-                                rememberVectorPainter(io.github.kdroidfilter.seforimapp.icons.homeTabs(JewelTheme.globalColors.text.normal))
-                            } else {
-                                val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
-                                iconProvider.getPainter(Stateful(tabState)).value
-                            }
-                        }
+                                val appTitle = stringResource(Res.string.app_name)
+                                val label =
+                                    when {
+                                        tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
+                                        tabItem.tabType == TabType.SEARCH ->
+                                            stringResource(
+                                                Res.string.search_results_tab_title,
+                                                tabItem.title,
+                                            )
+                                        else -> tabItem.title
+                                    }
 
+                                SingleLineTabContent(
+                                    label = label,
+                                    state = tabState,
+                                    icon = icon,
+                                )
+                            },
+                            onClose = {},
+                            onClick = {},
+                        )
+
+                    val labelProvider: @Composable () -> String = {
                         val appTitle = stringResource(Res.string.app_name)
-                        val label = when {
+                        when {
                             tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
                             tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
                             else -> tabItem.title
                         }
-
-                        SingleLineTabContent(
-                            label = label,
-                            state = tabState,
-                            icon = icon,
-                        )
-                    },
-                    onClose = {},
-                    onClick = {},
-                )
-
-                val labelProvider: @Composable () -> String = {
-                    val appTitle = stringResource(Res.string.app_name)
-                    when {
-                        tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
-                        tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
-                        else -> tabItem.title
                     }
-                }
 
-                TabEntry(
-                    key = tabItem.destination.tabId,
-                    data = tabData,
-                    labelProvider = labelProvider,
-                    onClose = { onEvents(TabsEvents.onClose(index)) },
-                    onClick = { onEvents(TabsEvents.onSelected(index)) },
-                    onCloseAll = { onEvents(TabsEvents.CloseAll) },
-                    onCloseOthers = { onEvents(TabsEvents.CloseOthers(index)) },
-                    onCloseLeft = { onEvents(TabsEvents.CloseLeft(index)) },
-                    onCloseRight = { onEvents(TabsEvents.CloseRight(index)) },
-                )
+                    TabEntry(
+                        key = tabItem.destination.tabId,
+                        data = tabData,
+                        labelProvider = labelProvider,
+                        onClose = { onEvents(TabsEvents.OnClose(index)) },
+                        onClick = { onEvents(TabsEvents.OnSelect(index)) },
+                        onCloseAll = { onEvents(TabsEvents.CloseAll) },
+                        onCloseOthers = { onEvents(TabsEvents.CloseOthers(index)) },
+                        onCloseLeft = { onEvents(TabsEvents.CloseLeft(index)) },
+                        onCloseRight = { onEvents(TabsEvents.CloseRight(index)) },
+                    )
+                }
             }
         }
-    }
 
     RtlAwareTabStripWithAddButton(
         tabs = tabs,
@@ -238,9 +262,9 @@ private fun DefaultTabShowcase(onEvents: (TabsEvents) -> Unit, state: TabsState)
             val actualFrom = if (isRtl) state.tabs.size - 1 - fromIndex else fromIndex
             val actualTo = if (isRtl) state.tabs.size - 1 - toIndex else toIndex
             onEvents(TabsEvents.OnReorder(actualFrom, actualTo))
-        }
+        },
     ) {
-        onEvents(TabsEvents.onAdd)
+        onEvents(TabsEvents.OnAdd)
     }
 }
 
@@ -251,24 +275,23 @@ private fun RtlAwareTabStripWithAddButton(
     isRtl: Boolean,
     newTabAdded: Boolean,
     onReorder: (Int, Int) -> Unit,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
 ) {
     // Shrink-to-fit mode: no horizontal scroll, tabs adjust width.
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         RtlAwareTabStripContent(
             tabs = tabs,
             style = style,
             onAddClick = onAddClick,
             onReorder = onReorder,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
-
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -277,7 +300,7 @@ private fun RtlAwareTabStripContent(
     style: TabStyle,
     onAddClick: () -> Unit,
     onReorder: (Int, Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val interactionSource = remember { MutableInteractionSource() }
@@ -298,7 +321,8 @@ private fun RtlAwareTabStripContent(
         val maxWidthDp = this.maxWidth
         // Reserve a non-interactive draggable area at the trailing edge to allow window move
         val reservedDragArea = 40.dp
-        val extrasWidth = 40.dp /* + button */ + 1.dp /* divider */ + 8.dp /* divider padding */ + reservedDragArea
+        // + button (40.dp) + divider (1.dp) + divider padding (8.dp) + reserved drag area
+        val extrasWidth = 40.dp + 1.dp + 8.dp + reservedDragArea
         val availableForTabs = (maxWidthDp - extrasWidth).coerceAtLeast(0.dp)
         val tabsCount = tabs.size.coerceAtLeast(1)
         // Chrome-like: tabs shrink to fill available width, capped by a max width
@@ -309,7 +333,7 @@ private fun RtlAwareTabStripContent(
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             // Use hysteresis around the threshold to avoid flicker/glitch when toggling modes
             var shrinkToFitActive by remember { mutableStateOf(false) }
@@ -338,7 +362,7 @@ private fun RtlAwareTabStripContent(
             }
 
             // Helper to render all tab items with animations and reordering support
-            val TabsOnly: @Composable RowScope.() -> Unit = {
+            val tabsOnly: @Composable RowScope.() -> Unit = {
                 val reorderingEnabled = closingKeys.isEmpty()
                 val rowModifier = if (shrinkToFitActive) Modifier.fillMaxWidth() else Modifier
                 val tabEntriesByKey = remember(tabs) { tabs.associateBy { it.key } }
@@ -351,23 +375,24 @@ private fun RtlAwareTabStripContent(
                     },
                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = rowModifier
+                    modifier = rowModifier,
                 ) { index, key, isBeingDragged ->
                     val tabEntry = tabEntriesByKey[key] ?: return@ReorderableRow
                     key(key) {
                         val isClosing = closingKeys.contains(tabEntry.key)
                         val isNew = !knownKeys.contains(tabEntry.key)
 
-	                        ReorderableItem {
-	                            Box(
-	                                modifier = Modifier.draggableHandle(
-	                                    enabled = reorderingEnabled && !isClosing,
-	                                    onDragStarted = {
-	                                        // Chrome-like behavior: selecting a tab when starting to drag it
-	                                        tabEntry.onClick()
-	                                    },
-	                                )
-	                            ) {
+                        ReorderableItem {
+                            Box(
+                                modifier =
+                                    Modifier.draggableHandle(
+                                        enabled = reorderingEnabled && !isClosing,
+                                        onDragStarted = {
+                                            // Chrome-like behavior: selecting a tab when starting to drag it
+                                            tabEntry.onClick()
+                                        },
+                                    ),
+                            ) {
                                 var visible by remember(isClosing) { mutableStateOf(!isClosing) }
                                 LaunchedEffect(isClosing) {
                                     if (isClosing) visible = false else visible = true
@@ -375,10 +400,11 @@ private fun RtlAwareTabStripContent(
                                 Row {
                                     AnimatedVisibility(
                                         visible = visible,
-                                        exit = shrinkHorizontally(
-                                            animationSpec = tween(durationMillis = exitDurationMs),
-                                            shrinkTowards = Alignment.Start
-                                        ) + fadeOut(animationSpec = tween(exitDurationMs, easing = LinearEasing))
+                                        exit =
+                                            shrinkHorizontally(
+                                                animationSpec = tween(durationMillis = exitDurationMs),
+                                                shrinkTowards = Alignment.Start,
+                                            ) + fadeOut(animationSpec = tween(exitDurationMs, easing = LinearEasing)),
                                     ) {
                                         RtlAwareTab(
                                             isActive = isActive,
@@ -406,7 +432,7 @@ private fun RtlAwareTabStripContent(
                                             animateWidth = !isNew,
                                             enterFromSmall = isNew,
                                             enterDurationMs = enterDurationMs,
-                                            isDragging = isBeingDragged
+                                            isDragging = isBeingDragged,
                                         )
                                     }
                                 }
@@ -419,28 +445,29 @@ private fun RtlAwareTabStripContent(
             // Tabs container: fills available width when shrink-to-fit is active,
             // so the + button stays fixed at the trailing edge.
             Row(
-                modifier = Modifier
-                    .let { baseModifier ->
-                        if (shrinkToFitActive) {
-                            baseModifier.weight(1f)
-                        } else {
-                            baseModifier
-                        }
-                    }
-                    .hoverable(interactionSource)
-                    .animateContentSize(animationSpec = tabsContainerAnimationSpec),
-                verticalAlignment = Alignment.CenterVertically
+                modifier =
+                    Modifier
+                        .let { baseModifier ->
+                            if (shrinkToFitActive) {
+                                baseModifier.weight(1f)
+                            } else {
+                                baseModifier
+                            }
+                        }.hoverable(interactionSource)
+                        .animateContentSize(animationSpec = tabsContainerAnimationSpec),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                TabsOnly()
+                tabsOnly()
             }
 
             Divider(
                 orientation = Orientation.Vertical,
-                modifier = Modifier
-                    .fillMaxHeight(0.8f)
-                    .padding(horizontal = 4.dp)
-                    .width(1.dp),
-                color = JewelTheme.globalColors.borders.disabled
+                modifier =
+                    Modifier
+                        .fillMaxHeight(0.8f)
+                        .padding(horizontal = 4.dp)
+                        .width(1.dp),
+                color = JewelTheme.globalColors.borders.disabled,
             )
 
             val shortcutHint = if (PlatformInfo.isMacOS) "⌘+T" else "Ctrl+T"
@@ -449,7 +476,7 @@ private fun RtlAwareTabStripContent(
                 key = AllIconsKeys.General.Add,
                 contentDescription = stringResource(Res.string.add_tab),
                 tooltipText = stringResource(Res.string.add_tab),
-                shortcutHint = shortcutHint
+                shortcutHint = shortcutHint,
             )
 
             // Reserved draggable area — intentionally empty/non-interactive
@@ -484,11 +511,11 @@ private fun RtlAwareTab(
     onCloseOthers: () -> Unit,
     onCloseLeft: () -> Unit,
     onCloseRight: () -> Unit,
+    modifier: Modifier = Modifier,
     animateWidth: Boolean = true,
     enterFromSmall: Boolean = false,
     enterDurationMs: Int = 200,
     isDragging: Boolean = false,
-    modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var tabState by remember { mutableStateOf(TabState.of(selected = tabData.selected, active = isActive)) }
@@ -502,7 +529,8 @@ private fun RtlAwareTab(
             when (interaction) {
                 is PressInteraction.Press -> tabState = tabState.copy(pressed = true)
                 is PressInteraction.Cancel,
-                is PressInteraction.Release -> tabState = tabState.copy(pressed = false)
+                is PressInteraction.Release,
+                -> tabState = tabState.copy(pressed = false)
 
                 is HoverInteraction.Enter -> tabState = tabState.copy(hovered = true)
                 is HoverInteraction.Exit -> tabState = tabState.copy(hovered = false)
@@ -514,125 +542,130 @@ private fun RtlAwareTab(
     val lineColor by tabStyle.colors.underlineFor(tabState)
     val lineThickness = tabStyle.metrics.underlineThickness
     val backgroundColor by tabStyle.colors.backgroundFor(state = tabState)
-    val resolvedContentColor = tabStyle.colors.contentFor(tabState).value.takeOrElse { LocalContentColor.current }
+    val resolvedContentColor =
+        tabStyle.colors
+            .contentFor(tabState)
+            .value
+            .takeOrElse { LocalContentColor.current }
 
     CompositionLocalProvider(LocalContentColor provides resolvedContentColor) {
         val animatedWidth by animateDpAsState(
             targetValue = tabWidth,
-            animationSpec = tween(durationMillis = 200)
+            animationSpec = tween(durationMillis = 200),
         )
         // For brand-new tabs, start from a small width and grow smoothly to target
         val minEnterWidth = minOf(72.dp, tabWidth)
-        val widthAnim = remember(enterFromSmall) {
-            if (enterFromSmall) Animatable(minEnterWidth, Dp.VectorConverter) else null
-        }
+        val widthAnim =
+            remember(enterFromSmall) {
+                if (enterFromSmall) Animatable(minEnterWidth, Dp.VectorConverter) else null
+            }
         LaunchedEffect(enterFromSmall, tabWidth) {
             if (enterFromSmall) {
                 widthAnim?.snapTo(minEnterWidth)
                 widthAnim?.animateTo(tabWidth, animationSpec = tween(durationMillis = enterDurationMs, easing = FastOutSlowInEasing))
             }
         }
-        val widthForThisTab = when {
-            enterFromSmall -> widthAnim?.value ?: tabWidth
-            animateWidth -> animatedWidth
-            else -> tabWidth
-        }
+        val widthForThisTab =
+            when {
+                enterFromSmall -> widthAnim?.value ?: tabWidth
+                animateWidth -> animatedWidth
+                else -> tabWidth
+            }
         var anchorOffset by remember { mutableStateOf(IntOffset.Zero) }
         var anchorSize by remember { mutableStateOf(IntSize.Zero) }
         var contextMenuOpen by remember { mutableStateOf(false) }
         var contextClickOffset by remember { mutableStateOf(IntOffset.Zero) }
 
         val container: @Composable () -> Unit = {
-        Row(
-            modifier
-                .height(tabStyle.metrics.tabHeight)
-                .width(widthForThisTab)
-                .background(backgroundColor)
-                .alpha(if (isDragging) 0.7f else 1f) // Visual feedback when dragging
-                .onGloballyPositioned { coords ->
-                    val pos = coords.positionInWindow()
-                    anchorOffset = IntOffset(pos.x.roundToInt(), pos.y.roundToInt())
-                    anchorSize = coords.size
-                }
-                .selectable(
-                    onClick = onClick,
-                    selected = tabData.selected,
-                    interactionSource = interactionSource,
-                    indication = null,
-                    role = Role.Tab,
-                )
-                .drawBehind {
-                    val strokeThickness = lineThickness.toPx()
-                    val startY = size.height - (strokeThickness / 2f)
-                    val endX = size.width
-                    val capDxFix = strokeThickness / 2f
+            Row(
+                modifier
+                    .height(tabStyle.metrics.tabHeight)
+                    .width(widthForThisTab)
+                    .background(backgroundColor)
+                    .alpha(if (isDragging) 0.7f else 1f) // Visual feedback when dragging
+                    .onGloballyPositioned { coords ->
+                        val pos = coords.positionInWindow()
+                        anchorOffset = IntOffset(pos.x.roundToInt(), pos.y.roundToInt())
+                        anchorSize = coords.size
+                    }.selectable(
+                        onClick = onClick,
+                        selected = tabData.selected,
+                        interactionSource = interactionSource,
+                        indication = null,
+                        role = Role.Tab,
+                    ).drawBehind {
+                        val strokeThickness = lineThickness.toPx()
+                        val startY = size.height - (strokeThickness / 2f)
+                        val endX = size.width
+                        val capDxFix = strokeThickness / 2f
 
-                    drawLine(
-                        brush = SolidColor(lineColor),
-                        start = Offset(0 + capDxFix, startY),
-                        end = Offset(endX - capDxFix, startY),
-                        strokeWidth = strokeThickness,
-                        cap = StrokeCap.Round,
-                    )
-                }
-                .padding(tabStyle.metrics.tabPadding)
-                .onPointerEvent(PointerEventType.Release) { ev ->
-                    // Middle-click closes tab (Chrome-like)
-                    if (ev.button.isTertiary) onClose()
-                    // Right-click opens context menu
-                    if (ev.button.isSecondary) {
-                        val p = ev.changes.firstOrNull()?.position ?: Offset.Zero
-                        contextClickOffset = IntOffset(p.x.roundToInt(), p.y.roundToInt())
-                        contextMenuOpen = true
-                        ev.changes.forEach { it.consume() }
-                    }
-                },
-            horizontalArrangement = Arrangement.spacedBy(tabStyle.metrics.closeContentGap),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Build content/close order to keep close at the trailing edge
-            val showCloseIcon = tabData.closable
+                        drawLine(
+                            brush = SolidColor(lineColor),
+                            start = Offset(0 + capDxFix, startY),
+                            end = Offset(endX - capDxFix, startY),
+                            strokeWidth = strokeThickness,
+                            cap = StrokeCap.Round,
+                        )
+                    }.padding(tabStyle.metrics.tabPadding)
+                    .onPointerEvent(PointerEventType.Release) { ev ->
+                        // Middle-click closes tab (Chrome-like)
+                        if (ev.button.isTertiary) onClose()
+                        // Right-click opens context menu
+                        if (ev.button.isSecondary) {
+                            val p = ev.changes.firstOrNull()?.position ?: Offset.Zero
+                            contextClickOffset = IntOffset(p.x.roundToInt(), p.y.roundToInt())
+                            contextMenuOpen = true
+                            ev.changes.forEach { it.consume() }
+                        }
+                    },
+                horizontalArrangement = Arrangement.spacedBy(tabStyle.metrics.closeContentGap),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Build content/close order to keep close at the trailing edge
+                val showCloseIcon = tabData.closable
 
-            val closeIconComposable: @Composable () -> Unit = {
-                if (showCloseIcon) {
-                    val closeActionInteractionSource = remember { MutableInteractionSource() }
-                    LaunchedEffect(closeActionInteractionSource) {
-                        closeActionInteractionSource.interactions.collect { interaction ->
-                            when (interaction) {
-                                is PressInteraction.Press -> closeButtonState = closeButtonState.copy(pressed = true)
-                                is PressInteraction.Cancel,
-                                is PressInteraction.Release -> closeButtonState = closeButtonState.copy(pressed = false)
-                                is HoverInteraction.Enter -> closeButtonState = closeButtonState.copy(hovered = true)
-                                is HoverInteraction.Exit -> closeButtonState = closeButtonState.copy(hovered = false)
+                val closeIconComposable: @Composable () -> Unit = {
+                    if (showCloseIcon) {
+                        val closeActionInteractionSource = remember { MutableInteractionSource() }
+                        LaunchedEffect(closeActionInteractionSource) {
+                            closeActionInteractionSource.interactions.collect { interaction ->
+                                when (interaction) {
+                                    is PressInteraction.Press -> closeButtonState = closeButtonState.copy(pressed = true)
+                                    is PressInteraction.Cancel,
+                                    is PressInteraction.Release,
+                                    -> closeButtonState = closeButtonState.copy(pressed = false)
+                                    is HoverInteraction.Enter -> closeButtonState = closeButtonState.copy(hovered = true)
+                                    is HoverInteraction.Exit -> closeButtonState = closeButtonState.copy(hovered = false)
+                                }
                             }
                         }
+
+                        Icon(
+                            key = tabStyle.icons.close,
+                            modifier =
+                                Modifier
+                                    .clickable(
+                                        interactionSource = closeActionInteractionSource,
+                                        indication = null,
+                                        onClick = onClose,
+                                        role = Role.Button,
+                                    ).size(16.dp),
+                            contentDescription = stringResource(Res.string.close_tab),
+                            hint = Stateful(closeButtonState),
+                        )
                     }
-
-                    Icon(
-                        key = tabStyle.icons.close,
-                        modifier = Modifier
-                            .clickable(
-                                interactionSource = closeActionInteractionSource,
-                                indication = null,
-                                onClick = onClose,
-                                role = Role.Button,
-                            )
-                            .size(16.dp),
-                        contentDescription = stringResource(Res.string.close_tab),
-                        hint = Stateful(closeButtonState),
-                    )
                 }
-            }
 
-            Box(Modifier.weight(1f)) {
-                tabData.content(TabContentScopeContainer(), tabState)
+                Box(Modifier.weight(1f)) {
+                    tabData.content(TabContentScopeContainer(), tabState)
+                }
+                closeIconComposable()
             }
-            closeIconComposable()
-        }
         }
 
         val label = labelProvider()
-        val showTooltip = label.isNotBlank() &&
+        val showTooltip =
+            label.isNotBlank() &&
                 (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold)
 
         val contentWithTooltip: @Composable () -> Unit = {
@@ -651,25 +684,34 @@ private fun RtlAwareTab(
             TabContextMenu(
                 anchorOffset = anchorOffset,
                 contextClickOffset = contextClickOffset,
-                onDismissRequest = { contextMenuOpen = false }
+                onDismissRequest = { contextMenuOpen = false },
             ) {
                 tabContextMenuItem(
                     label = closeAllLabel,
                     icon = CloseAll,
-                    onClick = { contextMenuOpen = false; onCloseAll() }
+                    onClick = {
+                        contextMenuOpen = false
+                        onCloseAll()
+                    },
                 )
                 if (tabCount > 1) {
                     tabContextMenuItem(
                         label = closeOthersLabel,
                         icon = Tab_close,
-                        onClick = { contextMenuOpen = false; onCloseOthers() }
+                        onClick = {
+                            contextMenuOpen = false
+                            onCloseOthers()
+                        },
                     )
                 }
                 if (tabIndex > 0) {
                     tabContextMenuItem(
                         label = closeLeftLabel,
                         icon = Tab_close_right,
-                        onClick = { contextMenuOpen = false; onCloseLeft() }
+                        onClick = {
+                            contextMenuOpen = false
+                            onCloseLeft()
+                        },
                     )
                 }
                 if (tabIndex < tabCount - 1) {
@@ -677,7 +719,10 @@ private fun RtlAwareTab(
                         label = closeRightLabel,
                         icon = Tab_close_right,
                         mirrorIcon = true,
-                        onClick = { contextMenuOpen = false; onCloseRight() }
+                        onClick = {
+                            contextMenuOpen = false
+                            onCloseRight()
+                        },
                     )
                 }
             }
@@ -689,7 +734,11 @@ private fun RtlAwareTab(
 private class TabContentScopeContainer : TabContentScope {
     @Composable
     override fun Modifier.tabContentAlpha(state: TabState): Modifier =
-        alpha(JewelTheme.defaultTabStyle.contentAlpha.contentFor(state).value)
+        alpha(
+            JewelTheme.defaultTabStyle.contentAlpha
+                .contentFor(state)
+                .value,
+        )
 }
 
 @Composable
@@ -697,19 +746,22 @@ private fun SingleLineTabContent(
     label: String,
     state: TabState,
     icon: Painter?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    val contentAlpha = JewelTheme.defaultTabStyle.contentAlpha.contentFor(state).value
+    val contentAlpha =
+        JewelTheme.defaultTabStyle.contentAlpha
+            .contentFor(state)
+            .value
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
             Image(
                 painter = icon,
                 contentDescription = null,
-                modifier = Modifier.size(16.dp).alpha(contentAlpha)
+                modifier = Modifier.size(16.dp).alpha(contentAlpha),
             )
         }
         Text(
@@ -731,31 +783,36 @@ private fun TabContextMenu(
     style: MenuStyle = JewelTheme.menuStyle,
     content: MenuScope.() -> Unit,
 ) {
-    val menuController = remember(onDismissRequest) {
-        DefaultMenuController(onDismissRequest = { onDismissRequest(); true })
-    }
+    val menuController =
+        remember(onDismissRequest) {
+            DefaultMenuController(onDismissRequest = {
+                onDismissRequest()
+                true
+            })
+        }
 
-    val positionProvider = remember(anchorOffset, contextClickOffset) {
-        object : PopupPositionProvider {
-            override fun calculatePosition(
-                anchorBounds: IntRect,
-                windowSize: IntSize,
-                layoutDirection: LayoutDirection,
-                popupContentSize: IntSize
-            ): IntOffset {
-                var x = anchorOffset.x + contextClickOffset.x
-                var y = anchorOffset.y + contextClickOffset.y
-                if (x + popupContentSize.width > windowSize.width) {
-                    x = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+    val positionProvider =
+        remember(anchorOffset, contextClickOffset) {
+            object : PopupPositionProvider {
+                override fun calculatePosition(
+                    anchorBounds: IntRect,
+                    windowSize: IntSize,
+                    layoutDirection: LayoutDirection,
+                    popupContentSize: IntSize,
+                ): IntOffset {
+                    var x = anchorOffset.x + contextClickOffset.x
+                    var y = anchorOffset.y + contextClickOffset.y
+                    if (x + popupContentSize.width > windowSize.width) {
+                        x = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+                    }
+                    if (x < 0) x = 0
+                    if (y + popupContentSize.height > windowSize.height) {
+                        y = (windowSize.height - popupContentSize.height).coerceAtLeast(0)
+                    }
+                    return IntOffset(x, y)
                 }
-                if (x < 0) x = 0
-                if (y + popupContentSize.height > windowSize.height) {
-                    y = (windowSize.height - popupContentSize.height).coerceAtLeast(0)
-                }
-                return IntOffset(x, y)
             }
         }
-    }
 
     Popup(
         popupPositionProvider = positionProvider,
@@ -786,10 +843,13 @@ private fun MenuScope.tabContextMenuItem(
             Image(
                 painter = rememberVectorPainter(icon),
                 contentDescription = null,
-                modifier = Modifier.size(16.dp).let { m ->
-                    if (mirrorIcon) m.graphicsLayer(scaleX = -1f) else m
-                },
-                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(JewelTheme.globalColors.text.normal)
+                modifier =
+                    Modifier.size(16.dp).let { m ->
+                        if (mirrorIcon) m.graphicsLayer(scaleX = -1f) else m
+                    },
+                colorFilter =
+                    androidx.compose.ui.graphics.ColorFilter
+                        .tint(JewelTheme.globalColors.text.normal),
             )
             Text(label)
         }

@@ -22,6 +22,4 @@ class KiddushLevanaOrbitAlignmentTest {
     }
 }
 
-private fun normalizeForTest(angleDegrees: Float): Float {
-    return ((angleDegrees % 360f) + 360f) % 360f
-}
+private fun normalizeForTest(angleDegrees: Float): Float = ((angleDegrees % 360f) + 360f) % 360f

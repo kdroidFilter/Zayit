@@ -20,7 +20,6 @@ import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
  */
 @DependencyGraph(AppScope::class)
 abstract class AppGraph : ViewModelGraph {
-
     // Expose strongly-typed graph entries as abstract vals for generated implementation
     // Removed Navigator; use TabsViewModel + TabNavControllerRegistry
     abstract val tabPersistedStateStore: TabPersistedStateStore
@@ -35,5 +34,4 @@ abstract class AppGraph : ViewModelGraph {
 
     abstract val onboardingProcessRepository: OnboardingProcessRepository
     abstract val databaseCleanupUseCase: DatabaseCleanupUseCase
-
 }

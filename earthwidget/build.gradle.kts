@@ -10,7 +10,11 @@ plugins {
 val version = Versioning.resolveVersion(project)
 
 kotlin {
-    jvmToolchain(libs.versions.jvmToolchain.get().toInt())
+    jvmToolchain(
+        libs.versions.jvmToolchain
+            .get()
+            .toInt(),
+    )
 
     androidLibrary {
         namespace = "io.github.kdroidfilter.seforimapp"
@@ -44,4 +48,3 @@ kotlin {
         }
     }
 }
-

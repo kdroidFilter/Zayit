@@ -12,13 +12,14 @@ data class GeneralSettingsState(
     val resetDone: Boolean = false,
 ) {
     companion object {
-        val preview = GeneralSettingsState(
-            databasePath = "/Users/you/.zayit/seforim.db",
-            closeTreeOnNewBook = true,
-            persistSession = true,
-            showZmanimWidgets = true,
-            useOpenGl = false,
-            resetDone = false,
-        )
+        val preview =
+            GeneralSettingsState(
+                databasePath = "/Users/you/.zayit/seforim.db",
+                closeTreeOnNewBook = true,
+                persistSession = true,
+                showZmanimWidgets = true,
+                useOpenGl = false,
+                resetDone = false,
+            )
     }
 }

@@ -16,23 +16,23 @@ import org.jetbrains.jewel.ui.component.Divider
 fun VerticalDivider() {
     Divider(
         orientation = Orientation.Vertical,
-        modifier = Modifier
-            .fillMaxHeight()
-            .width(1.dp),
-        color = JewelTheme.globalColors.borders.disabled
+        modifier =
+            Modifier
+                .fillMaxHeight()
+                .width(1.dp),
+        color = JewelTheme.globalColors.borders.disabled,
     )
 }
 
 @Composable
-fun HorizontalDivider(
-    color : Color = JewelTheme.globalColors.borders.disabled
-) {
+fun HorizontalDivider(color: Color = JewelTheme.globalColors.borders.disabled) {
     Divider(
         orientation = Orientation.Horizontal,
-        modifier = Modifier
-            .fillMaxWidth()
-            .width(1.dp)
-            .padding(bottom = 4.dp),
-        color = color
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .width(1.dp)
+                .padding(bottom = 4.dp),
+        color = color,
     )
 }

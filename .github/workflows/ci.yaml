@@ -7,11 +7,11 @@ on:
       - main
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source (with submodules)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: recursive
@@ -31,8 +31,56 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run SeforimApp tests
-        run: ./gradlew :SeforimApp:jvmTest --no-daemon
+      - name: Run ktlint
+        run: ./gradlew ktlintCheck --no-daemon
+
+  website:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install dependencies
+        working-directory: website
+        run: npm ci
+
+      - name: Build website
+        working-directory: website
+        run: npm run build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source (with submodules)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install JBR 25
+        run: |
+          curl -L -o jbr.tar.gz "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-linux-x64-b268.52.tar.gz"
+          mkdir -p "$RUNNER_TEMP/jbr"
+          tar -xzf jbr.tar.gz -C "$RUNNER_TEMP/jbr"
+          JBR_DIR=$(find "$RUNNER_TEMP/jbr" -mindepth 1 -maxdepth 1 -type d -name "jbr*" -o -name "jbrsdk*" | head -n 1)
+          echo "JAVA_HOME=$JBR_DIR" >> "$GITHUB_ENV"
+          echo "$JBR_DIR/bin" >> "$GITHUB_PATH"
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run tests with coverage
+        run: ./gradlew :SeforimApp:jvmTest :SeforimApp:koverXmlReport :SeforimApp:koverHtmlReport --no-daemon
 
       - name: Upload test reports
         if: always()
@@ -40,6 +88,15 @@ jobs:
         with:
           name: test-reports
           path: '**/build/reports/tests/'
+          retention-days: 7
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            **/build/reports/kover/
           retention-days: 7
 
   build:
@@ -52,63 +109,28 @@ jobs:
           - os: ubuntu-latest
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-linux-x64-b268.52.tar.gz"
             arch: amd64
-            pkg: deb
-
-          # Linux ARM64 (DEB)
-          - os: ubuntu-24.04-arm
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-linux-aarch64-b268.52.tar.gz"
-            arch: arm64
-            pkg: deb
-
-          # Linux x64 (RPM)
-          - os: ubuntu-latest
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-linux-x64-b268.52.tar.gz"
-            arch: amd64
-            pkg: rpm
-
-          # Linux ARM64 (RPM)
-          - os: ubuntu-24.04-arm
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-linux-aarch64-b268.52.tar.gz"
-            arch: arm64
-            pkg: rpm
+            build_task: ":SeforimApp:packageReleaseDeb"
 
           # Windows x64
           - os: windows-latest
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-windows-x64-b268.52.zip"
             arch: amd64
-            rust_target: x86_64-pc-windows-msvc
-
-          # Windows ARM64
-          - os: windows-11-arm
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-windows-aarch64-b268.52.zip"
-            arch: arm64
-            rust_target: aarch64-pc-windows-msvc
+            build_task: ":SeforimApp:packageReleaseMsi"
 
           # macOS Apple Silicon (ARM64)
           - os: macos-latest
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-osx-aarch64-b268.52.tar.gz"
-            jdk_arch: aarch64
-
-          # macOS Intel (x64)
-          - os: macos-15-intel
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-osx-x64-b268.52.tar.gz"
-            jdk_arch: x64
+            arch: arm64
+            build_task: ":SeforimApp:packageReleaseDmg"
 
     steps:
       - name: Checkout source (with submodules)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: recursive
 
-      # Install RPM tools on Ubuntu (for .rpm builds)
-      - name: Install RPM tools
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y rpm rpm2cpio alien
-
-      # Linux JDK Install (x64 + ARM64)
+      # Linux JDK Install
       - name: Install JBR on Linux
         if: runner.os == 'Linux'
         shell: bash
@@ -121,7 +143,7 @@ jobs:
           echo "JAVA_HOME=$JBR_DIR" >> "$GITHUB_ENV"
           echo "$JBR_DIR/bin" >> "$GITHUB_PATH"
 
-      # Windows JDK Install (x64 + ARM64)
+      # Windows JDK Install
       - name: Install JBR on Windows
         if: runner.os == 'Windows'
         shell: pwsh
@@ -133,7 +155,7 @@ jobs:
           "$([string]::Format('JAVA_HOME={0}', $jbrDir.FullName))" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "$($jbrDir.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
-      # macOS JDK Install via tar.gz
+      # macOS JDK Install
       - name: Install JBR on macOS
         if: runner.os == 'macOS'
         shell: bash
@@ -146,41 +168,32 @@ jobs:
           JAVA_HOME="$ROOT_DIR/Contents/Home"
           echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
           echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
-          echo "Detected JBR at: $JAVA_HOME"
 
       # Gradle Setup
       - name: Set up Gradle
         uses: gradle/gradle-build-action@v3
-        with:
-          gradle-version: '8.14'
 
-      # Builds
-      - name: Build Linux .deb
-        if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'deb'
+      # Build
+      - name: Build on Linux
+        if: runner.os == 'Linux'
         run: |
           chmod +x ./gradlew
-          ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseDeb
+          ./gradlew :SeforimApp:createReleaseDistributable ${{ matrix.build_task }} --no-daemon
 
-      - name: Build Linux .rpm
-        if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'rpm'
-        run: |
-          chmod +x ./gradlew
-          ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseRpm
-
-      - name: Build Windows .msi
-        if: startsWith(matrix.os, 'windows')
+      - name: Build on Windows
+        if: runner.os == 'Windows'
         shell: pwsh
-        run: .\gradlew.bat :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseMsi
+        run: .\gradlew.bat :SeforimApp:createReleaseDistributable ${{ matrix.build_task }} --no-daemon
 
       # Build Rust installer for Windows
       - name: Install Rust toolchain
-        if: startsWith(matrix.os, 'windows')
+        if: runner.os == 'Windows'
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.rust_target }}
+          targets: x86_64-pc-windows-msvc
 
       - name: Build Windows installer (.exe)
-        if: startsWith(matrix.os, 'windows')
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           cd installer
@@ -202,21 +215,20 @@ jobs:
           Write-Host "Found MSI: $msiBaseName"
 
           # Build Rust installer
-          cargo build --release --target ${{ matrix.rust_target }}
+          cargo build --release --target x86_64-pc-windows-msvc
 
           # Rename exe to match MSI name
           $exeName = "$msiBaseName.exe"
-          Move-Item "target\${{ matrix.rust_target }}\release\zayit-installer.exe" "target\${{ matrix.rust_target }}\release\$exeName"
+          Move-Item "target\x86_64-pc-windows-msvc\release\zayit-installer.exe" "target\x86_64-pc-windows-msvc\release\$exeName"
           Write-Host "Built installer: $exeName"
 
-      - name: Build macOS .pkg + .dmg
-        if: startsWith(matrix.os, 'macos')
+      - name: Build on macOS
+        if: runner.os == 'macOS'
         shell: bash
         run: |
-          set -euo pipefail
           chmod +x ./gradlew
-          ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleasePkg :SeforimApp:packageReleaseDmg
+          ./gradlew :SeforimApp:createReleaseDistributable ${{ matrix.build_task }} --no-daemon
 
       - name: Build summary
-        run: echo "Build completed successfully for ${{ matrix.os }} (${{ matrix.arch || matrix.jdk_arch }})"
+        run: echo "Build completed successfully for ${{ matrix.os }} (${{ matrix.arch }})"
         shell: bash

@@ -23,17 +23,17 @@ fun ExpandCollapseIcon(
     modifier: Modifier = Modifier,
     size: Dp = 12.dp,
     tint: Color = JewelTheme.globalColors.text.normal,
-    contentDescription: String? = null
+    contentDescription: String? = null,
 ) {
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
-        label = "chevron_rotation"
+        label = "chevron_rotation",
     )
 
     Icon(
         ChevronDown,
         contentDescription = contentDescription,
         modifier = (if (modifier == Modifier) Modifier.size(size) else modifier).rotate(rotation),
-        tint = tint
+        tint = tint,
     )
 }

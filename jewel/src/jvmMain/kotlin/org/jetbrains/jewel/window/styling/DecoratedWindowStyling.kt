@@ -42,14 +42,17 @@ public class DecoratedWindowStyle(
 
 @Immutable
 @GenerateDataFunctions
-public class DecoratedWindowColors(public val border: Color, public val borderInactive: Color) {
+public class DecoratedWindowColors(
+    public val border: Color,
+    public val borderInactive: Color,
+) {
     @Composable
     public fun borderFor(state: DecoratedWindowState): State<Color> =
         rememberUpdatedState(
             when {
                 !state.isActive -> borderInactive
                 else -> border
-            }
+            },
         )
 
     override fun equals(other: Any?): Boolean {
@@ -77,7 +80,9 @@ public class DecoratedWindowColors(public val border: Color, public val borderIn
 
 @Immutable
 @GenerateDataFunctions
-public class DecoratedWindowMetrics(public val borderWidth: Dp) {
+public class DecoratedWindowMetrics(
+    public val borderWidth: Dp,
+) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -94,6 +99,7 @@ public class DecoratedWindowMetrics(public val borderWidth: Dp) {
     public companion object
 }
 
-public val LocalDecoratedWindowStyle: ProvidableCompositionLocal<DecoratedWindowStyle> = staticCompositionLocalOf {
-    error("No DecoratedWindowStyle provided. Have you forgotten the theme?")
-}
+public val LocalDecoratedWindowStyle: ProvidableCompositionLocal<DecoratedWindowStyle> =
+    staticCompositionLocalOf {
+        error("No DecoratedWindowStyle provided. Have you forgotten the theme?")
+    }

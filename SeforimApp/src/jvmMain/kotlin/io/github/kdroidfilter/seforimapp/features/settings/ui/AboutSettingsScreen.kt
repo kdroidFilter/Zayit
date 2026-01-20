@@ -45,82 +45,94 @@ fun AboutSettingsScreen() {
 private fun AboutSettingsView() {
     val isDark = JewelTheme.isDark
 
-    val textStyle = LocalTextStyle.current.copy(
-        fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),
-        fontSize = 14.sp,
-    )
+    val textStyle =
+        LocalTextStyle.current.copy(
+            fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),
+            fontSize = 14.sp,
+        )
 
-    val h2TextStyle = LocalTextStyle.current.copy(
-        fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),
-        fontSize = JewelTheme.typography.h2TextStyle.fontSize,
-    )
+    val h2TextStyle =
+        LocalTextStyle.current.copy(
+            fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),
+            fontSize = JewelTheme.typography.h2TextStyle.fontSize,
+        )
 
-    val h3TextStyle = LocalTextStyle.current.copy(
-        fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),
-        fontSize = JewelTheme.typography.h3TextStyle.fontSize,
-    )
+    val h3TextStyle =
+        LocalTextStyle.current.copy(
+            fontFamily = FontFamily(Font(resource = Res.font.notoserifhebrew)),
+            fontSize = JewelTheme.typography.h3TextStyle.fontSize,
+        )
 
     val h2Padding = PaddingValues(top = 12.dp, bottom = 8.dp)
     val h3Padding = PaddingValues(top = 10.dp, bottom = 6.dp)
 
-    val markdownStyling = remember(isDark, textStyle) {
-        if (isDark) {
-            MarkdownStyling.dark(
-                baseTextStyle = textStyle,
-                inlinesStyling = InlinesStyling.dark(textStyle),
-                blockVerticalSpacing = 8.dp,
-                heading = MarkdownStyling.Heading.dark(
+    val markdownStyling =
+        remember(isDark, textStyle) {
+            if (isDark) {
+                MarkdownStyling.dark(
                     baseTextStyle = textStyle,
-                    h2 = MarkdownStyling.Heading.H2.dark(
-                        baseTextStyle = h2TextStyle,
-                        padding = h2Padding
-                    ),
-                    h3 = MarkdownStyling.Heading.H3.dark(
-                        baseTextStyle = h3TextStyle,
-                        padding = h3Padding
-                    ),
-                ),
-            )
-        } else {
-            MarkdownStyling.light(
-                baseTextStyle = textStyle,
-                inlinesStyling = InlinesStyling.light(textStyle),
-                blockVerticalSpacing = 8.dp,
-                heading = MarkdownStyling.Heading.light(
+                    inlinesStyling = InlinesStyling.dark(textStyle),
+                    blockVerticalSpacing = 8.dp,
+                    heading =
+                        MarkdownStyling.Heading.dark(
+                            baseTextStyle = textStyle,
+                            h2 =
+                                MarkdownStyling.Heading.H2.dark(
+                                    baseTextStyle = h2TextStyle,
+                                    padding = h2Padding,
+                                ),
+                            h3 =
+                                MarkdownStyling.Heading.H3.dark(
+                                    baseTextStyle = h3TextStyle,
+                                    padding = h3Padding,
+                                ),
+                        ),
+                )
+            } else {
+                MarkdownStyling.light(
                     baseTextStyle = textStyle,
-                    h2 = MarkdownStyling.Heading.H2.light(
-                        baseTextStyle = h2TextStyle,
-                        padding = h2Padding
-                    ),
-                    h3 = MarkdownStyling.Heading.H3.light(
-                        baseTextStyle = h3TextStyle,
-                        padding = h3Padding
-                    ),
-                ),
-            )
+                    inlinesStyling = InlinesStyling.light(textStyle),
+                    blockVerticalSpacing = 8.dp,
+                    heading =
+                        MarkdownStyling.Heading.light(
+                            baseTextStyle = textStyle,
+                            h2 =
+                                MarkdownStyling.Heading.H2.light(
+                                    baseTextStyle = h2TextStyle,
+                                    padding = h2Padding,
+                                ),
+                            h3 =
+                                MarkdownStyling.Heading.H3.light(
+                                    baseTextStyle = h3TextStyle,
+                                    padding = h3Padding,
+                                ),
+                        ),
+                )
+            }
         }
-    }
 
     var bytes by remember { mutableStateOf(ByteArray(0)) }
     var blocks by remember { mutableStateOf(emptyList<MarkdownBlock>()) }
-    val processor = remember {
-        MarkdownProcessor(
-            listOf(
-                AutolinkProcessorExtension,
-            )
-        )
-    }
-    val blockRenderer = remember(markdownStyling) {
-        if (isDark) {
-            MarkdownBlockRenderer.dark(
-                styling = markdownStyling,
-            )
-        } else {
-            MarkdownBlockRenderer.light(
-                styling = markdownStyling,
+    val processor =
+        remember {
+            MarkdownProcessor(
+                listOf(
+                    AutolinkProcessorExtension,
+                ),
             )
         }
-    }
+    val blockRenderer =
+        remember(markdownStyling) {
+            if (isDark) {
+                MarkdownBlockRenderer.dark(
+                    styling = markdownStyling,
+                )
+            } else {
+                MarkdownBlockRenderer.light(
+                    styling = markdownStyling,
+                )
+            }
+        }
 
     LaunchedEffect(Unit) {
         bytes = Res.readBytes("files/ABOUT.md")
@@ -133,20 +145,21 @@ private fun AboutSettingsView() {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 state = lazyListState,
-                contentPadding = PaddingValues(
-                    start = 8.dp,
-                    top = 8.dp,
-                    end = 8.dp + scrollbarContentSafePadding(),
-                    bottom = 16.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(markdownStyling.blockVerticalSpacing)
+                contentPadding =
+                    PaddingValues(
+                        start = 8.dp,
+                        top = 8.dp,
+                        end = 8.dp + scrollbarContentSafePadding(),
+                        bottom = 16.dp,
+                    ),
+                verticalArrangement = Arrangement.spacedBy(markdownStyling.blockVerticalSpacing),
             ) {
                 items(blocks) { block ->
                     blockRenderer.RenderBlock(
                         block = block,
                         enabled = true,
                         onUrlClick = { url: String -> getDesktop().browse(create(url)) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }

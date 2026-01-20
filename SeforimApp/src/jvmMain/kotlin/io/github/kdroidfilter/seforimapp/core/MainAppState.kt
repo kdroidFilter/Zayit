@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 object MainAppState {
-
     private val _theme = MutableStateFlow(IntUiThemes.System)
     val theme: StateFlow<IntUiThemes> = _theme.asStateFlow()
 

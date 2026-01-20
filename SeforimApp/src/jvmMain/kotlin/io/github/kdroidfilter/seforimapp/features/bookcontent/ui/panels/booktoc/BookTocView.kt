@@ -50,8 +50,8 @@ fun BookTocView(
     onEntryClick: (TocEntry) -> Unit,
     onEntryExpand: (TocEntry) -> Unit,
     onScroll: (Int, Int) -> Unit,
-    selectedTocEntryId: Long? = null,
     modifier: Modifier = Modifier,
+    selectedTocEntryId: Long? = null,
     // Search integration
     showCounts: Boolean = false,
     onlyWithResults: Boolean = false,
@@ -60,25 +60,28 @@ fun BookTocView(
     onTocFilter: ((TocEntry) -> Unit)? = null,
     // Multi-select integration: optional checkboxes per entry
     multiSelectIds: Set<Long> = emptySet(),
-    onToggle: ((TocEntry, Boolean) -> Unit)? = null
+    onToggle: ((TocEntry, Boolean) -> Unit)? = null,
 ) {
-    val visibleEntries = remember(tocEntries, expandedEntries, tocChildren, showCounts, onlyWithResults, tocCounts) {
-        buildVisibleTocEntries(tocEntries, expandedEntries, tocChildren, onlyWithResults, tocCounts)
-    }
+    val visibleEntries =
+        remember(tocEntries, expandedEntries, tocChildren, showCounts, onlyWithResults, tocCounts) {
+            buildVisibleTocEntries(tocEntries, expandedEntries, tocChildren, onlyWithResults, tocCounts)
+        }
 
-    val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = scrollIndex,
-        initialFirstVisibleItemScrollOffset = scrollOffset
-    )
+    val listState =
+        rememberLazyListState(
+            initialFirstVisibleItemIndex = scrollIndex,
+            initialFirstVisibleItemScrollOffset = scrollOffset,
+        )
 
     var hasRestored by remember { mutableStateOf(false) }
+    val currentOnScroll by rememberUpdatedState(onScroll)
 
     LaunchedEffect(listState, hasRestored) {
         if (hasRestored) {
             snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
                 .distinctUntilChanged()
                 .debounce(250)
-                .collect { (index, offset) -> onScroll(index, offset) }
+                .collect { (index, offset) -> currentOnScroll(index, offset) }
         }
     }
 
@@ -109,11 +112,11 @@ fun BookTocView(
         ) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().padding(end = 16.dp)
+                modifier = Modifier.fillMaxSize().padding(end = 16.dp),
             ) {
                 items(
                     items = visibleEntries,
-                    key = { it.entry.id }
+                    key = { it.entry.id },
                 ) { visibleEntry ->
                     TocEntryItem(
                         visibleEntry = visibleEntry,
@@ -125,7 +128,7 @@ fun BookTocView(
                         showCount = showCounts,
                         count = tocCounts[visibleEntry.entry.id] ?: 0,
                         checkboxChecked = if (onToggle != null) multiSelectIds.contains(visibleEntry.entry.id) else null,
-                        onCheckboxToggle = onToggle?.let { handler -> { checked: Boolean -> handler(visibleEntry.entry, checked) } }
+                        onCheckboxToggle = onToggle?.let { handler -> { checked: Boolean -> handler(visibleEntry.entry, checked) } },
                     )
                 }
             }
@@ -145,12 +148,13 @@ fun BookTocView(
     tocCounts: Map<Long, Int> = emptyMap(),
     onTocFilter: ((TocEntry) -> Unit)? = null,
     multiSelectIds: Set<Long> = emptySet(),
-    onToggle: ((TocEntry, Boolean) -> Unit)? = null
+    onToggle: ((TocEntry, Boolean) -> Unit)? = null,
 ) {
     val rootEntries = uiState.toc.children[-1L] ?: uiState.toc.entries
     var displayEntries by remember(uiState.toc.entries, uiState.toc.children, uiState.navigation.selectedBook?.id) {
         mutableStateOf(rootEntries.ifEmpty { uiState.toc.entries })
     }
+    val currentOnEvent by rememberUpdatedState(onEvent)
 
     if (displayEntries.size == 1) {
         val soleParent = displayEntries.first()
@@ -159,7 +163,7 @@ fun BookTocView(
         if (directChildren.isNullOrEmpty()) {
             if (soleParent.hasChildren && !uiState.toc.expandedEntries.contains(soleParent.id)) {
                 LaunchedEffect(uiState.navigation.selectedBook?.id, soleParent.id) {
-                    onEvent(BookContentEvent.TocEntryExpanded(soleParent))
+                    currentOnEvent(BookContentEvent.TocEntryExpanded(soleParent))
                 }
             }
         } else {
@@ -194,7 +198,7 @@ fun BookTocView(
         selectedTocOverride = selectedTocOverride,
         onTocFilter = onTocFilter,
         multiSelectIds = multiSelectIds,
-        onToggle = onToggle
+        onToggle = onToggle,
     )
 }
 
@@ -203,24 +207,28 @@ private fun buildVisibleTocEntries(
     expandedEntries: Set<Long>,
     tocChildren: Map<Long, List<TocEntry>>,
     onlyWithResults: Boolean,
-    tocCounts: Map<Long, Int>
+    tocCounts: Map<Long, Int>,
 ): List<VisibleTocEntry> {
     val result = mutableListOf<VisibleTocEntry>()
 
-    fun addEntries(currentEntries: List<TocEntry>, level: Int) {
+    fun addEntries(
+        currentEntries: List<TocEntry>,
+        level: Int,
+    ) {
         currentEntries.forEach { entry ->
             val count = tocCounts[entry.id] ?: 0
             if (onlyWithResults && count <= 0) {
                 // Skip entries without results when filtering is enabled
                 return@forEach
             }
-            result += VisibleTocEntry(
-                entry = entry,
-                level = level,
-                isExpanded = expandedEntries.contains(entry.id),
-                hasChildren = entry.hasChildren,
-                isLastChild = entry.isLastChild
-            )
+            result +=
+                VisibleTocEntry(
+                    entry = entry,
+                    level = level,
+                    isExpanded = expandedEntries.contains(entry.id),
+                    hasChildren = entry.hasChildren,
+                    isLastChild = entry.isLastChild,
+                )
 
             if (expandedEntries.contains(entry.id)) {
                 tocChildren[entry.id]?.let { children ->
@@ -243,18 +251,19 @@ private fun TocEntryItem(
     showCount: Boolean = false,
     count: Int = 0,
     checkboxChecked: Boolean? = null,
-    onCheckboxToggle: ((Boolean) -> Unit)? = null
+    onCheckboxToggle: ((Boolean) -> Unit)? = null,
 ) {
     val isLastChild = visibleEntry.isLastChild
     val isSelected = selectedTocEntryId != null && visibleEntry.entry.id == selectedTocEntryId
 
     SelectableRow(
-        modifier = Modifier
-            .padding(
-                start = (visibleEntry.level * 16).dp,
-                top = 4.dp,
-                bottom = if (isLastChild) 8.dp else 4.dp
-            ),
+        modifier =
+            Modifier
+                .padding(
+                    start = (visibleEntry.level * 16).dp,
+                    top = 4.dp,
+                    bottom = if (isLastChild) 8.dp else 4.dp,
+                ),
         isSelected = isSelected,
         onClick = {
             if (visibleEntry.hasChildren) {
@@ -262,14 +271,14 @@ private fun TocEntryItem(
             } else {
                 onEntryClick(visibleEntry.entry)
             }
-        }
+        },
     ) {
         if (visibleEntry.hasChildren) {
             ChevronIcon(
                 expanded = visibleEntry.isExpanded,
                 modifier = Modifier.height(12.dp).width(24.dp),
                 tint = JewelTheme.globalColors.text.normal,
-                contentDescription = ""
+                contentDescription = "",
             )
         } else {
             Spacer(modifier = Modifier.width(24.dp))
@@ -279,13 +288,13 @@ private fun TocEntryItem(
             if (checkboxChecked != null && onCheckboxToggle != null) {
                 Checkbox(
                     checked = checkboxChecked,
-                    onCheckedChange = onCheckboxToggle
+                    onCheckedChange = onCheckboxToggle,
                 )
             }
             Text(
                 text = visibleEntry.entry.text,
                 fontWeight = if (isSelected) Bold else Normal,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             )
             if (showCount && count > 0) {
                 CountBadge(count)
@@ -297,9 +306,10 @@ private fun TocEntryItem(
 @Composable
 private fun CountBadge(count: Int) {
     Box(
-        modifier = Modifier
-            .padding(start = 8.dp)
-            .height(18.dp)
+        modifier =
+            Modifier
+                .padding(start = 8.dp)
+                .height(18.dp),
     ) {
         Text(text = count.toString(), color = JewelTheme.globalColors.text.disabled, fontSize = 12.sp)
     }

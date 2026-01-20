@@ -12,7 +12,6 @@ import java.sql.DriverManager
  * Uses the book_acronym table from seforim.db - no separate database needed!
  */
 class AcronymFrequencyCache {
-
     private val connection: Connection by lazy {
         loadSeforimDb()
     }
@@ -34,36 +33,31 @@ class AcronymFrequencyCache {
     /**
      * Get the frequency (number of books) for an acronym.
      */
-    fun getFrequency(acronym: String): Int {
-        return frequencyCache.getOrPut(acronym) {
+    fun getFrequency(acronym: String): Int =
+        frequencyCache.getOrPut(acronym) {
             queryFrequency(acronym)
         }
-    }
 
     /**
      * Get all book titles that use this acronym.
      */
-    fun getBookTitles(acronym: String): List<String> {
-        return bookTitlesCache.getOrPut(acronym) {
+    fun getBookTitles(acronym: String): List<String> =
+        bookTitlesCache.getOrPut(acronym) {
             queryBookTitles(acronym)
         }
-    }
 
     /**
      * Check if an acronym is unique (used by only one book).
      */
-    fun isUnique(acronym: String): Boolean {
-        return getFrequency(acronym) == 1
-    }
+    fun isUnique(acronym: String): Boolean = getFrequency(acronym) == 1
 
     /**
      * Get all acronyms for a given book title.
      */
-    fun getAcronymsForBook(bookTitle: String): List<String> {
-        return titleToAcronymsCache.getOrPut(bookTitle) {
+    fun getAcronymsForBook(bookTitle: String): List<String> =
+        titleToAcronymsCache.getOrPut(bookTitle) {
             queryAcronymsForTitle(bookTitle)
         }
-    }
 
     private fun loadSeforimDb(): Connection {
         val dbPath = getDatabasePath()

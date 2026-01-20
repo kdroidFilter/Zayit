@@ -7,7 +7,8 @@ package org.jetbrains.jewel.window.utils.linux
 public enum class LinuxDesktopEnvironment {
     GNOME,
     KDE,
-    UNKNOWN;
+    UNKNOWN,
+    ;
 
     public companion object {
         /**
@@ -34,7 +35,9 @@ public enum class LinuxDesktopEnvironment {
                 desktopSession.contains("kde") ||
                 kdeFull == "true" ||
                 waylandSession.contains("kde")
-            ) return KDE
+            ) {
+                return KDE
+            }
 
             // GNOME heuristics
             if (
@@ -42,7 +45,9 @@ public enum class LinuxDesktopEnvironment {
                 desktopSession.contains("gnome") ||
                 gnomeSession.isNotEmpty() ||
                 waylandSession.contains("gnome")
-            ) return GNOME
+            ) {
+                return GNOME
+            }
 
             // Some environments expose combined values like "X-Cinnamon:GNOME" etc.
             if (":" in xdgDesktop) {

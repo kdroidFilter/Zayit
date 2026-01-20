@@ -20,7 +20,6 @@ import kotlinx.coroutines.isActive
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.util.isDark
 import org.jetbrains.jewel.window.styling.TitleBarStyle
-import org.jetbrains.jewel.window.utils.WindowControlArea
 
 @Composable
 internal fun DecoratedWindowScope.TitleBarOnWindows(
@@ -30,7 +29,6 @@ internal fun DecoratedWindowScope.TitleBarOnWindows(
     content: @Composable TitleBarScope.(DecoratedWindowState) -> Unit,
 ) {
     val titleBar = remember { JBR.getWindowDecorations().createCustomTitleBar() }
-
 
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl

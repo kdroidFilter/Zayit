@@ -33,33 +33,33 @@ fun CustomToggleableChip(
     onClick: (Boolean) -> Unit,
     tooltipText: String,
     modifier: Modifier = Modifier,
-    withPadding: Boolean = true
+    withPadding: Boolean = true,
 ) {
     // Style inspiré de l'IntegratedSwitch
     Tooltip(
         tooltip = {
             Text(
                 text = tooltipText,
-                fontSize = 13.sp
+                fontSize = 13.sp,
             )
-        }
+        },
     ) {
         Box(
-            modifier = modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(JewelTheme.globalColors.panelBackground)
-                .border(
-                    width = 1.dp,
-                    color = JewelTheme.globalColors.borders.disabled,
-                    shape = RoundedCornerShape(20.dp)
-                )
-                .then(if (withPadding) Modifier.padding(2.dp) else Modifier)
+            modifier =
+                modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(JewelTheme.globalColors.panelBackground)
+                    .border(
+                        width = 1.dp,
+                        color = JewelTheme.globalColors.borders.disabled,
+                        shape = RoundedCornerShape(20.dp),
+                    ).then(if (withPadding) Modifier.padding(2.dp) else Modifier),
         ) {
             // Bouton avec icône Telescope au lieu du texte
             TelescopeIconButton(
                 isSelected = checked,
                 onClick = { onClick(!checked) },
-                withPadding = withPadding
+                withPadding = withPadding,
             )
         }
     }
@@ -70,35 +70,36 @@ fun TelescopeIconButton(
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    withPadding: Boolean = true
+    withPadding: Boolean = true,
 ) {
     val backgroundColor by animateColorAsState(
         targetValue = if (isSelected) Color(0xFF0E639C) else Color.Transparent,
         animationSpec = tween(200),
-        label = "backgroundColor"
+        label = "backgroundColor",
     )
 
     val iconColor by animateColorAsState(
         targetValue = if (isSelected) Color.White else Color(0xFFCCCCCC),
         animationSpec = tween(200),
-        label = "iconColor"
+        label = "iconColor",
     )
 
     Box(
-        modifier = modifier
-            .pointerHoverIcon(PointerIcon.Hand)
-            .clip(RoundedCornerShape(18.dp))
-            .background(backgroundColor)
-            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onClick() }
-            .then(if (withPadding) Modifier.padding(horizontal = 8.dp, vertical = 4.dp) else Modifier)
-            .defaultMinSize(minWidth = 32.dp, minHeight = 24.dp),
-        contentAlignment = Alignment.Center
+        modifier =
+            modifier
+                .pointerHoverIcon(PointerIcon.Hand)
+                .clip(RoundedCornerShape(18.dp))
+                .background(backgroundColor)
+                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onClick() }
+                .then(if (withPadding) Modifier.padding(horizontal = 8.dp, vertical = 4.dp) else Modifier)
+                .defaultMinSize(minWidth = 32.dp, minHeight = 24.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = Telescope,
             contentDescription = null,
             tint = iconColor,
-            modifier = Modifier.size(16.dp)
+            modifier = Modifier.size(16.dp),
         )
     }
 }

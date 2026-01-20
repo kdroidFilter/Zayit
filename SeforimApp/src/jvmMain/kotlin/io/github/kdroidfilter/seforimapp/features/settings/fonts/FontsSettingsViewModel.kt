@@ -16,34 +16,34 @@ import kotlinx.coroutines.flow.stateIn
 @ViewModelKey(FontsSettingsViewModel::class)
 @Inject
 class FontsSettingsViewModel : ViewModel() {
-
     private val bookFont = MutableStateFlow(AppSettings.getBookFontCode())
     private val commentaryFont = MutableStateFlow(AppSettings.getCommentaryFontCode())
     private val targumFont = MutableStateFlow(AppSettings.getTargumFontCode())
     private val sourceFont = MutableStateFlow(AppSettings.getSourceFontCode())
 
-    val state = combine(
-        bookFont,
-        commentaryFont,
-        targumFont,
-        sourceFont
-    ) { b, c, t, s ->
-        FontsSettingsState(
-            bookFontCode = b,
-            commentaryFontCode = c,
-            targumFontCode = t,
-            sourceFontCode = s
+    val state =
+        combine(
+            bookFont,
+            commentaryFont,
+            targumFont,
+            sourceFont,
+        ) { b, c, t, s ->
+            FontsSettingsState(
+                bookFontCode = b,
+                commentaryFontCode = c,
+                targumFontCode = t,
+                sourceFontCode = s,
+            )
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            FontsSettingsState(
+                bookFontCode = bookFont.value,
+                commentaryFontCode = commentaryFont.value,
+                targumFontCode = targumFont.value,
+                sourceFontCode = sourceFont.value,
+            ),
         )
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5_000),
-        FontsSettingsState(
-            bookFontCode = bookFont.value,
-            commentaryFontCode = commentaryFont.value,
-            targumFontCode = targumFont.value,
-            sourceFontCode = sourceFont.value
-        )
-    )
 
     fun onEvent(event: FontsSettingsEvents) {
         when (event) {

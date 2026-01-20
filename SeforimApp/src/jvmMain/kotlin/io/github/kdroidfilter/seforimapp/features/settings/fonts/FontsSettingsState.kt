@@ -10,11 +10,12 @@ data class FontsSettingsState(
     val sourceFontCode: String = "frankruhllibre",
 ) {
     companion object {
-        val preview = FontsSettingsState(
-            bookFontCode = "notoserifhebrew",
-            commentaryFontCode = "frankruhllibre",
-            targumFontCode = "taameyashkenaz",
-            sourceFontCode = "frankruhllibre",
-        )
+        val preview =
+            FontsSettingsState(
+                bookFontCode = "notoserifhebrew",
+                commentaryFontCode = "frankruhllibre",
+                targumFontCode = "taameyashkenaz",
+                sourceFontCode = "frankruhllibre",
+            )
     }
 }

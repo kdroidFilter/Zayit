@@ -31,6 +31,7 @@ import org.jetbrains.jewel.ui.theme.menuStyle
  */
 @Composable
 fun DropdownButton(
+    popupContent: @Composable ColumnScope.(close: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     textStyle: TextStyle = JewelTheme.defaultTextStyle,
@@ -41,19 +42,19 @@ fun DropdownButton(
     showScrollbar: Boolean = true,
     alignToEndOfAnchor: Boolean = true,
     content: @Composable RowScope.() -> Unit,
-    popupContent: @Composable ColumnScope.(close: () -> Unit) -> Unit,
 ) {
     var popupOpen by remember { mutableStateOf(false) }
     var anchorOffset by remember { mutableStateOf(IntOffset.Zero) }
     var anchorSize by remember { mutableStateOf(IntSize.Zero) }
 
     Box(
-        modifier = modifier
-            .onGloballyPositioned { coords ->
-                anchorOffset = coords.positionInWindow().round()
-                anchorSize = coords.size
-            },
-        contentAlignment = Alignment.CenterStart
+        modifier =
+            modifier
+                .onGloballyPositioned { coords ->
+                    anchorOffset = coords.positionInWindow().round()
+                    anchorSize = coords.size
+                },
+        contentAlignment = Alignment.CenterStart,
     ) {
         OutlinedButton(onClick = { popupOpen = !popupOpen }, enabled = enabled) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -61,43 +62,45 @@ fun DropdownButton(
                 Icon(
                     key = AllIconsKeys.General.ChevronDown,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }
 
         if (popupOpen && enabled) {
-            val provider = remember(anchorOffset, anchorSize, alignToEndOfAnchor) {
-                object : PopupPositionProvider {
-                    override fun calculatePosition(
-                        anchorBounds: IntRect,
-                        windowSize: IntSize,
-                        layoutDirection: LayoutDirection,
-                        popupContentSize: IntSize
-                    ): IntOffset {
-                        var x = if (alignToEndOfAnchor) {
-                            anchorOffset.x + anchorSize.width - popupContentSize.width
-                        } else {
-                            anchorOffset.x
+            val provider =
+                remember(anchorOffset, anchorSize, alignToEndOfAnchor) {
+                    object : PopupPositionProvider {
+                        override fun calculatePosition(
+                            anchorBounds: IntRect,
+                            windowSize: IntSize,
+                            layoutDirection: LayoutDirection,
+                            popupContentSize: IntSize,
+                        ): IntOffset {
+                            var x =
+                                if (alignToEndOfAnchor) {
+                                    anchorOffset.x + anchorSize.width - popupContentSize.width
+                                } else {
+                                    anchorOffset.x
+                                }
+                            var y = anchorOffset.y + anchorSize.height + 4
+                            // Clamp horizontally inside window
+                            if (x + popupContentSize.width > windowSize.width) {
+                                x = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+                            }
+                            if (x < 0) x = 0
+                            if (y + popupContentSize.height > windowSize.height) {
+                                val aboveY = anchorOffset.y - popupContentSize.height - 4
+                                y = aboveY.coerceAtLeast(0)
+                            }
+                            return IntOffset(x, y)
                         }
-                        var y = anchorOffset.y + anchorSize.height + 4
-                        // Clamp horizontally inside window
-                        if (x + popupContentSize.width > windowSize.width) {
-                            x = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
-                        }
-                        if (x < 0) x = 0
-                        if (y + popupContentSize.height > windowSize.height) {
-                            val aboveY = anchorOffset.y - popupContentSize.height - 4
-                            y = aboveY.coerceAtLeast(0)
-                        }
-                        return IntOffset(x, y)
                     }
                 }
-            }
             Popup(
                 popupPositionProvider = provider,
                 properties = PopupProperties(focusable = true),
-                onDismissRequest = { popupOpen = false }
+                onDismissRequest = { popupOpen = false },
             ) {
                 val widthDp = with(LocalDensity.current) { (anchorSize.width * popupWidthMultiplier).toDp() }
                 val menuStyle = JewelTheme.menuStyle
@@ -110,21 +113,21 @@ fun DropdownButton(
                         .shadow(menuStyle.metrics.shadowSize, shape)
                         .clip(shape)
                         .background(menuStyle.colors.background)
-                        .border(menuStyle.metrics.borderWidth, menuStyle.colors.border, shape)
+                        .border(menuStyle.metrics.borderWidth, menuStyle.colors.border, shape),
                 ) {
                     Column(
                         Modifier
                             .fillMaxWidth()
                             .verticalScroll(scrollState)
                             // Reserve space so content doesn't shift when scrollbar appears
-                            .padding(end = if (showScrollbar) 12.dp else 0.dp)
+                            .padding(end = if (showScrollbar) 12.dp else 0.dp),
                     ) {
                         popupContent { popupOpen = false }
                     }
                     if (showScrollbar) {
                         VerticalScrollbar(
                             modifier = Modifier.align(Alignment.CenterEnd),
-                            adapter = rememberScrollbarAdapter(scrollState)
+                            adapter = rememberScrollbarAdapter(scrollState),
                         )
                     }
                 }

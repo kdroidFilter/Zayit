@@ -262,6 +262,7 @@ fun BookContentScreen(
 ) {
     // Toaster for transient messages (e.g., selection limits)
     val toaster = rememberToasterState()
+    val currentOnEvent by rememberUpdatedState(onEvent)
     val searchSelectedLabel = stringResource(Res.string.context_menu_search_selected_text)
     val findInPageLabel = stringResource(Res.string.context_menu_find_in_page)
     val copyWithoutNikudLabel = stringResource(Res.string.context_menu_copy_without_nikud)
@@ -396,13 +397,13 @@ fun BookContentScreen(
                     .distinctUntilChanged()
                     .debounce(300)
                     .filter(config.positionFilter)
-                    .collect { onEvent(BookContentEvent.SaveState) }
+                    .collect { currentOnEvent(BookContentEvent.SaveState) }
             }
         }
     }
 
     DisposableEffect(Unit) {
-        onDispose { onEvent(BookContentEvent.SaveState) }
+        onDispose { currentOnEvent(BookContentEvent.SaveState) }
     }
 
     CompositionLocalProvider(

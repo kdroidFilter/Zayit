@@ -34,6 +34,7 @@ ktlint_compose_preview-annotation-naming-check = enabled
 ktlint_compose_remember-missing-check = enabled
 ktlint_compose_unstable-collections = enabled
 ktlint_compose_vm-forwarding-check = enabled
+ktlint_compose_vm-injection-check = disabled
 
 [*.md]
 trim_trailing_whitespace = false

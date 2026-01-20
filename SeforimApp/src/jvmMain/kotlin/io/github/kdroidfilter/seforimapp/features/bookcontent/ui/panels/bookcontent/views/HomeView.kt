@@ -1265,7 +1265,7 @@ private fun SearchBar(
         }
 
     // Restart animation cleanly when switching filter
-    var filterVersion by remember { mutableStateOf(0) }
+    var filterVersion by remember { mutableIntStateOf(0) }
     LaunchedEffect(selectedFilter) { filterVersion++ }
 
     // Disable placeholder animation while user is typing

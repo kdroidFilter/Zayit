@@ -112,10 +112,10 @@ class SearchHomeViewModel(
     private val referenceQuery = MutableStateFlow("")
     private val tocQuery = MutableStateFlow("")
 
-    private val MIN_BOOK_PREFIX_LEN = 2 // minimum characters before triggering book predictive queries
-    private val MIN_TOC_PREFIX_LEN = 1 // minimum characters before triggering TOC predictive queries
-    private val MAX_BOOK_PREDICTIVE = 120 // tighter ceiling to avoid heavy allocations
-    private val MAX_TOC_PREDICTIVE = 300 // TOC suggestions stay bounded
+    private val minBookPrefixLen = 2 // minimum characters before triggering book predictive queries
+    private val minTocPrefixLen = 1 // minimum characters before triggering TOC predictive queries
+    private val maxBookPredictive = 120 // tighter ceiling to avoid heavy allocations
+    private val maxTocPredictive = 300 // TOC suggestions stay bounded
 
     // Lightweight, thread-safe LRU caches to avoid repeated DB hits when typing fast
     private class LruCache<K, V>(
@@ -205,7 +205,7 @@ class SearchHomeViewModel(
                                 suggestionsVisible = false,
                             )
                     } else {
-                        val startLoading = q.length >= MIN_BOOK_PREFIX_LEN
+                        val startLoading = q.length >= minBookPrefixLen
                         _uiState.value =
                             _uiState.value.copy(
                                 isReferenceLoading = startLoading,
@@ -268,13 +268,13 @@ class SearchHomeViewModel(
                                     // Books: enforce 2-char minimum; if shorter, return empty suggestions for books
                                     val booksDeferred =
                                         async(Dispatchers.Default) {
-                                            if (q.length < MIN_BOOK_PREFIX_LEN) {
+                                            if (q.length < minBookPrefixLen) {
                                                 emptyList<BookSuggestionDto>()
                                             } else {
-                                                val bookHits = lookup.searchBooksWithScoring(qNorm, limit = MAX_BOOK_PREDICTIVE)
+                                                val bookHits = lookup.searchBooksWithScoring(qNorm, limit = maxBookPredictive)
                                                 bookHits
                                                     // Already sorted by score in searchBooksWithScoring, no need to re-sort
-                                                    .take(MAX_BOOK_PREDICTIVE)
+                                                    .take(maxBookPredictive)
                                                     .map { hit ->
                                                         val book =
                                                             Book(
@@ -326,7 +326,7 @@ class SearchHomeViewModel(
                                     tocSuggestionsVisible = false,
                                     isTocLoading = false,
                                 )
-                        q.length < MIN_TOC_PREFIX_LEN ->
+                        q.length < minTocPrefixLen ->
                             _uiState.value =
                                 _uiState.value.copy(
                                     tocSuggestions = cached,
@@ -442,7 +442,7 @@ class SearchHomeViewModel(
                     .distinct()
                     .take(5)
                     .toList()
-            val initialSuggestions = tocEntries.take(MAX_TOC_PREDICTIVE)
+            val initialSuggestions = tocEntries.take(maxTocPredictive)
             _uiState.value =
                 _uiState.value.copy(
                     tocPreviewHints = preview,

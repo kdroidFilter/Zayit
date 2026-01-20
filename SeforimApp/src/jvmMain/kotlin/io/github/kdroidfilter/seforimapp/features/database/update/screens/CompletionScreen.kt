@@ -21,7 +21,7 @@ import seforimapp.seforimapp.generated.resources.*
 @Composable
 fun CompletionScreen(
     navController: NavController,
-    onUpdateCompleted: () -> Unit,
+    onUpdateComplete: () -> Unit,
 ) {
     var isVersionCompatible by remember { mutableStateOf<Boolean?>(null) }
 
@@ -66,7 +66,7 @@ fun CompletionScreen(
 
                     // Continue button
                     DefaultButton(
-                        onClick = onUpdateCompleted,
+                        onClick = onUpdateComplete,
                     ) {
                         Text(stringResource(Res.string.onboarding_open_app))
                     }

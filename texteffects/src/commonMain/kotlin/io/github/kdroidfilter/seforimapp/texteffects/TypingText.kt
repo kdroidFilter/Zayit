@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorProducer
@@ -43,7 +44,7 @@ import kotlinx.coroutines.delay
  * @param maxLines The maximum number of lines to display.
  * @param minLines The minimum number of lines to display.
  * @param color Optional producer for text color.
- * @param onTextDisplayed A callback triggered when the text is fully displayed.
+ * @param onTextDisplay A callback triggered when the text is fully displayed.
  */
 @Composable
 fun TypingText(
@@ -57,9 +58,10 @@ fun TypingText(
     maxLines: Int = Int.MAX_VALUE,
     minLines: Int = 1,
     color: ColorProducer? = null,
-    onTextDisplayed: () -> Unit = {},
+    onTextDisplay: () -> Unit = {},
 ) {
     var displayedText by remember { mutableStateOf("") }
+    val currentOnTextDisplay by rememberUpdatedState(onTextDisplay)
 
     LaunchedEffect(text) {
         val stringBuilder = StringBuilder()
@@ -69,7 +71,7 @@ fun TypingText(
             delay(typingDelayPerChar)
         }
         delay(typingDelayPerChar)
-        onTextDisplayed()
+        currentOnTextDisplay()
     }
 
     BasicText(

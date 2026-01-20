@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:filename")
+
 package io.github.kdroidfilter.seforimapp.earthwidget
 
 import androidx.compose.foundation.background

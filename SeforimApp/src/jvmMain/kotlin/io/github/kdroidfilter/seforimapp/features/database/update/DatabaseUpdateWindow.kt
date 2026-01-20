@@ -35,7 +35,7 @@ import seforimapp.seforimapp.generated.resources.db_update_title_bar
 
 @Composable
 fun ApplicationScope.DatabaseUpdateWindow(
-    onUpdateCompleted: () -> Unit = {},
+    onUpdateComplete: () -> Unit = {},
     isDatabaseMissing: Boolean = false,
 ) {
     val updateWindowState = remember { getCenteredWindowState(720, 420) }
@@ -123,7 +123,7 @@ fun ApplicationScope.DatabaseUpdateWindow(
             ) {
                 DatabaseUpdateNavHost(
                     navController = navController,
-                    onUpdateCompleted = onUpdateCompleted,
+                    onUpdateComplete = onUpdateComplete,
                     isDatabaseMissing = isDatabaseMissing,
                 )
             }

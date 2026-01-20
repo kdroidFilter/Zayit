@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -29,7 +30,7 @@ fun TypewriterPlaceholder(
     require(hints.isNotEmpty())
 
     // States
-    var idx by remember(hints) { mutableStateOf(0) }
+    var idx by remember(hints) { mutableIntStateOf(0) }
     var shown by remember(hints) { mutableStateOf("") }
     var phase by remember(hints) { mutableStateOf(Phase.PreTypePause) }
 

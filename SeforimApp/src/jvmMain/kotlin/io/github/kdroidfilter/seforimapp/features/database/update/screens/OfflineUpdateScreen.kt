@@ -28,7 +28,7 @@ import seforimapp.seforimapp.generated.resources.*
 @Composable
 fun OfflineUpdateScreen(
     navController: NavController,
-    onUpdateCompleted: () -> Unit,
+    onUpdateComplete: () -> Unit,
 ) {
     val extractViewModel: ExtractViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)

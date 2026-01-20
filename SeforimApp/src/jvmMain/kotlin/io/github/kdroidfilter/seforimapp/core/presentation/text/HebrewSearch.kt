@@ -1,6 +1,6 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.text
 
-/**
+/*
  * Utilities to perform Hebrew-aware, diacritic-insensitive search.
  * Strips nikud (vowel points) and ta'amim (cantillation) and normalizes final letters
  * to their base forms for matching, while preserving a mapping back to original indices

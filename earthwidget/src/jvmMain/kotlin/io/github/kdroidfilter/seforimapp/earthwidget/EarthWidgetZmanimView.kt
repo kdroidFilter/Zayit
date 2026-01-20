@@ -947,11 +947,11 @@ fun EarthWidgetZmanimView(
 
 @Composable
 fun EarthWidgetMoonSkyView(
+    location: EarthWidgetLocation,
+    referenceTime: Date,
     modifier: Modifier = Modifier,
     sphereSize: Dp = 140.dp,
     renderSizePx: Int = 0,
-    location: EarthWidgetLocation,
-    referenceTime: Date,
     showBackground: Boolean = true,
     earthSizeFraction: Float = EARTH_SIZE_FRACTION,
 ) {
@@ -1033,7 +1033,6 @@ fun EarthWidgetMoonSkyView(
  */
 @Composable
 private fun EarthSceneContent(
-    modifier: Modifier = Modifier,
     sphereSize: Dp,
     renderSizePx: Int,
     markerLongitudeDegrees: Float,
@@ -1050,6 +1049,7 @@ private fun EarthSceneContent(
     showMoonInOrbit: Boolean,
     earthSizeFraction: Float,
     isDraggingEarth: Boolean,
+    modifier: Modifier = Modifier,
     kiddushLevanaData: KiddushLevanaData? = null,
 ) {
     val density = LocalDensity.current
@@ -1257,8 +1257,8 @@ private fun DateSelectionSplitButton(
     label: String,
     selectedDate: LocalDate,
     onDateSelect: (LocalDate) -> Unit,
-    menuStyle: MenuStyle = JewelTheme.menuStyle,
     modifier: Modifier = Modifier,
+    menuStyle: MenuStyle = JewelTheme.menuStyle,
 ) {
     io.github.kdroidfilter.seforimapp.hebrewcalendar.DateSelectionSplitButton(
         label = label,
@@ -1278,8 +1278,8 @@ private fun LocationSelectionSplitButton(
     selectedSelection: LocationSelection?,
     onCountrySelect: (String) -> Unit,
     onCitySelect: (String, String) -> Unit,
-    menuStyle: MenuStyle = JewelTheme.menuStyle,
     modifier: Modifier = Modifier,
+    menuStyle: MenuStyle = JewelTheme.menuStyle,
 ) {
     Box(modifier = modifier) {
         OutlinedSplitButton(

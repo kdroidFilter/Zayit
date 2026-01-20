@@ -329,7 +329,7 @@ private fun SearchResultContentMvi(
 
     // Restore scroll/anchor when a new anchor timestamp is emitted.
     // We restore exactly once per timestamp to handle new searches and filter changes.
-    var lastRestoredTs by remember { mutableStateOf(0L) }
+    var lastRestoredTs by remember { mutableLongStateOf(0L) }
     LaunchedEffect(state.scrollToAnchorTimestamp, state.results) {
         if (state.results.isNotEmpty() && lastRestoredTs != state.scrollToAnchorTimestamp) {
             val anchorIdx =

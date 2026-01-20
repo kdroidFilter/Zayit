@@ -32,7 +32,7 @@ import seforimapp.seforimapp.generated.resources.*
 @Composable
 fun OnlineUpdateScreen(
     navController: NavController,
-    onUpdateCompleted: () -> Unit,
+    onUpdateComplete: () -> Unit,
 ) {
     val downloadViewModel: DownloadViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)

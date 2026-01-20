@@ -125,9 +125,6 @@ private data class RenderedImage<T>(
  */
 @Composable
 fun EarthWidgetScene(
-    modifier: Modifier = Modifier,
-    sphereSize: Dp = 500.dp,
-    renderSizePx: Int = 600,
     earthRotationDegrees: Float,
     lightDegrees: Float,
     sunElevationDegrees: Float,
@@ -137,6 +134,9 @@ fun EarthWidgetScene(
     markerLongitudeDegrees: Float,
     showBackgroundStars: Boolean,
     showOrbitPath: Boolean,
+    modifier: Modifier = Modifier,
+    sphereSize: Dp = 500.dp,
+    renderSizePx: Int = 600,
     orbitLabels: List<OrbitLabelData> = emptyList(),
     onOrbitLabelClick: ((OrbitLabelData) -> Unit)? = null,
     showMoonFromMarker: Boolean = true,
@@ -560,8 +560,8 @@ private fun OrbitDayLabelsOverlay(
     sphereSize: Dp,
     labels: List<OrbitLabelData>,
     onLabelClick: ((OrbitLabelData) -> Unit)?,
-    earthSizeFraction: Float = EARTH_SIZE_FRACTION,
     modifier: Modifier = Modifier,
+    earthSizeFraction: Float = EARTH_SIZE_FRACTION,
 ) {
     if (labels.isEmpty() || renderSizePx <= 0) return
     val fontSize = (sphereSize.value * 0.032f).coerceIn(11f, 20f).sp

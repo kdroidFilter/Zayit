@@ -226,7 +226,7 @@ fun main() {
                     OnBoardingWindow()
                 } else if (showDatabaseUpdate == true) {
                     DatabaseUpdateWindow(
-                        onUpdateCompleted = {
+                        onUpdateComplete = {
                             // After database update, refresh the version check and show main app
                             showDatabaseUpdate = false
                         },
@@ -299,7 +299,7 @@ fun main() {
                                     }
                                 } else if (isCtrlOrCmd && keyEvent.key == Key.Comma) {
                                     // Open settings with Cmd+, or Ctrl+,
-                                    settingsWindowViewModel.onEvent(SettingsWindowEvents.onOpen)
+                                    settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
                                     true
                                 } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
                                     // Minimize window with Cmd+M on macOS
@@ -436,7 +436,7 @@ fun main() {
                                                     }
                                                     // Ctrl/Cmd + Comma => open settings
                                                     isCtrlOrCmd && keyEvent.key == Key.Comma -> {
-                                                        settingsWindowViewModel.onEvent(SettingsWindowEvents.onOpen)
+                                                        settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
                                                         true
                                                     }
                                                     // Cmd + M => minimize window (macOS only)

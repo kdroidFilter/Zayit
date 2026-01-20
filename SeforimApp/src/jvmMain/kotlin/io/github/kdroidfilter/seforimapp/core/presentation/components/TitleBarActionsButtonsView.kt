@@ -147,13 +147,13 @@ fun TitleBarActionsButtonsView() {
         key = AllIconsKeys.General.Settings,
         contentDescription = stringResource(Res.string.settings),
         onClick = {
-            settingsViewModel.onEvent(SettingsWindowEvents.onOpen)
+            settingsViewModel.onEvent(SettingsWindowEvents.OnOpen)
         },
         tooltipText = stringResource(Res.string.settings_tooltip),
         shortcutHint = settingsShortcutHint,
     )
 
     if (settingsState.isVisible) {
-        SettingsWindow(onClose = { settingsViewModel.onEvent(SettingsWindowEvents.onClose) })
+        SettingsWindow(onClose = { settingsViewModel.onEvent(SettingsWindowEvents.OnClose) })
     }
 }

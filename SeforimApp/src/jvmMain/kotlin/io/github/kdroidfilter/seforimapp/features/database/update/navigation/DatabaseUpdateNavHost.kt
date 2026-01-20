@@ -25,7 +25,7 @@ import io.github.kdroidfilter.seforimapp.features.database.update.screens.Versio
 @Composable
 fun DatabaseUpdateNavHost(
     navController: NavHostController,
-    onUpdateCompleted: () -> Unit = {},
+    onUpdateComplete: () -> Unit = {},
     isDatabaseMissing: Boolean = false,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -52,21 +52,21 @@ fun DatabaseUpdateNavHost(
             noAnimatedComposable<DatabaseUpdateDestination.OnlineUpdateScreen> {
                 OnlineUpdateScreen(
                     navController = navController,
-                    onUpdateCompleted = onUpdateCompleted,
+                    onUpdateComplete = onUpdateComplete,
                 )
             }
 
             noAnimatedComposable<DatabaseUpdateDestination.OfflineUpdateScreen> {
                 OfflineUpdateScreen(
                     navController = navController,
-                    onUpdateCompleted = onUpdateCompleted,
+                    onUpdateComplete = onUpdateComplete,
                 )
             }
 
             noAnimatedComposable<DatabaseUpdateDestination.CompletionScreen> {
                 CompletionScreen(
                     navController = navController,
-                    onUpdateCompleted = onUpdateCompleted,
+                    onUpdateComplete = onUpdateComplete,
                 )
             }
         }

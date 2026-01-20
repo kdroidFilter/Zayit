@@ -8,7 +8,7 @@ import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun BookOpenTabs(tint: Color): ImageVector {
+fun bookOpenTabs(tint: Color): ImageVector {
     val _Book_5 =
         ImageVector
             .Builder(

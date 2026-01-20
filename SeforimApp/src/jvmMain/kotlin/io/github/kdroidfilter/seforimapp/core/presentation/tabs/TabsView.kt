@@ -47,10 +47,10 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarAc
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
-import io.github.kdroidfilter.seforimapp.icons.BookOpenTabs
 import io.github.kdroidfilter.seforimapp.icons.CloseAll
 import io.github.kdroidfilter.seforimapp.icons.Tab_close
 import io.github.kdroidfilter.seforimapp.icons.Tab_close_right
+import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -124,7 +124,7 @@ private fun DefaultTabShowcase(
                             content = { tabState ->
                                 val icon: Painter =
                                     if (tabItem.tabType == TabType.BOOK) {
-                                        rememberVectorPainter(BookOpenTabs(JewelTheme.contentColor))
+                                        rememberVectorPainter(bookOpenTabs(JewelTheme.contentColor))
                                     } else {
                                         if (tabItem.title.isEmpty()) {
                                             rememberVectorPainter(
@@ -192,7 +192,7 @@ private fun DefaultTabShowcase(
                             content = { tabState ->
                                 val icon: Painter =
                                     if (tabItem.tabType == TabType.BOOK) {
-                                        rememberVectorPainter(BookOpenTabs(JewelTheme.globalColors.text.normal))
+                                        rememberVectorPainter(bookOpenTabs(JewelTheme.globalColors.text.normal))
                                     } else {
                                         if (tabItem.title.isEmpty()) {
                                             rememberVectorPainter(

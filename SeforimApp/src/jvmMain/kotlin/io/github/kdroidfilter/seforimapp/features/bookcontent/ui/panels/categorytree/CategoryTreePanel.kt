@@ -68,6 +68,7 @@ private fun SearchField(
     onSearchTextChange: (String) -> Unit,
 ) {
     val textFieldState = rememberTextFieldState(searchText)
+    val currentOnSearchTextChange by rememberUpdatedState(onSearchTextChange)
 
     LaunchedEffect(searchText) {
         if (textFieldState.text.toString() != searchText) {
@@ -76,7 +77,7 @@ private fun SearchField(
     }
 
     LaunchedEffect(textFieldState.text) {
-        onSearchTextChange(textFieldState.text.toString())
+        currentOnSearchTextChange(textFieldState.text.toString())
     }
 
     TextField(

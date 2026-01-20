@@ -232,6 +232,7 @@ private fun CommentatorsList(
     onScroll: (Int, Int) -> Unit,
     onSelectionChange: (String, Boolean) -> Unit,
 ) {
+    val currentOnScroll by rememberUpdatedState(onScroll)
     Box(modifier = Modifier.fillMaxSize()) {
         val listState =
             rememberLazyListState(
@@ -243,7 +244,7 @@ private fun CommentatorsList(
             snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
                 .distinctUntilChanged()
                 .debounce(SCROLL_DEBOUNCE_MS)
-                .collect { (i, o) -> onScroll(i, o) }
+                .collect { (i, o) -> currentOnScroll(i, o) }
         }
 
         Row(modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
@@ -480,6 +481,7 @@ private fun CommentaryListView(
     highlightQuery: String,
 ) {
     val providers = uiState.providers ?: return
+    val currentOnScroll by rememberUpdatedState(onScroll)
 
     val pagerFlow =
         remember(lineId, commentatorId) {
@@ -511,7 +513,7 @@ private fun CommentaryListView(
             .distinctUntilChanged()
             .debounce(SCROLL_DEBOUNCE_MS)
             .collect { (i, o) ->
-                onScroll(i, o)
+                currentOnScroll(i, o)
             }
     }
 
@@ -731,6 +733,7 @@ private fun rememberCommentarySelectionData(
     var groups by remember(lineId, prefetchedGroups) {
         mutableStateOf(prefetchedGroups ?: emptyList())
     }
+    val currentGetCommentatorGroupsForLine by rememberUpdatedState(getCommentatorGroupsForLine)
 
     LaunchedEffect(lineId, prefetchedGroups) {
         if (prefetchedGroups != null) {
@@ -738,7 +741,7 @@ private fun rememberCommentarySelectionData(
             return@LaunchedEffect
         }
 
-        runCatching { getCommentatorGroupsForLine(lineId) }
+        runCatching { currentGetCommentatorGroupsForLine(lineId) }
             .onSuccess { loaded -> groups = loaded }
             .onFailure { groups = emptyList() }
     }
@@ -795,6 +798,7 @@ private fun rememberSelectedCommentators(
         }
     // Only skip emissions when we programmatically change selection
     val skipEmit = remember { mutableStateOf(false) }
+    val currentOnSelectionChange by rememberUpdatedState(onSelectionChange)
 
     // Initialize selection with optimization
     LaunchedEffect(initiallySelectedIds, titleToIdMap) {
@@ -823,7 +827,7 @@ private fun rememberSelectedCommentators(
         if (skipEmit.value) {
             skipEmit.value = false
         } else {
-            onSelectionChange(ids)
+            currentOnSelectionChange(ids)
         }
     }
 

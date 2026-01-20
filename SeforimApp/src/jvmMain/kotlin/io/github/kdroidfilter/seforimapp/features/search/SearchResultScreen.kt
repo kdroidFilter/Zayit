@@ -50,6 +50,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.Enha
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.StartVerticalBar
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
@@ -210,7 +211,7 @@ fun SearchResultInBookShellMvi(
         EnhancedHorizontalSplitPane(
             splitPaneState = bookUiState.layout.mainSplitState.asStable(),
             modifier = Modifier.weight(1f),
-            firstMinSize = if (bookUiState.navigation.isVisible) io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults.MIN_MAIN else 0f,
+            firstMinSize = if (bookUiState.navigation.isVisible) SplitDefaults.MIN_MAIN else 0f,
             firstContent = {
                 if (bookUiState.navigation.isVisible) {
                     io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree.SearchCategoryTreePanel(
@@ -229,7 +230,7 @@ fun SearchResultInBookShellMvi(
             secondContent = {
                 EnhancedHorizontalSplitPane(
                     splitPaneState = bookUiState.layout.tocSplitState.asStable(),
-                    firstMinSize = if (bookUiState.toc.isVisible) io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults.MIN_TOC else 0f,
+                    firstMinSize = if (bookUiState.toc.isVisible) SplitDefaults.MIN_TOC else 0f,
                     firstContent = {
                         if (bookUiState.toc.isVisible) {
                             io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.SearchBookTocPanel(

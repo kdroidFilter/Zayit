@@ -18,6 +18,7 @@ plugins {
     alias(libs.plugins.linux.deps)
     alias(libs.plugins.stability.analyzer)
     alias(libs.plugins.sqlDelight)
+    alias(libs.plugins.kover)
 }
 
 val version = Versioning.resolveVersion(project)
@@ -329,3 +330,18 @@ tasks.matching { it.name.endsWith("Msi") && it.name != "renameMsi" }.configureEa
 
 // --- Clean unused native binaries from JARs for smaller distribution size
 NativeCleanupHelper.registerCleanupTasks(project)
+
+// --- Kover code coverage configuration
+kover {
+    reports {
+        filters {
+            excludes {
+                // Exclude generated code
+                packages("*.generated.*", "*.sqldelight.*", "io.github.kdroidfilter.seforimapp.db")
+                classes("*_Factory", "*_MembersInjector", "*Hilt*", "*_Impl", "*\$\$serializer")
+                // Exclude Compose previews
+                annotatedBy("androidx.compose.ui.tooling.preview.Preview")
+            }
+        }
+    }
+}

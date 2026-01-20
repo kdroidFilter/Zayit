@@ -79,8 +79,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run SeforimApp tests
-        run: ./gradlew :SeforimApp:jvmTest --no-daemon
+      - name: Run tests with coverage
+        run: ./gradlew :SeforimApp:jvmTest :SeforimApp:koverXmlReport :SeforimApp:koverHtmlReport --no-daemon
 
       - name: Upload test reports
         if: always()
@@ -88,6 +88,15 @@ jobs:
         with:
           name: test-reports
           path: '**/build/reports/tests/'
+          retention-days: 7
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            **/build/reports/kover/
           retention-days: 7
 
   build:

@@ -131,12 +131,11 @@ fun HomeView(
 ) {
     CatalogRow(onEvent = onEvent)
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
         HomeBody(
             searchUi = searchUi,
             searchCallbacks = searchCallbacks,
             homeCelestialWidgetsState = homeCelestialWidgetsState,
-            modifier = modifier,
         )
     }
 }
@@ -155,7 +154,6 @@ private fun HomeBody(
     searchUi: SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
     homeCelestialWidgetsState: HomeCelestialWidgetsState?,
-    modifier: Modifier = Modifier,
 ) {
     // Global zoom level from AppSettings; used to scale Home view uniformly
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -217,7 +215,7 @@ private fun HomeBody(
             val scaledSpacing = (16.dp * clampedScale).coerceAtLeast(16.dp)
 
             Box(
-                modifier = modifier.padding(top = scaledTopPadding).fillMaxSize().padding(8.dp),
+                modifier = Modifier.padding(top = scaledTopPadding).fillMaxSize().padding(8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 // Keep state outside LazyColumn so it persists across item recompositions
@@ -480,7 +478,6 @@ private fun HomeBody(
                                             }
 
                                         ReferenceByCategorySection(
-                                            modifier,
                                             state = referenceSearchState,
                                             tocState = tocSearchState,
                                             isExpanded = scopeExpanded,

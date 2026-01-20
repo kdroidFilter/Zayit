@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -525,12 +526,13 @@ private fun rememberSmoothAnimatedAngle(
     targetValue: Float,
     normalize: (Float) -> Float,
 ): Float {
-    val animatable = remember { Animatable(normalize(targetValue)) }
+    val currentNormalize by rememberUpdatedState(normalize)
+    val animatable = remember { Animatable(currentNormalize(targetValue)) }
 
     LaunchedEffect(targetValue) {
         val current = animatable.value
-        val currentWrapped = normalize(current)
-        val targetWrapped = normalize(targetValue)
+        val currentWrapped = currentNormalize(current)
+        val targetWrapped = currentNormalize(targetValue)
 
         var delta = targetWrapped - currentWrapped
         if (delta > 180f) delta -= 360f

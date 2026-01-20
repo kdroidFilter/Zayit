@@ -18,13 +18,13 @@ fun TypewriterPlaceholder(
     hints: List<String>,
     modifier: Modifier = Modifier,
     textStyle: TextStyle = TextStyle.Default,
-    typingDelayPerChar: Long = 75L,      // slower typing
-    deletingDelayPerChar: Long = 45L,    // slower deleting
-    holdDelayMs: Long = 1600L,           // hold full text before deleting
-    preTypePauseMs: Long = 500L,         // pause before starting to type
-    postDeletePauseMs: Long = 450L,      // pause after deleting all
-    speedMultiplier: Float = 1.0f,       // global speed control ( >1 = slower )
-    enabled: Boolean = true              // when false, freezes the animation
+    typingDelayPerChar: Long = 75L, // slower typing
+    deletingDelayPerChar: Long = 45L, // slower deleting
+    holdDelayMs: Long = 1600L, // hold full text before deleting
+    preTypePauseMs: Long = 500L, // pause before starting to type
+    postDeletePauseMs: Long = 450L, // pause after deleting all
+    speedMultiplier: Float = 1.0f, // global speed control ( >1 = slower )
+    enabled: Boolean = true, // when false, freezes the animation
 ) {
     require(hints.isNotEmpty())
 
@@ -36,11 +36,12 @@ fun TypewriterPlaceholder(
     val full = hints[idx]
 
     // Extra hold on punctuation (adds a small "breath" after typing punctuation)
-    fun punctuationHold(c: Char): Long = when (c) {
-        '.', '!', '?', '…' -> 180L
-        ',', ';', ':'      -> 120L
-        else               -> 0L
-    }
+    fun punctuationHold(c: Char): Long =
+        when (c) {
+            '.', '!', '?', '…' -> 180L
+            ',', ';', ':' -> 120L
+            else -> 0L
+        }
 
     // Drive the animation
     LaunchedEffect(full, phase, shown, enabled) {

@@ -6,7 +6,9 @@ import java.util.Date
 var allowLogging: Boolean = true
 var loggingLevel: LoggingLevel = LoggingLevel.VERBOSE
 
-class LoggingLevel(val priority: Int) {
+class LoggingLevel(
+    val priority: Int,
+) {
     companion object {
         val VERBOSE = LoggingLevel(0)
         val DEBUG = LoggingLevel(1)
@@ -24,9 +26,7 @@ private const val COLOR_RESET = "\u001b[0m"
 
 private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
 
-private fun getCurrentTimestamp(): String {
-    return dateFormat.format(Date())
-}
+private fun getCurrentTimestamp(): String = dateFormat.format(Date())
 
 fun debugln(message: () -> String) {
     if (allowLogging && loggingLevel.priority <= LoggingLevel.DEBUG.priority) {
@@ -39,7 +39,6 @@ fun verboseln(message: () -> String) {
         println(message(), COLOR_LIGHT_GRAY)
     }
 }
-
 
 fun infoln(message: () -> String) {
     if (allowLogging && loggingLevel.priority <= LoggingLevel.INFO.priority) {
@@ -59,6 +58,9 @@ fun errorln(message: () -> String) {
     }
 }
 
-private fun println(message: String, color: String) {
+private fun println(
+    message: String,
+    color: String,
+) {
     println(color + getCurrentTimestamp() + " " + message + COLOR_RESET)
 }

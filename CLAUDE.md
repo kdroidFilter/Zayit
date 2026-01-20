@@ -37,6 +37,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew :SeforimLibrary:test
 ```
 
+### Linting & Code Quality
+```bash
+# Run ktlint check (style/formatting)
+./gradlew ktlintCheck
+
+# Auto-fix ktlint issues
+./gradlew ktlintFormat
+
+# Run detekt (static analysis)
+./gradlew detekt
+
+# Run both linters
+./gradlew ktlintCheck detekt
+```
+
+Configuration files:
+- **ktlint**: Configured in `build.gradle.kts` (uses ktlint 1.5.0)
+- **detekt**: Custom rules in `detekt.yml`
+
 ### SeforimLibrary Data Generation (JVM only)
 ```bash
 # Generate database and search indexes (full pipeline)
@@ -127,6 +146,8 @@ See `TAB_SYSTEM_README.md` for complete details. Key points:
 - **Metro**: Dependency injection framework (v0.7.2)
 - **Hot Reload**: Fast development iteration (v1.0.0-rc02)
 - **BuildConfig**: Build-time configuration (v5.7.0)
+- **ktlint**: Code style checking and formatting
+- **detekt**: Static code analysis
 
 ### Build & Runtime Requirements
 - **Java**: JetBrains Runtime 21 (JBR 21) required

@@ -10,23 +10,34 @@ import kotlin.math.PI
 internal const val EPSILON = 1e-6f
 
 /** Computes the cross product of two vectors. */
-internal fun cross(a: Vec3f, b: Vec3f): Vec3f = Vec3f(
-    x = a.y * b.z - a.z * b.y,
-    y = a.z * b.x - a.x * b.z,
-    z = a.x * b.y - a.y * b.x,
-)
+internal fun cross(
+    a: Vec3f,
+    b: Vec3f,
+): Vec3f =
+    Vec3f(
+        x = a.y * b.z - a.z * b.y,
+        y = a.z * b.x - a.x * b.z,
+        z = a.x * b.y - a.y * b.x,
+    )
 
 /** Computes the dot product of two vectors. */
-internal fun dot(a: Vec3f, b: Vec3f): Float = a.x * b.x + a.y * b.y + a.z * b.z
+internal fun dot(
+    a: Vec3f,
+    b: Vec3f,
+): Float = a.x * b.x + a.y * b.y + a.z * b.z
 
 /** Projects [target] onto the plane perpendicular to [viewDir] and normalizes the result. */
-internal fun projectOntoViewPlane(viewDir: Vec3f, target: Vec3f?): Vec3f? {
+internal fun projectOntoViewPlane(
+    viewDir: Vec3f,
+    target: Vec3f?,
+): Vec3f? {
     if (target == null) return null
-    val projection = Vec3f(
-        target.x - viewDir.x * dot(viewDir, target),
-        target.y - viewDir.y * dot(viewDir, target),
-        target.z - viewDir.z * dot(viewDir, target),
-    )
+    val projection =
+        Vec3f(
+            target.x - viewDir.x * dot(viewDir, target),
+            target.y - viewDir.y * dot(viewDir, target),
+            target.z - viewDir.z * dot(viewDir, target),
+        )
     val len = projection.length()
     if (len <= EPSILON) return null
     val inv = 1f / len
@@ -58,7 +69,10 @@ internal fun normalizeRad(angle: Double): Double {
 /**
  * Fast integer power function using binary exponentiation.
  */
-internal fun powInt(base: Float, exponent: Int): Float {
+internal fun powInt(
+    base: Float,
+    exponent: Int,
+): Float {
     var result = 1f
     var powBase = base
     var exp = exponent
@@ -75,7 +89,11 @@ internal fun powInt(base: Float, exponent: Int): Float {
  *
  * Returns 0 if x <= edge0, 1 if x >= edge1, smoothly interpolated between.
  */
-internal fun smoothStep(edge0: Float, edge1: Float, x: Float): Float {
+internal fun smoothStep(
+    edge0: Float,
+    edge1: Float,
+    x: Float,
+): Float {
     if (edge0 == edge1) return if (x < edge0) 0f else 1f
     val t = ((x - edge0) / (edge1 - edge0)).coerceIn(0f, 1f)
     return t * t * (3f - 2f * t)
@@ -84,10 +102,14 @@ internal fun smoothStep(edge0: Float, edge1: Float, x: Float): Float {
 /**
  * Rotates a vector towards an "up" direction by the provided cos/sin.
  */
-internal fun rotateTowards(view: Vec3f, up: Vec3f, cosT: Float, sinT: Float): Vec3f {
-    return Vec3f(
+internal fun rotateTowards(
+    view: Vec3f,
+    up: Vec3f,
+    cosT: Float,
+    sinT: Float,
+): Vec3f =
+    Vec3f(
         view.x * cosT + up.x * sinT,
         view.y * cosT + up.y * sinT,
         view.z * cosT + up.z * sinT,
     ).normalized()
-}

@@ -15,9 +15,8 @@ import org.jsoup.safety.Safelist
  * while maintaining identical search behavior.
  */
 class RepositorySnippetSourceProvider(
-    private val repository: SeforimRepository
+    private val repository: SeforimRepository,
 ) : SnippetProvider {
-
     companion object {
         // Must match the indexer constants
         private const val SNIPPET_NEIGHBOR_WINDOW = 4
@@ -43,23 +42,25 @@ class RepositorySnippetSourceProvider(
                 val allLines = repository.getLines(bookId, rangeStart, rangeEnd)
 
                 // Create a map of lineIndex -> cleaned plain text
-                val plainByIndex = allLines.associate { line ->
-                    line.lineIndex to cleanHtml(line.content)
-                }
+                val plainByIndex =
+                    allLines.associate { line ->
+                        line.lineIndex to cleanHtml(line.content)
+                    }
 
                 // Build snippet source for each requested line
                 for (info in bookLines) {
                     val basePlain = plainByIndex[info.lineIndex].orEmpty()
-                    val snippetSource = if (basePlain.length >= SNIPPET_MIN_LENGTH) {
-                        basePlain
-                    } else {
-                        // Include neighboring lines to get enough context
-                        val start = (info.lineIndex - SNIPPET_NEIGHBOR_WINDOW).coerceAtLeast(0)
-                        val end = info.lineIndex + SNIPPET_NEIGHBOR_WINDOW
-                        (start..end)
-                            .mapNotNull { plainByIndex[it] }
-                            .joinToString(" ")
-                    }
+                    val snippetSource =
+                        if (basePlain.length >= SNIPPET_MIN_LENGTH) {
+                            basePlain
+                        } else {
+                            // Include neighboring lines to get enough context
+                            val start = (info.lineIndex - SNIPPET_NEIGHBOR_WINDOW).coerceAtLeast(0)
+                            val end = info.lineIndex + SNIPPET_NEIGHBOR_WINDOW
+                            (start..end)
+                                .mapNotNull { plainByIndex[it] }
+                                .joinToString(" ")
+                        }
                     result[info.lineId] = snippetSource
                 }
             }
@@ -68,9 +69,9 @@ class RepositorySnippetSourceProvider(
         }
     }
 
-    private fun cleanHtml(content: String): String {
-        return Jsoup.clean(content, Safelist.none())
+    private fun cleanHtml(content: String): String =
+        Jsoup
+            .clean(content, Safelist.none())
             .replace("\\s+".toRegex(), " ")
             .trim()
-    }
 }

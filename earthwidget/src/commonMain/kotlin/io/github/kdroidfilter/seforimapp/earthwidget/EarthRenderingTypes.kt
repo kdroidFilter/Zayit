@@ -106,7 +106,11 @@ internal data class MoonScreenLayout(
 /**
  * Simple 3D vector with double precision for geocentric calculations.
  */
-internal data class Vec3d(val x: Double, val y: Double, val z: Double) {
+internal data class Vec3d(
+    val x: Double,
+    val y: Double,
+    val z: Double,
+) {
     fun normalized(): Vec3d {
         val len = sqrt(x * x + y * y + z * z)
         if (len <= 1e-12) return this
@@ -120,7 +124,11 @@ internal data class Vec3d(val x: Double, val y: Double, val z: Double) {
 /**
  * 3D vector with float precision for graphics calculations.
  */
-internal data class Vec3f(val x: Float, val y: Float, val z: Float) {
+internal data class Vec3f(
+    val x: Float,
+    val y: Float,
+    val z: Float,
+) {
     /** Computes the Euclidean length of this vector. */
     fun length(): Float = sqrt(x * x + y * y + z * z)
 

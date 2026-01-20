@@ -13,4 +13,3 @@ class RegionConfigUseCaseTest {
         assertTrue(cities.isNotEmpty(), "Cities list for first country should not be empty")
     }
 }
-

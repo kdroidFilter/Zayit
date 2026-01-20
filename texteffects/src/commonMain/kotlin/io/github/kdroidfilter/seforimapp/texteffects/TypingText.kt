@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 package io.github.kdroidfilter.seforimapp.texteffects
 
 import androidx.compose.foundation.text.BasicText
@@ -58,7 +57,7 @@ fun TypingText(
     maxLines: Int = Int.MAX_VALUE,
     minLines: Int = 1,
     color: ColorProducer? = null,
-    onTextDisplayed: () -> Unit = {}
+    onTextDisplayed: () -> Unit = {},
 ) {
     var displayedText by remember { mutableStateOf("") }
 
@@ -82,6 +81,6 @@ fun TypingText(
         softWrap = softWrap,
         maxLines = maxLines,
         minLines = minLines,
-        color = color
+        color = color,
     )
 }

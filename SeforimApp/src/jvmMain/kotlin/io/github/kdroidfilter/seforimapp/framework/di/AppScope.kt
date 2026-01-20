@@ -5,4 +5,3 @@ package io.github.kdroidfilter.seforimapp.framework.di
  * Used with Metro-style annotations to scope singletons.
  */
 object AppScope
-

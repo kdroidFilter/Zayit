@@ -87,43 +87,45 @@ internal class EarthWidgetRenderer(
     suspend fun renderScene(
         state: EarthRenderState,
         textures: EarthWidgetTextures,
-    ): ImageBitmap = withContext(dispatcher) {
-        val size = state.renderSizePx
-        val pixelCount = size * size
+    ): ImageBitmap =
+        withContext(dispatcher) {
+            val size = state.renderSizePx
+            val pixelCount = size * size
 
-        // Acquire output buffer from pool
-        val outputBuffer = bufferPool.acquire(pixelCount)
+            // Acquire output buffer from pool
+            val outputBuffer = bufferPool.acquire(pixelCount)
 
-        try {
-            val argb = renderEarthWithMoonArgb(
-                earthTexture = textures.earth,
-                moonTexture = textures.moon,
-                outputSizePx = size,
-                earthRotationDegrees = state.earthRotationDegrees,
-                lightDegrees = state.lightDegrees,
-                sunElevationDegrees = state.sunElevationDegrees,
-                earthTiltDegrees = state.earthTiltDegrees,
-                moonOrbitDegrees = state.moonOrbitDegrees,
-                markerLatitudeDegrees = state.markerLatitudeDegrees,
-                markerLongitudeDegrees = state.markerLongitudeDegrees,
-                showBackgroundStars = state.showBackgroundStars,
-                showOrbitPath = state.showOrbitPath,
-                earthSizeFraction = state.earthSizeFraction,
-                bufferPool = bufferPool,
-                outputBuffer = outputBuffer,
-                starfieldCache = starfieldCache,
-                kiddushLevanaStartDegrees = state.kiddushLevanaStartDegrees,
-                kiddushLevanaEndDegrees = state.kiddushLevanaEndDegrees,
-            )
+            try {
+                val argb =
+                    renderEarthWithMoonArgb(
+                        earthTexture = textures.earth,
+                        moonTexture = textures.moon,
+                        outputSizePx = size,
+                        earthRotationDegrees = state.earthRotationDegrees,
+                        lightDegrees = state.lightDegrees,
+                        sunElevationDegrees = state.sunElevationDegrees,
+                        earthTiltDegrees = state.earthTiltDegrees,
+                        moonOrbitDegrees = state.moonOrbitDegrees,
+                        markerLatitudeDegrees = state.markerLatitudeDegrees,
+                        markerLongitudeDegrees = state.markerLongitudeDegrees,
+                        showBackgroundStars = state.showBackgroundStars,
+                        showOrbitPath = state.showOrbitPath,
+                        earthSizeFraction = state.earthSizeFraction,
+                        bufferPool = bufferPool,
+                        outputBuffer = outputBuffer,
+                        starfieldCache = starfieldCache,
+                        kiddushLevanaStartDegrees = state.kiddushLevanaStartDegrees,
+                        kiddushLevanaEndDegrees = state.kiddushLevanaEndDegrees,
+                    )
 
-            // Convert to ImageBitmap (copies the data)
-            val bitmap = imageBitmapFromArgb(argb, size, size)
-            bitmap
-        } finally {
-            // Release output buffer back to pool
-            bufferPool.release(outputBuffer)
+                // Convert to ImageBitmap (copies the data)
+                val bitmap = imageBitmapFromArgb(argb, size, size)
+                bitmap
+            } finally {
+                // Release output buffer back to pool
+                bufferPool.release(outputBuffer)
+            }
         }
-    }
 
     /**
      * Renders the Moon as seen from the marker position on Earth.
@@ -135,41 +137,43 @@ internal class EarthWidgetRenderer(
     suspend fun renderMoonFromMarker(
         state: MoonFromMarkerRenderState,
         moonTexture: EarthTexture?,
-    ): ImageBitmap = withContext(dispatcher) {
-        val size = state.renderSizePx
-        val pixelCount = size * size
+    ): ImageBitmap =
+        withContext(dispatcher) {
+            val size = state.renderSizePx
+            val pixelCount = size * size
 
-        // Acquire output buffer from pool
-        val outputBuffer = bufferPool.acquire(pixelCount)
+            // Acquire output buffer from pool
+            val outputBuffer = bufferPool.acquire(pixelCount)
 
-        try {
-            val argb = renderMoonFromMarkerArgb(
-                moonTexture = moonTexture,
-                outputSizePx = size,
-                earthRotationDegrees = state.earthRotationDegrees,
-                lightDegrees = state.lightDegrees,
-                sunElevationDegrees = state.sunElevationDegrees,
-                earthTiltDegrees = state.earthTiltDegrees,
-                moonOrbitDegrees = state.moonOrbitDegrees,
-                markerLatitudeDegrees = state.markerLatitudeDegrees,
-                markerLongitudeDegrees = state.markerLongitudeDegrees,
-                showBackgroundStars = state.showBackgroundStars,
-                moonLightDegrees = state.moonLightDegrees,
-                moonSunElevationDegrees = state.moonSunElevationDegrees,
-                moonPhaseAngleDegrees = state.moonPhaseAngleDegrees,
-                julianDay = state.julianDay,
-                earthSizeFraction = state.earthSizeFraction,
-                bufferPool = bufferPool,
-                outputBuffer = outputBuffer,
-                starfieldCache = starfieldCache,
-            )
+            try {
+                val argb =
+                    renderMoonFromMarkerArgb(
+                        moonTexture = moonTexture,
+                        outputSizePx = size,
+                        earthRotationDegrees = state.earthRotationDegrees,
+                        lightDegrees = state.lightDegrees,
+                        sunElevationDegrees = state.sunElevationDegrees,
+                        earthTiltDegrees = state.earthTiltDegrees,
+                        moonOrbitDegrees = state.moonOrbitDegrees,
+                        markerLatitudeDegrees = state.markerLatitudeDegrees,
+                        markerLongitudeDegrees = state.markerLongitudeDegrees,
+                        showBackgroundStars = state.showBackgroundStars,
+                        moonLightDegrees = state.moonLightDegrees,
+                        moonSunElevationDegrees = state.moonSunElevationDegrees,
+                        moonPhaseAngleDegrees = state.moonPhaseAngleDegrees,
+                        julianDay = state.julianDay,
+                        earthSizeFraction = state.earthSizeFraction,
+                        bufferPool = bufferPool,
+                        outputBuffer = outputBuffer,
+                        starfieldCache = starfieldCache,
+                    )
 
-            // Convert to ImageBitmap (copies the data)
-            val bitmap = imageBitmapFromArgb(argb, size, size)
-            bitmap
-        } finally {
-            // Release output buffer back to pool
-            bufferPool.release(outputBuffer)
+                // Convert to ImageBitmap (copies the data)
+                val bitmap = imageBitmapFromArgb(argb, size, size)
+                bitmap
+            } finally {
+                // Release output buffer back to pool
+                bufferPool.release(outputBuffer)
+            }
         }
-    }
 }

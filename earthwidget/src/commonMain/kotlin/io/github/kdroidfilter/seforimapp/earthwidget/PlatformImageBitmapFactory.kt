@@ -13,7 +13,11 @@ import androidx.compose.ui.graphics.ImageBitmap
  * @param height Bitmap height in pixels.
  * @return Compose ImageBitmap ready for rendering.
  */
-internal expect fun imageBitmapFromArgb(argb: IntArray, width: Int, height: Int): ImageBitmap
+internal expect fun imageBitmapFromArgb(
+    argb: IntArray,
+    width: Int,
+    height: Int,
+): ImageBitmap
 
 /**
  * Extracts texture data from an ImageBitmap for sphere rendering.

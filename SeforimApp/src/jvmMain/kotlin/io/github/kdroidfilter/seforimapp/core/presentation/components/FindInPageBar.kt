@@ -1,30 +1,30 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.components
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.TextField as JewelTextField
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import androidx.compose.ui.input.key.*
 import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.search_in_page
 import seforimapp.seforimapp.generated.resources.chevron_icon_description
-import kotlinx.coroutines.delay
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
+import seforimapp.seforimapp.generated.resources.search_in_page
+import org.jetbrains.jewel.ui.component.TextField as JewelTextField
 
 @Composable
 fun FindInPageBar(
@@ -50,31 +50,38 @@ fun FindInPageBar(
     }
 
     Row(
-        modifier = modifier
-            .background(panelColor, shape)
-            .border(1.dp, borderColor, shape)
-            .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            modifier
+                .background(panelColor, shape)
+                .border(1.dp, borderColor, shape)
+                .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         JewelTextField(
             state = state,
-            modifier = Modifier
-                .widthIn(min = 220.dp, max = 380.dp)
-                .height(36.dp)
-                .focusRequester(focusRequester)
-                .onPreviewKeyEvent { ev ->
-                    if (ev.type == KeyEventType.KeyUp && (ev.key == Key.Enter || ev.key == Key.NumPadEnter)) {
-                        if (ev.isShiftPressed) onEnterPrev() else onEnterNext()
-                        true
-                    } else if (ev.type == KeyEventType.KeyUp && ev.key == Key.Escape) {
-                        onClose(); true
-                    } else false
-                },
+            modifier =
+                Modifier
+                    .widthIn(min = 220.dp, max = 380.dp)
+                    .height(36.dp)
+                    .focusRequester(focusRequester)
+                    .onPreviewKeyEvent { ev ->
+                        if (ev.type == KeyEventType.KeyUp && (ev.key == Key.Enter || ev.key == Key.NumPadEnter)) {
+                            if (ev.isShiftPressed) onEnterPrev() else onEnterNext()
+                            true
+                        } else if (ev.type == KeyEventType.KeyUp && ev.key == Key.Escape) {
+                            onClose()
+                            true
+                        } else {
+                            false
+                        }
+                    },
             placeholder = { Text(stringResource(Res.string.search_in_page)) },
             leadingIcon = {
                 Icon(key = AllIconsKeys.Actions.Find, contentDescription = stringResource(Res.string.search_in_page))
             },
-            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
+            textStyle =
+                androidx.compose.ui.text
+                    .TextStyle(fontSize = 13.sp),
         )
         Spacer(Modifier.width(8.dp))
         IconButton(onClick = onEnterPrev) {

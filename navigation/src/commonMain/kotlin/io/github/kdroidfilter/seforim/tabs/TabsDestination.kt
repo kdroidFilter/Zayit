@@ -12,14 +12,14 @@ sealed interface TabsDestination {
     @Immutable
     data class Home(
         override val tabId: String,
-        val version: Long = 0L
+        val version: Long = 0L,
     ) : TabsDestination
 
     @Serializable
     @Immutable
     data class Search(
         val searchQuery: String,
-        override val tabId: String
+        override val tabId: String,
     ) : TabsDestination
 
     @Serializable
@@ -27,6 +27,6 @@ sealed interface TabsDestination {
     data class BookContent(
         val bookId: Long,
         override val tabId: String,
-        val lineId: Long? = null
+        val lineId: Long? = null,
     ) : TabsDestination
 }

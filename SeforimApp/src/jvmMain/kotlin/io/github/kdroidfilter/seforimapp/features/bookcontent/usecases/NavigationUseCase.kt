@@ -17,9 +17,8 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
  */
 class NavigationUseCase(
     private val repository: SeforimRepository,
-    private val stateManager: BookContentStateManager
+    private val stateManager: BookContentStateManager,
 ) {
-    
     /**
      * Load the root categories and the full tree from the precomputed catalog.
      * The catalog MUST be available, otherwise nothing is loaded.
@@ -37,9 +36,11 @@ class NavigationUseCase(
 
         // Merge alt-structure flags from DB to ensure navigation tree knows about them
         val altFlags = runCatching { repository.getAllBookAltFlags() }.getOrDefault(emptyMap())
-        val booksWithFlags: Set<Book> = allBooks.map { book ->
-            altFlags[book.id]?.let { book.copy(hasAltStructures = it) } ?: book
-        }.toSet()
+        val booksWithFlags: Set<Book> =
+            allBooks
+                .map { book ->
+                    altFlags[book.id]?.let { book.copy(hasAltStructures = it) } ?: book
+                }.toSet()
 
         debugln { "✓ Using precomputed catalog for navigation tree" }
         // Catalog data is derived and reloaded every app start; do not persist it.
@@ -48,11 +49,11 @@ class NavigationUseCase(
             copy(
                 rootCategories = rootCategories,
                 categoryChildren = categoryChildren,
-                booksInCategory = booksWithFlags
+                booksInCategory = booksWithFlags,
             )
         }
     }
-    
+
     /**
      * Select a category
      */
@@ -62,7 +63,7 @@ class NavigationUseCase(
         }
         expandCategory(category)
     }
-    
+
     /**
      * Expand/collapse a category.
      * With the precomputed catalog, all data is already loaded,
@@ -74,15 +75,16 @@ class NavigationUseCase(
 
         stateManager.updateNavigation {
             copy(
-                expandedCategories = if (isExpanded) {
-                    expandedCategories - category.id
-                } else {
-                    expandedCategories + category.id
-                }
+                expandedCategories =
+                    if (isExpanded) {
+                        expandedCategories - category.id
+                    } else {
+                        expandedCategories + category.id
+                    },
             )
         }
     }
-    
+
     /**
      * Update the search text
      */
@@ -91,7 +93,7 @@ class NavigationUseCase(
             copy(searchText = text)
         }
     }
-    
+
     /**
      * Toggle the visibility of the navigation tree
      */
@@ -99,15 +101,16 @@ class NavigationUseCase(
         val currentState = stateManager.state.value
         val isVisible = currentState.navigation.isVisible
         val newPosition: Float
-        
+
         if (isVisible) {
             // Hide - save the current position
             val prev = currentState.layout.mainSplitState.positionPercentage
             stateManager.updateLayout {
                 copy(
-                    previousPositions = previousPositions.copy(
-                        main = prev
-                    )
+                    previousPositions =
+                        previousPositions.copy(
+                            main = prev,
+                        ),
                 )
             }
             newPosition = 0f
@@ -117,30 +120,36 @@ class NavigationUseCase(
             newPosition = currentState.layout.previousPositions.main
             currentState.layout.mainSplitState.positionPercentage = newPosition
         }
-        
+
         stateManager.updateNavigation {
             copy(isVisible = !isVisible)
         }
-        
+
         return newPosition
     }
-    
+
     /**
      * Update the tree scroll position
      */
-    fun updateBookTreeScrollPosition(index: Int, offset: Int) {
+    fun updateBookTreeScrollPosition(
+        index: Int,
+        offset: Int,
+    ) {
         stateManager.updateNavigation {
             copy(
                 scrollIndex = index,
-                scrollOffset = offset
+                scrollOffset = offset,
             )
         }
     }
-    
+
     /**
      * Select a book
      */
-    fun selectBook(book: Book, save: Boolean = true) {
+    fun selectBook(
+        book: Book,
+        save: Boolean = true,
+    ) {
         stateManager.updateNavigation(save = save) {
             copy(selectedBook = book)
         }
@@ -152,12 +161,18 @@ class NavigationUseCase(
      * lists for each ancestor, and ensures the leaf category's books are
      * present so the book row can render.
      */
-    suspend fun expandPathToBookId(bookId: Long, save: Boolean = true) {
+    suspend fun expandPathToBookId(
+        bookId: Long,
+        save: Boolean = true,
+    ) {
         val book = runCatching { repository.getBookCore(bookId) }.getOrNull() ?: return
         expandPathToBook(book, save = save)
     }
 
-    suspend fun expandPathToBook(book: Book, save: Boolean = true) {
+    suspend fun expandPathToBook(
+        book: Book,
+        save: Boolean = true,
+    ) {
         val leafCatId = book.categoryId
         val path = mutableListOf<Category>()
         var currentId: Long? = leafCatId
@@ -166,10 +181,11 @@ class NavigationUseCase(
         // Build the path using the data already loaded from the catalog
         val navState = stateManager.state.first().navigation
         while (currentId != null && guard++ < 512) {
-            val cat = navState.run {
-                rootCategories.find { it.id == currentId }
-                    ?: categoryChildren.values.flatten().find { it.id == currentId }
-            } ?: break
+            val cat =
+                navState.run {
+                    rootCategories.find { it.id == currentId }
+                        ?: categoryChildren.values.flatten().find { it.id == currentId }
+                } ?: break
             path += cat
             currentId = cat.parentId
         }
@@ -181,7 +197,7 @@ class NavigationUseCase(
         stateManager.updateNavigation(save = save) {
             copy(
                 expandedCategories = expandedCategories + expandIds,
-                selectedCategory = orderedPath.lastOrNull()
+                selectedCategory = orderedPath.lastOrNull(),
             )
         }
     }

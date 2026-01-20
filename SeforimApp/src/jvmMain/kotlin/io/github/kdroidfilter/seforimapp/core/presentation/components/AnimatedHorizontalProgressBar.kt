@@ -14,8 +14,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -44,7 +42,7 @@ fun AnimatedHorizontalProgressBar(
     val animatedProgress by animateFloatAsState(
         targetValue = target,
         animationSpec = animationSpec,
-        label = "AnimatedHorizontalProgress"
+        label = "AnimatedHorizontalProgress",
     )
 
     val colors = style.colors
@@ -70,8 +68,8 @@ fun AnimatedHorizontalProgressBar(
                     color = colors.progress,
                     topLeft = Offset(progressX, 0f),
                     size = size.copy(width = progressWidth),
-                    cornerRadius = cornerRadius
+                    cornerRadius = cornerRadius,
                 )
-            }
+            },
     )
 }

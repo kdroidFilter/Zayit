@@ -1,20 +1,20 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.extract
 
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.icons.Unarchive
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultErrorBanner
@@ -28,7 +28,7 @@ import seforimapp.seforimapp.generated.resources.*
 @Composable
 fun ExtractScreen(
     navController: NavController,
-    progressBarState: ProgressBarState = ProgressBarState
+    progressBarState: ProgressBarState = ProgressBarState,
 ) {
     val viewModel: ExtractViewModel = metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
@@ -69,7 +69,7 @@ fun ExtractView(
         Column(
             Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Error banner with retry
             if (state.errorMessage != null) {
@@ -80,20 +80,20 @@ fun ExtractView(
                 DefaultErrorBanner(
                     text = message,
                     style = JewelTheme.defaultBannerStyle.error,
-                    linkActions = { action(retryLabel, onClick = { onEvent(ExtractEvents.StartIfPending) }) }
+                    linkActions = { action(retryLabel, onClick = { onEvent(ExtractEvents.StartIfPending) }) },
                 )
             }
             Icon(
                 Unarchive,
                 null,
                 modifier = Modifier.size(192.dp),
-                tint = JewelTheme.globalColors.text.normal
+                tint = JewelTheme.globalColors.text.normal,
             )
-            
+
             if (state.inProgress) {
                 Text(
                     text = "${(state.progress * 100).toInt()}%",
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
                 )
             }
 
@@ -110,12 +110,13 @@ fun ExtractView(
 private fun ExtractView_InProgress_Preview() {
     PreviewContainer {
         ExtractView(
-            state = ExtractState(
-                inProgress = true,
-                progress = 0.73f,
-                errorMessage = null,
-                completed = false
-            )
+            state =
+                ExtractState(
+                    inProgress = true,
+                    progress = 0.73f,
+                    errorMessage = null,
+                    completed = false,
+                ),
         )
     }
 }
@@ -125,12 +126,13 @@ private fun ExtractView_InProgress_Preview() {
 private fun ExtractView_Done_Preview() {
     PreviewContainer {
         ExtractView(
-            state = ExtractState(
-                inProgress = false,
-                progress = 1f,
-                errorMessage = null,
-                completed = true
-            )
+            state =
+                ExtractState(
+                    inProgress = false,
+                    progress = 1f,
+                    errorMessage = null,
+                    completed = true,
+                ),
         )
     }
 }
@@ -140,12 +142,13 @@ private fun ExtractView_Done_Preview() {
 private fun ExtractView_Error_Preview() {
     PreviewContainer {
         ExtractView(
-            state = ExtractState(
-                inProgress = false,
-                progress = 0.2f,
-                errorMessage = stringResource(Res.string.onboarding_error_occurred),
-                completed = false
-            )
+            state =
+                ExtractState(
+                    inProgress = false,
+                    progress = 0.2f,
+                    errorMessage = stringResource(Res.string.onboarding_error_occurred),
+                    completed = false,
+                ),
         )
     }
 }

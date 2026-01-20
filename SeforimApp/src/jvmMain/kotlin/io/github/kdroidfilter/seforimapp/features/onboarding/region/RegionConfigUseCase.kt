@@ -12,4 +12,3 @@ class RegionConfigUseCase {
         return worldPlaces[country]?.keys?.toList().orEmpty()
     }
 }
-

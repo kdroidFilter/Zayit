@@ -75,34 +75,36 @@ internal suspend fun renderTexturedSphereArgb(
     outputBuffer: IntArray? = null,
 ): IntArray {
     val expectedSize = outputSizePx * outputSizePx
-    val output = if (outputBuffer != null && outputBuffer.size >= expectedSize) {
-        outputBuffer
-    } else {
-        IntArray(expectedSize)
-    }
+    val output =
+        if (outputBuffer != null && outputBuffer.size >= expectedSize) {
+            outputBuffer
+        } else {
+            IntArray(expectedSize)
+        }
 
     // Pre-compute all rendering parameters
-    val params = SphereRenderParams(
-        texture = texture,
-        outputSizePx = outputSizePx,
-        rotationDegrees = rotationDegrees,
-        lightDegrees = lightDegrees,
-        tiltDegrees = tiltDegrees,
-        ambient = ambient,
-        diffuseStrength = diffuseStrength,
-        specularStrength = specularStrength,
-        specularExponent = specularExponent,
-        sunElevationDegrees = sunElevationDegrees,
-        viewDirX = viewDirX,
-        viewDirY = viewDirY,
-        viewDirZ = viewDirZ,
-        upHintX = upHintX,
-        upHintY = upHintY,
-        upHintZ = upHintZ,
-        sunVisibility = sunVisibility,
-        atmosphereStrength = atmosphereStrength,
-        shadowAlphaStrength = shadowAlphaStrength,
-    )
+    val params =
+        SphereRenderParams(
+            texture = texture,
+            outputSizePx = outputSizePx,
+            rotationDegrees = rotationDegrees,
+            lightDegrees = lightDegrees,
+            tiltDegrees = tiltDegrees,
+            ambient = ambient,
+            diffuseStrength = diffuseStrength,
+            specularStrength = specularStrength,
+            specularExponent = specularExponent,
+            sunElevationDegrees = sunElevationDegrees,
+            viewDirX = viewDirX,
+            viewDirY = viewDirY,
+            viewDirZ = viewDirZ,
+            upHintX = upHintX,
+            upHintY = upHintY,
+            upHintZ = upHintZ,
+            sunVisibility = sunVisibility,
+            atmosphereStrength = atmosphereStrength,
+            shadowAlphaStrength = shadowAlphaStrength,
+        )
 
     // Use parallel rendering for larger images, sequential for smaller ones
     if (outputSizePx >= MIN_SIZE_FOR_PARALLEL) {
@@ -198,23 +200,30 @@ private class SphereRenderParams(
 /**
  * Renders the sphere using parallel coroutines, splitting work into horizontal chunks.
  */
-private suspend fun renderSphereParallel(output: IntArray, params: SphereRenderParams) {
+private suspend fun renderSphereParallel(
+    output: IntArray,
+    params: SphereRenderParams,
+) {
     val chunkSize = (params.outputSizePx + PARALLEL_CHUNK_COUNT - 1) / PARALLEL_CHUNK_COUNT
 
     coroutineScope {
-        (0 until params.outputSizePx step chunkSize).map { startY ->
-            async(Dispatchers.Default) {
-                val endY = minOf(startY + chunkSize, params.outputSizePx)
-                renderRowRange(output, params, startY, endY)
-            }
-        }.awaitAll()
+        (0 until params.outputSizePx step chunkSize)
+            .map { startY ->
+                async(Dispatchers.Default) {
+                    val endY = minOf(startY + chunkSize, params.outputSizePx)
+                    renderRowRange(output, params, startY, endY)
+                }
+            }.awaitAll()
     }
 }
 
 /**
  * Renders the sphere sequentially (for small images where parallelization overhead isn't worth it).
  */
-private fun renderSphereSequential(output: IntArray, params: SphereRenderParams) {
+private fun renderSphereSequential(
+    output: IntArray,
+    params: SphereRenderParams,
+) {
     renderRowRange(output, params, 0, params.outputSizePx)
 }
 
@@ -295,21 +304,27 @@ private fun renderRowRange(
             val texColor = sampleTextureBilinear(tex, texWidth, texHeight, u, v)
 
             // Compute lighting
-            val pixelColor = computePixelLighting(
-                texColor = texColor,
-                worldX = worldX, worldY = worldY, worldZ = worldZ,
-                sunX = sunX, sunY = sunY, sunZ = sunZ,
-                nz = nz, rr = rr,
-                ambient = ambient,
-                diffuseStrength = diffuseStrength,
-                specularStrength = specularStrength,
-                specularExponent = specularExponent,
-                specEnabled = specEnabled,
-                halfVector = halfVector,
-                lightVisibility = lightVisibility,
-                atmosphereStrength = atmosphereStrength,
-                shadowAlphaStrength = shadowAlphaStrength,
-            )
+            val pixelColor =
+                computePixelLighting(
+                    texColor = texColor,
+                    worldX = worldX,
+                    worldY = worldY,
+                    worldZ = worldZ,
+                    sunX = sunX,
+                    sunY = sunY,
+                    sunZ = sunZ,
+                    nz = nz,
+                    rr = rr,
+                    ambient = ambient,
+                    diffuseStrength = diffuseStrength,
+                    specularStrength = specularStrength,
+                    specularExponent = specularExponent,
+                    specEnabled = specEnabled,
+                    halfVector = halfVector,
+                    lightVisibility = lightVisibility,
+                    atmosphereStrength = atmosphereStrength,
+                    shadowAlphaStrength = shadowAlphaStrength,
+                )
 
             output[rowOffset + x] = pixelColor
         }
@@ -320,17 +335,27 @@ private fun renderRowRange(
  * Camera coordinate frame for view transformations.
  */
 private data class CameraFrame(
-    val forwardX: Float, val forwardY: Float, val forwardZ: Float,
-    val rightX: Float, val rightY: Float, val rightZ: Float,
-    val upX: Float, val upY: Float, val upZ: Float,
+    val forwardX: Float,
+    val forwardY: Float,
+    val forwardZ: Float,
+    val rightX: Float,
+    val rightY: Float,
+    val rightZ: Float,
+    val upX: Float,
+    val upY: Float,
+    val upZ: Float,
 )
 
 /**
  * Builds an orthonormal camera coordinate frame from view direction.
  */
 private fun buildCameraFrame(
-    viewDirX: Float, viewDirY: Float, viewDirZ: Float,
-    upHintX: Float, upHintY: Float, upHintZ: Float,
+    viewDirX: Float,
+    viewDirY: Float,
+    viewDirZ: Float,
+    upHintX: Float,
+    upHintY: Float,
+    upHintZ: Float,
 ): CameraFrame {
     // Normalize forward direction
     var forwardX = viewDirX
@@ -391,13 +416,19 @@ private fun buildCameraFrame(
 /**
  * Half vector for Blinn-Phong specular, or null if not applicable.
  */
-private data class HalfVector(val x: Float, val y: Float, val z: Float)
+private data class HalfVector(
+    val x: Float,
+    val y: Float,
+    val z: Float,
+)
 
 /**
  * Computes the Blinn-Phong half vector between light and view directions.
  */
 private fun computeHalfVector(
-    sunX: Float, sunY: Float, sunZ: Float,
+    sunX: Float,
+    sunY: Float,
+    sunZ: Float,
     cameraFrame: CameraFrame,
 ): HalfVector? {
     var halfX = sunX + cameraFrame.forwardX
@@ -419,9 +450,14 @@ private fun computeHalfVector(
  */
 private fun computePixelLighting(
     texColor: Int,
-    worldX: Float, worldY: Float, worldZ: Float,
-    sunX: Float, sunY: Float, sunZ: Float,
-    nz: Float, rr: Float,
+    worldX: Float,
+    worldY: Float,
+    worldZ: Float,
+    sunX: Float,
+    sunY: Float,
+    sunZ: Float,
+    nz: Float,
+    rr: Float,
     ambient: Float,
     diffuseStrength: Float,
     specularStrength: Float,
@@ -460,16 +496,18 @@ private fun computePixelLighting(
     val bLin = (b / 255f).let { it * it }
 
     // Specular highlights (primarily on water/oceans)
-    val spec = if (specEnabled && diffuse > 0f && halfVector != null) {
-        val dotH = (worldX * halfVector.x + worldY * halfVector.y + worldZ * halfVector.z)
-            .coerceAtLeast(0f)
-        val baseSpec = specularStrength * powInt(dotH, specularExponent) * lightVisibility
-        // Ocean detection: blue channel significantly higher than red/green
-        val oceanMask = ((b - max(r, g)).coerceAtLeast(0) / 255f).let { it * it }
-        baseSpec * (0.12f + 0.88f * oceanMask)
-    } else {
-        0f
-    }
+    val spec =
+        if (specEnabled && diffuse > 0f && halfVector != null) {
+            val dotH =
+                (worldX * halfVector.x + worldY * halfVector.y + worldZ * halfVector.z)
+                    .coerceAtLeast(0f)
+            val baseSpec = specularStrength * powInt(dotH, specularExponent) * lightVisibility
+            // Ocean detection: blue channel significantly higher than red/green
+            val oceanMask = ((b - max(r, g)).coerceAtLeast(0) / 255f).let { it * it }
+            baseSpec * (0.12f + 0.88f * oceanMask)
+        } else {
+            0f
+        }
 
     // Apply shading in linear space
     val shadedRLin = (rLin * shade + spec).coerceIn(0f, 1f)
@@ -486,12 +524,13 @@ private fun computePixelLighting(
     val alpha = ((1f - dist) / EDGE_FEATHER_WIDTH).coerceIn(0f, 1f)
 
     // Shadow-based alpha (for Moon phases)
-    val shadowAlpha = if (shadowAlphaStrength <= 0f) {
-        1f
-    } else {
-        val strength = shadowAlphaStrength.coerceIn(0f, 1f)
-        (1f - strength) + strength * shadowMask
-    }
+    val shadowAlpha =
+        if (shadowAlphaStrength <= 0f) {
+            1f
+        } else {
+            val strength = shadowAlphaStrength.coerceIn(0f, 1f)
+            (1f - strength) + strength * shadowMask
+        }
 
     val outA = (a * alpha * shadowAlpha).toInt().coerceIn(0, 255)
 
@@ -548,11 +587,12 @@ internal suspend fun renderEarthWithMoonArgb(
     kiddushLevanaEndDegrees: Float? = null,
 ): IntArray {
     val outputSize = outputSizePx * outputSizePx
-    val out = if (outputBuffer != null && outputBuffer.size >= outputSize) {
-        outputBuffer
-    } else {
-        IntArray(outputSize)
-    }
+    val out =
+        if (outputBuffer != null && outputBuffer.size >= outputSize) {
+            outputBuffer
+        } else {
+            IntArray(outputSize)
+        }
 
     // Fill background with cached starfield or solid black
     if (showBackgroundStars && starfieldCache != null) {
@@ -576,18 +616,19 @@ internal suspend fun renderEarthWithMoonArgb(
 
     try {
         // Render Earth
-        val earth = renderTexturedSphereArgb(
-            texture = earthTexture,
-            outputSizePx = geometry.earthSizePx,
-            rotationDegrees = earthRotationDegrees,
-            lightDegrees = lightDegrees,
-            tiltDegrees = earthTiltDegrees,
-            specularStrength = EARTH_SPECULAR_STRENGTH,
-            specularExponent = EARTH_SPECULAR_EXPONENT,
-            sunElevationDegrees = sunElevationDegrees,
-            viewDirZ = 1f,
-            outputBuffer = earthBuffer,
-        )
+        val earth =
+            renderTexturedSphereArgb(
+                texture = earthTexture,
+                outputSizePx = geometry.earthSizePx,
+                rotationDegrees = earthRotationDegrees,
+                lightDegrees = lightDegrees,
+                tiltDegrees = earthTiltDegrees,
+                specularStrength = EARTH_SPECULAR_STRENGTH,
+                specularExponent = EARTH_SPECULAR_EXPONENT,
+                sunElevationDegrees = sunElevationDegrees,
+                viewDirZ = 1f,
+                outputBuffer = earthBuffer,
+            )
 
         // Draw marker on Earth
         drawMarkerOnSphere(
@@ -600,7 +641,14 @@ internal suspend fun renderEarthWithMoonArgb(
         )
 
         // Composite Earth onto scene
-        blitOver(dst = out, dstW = outputSizePx, src = earth, srcW = geometry.earthSizePx, left = geometry.earthLeft, top = geometry.earthTop)
+        blitOver(
+            dst = out,
+            dstW = outputSizePx,
+            src = earth,
+            srcW = geometry.earthSizePx,
+            left = geometry.earthLeft,
+            top = geometry.earthTop,
+        )
 
         // Draw orbit path
         if (showOrbitPath) {
@@ -637,23 +685,24 @@ internal suspend fun renderEarthWithMoonArgb(
 
         try {
             // Render Moon with same sun lighting as Earth (no phase-based shadows)
-            val moon = renderTexturedSphereArgb(
-                texture = moonTexture,
-                outputSizePx = moonLayout.moonSizePx,
-                rotationDegrees = moonRotationDegrees,
-                lightDegrees = lightDegrees,
-                tiltDegrees = 0f,
-                ambient = MOON_AMBIENT,
-                diffuseStrength = MOON_DIFFUSE_STRENGTH,
-                sunElevationDegrees = sunElevationDegrees,
-                viewDirX = moonViewDirX,
-                viewDirY = moonViewDirY,
-                viewDirZ = moonViewDirZ,
-                sunVisibility = 1f,
-                atmosphereStrength = 0f,
-                shadowAlphaStrength = 0f,
-                outputBuffer = moonBuffer,
-            )
+            val moon =
+                renderTexturedSphereArgb(
+                    texture = moonTexture,
+                    outputSizePx = moonLayout.moonSizePx,
+                    rotationDegrees = moonRotationDegrees,
+                    lightDegrees = lightDegrees,
+                    tiltDegrees = 0f,
+                    ambient = MOON_AMBIENT,
+                    diffuseStrength = MOON_DIFFUSE_STRENGTH,
+                    sunElevationDegrees = sunElevationDegrees,
+                    viewDirX = moonViewDirX,
+                    viewDirY = moonViewDirY,
+                    viewDirZ = moonViewDirZ,
+                    sunVisibility = 1f,
+                    atmosphereStrength = 0f,
+                    shadowAlphaStrength = 0f,
+                    outputBuffer = moonBuffer,
+                )
 
             // Composite Moon with depth sorting
             compositeMoonWithDepth(
@@ -702,24 +751,26 @@ private fun computeMoonLighting(
     moonViewDirZ: Float,
     lightDegrees: Float,
     sunElevationDegrees: Float,
-): LightDirection? = when {
-    moonPhaseAngleDegrees != null -> {
-        // Use phase-only calculation - Moon illumination is independent of local sun position
-        computeMoonLightFromPhaseInternal(
-            phaseAngleDegrees = moonPhaseAngleDegrees,
-            viewDirX = moonViewDirX,
-            viewDirY = moonViewDirY,
-            viewDirZ = moonViewDirZ,
-        )
+): LightDirection? =
+    when {
+        moonPhaseAngleDegrees != null -> {
+            // Use phase-only calculation - Moon illumination is independent of local sun position
+            computeMoonLightFromPhaseInternal(
+                phaseAngleDegrees = moonPhaseAngleDegrees,
+                viewDirX = moonViewDirX,
+                viewDirY = moonViewDirY,
+                viewDirZ = moonViewDirZ,
+            )
+        }
+        julianDay != null ->
+            computeGeometricMoonIllumination(
+                julianDay = julianDay,
+                viewDirX = moonViewDirX,
+                viewDirY = moonViewDirY,
+                viewDirZ = moonViewDirZ,
+            )
+        else -> null
     }
-    julianDay != null -> computeGeometricMoonIllumination(
-        julianDay = julianDay,
-        viewDirX = moonViewDirX,
-        viewDirY = moonViewDirY,
-        viewDirZ = moonViewDirZ,
-    )
-    else -> null
-}
 
 /**
  * Composites Moon onto scene with depth-aware blending against Earth.
@@ -789,17 +840,19 @@ private fun compositeMoonWithDepth(
             val moonDxScreen = moonX - moonRadiusPx
             val moonDxWorld = moonDxScreen * invMoonScale
             val earthR2 = (earthDx * earthDx + earthDy * earthDy) / (earthRadiusPx * earthRadiusPx)
-            val moonR2 = (moonDxWorld * moonDxWorld + moonDyWorld * moonDyWorld) /
+            val moonR2 =
+                (moonDxWorld * moonDxWorld + moonDyWorld * moonDyWorld) /
                     (moonRadiusWorldPx * moonRadiusWorldPx)
             val earthZ = sqrt(max(0f, 1f - earthR2)) * earthRadiusPx
             val moonZ = sqrt(max(0f, 1f - moonR2)) * moonRadiusWorldPx
 
             val moonDepth = moonZCam + moonZ
-            out[dstIndex] = if (moonDepth > earthZ) {
-                alphaOver(moonColor, earthColor)
-            } else {
-                alphaOver(earthColor, moonColor)
-            }
+            out[dstIndex] =
+                if (moonDepth > earthZ) {
+                    alphaOver(moonColor, earthColor)
+                } else {
+                    alphaOver(earthColor, moonColor)
+                }
         }
     }
 }
@@ -849,11 +902,12 @@ internal suspend fun renderMoonFromMarkerArgb(
     starfieldCache: StarfieldCache? = null,
 ): IntArray {
     val outputSize = outputSizePx * outputSizePx
-    val out = if (outputBuffer != null && outputBuffer.size >= outputSize) {
-        outputBuffer
-    } else {
-        IntArray(outputSize)
-    }
+    val out =
+        if (outputBuffer != null && outputBuffer.size >= outputSize) {
+            outputBuffer
+        } else {
+            IntArray(outputSize)
+        }
 
     // Fill background with cached starfield or solid black
     if (showBackgroundStars && starfieldCache != null) {
@@ -872,13 +926,14 @@ internal suspend fun renderMoonFromMarkerArgb(
     val moonLayout = computeMoonScreenLayout(geometry, moonOrbitDegrees)
 
     // Calculate observer position on Earth surface
-    val observerPosition = calculateObserverPosition(
-        markerLatitudeDegrees = markerLatitudeDegrees,
-        markerLongitudeDegrees = markerLongitudeDegrees,
-        earthRotationDegrees = earthRotationDegrees,
-        earthTiltDegrees = earthTiltDegrees,
-        earthRadiusPx = geometry.earthRadiusPx,
-    )
+    val observerPosition =
+        calculateObserverPosition(
+            markerLatitudeDegrees = markerLatitudeDegrees,
+            markerLongitudeDegrees = markerLongitudeDegrees,
+            earthRotationDegrees = earthRotationDegrees,
+            earthTiltDegrees = earthTiltDegrees,
+            earthRadiusPx = geometry.earthRadiusPx,
+        )
 
     // View direction from observer to Moon
     var viewDirX = observerPosition.x - moonLayout.moonOrbit.x
@@ -886,28 +941,33 @@ internal suspend fun renderMoonFromMarkerArgb(
     var viewDirZ = observerPosition.z - moonLayout.moonOrbit.zCam
 
     // Up hint is radial direction at observer position
-    val upLen = sqrt(observerPosition.x * observerPosition.x +
-            observerPosition.y * observerPosition.y +
-            observerPosition.z * observerPosition.z)
+    val upLen =
+        sqrt(
+            observerPosition.x * observerPosition.x +
+                observerPosition.y * observerPosition.y +
+                observerPosition.z * observerPosition.z,
+        )
     val upHintX = if (upLen > EPSILON) observerPosition.x / upLen else 0f
     val upHintY = if (upLen > EPSILON) observerPosition.y / upLen else 1f
     val upHintZ = if (upLen > EPSILON) observerPosition.z / upLen else 0f
 
     // Replace view direction with topocentric Moon direction when ephemeris is available
     if (julianDay != null) {
-        val horizontal = computeMoonHorizontalPosition(
-            julianDay = julianDay,
-            latitudeDeg = markerLatitudeDegrees.toDouble(),
-            longitudeDeg = markerLongitudeDegrees.toDouble(),
-        )
-        val moonDirWorld = horizontalToWorld(
-            latitudeDeg = markerLatitudeDegrees.toDouble(),
-            longitudeDeg = markerLongitudeDegrees.toDouble(),
-            azimuthFromNorthDeg = horizontal.azimuthFromNorthDeg,
-            elevationDeg = horizontal.elevationDeg,
-            earthRotationDegrees = earthRotationDegrees,
-            earthTiltDegrees = earthTiltDegrees,
-        )
+        val horizontal =
+            computeMoonHorizontalPosition(
+                julianDay = julianDay,
+                latitudeDeg = markerLatitudeDegrees.toDouble(),
+                longitudeDeg = markerLongitudeDegrees.toDouble(),
+            )
+        val moonDirWorld =
+            horizontalToWorld(
+                latitudeDeg = markerLatitudeDegrees.toDouble(),
+                longitudeDeg = markerLongitudeDegrees.toDouble(),
+                azimuthFromNorthDeg = horizontal.azimuthFromNorthDeg,
+                elevationDeg = horizontal.elevationDeg,
+                earthRotationDegrees = earthRotationDegrees,
+                earthTiltDegrees = earthTiltDegrees,
+            )
         viewDirX = -moonDirWorld.x
         viewDirY = -moonDirWorld.y
         viewDirZ = -moonDirWorld.z
@@ -917,65 +977,68 @@ internal suspend fun renderMoonFromMarkerArgb(
 
     // Calculate Moon lighting based on phase angle, observer position, and the sun direction
     // The observer's up direction and sun hint drive the crescent orientation
-    val moonLighting = if (moonPhaseAngleDegrees != null) {
-        computeMoonLightFromPhaseWithObserverUp(
-            phaseAngleDegrees = moonPhaseAngleDegrees,
-            viewDirX = viewDirX,
-            viewDirY = viewDirY,
-            viewDirZ = viewDirZ,
-            observerUpX = upHintX,
-            observerUpY = upHintY,
-            observerUpZ = upHintZ,
-            sunDirectionHint = sunDirectionHint,
-        )
-    } else {
-        computeMoonLighting(
-            julianDay = julianDay,
-            moonPhaseAngleDegrees = null,
-            moonViewDirX = viewDirX,
-            moonViewDirY = viewDirY,
-            moonViewDirZ = viewDirZ,
-            lightDegrees = lightDegrees,
-            sunElevationDegrees = sunElevationDegrees,
-        )
-    }
+    val moonLighting =
+        if (moonPhaseAngleDegrees != null) {
+            computeMoonLightFromPhaseWithObserverUp(
+                phaseAngleDegrees = moonPhaseAngleDegrees,
+                viewDirX = viewDirX,
+                viewDirY = viewDirY,
+                viewDirZ = viewDirZ,
+                observerUpX = upHintX,
+                observerUpY = upHintY,
+                observerUpZ = upHintZ,
+                sunDirectionHint = sunDirectionHint,
+            )
+        } else {
+            computeMoonLighting(
+                julianDay = julianDay,
+                moonPhaseAngleDegrees = null,
+                moonViewDirX = viewDirX,
+                moonViewDirY = viewDirY,
+                moonViewDirZ = viewDirZ,
+                lightDegrees = lightDegrees,
+                sunElevationDegrees = sunElevationDegrees,
+            )
+        }
     val moonLightDegreesResolved = moonLighting?.lightDegrees ?: moonLightDegrees
     val moonSunElevationDegreesResolved = moonLighting?.sunElevationDegrees ?: moonSunElevationDegrees
 
-    val sunVisibility = moonSunVisibility(
-        moonCenterX = moonLayout.moonOrbit.x,
-        moonCenterY = moonLayout.moonOrbit.yCam,
-        moonCenterZ = moonLayout.moonOrbit.zCam,
-        moonRadius = geometry.moonRadiusWorldPx,
-        sunAzimuthDegrees = moonLightDegreesResolved,
-        sunElevationDegrees = moonSunElevationDegreesResolved,
-    )
+    val sunVisibility =
+        moonSunVisibility(
+            moonCenterX = moonLayout.moonOrbit.x,
+            moonCenterY = moonLayout.moonOrbit.yCam,
+            moonCenterZ = moonLayout.moonOrbit.zCam,
+            moonRadius = geometry.moonRadiusWorldPx,
+            sunAzimuthDegrees = moonLightDegreesResolved,
+            sunElevationDegrees = moonSunElevationDegreesResolved,
+        )
 
     // Acquire Moon buffer from pool or create new
     val moonBuffer = bufferPool?.acquire(outputSize)
 
     try {
         // Render Moon
-        val moon = renderTexturedSphereArgb(
-            texture = moonTexture,
-            outputSizePx = outputSizePx,
-            rotationDegrees = moonRotationDegrees,
-            lightDegrees = moonLightDegreesResolved,
-            tiltDegrees = 0f,
-            ambient = MOON_AMBIENT,
-            diffuseStrength = MOON_DIFFUSE_STRENGTH,
-            sunElevationDegrees = moonSunElevationDegreesResolved,
-            viewDirX = viewDirX,
-            viewDirY = viewDirY,
-            viewDirZ = viewDirZ,
-            upHintX = upHintX,
-            upHintY = upHintY,
-            upHintZ = upHintZ,
-            sunVisibility = sunVisibility,
-            atmosphereStrength = 0f,
-            shadowAlphaStrength = 1f,
-            outputBuffer = moonBuffer,
-        )
+        val moon =
+            renderTexturedSphereArgb(
+                texture = moonTexture,
+                outputSizePx = outputSizePx,
+                rotationDegrees = moonRotationDegrees,
+                lightDegrees = moonLightDegreesResolved,
+                tiltDegrees = 0f,
+                ambient = MOON_AMBIENT,
+                diffuseStrength = MOON_DIFFUSE_STRENGTH,
+                sunElevationDegrees = moonSunElevationDegreesResolved,
+                viewDirX = viewDirX,
+                viewDirY = viewDirY,
+                viewDirZ = viewDirZ,
+                upHintX = upHintX,
+                upHintY = upHintY,
+                upHintZ = upHintZ,
+                sunVisibility = sunVisibility,
+                atmosphereStrength = 0f,
+                shadowAlphaStrength = 1f,
+                outputBuffer = moonBuffer,
+            )
         drawGhostMoonOutline(argb = moon, sizePx = outputSizePx)
 
         blitOver(dst = out, dstW = outputSizePx, src = moon, srcW = outputSizePx, left = 0, top = 0)
@@ -988,7 +1051,10 @@ internal suspend fun renderMoonFromMarkerArgb(
     return out
 }
 
-private fun drawGhostMoonOutline(argb: IntArray, sizePx: Int) {
+private fun drawGhostMoonOutline(
+    argb: IntArray,
+    sizePx: Int,
+) {
     if (sizePx <= 2) return
     val center = (sizePx - 1) / 2f
     val thickness = max(1.1f, sizePx * 0.0045f)
@@ -1023,7 +1089,11 @@ private fun drawGhostMoonOutline(argb: IntArray, sizePx: Int) {
 /**
  * Observer position on Earth surface in world coordinates.
  */
-private data class ObserverPosition(val x: Float, val y: Float, val z: Float)
+private data class ObserverPosition(
+    val x: Float,
+    val y: Float,
+    val z: Float,
+)
 
 /**
  * Calculates observer position on Earth surface given lat/lon and Earth orientation.
@@ -1123,27 +1193,38 @@ private fun drawOrbitPath(
             val orbitDegrees = (t * 180f / PI.toFloat()) % 360f
             val isKiddushLevana = hasKiddushLevana && isAngleInRange(orbitDegrees, klStart, klEnd)
 
-            val (alpha, colorRgb, glowIntensity) = if (isKiddushLevana) {
-                Triple(
-                    if (avgZ >= 0f) KIDDUSH_LEVANA_ALPHA_FRONT else KIDDUSH_LEVANA_ALPHA_BACK,
-                    KIDDUSH_LEVANA_COLOR_RGB,
-                    KIDDUSH_LEVANA_GLOW_INTENSITY
-                )
-            } else {
-                Triple(
-                    if (avgZ >= 0f) ORBIT_ALPHA_FRONT else ORBIT_ALPHA_BACK,
-                    ORBIT_COLOR_RGB,
-                    ORBIT_GLOW_INTENSITY
-                )
-            }
+            val (alpha, colorRgb, glowIntensity) =
+                if (isKiddushLevana) {
+                    Triple(
+                        if (avgZ >= 0f) KIDDUSH_LEVANA_ALPHA_FRONT else KIDDUSH_LEVANA_ALPHA_BACK,
+                        KIDDUSH_LEVANA_COLOR_RGB,
+                        KIDDUSH_LEVANA_GLOW_INTENSITY,
+                    )
+                } else {
+                    Triple(
+                        if (avgZ >= 0f) ORBIT_ALPHA_FRONT else ORBIT_ALPHA_BACK,
+                        ORBIT_COLOR_RGB,
+                        ORBIT_GLOW_INTENSITY,
+                    )
+                }
             val color = (alpha shl 24) or colorRgb
 
             drawOrbitLineSegment(
-                dst = dst, dstW = dstW, dstH = dstH,
-                x0 = prevX, y0 = prevY, x1 = sx, y1 = sy,
-                color = color, orbitZ = avgZ,
-                earthCenter = center, earthRadiusPx = earthRadiusPx, earthRadius2 = earthRadius2,
-                moonCenterX = moonCenterX, moonCenterY = moonCenterY, moonRadiusClip2 = moonRadiusClip2,
+                dst = dst,
+                dstW = dstW,
+                dstH = dstH,
+                x0 = prevX,
+                y0 = prevY,
+                x1 = sx,
+                y1 = sy,
+                color = color,
+                orbitZ = avgZ,
+                earthCenter = center,
+                earthRadiusPx = earthRadiusPx,
+                earthRadius2 = earthRadius2,
+                moonCenterX = moonCenterX,
+                moonCenterY = moonCenterY,
+                moonRadiusClip2 = moonRadiusClip2,
                 glowIntensity = glowIntensity,
             )
         }
@@ -1157,7 +1238,11 @@ private fun drawOrbitPath(
 /**
  * Checks if an angle is within a range, handling wrap-around at 360 degrees.
  */
-private fun isAngleInRange(angle: Float, start: Float, end: Float): Boolean {
+private fun isAngleInRange(
+    angle: Float,
+    start: Float,
+    end: Float,
+): Boolean {
     val normalizedAngle = ((angle % 360f) + 360f) % 360f
     val normalizedStart = ((start % 360f) + 360f) % 360f
     val normalizedEnd = ((end % 360f) + 360f) % 360f
@@ -1201,10 +1286,19 @@ private fun drawOrbitLineSegment(
 
     while (true) {
         plotOrbitPixel(
-            dst = dst, dstW = dstW, dstH = dstH,
-            x = x, y = y, color = color, orbitZ = orbitZ,
-            earthCenter = earthCenter, earthRadiusPx = earthRadiusPx, earthRadius2 = earthRadius2,
-            moonCenterX = moonCenterX, moonCenterY = moonCenterY, moonRadiusClip2 = moonRadiusClip2,
+            dst = dst,
+            dstW = dstW,
+            dstH = dstH,
+            x = x,
+            y = y,
+            color = color,
+            orbitZ = orbitZ,
+            earthCenter = earthCenter,
+            earthRadiusPx = earthRadiusPx,
+            earthRadius2 = earthRadius2,
+            moonCenterX = moonCenterX,
+            moonCenterY = moonCenterY,
+            moonRadiusClip2 = moonRadiusClip2,
             glowIntensity = glowIntensity,
         )
 
@@ -1272,7 +1366,11 @@ private fun plotOrbitPixel(
     val glowColor = (glowAlpha shl 24) or (color and 0x00FFFFFF)
 
     // Helper to blend glow at adjacent pixels
-    fun blendGlowAt(px: Int, py: Int, dstIndex: Int) {
+    fun blendGlowAt(
+        px: Int,
+        py: Int,
+        dstIndex: Int,
+    ) {
         val gx = px - earthCenter
         val gy = py - earthCenter
         val gr2 = gx * gx + gy * gy
@@ -1303,7 +1401,12 @@ private fun plotOrbitPixel(
  *
  * Uses a seeded PRNG for deterministic star placement.
  */
-private fun drawStarfield(dst: IntArray, dstW: Int, dstH: Int, seed: Int) {
+private fun drawStarfield(
+    dst: IntArray,
+    dstW: Int,
+    dstH: Int,
+    seed: Int,
+) {
     val pixelCount = dstW * dstH
     val starCount = (pixelCount / PIXELS_PER_STAR).coerceIn(MIN_STAR_COUNT, MAX_STAR_COUNT)
     var state = seed xor (dstW shl 16) xor dstH
@@ -1343,7 +1446,14 @@ private fun drawStarfield(dst: IntArray, dstW: Int, dstH: Int, seed: Int) {
 /**
  * Stamps a star sparkle pattern around a bright star.
  */
-private fun stampStar(dst: IntArray, dstW: Int, dstH: Int, centerX: Int, centerY: Int, color: Int) {
+private fun stampStar(
+    dst: IntArray,
+    dstW: Int,
+    dstH: Int,
+    centerX: Int,
+    centerY: Int,
+    color: Int,
+) {
     val offsets = intArrayOf(-1, 0, 1)
     for (dy in offsets) {
         val y = centerY + dy
@@ -1448,7 +1558,11 @@ private fun sampleTextureBilinear(
  * @param t Interpolation factor (0 = c0, 1 = c1).
  * @return Interpolated ARGB color.
  */
-private fun lerpColorLinear(c0: Int, c1: Int, t: Float): Int {
+private fun lerpColorLinear(
+    c0: Int,
+    c1: Int,
+    t: Float,
+): Int {
     if (t <= 0f) return c0
     if (t >= 1f) return c1
 
@@ -1500,7 +1614,11 @@ private fun lerpColorLinear(c0: Int, c1: Int, t: Float): Int {
  * @return Interpolated ARGB color.
  */
 @Suppress("unused")
-private fun lerpColorFast(c0: Int, c1: Int, t: Float): Int {
+private fun lerpColorFast(
+    c0: Int,
+    c1: Int,
+    t: Float,
+): Int {
     if (t <= 0f) return c0
     if (t >= 1f) return c1
 
@@ -1511,9 +1629,9 @@ private fun lerpColorFast(c0: Int, c1: Int, t: Float): Int {
     val b = (c0 and 0xFF) * invT + (c1 and 0xFF) * t
 
     return (a.roundToInt() shl 24) or
-            (r.roundToInt() shl 16) or
-            (g.roundToInt() shl 8) or
-            b.roundToInt()
+        (r.roundToInt() shl 16) or
+        (g.roundToInt() shl 8) or
+        b.roundToInt()
 }
 
 // ============================================================================
@@ -1651,7 +1769,14 @@ private fun moonSunVisibility(
 /**
  * Copies source image onto destination with alpha blending.
  */
-private fun blitOver(dst: IntArray, dstW: Int, src: IntArray, srcW: Int, left: Int, top: Int) {
+private fun blitOver(
+    dst: IntArray,
+    dstW: Int,
+    src: IntArray,
+    srcW: Int,
+    left: Int,
+    top: Int,
+) {
     val srcH = src.size / srcW
     val dstH = dst.size / dstW
 
@@ -1685,7 +1810,10 @@ private fun blitOver(dst: IntArray, dstW: Int, src: IntArray, srcW: Int, left: I
  *
  * Blends foreground color over background color.
  */
-private fun alphaOver(foreground: Int, background: Int): Int {
+private fun alphaOver(
+    foreground: Int,
+    background: Int,
+): Int {
     val fgA = (foreground ushr 24) and 0xFF
     if (fgA == 255) return foreground
     if (fgA == 0) return background

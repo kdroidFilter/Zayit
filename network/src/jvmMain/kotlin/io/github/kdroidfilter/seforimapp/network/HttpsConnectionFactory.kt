@@ -8,7 +8,6 @@ import javax.net.ssl.HttpsURLConnection
  * Factory for creating HttpURLConnection instances configured with native trusted roots.
  */
 object HttpsConnectionFactory {
-
     /**
      * Opens a connection to the given URL and configures it with native trusted roots
      * if it's an HTTPS connection.
@@ -19,7 +18,7 @@ object HttpsConnectionFactory {
      */
     fun openConnection(
         url: URL,
-        configure: (HttpURLConnection.() -> Unit)? = null
+        configure: (HttpURLConnection.() -> Unit)? = null,
     ): HttpURLConnection {
         val connection = url.openConnection() as HttpURLConnection
 
@@ -44,6 +43,6 @@ object HttpsConnectionFactory {
      */
     fun openConnection(
         urlString: String,
-        configure: (HttpURLConnection.() -> Unit)? = null
+        configure: (HttpURLConnection.() -> Unit)? = null,
     ): HttpURLConnection = openConnection(URL(urlString), configure)
 }

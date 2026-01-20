@@ -6,4 +6,3 @@ data class ExtractState(
     val errorMessage: String? = null,
     val completed: Boolean = false,
 )
-

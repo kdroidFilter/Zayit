@@ -8,6 +8,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForHorizontalResize
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForVerticalResize
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.HorizontalSplitPane
 import org.jetbrains.compose.splitpane.SplitPaneState
@@ -15,13 +17,15 @@ import org.jetbrains.compose.splitpane.VerticalSplitPane
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForHorizontalResize
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForVerticalResize
 import kotlin.math.roundToInt
 
 @Stable
 @JvmInline
-value class StableSplitPaneState @OptIn(ExperimentalSplitPaneApi::class) constructor(val value: SplitPaneState)
+value class StableSplitPaneState
+    @OptIn(ExperimentalSplitPaneApi::class)
+    constructor(
+        val value: SplitPaneState,
+    )
 
 @OptIn(ExperimentalSplitPaneApi::class)
 fun SplitPaneState.asStable(): StableSplitPaneState = StableSplitPaneState(this)
@@ -35,7 +39,7 @@ fun EnhancedHorizontalSplitPane(
     secondMinSize: Float = 200f,
     firstContent: @Composable BoxScope.() -> Unit,
     secondContent: (@Composable BoxScope.() -> Unit)?,
-    showSplitter: Boolean = true
+    showSplitter: Boolean = true,
 ) {
     val state = splitPaneState.value
     val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
@@ -69,19 +73,19 @@ fun EnhancedHorizontalSplitPane(
 
     HorizontalSplitPane(
         splitPaneState = state,
-        modifier = modifier
+        modifier = modifier,
     ) {
         first(firstMinSize.dp) {
             Box(
                 modifier = Modifier.fillMaxSize(),
-                content = firstContent
+                content = firstContent,
             )
         }
         second(effectiveSecondMin.dp) {
             if (secondContent != null) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    content = secondContent
+                    content = secondContent,
                 )
             } else {
                 // Keep the pane structure stable even when hidden
@@ -94,7 +98,7 @@ fun EnhancedHorizontalSplitPane(
                     Divider(
                         Orientation.Vertical,
                         Modifier.fillMaxHeight().width(1.dp),
-                        color = JewelTheme.globalColors.borders.disabled
+                        color = JewelTheme.globalColors.borders.disabled,
                     )
                 }
                 handle {
@@ -104,7 +108,7 @@ fun EnhancedHorizontalSplitPane(
                             .fillMaxHeight()
                             .markAsHandle()
                             .cursorForHorizontalResize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {}
                 }
             }
@@ -121,7 +125,7 @@ fun EnhancedVerticalSplitPane(
     secondMinSize: Float = 200f,
     firstContent: @Composable BoxScope.() -> Unit,
     secondContent: (@Composable BoxScope.() -> Unit)?,
-    showSplitter: Boolean = true
+    showSplitter: Boolean = true,
 ) {
     val state = splitPaneState.value
     val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
@@ -155,19 +159,19 @@ fun EnhancedVerticalSplitPane(
 
     VerticalSplitPane(
         splitPaneState = state,
-        modifier = modifier
+        modifier = modifier,
     ) {
         first(firstMinSize.dp) {
             Box(
                 modifier = Modifier.fillMaxSize(),
-                content = firstContent
+                content = firstContent,
             )
         }
         second(effectiveSecondMin.dp) {
             if (secondContent != null) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    content = secondContent
+                    content = secondContent,
                 )
             } else {
                 // Keep the pane structure stable even when hidden
@@ -180,7 +184,7 @@ fun EnhancedVerticalSplitPane(
                     Divider(
                         Orientation.Horizontal,
                         Modifier.fillMaxWidth().height(1.dp),
-                        color = JewelTheme.globalColors.borders.disabled
+                        color = JewelTheme.globalColors.borders.disabled,
                     )
                 }
                 handle {
@@ -190,7 +194,7 @@ fun EnhancedVerticalSplitPane(
                             .fillMaxWidth()
                             .markAsHandle()
                             .cursorForVerticalResize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {}
                 }
             }

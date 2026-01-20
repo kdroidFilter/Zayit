@@ -11,11 +11,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateNavHost
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.Deployed_code_update
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -36,7 +36,7 @@ import seforimapp.seforimapp.generated.resources.db_update_title_bar
 @Composable
 fun ApplicationScope.DatabaseUpdateWindow(
     onUpdateCompleted: () -> Unit = {},
-    isDatabaseMissing: Boolean = false
+    isDatabaseMissing: Boolean = false,
 ) {
     val updateWindowState = remember { getCenteredWindowState(720, 420) }
     DecoratedWindow(
@@ -76,16 +76,19 @@ fun ApplicationScope.DatabaseUpdateWindow(
                 // Keep the back button pinned to the start and
                 // center the title (icon + text) regardless of OS/window controls.
                 Box(
-                    modifier = Modifier.fillMaxWidth(if (isMac) 0.9f else 1f)
-                        .padding(start = if (isWindows) 70.dp else 0.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth(if (isMac) 0.9f else 1f)
+                            .padding(start = if (isWindows) 70.dp else 0.dp),
                 ) {
                     if (canNavigateBack) {
                         IconButton(
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .padding(start = 8.dp)
-                                .size(24.dp),
-                            onClick = { navController.navigateUp() }
+                            modifier =
+                                Modifier
+                                    .align(Alignment.CenterStart)
+                                    .padding(start = 8.dp)
+                                    .size(24.dp),
+                            onClick = { navController.navigateUp() },
                         ) {
                             Icon(AllIconsKeys.Actions.Back, null, modifier = Modifier.rotate(180f))
                         }
@@ -94,32 +97,34 @@ fun ApplicationScope.DatabaseUpdateWindow(
                     val centerOffset = 40.dp
 
                     Row(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .offset(x = centerOffset),
+                        modifier =
+                            Modifier
+                                .align(Alignment.Center)
+                                .offset(x = centerOffset),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Icon(
                             Deployed_code_update,
                             contentDescription = null,
                             tint = JewelTheme.globalColors.text.normal,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(16.dp),
                         )
                         Text(stringResource(Res.string.db_update_title_bar))
                     }
                 }
             }
             Column(
-                modifier = Modifier
-                    .trackActivation()
-                    .fillMaxSize()
-                    .background(JewelTheme.globalColors.panelBackground),
+                modifier =
+                    Modifier
+                        .trackActivation()
+                        .fillMaxSize()
+                        .background(JewelTheme.globalColors.panelBackground),
             ) {
                 DatabaseUpdateNavHost(
                     navController = navController,
                     onUpdateCompleted = onUpdateCompleted,
-                    isDatabaseMissing = isDatabaseMissing
+                    isDatabaseMissing = isDatabaseMissing,
                 )
             }
         }

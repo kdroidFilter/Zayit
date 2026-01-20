@@ -14,13 +14,14 @@ import kotlinx.coroutines.flow.asStateFlow
 
 data class HomeCelestialWidgetsState(
     val userPlace: Place,
-    val userCityLabel: String?
+    val userCityLabel: String?,
 ) {
     companion object {
-        val preview = HomeCelestialWidgetsState(
-            userPlace = DEFAULT_PLACE,
-            userCityLabel = null
-        )
+        val preview =
+            HomeCelestialWidgetsState(
+                userPlace = DEFAULT_PLACE,
+                userCityLabel = null,
+            )
     }
 }
 
@@ -30,22 +31,22 @@ private val DEFAULT_PLACE = Place(31.7683, 35.2137, 800.0)
 @ViewModelKey(HomeCelestialWidgetsViewModel::class)
 @Inject
 class HomeCelestialWidgetsViewModel : ViewModel() {
-
     private val _state = MutableStateFlow(resolveState())
     val state: StateFlow<HomeCelestialWidgetsState> = _state.asStateFlow()
 
     private fun resolveState(): HomeCelestialWidgetsState {
         val country = AppSettings.getRegionCountry()
         val city = AppSettings.getRegionCity()
-        val place = if (!country.isNullOrBlank() && !city.isNullOrBlank()) {
-            worldPlaces[country]?.get(city)
-        } else {
-            null
-        }
+        val place =
+            if (!country.isNullOrBlank() && !city.isNullOrBlank()) {
+                worldPlaces[country]?.get(city)
+            } else {
+                null
+            }
 
         return HomeCelestialWidgetsState(
             userPlace = place ?: DEFAULT_PLACE,
-            userCityLabel = city?.takeIf { it.isNotBlank() }
+            userCityLabel = city?.takeIf { it.isNotBlank() },
         )
     }
 }

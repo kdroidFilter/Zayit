@@ -29,9 +29,10 @@ object ThemeUtils {
     @Composable
     fun defaultTextStyle(): TextStyle =
         TextStyle(
-            fontFamily = FontFamily(
-                Font(resource = Res.font.notoserifhebrew)
-            )
+            fontFamily =
+                FontFamily(
+                    Font(resource = Res.font.notoserifhebrew),
+                ),
         )
 
     /**
@@ -39,27 +40,29 @@ object ThemeUtils {
      * Reads the current theme directly from ThemeViewModel to avoid passing it around.
      */
     @Composable
-    fun buildThemeDefinition() = run {
-        val theme = MainAppState.theme.collectAsState().value
-        val isDarkTheme = when (theme) {
-            IntUiThemes.Light -> false
-            IntUiThemes.Dark -> true
-            IntUiThemes.System -> isSystemInDarkMode()
-        }
-        val disabledValues = if (isDarkTheme) DisabledAppearanceValues.dark() else DisabledAppearanceValues.light()
+    fun buildThemeDefinition() =
+        run {
+            val theme = MainAppState.theme.collectAsState().value
+            val isDarkTheme =
+                when (theme) {
+                    IntUiThemes.Light -> false
+                    IntUiThemes.Dark -> true
+                    IntUiThemes.System -> isSystemInDarkMode()
+                }
+            val disabledValues = if (isDarkTheme) DisabledAppearanceValues.dark() else DisabledAppearanceValues.light()
 
-        if (isDarkTheme) {
-            JewelTheme.darkThemeDefinition(
-                defaultTextStyle = defaultTextStyle(),
-                disabledAppearanceValues = disabledValues
-            )
-        } else {
-            JewelTheme.lightThemeDefinition(
-                defaultTextStyle = defaultTextStyle(),
-                disabledAppearanceValues = disabledValues
-            )
+            if (isDarkTheme) {
+                JewelTheme.darkThemeDefinition(
+                    defaultTextStyle = defaultTextStyle(),
+                    disabledAppearanceValues = disabledValues,
+                )
+            } else {
+                JewelTheme.lightThemeDefinition(
+                    defaultTextStyle = defaultTextStyle(),
+                    disabledAppearanceValues = disabledValues,
+                )
+            }
         }
-    }
 
     /**
      * Chooses the appropriate TitleBarStyle based on the selected theme and system dark mode.

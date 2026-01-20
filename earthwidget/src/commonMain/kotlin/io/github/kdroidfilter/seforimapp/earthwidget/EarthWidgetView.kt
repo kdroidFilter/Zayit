@@ -4,9 +4,9 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -27,17 +27,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,10 +54,11 @@ import kotlin.math.sqrt
 // ============================================================================
 
 /** Shared spring spec for smooth angle animations. */
-private val SmoothAngleSpringSpec = spring<Float>(
-    dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessMediumLow,
-)
+private val SmoothAngleSpringSpec =
+    spring<Float>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMediumLow,
+    )
 
 // ============================================================================
 // DEFAULT VALUES
@@ -152,22 +153,24 @@ fun EarthWidgetScene(
     kiddushLevanaEndDegrees: Float? = null,
 ) {
     // Earth rotation and light can be instant (during drag) or animated (location change)
-    val animatedEarthRotation = if (animateEarthRotation) {
-        rememberSmoothAnimatedAngle(
-            targetValue = earthRotationDegrees,
-            normalize = ::normalizeAngle360,
-        )
-    } else {
-        normalizeAngle360(earthRotationDegrees)
-    }
-    val animatedLightDegrees = if (animateEarthRotation) {
-        rememberSmoothAnimatedAngle(
-            targetValue = lightDegrees,
-            normalize = ::normalizeAngle180,
-        )
-    } else {
-        normalizeAngle180(lightDegrees)
-    }
+    val animatedEarthRotation =
+        if (animateEarthRotation) {
+            rememberSmoothAnimatedAngle(
+                targetValue = earthRotationDegrees,
+                normalize = ::normalizeAngle360,
+            )
+        } else {
+            normalizeAngle360(earthRotationDegrees)
+        }
+    val animatedLightDegrees =
+        if (animateEarthRotation) {
+            rememberSmoothAnimatedAngle(
+                targetValue = lightDegrees,
+                normalize = ::normalizeAngle180,
+            )
+        } else {
+            normalizeAngle180(lightDegrees)
+        }
     val animatedSunElevation by animateFloatAsState(
         targetValue = sunElevationDegrees,
         animationSpec = SmoothAngleSpringSpec,
@@ -178,70 +181,78 @@ fun EarthWidgetScene(
         animationSpec = SmoothAngleSpringSpec,
         label = "tiltDegrees",
     )
-    val animatedMoonOrbit = rememberSmoothAnimatedAngle(
-        targetValue = moonOrbitDegrees,
-        normalize = ::normalizeAngle360,
-    )
+    val animatedMoonOrbit =
+        rememberSmoothAnimatedAngle(
+            targetValue = moonOrbitDegrees,
+            normalize = ::normalizeAngle360,
+        )
     val animatedMarkerLat by animateFloatAsState(
         targetValue = markerLatitudeDegrees,
         animationSpec = SmoothAngleSpringSpec,
         label = "markerLat",
     )
-    val animatedMarkerLon = rememberSmoothAnimatedAngle(
-        targetValue = markerLongitudeDegrees,
-        normalize = ::normalizeAngle180,
-    )
-    val animatedMoonLightDegrees = rememberSmoothAnimatedAngle(
-        targetValue = moonLightDegrees,
-        normalize = ::normalizeAngle180,
-    )
+    val animatedMarkerLon =
+        rememberSmoothAnimatedAngle(
+            targetValue = markerLongitudeDegrees,
+            normalize = ::normalizeAngle180,
+        )
+    val animatedMoonLightDegrees =
+        rememberSmoothAnimatedAngle(
+            targetValue = moonLightDegrees,
+            normalize = ::normalizeAngle180,
+        )
     val animatedMoonSunElevation by animateFloatAsState(
         targetValue = moonSunElevationDegrees,
         animationSpec = SmoothAngleSpringSpec,
         label = "moonSunElevation",
     )
-    val animatedMoonPhaseAngle = moonPhaseAngleDegrees?.let {
-        rememberSmoothAnimatedAngle(targetValue = it, normalize = ::normalizeAngle360)
-    }
+    val animatedMoonPhaseAngle =
+        moonPhaseAngleDegrees?.let {
+            rememberSmoothAnimatedAngle(targetValue = it, normalize = ::normalizeAngle360)
+        }
 
     val earthTexture = rememberEarthTexture()
     val moonTexture = rememberMoonTexture()
     val renderer = remember { EarthWidgetRenderer() }
-    val textures = remember(earthTexture, moonTexture, showMoonInOrbit) {
-        EarthWidgetTextures(earth = earthTexture, moon = if (showMoonInOrbit) moonTexture else null)
-    }
+    val textures =
+        remember(earthTexture, moonTexture, showMoonInOrbit) {
+            EarthWidgetTextures(earth = earthTexture, moon = if (showMoonInOrbit) moonTexture else null)
+        }
 
     val moonViewSize = sphereSize * MOON_VIEW_SIZE_RATIO
     val resolvedEarthRenderSize = renderSizePx.coerceAtLeast(MIN_RENDER_SIZE_PX)
-    val resolvedMoonRenderSize = (resolvedEarthRenderSize * MOON_RENDER_SIZE_RATIO)
-        .roundToInt()
-        .coerceAtLeast(MIN_MOON_RENDER_SIZE_PX)
+    val resolvedMoonRenderSize =
+        (resolvedEarthRenderSize * MOON_RENDER_SIZE_RATIO)
+            .roundToInt()
+            .coerceAtLeast(MIN_MOON_RENDER_SIZE_PX)
 
-    val sceneState = EarthRenderState(
-        renderSizePx = resolvedEarthRenderSize,
-        earthRotationDegrees = animatedEarthRotation,
-        lightDegrees = animatedLightDegrees,
-        sunElevationDegrees = animatedSunElevation,
-        earthTiltDegrees = animatedTiltDegrees,
-        moonOrbitDegrees = animatedMoonOrbit,
-        markerLatitudeDegrees = animatedMarkerLat,
-        markerLongitudeDegrees = animatedMarkerLon,
-        showBackgroundStars = showBackgroundStars,
-        showOrbitPath = showOrbitPath,
-        moonLightDegrees = animatedMoonLightDegrees,
-        moonSunElevationDegrees = animatedMoonSunElevation,
-        moonPhaseAngleDegrees = animatedMoonPhaseAngle,
-        julianDay = julianDay,
-        earthSizeFraction = earthSizeFraction,
-        kiddushLevanaStartDegrees = kiddushLevanaStartDegrees,
-        kiddushLevanaEndDegrees = kiddushLevanaEndDegrees,
-    )
+    val sceneState =
+        EarthRenderState(
+            renderSizePx = resolvedEarthRenderSize,
+            earthRotationDegrees = animatedEarthRotation,
+            lightDegrees = animatedLightDegrees,
+            sunElevationDegrees = animatedSunElevation,
+            earthTiltDegrees = animatedTiltDegrees,
+            moonOrbitDegrees = animatedMoonOrbit,
+            markerLatitudeDegrees = animatedMarkerLat,
+            markerLongitudeDegrees = animatedMarkerLon,
+            showBackgroundStars = showBackgroundStars,
+            showOrbitPath = showOrbitPath,
+            moonLightDegrees = animatedMoonLightDegrees,
+            moonSunElevationDegrees = animatedMoonSunElevation,
+            moonPhaseAngleDegrees = animatedMoonPhaseAngle,
+            julianDay = julianDay,
+            earthSizeFraction = earthSizeFraction,
+            kiddushLevanaStartDegrees = kiddushLevanaStartDegrees,
+            kiddushLevanaEndDegrees = kiddushLevanaEndDegrees,
+        )
 
-    val renderedScene = rememberRenderedEarthMoonImage(
-        renderer = renderer,
-        textures = textures,
-        targetState = sceneState,
-    )
+    val renderedScene =
+        rememberRenderedEarthMoonImage(
+            renderer = renderer,
+            textures = textures,
+            targetState = sceneState,
+        )
 
     val earthContent: @Composable () -> Unit = {
         Box(modifier = Modifier.size(sphereSize)) {
@@ -266,22 +277,23 @@ fun EarthWidgetScene(
     val moonContent: @Composable () -> Unit = {
         val moonLightForMarker = moonFromMarkerLightDegrees ?: animatedMoonLightDegrees
         val moonSunElevationForMarker = moonFromMarkerSunElevationDegrees ?: animatedMoonSunElevation
-        val moonState = MoonFromMarkerRenderState(
-            renderSizePx = resolvedMoonRenderSize,
-            earthRotationDegrees = animatedMarkerLon, // Use marker position, not visual rotation
-            lightDegrees = moonLightForMarker,
-            sunElevationDegrees = moonSunElevationForMarker,
-            earthTiltDegrees = animatedTiltDegrees,
-            moonOrbitDegrees = animatedMoonOrbit,
-            markerLatitudeDegrees = animatedMarkerLat,
-            markerLongitudeDegrees = animatedMarkerLon,
-            showBackgroundStars = showBackgroundStars,
-            moonLightDegrees = moonLightForMarker,
-            moonSunElevationDegrees = moonSunElevationForMarker,
-            moonPhaseAngleDegrees = animatedMoonPhaseAngle,
-            julianDay = julianDay,
-            earthSizeFraction = earthSizeFraction,
-        )
+        val moonState =
+            MoonFromMarkerRenderState(
+                renderSizePx = resolvedMoonRenderSize,
+                earthRotationDegrees = animatedMarkerLon, // Use marker position, not visual rotation
+                lightDegrees = moonLightForMarker,
+                sunElevationDegrees = moonSunElevationForMarker,
+                earthTiltDegrees = animatedTiltDegrees,
+                moonOrbitDegrees = animatedMoonOrbit,
+                markerLatitudeDegrees = animatedMarkerLat,
+                markerLongitudeDegrees = animatedMarkerLon,
+                showBackgroundStars = showBackgroundStars,
+                moonLightDegrees = moonLightForMarker,
+                moonSunElevationDegrees = moonSunElevationForMarker,
+                moonPhaseAngleDegrees = animatedMoonPhaseAngle,
+                julianDay = julianDay,
+                earthSizeFraction = earthSizeFraction,
+            )
         // Moon-from-marker view uses the actual marker longitude (not the visual Earth rotation)
         // This ensures the moon phase is always calculated from the marker's real position
         MoonFromMarkerWidgetView(
@@ -345,11 +357,12 @@ internal fun MoonFromMarkerWidgetView(
 ) {
     val resolvedMoonTexture = moonTexture ?: rememberMoonTexture()
 
-    val moonImage = rememberMoonFromMarkerImage(
-        renderer = renderer,
-        moonTexture = resolvedMoonTexture,
-        state = state,
-    )
+    val moonImage =
+        rememberMoonFromMarkerImage(
+            renderer = renderer,
+            moonTexture = resolvedMoonTexture,
+            state = state,
+        )
 
     if (!animateTransitions) {
         Image(
@@ -384,17 +397,19 @@ internal fun MoonFromMarkerWidgetView(
             Image(
                 bitmap = previousImage!!,
                 contentDescription = null,
-                modifier = Modifier
-                    .size(sphereSize)
-                    .alpha(1f - fade.value),
+                modifier =
+                    Modifier
+                        .size(sphereSize)
+                        .alpha(1f - fade.value),
             )
         }
         Image(
             bitmap = frontImage,
             contentDescription = null,
-            modifier = Modifier
-                .size(sphereSize)
-                .alpha(if (previousImage != null) fade.value else 1f),
+            modifier =
+                Modifier
+                    .size(sphereSize)
+                    .alpha(if (previousImage != null) fade.value else 1f),
         )
     }
 }
@@ -457,9 +472,10 @@ private fun rememberRenderedEarthMoonImage(
 ): RenderedImage<EarthRenderState> {
     var renderedState by remember { mutableStateOf(targetState) }
     var image by remember { mutableStateOf<ImageBitmap?>(null) }
-    val placeholder = remember(renderedState.renderSizePx) {
-        ImageBitmap(renderedState.renderSizePx, renderedState.renderSizePx)
-    }
+    val placeholder =
+        remember(renderedState.renderSizePx) {
+            ImageBitmap(renderedState.renderSizePx, renderedState.renderSizePx)
+        }
 
     // Use MutableStateFlow to emit state updates and conflate to drop intermediate values
     val stateFlow = remember { kotlinx.coroutines.flow.MutableStateFlow(targetState) }
@@ -473,10 +489,11 @@ private fun rememberRenderedEarthMoonImage(
     // StateFlow is already conflated, so intermediate values are automatically dropped
     LaunchedEffect(renderer, textures) {
         stateFlow.collectLatest { state ->
-            val renderedImage = renderer.renderScene(
-                state = state,
-                textures = textures,
-            )
+            val renderedImage =
+                renderer.renderScene(
+                    state = state,
+                    textures = textures,
+                )
             renderedState = state
             image = renderedImage
         }
@@ -548,44 +565,48 @@ private fun OrbitDayLabelsOverlay(
 ) {
     if (labels.isEmpty() || renderSizePx <= 0) return
     val fontSize = (sphereSize.value * 0.032f).coerceIn(11f, 20f).sp
-    val textStyle = remember(fontSize) {
-        TextStyle(
-            color = Color.White,
-            fontSize = fontSize,
-            fontWeight = FontWeight.SemiBold,
-            shadow = Shadow(color = Color.Black, offset = Offset(1f, 1f), blurRadius = 3f),
-        )
-    }
-
-    val labelPositions = remember(labels, renderSizePx) {
-        val center = renderSizePx / 2f
-        val outwardPx = 12f
-
-        labels.map { label ->
-            val p = computeOrbitScreenPosition(
-                outputSizePx = renderSizePx,
-                orbitDegrees = label.orbitDegrees,
-                earthSizeFraction = earthSizeFraction,
+    val textStyle =
+        remember(fontSize) {
+            TextStyle(
+                color = Color.White,
+                fontSize = fontSize,
+                fontWeight = FontWeight.SemiBold,
+                shadow = Shadow(color = Color.Black, offset = Offset(1f, 1f), blurRadius = 3f),
             )
-            val dx = p.x - center
-            val dy = p.y - center
-            val len = sqrt(dx * dx + dy * dy)
-
-            val ox = if (len > 1e-3f) dx / len * outwardPx else 0f
-            val oy = if (len > 1e-3f) dy / len * outwardPx else 0f
-
-            Offset(x = p.x + ox, y = p.y + oy)
         }
-    }
 
-    val hoveredTextStyle = remember(fontSize) {
-        TextStyle(
-            color = Color(0xFFFFD700), // Gold color on hover
-            fontSize = fontSize,
-            fontWeight = FontWeight.Bold,
-            shadow = Shadow(color = Color.Black, offset = Offset(1f, 1f), blurRadius = 4f),
-        )
-    }
+    val labelPositions =
+        remember(labels, renderSizePx) {
+            val center = renderSizePx / 2f
+            val outwardPx = 12f
+
+            labels.map { label ->
+                val p =
+                    computeOrbitScreenPosition(
+                        outputSizePx = renderSizePx,
+                        orbitDegrees = label.orbitDegrees,
+                        earthSizeFraction = earthSizeFraction,
+                    )
+                val dx = p.x - center
+                val dy = p.y - center
+                val len = sqrt(dx * dx + dy * dy)
+
+                val ox = if (len > 1e-3f) dx / len * outwardPx else 0f
+                val oy = if (len > 1e-3f) dy / len * outwardPx else 0f
+
+                Offset(x = p.x + ox, y = p.y + oy)
+            }
+        }
+
+    val hoveredTextStyle =
+        remember(fontSize) {
+            TextStyle(
+                color = Color(0xFFFFD700), // Gold color on hover
+                fontSize = fontSize,
+                fontWeight = FontWeight.Bold,
+                shadow = Shadow(color = Color.Black, offset = Offset(1f, 1f), blurRadius = 4f),
+            )
+        }
 
     Layout(
         modifier = modifier,
@@ -606,9 +627,10 @@ private fun OrbitDayLabelsOverlay(
         val height = constraints.maxHeight
         val scaleX = width / renderSizePx.toFloat()
         val scaleY = height / renderSizePx.toFloat()
-        val placeables = measurables.map { measurable ->
-            measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
-        }
+        val placeables =
+            measurables.map { measurable ->
+                measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+            }
 
         layout(width, height) {
             placeables.forEachIndexed { index, placeable ->
@@ -638,21 +660,22 @@ private fun OrbitDayLabel(
     val currentStyle = if (isHovered && onClick != null) hoveredTextStyle else textStyle
 
     Box(
-        modifier = Modifier
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-            .then(
-                if (onClick != null) {
-                    Modifier
-                        .pointerHoverIcon(PointerIcon.Hand)
-                        .hoverable(interactionSource)
-                        .clickable(
-                            interactionSource = interactionSource,
-                            indication = null,
-                        ) { onClick(label) }
-                } else {
-                    Modifier
-                }
-            ),
+        modifier =
+            Modifier
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .then(
+                    if (onClick != null) {
+                        Modifier
+                            .pointerHoverIcon(PointerIcon.Hand)
+                            .hoverable(interactionSource)
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null,
+                            ) { onClick(label) }
+                    } else {
+                        Modifier
+                    },
+                ),
         contentAlignment = Alignment.Center,
     ) {
         BasicText(

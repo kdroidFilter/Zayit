@@ -39,8 +39,10 @@ sqlDelight = "2.1.0"
 adaptiveNavigation = "1.2.0"
 zmanim = "2.5.0"
 zstdJni = "1.5.7-6"
-metro = "0.9.4"
+metro = "0.10.0"
 lucene = "10.3.2"
+ktlint = "14.0.1"
+detekt = "1.23.8"
 
 [libraries]
 
@@ -133,3 +135,5 @@ caupain =  { id = "com.deezer.caupain", version = "1.7.1"}
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 linux-deps = { id = "io.github.kdroidfilter.compose.linux.packagedeps", version = "0.2.4"}
 stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version = "0.6.6" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }

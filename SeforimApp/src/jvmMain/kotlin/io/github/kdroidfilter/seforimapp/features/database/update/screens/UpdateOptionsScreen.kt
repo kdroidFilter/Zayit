@@ -25,7 +25,7 @@ fun UpdateOptionsScreen(navController: NavController) {
     LaunchedEffect(Unit) {
         DatabaseUpdateProgressBarState.setVersionCheckComplete()
     }
-    
+
     OnBoardingScaffold(title = stringResource(Res.string.db_update_options_title)) {
         Row(modifier = Modifier.fillMaxSize()) {
             UpdateOptionColumn(
@@ -37,7 +37,7 @@ fun UpdateOptionsScreen(navController: NavController) {
                     DatabaseUpdateProgressBarState.setOptionsSelected()
                     navController.navigate(DatabaseUpdateDestination.OfflineUpdateScreen)
                 },
-                buttonText = stringResource(Res.string.db_update_local_file_button)
+                buttonText = stringResource(Res.string.db_update_local_file_button),
             )
             Divider(orientation = Orientation.Vertical, modifier = Modifier.fillMaxHeight().width(1.dp))
             UpdateOptionColumn(
@@ -49,7 +49,7 @@ fun UpdateOptionsScreen(navController: NavController) {
                     DatabaseUpdateProgressBarState.setOptionsSelected()
                     navController.navigate(DatabaseUpdateDestination.OnlineUpdateScreen)
                 },
-                buttonText = stringResource(Res.string.db_update_download_button)
+                buttonText = stringResource(Res.string.db_update_download_button),
             )
         }
     }
@@ -61,22 +61,23 @@ private fun RowScope.UpdateOptionColumn(
     icon: ImageVector,
     description: String,
     buttonText: String,
-    buttonAction: () -> Unit
+    buttonAction: () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .weight(1f)
-            .padding(16.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .weight(1f)
+                .padding(16.dp),
         verticalArrangement = Arrangement.SpaceBetween,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(title, fontSize = JewelTheme.typography.h1TextStyle.fontSize)
         Icon(icon, title, modifier = Modifier.size(72.dp), tint = JewelTheme.globalColors.text.normal)
         Text(
             description,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
         DefaultButton(buttonAction) {
             Text(buttonText)

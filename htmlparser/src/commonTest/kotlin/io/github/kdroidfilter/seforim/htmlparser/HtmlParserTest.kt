@@ -6,7 +6,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class HtmlParserTest {
-
     @Test
     fun parsesSimpleText() {
         val html = "<div>שלום עולם</div>"

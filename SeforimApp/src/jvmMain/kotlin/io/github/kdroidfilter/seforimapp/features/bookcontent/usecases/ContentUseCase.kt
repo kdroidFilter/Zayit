@@ -19,51 +19,54 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
  */
 class ContentUseCase(
     private val repository: SeforimRepository,
-    private val stateManager: BookContentStateManager
+    private val stateManager: BookContentStateManager,
 ) {
-    
     /**
      * Construit un Pager pour les lignes du livre
      */
     fun buildLinesPager(
         bookId: Long,
-        initialLineId: Long? = null
-    ): Flow<PagingData<Line>> {
-        return Pager(
+        initialLineId: Long? = null,
+    ): Flow<PagingData<Line>> =
+        Pager(
             config = PagingDefaults.LINES.config(placeholders = false),
             pagingSourceFactory = {
                 LinesPagingSource(repository, bookId, initialLineId)
-            }
+            },
         ).flow
-    }
-    
+
     /**
      * Sélectionne une ligne
      */
     suspend fun selectLine(line: Line) {
         debugln { "[selectLine] Selecting line with id=${line.id}, index=${line.lineIndex}" }
-        
+
         stateManager.updateContent {
             copy(selectedLine = line)
         }
 
         // Update selected TOC entry for highlighting in TOC
-        val tocId = try { repository.getTocEntryIdForLine(line.id) } catch (_: Exception) { null }
+        val tocId =
+            try {
+                repository.getTocEntryIdForLine(line.id)
+            } catch (_: Exception) {
+                null
+            }
         val tocPath = if (tocId != null) buildTocPathToRoot(tocId) else emptyList()
         stateManager.updateToc(save = false) {
             copy(
                 selectedEntryId = tocId,
-                breadcrumbPath = tocPath
+                breadcrumbPath = tocPath,
             )
         }
     }
-    
+
     /**
      * Charge et sélectionne une ligne spécifique
      */
     suspend fun loadAndSelectLine(lineId: Long): Line? {
         val line = repository.getLine(lineId)
-        
+
         if (line != null) {
             debugln { "[loadAndSelectLine] Loading line $lineId at index ${line.lineIndex}" }
 
@@ -83,21 +86,26 @@ class ContentUseCase(
                     scrollOffset = 0,
                     scrollToLineTimestamp = System.currentTimeMillis(),
                     topAnchorLineId = line.id,
-                    topAnchorRequestTimestamp = System.currentTimeMillis()
+                    topAnchorRequestTimestamp = System.currentTimeMillis(),
                 )
             }
 
             // Update selected TOC entry for highlighting and breadcrumb path
-            val tocId = try { repository.getTocEntryIdForLine(line.id) } catch (_: Exception) { null }
+            val tocId =
+                try {
+                    repository.getTocEntryIdForLine(line.id)
+                } catch (_: Exception) {
+                    null
+                }
             val tocPath = if (tocId != null) buildTocPathToRoot(tocId) else emptyList()
             stateManager.updateToc(save = false) {
                 copy(
                     selectedEntryId = tocId,
-                    breadcrumbPath = tocPath
+                    breadcrumbPath = tocPath,
                 )
             }
         }
-        
+
         return line
     }
 
@@ -116,7 +124,7 @@ class ContentUseCase(
         }
         return path
     }
-    
+
     /**
      * Navigue vers la ligne précédente
      */
@@ -124,34 +132,34 @@ class ContentUseCase(
         val currentState = stateManager.state.first()
         val currentLine = currentState.content.selectedLine ?: return null
         val currentBook = currentState.navigation.selectedBook ?: return null
-        
+
         debugln { "[navigateToPreviousLine] Current line index=${currentLine.lineIndex}" }
-        
+
         // Vérifier qu'on est dans le bon livre
         if (currentLine.bookId != currentBook.id) return null
-        
+
         // Si on est déjà à la première ligne
         if (currentLine.lineIndex <= 0) return null
-        
+
         return try {
             val previousLine = repository.getPreviousLine(currentBook.id, currentLine.lineIndex)
-            
+
             if (previousLine != null) {
                 debugln { "[navigateToPreviousLine] Found line at index ${previousLine.lineIndex}" }
                 selectLine(previousLine)
-                
+
                 stateManager.updateContent {
                     copy(scrollToLineTimestamp = System.currentTimeMillis())
                 }
             }
-            
+
             previousLine
         } catch (e: Exception) {
             debugln { "[navigateToPreviousLine] Error: ${e.message}" }
             null
         }
     }
-    
+
     /**
      * Navigue vers la ligne suivante
      */
@@ -159,31 +167,31 @@ class ContentUseCase(
         val currentState = stateManager.state.first()
         val currentLine = currentState.content.selectedLine ?: return null
         val currentBook = currentState.navigation.selectedBook ?: return null
-        
+
         debugln { "[navigateToNextLine] Current line index=${currentLine.lineIndex}" }
-        
+
         // Vérifier qu'on est dans le bon livre
         if (currentLine.bookId != currentBook.id) return null
-        
+
         return try {
             val nextLine = repository.getNextLine(currentBook.id, currentLine.lineIndex)
-            
+
             if (nextLine != null) {
                 debugln { "[navigateToNextLine] Found line at index ${nextLine.lineIndex}" }
                 selectLine(nextLine)
-                
+
                 stateManager.updateContent {
                     copy(scrollToLineTimestamp = System.currentTimeMillis())
                 }
             }
-            
+
             nextLine
         } catch (e: Exception) {
             debugln { "[navigateToNextLine] Error: ${e.message}" }
             null
         }
     }
-    
+
     /**
      * Met à jour la position de scroll du contenu
      */
@@ -191,20 +199,20 @@ class ContentUseCase(
         anchorId: Long,
         anchorIndex: Int,
         scrollIndex: Int,
-        scrollOffset: Int
+        scrollOffset: Int,
     ) {
         debugln { "Updating scroll: anchor=$anchorId, anchorIndex=$anchorIndex, scrollIndex=$scrollIndex, offset=$scrollOffset" }
-        
+
         stateManager.updateContent {
             copy(
                 anchorId = anchorId,
                 anchorIndex = anchorIndex,
                 scrollIndex = scrollIndex,
-                scrollOffset = scrollOffset
+                scrollOffset = scrollOffset,
             )
         }
     }
-    
+
     /**
      * Toggle l'affichage des commentaires
      */
@@ -212,15 +220,16 @@ class ContentUseCase(
         val currentState = stateManager.state.value
         val isVisible = currentState.content.showCommentaries
         val newPosition: Float
-        
+
         if (isVisible) {
             // Cacher
             val prev = currentState.layout.contentSplitState.positionPercentage
             stateManager.updateLayout {
                 copy(
-                    previousPositions = previousPositions.copy(
-                        content = prev
-                    )
+                    previousPositions =
+                        previousPositions.copy(
+                            content = prev,
+                        ),
                 )
             }
             // Fully expand the main content when comments are hidden
@@ -231,14 +240,14 @@ class ContentUseCase(
             newPosition = currentState.layout.previousPositions.content
             currentState.layout.contentSplitState.positionPercentage = newPosition
         }
-        
+
         stateManager.updateContent {
             copy(showCommentaries = !isVisible, showSources = if (!isVisible) false else showSources)
         }
-        
+
         return !isVisible
     }
-    
+
     fun toggleSources(): Boolean {
         val currentState = stateManager.state.value
         val isVisible = currentState.content.showSources
@@ -248,9 +257,10 @@ class ContentUseCase(
             val prev = currentState.layout.contentSplitState.positionPercentage
             stateManager.updateLayout {
                 copy(
-                    previousPositions = previousPositions.copy(
-                        sources = prev
-                    )
+                    previousPositions =
+                        previousPositions.copy(
+                            sources = prev,
+                        ),
                 )
             }
             newPosition = 1f
@@ -263,13 +273,13 @@ class ContentUseCase(
         stateManager.updateContent {
             copy(
                 showSources = !isVisible,
-                showCommentaries = if (!isVisible) false else showCommentaries
+                showCommentaries = if (!isVisible) false else showCommentaries,
             )
         }
 
         return !isVisible
     }
-    
+
     /**
      * Toggle l'affichage des liens/targum
      */
@@ -277,15 +287,16 @@ class ContentUseCase(
         val currentState = stateManager.state.value
         val isVisible = currentState.content.showTargum
         val newPosition: Float
-        
+
         if (isVisible) {
             // Cacher: d'abord sauvegarder la position actuelle, puis réduire
             val prev = currentState.layout.targumSplitState.positionPercentage
             stateManager.updateLayout {
                 copy(
-                    previousPositions = previousPositions.copy(
-                        links = prev
-                    )
+                    previousPositions =
+                        previousPositions.copy(
+                            links = prev,
+                        ),
                 )
             }
             // Fully expand the main content when links pane is hidden
@@ -296,14 +307,14 @@ class ContentUseCase(
             newPosition = currentState.layout.previousPositions.links
             currentState.layout.targumSplitState.positionPercentage = newPosition
         }
-        
+
         stateManager.updateContent {
             copy(showTargum = !isVisible)
         }
-        
+
         return !isVisible
     }
-    
+
     /**
      * Met à jour les positions de scroll des paragraphes et chapitres
      */
@@ -312,19 +323,19 @@ class ContentUseCase(
             copy(paragraphScrollPosition = position)
         }
     }
-    
+
     fun updateChapterScrollPosition(position: Int) {
         stateManager.updateContent {
             copy(chapterScrollPosition = position)
         }
     }
-    
+
     fun selectChapter(index: Int) {
         stateManager.updateContent {
             copy(selectedChapter = index)
         }
     }
-    
+
     /**
      * Réinitialise les positions de scroll lors du changement de livre
      */
@@ -336,7 +347,7 @@ class ContentUseCase(
                 anchorId = -1L,
                 anchorIndex = 0,
                 paragraphScrollPosition = 0,
-                chapterScrollPosition = 0
+                chapterScrollPosition = 0,
             )
         }
     }

@@ -46,8 +46,8 @@ import org.jetbrains.jewel.ui.component.OutlinedSplitButton
 import org.jetbrains.jewel.ui.component.SegmentedControl
 import org.jetbrains.jewel.ui.component.SegmentedControlButtonData
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.component.styling.MenuStyle
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.jewel.ui.theme.segmentedControlButtonStyle
 import seforimapp.hebrewcalendar.generated.resources.Res
@@ -92,62 +92,67 @@ fun HebrewCalendarPicker(
     }
     var selectedDate by remember(initialDate) { mutableStateOf(initialDate) }
 
-    val hebrewDateFormatter = remember {
-        HebrewDateFormatter().apply {
-            setHebrewFormat(true)
-            setUseGershGershayim(false)
+    val hebrewDateFormatter =
+        remember {
+            HebrewDateFormatter().apply {
+                setHebrewFormat(true)
+                setUseGershGershayim(false)
+            }
         }
-    }
     val hebrewLocale = remember { Locale.forLanguageTag("he") }
-    val monthTitleFormatter = remember {
-        DateTimeFormatter.ofPattern("LLLL yyyy", hebrewLocale)
-    }
-    val weekDays = remember {
-        listOf(
-            DayOfWeek.SUNDAY,
-            DayOfWeek.MONDAY,
-            DayOfWeek.TUESDAY,
-            DayOfWeek.WEDNESDAY,
-            DayOfWeek.THURSDAY,
-            DayOfWeek.FRIDAY,
-            DayOfWeek.SATURDAY,
-        )
-    }
+    val monthTitleFormatter =
+        remember {
+            DateTimeFormatter.ofPattern("LLLL yyyy", hebrewLocale)
+        }
+    val weekDays =
+        remember {
+            listOf(
+                DayOfWeek.SUNDAY,
+                DayOfWeek.MONDAY,
+                DayOfWeek.TUESDAY,
+                DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY,
+                DayOfWeek.FRIDAY,
+                DayOfWeek.SATURDAY,
+            )
+        }
 
     val density = LocalDensity.current
-    val cellSize = remember(density) {
-        with(density) {
-            val widthPx = CALENDAR_MENU_WIDTH.toPx()
-            val spacingPx = CALENDAR_GRID_SPACING.toPx()
-            val minCellPx = 28.dp.toPx()
-            val cellPx = ((widthPx - (spacingPx * 6f)) / 7f).coerceAtLeast(minCellPx)
-            cellPx.toDp()
+    val cellSize =
+        remember(density) {
+            with(density) {
+                val widthPx = CALENDAR_MENU_WIDTH.toPx()
+                val spacingPx = CALENDAR_GRID_SPACING.toPx()
+                val minCellPx = 28.dp.toPx()
+                val cellPx = ((widthPx - (spacingPx * 6f)) / 7f).coerceAtLeast(minCellPx)
+                cellPx.toDp()
+            }
         }
-    }
 
     Column(
         modifier = modifier.width(CALENDAR_MENU_WIDTH),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         SegmentedControl(
-            buttons = listOf(
-                SegmentedControlButtonData(
-                    selected = calendarMode == CalendarMode.HEBREW,
-                    content = { Text(text = stringResource(Res.string.hebrewcalendar_mode_hebrew)) },
-                    onSelect = {
-                        calendarMode = CalendarMode.HEBREW
-                        displayedHebrewMonth = hebrewYearMonthFromLocalDate(selectedDate)
-                    },
+            buttons =
+                listOf(
+                    SegmentedControlButtonData(
+                        selected = calendarMode == CalendarMode.HEBREW,
+                        content = { Text(text = stringResource(Res.string.hebrewcalendar_mode_hebrew)) },
+                        onSelect = {
+                            calendarMode = CalendarMode.HEBREW
+                            displayedHebrewMonth = hebrewYearMonthFromLocalDate(selectedDate)
+                        },
+                    ),
+                    SegmentedControlButtonData(
+                        selected = calendarMode == CalendarMode.GREGORIAN,
+                        content = { Text(text = stringResource(Res.string.hebrewcalendar_mode_gregorian)) },
+                        onSelect = {
+                            calendarMode = CalendarMode.GREGORIAN
+                            displayedMonth = YearMonth.from(selectedDate)
+                        },
+                    ),
                 ),
-                SegmentedControlButtonData(
-                    selected = calendarMode == CalendarMode.GREGORIAN,
-                    content = { Text(text = stringResource(Res.string.hebrewcalendar_mode_gregorian)) },
-                    onSelect = {
-                        calendarMode = CalendarMode.GREGORIAN
-                        displayedMonth = YearMonth.from(selectedDate)
-                    },
-                ),
-            ),
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
 
@@ -171,18 +176,20 @@ fun HebrewCalendarPicker(
             }
             val monthShape = RoundedCornerShape(8.dp)
             Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .background(JewelTheme.globalColors.toolwindowBackground, monthShape)
-                    .border(1.dp, JewelTheme.globalColors.borders.disabled, monthShape)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .background(JewelTheme.globalColors.toolwindowBackground, monthShape)
+                        .border(1.dp, JewelTheme.globalColors.borders.disabled, monthShape)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = when (calendarMode) {
-                        CalendarMode.GREGORIAN -> displayedMonth.format(monthTitleFormatter)
-                        CalendarMode.HEBREW -> formatHebrewMonthTitle(displayedHebrewMonth, hebrewDateFormatter)
-                    },
+                    text =
+                        when (calendarMode) {
+                            CalendarMode.GREGORIAN -> displayedMonth.format(monthTitleFormatter)
+                            CalendarMode.HEBREW -> formatHebrewMonthTitle(displayedHebrewMonth, hebrewDateFormatter)
+                        },
                     textAlign = TextAlign.Center,
                     style = JewelTheme.defaultTextStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
                 )
@@ -205,11 +212,12 @@ fun HebrewCalendarPicker(
         val weekHeaderShape = RoundedCornerShape(8.dp)
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(JewelTheme.globalColors.toolwindowBackground, weekHeaderShape)
-                    .border(1.dp, JewelTheme.globalColors.borders.disabled, weekHeaderShape)
-                    .padding(vertical = 6.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .background(JewelTheme.globalColors.toolwindowBackground, weekHeaderShape)
+                        .border(1.dp, JewelTheme.globalColors.borders.disabled, weekHeaderShape)
+                        .padding(vertical = 6.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -232,21 +240,23 @@ fun HebrewCalendarPicker(
             }
 
             when (calendarMode) {
-                CalendarMode.GREGORIAN -> MonthGrid(
-                    displayedMonth = displayedMonth,
-                    selectedDate = selectedDate,
-                    onDateSelected = onSelectDate,
-                    cellSize = cellSize,
-                    spacing = CALENDAR_GRID_SPACING,
-                )
-                CalendarMode.HEBREW -> HebrewMonthGrid(
-                    displayedMonth = displayedHebrewMonth,
-                    selectedDate = selectedDate,
-                    onDateSelected = onSelectDate,
-                    formatter = hebrewDateFormatter,
-                    cellSize = cellSize,
-                    spacing = CALENDAR_GRID_SPACING,
-                )
+                CalendarMode.GREGORIAN ->
+                    MonthGrid(
+                        displayedMonth = displayedMonth,
+                        selectedDate = selectedDate,
+                        onDateSelected = onSelectDate,
+                        cellSize = cellSize,
+                        spacing = CALENDAR_GRID_SPACING,
+                    )
+                CalendarMode.HEBREW ->
+                    HebrewMonthGrid(
+                        displayedMonth = displayedHebrewMonth,
+                        selectedDate = selectedDate,
+                        onDateSelected = onSelectDate,
+                        formatter = hebrewDateFormatter,
+                        cellSize = cellSize,
+                        spacing = CALENDAR_GRID_SPACING,
+                    )
             }
         }
     }
@@ -340,38 +350,42 @@ private fun MonthGrid(
                     val isSelected = day == selectedDate
                     val isHovered = hoveredDate == day
                     val isToday = day == todayDate
-                    val bgBrush: Brush = when {
-                        isSelected -> selectedBg
-                        isHovered -> hoverBg
-                        else -> SolidColor(Color.Transparent)
-                    }
+                    val bgBrush: Brush =
+                        when {
+                            isSelected -> selectedBg
+                            isHovered -> hoverBg
+                            else -> SolidColor(Color.Transparent)
+                        }
                     val textColor = if (isSelected) selectedTextColor else normalTextColor
                     val todayIndicatorColor = if (isSelected) selectedTextColor else JewelTheme.globalColors.text.info
-                    val border = when {
-                        isSelected -> JewelTheme.globalColors.borders.focused
-                        isHovered -> JewelTheme.globalColors.borders.normal
-                        else -> Color.Transparent
-                    }
+                    val border =
+                        when {
+                            isSelected -> JewelTheme.globalColors.borders.focused
+                            isHovered -> JewelTheme.globalColors.borders.normal
+                            else -> Color.Transparent
+                        }
 
                     Box(
-                        modifier = Modifier
-                            .size(cellSize)
-                            .border(1.dp, border, cellShape)
-                            .background(bgBrush, cellShape)
-                            .onPointerEvent(PointerEventType.Enter) { hoveredDate = day }
-                            .onPointerEvent(PointerEventType.Exit) { if (hoveredDate == day) hoveredDate = null }
-                            .clickable { onDateSelected(day) }
-                            .padding(4.dp),
+                        modifier =
+                            Modifier
+                                .size(cellSize)
+                                .border(1.dp, border, cellShape)
+                                .background(bgBrush, cellShape)
+                                .onPointerEvent(PointerEventType.Enter) { hoveredDate = day }
+                                .onPointerEvent(PointerEventType.Exit) { if (hoveredDate == day) hoveredDate = null }
+                                .clickable { onDateSelected(day) }
+                                .padding(4.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(text = day.dayOfMonth.toString(), color = textColor)
                         if (isToday) {
                             Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = 1.dp)
-                                    .size(TODAY_INDICATOR_SIZE)
-                                    .background(todayIndicatorColor, CircleShape),
+                                modifier =
+                                    Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(bottom = 1.dp)
+                                        .size(TODAY_INDICATOR_SIZE)
+                                        .background(todayIndicatorColor, CircleShape),
                             )
                         }
                     }
@@ -415,38 +429,42 @@ private fun HebrewMonthGrid(
                     val isSelected = day.localDate == selectedDate
                     val isHovered = hoveredDate == day.localDate
                     val isToday = day.localDate == todayDate
-                    val bgBrush: Brush = when {
-                        isSelected -> selectedBg
-                        isHovered -> hoverBg
-                        else -> SolidColor(Color.Transparent)
-                    }
+                    val bgBrush: Brush =
+                        when {
+                            isSelected -> selectedBg
+                            isHovered -> hoverBg
+                            else -> SolidColor(Color.Transparent)
+                        }
                     val textColor = if (isSelected) selectedTextColor else normalTextColor
                     val todayIndicatorColor = if (isSelected) selectedTextColor else JewelTheme.globalColors.text.info
-                    val border = when {
-                        isSelected -> JewelTheme.globalColors.borders.focused
-                        isHovered -> JewelTheme.globalColors.borders.normal
-                        else -> Color.Transparent
-                    }
+                    val border =
+                        when {
+                            isSelected -> JewelTheme.globalColors.borders.focused
+                            isHovered -> JewelTheme.globalColors.borders.normal
+                            else -> Color.Transparent
+                        }
 
                     Box(
-                        modifier = Modifier
-                            .size(cellSize)
-                            .border(1.dp, border, cellShape)
-                            .background(bgBrush, cellShape)
-                            .onPointerEvent(PointerEventType.Enter) { hoveredDate = day.localDate }
-                            .onPointerEvent(PointerEventType.Exit) { if (hoveredDate == day.localDate) hoveredDate = null }
-                            .clickable { onDateSelected(day.localDate) }
-                            .padding(4.dp),
+                        modifier =
+                            Modifier
+                                .size(cellSize)
+                                .border(1.dp, border, cellShape)
+                                .background(bgBrush, cellShape)
+                                .onPointerEvent(PointerEventType.Enter) { hoveredDate = day.localDate }
+                                .onPointerEvent(PointerEventType.Exit) { if (hoveredDate == day.localDate) hoveredDate = null }
+                                .clickable { onDateSelected(day.localDate) }
+                                .padding(4.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(text = day.label, color = textColor)
                         if (isToday) {
                             Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = 1.dp)
-                                    .size(TODAY_INDICATOR_SIZE)
-                                    .background(todayIndicatorColor, CircleShape),
+                                modifier =
+                                    Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(bottom = 1.dp)
+                                        .size(TODAY_INDICATOR_SIZE)
+                                        .background(todayIndicatorColor, CircleShape),
                             )
                         }
                     }

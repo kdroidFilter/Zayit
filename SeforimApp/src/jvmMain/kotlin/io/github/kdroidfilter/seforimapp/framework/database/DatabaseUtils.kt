@@ -27,13 +27,14 @@ private val cachedDatabasePath: String by lazy {
 
     // 2) Try AppSettings (but fix if it points to lexical.db which is wrong)
     val rawSettingsPath = AppSettings.getDatabasePath()
-    val settingsPath = if (rawSettingsPath?.endsWith("lexical.db", ignoreCase = true) == true) {
-        // Fix incorrect path by clearing it
-        AppSettings.setDatabasePath(null)
-        null
-    } else {
-        rawSettingsPath
-    }
+    val settingsPath =
+        if (rawSettingsPath?.endsWith("lexical.db", ignoreCase = true) == true) {
+            // Fix incorrect path by clearing it
+            AppSettings.setDatabasePath(null)
+            null
+        } else {
+            rawSettingsPath
+        }
 
     // 3) Fallback to default location
     val defaultDbPath = File(FileKit.databasesDir.path, DEFAULT_DB_NAME).absolutePath
@@ -58,7 +59,6 @@ private val cachedDatabasePath: String by lazy {
  * The path is computed once and cached for the entire runtime (thread-safe).
  */
 fun getDatabasePath(): String = cachedDatabasePath
-
 
 /**
  * Singleton holder for the precomputed catalog and its extracted data.
@@ -120,8 +120,8 @@ object CatalogCache {
     /**
      * Loads the precomputed catalog from the catalog.pb file next to the database.
      */
-    private fun loadCatalog(): PrecomputedCatalog? {
-        return try {
+    private fun loadCatalog(): PrecomputedCatalog? =
+        try {
             val dbPath = getDatabasePath()
             val catalog = CatalogLoader.loadCatalog(dbPath)
 
@@ -136,7 +136,6 @@ object CatalogCache {
             errorln { "[CatalogCache] Failed to load precomputed catalog: ${e.message}" }
             null
         }
-    }
 
     /**
      * Forces a reload of the catalog (useful after regeneration).

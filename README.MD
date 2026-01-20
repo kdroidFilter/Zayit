@@ -165,6 +165,40 @@ Find the origin of a passage at a glance.
   <img src="art/CLIPBOARD-DEMO-LIGHT.png" alt="Copy to clipboard" width="100%">
 </picture>
 
+## Contributing
+
+Zayit welcomes contributions from the community: bug fixes and features listed in the roadmap.
+
+**Note:** PRs introducing new features not listed in the roadmap will likely be declined.
+
+### Getting started
+
+Clone the repository with submodules:
+
+```bash
+git clone --recurse-submodules https://github.com/kdroidFilter/Zayit.git
+```
+
+**Important:** You must use JetBrains Runtime 25 (JBR 25) as your `JAVA_HOME`.
+
+### Roadmap 0.5.0
+
+- Navigation history
+- Personal notes on text (Google Docs-like annotations)
+- Fix P0 and P1 issues
+- New home page widgets (time since destruction of Beit HaMikdash, history)
+- Chrome-like bookmarks bar
+- Automatic updates (Chrome-like): silent download + installation on app close
+
+### Before submitting a PR
+
+Run the tests and linter:
+
+```bash
+./gradlew test
+./gradlew ktlintCheck detekt
+```
+
 ## Thanks
 Thanks to the projects and libraries that make Zayit possible: JetBrains (Kotlin, Compose Desktop, Jewel),
 Apache (Lucene), and all open source authors.

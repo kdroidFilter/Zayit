@@ -36,6 +36,10 @@ ktlint_compose_unstable-collections = enabled
 ktlint_compose_vm-forwarding-check = enabled
 ktlint_compose_vm-injection-check = disabled
 
+# Exclude generated code from ktlint
+[**/build/**/*.{kt,kts}]
+ktlint = disabled
+
 [*.md]
 trim_trailing_whitespace = false
 

@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,6 +79,7 @@ private fun ProfileSettingsView(
     regionState: RegionConfigState,
     onRegionEvent: (RegionConfigEvents) -> Unit,
 ) {
+    val currentOnUserProfileEvent by rememberUpdatedState(onUserProfileEvent)
     VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier =
@@ -100,7 +102,7 @@ private fun ProfileSettingsView(
                         LaunchedEffect(firstNameState.text) {
                             val value = firstNameState.text.toString()
                             if (value != userProfileState.firstName) {
-                                onUserProfileEvent(UserProfileEvents.FirstNameChanged(value))
+                                currentOnUserProfileEvent(UserProfileEvents.FirstNameChanged(value))
                             }
                             AppSettings.setUserFirstName(value.trim())
                         }
@@ -118,7 +120,7 @@ private fun ProfileSettingsView(
                         LaunchedEffect(lastNameState.text) {
                             val value = lastNameState.text.toString()
                             if (value != userProfileState.lastName) {
-                                onUserProfileEvent(UserProfileEvents.LastNameChanged(value))
+                                currentOnUserProfileEvent(UserProfileEvents.LastNameChanged(value))
                             }
                             AppSettings.setUserLastName(value.trim())
                         }

@@ -231,9 +231,9 @@ private sealed class ZmanimGridItem {
 
 @Composable
 fun HomeCelestialWidgets(
+    locationState: HomeCelestialWidgetsState,
     modifier: Modifier = Modifier,
     userCommunityCode: String? = null,
-    locationState: HomeCelestialWidgetsState,
 ) {
     val userPlace = locationState.userPlace
     val userCityLabel = locationState.userCityLabel
@@ -596,8 +596,8 @@ fun HomeCelestialWidgets(
                                 locationOverride = effectiveLocation,
                                 targetTime = earthWidgetTargetTime,
                                 targetDate = selectedDate,
-                                onDateSelected = onDateSelected,
-                                onLocationSelected = onLocationSelectedHandler,
+                                onDateSelect = onDateSelected,
+                                onLocationSelect = onLocationSelectedHandler,
                                 allowLocationSelection = true,
                                 containerBackground = Color.Transparent,
                                 contentPadding = 0.dp,
@@ -1122,8 +1122,8 @@ private fun ZmanimCardsGrid(
     horizontalSpacing: Dp,
     verticalSpacing: Dp,
     selectedTimeMillis: Long?,
-    compactMode: Boolean = false,
     modifier: Modifier = Modifier,
+    compactMode: Boolean = false,
 ) {
     val safeColumns = columns.coerceAtLeast(1)
     Column(
@@ -1267,8 +1267,8 @@ private fun ZmanimCardsGrid(
 private fun DayMomentCard(
     data: DayMomentCardData,
     isSelected: Boolean,
-    compactMode: Boolean = false,
     modifier: Modifier = Modifier,
+    compactMode: Boolean = false,
     onClick: (() -> Unit)? = null,
 ) {
     val isDark = JewelTheme.isDark
@@ -1404,10 +1404,10 @@ private fun DayMomentCard(
 @Composable
 private fun AdaptiveCardTitle(
     text: String,
-    abbreviation: String? = null,
     color: Color,
-    compactMode: Boolean = false,
     modifier: Modifier = Modifier,
+    abbreviation: String? = null,
+    compactMode: Boolean = false,
 ) {
     AdaptiveSingleLineText(
         text = text,
@@ -1424,12 +1424,12 @@ private fun AdaptiveCardTitle(
 @Composable
 private fun AdaptiveSingleLineText(
     text: String,
-    abbreviation: String? = null,
     color: Color,
     fontSize: TextUnit,
     fontWeight: FontWeight,
     textAlign: TextAlign,
     modifier: Modifier = Modifier,
+    abbreviation: String? = null,
 ) {
     val resolvedAbbrev = abbreviation?.takeIf { it.isNotBlank() }
     BoxWithConstraints(modifier = modifier) {
@@ -1474,21 +1474,21 @@ private fun AdaptiveSingleLineText(
 @Composable
 private fun DualTimeCard(
     title: StringResource,
-    titleAbbrev: StringResource? = null,
     leftLabel: StringResource,
-    leftLabelAbbrev: StringResource? = null,
     leftTime: String,
     leftTimeAvailable: Boolean,
     leftSelected: Boolean,
     rightLabel: StringResource,
-    rightLabelAbbrev: StringResource? = null,
     rightTime: String,
     rightTimeAvailable: Boolean,
     rightSelected: Boolean,
+    modifier: Modifier = Modifier,
+    titleAbbrev: StringResource? = null,
+    leftLabelAbbrev: StringResource? = null,
+    rightLabelAbbrev: StringResource? = null,
     onLeftClick: (() -> Unit)? = null,
     onRightClick: (() -> Unit)? = null,
     compactMode: Boolean = false,
-    modifier: Modifier = Modifier,
 ) {
     DualTimeCardContent(
         title = stringResource(title),
@@ -1513,18 +1513,18 @@ private fun DualTimeCard(
 @Composable
 private fun DualTimeCardContent(
     title: String,
-    titleAbbrev: String? = null,
     leftLabel: String,
-    leftLabelAbbrev: String? = null,
     leftTime: String,
     leftTimeAvailable: Boolean,
     leftSelected: Boolean,
     rightLabel: String,
-    rightLabelAbbrev: String? = null,
     rightTime: String,
     rightTimeAvailable: Boolean,
     rightSelected: Boolean,
     modifier: Modifier = Modifier,
+    titleAbbrev: String? = null,
+    leftLabelAbbrev: String? = null,
+    rightLabelAbbrev: String? = null,
     onLeftClick: (() -> Unit)? = null,
     onRightClick: (() -> Unit)? = null,
     backgroundOverride: Brush? = null,
@@ -1761,8 +1761,8 @@ private fun DualTimeCardContent(
 private fun TimeValue(
     time: String,
     color: Color,
-    compactMode: Boolean = false,
     modifier: Modifier = Modifier,
+    compactMode: Boolean = false,
 ) {
     val primaryFontSize = if (compactMode) 18.sp else 22.sp
     val secondaryFontSize = if (compactMode) 17.sp else 21.sp
@@ -1805,8 +1805,8 @@ private fun TimeValue(
 private fun TimeValueLarge(
     time: String,
     color: Color,
-    compactMode: Boolean = false,
     modifier: Modifier = Modifier,
+    compactMode: Boolean = false,
 ) {
     val primaryFontSize = if (compactMode) 24.sp else 30.sp
     val secondaryFontSize = if (compactMode) 22.sp else 28.sp

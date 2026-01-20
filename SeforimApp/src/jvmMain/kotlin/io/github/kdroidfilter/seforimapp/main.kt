@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:filename")
+
 package io.github.kdroidfilter.seforimapp
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -270,18 +272,18 @@ fun main() {
                             if (keyEvent.type == KeyEventType.KeyDown) {
                                 val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
                                 if (isCtrlOrCmd && keyEvent.key == Key.T) {
-                                    tabsVm.onEvent(TabsEvents.onAdd)
+                                    tabsVm.onEvent(TabsEvents.OnAdd)
                                     true
                                 } else if (isCtrlOrCmd && keyEvent.key == Key.W) {
                                     // Close current tab with Ctrl/Cmd + W
-                                    tabsVm.onEvent(TabsEvents.onClose(selectedIndex))
+                                    tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))
                                     true
                                 } else if (isCtrlOrCmd && keyEvent.key == Key.Tab) {
                                     val count = tabs.size
                                     if (count > 0) {
                                         val direction = if (keyEvent.isShiftPressed) -1 else 1
                                         val newIndex = (selectedIndex + direction + count) % count
-                                        tabsVm.onEvent(TabsEvents.onSelected(newIndex))
+                                        tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
                                     }
                                     true
                                 } else if ((keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
@@ -395,7 +397,7 @@ fun main() {
                                                 when {
                                                     // Ctrl/Cmd + W => close current tab
                                                     isCtrlOrCmd && keyEvent.key == Key.W -> {
-                                                        tabsVm.onEvent(TabsEvents.onClose(selectedIndex))
+                                                        tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))
                                                         true
                                                     }
                                                     // Ctrl/Cmd + Shift + Tab => previous tab
@@ -403,7 +405,7 @@ fun main() {
                                                         val count = tabs.size
                                                         if (count > 0) {
                                                             val newIndex = (selectedIndex - 1 + count) % count
-                                                            tabsVm.onEvent(TabsEvents.onSelected(newIndex))
+                                                            tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
                                                         }
                                                         true
                                                     }
@@ -412,13 +414,13 @@ fun main() {
                                                         val count = tabs.size
                                                         if (count > 0) {
                                                             val newIndex = (selectedIndex + 1) % count
-                                                            tabsVm.onEvent(TabsEvents.onSelected(newIndex))
+                                                            tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
                                                         }
                                                         true
                                                     }
                                                     // Ctrl/Cmd + T => new tab
                                                     isCtrlOrCmd && keyEvent.key == Key.T -> {
-                                                        tabsVm.onEvent(TabsEvents.onAdd)
+                                                        tabsVm.onEvent(TabsEvents.OnAdd)
                                                         true
                                                     }
                                                     // Alt + Home (Windows) or Cmd + Shift + H (macOS) => go Home on current tab

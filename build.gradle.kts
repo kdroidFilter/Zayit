@@ -18,23 +18,28 @@ plugins {
 }
 
 allprojects {
-    apply(plugin = "org.jlleitschuh.gradle.ktlint")
+    // Exclude jewel module from ktlint (JetBrains fork with its own style)
+    if (project.name != "jewel") {
+        apply(plugin = "org.jlleitschuh.gradle.ktlint")
+    }
     // TODO: Activer detekt quand la version 2.0.0 sera disponible
     // apply(plugin = "io.gitlab.arturbosch.detekt")
 
-    ktlint {
-        version.set("1.5.0")
-        android.set(true)
-        outputToConsole.set(true)
-        ignoreFailures.set(false)
-        filter {
-            exclude("**/generated/**")
-            exclude("**/build/**")
+    if (project.name != "jewel") {
+        ktlint {
+            version.set("1.5.0")
+            android.set(true)
+            outputToConsole.set(true)
+            ignoreFailures.set(false)
+            filter {
+                exclude("**/generated/**")
+                exclude("**/build/**")
+            }
         }
-    }
 
-    dependencies {
-        add("ktlintRuleset", "io.nlopez.compose.rules:ktlint:0.5.3")
+        dependencies {
+            add("ktlintRuleset", "io.nlopez.compose.rules:ktlint:0.5.3")
+        }
     }
 
     // TODO: Décommenter quand detekt 2.0.0 sera disponible

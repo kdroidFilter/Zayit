@@ -7,7 +7,9 @@ package io.github.kdroidfilter.seforimapp.core.presentation.text
  * so we can highlight the right character ranges.
  */
 
-// Returns the string without nikud+teamim and an index map from plain index -> original index
+/**
+ * Returns the string without nikud+teamim and an index map from plain index -> original index.
+ */
 internal fun stripDiacriticsWithMap(src: String): Pair<String, IntArray> {
     val nikudOrTeamim: (Char) -> Boolean = { c ->
         (c.code in 0x0591..0x05AF) ||

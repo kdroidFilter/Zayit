@@ -166,8 +166,8 @@ internal fun computeJulianDayUtc(date: Date): Double {
         month += 12
     }
 
-    val A = year / 100
-    val B = 2 - A + A / 4
+    val a = year / 100
+    val b = 2 - a + a / 4
 
     val dayFraction =
         (
@@ -181,7 +181,7 @@ internal fun computeJulianDayUtc(date: Date): Double {
         floor(30.6001 * (month + 1)) +
         day +
         dayFraction +
-        B -
+        b -
         1524.5
 }
 

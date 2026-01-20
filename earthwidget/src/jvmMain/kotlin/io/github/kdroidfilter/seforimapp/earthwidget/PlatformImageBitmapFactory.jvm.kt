@@ -6,14 +6,11 @@ import androidx.compose.ui.graphics.asSkiaBitmap
 import org.jetbrains.skia.Bitmap
 
 /**
- * JVM/Desktop implementation using Skia graphics library.
+ * Creates an ImageBitmap from ARGB pixel data.
  *
+ * JVM/Desktop implementation using Skia graphics library.
  * Skia uses BGRA byte order (native little-endian), so we must
  * convert from ARGB integer format during bitmap creation.
- */
-
-/**
- * Creates an ImageBitmap from ARGB pixel data.
  *
  * Converts ARGB integers to BGRA byte array for Skia.
  * Each pixel is stored as 4 bytes: Blue, Green, Red, Alpha.

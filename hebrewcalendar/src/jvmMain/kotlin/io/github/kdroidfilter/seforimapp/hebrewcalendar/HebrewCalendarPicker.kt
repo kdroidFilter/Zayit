@@ -74,16 +74,16 @@ private val TODAY_INDICATOR_SIZE = 4.dp
  * date selection.
  *
  * @param initialDate The initially selected date
- * @param onDateSelected Callback invoked when a date is selected
+ * @param onDateSelect Callback invoked when a date is selected
  * @param initialMode The initial calendar mode (Hebrew or Gregorian)
  * @param modifier Modifier for styling
  */
 @Composable
 fun HebrewCalendarPicker(
     initialDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit,
-    initialMode: CalendarMode = CalendarMode.HEBREW,
+    onDateSelect: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
+    initialMode: CalendarMode = CalendarMode.HEBREW,
 ) {
     var calendarMode by remember { mutableStateOf(initialMode) }
     var displayedMonth by remember(initialDate) { mutableStateOf(YearMonth.from(initialDate)) }
@@ -236,7 +236,7 @@ fun HebrewCalendarPicker(
 
             val onSelectDate: (LocalDate) -> Unit = { date ->
                 selectedDate = date
-                onDateSelected(date)
+                onDateSelect(date)
             }
 
             when (calendarMode) {
@@ -244,7 +244,7 @@ fun HebrewCalendarPicker(
                     MonthGrid(
                         displayedMonth = displayedMonth,
                         selectedDate = selectedDate,
-                        onDateSelected = onSelectDate,
+                        onDateSelect = onSelectDate,
                         cellSize = cellSize,
                         spacing = CALENDAR_GRID_SPACING,
                     )
@@ -252,7 +252,7 @@ fun HebrewCalendarPicker(
                     HebrewMonthGrid(
                         displayedMonth = displayedHebrewMonth,
                         selectedDate = selectedDate,
-                        onDateSelected = onSelectDate,
+                        onDateSelect = onSelectDate,
                         formatter = hebrewDateFormatter,
                         cellSize = cellSize,
                         spacing = CALENDAR_GRID_SPACING,
@@ -267,7 +267,7 @@ fun HebrewCalendarPicker(
  *
  * @param label The label to display on the button
  * @param selectedDate The currently selected date
- * @param onDateSelected Callback invoked when a date is selected
+ * @param onDateSelect Callback invoked when a date is selected
  * @param initialMode The initial calendar mode when popup opens
  * @param menuStyle The menu styling used for the popup content
  * @param modifier Modifier for styling
@@ -276,10 +276,10 @@ fun HebrewCalendarPicker(
 fun DateSelectionSplitButton(
     label: String,
     selectedDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit,
+    onDateSelect: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
     initialMode: CalendarMode = CalendarMode.HEBREW,
     menuStyle: MenuStyle = JewelTheme.menuStyle,
-    modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
         OutlinedSplitButton(
@@ -304,8 +304,8 @@ fun DateSelectionSplitButton(
                     IntUiTheme(isDark = menuStyle.isDark) {
                         HebrewCalendarPicker(
                             initialDate = selectedDate,
-                            onDateSelected = { date ->
-                                onDateSelected(date)
+                            onDateSelect = { date ->
+                                onDateSelect(date)
                                 menuController.closeAll(inputModeManager.inputMode, true)
                             },
                             initialMode = initialMode,
@@ -322,7 +322,7 @@ fun DateSelectionSplitButton(
 private fun MonthGrid(
     displayedMonth: YearMonth,
     selectedDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit,
+    onDateSelect: (LocalDate) -> Unit,
     cellSize: Dp,
     spacing: Dp,
 ) {
@@ -373,7 +373,7 @@ private fun MonthGrid(
                                 .background(bgBrush, cellShape)
                                 .onPointerEvent(PointerEventType.Enter) { hoveredDate = day }
                                 .onPointerEvent(PointerEventType.Exit) { if (hoveredDate == day) hoveredDate = null }
-                                .clickable { onDateSelected(day) }
+                                .clickable { onDateSelect(day) }
                                 .padding(4.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -400,7 +400,7 @@ private fun MonthGrid(
 private fun HebrewMonthGrid(
     displayedMonth: HebrewYearMonth,
     selectedDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit,
+    onDateSelect: (LocalDate) -> Unit,
     formatter: HebrewDateFormatter,
     cellSize: Dp,
     spacing: Dp,
@@ -452,7 +452,7 @@ private fun HebrewMonthGrid(
                                 .background(bgBrush, cellShape)
                                 .onPointerEvent(PointerEventType.Enter) { hoveredDate = day.localDate }
                                 .onPointerEvent(PointerEventType.Exit) { if (hoveredDate == day.localDate) hoveredDate = null }
-                                .clickable { onDateSelected(day.localDate) }
+                                .clickable { onDateSelect(day.localDate) }
                                 .padding(4.dp),
                         contentAlignment = Alignment.Center,
                     ) {

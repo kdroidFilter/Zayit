@@ -165,6 +165,68 @@
   <img src="art/CLIPBOARD-DEMO-LIGHT.png" alt="העתקה ללוח" width="100%">
 </picture>
 
+## תרומה לפרויקט
+
+זית מקבלת בברכה תרומות מהקהילה: תיקוני באגים ופיצ'רים הרשומים במפת הדרכים.
+
+**שימו לב:** בקשות משיכה (PR) עם פיצ'רים חדשים שאינם במפת הדרכים ככל הנראה יידחו.
+
+### תחילת העבודה
+
+שכפלו את המאגר עם תתי-המודולים:
+
+```bash
+git clone --recurse-submodules https://github.com/kdroidFilter/Zayit.git
+```
+
+**חשוב:** יש להשתמש ב-JetBrains Runtime 25 (JBR 25) כ-`JAVA_HOME`.
+
+### הנחיות ארכיטקטורה
+
+**מבנה הפרויקט:**
+- `SeforimApp/` — אפליקציית שולחן העבודה הראשית (Compose Multiplatform)
+- `SeforimLibrary/` — בנייה מורכבת: `core` (מודלים), `dao` (SQLDelight), `generator` (צינור נתונים, JVM בלבד)
+
+**הזרקת תלויות (Metro):**
+- גישה לגרף DI דרך `LocalAppGraph.current`
+- שימוש ב-`@AssistedInject` + `@AssistedFactory` עבור ViewModels
+
+**מוסכמות שמות:**
+- `*ViewModel` עבור ViewModels
+- `*View` עבור רכיבי UI
+- `*State` עבור מחלקות מצב UI
+- `*Event` עבור סוגי פעולות משתמש
+
+**מערכת הלשוניות:**
+- כל מסך חייב לדעת את ה-`tabId` שלו
+- שימוש ב-`remember(appGraph, tabId)` ליצירת ViewModels
+- שימוש ב-`TabStateManager` לשמירת מצב בטווח הלשונית
+
+**ערכות מקור:**
+- קוד משותף ב-`commonMain`
+- קוד ספציפי לפלטפורמה ב-`jvmMain`
+- סוגי פלטפורמה לא יחלחלו מ-`jvmMain` ל-`commonMain`
+
+לתיעוד מפורט, ראו `CLAUDE.md` ו-`TAB_SYSTEM_README.md`.
+
+### מפת דרכים 0.5.0
+
+- היסטוריית ניווט
+- הערות אישיות על הטקסט (בסגנון Google Docs)
+- תיקון באגים P0 ו-P1
+- ווידג'טים חדשים בדף הבית (זמן מחורבן בית המקדש, היסטוריה)
+- סרגל מועדפים בסגנון Chrome
+- עדכונים אוטומטיים (בסגנון Chrome): הורדה שקטה + התקנה בסגירת האפליקציה
+
+### לפני שליחת PR
+
+הריצו את הלינטר והבדיקות:
+
+```bash
+./gradlew ktlintCheck
+./gradlew :SeforimApp:jvmTest
+```
+
 ## תודות
 תודה לפרויקטים ולספריות שמאפשרים את זית: JetBrains (Kotlin, Compose Desktop, Jewel),
 Apache (Lucene), וכל מחברי הקוד הפתוח.

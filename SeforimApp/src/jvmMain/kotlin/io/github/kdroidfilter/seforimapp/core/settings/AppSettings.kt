@@ -145,10 +145,13 @@ object AppSettings {
     // Find-in-page state (scoped per tab, not persisted)
     private val findQueryFlowByTab = mutableMapOf<String, MutableStateFlow<String>>()
     private val findBarOpenFlowByTab = mutableMapOf<String, MutableStateFlow<Boolean>>()
+    private val findSmartModeByTab = mutableMapOf<String, MutableStateFlow<Boolean>>()
 
     private fun queryFlowFor(tabId: String): MutableStateFlow<String> = findQueryFlowByTab.getOrPut(tabId) { MutableStateFlow("") }
 
     private fun findOpenFlowFor(tabId: String): MutableStateFlow<Boolean> = findBarOpenFlowByTab.getOrPut(tabId) { MutableStateFlow(false) }
+
+    private fun smartModeFlowFor(tabId: String): MutableStateFlow<Boolean> = findSmartModeByTab.getOrPut(tabId) { MutableStateFlow(false) }
 
     fun findQueryFlow(tabId: String): StateFlow<String> = queryFlowFor(tabId).asStateFlow()
 
@@ -174,7 +177,19 @@ object AppSettings {
         flow.value = !flow.value
         if (!flow.value) {
             queryFlowFor(tabId).value = ""
+            smartModeFlowFor(tabId).value = false
         }
+    }
+
+    fun findSmartModeFlow(tabId: String): StateFlow<Boolean> = smartModeFlowFor(tabId).asStateFlow()
+
+    fun setFindSmartMode(tabId: String, enabled: Boolean) {
+        smartModeFlowFor(tabId).value = enabled
+    }
+
+    fun toggleFindSmartMode(tabId: String) {
+        val flow = smartModeFlowFor(tabId)
+        flow.value = !flow.value
     }
 
     fun getTextSize(): Float = settings[KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE]

@@ -380,6 +380,7 @@ fun BookContentView(
     // Find-in-page UI state (scoped per tab)
     val showFind by AppSettings.findBarOpenFlow(tabId).collectAsState()
     val persistedFindQuery by AppSettings.findQueryFlow(tabId).collectAsState("")
+    val smartModeEnabled by AppSettings.findSmartModeFlow(tabId).collectAsState()
     val findState = remember(tabId) { TextFieldState() }
     LaunchedEffect(persistedFindQuery) {
         val current = findState.text.toString()
@@ -387,6 +388,20 @@ fun BookContentView(
             findState.edit { replace(0, length, persistedFindQuery) }
         }
     }
+
+    // Smart mode: get highlight terms from search engine with dictionary expansion
+    val appGraph = io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph.current
+    val smartHighlightTerms by remember(smartModeEnabled, findState) {
+        derivedStateOf {
+            if (smartModeEnabled) {
+                val query = findState.text.toString()
+                if (query.length >= 2) {
+                    appGraph.searchEngine.buildHighlightTerms(query)
+                } else emptyList()
+            } else emptyList()
+        }
+    }
+
     var currentHitLineIndex by remember { mutableIntStateOf(-1) }
     var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
     var currentMatchStart by remember { mutableIntStateOf(-1) }
@@ -540,7 +555,8 @@ fun BookContentView(
                                     baseTextSize = textSize,
                                     lineHeight = lineHeight,
                                     boldScale = boldScaleForPlatform,
-                                    highlightQuery = findState.text.toString().takeIf { showFind },
+                                    highlightQuery = findState.text.toString().takeIf { showFind && !smartModeEnabled },
+                                    highlightTerms = smartHighlightTerms.takeIf { showFind && smartModeEnabled },
                                     currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
                                     annotatedCache = stableAnnotatedCache,
                                     showDiacritics = showDiacritics,
@@ -638,6 +654,8 @@ fun BookContentView(
                         onEnterNext = { navigateToMatch(true) },
                         onEnterPrev = { navigateToMatch(false) },
                         onClose = { AppSettings.closeFindBar(tabId) },
+                        smartModeEnabled = smartModeEnabled,
+                        onToggleSmartMode = { AppSettings.toggleFindSmartMode(tabId) },
                     )
                     LaunchedEffect(findState.text, showFind) {
                         val q = findState.text.toString()
@@ -747,6 +765,7 @@ private fun LineItem(
     lineHeight: Float = 1.5f,
     boldScale: Float = 1.0f,
     highlightQuery: String? = null,
+    highlightTerms: List<String>? = null,
     currentMatchStart: Int? = null,
     annotatedCache: StableAnnotatedCache? = null,
     showDiacritics: Boolean = true,
@@ -790,15 +809,27 @@ private fun LineItem(
         JewelTheme.globalColors.outlines.focused
             .copy(alpha = 0.42f)
     val displayText: AnnotatedString =
-        remember(annotated, highlightQuery, currentMatchStart, baseHl, currentHl) {
-            io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
-                annotated = annotated,
-                query = highlightQuery,
-                currentStart = currentMatchStart?.takeIf { it >= 0 },
-                currentLength = highlightQuery?.length,
-                baseColor = baseHl,
-                currentColor = currentHl,
-            )
+        remember(annotated, highlightQuery, highlightTerms, currentMatchStart, baseHl, currentHl) {
+            if (!highlightTerms.isNullOrEmpty()) {
+                // Smart mode: highlight multiple terms from dictionary expansion
+                io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithTerms(
+                    annotated = annotated,
+                    terms = highlightTerms,
+                    currentStart = currentMatchStart?.takeIf { it >= 0 },
+                    baseColor = baseHl,
+                    currentColor = currentHl,
+                )
+            } else {
+                // Normal mode: highlight single query
+                io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
+                    annotated = annotated,
+                    query = highlightQuery,
+                    currentStart = currentMatchStart?.takeIf { it >= 0 },
+                    currentLength = highlightQuery?.length,
+                    baseColor = baseHl,
+                    currentColor = currentHl,
+                )
+            }
         }
 
     // Get theme color in composable context

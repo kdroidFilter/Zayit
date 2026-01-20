@@ -1605,6 +1605,14 @@ class SearchResultViewModel(
                 )
             }
 
+            // Pre-configure find-in-page with the search query and smart mode enabled
+            val searchQuery = _uiState.value.query
+            if (searchQuery.length >= 2) {
+                AppSettings.setFindQuery(newTabId, searchQuery)
+                AppSettings.setFindSmartMode(newTabId, true)
+                AppSettings.openFindBar(newTabId)
+            }
+
             tabsViewModel.openTab(
                 TabsDestination.BookContent(
                     bookId = result.bookId,
@@ -1642,6 +1650,14 @@ class SearchResultViewModel(
                             isTocVisible = true,
                         ),
                 )
+            }
+
+            // Pre-configure find-in-page with the search query and smart mode enabled
+            val searchQuery = _uiState.value.query
+            if (searchQuery.length >= 2) {
+                AppSettings.setFindQuery(tabId, searchQuery)
+                AppSettings.setFindSmartMode(tabId, true)
+                AppSettings.openFindBar(tabId)
             }
 
             // Swap current tab destination to BookContent while preserving tabId

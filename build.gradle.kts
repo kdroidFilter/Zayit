@@ -50,4 +50,3 @@ allprojects {
     //     parallel = true
     // }
 }
-

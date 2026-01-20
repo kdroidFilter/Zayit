@@ -22,6 +22,8 @@ ktlint_standard_no-wildcard-imports = disabled
 # Compose rules configuration
 ktlint_compose_compositionlocal-allowlist = enabled
 ktlint_compose_content-emitter-returning-values-check = enabled
+# Allow screens, windows, navhosts and scaffolds to not have modifier parameter
+ktlint_compose_modifier-missing-check_allowed-composables = DatabaseUpdateWindow,DatabaseUpdateNavHost,CompletionScreen,OfflineUpdateScreen,OnlineUpdateScreen,PaneHeader,FinishScreen,InitScreen,HorizontalDivider,VerticalDivider,MainTitleBar,TextWithLink,TitleBarActionButton,TabsNavHost,BookContentScreen,LineCommentsView,LineTargumView,UpdateOptionsScreen,VersionCheckScreen,AvailableDiskSpaceScreen,AvailableDiskSpaceView,DownloadScreen,DownloadScreenContent,ExtractScreen,ExtractScreenContent,OnBoardingNavHost,OfflineFileSelectionScreen,OnBoardingWindow,OnBoardingScaffold,VersionVerificationScreen,SettingsNavHost,PreviewContainer,SearchResultItem
 ktlint_compose_modifier-missing-check = enabled
 ktlint_compose_modifier-reused-check = enabled
 ktlint_compose_multiple-emitters-check = enabled

@@ -88,6 +88,7 @@ fun SearchBookTocPanel(
     onTocFilter: (TocEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val currentOnEvent by rememberUpdatedState(onEvent)
     val paneHoverSource =
         remember {
             androidx.compose.foundation.interaction
@@ -135,7 +136,7 @@ fun SearchBookTocPanel(
                                     return null
                                 }
                                 targetToExpand.forEach { id ->
-                                    findEntryById(id)?.let { entry -> onEvent(BookContentEvent.TocEntryExpanded(entry)) }
+                                    findEntryById(id)?.let { entry -> currentOnEvent(BookContentEvent.TocEntryExpanded(entry)) }
                                 }
                             }
                             autoExpanded = true

@@ -92,6 +92,8 @@ private fun SearchToolbar(
     onGlobalExtendedChange: (Boolean) -> Unit,
 ) {
     val searchState = remember { TextFieldState() }
+    val currentOnQueryChange by rememberUpdatedState(onQueryChange)
+
     // Keep the field in sync with initial/current query
     LaunchedEffect(initialQuery) {
         val text = searchState.text.toString()
@@ -102,7 +104,7 @@ private fun SearchToolbar(
 
     // Persist live edits so session restore reopens with the last typed text
     LaunchedEffect(Unit) {
-        snapshotFlow { searchState.text.toString() }.distinctUntilChanged().collect { q -> onQueryChange(q) }
+        snapshotFlow { searchState.text.toString() }.distinctUntilChanged().collect { q -> currentOnQueryChange(q) }
     }
 
     Row(
@@ -171,6 +173,7 @@ fun SearchResultInBookShellMvi(
     actions: SearchShellActions,
 ) {
     val tabId = bookUiState.tabId
+    val currentOnEvent by rememberUpdatedState(onEvent)
     val splitPaneConfigs =
         listOf(
             SplitPaneConfig(
@@ -193,13 +196,13 @@ fun SearchResultInBookShellMvi(
                     .distinctUntilChanged()
                     .debounce(300)
                     .filter(config.positionFilter)
-                    .collect { onEvent(BookContentEvent.SaveState) }
+                    .collect { currentOnEvent(BookContentEvent.SaveState) }
             }
         }
     }
 
     DisposableEffect(Unit) {
-        onDispose { onEvent(BookContentEvent.SaveState) }
+        onDispose { currentOnEvent(BookContentEvent.SaveState) }
     }
     Row(modifier = Modifier.fillMaxSize()) {
         StartVerticalBar(uiState = bookUiState, onEvent = onEvent)
@@ -620,7 +623,8 @@ private fun SearchResultItemGoogleStyle(
 ) {
     // Breadcrumb pieces come from state; request on-demand via callback
     val pieces = breadcrumbs[result.lineId]
-    LaunchedEffect(result.lineId) { if (pieces == null) onRequestBreadcrumb(result) }
+    val currentOnRequestBreadcrumb by rememberUpdatedState(onRequestBreadcrumb)
+    LaunchedEffect(result.lineId) { if (pieces == null) currentOnRequestBreadcrumb(result) }
 
     // Derive book title and TOC leaf for the header line
     val bookTitle = result.bookTitle

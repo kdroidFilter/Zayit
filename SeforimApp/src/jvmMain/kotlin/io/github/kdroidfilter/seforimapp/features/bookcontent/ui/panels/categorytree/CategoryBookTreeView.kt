@@ -112,6 +112,7 @@ fun CategoryBookTreeView(
         )
 
     var hasRestored by remember { mutableStateOf(false) }
+    val currentOnScroll by rememberUpdatedState(onScroll)
 
     // ---------------- 1. Restore when the list is truly ready --------
     LaunchedEffect(treeItems.size) {
@@ -131,7 +132,7 @@ fun CategoryBookTreeView(
                 listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
             }.distinctUntilChanged()
                 .debounce(250)
-                .collect { (i, o) -> onScroll(i, o) }
+                .collect { (i, o) -> currentOnScroll(i, o) }
         }
     }
 
@@ -196,6 +197,7 @@ fun SearchResultCategoryTreeView(
             initialFirstVisibleItemScrollOffset = scrollOffset,
         )
     var hasRestored by remember { mutableStateOf(false) }
+    val currentOnPersistScroll by rememberUpdatedState(onPersistScroll)
 
     // Flatten the search tree with current expansion state
     val expanded = expandedCategoryIds
@@ -289,7 +291,7 @@ fun SearchResultCategoryTreeView(
             snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
                 .distinctUntilChanged()
                 .debounce(150)
-                .collect { (index, offset) -> onPersistScroll(index, offset) }
+                .collect { (index, offset) -> currentOnPersistScroll(index, offset) }
         }
     }
 

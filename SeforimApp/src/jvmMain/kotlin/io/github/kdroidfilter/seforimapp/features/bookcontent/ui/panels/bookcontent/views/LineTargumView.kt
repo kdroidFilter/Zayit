@@ -88,6 +88,10 @@ fun LineTargumView(
         label = "linkLineHeightAnim",
     )
 
+    val currentGetAvailableLinksForLine by rememberUpdatedState(getAvailableLinksForLine)
+    val currentOnSelectedSourcesChange by rememberUpdatedState(onSelectedSourcesChange)
+    val currentOnScroll by rememberUpdatedState(onScroll)
+
     // Selected font for targumim
     val targumFontCode by fontCodeFlow.collectAsState()
     val targumFontFamily = FontCatalog.familyFor(targumFontCode)
@@ -147,7 +151,7 @@ fun LineTargumView(
                             return@LaunchedEffect
                         }
 
-                        runCatching { getAvailableLinksForLine(selectedLine.id) }
+                        runCatching { currentGetAvailableLinksForLine(selectedLine.id) }
                             .onSuccess { map -> titleToIdMap = map }
                             .onFailure { titleToIdMap = emptyMap() }
                     }
@@ -172,7 +176,7 @@ fun LineTargumView(
                             }
 
                         LaunchedEffect(selectedSources) {
-                            onSelectedSourcesChange(selectedSources)
+                            currentOnSelectedSourcesChange(selectedSources)
                         }
 
                         val sourceSections =
@@ -203,7 +207,7 @@ fun LineTargumView(
                         LaunchedEffect(listState) {
                             snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
                                 .distinctUntilChanged()
-                                .collect { (index, offset) -> onScroll(index, offset) }
+                                .collect { (index, offset) -> currentOnScroll(index, offset) }
                         }
 
                         SelectionContainer {

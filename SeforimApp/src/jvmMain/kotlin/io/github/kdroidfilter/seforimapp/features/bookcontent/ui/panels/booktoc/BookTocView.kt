@@ -74,13 +74,14 @@ fun BookTocView(
         )
 
     var hasRestored by remember { mutableStateOf(false) }
+    val currentOnScroll by rememberUpdatedState(onScroll)
 
     LaunchedEffect(listState, hasRestored) {
         if (hasRestored) {
             snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
                 .distinctUntilChanged()
                 .debounce(250)
-                .collect { (index, offset) -> onScroll(index, offset) }
+                .collect { (index, offset) -> currentOnScroll(index, offset) }
         }
     }
 
@@ -153,6 +154,7 @@ fun BookTocView(
     var displayEntries by remember(uiState.toc.entries, uiState.toc.children, uiState.navigation.selectedBook?.id) {
         mutableStateOf(rootEntries.ifEmpty { uiState.toc.entries })
     }
+    val currentOnEvent by rememberUpdatedState(onEvent)
 
     if (displayEntries.size == 1) {
         val soleParent = displayEntries.first()
@@ -161,7 +163,7 @@ fun BookTocView(
         if (directChildren.isNullOrEmpty()) {
             if (soleParent.hasChildren && !uiState.toc.expandedEntries.contains(soleParent.id)) {
                 LaunchedEffect(uiState.navigation.selectedBook?.id, soleParent.id) {
-                    onEvent(BookContentEvent.TocEntryExpanded(soleParent))
+                    currentOnEvent(BookContentEvent.TocEntryExpanded(soleParent))
                 }
             }
         } else {

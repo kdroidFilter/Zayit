@@ -12,8 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Check2Circle
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.vinceglb.confettikit.compose.ConfettiKit

@@ -58,6 +58,33 @@ internal fun DecoratedWindowScope.TitleBarImpl(
     backgroundContent: @Composable () -> Unit = {},
     content: @Composable TitleBarScope.(DecoratedWindowState) -> Unit,
 ) {
+    GenericTitleBarImpl(
+        window = window,
+        state = state,
+        modifier = modifier,
+        gradientStartColor = gradientStartColor,
+        style = style,
+        applyTitleBar = applyTitleBar,
+        backgroundContent = backgroundContent,
+        content = content,
+    )
+}
+
+/**
+ * Generic title bar implementation that can be used by both [DecoratedWindow] and [DecoratedDialog].
+ * This avoids code duplication between TitleBar and DialogTitleBar.
+ */
+@Composable
+internal fun GenericTitleBarImpl(
+    window: Window,
+    state: DecoratedWindowState,
+    modifier: Modifier = Modifier,
+    gradientStartColor: Color = Color.Unspecified,
+    style: TitleBarStyle = JewelTheme.defaultTitleBarStyle,
+    applyTitleBar: (Dp, DecoratedWindowState) -> PaddingValues,
+    backgroundContent: @Composable () -> Unit = {},
+    content: @Composable TitleBarScope.(DecoratedWindowState) -> Unit,
+) {
     val titleBarInfo = LocalTitleBarInfo.current
 
     val background by style.colors.backgroundFor(state)

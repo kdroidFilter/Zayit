@@ -22,15 +22,12 @@ import org.jetbrains.jewel.window.utils.linux.LinuxTitleBarIconsFactory
 import java.awt.Frame
 import java.awt.event.MouseEvent
 
-@OptIn(ExperimentalComposeUiApi::class)
+/**
+ * Creates a Linux-specific title bar style with appropriate icons and transparent button backgrounds.
+ * This is shared between TitleBar and DialogTitleBar on Linux.
+ */
 @Composable
-internal fun DecoratedWindowScope.TitleBarOnLinux(
-    modifier: Modifier = Modifier,
-    gradientStartColor: Color = Color.Unspecified,
-    style: TitleBarStyle = JewelTheme.defaultTitleBarStyle,
-    content: @Composable TitleBarScope.(DecoratedWindowState) -> Unit,
-) {
-    // Replace icons with the ones appropriate for the current Linux DE
+internal fun createLinuxTitleBarStyle(style: TitleBarStyle): TitleBarStyle {
     val linuxIconButtonStyle =
         IconButtonStyle(
             colors =
@@ -55,31 +52,41 @@ internal fun DecoratedWindowScope.TitleBarOnLinux(
         )
 
     val linuxIcons = LinuxTitleBarIconsFactory.createForCurrentDesktop()
-    val linuxStyle =
-        TitleBarStyle(
-            colors =
-                TitleBarColors(
-                    background = style.colors.background,
-                    inactiveBackground = style.colors.inactiveBackground,
-                    content = style.colors.content,
-                    border = style.colors.border,
-                    fullscreenControlButtonsBackground = style.colors.fullscreenControlButtonsBackground,
-                    titlePaneButtonHoveredBackground = style.colors.titlePaneButtonHoveredBackground,
-                    titlePaneButtonPressedBackground = style.colors.titlePaneButtonPressedBackground,
-                    titlePaneCloseButtonHoveredBackground = Color.Transparent,
-                    titlePaneCloseButtonPressedBackground = Color.Transparent,
-                    iconButtonHoveredBackground = style.colors.iconButtonHoveredBackground,
-                    iconButtonPressedBackground = style.colors.iconButtonPressedBackground,
-                    dropdownPressedBackground = style.colors.dropdownPressedBackground,
-                    dropdownHoveredBackground = style.colors.dropdownHoveredBackground,
-                ),
-            metrics = style.metrics,
-            icons = linuxIcons,
-            dropdownStyle = style.dropdownStyle,
-            iconButtonStyle = style.iconButtonStyle,
-            paneButtonStyle = linuxIconButtonStyle,
-            paneCloseButtonStyle = linuxIconButtonStyle,
-        )
+    return TitleBarStyle(
+        colors =
+            TitleBarColors(
+                background = style.colors.background,
+                inactiveBackground = style.colors.inactiveBackground,
+                content = style.colors.content,
+                border = style.colors.border,
+                fullscreenControlButtonsBackground = style.colors.fullscreenControlButtonsBackground,
+                titlePaneButtonHoveredBackground = style.colors.titlePaneButtonHoveredBackground,
+                titlePaneButtonPressedBackground = style.colors.titlePaneButtonPressedBackground,
+                titlePaneCloseButtonHoveredBackground = Color.Transparent,
+                titlePaneCloseButtonPressedBackground = Color.Transparent,
+                iconButtonHoveredBackground = style.colors.iconButtonHoveredBackground,
+                iconButtonPressedBackground = style.colors.iconButtonPressedBackground,
+                dropdownPressedBackground = style.colors.dropdownPressedBackground,
+                dropdownHoveredBackground = style.colors.dropdownHoveredBackground,
+            ),
+        metrics = style.metrics,
+        icons = linuxIcons,
+        dropdownStyle = style.dropdownStyle,
+        iconButtonStyle = style.iconButtonStyle,
+        paneButtonStyle = linuxIconButtonStyle,
+        paneCloseButtonStyle = linuxIconButtonStyle,
+    )
+}
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+internal fun DecoratedWindowScope.TitleBarOnLinux(
+    modifier: Modifier = Modifier,
+    gradientStartColor: Color = Color.Unspecified,
+    style: TitleBarStyle = JewelTheme.defaultTitleBarStyle,
+    content: @Composable TitleBarScope.(DecoratedWindowState) -> Unit,
+) {
+    val linuxStyle = createLinuxTitleBarStyle(style)
 
     var lastPress = 0L
     val viewConfig = LocalViewConfiguration.current

@@ -56,7 +56,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateChecker
-import io.github.kdroidfilter.seforimapp.logger.allowLogging
+import io.github.kdroidfilter.seforimapp.logger.isDevEnv
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.vinceglb.filekit.FileKit
 import kotlinx.coroutines.delay
@@ -107,7 +107,7 @@ fun main() {
         }
     }
     val loggingEnv = System.getenv("SEFORIMAPP_LOGGING")?.lowercase()
-    allowLogging = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"
+    isDevEnv = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"
 
     val appId = "io.github.kdroidfilter.seforimapp"
     SingleInstanceManager.configuration =
@@ -355,6 +355,7 @@ fun main() {
                                 if (!MainAppState.updateCheckDone.value) {
                                     when (val result = AppUpdateChecker.checkForUpdate()) {
                                         is AppUpdateChecker.UpdateCheckResult.UpdateAvailable -> {
+                                            if (isDevEnv) return@LaunchedEffect
                                             MainAppState.setUpdateAvailable(result.latestVersion)
                                             // Send system notification
                                             notification(

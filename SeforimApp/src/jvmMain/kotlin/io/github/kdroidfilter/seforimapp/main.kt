@@ -374,7 +374,7 @@ fun main() {
                                                 button(title = updateNotificationButton) {
                                                     Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
                                                 }
-                                            }
+                                            }.send()
                                         }
                                         is AppUpdateChecker.UpdateCheckResult.UpToDate -> {
                                             MainAppState.markUpdateCheckDone()

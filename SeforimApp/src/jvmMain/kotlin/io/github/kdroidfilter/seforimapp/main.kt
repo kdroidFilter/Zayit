@@ -39,7 +39,7 @@ import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsNavHost
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
@@ -374,7 +374,7 @@ fun main() {
                                                 button(title = updateNotificationButton) {
                                                     Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
                                                 }
-                                            }.send()
+                                            }
                                         }
                                         is AppUpdateChecker.UpdateCheckResult.UpToDate -> {
                                             MainAppState.markUpdateCheckDone()
@@ -450,7 +450,7 @@ fun main() {
                                                 false
                                             }
                                         },
-                            ) { TabsNavHost() }
+                            ) { TabsContent() }
                         }
                     }
                 } // else (null) -> render nothing until decision made

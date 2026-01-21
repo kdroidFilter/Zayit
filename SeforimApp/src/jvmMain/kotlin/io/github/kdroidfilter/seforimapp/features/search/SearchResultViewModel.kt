@@ -295,7 +295,6 @@ class SearchResultViewModel(
 
     private val _categoryAgg = MutableStateFlow(CategoryAgg(emptyMap(), emptyMap(), emptyMap()))
     private val _tocCounts = MutableStateFlow<Map<Long, Int>>(emptyMap())
-    private var wasPausedByTabSwitch: Boolean = false
     private val _breadcrumbs = MutableStateFlow<Map<Long, List<String>>>(emptyMap())
     val breadcrumbsFlow: StateFlow<Map<Long, List<String>>> = _breadcrumbs.asStateFlow()
 
@@ -880,29 +879,6 @@ class SearchResultViewModel(
         viewModelScope.launch {
             AppSettings.textSizeFlow.collect { size ->
                 _uiState.value = _uiState.value.copy(textSize = size)
-            }
-        }
-
-        // On tab switch: only interrupt search when RAM saver is enabled; always cancel on tab close
-        viewModelScope.launch {
-            // Observe currently selected tab to pause/resume
-            tabsViewModel.selectedTabIndex.collect { idx ->
-                val tabs = tabsViewModel.tabs.value
-                val selectedTabId = tabs.getOrNull(idx)?.destination?.tabId
-                if (selectedTabId != tabId) {
-                    val ramSaver = AppSettings.isRamSaverEnabled()
-                    if (ramSaver) {
-                        // Pause current search when RAM saver is active
-                        if (_uiState.value.isLoading || _uiState.value.isLoadingMore) {
-                            wasPausedByTabSwitch = true
-                            currentJob?.cancel()
-                            _uiState.value = _uiState.value.copy(isLoading = false, isLoadingMore = false)
-                        }
-                    }
-                } else {
-                    // Do not auto-resume search on tab reselect. Keep current results/snapshot only.
-                    wasPausedByTabSwitch = false
-                }
             }
         }
 

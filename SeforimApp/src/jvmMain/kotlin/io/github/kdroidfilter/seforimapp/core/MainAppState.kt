@@ -1,12 +1,18 @@
 package io.github.kdroidfilter.seforimapp.core
 
+import androidx.compose.runtime.Stable
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-object MainAppState {
+/**
+ * Application-level state holder for theme, onboarding, and update status.
+ * Injected as a singleton via Metro DI.
+ */
+@Stable
+class MainAppState {
     private val _theme = MutableStateFlow(IntUiThemes.System)
     val theme: StateFlow<IntUiThemes> = _theme.asStateFlow()
 

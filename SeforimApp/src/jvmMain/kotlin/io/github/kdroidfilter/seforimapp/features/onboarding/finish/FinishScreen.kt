@@ -11,9 +11,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Check2Circle
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.vinceglb.confettikit.compose.ConfettiKit
@@ -33,6 +33,7 @@ import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun FinishScreen(progressBarState: ProgressBarState = ProgressBarState) {
+    val mainAppState = LocalAppGraph.current.mainAppState
     LaunchedEffect(Unit) { progressBarState.setProgress(1f) }
     OnBoardingScaffold(
         title = stringResource(Res.string.onboarding_ready),
@@ -41,7 +42,7 @@ fun FinishScreen(progressBarState: ProgressBarState = ProgressBarState) {
                 // Persist that onboarding was completed and open the app
                 io.github.kdroidfilter.seforimapp.core.settings.AppSettings
                     .setOnboardingFinished(true)
-                MainAppState.setShowOnBoarding(false)
+                mainAppState.setShowOnBoarding(false)
             }) {
                 Text(stringResource(Res.string.onboarding_open_app))
             }

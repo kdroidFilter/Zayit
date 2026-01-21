@@ -26,6 +26,7 @@ import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.painter.PainterHint
 import org.jetbrains.jewel.ui.painter.PainterProviderScope
 import org.jetbrains.jewel.ui.painter.PainterSuffixHint
+import org.jetbrains.jewel.window.DecoratedDialogState
 import org.jetbrains.jewel.window.DecoratedWindowState
 import org.jetbrains.jewel.window.TitleBarScope
 import org.jetbrains.jewel.window.defaultTitleBarStyle
@@ -125,5 +126,29 @@ internal fun TitleBarScope.WindowControlArea(
         iconHoveredEffect = iconHoveredEffect,
         style = style,
         iconButtonStyle = style.paneButtonStyle,
+    )
+}
+
+/**
+ * Close button for dialog title bars.
+ * Unlike [WindowControlArea], this only shows the close button (no minimize/maximize).
+ * Uses [TitleBarScope] for consistency with the regular title bar.
+ */
+@Composable
+internal fun TitleBarScope.DialogCloseButton(
+    window: java.awt.Window,
+    state: DecoratedDialogState,
+    style: TitleBarStyle = JewelTheme.defaultTitleBarStyle,
+    iconHoveredEffect: Boolean = false,
+) {
+    // Reuse ControlButton by converting dialog state to window state
+    ControlButton(
+        onClick = { window.dispatchEvent(WindowEvent(window, WindowEvent.WINDOW_CLOSING)) },
+        state = state.toDecoratedWindowState(),
+        iconKey = style.icons.closeButton,
+        description = "Close",
+        style = style,
+        iconButtonStyle = style.paneCloseButtonStyle,
+        iconHoveredEffect = iconHoveredEffect,
     )
 }

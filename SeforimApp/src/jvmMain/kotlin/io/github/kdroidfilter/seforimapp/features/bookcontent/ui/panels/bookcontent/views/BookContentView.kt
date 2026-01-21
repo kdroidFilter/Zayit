@@ -397,8 +397,12 @@ fun BookContentView(
                 val query = findState.text.toString()
                 if (query.length >= 2) {
                     appGraph.searchEngine.buildHighlightTerms(query)
-                } else emptyList()
-            } else emptyList()
+                } else {
+                    emptyList()
+                }
+            } else {
+                emptyList()
+            }
         }
     }
 

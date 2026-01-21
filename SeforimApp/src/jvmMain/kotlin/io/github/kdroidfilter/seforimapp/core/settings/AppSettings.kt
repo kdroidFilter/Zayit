@@ -183,7 +183,10 @@ object AppSettings {
 
     fun findSmartModeFlow(tabId: String): StateFlow<Boolean> = smartModeFlowFor(tabId).asStateFlow()
 
-    fun setFindSmartMode(tabId: String, enabled: Boolean) {
+    fun setFindSmartMode(
+        tabId: String,
+        enabled: Boolean,
+    ) {
         smartModeFlowFor(tabId).value = enabled
     }
 

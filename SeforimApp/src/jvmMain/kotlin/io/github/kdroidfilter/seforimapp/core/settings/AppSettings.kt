@@ -53,9 +53,6 @@ object AppSettings {
     private const val KEY_SAVED_SESSION_PART_PREFIX = "saved_session_part_"
     private const val SESSION_CHUNK_SIZE = 4000
 
-    // Performance / Memory
-    private const val KEY_RAM_SAVER_ENABLED = "ram_saver_enabled"
-
     // Onboarding state
     private const val KEY_ONBOARDING_FINISHED = "onboarding_finished"
 
@@ -94,7 +91,6 @@ object AppSettings {
         _commentaryFontCodeFlow.value = getCommentaryFontCode()
         _targumFontCodeFlow.value = getTargumFontCode()
         _sourceFontCodeFlow.value = getSourceFontCode()
-        _ramSaverEnabledFlow.value = isRamSaverEnabled()
         // User profile reactive values
         _userFirstNameFlow.value = getUserFirstName() ?: ""
         _userLastNameFlow.value = getUserLastName() ?: ""
@@ -124,10 +120,6 @@ object AppSettings {
     // StateFlow for zmanim widgets visibility
     private val _showZmanimWidgetsFlow = MutableStateFlow(isShowZmanimWidgetsEnabled())
     val showZmanimWidgetsFlow: StateFlow<Boolean> = _showZmanimWidgetsFlow.asStateFlow()
-
-    // StateFlow for RAM saver (memory-optimized tabs). Disabled by default
-    private val _ramSaverEnabledFlow = MutableStateFlow(isRamSaverEnabled())
-    val ramSaverEnabledFlow: StateFlow<Boolean> = _ramSaverEnabledFlow.asStateFlow()
 
     // Font preference flows
     private val _bookFontCodeFlow = MutableStateFlow(getBookFontCode())
@@ -296,14 +288,6 @@ object AppSettings {
         settings[KEY_USE_OPENGL] = enabled
     }
 
-    // RAM saver setting
-    fun isRamSaverEnabled(): Boolean = settings[KEY_RAM_SAVER_ENABLED, false]
-
-    fun setRamSaverEnabled(enabled: Boolean) {
-        settings[KEY_RAM_SAVER_ENABLED] = enabled
-        _ramSaverEnabledFlow.value = enabled
-    }
-
     // Saved session blob (JSON)
     fun getSavedSessionJson(): String? {
         // Prefer chunked storage if present
@@ -446,6 +430,5 @@ object AppSettings {
         _commentaryFontCodeFlow.value = DEFAULT_COMMENTARY_FONT
         _targumFontCodeFlow.value = DEFAULT_TARGUM_FONT
         _sourceFontCodeFlow.value = DEFAULT_SOURCE_FONT
-        _ramSaverEnabledFlow.value = false
     }
 }

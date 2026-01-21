@@ -24,7 +24,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetSystemMetrics,
     LoadCursorW, PeekMessageW, PostQuitMessage, RegisterClassW, ShowWindow, TranslateMessage, UpdateLayeredWindow,
     CS_HREDRAW, CS_VREDRAW, IDC_ARROW, MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SW_SHOW, ULW_ALPHA,
-    WM_DESTROY, WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP,
+    WM_CLOSE, WM_DESTROY, WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP,
 };
 
 // Embed splash image at compile time
@@ -76,7 +76,7 @@ fn main() {
     }));
 
     // Create and show splash window
-    let hwnd = create_splash_window(width as i32, height as i32, &base_bgra_pixels);
+    let mut hwnd = create_splash_window(width as i32, height as i32, &base_bgra_pixels);
 
     // Non-blocking message loop with progress bar animation
     let mut last_displayed_progress: u32 = 0;
@@ -84,17 +84,36 @@ fn main() {
     let frame_duration = Duration::from_millis(33); // ~30 FPS
     let mut last_frame = Instant::now();
     let start_time = Instant::now();
+    let mut last_visibility_check = Instant::now();
 
     unsafe {
+        use windows::Win32::UI::WindowsAndMessaging::IsWindow;
+
         let mut msg = MSG::default();
         loop {
             // Process all pending messages without blocking
             while PeekMessageW(&mut msg, HWND::default(), 0, 0, PM_REMOVE).as_bool() {
                 if msg.message == 0x0012 { // WM_QUIT
-                    return;
+                    // Ignore WM_QUIT during installation - we control when to exit
+                    continue;
                 }
                 let _ = TranslateMessage(&msg);
                 DispatchMessageW(&msg);
+            }
+
+            // Periodically check window validity and recreate if needed
+            let now = Instant::now();
+            if now.duration_since(last_visibility_check) >= Duration::from_millis(500) {
+                last_visibility_check = now;
+                if !IsWindow(hwnd).as_bool() {
+                    // Window was destroyed - recreate it
+                    hwnd = create_splash_window(width as i32, height as i32, &base_bgra_pixels);
+                    // Force redraw with current progress
+                    let _ = update_splash_with_progress(hwnd, width as i32, height as i32, &base_bgra_pixels, last_displayed_progress);
+                } else {
+                    // Ensure window is visible
+                    let _ = ShowWindow(hwnd, SW_SHOW);
+                }
             }
 
             // Check if installation is complete
@@ -102,7 +121,11 @@ fn main() {
                 // Animate to 100% smoothly
                 while smooth_progress < 100.0 {
                     smooth_progress = (smooth_progress + 5.0).min(100.0);
-                    update_splash_with_progress(hwnd, width as i32, height as i32, &base_bgra_pixels, smooth_progress as u32);
+                    // Check window validity and recreate if needed
+                    if !IsWindow(hwnd).as_bool() {
+                        hwnd = create_splash_window(width as i32, height as i32, &base_bgra_pixels);
+                    }
+                    let _ = update_splash_with_progress(hwnd, width as i32, height as i32, &base_bgra_pixels, smooth_progress as u32);
                     thread::sleep(Duration::from_millis(20));
                 }
 
@@ -122,7 +145,6 @@ fn main() {
             }
 
             // Update progress bar at ~30 FPS with smooth animation
-            let now = Instant::now();
             if now.duration_since(last_frame) >= frame_duration {
                 let target_progress = progress.load(Ordering::SeqCst) as f32;
 
@@ -141,8 +163,9 @@ fn main() {
 
                 let display_progress = smooth_progress as u32;
                 if display_progress != last_displayed_progress {
-                    update_splash_with_progress(hwnd, width as i32, height as i32, &base_bgra_pixels, display_progress);
-                    last_displayed_progress = display_progress;
+                    if update_splash_with_progress(hwnd, width as i32, height as i32, &base_bgra_pixels, display_progress) {
+                        last_displayed_progress = display_progress;
+                    }
                 }
                 last_frame = now;
             }
@@ -288,7 +311,16 @@ fn monitor_msi_log(log_path: &PathBuf, progress: Arc<AtomicU32>, done: Arc<Atomi
     }
 }
 
-fn update_splash_with_progress(hwnd: HWND, width: i32, height: i32, base_pixels: &[u8], progress: u32) {
+fn update_splash_with_progress(hwnd: HWND, width: i32, height: i32, base_pixels: &[u8], progress: u32) -> bool {
+    use windows::Win32::UI::WindowsAndMessaging::IsWindow;
+
+    // Check if window is still valid before attempting to update
+    unsafe {
+        if !IsWindow(hwnd).as_bool() {
+            return false;
+        }
+    }
+
     // Create a copy of the base pixels and overlay the progress bar
     let mut pixels = base_pixels.to_vec();
 
@@ -356,7 +388,14 @@ fn update_splash_with_progress(hwnd: HWND, width: i32, height: i32, base_pixels:
         };
 
         let mut bits: *mut c_void = ptr::null_mut();
-        let hbitmap = CreateDIBSection(mem_dc, &bmi, DIB_RGB_COLORS, &mut bits, None, 0).unwrap();
+        let hbitmap = match CreateDIBSection(mem_dc, &bmi, DIB_RGB_COLORS, &mut bits, None, 0) {
+            Ok(bmp) => bmp,
+            Err(_) => {
+                let _ = DeleteDC(mem_dc);
+                let _ = ReleaseDC(None, screen_dc);
+                return false;
+            }
+        };
 
         if !bits.is_null() {
             ptr::copy_nonoverlapping(pixels.as_ptr(), bits as *mut u8, pixels.len());
@@ -373,7 +412,7 @@ fn update_splash_with_progress(hwnd: HWND, width: i32, height: i32, base_pixels:
             AlphaFormat: 1,
         };
 
-        let _ = UpdateLayeredWindow(
+        let result = UpdateLayeredWindow(
             hwnd,
             screen_dc,
             None,
@@ -389,6 +428,8 @@ fn update_splash_with_progress(hwnd: HWND, width: i32, height: i32, base_pixels:
         let _ = DeleteObject(hbitmap);
         let _ = DeleteDC(mem_dc);
         let _ = ReleaseDC(None, screen_dc);
+
+        result.is_ok()
     }
 }
 
@@ -546,8 +587,13 @@ unsafe extern "system" fn wnd_proc(
     lparam: LPARAM,
 ) -> LRESULT {
     match msg {
+        WM_CLOSE => {
+            // Ignore WM_CLOSE during installation - prevent external closure
+            LRESULT(0)
+        }
         WM_DESTROY => {
-            PostQuitMessage(0);
+            // Don't call PostQuitMessage - the main loop will recreate the window if needed
+            // and will control when to actually quit
             LRESULT(0)
         }
         _ => DefWindowProcW(hwnd, msg, wparam, lparam),

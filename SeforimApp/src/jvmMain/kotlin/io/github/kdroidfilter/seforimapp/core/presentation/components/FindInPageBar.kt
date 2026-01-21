@@ -94,11 +94,12 @@ fun FindInPageBar(
             Icon(
                 imageVector = Telescope,
                 contentDescription = "Smart search mode",
-                tint = if (smartModeEnabled) {
-                    JewelTheme.globalColors.outlines.focused
-                } else {
-                    Color.Gray
-                },
+                tint =
+                    if (smartModeEnabled) {
+                        JewelTheme.globalColors.outlines.focused
+                    } else {
+                        Color.Gray
+                    },
             )
         }
         Spacer(Modifier.width(4.dp))

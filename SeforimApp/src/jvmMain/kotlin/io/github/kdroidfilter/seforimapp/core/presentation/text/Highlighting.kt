@@ -87,12 +87,13 @@ fun highlightAnnotatedWithTerms(
     var current = sorted.first()
     for (i in 1 until sorted.size) {
         val next = sorted[i]
-        current = if (next.first <= current.last + 1) {
-            current.first..maxOf(current.last, next.last)
-        } else {
-            merged.add(current)
-            next
-        }
+        current =
+            if (next.first <= current.last + 1) {
+                current.first..maxOf(current.last, next.last)
+            } else {
+                merged.add(current)
+                next
+            }
     }
     merged.add(current)
 

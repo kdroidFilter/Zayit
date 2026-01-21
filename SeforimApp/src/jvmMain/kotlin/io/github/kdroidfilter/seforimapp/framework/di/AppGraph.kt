@@ -5,6 +5,7 @@ import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metrox.viewmodel.ViewModelGraph
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
@@ -20,6 +21,7 @@ import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 @DependencyGraph(AppScope::class)
 abstract class AppGraph : ViewModelGraph {
     // Expose strongly-typed graph entries as abstract vals for generated implementation
+    abstract val mainAppState: MainAppState
     abstract val tabPersistedStateStore: TabPersistedStateStore
     abstract val tabTitleUpdateManager: TabTitleUpdateManager
     abstract val settings: Settings

@@ -2,6 +2,7 @@
 package io.github.kdroidfilter.seforim.tabs
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,7 @@ data class TabItem(
     val tabType: TabType = TabType.SEARCH,
 )
 
+@Stable
 class TabsViewModel(
     private val titleUpdateManager: TabTitleUpdateManager,
     startDestination: TabsDestination,

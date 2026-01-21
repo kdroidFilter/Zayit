@@ -33,6 +33,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowView
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsViewModel
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.StringResource
@@ -81,8 +82,8 @@ fun GeneralSettingsScreen() {
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
     val version = getAppVersion()
-    val updateVersion by io.github.kdroidfilter.seforimapp.core.MainAppState.updateAvailable
-        .collectAsState()
+    val mainAppState = LocalAppGraph.current.mainAppState
+    val updateVersion by mainAppState.updateAvailable.collectAsState()
     GeneralSettingsView(state = state, version = version, updateVersion = updateVersion, onEvent = viewModel::onEvent)
 }
 

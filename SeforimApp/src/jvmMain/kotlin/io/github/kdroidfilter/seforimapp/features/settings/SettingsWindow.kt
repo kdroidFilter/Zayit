@@ -11,7 +11,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.rememberWindowState
+import androidx.compose.ui.window.rememberDialogState
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
@@ -32,8 +32,8 @@ import org.jetbrains.jewel.ui.ComponentStyling
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.window.DecoratedWindow
-import org.jetbrains.jewel.window.TitleBar
+import org.jetbrains.jewel.window.DecoratedDialog
+import org.jetbrains.jewel.window.DialogTitleBar
 import org.jetbrains.jewel.window.newFullscreenControls
 import seforimapp.seforimapp.generated.resources.*
 
@@ -55,12 +55,12 @@ private fun SettingsWindowView(onClose: () -> Unit) {
                 titleBarStyle = ThemeUtils.pickTitleBarStyle(),
             ),
     ) {
-        val settingsWindowState = rememberWindowState(position = WindowPosition.Aligned(Alignment.Center), size = DpSize(700.dp, 500.dp))
-        DecoratedWindow(
+        val settingsDialogState = rememberDialogState(position = WindowPosition.Aligned(Alignment.Center), size = DpSize(700.dp, 500.dp))
+        DecoratedDialog(
             onCloseRequest = onClose,
             title = stringResource(Res.string.settings),
             icon = painterResource(Res.drawable.AppIcon),
-            state = settingsWindowState,
+            state = settingsDialogState,
             visible = true,
             resizable = true,
         ) {
@@ -74,7 +74,7 @@ private fun SettingsWindowView(onClose: () -> Unit) {
             ) {
                 val isMac = PlatformInfo.isMacOS
                 val isWindows = PlatformInfo.isWindows
-                TitleBar(modifier = Modifier.newFullscreenControls()) {
+                DialogTitleBar(modifier = Modifier.newFullscreenControls()) {
                     Box(
                         modifier =
                             Modifier

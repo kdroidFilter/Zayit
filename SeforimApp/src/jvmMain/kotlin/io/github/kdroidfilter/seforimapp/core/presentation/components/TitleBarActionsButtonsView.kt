@@ -5,7 +5,6 @@ import androidx.compose.runtime.collectAsState
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
-import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -20,8 +19,9 @@ import seforimapp.seforimapp.generated.resources.*
 
 @Composable
 fun TitleBarActionsButtonsView() {
-    val themeViewModel = MainAppState
-    val theme = themeViewModel.theme.collectAsState().value
+    val appGraph = LocalAppGraph.current
+    val mainAppState = appGraph.mainAppState
+    val theme = mainAppState.theme.collectAsState().value
 
     // Use ViewModel-driven settings window visibility to respect MVVM conventions
     val settingsViewModel: SettingsWindowViewModel =
@@ -29,7 +29,6 @@ fun TitleBarActionsButtonsView() {
     val settingsState = settingsViewModel.state.collectAsState().value
 
     // Access app graph outside of callbacks to avoid reading CompositionLocals in non-composable contexts
-    val appGraph = LocalAppGraph.current
     val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
     val tabs = tabsViewModel.tabs.collectAsState().value
     val selectedTabIndex = tabsViewModel.selectedTabIndex.collectAsState().value
@@ -133,7 +132,7 @@ fun TitleBarActionsButtonsView() {
             },
         contentDescription = iconDescription,
         onClick = {
-            themeViewModel.setTheme(
+            mainAppState.setTheme(
                 when (theme) {
                     IntUiThemes.Light -> IntUiThemes.Dark
                     IntUiThemes.Dark -> IntUiThemes.System

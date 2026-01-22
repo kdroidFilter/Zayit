@@ -3,7 +3,7 @@ package io.github.kdroidfilter.seforimapp.logger
 import java.text.SimpleDateFormat
 import java.util.Date
 
-var allowLogging: Boolean = true
+var isDevEnv: Boolean = true
 var loggingLevel: LoggingLevel = LoggingLevel.VERBOSE
 
 class LoggingLevel(
@@ -29,31 +29,31 @@ private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
 private fun getCurrentTimestamp(): String = dateFormat.format(Date())
 
 fun debugln(message: () -> String) {
-    if (allowLogging && loggingLevel.priority <= LoggingLevel.DEBUG.priority) {
+    if (isDevEnv && loggingLevel.priority <= LoggingLevel.DEBUG.priority) {
         println("${getCurrentTimestamp()} ${message()}")
     }
 }
 
 fun verboseln(message: () -> String) {
-    if (allowLogging && loggingLevel.priority <= LoggingLevel.VERBOSE.priority) {
+    if (isDevEnv && loggingLevel.priority <= LoggingLevel.VERBOSE.priority) {
         println(message(), COLOR_LIGHT_GRAY)
     }
 }
 
 fun infoln(message: () -> String) {
-    if (allowLogging && loggingLevel.priority <= LoggingLevel.INFO.priority) {
+    if (isDevEnv && loggingLevel.priority <= LoggingLevel.INFO.priority) {
         println(message(), COLOR_AQUA)
     }
 }
 
 fun warnln(message: () -> String) {
-    if (allowLogging && loggingLevel.priority <= LoggingLevel.WARN.priority) {
+    if (isDevEnv && loggingLevel.priority <= LoggingLevel.WARN.priority) {
         println(message(), COLOR_ORANGE)
     }
 }
 
 fun errorln(message: () -> String) {
-    if (allowLogging && loggingLevel.priority <= LoggingLevel.ERROR.priority) {
+    if (isDevEnv && loggingLevel.priority <= LoggingLevel.ERROR.priority) {
         println(message(), COLOR_RED)
     }
 }

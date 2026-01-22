@@ -5,7 +5,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import io.github.kdroidfilter.platformtools.darkmodedetector.isSystemInDarkMode
-import io.github.kdroidfilter.seforimapp.core.MainAppState
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.jewel.foundation.DisabledAppearanceValues
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -37,12 +37,13 @@ object ThemeUtils {
 
     /**
      * Builds a Jewel theme definition using the same logic everywhere (Light/Dark/System + disabled appearance).
-     * Reads the current theme directly from ThemeViewModel to avoid passing it around.
+     * Reads the current theme from MainAppState via DI.
      */
     @Composable
     fun buildThemeDefinition() =
         run {
-            val theme = MainAppState.theme.collectAsState().value
+            val mainAppState = LocalAppGraph.current.mainAppState
+            val theme = mainAppState.theme.collectAsState().value
             val isDarkTheme =
                 when (theme) {
                     IntUiThemes.Light -> false
@@ -66,11 +67,12 @@ object ThemeUtils {
 
     /**
      * Chooses the appropriate TitleBarStyle based on the selected theme and system dark mode.
-     * Reads the current theme directly from ThemeViewModel.
+     * Reads the current theme from MainAppState via DI.
      */
     @Composable
     fun pickTitleBarStyle(): TitleBarStyle {
-        val theme = MainAppState.theme.collectAsState().value
+        val mainAppState = LocalAppGraph.current.mainAppState
+        val theme = mainAppState.theme.collectAsState().value
         return when (theme) {
             IntUiThemes.Light -> TitleBarStyle.lightWithLightHeader()
             IntUiThemes.Dark -> TitleBarStyle.dark()

@@ -6,10 +6,10 @@ import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
-import io.github.kdroidfilter.seforim.navigation.TabNavControllerRegistry
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
@@ -31,11 +31,11 @@ import java.util.UUID
 object AppCoreBindings {
     @Provides
     @SingleIn(AppScope::class)
-    fun provideTabPersistedStateStore(): TabPersistedStateStore = TabPersistedStateStore()
+    fun provideMainAppState(): MainAppState = MainAppState()
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideTabNavControllerRegistry(): TabNavControllerRegistry = TabNavControllerRegistry()
+    fun provideTabPersistedStateStore(): TabPersistedStateStore = TabPersistedStateStore()
 
     @Provides
     @SingleIn(AppScope::class)

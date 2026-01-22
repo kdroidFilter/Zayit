@@ -36,10 +36,9 @@ import io.github.kdroidfilter.platformtools.darkmodedetector.mac.setMacOsAdaptiv
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
-import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsNavHost
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
@@ -56,7 +55,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateChecker
-import io.github.kdroidfilter.seforimapp.logger.allowLogging
+import io.github.kdroidfilter.seforimapp.logger.isDevEnv
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.vinceglb.filekit.FileKit
 import kotlinx.coroutines.delay
@@ -107,7 +106,7 @@ fun main() {
         }
     }
     val loggingEnv = System.getenv("SEFORIMAPP_LOGGING")?.lowercase()
-    allowLogging = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"
+    isDevEnv = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"
 
     val appId = "io.github.kdroidfilter.seforimapp"
     SingleInstanceManager.configuration =
@@ -136,11 +135,6 @@ fun main() {
 
         var isWindowVisible by remember { mutableStateOf(true) }
 
-        val mainState = MainAppState
-        val showOnboarding: Boolean? = mainState.showOnBoarding.collectAsState().value
-        var showDatabaseUpdate by remember { mutableStateOf<Boolean?>(null) }
-        var isDatabaseMissing by remember { mutableStateOf(false) }
-
         val isSingleInstance =
             SingleInstanceManager.isSingleInstance(onRestoreRequest = {
                 isWindowVisible = true
@@ -156,10 +150,17 @@ fun main() {
         val appGraph = remember { createGraph<AppGraph>() }
         // Ensure AppSettings uses the DI-provided Settings immediately
         AppSettings.initialize(appGraph.settings)
+
+        // Get MainAppState from DI graph
+        val mainAppState = appGraph.mainAppState
+        val showOnboarding: Boolean? = mainAppState.showOnBoarding.collectAsState().value
+        var showDatabaseUpdate by remember { mutableStateOf<Boolean?>(null) }
+        var isDatabaseMissing by remember { mutableStateOf(false) }
+
         val initialTheme = remember { AppSettings.getThemeMode() }
         LaunchedEffect(initialTheme) {
-            if (MainAppState.theme.value != initialTheme) {
-                MainAppState.setTheme(initialTheme)
+            if (mainAppState.theme.value != initialTheme) {
+                mainAppState.setTheme(initialTheme)
             }
         }
 
@@ -187,7 +188,7 @@ fun main() {
 
                         if (!onboardingFinished) {
                             // Show onboarding if not finished
-                            mainState.setShowOnBoarding(true)
+                            mainAppState.setShowOnBoarding(true)
                             showDatabaseUpdate = false
                         } else {
                             // Onboarding is finished, check database version
@@ -195,12 +196,12 @@ fun main() {
 
                             if (!isVersionCompatible) {
                                 // Database needs update
-                                mainState.setShowOnBoarding(false)
+                                mainAppState.setShowOnBoarding(false)
                                 showDatabaseUpdate = true
                                 isDatabaseMissing = false
                             } else {
                                 // Everything is ready, show main app
-                                mainState.setShowOnBoarding(false)
+                                mainAppState.setShowOnBoarding(false)
                                 showDatabaseUpdate = false
                             }
                         }
@@ -210,12 +211,12 @@ fun main() {
 
                         if (!onboardingFinished) {
                             // App not configured, show onboarding
-                            mainState.setShowOnBoarding(true)
+                            mainAppState.setShowOnBoarding(true)
                             showDatabaseUpdate = false
                             isDatabaseMissing = false
                         } else {
                             // App configured but DB missing, show database update with error
-                            mainState.setShowOnBoarding(false)
+                            mainAppState.setShowOnBoarding(false)
                             showDatabaseUpdate = true
                             isDatabaseMissing = true
                         }
@@ -352,10 +353,11 @@ fun main() {
                             val updateNotificationMessage = stringResource(Res.string.update_notification_message)
                             val updateNotificationButton = stringResource(Res.string.update_download_action)
                             LaunchedEffect(Unit) {
-                                if (!MainAppState.updateCheckDone.value) {
+                                if (!mainAppState.updateCheckDone.value) {
                                     when (val result = AppUpdateChecker.checkForUpdate()) {
                                         is AppUpdateChecker.UpdateCheckResult.UpdateAvailable -> {
-                                            MainAppState.setUpdateAvailable(result.latestVersion)
+                                            if (isDevEnv) return@LaunchedEffect
+                                            mainAppState.setUpdateAvailable(result.latestVersion)
                                             // Send system notification
                                             notification(
                                                 title = updateNotificationTitle,
@@ -377,10 +379,10 @@ fun main() {
                                             }.send()
                                         }
                                         is AppUpdateChecker.UpdateCheckResult.UpToDate -> {
-                                            MainAppState.markUpdateCheckDone()
+                                            mainAppState.markUpdateCheckDone()
                                         }
                                         is AppUpdateChecker.UpdateCheckResult.Error -> {
-                                            MainAppState.markUpdateCheckDone()
+                                            mainAppState.markUpdateCheckDone()
                                         }
                                     }
                                 }
@@ -450,7 +452,7 @@ fun main() {
                                                 false
                                             }
                                         },
-                            ) { TabsNavHost() }
+                            ) { TabsContent() }
                         }
                     }
                 } // else (null) -> render nothing until decision made

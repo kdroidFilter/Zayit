@@ -4,6 +4,16 @@
     "name": "English",
     "dir": "ltr"
   },
+  "seo": {
+    "title": "Zayit - Jewish Study Library | Free Torah & Talmud Reader",
+    "description": "Zayit - The study library that goes straight to the text. A free desktop app to read, search, and explore Jewish study texts including Torah, Talmud, Midrash, and more.",
+    "keywords": "Jewish texts, Torah study, Talmud, Seforim, Hebrew books, religious texts, Jewish library, Torah reader, Tanakh, Midrash, Halacha, free Jewish app",
+    "ogTitle": "Zayit - Jewish Study Library | Free Torah & Talmud Reader",
+    "ogDescription": "A free desktop app to read, search, and explore Jewish study texts. Built for study: fast search, smooth navigation, clean citations. Download for Windows, macOS, or Linux.",
+    "twitterTitle": "Zayit - Jewish Study Library | Free Torah & Talmud Reader",
+    "twitterDescription": "A free desktop app to read, search, and explore Jewish study texts. Built for study: fast search, smooth navigation, clean citations.",
+    "imageAlt": "Zayit - Jewish Study Library Application"
+  },
   "nav": {
     "features": "Features",
     "search": "Search",

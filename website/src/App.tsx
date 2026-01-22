@@ -21,6 +21,7 @@ import {
 import { Navigation } from './components/Navigation';
 import { ImageComparison } from './components/ImageComparison';
 import { CrystalParticlesGL } from './components/CrystalParticlesGL';
+import { useSEO } from './hooks/useSEO';
 import './i18n';
 
 // Panels data for the slider
@@ -218,6 +219,9 @@ function PanelsSlider({
 function App() {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'he';
+
+  // Update SEO meta tags based on current language
+  useSEO();
 
   // Scroll-based animation for hero image
   const heroRef = useRef<HTMLDivElement>(null);

@@ -4,6 +4,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asComposeImageBitmap
 import androidx.compose.ui.graphics.asSkiaBitmap
 import org.jetbrains.skia.Bitmap
+import java.lang.ref.ReferenceQueue
+import java.lang.ref.WeakReference
 
 /**
  * Creates an ImageBitmap from ARGB pixel data.
@@ -26,7 +28,7 @@ internal actual fun imageBitmapFromArgb(
     height: Int,
 ): ImageBitmap {
     val pixelCount = width * height
-    val bytes = ByteArray(pixelCount * 4)
+    val bytes = bitmapBytePool.acquire(pixelCount * 4)
 
     var byteIndex = 0
     for (color in argb) {
@@ -43,9 +45,78 @@ internal actual fun imageBitmapFromArgb(
             allocN32Pixels(width, height, false)
             installPixels(bytes)
         }
+    bitmapBytePool.register(bitmap, bytes)
 
     return bitmap.asComposeImageBitmap()
 }
+
+/**
+ * Pool of reusable byte buffers for ARGB->BGRA conversion.
+ *
+ * Buffers are only returned to the pool after the backing Bitmap is collected,
+ * ensuring we never reuse storage still referenced by Skia.
+ */
+private class BitmapBytePool(
+    private val maxBuffersPerSize: Int = 3,
+    private val maxTotalBuffers: Int = 12,
+) {
+    private val lock = Any()
+    private val pools = mutableMapOf<Int, ArrayDeque<ByteArray>>()
+    private var totalBufferCount = 0
+    private val refQueue = ReferenceQueue<Bitmap>()
+    private val inUse = mutableMapOf<WeakReference<Bitmap>, ByteArray>()
+
+    fun acquire(byteCount: Int): ByteArray {
+        synchronized(lock) {
+            drainCollectedLocked()
+            val pool = pools[byteCount]
+            val buffer = pool?.removeLastOrNull()
+            if (buffer != null) {
+                totalBufferCount--
+                return buffer
+            }
+        }
+        return ByteArray(byteCount)
+    }
+
+    fun register(bitmap: Bitmap, buffer: ByteArray) {
+        synchronized(lock) {
+            drainCollectedLocked()
+            inUse[WeakReference(bitmap, refQueue)] = buffer
+        }
+    }
+
+    private fun drainCollectedLocked() {
+        var ref = refQueue.poll()
+        while (ref != null) {
+            val buffer = inUse.remove(ref)
+            if (buffer != null) {
+                releaseLocked(buffer)
+            }
+            ref = refQueue.poll()
+        }
+    }
+
+    private fun releaseLocked(buffer: ByteArray) {
+        val pool = pools.getOrPut(buffer.size) { ArrayDeque() }
+        if (pool.size >= maxBuffersPerSize) return
+        if (totalBufferCount >= maxTotalBuffers) {
+            evictOldestBuffer()
+        }
+        pool.addLast(buffer)
+        totalBufferCount++
+    }
+
+    private fun evictOldestBuffer() {
+        val largestPool = pools.entries.maxByOrNull { it.value.size }?.value ?: return
+        if (largestPool.isNotEmpty()) {
+            largestPool.removeFirst()
+            totalBufferCount--
+        }
+    }
+}
+
+private val bitmapBytePool = BitmapBytePool()
 
 /**
  * Extracts texture data from an ImageBitmap.

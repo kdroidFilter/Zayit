@@ -4,6 +4,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
+import kotlin.coroutines.coroutineContext
 import kotlin.math.*
 
 // ============================================================================
@@ -15,6 +17,18 @@ private const val PARALLEL_CHUNK_COUNT = 8
 
 /** Minimum output size to use parallel rendering (smaller sizes have too much overhead). */
 private const val MIN_SIZE_FOR_PARALLEL = 200
+
+/** Row stride for cooperative cancellation checks during rendering. */
+private const val CANCEL_CHECK_ROW_STRIDE = 8
+
+/** Orbit step stride for cooperative cancellation checks during rendering. */
+private const val CANCEL_CHECK_ORBIT_STRIDE = 64
+
+/** Star stride for cooperative cancellation checks during rendering. */
+private const val CANCEL_CHECK_STAR_STRIDE = 128
+
+/** Row stride for cooperative cancellation checks in moon outline rendering. */
+private const val CANCEL_CHECK_OUTLINE_STRIDE = 24
 
 // ============================================================================
 // SPHERE RENDERING
@@ -220,7 +234,7 @@ private suspend fun renderSphereParallel(
 /**
  * Renders the sphere sequentially (for small images where parallelization overhead isn't worth it).
  */
-private fun renderSphereSequential(
+private suspend fun renderSphereSequential(
     output: IntArray,
     params: SphereRenderParams,
 ) {
@@ -231,12 +245,13 @@ private fun renderSphereSequential(
  * Renders a range of rows [startY, endY) to the output buffer.
  * Each row is independent, making this safe for parallel execution.
  */
-private fun renderRowRange(
+private suspend fun renderRowRange(
     output: IntArray,
     params: SphereRenderParams,
     startY: Int,
     endY: Int,
 ) {
+    val context = coroutineContext
     val outputSizePx = params.outputSizePx
     val halfW = params.halfW
     val halfH = params.halfH
@@ -264,6 +279,9 @@ private fun renderRowRange(
     val shadowAlphaStrength = params.shadowAlphaStrength
 
     for (y in startY until endY) {
+        if ((y - startY) % CANCEL_CHECK_ROW_STRIDE == 0) {
+            context.ensureActive()
+        }
         val ny = (halfH - y) * invHalfH
         val rowOffset = y * outputSizePx
 
@@ -586,6 +604,7 @@ internal suspend fun renderEarthWithMoonArgb(
     kiddushLevanaStartDegrees: Float? = null,
     kiddushLevanaEndDegrees: Float? = null,
 ): IntArray {
+    coroutineContext.ensureActive()
     val outputSize = outputSizePx * outputSizePx
     val out =
         if (outputBuffer != null && outputBuffer.size >= outputSize) {
@@ -606,6 +625,7 @@ internal suspend fun renderEarthWithMoonArgb(
     }
 
     if (earthTexture == null) return out
+    coroutineContext.ensureActive()
 
     val geometry = computeSceneGeometry(outputSizePx, earthSizeFraction)
     val moonLayout = computeMoonScreenLayout(geometry, moonOrbitDegrees)
@@ -629,6 +649,7 @@ internal suspend fun renderEarthWithMoonArgb(
                 viewDirZ = 1f,
                 outputBuffer = earthBuffer,
             )
+        coroutineContext.ensureActive()
 
         // Draw marker on Earth
         drawMarkerOnSphere(
@@ -673,6 +694,7 @@ internal suspend fun renderEarthWithMoonArgb(
         }
 
         if (moonTexture == null) return out
+        coroutineContext.ensureActive()
 
         // Calculate Moon view direction (from Moon to camera)
         val moonViewDirX = -moonLayout.moonOrbit.x
@@ -703,6 +725,7 @@ internal suspend fun renderEarthWithMoonArgb(
                     shadowAlphaStrength = 0f,
                     outputBuffer = moonBuffer,
                 )
+            coroutineContext.ensureActive()
 
             // Composite Moon with depth sorting
             compositeMoonWithDepth(
@@ -901,6 +924,7 @@ internal suspend fun renderMoonFromMarkerArgb(
     outputBuffer: IntArray? = null,
     starfieldCache: StarfieldCache? = null,
 ): IntArray {
+    coroutineContext.ensureActive()
     val outputSize = outputSizePx * outputSizePx
     val out =
         if (outputBuffer != null && outputBuffer.size >= outputSize) {
@@ -921,6 +945,7 @@ internal suspend fun renderMoonFromMarkerArgb(
     }
 
     if (moonTexture == null) return out
+    coroutineContext.ensureActive()
 
     val geometry = computeSceneGeometry(outputSizePx, earthSizeFraction)
     val moonLayout = computeMoonScreenLayout(geometry, moonOrbitDegrees)
@@ -1039,6 +1064,7 @@ internal suspend fun renderMoonFromMarkerArgb(
                 shadowAlphaStrength = 1f,
                 outputBuffer = moonBuffer,
             )
+        coroutineContext.ensureActive()
         drawGhostMoonOutline(argb = moon, sizePx = outputSizePx)
 
         blitOver(dst = out, dstW = outputSizePx, src = moon, srcW = outputSizePx, left = 0, top = 0)
@@ -1051,10 +1077,11 @@ internal suspend fun renderMoonFromMarkerArgb(
     return out
 }
 
-private fun drawGhostMoonOutline(
+private suspend fun drawGhostMoonOutline(
     argb: IntArray,
     sizePx: Int,
 ) {
+    val context = coroutineContext
     if (sizePx <= 2) return
     val center = (sizePx - 1) / 2f
     val thickness = max(1.1f, sizePx * 0.0045f)
@@ -1070,6 +1097,9 @@ private fun drawGhostMoonOutline(
     val outlineColorSoft = ((GHOST_MOON_OUTLINE_ALPHA * 0.22f).roundToInt().coerceIn(0, 255) shl 24) or outlineRgb
 
     for (y in 0 until sizePx) {
+        if (y % CANCEL_CHECK_OUTLINE_STRIDE == 0) {
+            context.ensureActive()
+        }
         val dy = y - center
         val dy2 = dy * dy
         val row = y * sizePx
@@ -1136,7 +1166,7 @@ private fun calculateObserverPosition(
  * @param kiddushLevanaStartDegrees Start of Kiddush Levana period in orbit degrees (null to disable).
  * @param kiddushLevanaEndDegrees End of Kiddush Levana period in orbit degrees (null to disable).
  */
-private fun drawOrbitPath(
+private suspend fun drawOrbitPath(
     dst: IntArray,
     dstW: Int,
     dstH: Int,
@@ -1155,6 +1185,7 @@ private fun drawOrbitPath(
     kiddushLevanaEndDegrees: Float? = null,
 ) {
     if (orbitRadius <= 0f) return
+    val context = coroutineContext
 
     val steps = (orbitRadius * 5.2f).roundToInt().coerceIn(420, 1600)
     val earthRadius2 = earthRadiusPx * earthRadiusPx
@@ -1170,6 +1201,9 @@ private fun drawOrbitPath(
     var prevZ = 0f
 
     for (i in 0..steps) {
+        if (i % CANCEL_CHECK_ORBIT_STRIDE == 0) {
+            context.ensureActive()
+        }
         val t = (i.toFloat() / steps) * TWO_PI_F
         val x0 = cos(t) * orbitRadius
         val z0 = sin(t) * orbitRadius
@@ -1401,7 +1435,7 @@ private fun plotOrbitPixel(
  *
  * Uses a seeded PRNG for deterministic star placement.
  */
-private fun drawStarfield(
+private suspend fun drawStarfield(
     dst: IntArray,
     dstW: Int,
     dstH: Int,
@@ -1410,8 +1444,12 @@ private fun drawStarfield(
     val pixelCount = dstW * dstH
     val starCount = (pixelCount / PIXELS_PER_STAR).coerceIn(MIN_STAR_COUNT, MAX_STAR_COUNT)
     var state = seed xor (dstW shl 16) xor dstH
+    val context = coroutineContext
 
-    repeat(starCount) {
+    repeat(starCount) { index ->
+        if (index % CANCEL_CHECK_STAR_STRIDE == 0) {
+            context.ensureActive()
+        }
         // Random position
         state = xorshift32(state)
         val x = (state ushr 1) % dstW

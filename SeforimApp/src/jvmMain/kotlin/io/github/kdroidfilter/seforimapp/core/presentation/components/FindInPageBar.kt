@@ -11,9 +11,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforimapp.icons.MaterialSymbolsMagicButton
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -35,9 +37,12 @@ fun FindInPageBar(
     onClose: () -> Unit = {},
     // When true, requests focus on the text field when composed
     autoFocus: Boolean = true,
+    // Smart mode uses dictionary expansion for highlighting
+    smartModeEnabled: Boolean = false,
+    onToggleSmartMode: () -> Unit = {},
 ) {
     val panelColor = JewelTheme.globalColors.panelBackground
-    val borderColor = JewelTheme.globalColors.borders.focused
+    val borderColor = JewelTheme.globalColors.borders.normal
     val shape = RoundedCornerShape(8.dp)
     // Focus management: request focus when shown so typing works immediately
     val focusRequester = androidx.compose.runtime.remember { FocusRequester() }
@@ -83,7 +88,21 @@ fun FindInPageBar(
                 androidx.compose.ui.text
                     .TextStyle(fontSize = 13.sp),
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(4.dp))
+        // Smart mode toggle (magic button icon)
+        IconButton(onClick = onToggleSmartMode) {
+            Icon(
+                imageVector = MaterialSymbolsMagicButton,
+                contentDescription = "Smart search mode",
+                tint =
+                    if (smartModeEnabled) {
+                        JewelTheme.globalColors.outlines.focused
+                    } else {
+                        Color.Gray
+                    },
+            )
+        }
+        Spacer(Modifier.width(4.dp))
         IconButton(onClick = onEnterPrev) {
             Icon(key = AllIconsKeys.General.ChevronRight, contentDescription = stringResource(Res.string.chevron_icon_description))
         }

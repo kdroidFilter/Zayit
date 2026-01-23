@@ -79,7 +79,10 @@ private class BitmapBytePool(
         return ByteArray(byteCount)
     }
 
-    fun register(bitmap: Bitmap, buffer: ByteArray) {
+    fun register(
+        bitmap: Bitmap,
+        buffer: ByteArray,
+    ) {
         synchronized(lock) {
             drainCollectedLocked()
             inUse[WeakReference(bitmap, refQueue)] = buffer

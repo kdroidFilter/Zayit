@@ -48,6 +48,7 @@ internal fun DecoratedDialogScope.DialogTitleBarImpl(
     gradientStartColor: Color = Color.Unspecified,
     style: TitleBarStyle = JewelTheme.defaultTitleBarStyle,
     applyTitleBar: (Dp, DecoratedWindowState) -> PaddingValues,
+    backgroundContent: @Composable () -> Unit = {},
     content: @Composable TitleBarScope.(DecoratedDialogState) -> Unit,
 ) {
     val dialogState = state
@@ -59,6 +60,7 @@ internal fun DecoratedDialogScope.DialogTitleBarImpl(
         gradientStartColor = gradientStartColor,
         style = style,
         applyTitleBar = applyTitleBar,
+        backgroundContent = backgroundContent,
     ) { windowState ->
         // Call user content with dialog state instead of window state
         content(dialogState)

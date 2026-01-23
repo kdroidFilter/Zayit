@@ -51,7 +51,7 @@ fun CustomToggleableChip(
                     .background(JewelTheme.globalColors.panelBackground)
                     .border(
                         width = 1.dp,
-                        color = JewelTheme.globalColors.borders.disabled,
+                        color = JewelTheme.globalColors.borders.normal,
                         shape = RoundedCornerShape(20.dp),
                     ).then(if (withPadding) Modifier.padding(2.dp) else Modifier),
         ) {

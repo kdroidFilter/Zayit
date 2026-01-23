@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.kdroidfilter.seforimapp.icons.Telescope
+import io.github.kdroidfilter.seforimapp.icons.MaterialSymbolsMagicButton
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -42,7 +42,7 @@ fun FindInPageBar(
     onToggleSmartMode: () -> Unit = {},
 ) {
     val panelColor = JewelTheme.globalColors.panelBackground
-    val borderColor = JewelTheme.globalColors.borders.focused
+    val borderColor = JewelTheme.globalColors.borders.normal
     val shape = RoundedCornerShape(8.dp)
     // Focus management: request focus when shown so typing works immediately
     val focusRequester = androidx.compose.runtime.remember { FocusRequester() }
@@ -89,10 +89,10 @@ fun FindInPageBar(
                     .TextStyle(fontSize = 13.sp),
         )
         Spacer(Modifier.width(4.dp))
-        // Smart mode toggle (telescope icon)
+        // Smart mode toggle (magic button icon)
         IconButton(onClick = onToggleSmartMode) {
             Icon(
-                imageVector = Telescope,
+                imageVector = MaterialSymbolsMagicButton,
                 contentDescription = "Smart search mode",
                 tint =
                     if (smartModeEnabled) {

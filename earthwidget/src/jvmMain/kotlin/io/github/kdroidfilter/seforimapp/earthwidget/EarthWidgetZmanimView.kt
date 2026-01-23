@@ -191,8 +191,8 @@ fun EarthWidgetZmanimView(
     locationOverride: EarthWidgetLocation? = null,
     locationLabel: String? = null,
     locationOptions: Map<String, Map<String, EarthWidgetLocation>> = emptyMap(),
-    targetTime: Date? = null,
-    targetDate: LocalDate? = null,
+    targetTimeMillis: Long? = null,
+    targetDateEpochDay: Long? = null,
     onDateSelect: ((LocalDate) -> Unit)? = null,
     onLocationSelect: ((country: String, city: String, location: EarthWidgetLocation) -> Unit)? = null,
     containerBackground: Color? = null,
@@ -267,7 +267,7 @@ fun EarthWidgetZmanimView(
             timeZone = override.timeZone
             earthRotationOffset = 0f
 
-            if (targetTime == null) {
+            if (targetTimeMillis == null) {
                 val now = Calendar.getInstance(override.timeZone)
                 selectedDate =
                     LocalDate.of(
@@ -281,9 +281,9 @@ fun EarthWidgetZmanimView(
         }
     }
 
-    LaunchedEffect(targetTime, timeZone) {
-        targetTime?.let { date ->
-            val cal = Calendar.getInstance(timeZone).apply { time = date }
+    LaunchedEffect(targetTimeMillis, timeZone) {
+        targetTimeMillis?.let { millis ->
+            val cal = Calendar.getInstance(timeZone).apply { time = Date(millis) }
             selectedDate =
                 LocalDate.of(
                     cal.get(Calendar.YEAR),
@@ -296,8 +296,9 @@ fun EarthWidgetZmanimView(
     }
 
     // Sync with external targetDate if provided
-    LaunchedEffect(targetDate) {
-        targetDate?.let { date ->
+    LaunchedEffect(targetDateEpochDay) {
+        targetDateEpochDay?.let { epochDay ->
+            val date = LocalDate.ofEpochDay(epochDay)
             if (date != selectedDate) {
                 selectedDate = date
             }
@@ -465,7 +466,6 @@ fun EarthWidgetZmanimView(
                         }.localDate
                 selectedDate = newDate
                 currentOnDateSelected?.invoke(newDate)
-                Unit
             }
         }
     val onLocationSelectInternal: (String, String) -> Unit = selection@{ country, city ->
@@ -570,7 +570,7 @@ fun EarthWidgetZmanimView(
 @Composable
 fun EarthWidgetMoonSkyView(
     location: EarthWidgetLocation,
-    referenceTime: Date,
+    referenceTimeMillis: Long,
     modifier: Modifier = Modifier,
     sphereSize: Dp = 140.dp,
     renderSizePx: Int = 0,
@@ -581,14 +581,14 @@ fun EarthWidgetMoonSkyView(
     val markerLongitudeDegrees = location.longitude.toFloat()
     val model =
         remember(
-            referenceTime,
+            referenceTimeMillis,
             markerLatitudeDegrees,
             markerLongitudeDegrees,
             location.elevationMeters,
             location.timeZone,
         ) {
             computeZmanimModel(
-                referenceTime = referenceTime,
+                referenceTime = Date(referenceTimeMillis),
                 latitude = markerLatitudeDegrees.toDouble(),
                 longitude = markerLongitudeDegrees.toDouble(),
                 elevation = location.elevationMeters,

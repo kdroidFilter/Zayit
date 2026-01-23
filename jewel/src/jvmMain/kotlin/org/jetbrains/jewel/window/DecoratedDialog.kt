@@ -200,12 +200,12 @@ private object DecoratedDialogMeasurePolicy : MeasurePolicy {
             return layout(width = constraints.minWidth, height = constraints.minHeight) {}
         }
 
-        val titleBars = measurables.filter { it.layoutId == DIALOG_TITLE_BAR_LAYOUT_ID }
+        val titleBars = measurables.filter { it.layoutId == TITLE_BAR_LAYOUT_ID }
         if (titleBars.size > 1) {
             error("Dialog can have only one title bar")
         }
         val titleBar = titleBars.firstOrNull()
-        val titleBarBorder = measurables.firstOrNull { it.layoutId == DIALOG_TITLE_BAR_BORDER_LAYOUT_ID }
+        val titleBarBorder = measurables.firstOrNull { it.layoutId == TITLE_BAR_BORDER_LAYOUT_ID }
 
         val contentConstraints = constraints.copy(minWidth = 0, minHeight = 0)
 
@@ -218,7 +218,7 @@ private object DecoratedDialogMeasurePolicy : MeasurePolicy {
         val measuredPlaceable = mutableListOf<Placeable>()
 
         for (it in measurables) {
-            if (it.layoutId.toString().startsWith(DIALOG_TITLE_BAR_COMPONENT_LAYOUT_ID_PREFIX)) continue
+            if (it.layoutId.toString().startsWith(TITLE_BAR_COMPONENT_LAYOUT_ID_PREFIX)) continue
             val offsetConstraints = contentConstraints.offset(vertical = -titleBarHeight - titleBarBorderHeight)
             val placeable = it.measure(offsetConstraints)
             measuredPlaceable += placeable
@@ -290,8 +290,3 @@ internal val LocalDialogTitleBarInfo: ProvidableCompositionLocal<DialogTitleBarI
         error("LocalDialogTitleBarInfo not provided, DialogTitleBar must be used in DecoratedDialog")
     }
 
-internal const val DIALOG_TITLE_BAR_COMPONENT_LAYOUT_ID_PREFIX = "__DIALOG_TITLE_BAR_"
-
-internal const val DIALOG_TITLE_BAR_LAYOUT_ID = "__DIALOG_TITLE_BAR_CONTENT__"
-
-internal const val DIALOG_TITLE_BAR_BORDER_LAYOUT_ID = "__DIALOG_TITLE_BAR_BORDER__"

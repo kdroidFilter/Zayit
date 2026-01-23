@@ -72,29 +72,18 @@ private fun SettingsWindowView(onClose: () -> Unit) {
                 LocalWindowViewModelStoreOwner provides windowViewModelOwner,
                 LocalViewModelStoreOwner provides windowViewModelOwner,
             ) {
-                val isMac = PlatformInfo.isMacOS
-                val isWindows = PlatformInfo.isWindows
                 DialogTitleBar(modifier = Modifier.newFullscreenControls()) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth(if (isMac) 0.9f else 1f)
-                                .padding(start = if (isWindows) 70.dp else 0.dp),
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        val centerOffset = 40.dp
-                        Row(
-                            modifier = Modifier.align(Alignment.Center).offset(x = centerOffset),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Icon(
-                                AllIconsKeys.General.Settings,
-                                contentDescription = null,
-                                tint = JewelTheme.globalColors.text.normal,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Text(stringResource(Res.string.settings))
-                        }
+                        Icon(
+                            AllIconsKeys.General.Settings,
+                            contentDescription = null,
+                            tint = JewelTheme.globalColors.text.normal,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(stringResource(Res.string.settings))
                     }
                 }
                 // IntelliJ-like layout: sidebar + content with header and bottom action bar

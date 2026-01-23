@@ -419,7 +419,7 @@ fun EarthWidgetZmanimView(
                 }
             val dayOfMonth = dateFormatter.formatHebrewNumber(jewishDate.jewishDayOfMonth)
             val month = dateFormatter.formatMonth(jewishDate)
-            val year = dateFormatter.formatHebrewNumber(jewishDate.getJewishYear())
+            val year = dateFormatter.formatHebrewNumber(jewishDate.jewishYear)
             "$dayOfMonth $month $year"
         }
 

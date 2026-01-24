@@ -594,18 +594,13 @@ fun HomeCelestialWidgets(
                                 modifier = Modifier.fillMaxSize(),
                                 sphereSize = sphereSize,
                                 locationOverride = effectiveLocation,
-                                targetTime = earthWidgetTargetTime,
-                                targetDate = selectedDate,
+                                targetTimeMillis = earthWidgetTargetTime?.time,
+                                targetDateEpochDay = selectedDate.toEpochDay(),
                                 onDateSelect = onDateSelected,
                                 onLocationSelect = onLocationSelectedHandler,
-                                allowLocationSelection = true,
                                 containerBackground = Color.Transparent,
-                                contentPadding = 0.dp,
-                                showControls = false,
                                 showOrbitLabels = true,
                                 showMoonInOrbit = true,
-                                initialShowMoonFromMarker = false,
-                                useScroll = false,
                                 earthSizeFraction = 0.6f,
                                 locationLabel = effectiveCityLabel,
                                 locationOptions = locationOptions,
@@ -1951,8 +1946,6 @@ private fun MoonSkyCard(
         } else {
             JewelTheme.globalColors.borders.normal
         }
-    val referenceTime = remember(referenceTimeMillis) { Date(referenceTimeMillis) }
-
     Box(
         modifier =
             modifier
@@ -1971,7 +1964,7 @@ private fun MoonSkyCard(
                 modifier = Modifier.size(moonSize),
                 sphereSize = moonSize,
                 location = location,
-                referenceTime = referenceTime,
+                referenceTimeMillis = referenceTimeMillis,
                 showBackground = true,
                 earthSizeFraction = 0.6f,
             )

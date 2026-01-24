@@ -179,7 +179,7 @@ class CommentariesUseCase(
                 return title
             }
 
-            // Broad families (e.g., חסידות, מילונים)
+            // Broad families (e.g., חסידות, מילונים, מחברי זמננו)
             if (title == "חסידות" || title.contains("חסידות")) {
                 return title
             }
@@ -188,6 +188,12 @@ class CommentariesUseCase(
             }
             if (title == "ראשונים") {
                 return title
+            }
+            if (title == "מחברי זמננו") {
+                return title
+            }
+            if (title == "ביאור חברותא" || title == "הערות על ביאור חברותא") {
+                return "חברותא"
             }
 
             // Generic "מפרשים" bucket (e.g., for משנה תורה)
@@ -295,9 +301,10 @@ class CommentariesUseCase(
             groupsByLabel.map { (label, groupEntries) ->
                 val sortedEntries =
                     groupEntries.sortedWith(
-                        compareBy<CommentatorEntry>(
-                            { entry -> entry.book?.pubDates?.let { extractEarliestYear(it) } ?: Int.MAX_VALUE },
-                            { entry -> entry.displayName },
+                        compareBy(
+                            { if (categoryCache[it.book?.categoryId]?.title?.startsWith("הערות על") == true) 1 else 0 },
+                            { it.book?.pubDates?.let { d -> extractEarliestYear(d) } ?: Int.MAX_VALUE },
+                            { it.displayName },
                         ),
                     )
                 val groupEarliestYear =

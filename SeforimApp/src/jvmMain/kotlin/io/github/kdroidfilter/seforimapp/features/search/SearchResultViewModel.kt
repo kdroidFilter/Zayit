@@ -850,12 +850,63 @@ class SearchResultViewModel(
                 _uiState.value.copy(
                     results = cached.results,
                     isLoading = false,
-                    hasMore = false,
+                    hasMore = cached.hasMore,
                     progressCurrent = cached.results.size,
-                    progressTotal = cached.results.size.toLong(),
+                    progressTotal = cached.totalHits.takeIf { it > 0 } ?: cached.results.size.toLong(),
                     // trigger scroll restoration once items are present
                     scrollToAnchorTimestamp = System.currentTimeMillis(),
                 )
+            // Re-open a Lucene session if there are more results to load
+            if (cached.hasMore && initialQuery.isNotBlank()) {
+                viewModelScope.launch(Dispatchers.Default) {
+                    val q = initialQuery
+                    val baseBookOnly = !_uiState.value.globalExtended
+                    // Re-open session with same filters for lazy loading continuation
+                    val fetchCategoryId = persisted.fetchCategoryId.takeIf { it > 0 } ?: persisted.filterCategoryId.takeIf { it > 0 }
+                    val fetchBookId = persisted.fetchBookId.takeIf { it > 0 } ?: persisted.filterBookId.takeIf { it > 0 }
+                    val fetchTocId = persisted.fetchTocId.takeIf { it > 0 } ?: persisted.filterTocId.takeIf { it > 0 }
+                    // Collect line IDs for TOC filter if applicable
+                    val lineIds: Set<Long>? = if (fetchTocId != null && fetchBookId != null) {
+                        ensureTocCountingCaches(fetchBookId)
+                        collectLineIdsForTocSubtree(fetchTocId, fetchBookId)
+                    } else {
+                        null
+                    }
+                    // Collect book IDs for checkbox selections
+                    val allowedBooks: List<Long>? =
+                        _selectedCategoryIds.value.takeIf { it.isNotEmpty() }?.let { ids ->
+                            ids.flatMap { catId ->
+                                runCatching { collectBookIdsUnderCategory(catId) }.getOrDefault(emptyList())
+                            }
+                        }
+                    val finalBookIds: List<Long>? =
+                        when {
+                            fetchBookId != null && fetchBookId > 0 -> listOf(fetchBookId)
+                            allowedBooks != null && allowedBooks.isNotEmpty() -> allowedBooks
+                            else -> null
+                        }
+                    val session =
+                        lucene.openSession(
+                            query = q,
+                            near = DEFAULT_NEAR,
+                            bookFilter = null,
+                            categoryFilter = fetchCategoryId,
+                            bookIds = finalBookIds,
+                            lineIds = lineIds,
+                            baseBookOnly = baseBookOnly,
+                        )
+                    // Skip pages we already have and set up lazy loading state
+                    if (session != null) {
+                        val pagesToSkip = (cached.results.size + LAZY_PAGE_SIZE - 1) / LAZY_PAGE_SIZE
+                        repeat(pagesToSkip) { session.nextPage(LAZY_PAGE_SIZE) }
+                        lazyLoadMutex.withLock {
+                            currentSession = session
+                            currentTocAllowedLineIds = lineIds ?: emptySet()
+                            currentSearchQuery = q
+                        }
+                    }
+                }
+            }
             // Immediately restore aggregates and toc counts so the tree and TOC show counts without delay
             _categoryAgg.value =
                 CategoryAgg(
@@ -878,6 +929,8 @@ class SearchResultViewModel(
                         books = n.books.map { SearchTreeBook(it.book, it.count) },
                     )
                 _searchTree.value = snapList.map { mapNode(it) }
+                // Mark facets as computed so the tree won't be rebuilt from partial results
+                facetsComputed = true
             }
             // Reconstruct currentKey from fetch scope.
             val fetchCategoryId = persisted.fetchCategoryId.takeIf { it > 0 } ?: persisted.filterCategoryId.takeIf { it > 0 }
@@ -1159,7 +1212,12 @@ class SearchResultViewModel(
         viewModelScope.launch(Dispatchers.Default) {
             _uiState.value = _uiState.value.copy(isLoadingMore = true)
             try {
-                val session = lazyLoadMutex.withLock { currentSession } ?: return@launch
+                val session = lazyLoadMutex.withLock { currentSession }
+                if (session == null) {
+                    // Session not ready yet (e.g., still being restored), reset loading state
+                    _uiState.value = _uiState.value.copy(isLoadingMore = false)
+                    return@launch
+                }
                 val tocAllowedLineIds = currentTocAllowedLineIds
                 val query = currentSearchQuery
 
@@ -1306,6 +1364,7 @@ class SearchResultViewModel(
                     cur.map { mapNode(it) }
                 }
             }.getOrNull()
+        val currentState = _uiState.value
         return SearchTabCache.Snapshot(
             results = results,
             categoryAgg =
@@ -1317,6 +1376,8 @@ class SearchResultViewModel(
             tocCounts = _tocCounts.value,
             tocTree = treeSnap,
             searchTree = searchTreeSnap,
+            totalHits = currentState.progressTotal ?: results.size.toLong(),
+            hasMore = currentState.hasMore,
         )
     }
 

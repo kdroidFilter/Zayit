@@ -43,6 +43,9 @@ object SearchTabCache {
         val tocTree: TocTreeSnapshot?,
         // Optional precomputed search tree to accelerate restore
         val searchTree: List<SearchTreeCategorySnapshot>? = null,
+        // Total hits for lazy loading continuation
+        val totalHits: Long = 0L,
+        val hasMore: Boolean = false,
     )
 
     private val cache =

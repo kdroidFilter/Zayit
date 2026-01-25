@@ -358,8 +358,7 @@ private fun SearchResultContentMvi(
             val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
             // Trigger when within 10 items of the end
             lastVisibleItem >= totalItems - 10
-        }
-            .distinctUntilChanged()
+        }.distinctUntilChanged()
             .filter { it && state.hasMore && !state.isLoadingMore && !state.isLoading }
             .collect { currentOnLoadMore() }
     }

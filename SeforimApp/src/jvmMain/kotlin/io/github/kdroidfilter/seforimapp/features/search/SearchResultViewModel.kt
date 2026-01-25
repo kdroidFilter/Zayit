@@ -460,8 +460,7 @@ class SearchResultViewModel(
                                 } else {
                                     buildSearchResultTree()
                                 }
-                            }
-                            .flowOn(Dispatchers.Default)
+                            }.flowOn(Dispatchers.Default)
                     }
                 }.collect { tree -> _searchTree.value = tree }
         }
@@ -1020,37 +1019,41 @@ class SearchResultViewModel(
 
                     // Phase 1: Compute facets instantly for immediate tree display
                     val baseBookOnly = !_uiState.value.globalExtended
-                    val facetsBookIds: Collection<Long>? = when {
-                        fetchTocId != null -> {
-                            val toc = repository.getTocEntry(fetchTocId)
-                            toc?.bookId?.let { listOf(it) }
+                    val facetsBookIds: Collection<Long>? =
+                        when {
+                            fetchTocId != null -> {
+                                val toc = repository.getTocEntry(fetchTocId)
+                                toc?.bookId?.let { listOf(it) }
+                            }
+                            fetchBookId != null -> listOf(fetchBookId)
+                            fetchCategoryId != null -> collectBookIdsUnderCategory(fetchCategoryId)
+                            else -> null // Use baseBookOnly parameter instead
                         }
-                        fetchBookId != null -> listOf(fetchBookId)
-                        fetchCategoryId != null -> collectBookIdsUnderCategory(fetchCategoryId)
-                        else -> null // Use baseBookOnly parameter instead
-                    }
 
-                    val facets = lucene.computeFacets(
-                        query = q,
-                        near = DEFAULT_NEAR,
-                        bookIds = facetsBookIds,
-                        baseBookOnly = baseBookOnly
-                    )
+                    val facets =
+                        lucene.computeFacets(
+                            query = q,
+                            near = DEFAULT_NEAR,
+                            bookIds = facetsBookIds,
+                            baseBookOnly = baseBookOnly,
+                        )
 
                     if (facets != null) {
                         // Set aggregates immediately
-                        _categoryAgg.value = CategoryAgg(
-                            categoryCounts = facets.categoryCounts,
-                            bookCounts = facets.bookCounts,
-                            booksForCategory = emptyMap() // Not needed for tree building
-                        )
+                        _categoryAgg.value =
+                            CategoryAgg(
+                                categoryCounts = facets.categoryCounts,
+                                bookCounts = facets.bookCounts,
+                                booksForCategory = emptyMap(), // Not needed for tree building
+                            )
                         _uiState.value = _uiState.value.copy(progressTotal = facets.totalHits)
 
                         // Build tree from facets immediately
-                        val tree = buildSearchTreeUseCase.invoke(
-                            facetCategoryCounts = facets.categoryCounts,
-                            facetBookCounts = facets.bookCounts
-                        )
+                        val tree =
+                            buildSearchTreeUseCase.invoke(
+                                facetCategoryCounts = facets.categoryCounts,
+                                facetBookCounts = facets.bookCounts,
+                            )
                         _searchTree.value = tree
                         facetsComputed = true
                     }
@@ -1078,33 +1081,38 @@ class SearchResultViewModel(
                     // Load only the first page
                     val firstPage = session.nextPage(LAZY_PAGE_SIZE)
                     if (firstPage == null) {
-                        _uiState.value = _uiState.value.copy(
-                            results = emptyList(),
-                            hasMore = false,
-                            progressCurrent = 0,
-                            progressTotal = 0
-                        )
+                        _uiState.value =
+                            _uiState.value.copy(
+                                results = emptyList(),
+                                hasMore = false,
+                                progressCurrent = 0,
+                                progressTotal = 0,
+                            )
                         return@launch
                     }
 
-                    val filteredHits = if (tocAllowedLineIds.isEmpty()) {
-                        firstPage.hits
-                    } else {
-                        firstPage.hits.filter { it.lineId in tocAllowedLineIds }
-                    }
+                    val filteredHits =
+                        if (tocAllowedLineIds.isEmpty()) {
+                            firstPage.hits
+                        } else {
+                            firstPage.hits.filter { it.lineId in tocAllowedLineIds }
+                        }
 
                     // Update TOC counts for first page
                     if (filteredHits.isNotEmpty()) {
-                        _uiState.value.scopeBook?.id?.let { updateTocCountsForHits(filteredHits, it) }
+                        _uiState.value.scopeBook
+                            ?.id
+                            ?.let { updateTocCountsForHits(filteredHits, it) }
                     }
 
                     val results = hitsToResults(filteredHits, q)
-                    _uiState.value = _uiState.value.copy(
-                        results = results,
-                        hasMore = !firstPage.isLastPage,
-                        progressCurrent = results.size,
-                        progressTotal = firstPage.totalHits,
-                    )
+                    _uiState.value =
+                        _uiState.value.copy(
+                            results = results,
+                            hasMore = !firstPage.isLastPage,
+                            progressCurrent = results.size,
+                            progressTotal = firstPage.totalHits,
+                        )
                 } finally {
                     // Clear loading promptly; if a new visibleResults emission is pending, wait briefly
                     // but never block indefinitely (important when final results are empty and identical
@@ -1144,25 +1152,29 @@ class SearchResultViewModel(
                     return@launch
                 }
 
-                val filteredHits = if (tocAllowedLineIds.isEmpty()) {
-                    page.hits
-                } else {
-                    page.hits.filter { it.lineId in tocAllowedLineIds }
-                }
+                val filteredHits =
+                    if (tocAllowedLineIds.isEmpty()) {
+                        page.hits
+                    } else {
+                        page.hits.filter { it.lineId in tocAllowedLineIds }
+                    }
 
                 // Update TOC counts for this page
                 if (filteredHits.isNotEmpty()) {
-                    _uiState.value.scopeBook?.id?.let { updateTocCountsForHits(filteredHits, it) }
+                    _uiState.value.scopeBook
+                        ?.id
+                        ?.let { updateTocCountsForHits(filteredHits, it) }
                 }
 
                 val newResults = hitsToResults(filteredHits, query)
                 val currentResults = _uiState.value.results
-                _uiState.value = _uiState.value.copy(
-                    results = currentResults + newResults,
-                    hasMore = !page.isLastPage,
-                    progressCurrent = currentResults.size + newResults.size,
-                    isLoadingMore = false,
-                )
+                _uiState.value =
+                    _uiState.value.copy(
+                        results = currentResults + newResults,
+                        hasMore = !page.isLastPage,
+                        progressCurrent = currentResults.size + newResults.size,
+                        isLoadingMore = false,
+                    )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoadingMore = false)
             }
@@ -1466,77 +1478,98 @@ class SearchResultViewModel(
         if (q.isBlank()) return
 
         currentJob?.cancel()
-        currentJob = viewModelScope.launch(Dispatchers.Default) {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+        currentJob =
+            viewModelScope.launch(Dispatchers.Default) {
+                _uiState.value = _uiState.value.copy(isLoading = true)
 
-            try {
-                val baseBookOnly = !_uiState.value.globalExtended
+                try {
+                    val baseBookOnly = !_uiState.value.globalExtended
 
-                // Determine filter parameters
-                val bookIdsToFilter: Collection<Long>? = when {
-                    tocId != null -> null // Will use lineIds
-                    bookId != null -> listOf(bookId)
-                    categoryId != null -> collectBookIdsUnderCategory(categoryId)
-                    else -> null // Use baseBookOnly parameter instead
+                    // Determine filter parameters
+                    val bookIdsToFilter: Collection<Long>? =
+                        when {
+                            tocId != null -> null // Will use lineIds
+                            bookId != null -> listOf(bookId)
+                            categoryId != null -> collectBookIdsUnderCategory(categoryId)
+                            else -> null // Use baseBookOnly parameter instead
+                        }
+
+                    val lineIdsToFilter: Collection<Long>? =
+                        if (tocId != null && bookId != null) {
+                            collectLineIdsForTocSubtree(tocId, bookId)
+                        } else {
+                            null
+                        }
+
+                    // Close existing session
+                    lazyLoadMutex.withLock {
+                        currentSession?.close()
+                        currentSession = null
+                    }
+
+                    // Open search session with filter (use baseBookOnly for base-book-only search)
+                    val session =
+                        when {
+                            lineIdsToFilter != null ->
+                                lucene.openSession(
+                                    q,
+                                    DEFAULT_NEAR,
+                                    lineIds = lineIdsToFilter,
+                                    baseBookOnly = baseBookOnly,
+                                )
+                            bookIdsToFilter != null ->
+                                lucene.openSession(
+                                    q,
+                                    DEFAULT_NEAR,
+                                    bookIds = bookIdsToFilter,
+                                    baseBookOnly = baseBookOnly,
+                                )
+                            else -> lucene.openSession(q, DEFAULT_NEAR, baseBookOnly = baseBookOnly)
+                        }
+
+                    if (session == null) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                results = emptyList(),
+                                hasMore = false,
+                                progressCurrent = 0,
+                                progressTotal = 0,
+                            )
+                        return@launch
+                    }
+
+                    lazyLoadMutex.withLock {
+                        currentSession = session
+                        currentTocAllowedLineIds = emptySet()
+                        currentSearchQuery = q
+                    }
+
+                    // Load first page
+                    val firstPage = session.nextPage(LAZY_PAGE_SIZE)
+                    if (firstPage == null) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                results = emptyList(),
+                                hasMore = false,
+                                progressCurrent = 0,
+                            )
+                        return@launch
+                    }
+
+                    // Update progress but DON'T rebuild tree - keep original tree for navigation
+                    _uiState.value = _uiState.value.copy(progressTotal = firstPage.totalHits)
+
+                    val results = hitsToResults(firstPage.hits, q)
+                    _uiState.value =
+                        _uiState.value.copy(
+                            results = results,
+                            hasMore = !firstPage.isLastPage,
+                            progressCurrent = results.size,
+                        )
+                } finally {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
                 }
-
-                val lineIdsToFilter: Collection<Long>? = if (tocId != null && bookId != null) {
-                    collectLineIdsForTocSubtree(tocId, bookId)
-                } else null
-
-                // Close existing session
-                lazyLoadMutex.withLock {
-                    currentSession?.close()
-                    currentSession = null
-                }
-
-                // Open search session with filter (use baseBookOnly for base-book-only search)
-                val session = when {
-                    lineIdsToFilter != null -> lucene.openSession(q, DEFAULT_NEAR, lineIds = lineIdsToFilter, baseBookOnly = baseBookOnly)
-                    bookIdsToFilter != null -> lucene.openSession(q, DEFAULT_NEAR, bookIds = bookIdsToFilter, baseBookOnly = baseBookOnly)
-                    else -> lucene.openSession(q, DEFAULT_NEAR, baseBookOnly = baseBookOnly)
-                }
-
-                if (session == null) {
-                    _uiState.value = _uiState.value.copy(
-                        results = emptyList(),
-                        hasMore = false,
-                        progressCurrent = 0,
-                        progressTotal = 0
-                    )
-                    return@launch
-                }
-
-                lazyLoadMutex.withLock {
-                    currentSession = session
-                    currentTocAllowedLineIds = emptySet()
-                    currentSearchQuery = q
-                }
-
-                // Load first page
-                val firstPage = session.nextPage(LAZY_PAGE_SIZE)
-                if (firstPage == null) {
-                    _uiState.value = _uiState.value.copy(
-                        results = emptyList(),
-                        hasMore = false,
-                        progressCurrent = 0
-                    )
-                    return@launch
-                }
-
-                // Update progress but DON'T rebuild tree - keep original tree for navigation
-                _uiState.value = _uiState.value.copy(progressTotal = firstPage.totalHits)
-
-                val results = hitsToResults(firstPage.hits, q)
-                _uiState.value = _uiState.value.copy(
-                    results = results,
-                    hasMore = !firstPage.isLastPage,
-                    progressCurrent = results.size,
-                )
-            } finally {
-                _uiState.value = _uiState.value.copy(isLoading = false)
             }
-        }
     }
 
     // Multi-select toggles for checkboxes
@@ -1652,103 +1685,109 @@ class SearchResultViewModel(
         if (q.isBlank()) return
 
         currentJob?.cancel()
-        currentJob = viewModelScope.launch(Dispatchers.Default) {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+        currentJob =
+            viewModelScope.launch(Dispatchers.Default) {
+                _uiState.value = _uiState.value.copy(isLoading = true)
 
-            try {
-                val selectedCats = _selectedCategoryIds.value
-                val selectedBooks = _selectedBookIds.value
-                val selectedTocs = _selectedTocIds.value
-                val baseBookOnly = !_uiState.value.globalExtended
+                try {
+                    val selectedCats = _selectedCategoryIds.value
+                    val selectedBooks = _selectedBookIds.value
+                    val selectedTocs = _selectedTocIds.value
+                    val baseBookOnly = !_uiState.value.globalExtended
 
-                // Build the set of book IDs to filter
-                val bookIdsToFilter = mutableSetOf<Long>()
+                    // Build the set of book IDs to filter
+                    val bookIdsToFilter = mutableSetOf<Long>()
 
-                // Add books from selected categories
-                for (catId in selectedCats) {
-                    bookIdsToFilter += collectBookIdsUnderCategory(catId)
-                }
-
-                // Add directly selected books
-                bookIdsToFilter += selectedBooks
-
-                // Determine line IDs from selected TOCs
-                val lineIdsToFilter = mutableSetOf<Long>()
-                for (tocId in selectedTocs) {
-                    val bookId = tocBookCache.getOrPut(tocId) {
-                        runCatching { repository.getTocEntry(tocId)?.bookId }.getOrNull() ?: -1L
+                    // Add books from selected categories
+                    for (catId in selectedCats) {
+                        bookIdsToFilter += collectBookIdsUnderCategory(catId)
                     }
-                    if (bookId > 0) {
-                        lineIdsToFilter += collectLineIdsForTocSubtree(tocId, bookId)
+
+                    // Add directly selected books
+                    bookIdsToFilter += selectedBooks
+
+                    // Determine line IDs from selected TOCs
+                    val lineIdsToFilter = mutableSetOf<Long>()
+                    for (tocId in selectedTocs) {
+                        val bookId =
+                            tocBookCache.getOrPut(tocId) {
+                                runCatching { repository.getTocEntry(tocId)?.bookId }.getOrNull() ?: -1L
+                            }
+                        if (bookId > 0) {
+                            lineIdsToFilter += collectLineIdsForTocSubtree(tocId, bookId)
+                        }
                     }
-                }
 
-                // If nothing selected, use global search with baseBookOnly filter
-                val hasFilters = bookIdsToFilter.isNotEmpty() || lineIdsToFilter.isNotEmpty()
+                    // If nothing selected, use global search with baseBookOnly filter
+                    val hasFilters = bookIdsToFilter.isNotEmpty() || lineIdsToFilter.isNotEmpty()
 
-                // Close existing session
-                lazyLoadMutex.withLock {
-                    currentSession?.close()
-                    currentSession = null
-                }
-
-                // Open search session with filter (use baseBookOnly for base-book-only search)
-                val session = when {
-                    lineIdsToFilter.isNotEmpty() -> {
-                        lucene.openSession(q, DEFAULT_NEAR, lineIds = lineIdsToFilter, baseBookOnly = baseBookOnly)
+                    // Close existing session
+                    lazyLoadMutex.withLock {
+                        currentSession?.close()
+                        currentSession = null
                     }
-                    bookIdsToFilter.isNotEmpty() -> {
-                        lucene.openSession(q, DEFAULT_NEAR, bookIds = bookIdsToFilter, baseBookOnly = baseBookOnly)
+
+                    // Open search session with filter (use baseBookOnly for base-book-only search)
+                    val session =
+                        when {
+                            lineIdsToFilter.isNotEmpty() -> {
+                                lucene.openSession(q, DEFAULT_NEAR, lineIds = lineIdsToFilter, baseBookOnly = baseBookOnly)
+                            }
+                            bookIdsToFilter.isNotEmpty() -> {
+                                lucene.openSession(q, DEFAULT_NEAR, bookIds = bookIdsToFilter, baseBookOnly = baseBookOnly)
+                            }
+                            else -> {
+                                // No checkbox filter - use baseBookOnly for non-extended search
+                                lucene.openSession(q, DEFAULT_NEAR, baseBookOnly = baseBookOnly)
+                            }
+                        }
+
+                    if (session == null) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                results = emptyList(),
+                                hasMore = false,
+                                progressCurrent = 0,
+                                progressTotal = 0,
+                            )
+                        return@launch
                     }
-                    else -> {
-                        // No checkbox filter - use baseBookOnly for non-extended search
-                        lucene.openSession(q, DEFAULT_NEAR, baseBookOnly = baseBookOnly)
+
+                    lazyLoadMutex.withLock {
+                        currentSession = session
+                        currentTocAllowedLineIds = emptySet()
+                        currentSearchQuery = q
                     }
+
+                    // Load first page
+                    val firstPage = session.nextPage(LAZY_PAGE_SIZE)
+                    if (firstPage == null) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                results = emptyList(),
+                                hasMore = false,
+                                progressCurrent = 0,
+                            )
+                        return@launch
+                    }
+
+                    // Update progress but DON'T rebuild tree - keep original tree for navigation
+                    _uiState.value = _uiState.value.copy(progressTotal = firstPage.totalHits)
+
+                    val results = hitsToResults(firstPage.hits, q)
+                    _uiState.value =
+                        _uiState.value.copy(
+                            results = results,
+                            hasMore = !firstPage.isLastPage,
+                            progressCurrent = results.size,
+                            scrollIndex = 0,
+                            scrollOffset = 0,
+                            scrollToAnchorTimestamp = System.currentTimeMillis(),
+                        )
+                } finally {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
                 }
-
-                if (session == null) {
-                    _uiState.value = _uiState.value.copy(
-                        results = emptyList(),
-                        hasMore = false,
-                        progressCurrent = 0,
-                        progressTotal = 0
-                    )
-                    return@launch
-                }
-
-                lazyLoadMutex.withLock {
-                    currentSession = session
-                    currentTocAllowedLineIds = emptySet()
-                    currentSearchQuery = q
-                }
-
-                // Load first page
-                val firstPage = session.nextPage(LAZY_PAGE_SIZE)
-                if (firstPage == null) {
-                    _uiState.value = _uiState.value.copy(
-                        results = emptyList(),
-                        hasMore = false,
-                        progressCurrent = 0
-                    )
-                    return@launch
-                }
-
-                // Update progress but DON'T rebuild tree - keep original tree for navigation
-                _uiState.value = _uiState.value.copy(progressTotal = firstPage.totalHits)
-
-                val results = hitsToResults(firstPage.hits, q)
-                _uiState.value = _uiState.value.copy(
-                    results = results,
-                    hasMore = !firstPage.isLastPage,
-                    progressCurrent = results.size,
-                    scrollIndex = 0,
-                    scrollOffset = 0,
-                    scrollToAnchorTimestamp = System.currentTimeMillis()
-                )
-            } finally {
-                _uiState.value = _uiState.value.copy(isLoading = false)
             }
-        }
     }
 
     /**

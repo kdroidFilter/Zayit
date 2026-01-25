@@ -65,8 +65,9 @@ class BuildSearchTreeUseCase(
 
         // Load categories from cache or repository
         for (catId in facetCategoryCounts.keys) {
-            val cat = categoryCache[catId]
-                ?: repository.getCategory(catId)?.also { categoryCache[catId] = it }
+            val cat =
+                categoryCache[catId]
+                    ?: repository.getCategory(catId)?.also { categoryCache[catId] = it }
             if (cat != null) {
                 categoriesById[cat.id] = cat
             }
@@ -74,14 +75,16 @@ class BuildSearchTreeUseCase(
 
         // Load books and ensure their categories are included
         for (bookId in facetBookCounts.keys) {
-            val book = bookCache[bookId]
-                ?: repository.getBookCore(bookId)?.also { bookCache[bookId] = it }
+            val book =
+                bookCache[bookId]
+                    ?: repository.getBookCore(bookId)?.also { bookCache[bookId] = it }
             if (book != null) {
                 booksById[book.id] = book
                 // Ensure the book's category is in the tree
                 if (!categoriesById.containsKey(book.categoryId)) {
-                    val cat = categoryCache[book.categoryId]
-                        ?: repository.getCategory(book.categoryId)?.also { categoryCache[book.categoryId] = it }
+                    val cat =
+                        categoryCache[book.categoryId]
+                            ?: repository.getCategory(book.categoryId)?.also { categoryCache[book.categoryId] = it }
                     if (cat != null) {
                         categoriesById[cat.id] = cat
                     }
@@ -135,8 +138,9 @@ class BuildSearchTreeUseCase(
         val path = mutableListOf<Category>()
         var currentId: Long? = categoryId
         while (currentId != null) {
-            val cat = categoryCache[currentId]
-                ?: repository.getCategory(currentId)?.also { categoryCache[currentId] = it }
+            val cat =
+                categoryCache[currentId]
+                    ?: repository.getCategory(currentId)?.also { categoryCache[currentId] = it }
             if (cat == null) break
             path += cat
             currentId = cat.parentId

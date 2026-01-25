@@ -425,7 +425,9 @@ private fun SearchResultContentMvi(
                     loadedResults,
                     (state.progressTotal ?: loadedResults.toLong()).coerceAtLeast(loadedResults.toLong()).toInt(),
                 )
-            val showProgress = state.isLoading || state.isLoadingMore
+            // Only show top progress bar during initial search, not lazy loading
+            // (lazy loading has its own spinner at the bottom of the list)
+            val showProgress = state.isLoading
             val hasTotal = (state.progressTotal ?: 0L) > 0L
             val headerText =
                 if (showProgress && hasTotal) {
@@ -485,7 +487,8 @@ private fun SearchResultContentMvi(
                     modifier = Modifier.width(40.dp).height(28.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (state.isLoading || state.isLoadingMore) {
+                    // Only show cancel during initial search, not lazy loading
+                    if (state.isLoading) {
                         IconActionButton(
                             key = AllIconsKeys.Windows.Close,
                             onClick = actions.onCancelSearch,
@@ -544,8 +547,8 @@ private fun SearchResultContentMvi(
                                 bookFontCode = bookFontCode,
                             )
                         }
-                        // Loading indicator at the end of the list
-                        if (state.isLoading || state.isLoadingMore) {
+                        // Loading indicator at the end of the list (only for lazy loading)
+                        if (state.isLoadingMore) {
                             item {
                                 Box(
                                     Modifier.fillMaxWidth().padding(vertical = 16.dp),

@@ -51,6 +51,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asSt
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.logger.debugln
+import io.github.kdroidfilter.seforimapp.features.search.domain.TocTree
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
@@ -168,7 +169,7 @@ fun SearchResultInBookShellMvi(
     selectedBookIds: Set<Long>,
     selectedTocIds: Set<Long>,
     tocCounts: Map<Long, Int>,
-    tocTree: SearchResultViewModel.TocTree?,
+    tocTree: TocTree?,
     actions: SearchShellActions,
 ) {
     val tabId = bookUiState.tabId

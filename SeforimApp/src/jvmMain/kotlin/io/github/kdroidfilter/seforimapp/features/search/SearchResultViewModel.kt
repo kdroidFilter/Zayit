@@ -18,7 +18,15 @@ import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.search.domain.BuildSearchTreeUseCase
+import io.github.kdroidfilter.seforimapp.features.search.domain.CategoryNavigationUseCase
+import io.github.kdroidfilter.seforimapp.features.search.domain.ExecuteSearchUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.GetBreadcrumbPiecesUseCase
+import io.github.kdroidfilter.seforimapp.features.search.domain.ResultsIndex
+import io.github.kdroidfilter.seforimapp.features.search.domain.ResultsIndexingUseCase
+import io.github.kdroidfilter.seforimapp.features.search.domain.SearchStatePersistenceUseCase
+import io.github.kdroidfilter.seforimapp.features.search.domain.SearchTocUseCase
+import io.github.kdroidfilter.seforimapp.features.search.domain.TocLineIndex
+import io.github.kdroidfilter.seforimapp.features.search.domain.TocTree
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
@@ -34,11 +42,9 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.Arrays
 import java.util.UUID
 import kotlin.collections.ArrayDeque
 
-private const val PARALLEL_FILTER_THRESHOLD = 2_000
 private const val LAZY_PAGE_SIZE = 25
 
 @Stable
@@ -94,6 +100,11 @@ class SearchResultViewModel(
 
     private val getBreadcrumbPieces = GetBreadcrumbPiecesUseCase(repository)
     private val buildSearchTreeUseCase = BuildSearchTreeUseCase(repository)
+    private val resultsIndexingUseCase = ResultsIndexingUseCase()
+    private val categoryNavigationUseCase = CategoryNavigationUseCase(repository)
+    private val searchTocUseCase = SearchTocUseCase(repository)
+    private val searchStatePersistenceUseCase = SearchStatePersistenceUseCase()
+    private val executeSearchUseCase = ExecuteSearchUseCase()
 
     // MVI events for SearchResultViewModel
     sealed class SearchResultEvents {
@@ -279,11 +290,6 @@ class SearchResultViewModel(
         val books: List<SearchTreeBook>,
     )
 
-    data class TocTree(
-        val rootEntries: List<TocEntry>,
-        val children: Map<Long, List<TocEntry>>,
-    )
-
     data class CategoryAgg(
         val categoryCounts: Map<Long, Int>,
         val bookCounts: Map<Long, Int>,
@@ -296,7 +302,6 @@ class SearchResultViewModel(
     private val booksForCategoryAcc: MutableMap<Long, MutableSet<Book>> = mutableMapOf()
     private val tocCountsAcc: MutableMap<Long, Int> = mutableMapOf()
     private val countsMutex = Mutex()
-    private val indexMutex = Mutex()
 
     private val _categoryAgg = MutableStateFlow(CategoryAgg(emptyMap(), emptyMap(), emptyMap()))
     private val _tocCounts = MutableStateFlow<Map<Long, Int>>(emptyMap())
@@ -484,44 +489,7 @@ class SearchResultViewModel(
 
     private var currentTocBookId: Long? = null
 
-    // --- Fast filtering index helpers ---
-    private data class ResultsIndex(
-        val identity: Int,
-        val bookToIndices: Map<Long, IntArray>,
-        val lineIdToIndex: Map<Long, Int>,
-    )
-
-    @Volatile private var resultsIndex: ResultsIndex? = null
-    private var tocIndicesIdentity: Int = -1
-    private val tocIndicesCache: MutableMap<Long, IntArray> = mutableMapOf()
-
-    private suspend fun ensureResultsIndex(results: List<SearchResult>) {
-        val identity = System.identityHashCode(results)
-        val current = resultsIndex
-        if (current != null && current.identity == identity) return
-        indexMutex.withLock {
-            val cur2 = resultsIndex
-            if (cur2 != null && cur2.identity == identity) return@withLock
-            val bookMap = HashMap<Long, MutableList<Int>>()
-            val lineMap = HashMap<Long, Int>(results.size * 2)
-            for ((i, r) in results.withIndex()) {
-                bookMap.getOrPut(r.bookId) { ArrayList() }.add(i)
-                lineMap[r.lineId] = i
-            }
-            val finalBook = HashMap<Long, IntArray>(bookMap.size)
-            for ((k, v) in bookMap) {
-                val arr = IntArray(v.size)
-                var idx = 0
-                for (n in v) {
-                    arr[idx++] = n
-                }
-                finalBook[k] = arr
-            }
-            resultsIndex = ResultsIndex(identity = identity, bookToIndices = finalBook, lineIdToIndex = lineMap)
-            tocIndicesIdentity = identity
-            tocIndicesCache.clear()
-        }
-    }
+    // --- Fast filtering index helpers (delegated to ResultsIndexingUseCase) ---
 
     private suspend fun fastFilterVisibleResults(
         results: List<SearchResult>,
@@ -543,8 +511,7 @@ class SearchResultViewModel(
         ) {
             return results
         }
-        ensureResultsIndex(results)
-        val index = resultsIndex ?: return results
+        val index = resultsIndexingUseCase.ensureIndex(results)
 
         // Union semantics across active filters (categories/books/TOC/selected lines)
         val toMerge = ArrayList<IntArray>(6)
@@ -558,16 +525,16 @@ class SearchResultViewModel(
                 }
             }
             if (tocArrays.isNotEmpty()) {
-                val merged = mergeSortedIndicesParallel(tocArrays)
+                val merged = resultsIndexingUseCase.mergeSortedIndicesParallel(tocArrays)
                 if (merged.isNotEmpty()) toMerge.add(merged)
             }
         }
         if (selectedBooks.isNotEmpty()) {
-            val arr = mergeSortedIndicesParallel(selectedBooks.mapNotNull { index.bookToIndices[it] })
+            val arr = resultsIndexingUseCase.mergeSortedIndicesParallel(selectedBooks.mapNotNull { index.bookToIndices[it] })
             if (arr.isNotEmpty()) toMerge.add(arr)
         }
         if (multiBooks.isNotEmpty()) {
-            val arr = mergeSortedIndicesParallel(multiBooks.mapNotNull { index.bookToIndices[it] })
+            val arr = resultsIndexingUseCase.mergeSortedIndicesParallel(multiBooks.mapNotNull { index.bookToIndices[it] })
             if (arr.isNotEmpty()) toMerge.add(arr)
         }
         if (tocActive && scopeTocId != null) {
@@ -583,29 +550,17 @@ class SearchResultViewModel(
             index.bookToIndices[bookId]?.let { if (it.isNotEmpty()) toMerge.add(it) }
         }
         if (toMerge.isNotEmpty()) {
-            val merged = mergeSortedIndicesParallel(toMerge)
-            return ArrayList<SearchResult>(merged.size).apply {
-                var i = 0
-                while (i < merged.size) {
-                    add(results[merged[i]])
-                    i++
-                }
-            }
+            val merged = resultsIndexingUseCase.mergeSortedIndicesParallel(toMerge)
+            return resultsIndexingUseCase.extractResultsAtIndices(results, merged)
         }
         // fallback to scope allowedBooks only
         if (allowedBooks.isNotEmpty()) {
             val distinctBooks = index.bookToIndices.size
             return if (allowedBooks.size >= distinctBooks * 3 / 4) {
-                results.parallelFilterByBook(allowedBooks)
+                resultsIndexingUseCase.parallelFilterByBook(results, allowedBooks)
             } else {
-                val arr = mergeSortedIndicesParallel(allowedBooks.mapNotNull { index.bookToIndices[it] })
-                ArrayList<SearchResult>(arr.size).apply {
-                    var i = 0
-                    while (i < arr.size) {
-                        add(results[arr[i]])
-                        i++
-                    }
-                }
+                val arr = resultsIndexingUseCase.mergeSortedIndicesParallel(allowedBooks.mapNotNull { index.bookToIndices[it] })
+                resultsIndexingUseCase.extractResultsAtIndices(results, arr)
             }
         }
         return results
@@ -616,147 +571,15 @@ class SearchResultViewModel(
         bookId: Long,
         index: ResultsIndex,
     ): IntArray {
-        if (tocIndicesIdentity != index.identity) {
-            tocIndicesIdentity = index.identity
-            tocIndicesCache.clear()
-        }
-        tocIndicesCache[tocId]?.let { return it }
         val tocIndex = ensureTocLineIndex(bookId)
         val lineIds = tocIndex.subtreeLineIds(tocId)
-        if (lineIds.isEmpty()) return IntArray(0)
-        var count = 0
-        val tmp = IntArray(lineIds.size)
-        for (lid in lineIds) {
-            val idx = index.lineIdToIndex[lid]
-            if (idx != null) tmp[count++] = idx
-        }
-        if (count == 0) return IntArray(0)
-        val arr = if (count == tmp.size) tmp else tmp.copyOf(count)
-        Arrays.parallelSort(arr)
-        tocIndicesCache[tocId] = arr
-        return arr
-    }
-
-    private suspend fun mergeSortedIndicesParallel(arrays: List<IntArray>): IntArray {
-        if (arrays.isEmpty()) return IntArray(0)
-        if (arrays.size == 1) return arrays[0]
-        return coroutineScope {
-            fun mergeTwo(
-                a: IntArray,
-                b: IntArray,
-            ): IntArray {
-                val out = IntArray(a.size + b.size)
-                var i = 0
-                var j = 0
-                var k = 0
-                var hasLast = false
-                var last = 0
-                while (i < a.size && j < b.size) {
-                    val av = a[i]
-                    val bv = b[j]
-                    val v: Int
-                    if (av <= bv) {
-                        v = av
-                        i++
-                    } else {
-                        v = bv
-                        j++
-                    }
-                    if (!hasLast || v != last) {
-                        out[k++] = v
-                        last = v
-                        hasLast = true
-                    }
-                }
-                while (i < a.size) {
-                    val v = a[i++]
-                    if (!hasLast || v != last) {
-                        out[k++] = v
-                        last = v
-                        hasLast = true
-                    }
-                }
-                while (j < b.size) {
-                    val v = b[j++]
-                    if (!hasLast || v != last) {
-                        out[k++] = v
-                        last = v
-                        hasLast = true
-                    }
-                }
-                return if (k == out.size) out else out.copyOf(k)
-            }
-
-            suspend fun mergeRange(
-                start: Int,
-                end: Int,
-            ): IntArray {
-                val len = end - start
-                return when {
-                    len <= 0 -> {
-                        IntArray(0)
-                    }
-
-                    len == 1 -> {
-                        arrays[start]
-                    }
-
-                    len == 2 -> {
-                        mergeTwo(arrays[start], arrays[start + 1])
-                    }
-
-                    else -> {
-                        val mid = start + len / 2
-                        val left = async(Dispatchers.Default) { mergeRange(start, mid) }
-                        val right = async(Dispatchers.Default) { mergeRange(mid, end) }
-                        mergeTwo(left.await(), right.await())
-                    }
-                }
-            }
-            mergeRange(0, arrays.size)
-        }
-    }
-
-    private fun List<SearchResult>.parallelFilterByBook(allowed: Set<Long>): List<SearchResult> =
-        run {
-            val total = this.size
-            val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
-            if (total < PARALLEL_FILTER_THRESHOLD || cores == 1) return@run this.fastFilterByBookSequential(allowed)
-            val chunk = (total + cores - 1) / cores
-            runBlocking(Dispatchers.Default) {
-                val tasks = ArrayList<Deferred<List<SearchResult>>>(cores)
-                var start = 0
-                while (start < total) {
-                    val s = start
-                    val e = kotlin.math.min(total, start + chunk)
-                    tasks +=
-                        async {
-                            val sub = ArrayList<SearchResult>(e - s)
-                            var i = s
-                            while (i < e) {
-                                val v = this@parallelFilterByBook[i]
-                                if (v.bookId in allowed) sub.add(v)
-                                i++
-                            }
-                            sub
-                        }
-                    start = e
-                }
-                tasks.awaitAll().flatten()
-            }
-        }
-
-    private fun List<SearchResult>.fastFilterByBookSequential(allowed: Set<Long>): List<SearchResult> {
-        val out = ArrayList<SearchResult>(this.size)
-        for (r in this) if (r.bookId in allowed) out.add(r)
-        return out
+        return resultsIndexingUseCase.indicesForTocSubtree(tocId, lineIds, index)
     }
 
     // Bulk caches for TOC counting within a scoped book
     private var cachedCountsBookId: Long? = null
     private var lineIdToTocId: Map<Long, Long> = emptyMap()
     private var tocParentById: Map<Long, Long?> = emptyMap()
-    private val tocLineIndexCache: MutableMap<Long, TocLineIndex> = mutableMapOf()
     private val tocBookCache: MutableMap<Long, Long> = mutableMapOf()
 
     init {
@@ -1147,12 +970,7 @@ class SearchResultViewModel(
                         return@launch
                     }
 
-                    val filteredHits =
-                        if (tocAllowedLineIds.isEmpty()) {
-                            firstPage.hits
-                        } else {
-                            firstPage.hits.filter { it.lineId in tocAllowedLineIds }
-                        }
+                    val filteredHits = executeSearchUseCase.filterHitsByLineIds(firstPage.hits, tocAllowedLineIds)
 
                     // Update TOC counts for first page
                     if (filteredHits.isNotEmpty()) {
@@ -1213,12 +1031,7 @@ class SearchResultViewModel(
                     return@launch
                 }
 
-                val filteredHits =
-                    if (tocAllowedLineIds.isEmpty()) {
-                        page.hits
-                    } else {
-                        page.hits.filter { it.lineId in tocAllowedLineIds }
-                    }
+                val filteredHits = executeSearchUseCase.filterHitsByLineIds(page.hits, tocAllowedLineIds)
 
                 // Update TOC counts for this page
                 if (filteredHits.isNotEmpty()) {
@@ -1281,31 +1094,7 @@ class SearchResultViewModel(
     private fun hitsToResults(
         hits: List<LineHit>,
         rawQuery: String,
-    ): List<SearchResult> {
-        if (hits.isEmpty()) return emptyList()
-        val trimmedQuery = rawQuery.trim()
-        val checkExact = trimmedQuery.isNotEmpty()
-        val out = ArrayList<SearchResult>(hits.size)
-        for (hit in hits) {
-            val snippetFromIndex =
-                when {
-                    hit.snippet.isNotBlank() -> hit.snippet
-                    hit.rawText.isNotBlank() -> hit.rawText
-                    else -> ""
-                }
-            val scoreBoost = if (checkExact && hit.rawText.contains(trimmedQuery)) 1e-3 else 0.0
-            out +=
-                SearchResult(
-                    bookId = hit.bookId,
-                    bookTitle = hit.bookTitle,
-                    lineId = hit.lineId,
-                    lineIndex = hit.lineIndex,
-                    snippet = snippetFromIndex,
-                    rank = hit.score.toDouble() + scoreBoost,
-                )
-        }
-        return out
-    }
+    ): List<SearchResult> = executeSearchUseCase.hitsToResults(hits, rawQuery)
 
     fun cancelSearch() {
         currentJob?.cancel()
@@ -1332,44 +1121,16 @@ class SearchResultViewModel(
         cancelSearch()
     }
 
-    private fun buildSnapshot(results: List<SearchResult>): SearchTabCache.Snapshot {
-        val catAgg = _categoryAgg.value
-        val treeSnap =
-            _tocTree.value?.let { t ->
-                SearchTabCache.TocTreeSnapshot(t.rootEntries, t.children)
-            }
-        val searchTreeSnap: List<SearchTabCache.SearchTreeCategorySnapshot>? =
-            runCatching {
-                val cur = searchTreeFlow.value
-                if (cur.isEmpty()) {
-                    null
-                } else {
-                    fun mapNode(n: SearchTreeCategory): SearchTabCache.SearchTreeCategorySnapshot =
-                        SearchTabCache.SearchTreeCategorySnapshot(
-                            category = n.category,
-                            count = n.count,
-                            children = n.children.map { mapNode(it) },
-                            books = n.books.map { b -> SearchTabCache.SearchTreeBookSnapshot(b.book, b.count) },
-                        )
-                    cur.map { mapNode(it) }
-                }
-            }.getOrNull()
-        val currentState = _uiState.value
-        return SearchTabCache.Snapshot(
+    private fun buildSnapshot(results: List<SearchResult>): SearchTabCache.Snapshot =
+        searchStatePersistenceUseCase.buildSnapshot(
             results = results,
-            categoryAgg =
-                SearchTabCache.CategoryAggSnapshot(
-                    categoryCounts = catAgg.categoryCounts,
-                    bookCounts = catAgg.bookCounts,
-                    booksForCategory = catAgg.booksForCategory,
-                ),
+            categoryAgg = _categoryAgg.value,
+            tocTree = _tocTree.value,
+            searchTree = searchTreeFlow.value,
             tocCounts = _tocCounts.value,
-            tocTree = treeSnap,
-            searchTree = searchTreeSnap,
-            totalHits = currentState.progressTotal ?: results.size.toLong(),
-            hasMore = currentState.hasMore,
+            progressTotal = _uiState.value.progressTotal,
+            hasMore = _uiState.value.hasMore,
         )
-    }
 
     fun onScroll(
         anchorId: Long,
@@ -1907,22 +1668,10 @@ class SearchResultViewModel(
         }
     }
 
-    private suspend fun collectBookIdsUnderCategory(categoryId: Long): Set<Long> {
-        // Bulk: single pass using closure table + join in BookQueries
-        val books = runCatching { repository.getBooksUnderCategoryTree(categoryId) }.getOrDefault(emptyList())
-        return books.mapTo(mutableSetOf()) { it.id }
-    }
+    private suspend fun collectBookIdsUnderCategory(categoryId: Long): Set<Long> =
+        categoryNavigationUseCase.collectBookIdsUnderCategory(categoryId)
 
-    private suspend fun buildCategoryPath(categoryId: Long): List<Category> {
-        val path = mutableListOf<Category>()
-        var currentId: Long? = categoryId
-        while (currentId != null) {
-            val cat = repository.getCategory(currentId) ?: break
-            path += cat
-            currentId = cat.parentId
-        }
-        return path.asReversed()
-    }
+    private suspend fun buildCategoryPath(categoryId: Long): List<Category> = categoryNavigationUseCase.buildCategoryPath(categoryId)
 
     /**
      * Compute breadcrumb pieces for a given search result: category path, book, and TOC path to the line.
@@ -2019,10 +1768,7 @@ class SearchResultViewModel(
     private suspend fun collectLineIdsForTocSubtree(
         tocId: Long,
         bookId: Long,
-    ): Set<Long> {
-        val index = ensureTocLineIndex(bookId)
-        return index.subtreeLineIds(tocId).toSet()
-    }
+    ): Set<Long> = searchTocUseCase.collectLineIdsForTocSubtree(tocId, bookId)
 
     private suspend fun updateTocCountsForHits(
         hits: List<LineHit>,
@@ -2085,99 +1831,10 @@ class SearchResultViewModel(
         cachedCountsBookId = bookId
     }
 
-    private suspend fun buildTocTreeForBook(bookId: Long): TocTree {
-        val all = runCatching { repository.getBookToc(bookId) }.getOrElse { emptyList() }
-        val byParent = all.groupBy { it.parentId ?: -1L }
-        val roots = byParent[-1L] ?: all.filter { it.parentId == null }
-        val children = all.filter { it.parentId != null }.groupBy { it.parentId!! }
-        return TocTree(roots, children)
-    }
+    private suspend fun buildTocTreeForBook(bookId: Long): TocTree = searchTocUseCase.buildTocTreeForBook(bookId)
 
     private suspend fun ensureTocLineIndex(bookId: Long): TocLineIndex {
-        tocLineIndexCache[bookId]?.let { return it }
-        val mappings = runCatching { repository.getLineTocMappingsForBook(bookId) }.getOrElse { emptyList() }
-        val grouped =
-            mappings.groupBy { it.tocEntryId }.mapValues { entry ->
-                entry.value
-                    .map { it.lineId }
-                    .sorted()
-                    .toLongArray()
-            }
-        val tree = if (currentTocBookId == bookId) _tocTree.value else null
-        val tocEntries =
-            tree?.let { tree.rootEntries + tree.children.values.flatten() }
-                ?: runCatching { repository.getBookToc(bookId) }.getOrElse { emptyList() }
-        val children = mutableMapOf<Long, MutableList<Long>>()
-        val parent = mutableMapOf<Long, Long?>()
-        for (t in tocEntries) {
-            parent[t.id] = t.parentId
-            if (t.parentId != null) {
-                children.getOrPut(t.parentId!!) { mutableListOf() }.add(t.id)
-            }
-        }
-        val index =
-            TocLineIndex(
-                tocToLines = grouped,
-                children = children.mapValues { it.value.toList() },
-                parent = parent,
-            )
-        tocLineIndexCache[bookId] = index
-        return index
-    }
-
-    private data class TocLineIndex(
-        val tocToLines: Map<Long, LongArray>,
-        val children: Map<Long, List<Long>>,
-        val parent: Map<Long, Long?>,
-        private val subtreeCache: MutableMap<Long, LongArray> = mutableMapOf(),
-    ) {
-        val lineIdToTocId: Map<Long, Long> =
-            tocToLines
-                .flatMap { (k, v) -> v.map { it to k } }
-                .toMap()
-
-        fun subtreeLineIds(tocId: Long): LongArray {
-            subtreeCache[tocId]?.let { return it }
-            val self = tocToLines[tocId] ?: LongArray(0)
-            val childIds = children[tocId].orEmpty()
-            if (childIds.isEmpty()) {
-                subtreeCache[tocId] = self
-                return self
-            }
-            val arrays = ArrayList<LongArray>(childIds.size + 1)
-            if (self.isNotEmpty()) arrays.add(self)
-            for (child in childIds) {
-                val arr = subtreeLineIds(child)
-                if (arr.isNotEmpty()) arrays.add(arr)
-            }
-            val merged = mergeLongArraysLocal(arrays)
-            subtreeCache[tocId] = merged
-            return merged
-        }
-
-        private fun mergeLongArraysLocal(arrays: List<LongArray>): LongArray {
-            if (arrays.isEmpty()) return LongArray(0)
-            if (arrays.size == 1) return arrays[0]
-            var total = 0
-            for (a in arrays) total += a.size
-            if (total == 0) return LongArray(0)
-            val out = LongArray(total)
-            var pos = 0
-            for (a in arrays) {
-                System.arraycopy(a, 0, out, pos, a.size)
-                pos += a.size
-            }
-            Arrays.parallelSort(out)
-            var write = 0
-            var i = 0
-            while (i < out.size) {
-                val v = out[i]
-                if (write == 0 || out[write - 1] != v) {
-                    out[write++] = v
-                }
-                i++
-            }
-            return if (write == out.size) out else out.copyOf(write)
-        }
+        val existingTree = if (currentTocBookId == bookId) _tocTree.value else null
+        return searchTocUseCase.ensureTocLineIndex(bookId, existingTree)
     }
 }

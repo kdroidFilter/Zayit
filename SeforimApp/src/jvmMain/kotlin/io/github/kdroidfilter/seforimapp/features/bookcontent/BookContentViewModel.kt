@@ -567,7 +567,26 @@ class BookContentViewModel(
                         // Restore path: load the book without resetting persisted scroll/selection.
                         loadBookData(book)
 
-                        if (lineIdToSelect != null) {
+                        // Restore multi-selection if available
+                        val multiLineIds = persisted?.selectedLineIds?.takeIf { it.isNotEmpty() }
+                        if (multiLineIds != null && multiLineIds.size > 1) {
+                            // Multi-selection restoration
+                            val lines = multiLineIds.mapNotNull { id ->
+                                repository.getLine(id)?.takeIf { it.bookId == book.id }
+                            }
+                            if (lines.isNotEmpty()) {
+                                // Set the primary selected line
+                                val primaryLine = lines.first()
+                                stateManager.updateContent {
+                                    copy(
+                                        selectedLine = primaryLine,
+                                        selectedLineIds = lines.map { it.id }.toSet(),
+                                        isTocBasedSelection = persisted.isTocBasedSelection,
+                                    )
+                                }
+                                runCatching { tocUseCase.expandPathToLine(primaryLine.id) }
+                            }
+                        } else if (lineIdToSelect != null) {
                             repository.getLine(lineIdToSelect)?.let { line ->
                                 if (line.bookId == book.id) {
                                     selectLine(line)

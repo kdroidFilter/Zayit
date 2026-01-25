@@ -39,6 +39,7 @@ import java.util.UUID
 import kotlin.collections.ArrayDeque
 
 private const val PARALLEL_FILTER_THRESHOLD = 2_000
+private const val LAZY_PAGE_SIZE = 25
 
 @Stable
 data class SearchUiState(
@@ -77,9 +78,7 @@ class SearchResultViewModel(
     fun interface Factory : ViewModelAssistedFactory {
         override fun create(extras: CreationExtras): SearchResultViewModel = create(extras.createSavedStateHandle())
 
-        fun create(
-            @Assisted savedStateHandle: SavedStateHandle,
-        ): SearchResultViewModel
+        fun create(savedStateHandle: SavedStateHandle): SearchResultViewModel
     }
 
     internal val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
@@ -168,20 +167,59 @@ class SearchResultViewModel(
 
     fun onEvent(event: SearchResultEvents) {
         when (event) {
-            is SearchResultEvents.SetCategoryChecked -> setCategoryChecked(event.categoryId, event.checked)
-            is SearchResultEvents.SetBookChecked -> setBookChecked(event.bookId, event.checked)
-            is SearchResultEvents.SetTocChecked -> setTocChecked(event.tocId, event.checked)
-            is SearchResultEvents.EnsureScopeBookForToc -> ensureScopeBookForToc(event.bookId)
-            is SearchResultEvents.ClearScopeBookIfNoneChecked -> clearScopeBookIfNoBookCheckboxSelected()
-            is SearchResultEvents.FilterByTocId -> filterByTocId(event.tocId)
-            is SearchResultEvents.FilterByBookId -> filterByBookId(event.bookId)
-            is SearchResultEvents.FilterByCategoryId -> filterByCategoryId(event.categoryId)
-            is SearchResultEvents.SetQuery -> setQuery(event.query)
-            is SearchResultEvents.ExecuteSearch -> executeSearch()
-            is SearchResultEvents.CancelSearch -> cancelSearch()
-            is SearchResultEvents.OnScroll -> onScroll(event.anchorId, event.anchorIndex, event.index, event.offset)
-            is SearchResultEvents.OpenResult -> openResult(event.result, event.openInNewTab)
-            is SearchResultEvents.RequestBreadcrumb ->
+            is SearchResultEvents.SetCategoryChecked -> {
+                setCategoryChecked(event.categoryId, event.checked)
+            }
+
+            is SearchResultEvents.SetBookChecked -> {
+                setBookChecked(event.bookId, event.checked)
+            }
+
+            is SearchResultEvents.SetTocChecked -> {
+                setTocChecked(event.tocId, event.checked)
+            }
+
+            is SearchResultEvents.EnsureScopeBookForToc -> {
+                ensureScopeBookForToc(event.bookId)
+            }
+
+            is SearchResultEvents.ClearScopeBookIfNoneChecked -> {
+                clearScopeBookIfNoBookCheckboxSelected()
+            }
+
+            is SearchResultEvents.FilterByTocId -> {
+                filterByTocId(event.tocId)
+            }
+
+            is SearchResultEvents.FilterByBookId -> {
+                filterByBookId(event.bookId)
+            }
+
+            is SearchResultEvents.FilterByCategoryId -> {
+                filterByCategoryId(event.categoryId)
+            }
+
+            is SearchResultEvents.SetQuery -> {
+                setQuery(event.query)
+            }
+
+            is SearchResultEvents.ExecuteSearch -> {
+                executeSearch()
+            }
+
+            is SearchResultEvents.CancelSearch -> {
+                cancelSearch()
+            }
+
+            is SearchResultEvents.OnScroll -> {
+                onScroll(event.anchorId, event.anchorIndex, event.index, event.offset)
+            }
+
+            is SearchResultEvents.OpenResult -> {
+                openResult(event.result, event.openInNewTab)
+            }
+
+            is SearchResultEvents.RequestBreadcrumb -> {
                 viewModelScope.launch {
                     val pieces = runCatching { getBreadcrumbPiecesFor(event.result) }.getOrDefault(emptyList())
                     if (pieces.isNotEmpty()) {
@@ -190,7 +228,12 @@ class SearchResultViewModel(
                         updatePersistedSearch { it.copy(breadcrumbs = next) }
                     }
                 }
-            is SearchResultEvents.SetUiVisible -> _uiVisible.value = event.visible
+            }
+
+            is SearchResultEvents.SetUiVisible -> {
+                _uiVisible.value = event.visible
+            }
+
             is SearchResultEvents.SetGlobalExtended -> {
                 _uiState.value = _uiState.value.copy(globalExtended = event.extended)
                 updatePersistedSearch { it.copy(globalExtended = event.extended) }
@@ -206,60 +249,22 @@ class SearchResultViewModel(
         val filterTocId: Long?,
     )
 
-    // Batching policy:
-    // - 20 for the first 100 results (best time-to-first-results)
-    // - then 100 until 500
-    // - then 5,000; then 10,000; then double each step up to 200,000
     private companion object {
         private const val DEFAULT_NEAR = 5
-        private const val STAGE1_LIMIT = 100
-        private const val STAGE2_LIMIT = 500
-        private const val STAGE3_LIMIT = 5_000
-        private const val STAGE4_LIMIT = 10_000
-        private const val STAGE5_LIMIT = 20_000
-        private const val STAGE6_LIMIT = 40_000
-        private const val STAGE7_LIMIT = 80_000
-        private const val STAGE8_LIMIT = 160_000
-
-        private const val STAGE1_BATCH = 20
-        private const val STAGE2_BATCH = 100
-        private const val STAGE3_BATCH = 5_000
-        private const val STAGE4_BATCH = 10_000
-        private const val STAGE5_BATCH = 20_000
-        private const val STAGE6_BATCH = 40_000
-        private const val STAGE7_BATCH = 80_000
-        private const val STAGE8_BATCH = 160_000
-        private const val STAGE9_BATCH = 200_000
     }
-
-    private fun batchSizeFor(
-        currentCount: Int,
-        warmup: Boolean = false,
-    ): Int =
-        when {
-            warmup -> STAGE1_BATCH
-            currentCount < STAGE1_LIMIT -> STAGE1_BATCH
-            currentCount < STAGE2_LIMIT -> STAGE2_BATCH
-            currentCount < STAGE3_LIMIT -> STAGE3_BATCH
-            currentCount < STAGE4_LIMIT -> STAGE4_BATCH
-            currentCount < STAGE5_LIMIT -> STAGE5_BATCH
-            currentCount < STAGE6_LIMIT -> STAGE6_BATCH
-            currentCount < STAGE7_LIMIT -> STAGE7_BATCH
-            currentCount < STAGE8_LIMIT -> STAGE8_BATCH
-            else -> STAGE9_BATCH
-        }
 
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
     private var currentJob: Job? = null
 
+    // Lazy loading: keep session open for on-demand pagination
+    private var currentSession: SearchSession? = null
+    private var currentTocAllowedLineIds: Set<Long> = emptySet()
+    private var currentSearchQuery: String = ""
+    private val lazyLoadMutex = Mutex()
+
     // Pagination cursors/state
     private var currentKey: SearchParamsKey? = null
-
-    // Caches to speed up breadcrumb building for search results
-    private val bookCache: MutableMap<Long, Book> = mutableMapOf()
-    private val categoryPathCache: MutableMap<Long, List<Category>> = mutableMapOf()
-    private val tocPathCache: MutableMap<Long, List<TocEntry>> = mutableMapOf()
 
     // Data structures for results tree
     data class SearchTreeBook(
@@ -296,6 +301,9 @@ class SearchResultViewModel(
     private val _categoryAgg = MutableStateFlow(CategoryAgg(emptyMap(), emptyMap(), emptyMap()))
     private val _tocCounts = MutableStateFlow<Map<Long, Int>>(emptyMap())
     private val _breadcrumbs = MutableStateFlow<Map<Long, List<String>>>(emptyMap())
+
+    // Flag to indicate facets have been computed, so tree doesn't need to be rebuilt from results
+    private var facetsComputed = false
     val breadcrumbsFlow: StateFlow<Map<Long, List<String>>> = _breadcrumbs.asStateFlow()
 
     // Whether the Search UI is currently visible/active. Used to gate heavy flows at startup.
@@ -306,9 +314,10 @@ class SearchResultViewModel(
     private val scopeCatIdFlow = uiState.map { it.scopeCategoryPath.lastOrNull()?.id }.distinctUntilChanged()
     private val scopeTocIdFlow = uiState.map { it.scopeTocId }.distinctUntilChanged()
 
+    // Use conditional debounce: no delay when null (to immediately clear filters)
     private val allowedBooksFlow: StateFlow<Set<Long>> =
         scopeCatIdFlow
-            .debounce(100)
+            .debounce { catId -> if (catId == null) 0L else 100L }
             .mapLatest { catId ->
                 if (catId == null) emptySet() else collectBookIdsUnderCategory(catId)
             }.flowOn(Dispatchers.Default)
@@ -323,9 +332,10 @@ class SearchResultViewModel(
     val selectedTocIdsFlow: StateFlow<Set<Long>> = _selectedTocIds.asStateFlow()
 
     // Derived unions for multi-select
+    // Use conditional debounce: no delay when empty (to immediately clear filters)
     private val multiAllowedBooksFlow: StateFlow<Set<Long>> =
         _selectedCategoryIds
-            .debounce(100)
+            .debounce { ids -> if (ids.isEmpty()) 0L else 100L }
             .mapLatest { ids ->
                 if (ids.isEmpty()) {
                     emptySet()
@@ -422,8 +432,6 @@ class SearchResultViewModel(
             }.distinctUntilChanged()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    // Category and TOC aggregates are updated incrementally from fetch loops
-    val categoryAggFlow: StateFlow<CategoryAgg> = _categoryAgg.asStateFlow()
     val tocCountsFlow: StateFlow<Map<Long, Int>> = _tocCounts.asStateFlow()
 
     private val _tocTree = MutableStateFlow<TocTree?>(null)
@@ -433,17 +441,25 @@ class SearchResultViewModel(
 
     init {
         // Compute search tree when visible and results change; emits into _searchTree
+        // Skip if facets have been computed (tree is built from facets directly)
         viewModelScope.launch {
             _uiVisible
                 .flatMapLatest { visible ->
                     if (!visible) {
-                        kotlinx.coroutines.flow.flowOf(emptyList())
+                        // Don't clear tree when tab becomes invisible - just stop emitting
+                        emptyFlow()
                     } else {
                         uiState
                             .map { it.results }
                             .debounce(100)
-                            .mapLatest { buildSearchResultTree() }
-                            .flowOn(Dispatchers.Default)
+                            .mapLatest {
+                                // Skip rebuild if facets are computed (tree already built)
+                                if (facetsComputed) {
+                                    _searchTree.value
+                                } else {
+                                    buildSearchResultTree()
+                                }
+                            }.flowOn(Dispatchers.Default)
                     }
                 }.collect { tree -> _searchTree.value = tree }
         }
@@ -488,11 +504,9 @@ class SearchResultViewModel(
             if (cur2 != null && cur2.identity == identity) return@withLock
             val bookMap = HashMap<Long, MutableList<Int>>()
             val lineMap = HashMap<Long, Int>(results.size * 2)
-            var i = 0
-            for (r in results) {
+            for ((i, r) in results.withIndex()) {
                 bookMap.getOrPut(r.bookId) { ArrayList() }.add(i)
                 lineMap[r.lineId] = i
-                i++
             }
             val finalBook = HashMap<Long, IntArray>(bookMap.size)
             for ((k, v) in bookMap) {
@@ -531,32 +545,6 @@ class SearchResultViewModel(
         }
         ensureResultsIndex(results)
         val index = resultsIndex ?: return results
-
-        suspend fun fromBookIds(bookIds: Set<Long>): List<SearchResult> {
-            if (bookIds.isEmpty()) return emptyList()
-            if (bookIds.size == 1) {
-                val bid = bookIds.first()
-                val arr = index.bookToIndices[bid] ?: return emptyList()
-                return ArrayList<SearchResult>(arr.size).apply {
-                    var i = 0
-                    while (i < arr.size) {
-                        add(results[arr[i]])
-                        i++
-                    }
-                }
-            }
-            val arrays = ArrayList<IntArray>(bookIds.size)
-            for (bid in bookIds) index.bookToIndices[bid]?.let { arrays.add(it) }
-            if (arrays.isEmpty()) return emptyList()
-            val merged = mergeSortedIndicesParallel(arrays)
-            return ArrayList<SearchResult>(merged.size).apply {
-                var i = 0
-                while (i < merged.size) {
-                    add(results[merged[i]])
-                    i++
-                }
-            }
-        }
 
         // Union semantics across active filters (categories/books/TOC/selected lines)
         val toMerge = ArrayList<IntArray>(6)
@@ -705,9 +693,18 @@ class SearchResultViewModel(
             ): IntArray {
                 val len = end - start
                 return when {
-                    len <= 0 -> IntArray(0)
-                    len == 1 -> arrays[start]
-                    len == 2 -> mergeTwo(arrays[start], arrays[start + 1])
+                    len <= 0 -> {
+                        IntArray(0)
+                    }
+
+                    len == 1 -> {
+                        arrays[start]
+                    }
+
+                    len == 2 -> {
+                        mergeTwo(arrays[start], arrays[start + 1])
+                    }
+
                     else -> {
                         val mid = start + len / 2
                         val left = async(Dispatchers.Default) { mergeRange(start, mid) }
@@ -800,6 +797,7 @@ class SearchResultViewModel(
                     _uiState.value = _uiState.value.copy(scopeBook = book)
                 }
             }
+
             filterTocId != null -> {
                 viewModelScope.launch {
                     val toc = repository.getTocEntry(filterTocId)
@@ -830,12 +828,64 @@ class SearchResultViewModel(
                 _uiState.value.copy(
                     results = cached.results,
                     isLoading = false,
-                    hasMore = false,
+                    hasMore = cached.hasMore,
                     progressCurrent = cached.results.size,
-                    progressTotal = cached.results.size.toLong(),
+                    progressTotal = cached.totalHits.takeIf { it > 0 } ?: cached.results.size.toLong(),
                     // trigger scroll restoration once items are present
                     scrollToAnchorTimestamp = System.currentTimeMillis(),
                 )
+            // Re-open a Lucene session if there are more results to load
+            if (cached.hasMore && initialQuery.isNotBlank()) {
+                viewModelScope.launch(Dispatchers.Default) {
+                    val q = initialQuery
+                    val baseBookOnly = !_uiState.value.globalExtended
+                    // Re-open session with same filters for lazy loading continuation
+                    val fetchCategoryId = persisted.fetchCategoryId.takeIf { it > 0 } ?: persisted.filterCategoryId.takeIf { it > 0 }
+                    val fetchBookId = persisted.fetchBookId.takeIf { it > 0 } ?: persisted.filterBookId.takeIf { it > 0 }
+                    val fetchTocId = persisted.fetchTocId.takeIf { it > 0 } ?: persisted.filterTocId.takeIf { it > 0 }
+                    // Collect line IDs for TOC filter if applicable
+                    val lineIds: Set<Long>? =
+                        if (fetchTocId != null && fetchBookId != null) {
+                            ensureTocCountingCaches(fetchBookId)
+                            collectLineIdsForTocSubtree(fetchTocId, fetchBookId)
+                        } else {
+                            null
+                        }
+                    // Collect book IDs for checkbox selections
+                    val allowedBooks: List<Long>? =
+                        _selectedCategoryIds.value.takeIf { it.isNotEmpty() }?.let { ids ->
+                            ids.flatMap { catId ->
+                                runCatching { collectBookIdsUnderCategory(catId) }.getOrDefault(emptyList())
+                            }
+                        }
+                    val finalBookIds: List<Long>? =
+                        when {
+                            fetchBookId != null && fetchBookId > 0 -> listOf(fetchBookId)
+                            !allowedBooks.isNullOrEmpty() -> allowedBooks
+                            else -> null
+                        }
+                    val session =
+                        lucene.openSession(
+                            query = q,
+                            near = DEFAULT_NEAR,
+                            bookFilter = null,
+                            categoryFilter = fetchCategoryId,
+                            bookIds = finalBookIds,
+                            lineIds = lineIds,
+                            baseBookOnly = baseBookOnly,
+                        )
+                    // Skip pages we already have and set up lazy loading state
+                    if (session != null) {
+                        val pagesToSkip = (cached.results.size + LAZY_PAGE_SIZE - 1) / LAZY_PAGE_SIZE
+                        repeat(pagesToSkip) { session.nextPage(LAZY_PAGE_SIZE) }
+                        lazyLoadMutex.withLock {
+                            currentSession = session
+                            currentTocAllowedLineIds = lineIds ?: emptySet()
+                            currentSearchQuery = q
+                        }
+                    }
+                }
+            }
             // Immediately restore aggregates and toc counts so the tree and TOC show counts without delay
             _categoryAgg.value =
                 CategoryAgg(
@@ -858,6 +908,8 @@ class SearchResultViewModel(
                         books = n.books.map { SearchTreeBook(it.book, it.count) },
                     )
                 _searchTree.value = snapList.map { mapNode(it) }
+                // Mark facets as computed so the tree won't be rebuilt from partial results
+                facetsComputed = true
             }
             // Reconstruct currentKey from fetch scope.
             val fetchCategoryId = persisted.fetchCategoryId.takeIf { it > 0 } ?: persisted.filterCategoryId.takeIf { it > 0 }
@@ -891,6 +943,20 @@ class SearchResultViewModel(
                     cancelSearch()
                 }
             }
+        }
+
+        // Continuously save snapshot when results change (debounced) for cold boot restore
+        viewModelScope.launch {
+            uiState
+                .map { it.results }
+                .distinctUntilChanged()
+                .debounce(500) // Wait 500ms after last change before saving
+                .collect { results ->
+                    if (results.isNotEmpty()) {
+                        val snap = buildSnapshot(results)
+                        updatePersistedSearch { it.copy(snapshot = snap, breadcrumbs = _breadcrumbs.value) }
+                    }
+                }
         }
     }
 
@@ -940,6 +1006,8 @@ class SearchResultViewModel(
             viewModelScope.launch(Dispatchers.Default) {
                 _uiState.value =
                     _uiState.value.copy(isLoading = true, results = emptyList(), hasMore = false, progressCurrent = 0, progressTotal = null)
+                // Reset facetsComputed flag for new search
+                facetsComputed = false
                 // Reset aggregates and counts for a clean run
                 countsMutex.withLock {
                     categoryCountsAcc.clear()
@@ -967,8 +1035,6 @@ class SearchResultViewModel(
                             filterBookId = fetchBookId,
                             filterTocId = fetchTocId,
                         )
-
-                    val acc = mutableListOf<SearchResult>()
 
                     val initialScopePath =
                         when {
@@ -998,62 +1064,111 @@ class SearchResultViewModel(
                         ensureTocCountingCaches(book.id)
                     }
 
+                    // Phase 1: Compute facets instantly for immediate tree display
+                    val baseBookOnly = !_uiState.value.globalExtended
+                    val facetsBookIds: Collection<Long>? =
+                        when {
+                            fetchTocId != null -> {
+                                val toc = repository.getTocEntry(fetchTocId)
+                                toc?.bookId?.let { listOf(it) }
+                            }
+
+                            fetchBookId != null -> {
+                                listOf(fetchBookId)
+                            }
+
+                            fetchCategoryId != null -> {
+                                collectBookIdsUnderCategory(fetchCategoryId)
+                            }
+
+                            else -> {
+                                null
+                            } // Use baseBookOnly parameter instead
+                        }
+
+                    val facets =
+                        lucene.computeFacets(
+                            query = q,
+                            near = DEFAULT_NEAR,
+                            bookIds = facetsBookIds,
+                            baseBookOnly = baseBookOnly,
+                        )
+
+                    if (facets != null) {
+                        // Set aggregates immediately
+                        _categoryAgg.value =
+                            CategoryAgg(
+                                categoryCounts = facets.categoryCounts,
+                                bookCounts = facets.bookCounts,
+                                booksForCategory = emptyMap(), // Not needed for tree building
+                            )
+                        _uiState.value = _uiState.value.copy(progressTotal = facets.totalHits)
+
+                        // Build tree from facets immediately
+                        val tree =
+                            buildSearchTreeUseCase.invoke(
+                                facetCategoryCounts = facets.categoryCounts,
+                                facetBookCounts = facets.bookCounts,
+                            )
+                        _searchTree.value = tree
+                        facetsComputed = true
+                    }
+
+                    // Close any existing session before opening a new one
+                    lazyLoadMutex.withLock {
+                        currentSession?.close()
+                        currentSession = null
+                    }
+
                     val sessionInfo = prepareSearchSession(q, fetchCategoryId, fetchBookId, fetchTocId)
                     if (sessionInfo == null) {
                         _uiState.value = _uiState.value.copy(results = emptyList(), progressCurrent = 0, progressTotal = 0)
                         return@launch
                     }
                     val (session, tocAllowedLineIds) = sessionInfo
-                    var progressTotal: Long? = null
 
-                    session.use { searchSession ->
-                        var pageSize = batchSizeFor(acc.size, warmup = true)
-                        var page = searchSession.nextPage(pageSize)
-                        while (page != null) {
-                            progressTotal = page.totalHits
-                            val filteredHits =
-                                if (tocAllowedLineIds.isEmpty()) {
-                                    page.hits
-                                } else {
-                                    page.hits.filter {
-                                        it.lineId in tocAllowedLineIds
-                                    }
-                                }
-
-                            if (filteredHits.isNotEmpty()) {
-                                updateAggregatesForHits(filteredHits)
-                                _uiState.value.scopeBook
-                                    ?.id
-                                    ?.let { updateTocCountsForHits(filteredHits, it) }
-                            }
-
-                            val mapped = hitsToResults(filteredHits, q)
-                            if (mapped.isNotEmpty()) {
-                                acc += mapped
-                            }
-                            _uiState.value =
-                                _uiState.value.copy(
-                                    results = ArrayList(acc),
-                                    progressCurrent = acc.size,
-                                    progressTotal = progressTotal,
-                                )
-                            if (page.isLastPage) break
-                            pageSize = batchSizeFor(acc.size)
-                            page = searchSession.nextPage(pageSize)
-                        }
+                    // Store session for lazy loading
+                    lazyLoadMutex.withLock {
+                        currentSession = session
+                        currentTocAllowedLineIds = tocAllowedLineIds
+                        currentSearchQuery = q
                     }
 
+                    // Load only the first page
+                    val firstPage = session.nextPage(LAZY_PAGE_SIZE)
+                    if (firstPage == null) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                results = emptyList(),
+                                hasMore = false,
+                                progressCurrent = 0,
+                                progressTotal = 0,
+                            )
+                        return@launch
+                    }
+
+                    val filteredHits =
+                        if (tocAllowedLineIds.isEmpty()) {
+                            firstPage.hits
+                        } else {
+                            firstPage.hits.filter { it.lineId in tocAllowedLineIds }
+                        }
+
+                    // Update TOC counts for first page
+                    if (filteredHits.isNotEmpty()) {
+                        _uiState.value.scopeBook
+                            ?.id
+                            ?.let { updateTocCountsForHits(filteredHits, it) }
+                    }
+
+                    val results = hitsToResults(filteredHits, q)
                     _uiState.value =
                         _uiState.value.copy(
-                            hasMore = false,
-                            progressCurrent = acc.size,
-                            progressTotal = progressTotal ?: acc.size.toLong(),
+                            results = results,
+                            hasMore = !firstPage.isLastPage,
+                            progressCurrent = results.size,
+                            progressTotal = firstPage.totalHits,
                         )
-                    // Persist a snapshot of the full results so cold-boot restore is instant
-                    runCatching {
-                        val snap = buildSnapshot(_uiState.value.results)
-                        updatePersistedSearch { it.copy(snapshot = snap) }
-                    }
                 } finally {
                     // Clear loading promptly; if a new visibleResults emission is pending, wait briefly
                     // but never block indefinitely (important when final results are empty and identical
@@ -1073,6 +1188,60 @@ class SearchResultViewModel(
             }
     }
 
+    /**
+     * Load the next page of results (lazy loading).
+     * Called when user scrolls near the bottom of the list.
+     */
+    fun loadMore() {
+        if (_uiState.value.isLoadingMore || !_uiState.value.hasMore) return
+
+        viewModelScope.launch(Dispatchers.Default) {
+            _uiState.value = _uiState.value.copy(isLoadingMore = true)
+            try {
+                val session = lazyLoadMutex.withLock { currentSession }
+                if (session == null) {
+                    // Session not ready yet (e.g., still being restored), reset loading state
+                    _uiState.value = _uiState.value.copy(isLoadingMore = false)
+                    return@launch
+                }
+                val tocAllowedLineIds = currentTocAllowedLineIds
+                val query = currentSearchQuery
+
+                val page = session.nextPage(LAZY_PAGE_SIZE)
+                if (page == null) {
+                    _uiState.value = _uiState.value.copy(hasMore = false, isLoadingMore = false)
+                    return@launch
+                }
+
+                val filteredHits =
+                    if (tocAllowedLineIds.isEmpty()) {
+                        page.hits
+                    } else {
+                        page.hits.filter { it.lineId in tocAllowedLineIds }
+                    }
+
+                // Update TOC counts for this page
+                if (filteredHits.isNotEmpty()) {
+                    _uiState.value.scopeBook
+                        ?.id
+                        ?.let { updateTocCountsForHits(filteredHits, it) }
+                }
+
+                val newResults = hitsToResults(filteredHits, query)
+                val currentResults = _uiState.value.results
+                _uiState.value =
+                    _uiState.value.copy(
+                        results = currentResults + newResults,
+                        hasMore = !page.isLastPage,
+                        progressCurrent = currentResults.size + newResults.size,
+                        isLoadingMore = false,
+                    )
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isLoadingMore = false)
+            }
+        }
+    }
+
     private suspend fun prepareSearchSession(
         query: String,
         fetchCategoryId: Long?,
@@ -1080,6 +1249,7 @@ class SearchResultViewModel(
         fetchTocId: Long?,
     ): Pair<SearchSession, Set<Long>>? {
         var tocAllowedLineIds: Set<Long> = emptySet()
+        val baseBookOnly = !_uiState.value.globalExtended
         val session: SearchSession? =
             when {
                 fetchTocId != null -> {
@@ -1087,28 +1257,21 @@ class SearchResultViewModel(
                     ensureTocCountingCaches(toc.bookId)
                     val lineIds = collectLineIdsForTocSubtree(toc.id, toc.bookId)
                     tocAllowedLineIds = lineIds
-                    lucene.openSession(query, DEFAULT_NEAR, lineIds = lineIds)
+                    lucene.openSession(query, DEFAULT_NEAR, lineIds = lineIds, baseBookOnly = baseBookOnly)
                 }
-                fetchBookId != null -> lucene.openSession(query, DEFAULT_NEAR, bookIds = listOf(fetchBookId))
+
+                fetchBookId != null -> {
+                    lucene.openSession(query, DEFAULT_NEAR, bookIds = listOf(fetchBookId), baseBookOnly = baseBookOnly)
+                }
+
                 fetchCategoryId != null -> {
                     val books = collectBookIdsUnderCategory(fetchCategoryId)
-                    lucene.openSession(query, DEFAULT_NEAR, bookIds = books)
+                    lucene.openSession(query, DEFAULT_NEAR, bookIds = books, baseBookOnly = baseBookOnly)
                 }
+
                 else -> {
-                    val extendedGlobal = _uiState.value.globalExtended
-                    val baseOnlyBookIds: List<Long>? =
-                        if (!extendedGlobal) {
-                            runCatching {
-                                repository.getBaseBookIds()
-                            }.getOrNull()
-                        } else {
-                            null
-                        }
-                    when {
-                        baseOnlyBookIds != null && baseOnlyBookIds.isEmpty() -> null
-                        baseOnlyBookIds != null -> lucene.openSession(query, DEFAULT_NEAR, bookIds = baseOnlyBookIds)
-                        else -> lucene.openSession(query, DEFAULT_NEAR)
-                    }
+                    // Use baseBookOnly parameter directly instead of fetching all base book IDs
+                    lucene.openSession(query, DEFAULT_NEAR, baseBookOnly = baseBookOnly)
                 }
             }
         val safeSession = session ?: return null
@@ -1130,7 +1293,6 @@ class SearchResultViewModel(
                     hit.rawText.isNotBlank() -> hit.rawText
                     else -> ""
                 }
-            val snippet = snippetFromIndex
             val scoreBoost = if (checkExact && hit.rawText.contains(trimmedQuery)) 1e-3 else 0.0
             out +=
                 SearchResult(
@@ -1138,18 +1300,21 @@ class SearchResultViewModel(
                     bookTitle = hit.bookTitle,
                     lineId = hit.lineId,
                     lineIndex = hit.lineIndex,
-                    snippet = snippet,
+                    snippet = snippetFromIndex,
                     rank = hit.score.toDouble() + scoreBoost,
                 )
         }
         return out
     }
 
-    fun loadMore() { /* no-op: initial fetch loads all results; no cache/pagination */ }
-
     fun cancelSearch() {
         currentJob?.cancel()
-        _uiState.value = _uiState.value.copy(isLoading = false, isLoadingMore = false)
+        // Close session to release resources
+        runCatching {
+            currentSession?.close()
+            currentSession = null
+        }
+        _uiState.value = _uiState.value.copy(isLoading = false, isLoadingMore = false, hasMore = false)
     }
 
     override fun onCleared() {
@@ -1189,6 +1354,7 @@ class SearchResultViewModel(
                     cur.map { mapNode(it) }
                 }
             }.getOrNull()
+        val currentState = _uiState.value
         return SearchTabCache.Snapshot(
             results = results,
             categoryAgg =
@@ -1200,6 +1366,8 @@ class SearchResultViewModel(
             tocCounts = _tocCounts.value,
             tocTree = treeSnap,
             searchTree = searchTreeSnap,
+            totalHits = currentState.progressTotal ?: results.size.toLong(),
+            hasMore = currentState.hasMore,
         )
     }
 
@@ -1234,9 +1402,14 @@ class SearchResultViewModel(
      */
     suspend fun buildSearchResultTree(): List<SearchTreeCategory> = buildSearchTreeUseCase(uiState.value.results)
 
-    /** Apply a category filter. Re-query if current dataset is restricted. */
+    /** Apply a category filter. Triggers a Lucene search with the filter for instant results. */
     fun filterByCategoryId(categoryId: Long) {
         viewModelScope.launch {
+            // Clear checkbox selections when using direct filter
+            _selectedCategoryIds.value = emptySet()
+            _selectedBookIds.value = emptySet()
+            _selectedTocIds.value = emptySet()
+
             updatePersistedSearch {
                 it.copy(
                     datasetScope = "category",
@@ -1246,6 +1419,9 @@ class SearchResultViewModel(
                     fetchCategoryId = categoryId,
                     fetchBookId = 0L,
                     fetchTocId = 0L,
+                    selectedCategoryIds = emptySet(),
+                    selectedBookIds = emptySet(),
+                    selectedTocIds = emptySet(),
                 )
             }
             val scopePath = buildCategoryPath(categoryId)
@@ -1258,13 +1434,19 @@ class SearchResultViewModel(
                     scrollOffset = 0,
                     scrollToAnchorTimestamp = System.currentTimeMillis(),
                 )
-            executeSearch()
+            // Trigger Lucene search with category filter
+            executeDirectFilterSearch(categoryId = categoryId)
         }
     }
 
-    /** Apply a book filter. Re-query if current dataset is restricted to another scope. */
+    /** Apply a book filter. Triggers a Lucene search with the filter for instant results. */
     fun filterByBookId(bookId: Long) {
         viewModelScope.launch {
+            // Clear checkbox selections when using direct filter
+            _selectedCategoryIds.value = emptySet()
+            _selectedBookIds.value = emptySet()
+            _selectedTocIds.value = emptySet()
+
             updatePersistedSearch {
                 it.copy(
                     datasetScope = "book",
@@ -1274,6 +1456,9 @@ class SearchResultViewModel(
                     fetchCategoryId = 0L,
                     fetchBookId = bookId,
                     fetchTocId = 0L,
+                    selectedCategoryIds = emptySet(),
+                    selectedBookIds = emptySet(),
+                    selectedTocIds = emptySet(),
                 )
             }
             val book = runCatching { repository.getBookCore(bookId) }.getOrNull()
@@ -1294,12 +1479,19 @@ class SearchResultViewModel(
                 }
             }
             if (book != null) ensureTocCountingCaches(book.id)
-            executeSearch()
+            // Trigger Lucene search with book filter
+            executeDirectFilterSearch(bookId = bookId)
         }
     }
 
+    /** Apply a TOC filter. Triggers a Lucene search with the filter for instant results. */
     fun filterByTocId(tocId: Long) {
         viewModelScope.launch {
+            // Clear checkbox selections when using direct filter
+            _selectedCategoryIds.value = emptySet()
+            _selectedBookIds.value = emptySet()
+            _selectedTocIds.value = emptySet()
+
             val toc = runCatching { repository.getTocEntry(tocId) }.getOrNull()
             val bookIdFromToc = toc?.bookId
             updatePersistedSearch {
@@ -1311,6 +1503,9 @@ class SearchResultViewModel(
                     fetchCategoryId = 0L,
                     fetchBookId = bookIdFromToc ?: 0L,
                     fetchTocId = tocId,
+                    selectedCategoryIds = emptySet(),
+                    selectedBookIds = emptySet(),
+                    selectedTocIds = emptySet(),
                 )
             }
 
@@ -1332,9 +1527,127 @@ class SearchResultViewModel(
                 }
             }
             scopeBook?.let { ensureTocCountingCaches(it.id) }
-
-            executeSearch()
+            // Trigger Lucene search with TOC filter
+            executeDirectFilterSearch(tocId = tocId, bookId = bookIdFromToc)
         }
+    }
+
+    /**
+     * Execute a Lucene search with a direct filter (category, book, or TOC).
+     * Used by filterByXxx functions for instant filtering.
+     * NOTE: Does NOT rebuild the tree - keeps the original tree structure for navigation.
+     */
+    private fun executeDirectFilterSearch(
+        categoryId: Long? = null,
+        bookId: Long? = null,
+        tocId: Long? = null,
+    ) {
+        val q = _uiState.value.query.trim()
+        if (q.isBlank()) return
+
+        currentJob?.cancel()
+        currentJob =
+            viewModelScope.launch(Dispatchers.Default) {
+                _uiState.value = _uiState.value.copy(isLoading = true)
+
+                try {
+                    val baseBookOnly = !_uiState.value.globalExtended
+
+                    // Determine filter parameters
+                    val bookIdsToFilter: Collection<Long>? =
+                        when {
+                            tocId != null -> null
+
+                            // Will use lineIds
+                            bookId != null -> listOf(bookId)
+
+                            categoryId != null -> collectBookIdsUnderCategory(categoryId)
+
+                            else -> null // Use baseBookOnly parameter instead
+                        }
+
+                    val lineIdsToFilter: Collection<Long>? =
+                        if (tocId != null && bookId != null) {
+                            collectLineIdsForTocSubtree(tocId, bookId)
+                        } else {
+                            null
+                        }
+
+                    // Close existing session
+                    lazyLoadMutex.withLock {
+                        currentSession?.close()
+                        currentSession = null
+                    }
+
+                    // Open search session with filter (use baseBookOnly for base-book-only search)
+                    val session =
+                        when {
+                            lineIdsToFilter != null -> {
+                                lucene.openSession(
+                                    q,
+                                    DEFAULT_NEAR,
+                                    lineIds = lineIdsToFilter,
+                                    baseBookOnly = baseBookOnly,
+                                )
+                            }
+
+                            bookIdsToFilter != null -> {
+                                lucene.openSession(
+                                    q,
+                                    DEFAULT_NEAR,
+                                    bookIds = bookIdsToFilter,
+                                    baseBookOnly = baseBookOnly,
+                                )
+                            }
+
+                            else -> {
+                                lucene.openSession(q, DEFAULT_NEAR, baseBookOnly = baseBookOnly)
+                            }
+                        }
+
+                    if (session == null) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                results = emptyList(),
+                                hasMore = false,
+                                progressCurrent = 0,
+                                progressTotal = 0,
+                            )
+                        return@launch
+                    }
+
+                    lazyLoadMutex.withLock {
+                        currentSession = session
+                        currentTocAllowedLineIds = emptySet()
+                        currentSearchQuery = q
+                    }
+
+                    // Load first page
+                    val firstPage = session.nextPage(LAZY_PAGE_SIZE)
+                    if (firstPage == null) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                results = emptyList(),
+                                hasMore = false,
+                                progressCurrent = 0,
+                            )
+                        return@launch
+                    }
+
+                    // Update progress but DON'T rebuild tree - keep original tree for navigation
+                    _uiState.value = _uiState.value.copy(progressTotal = firstPage.totalHits)
+
+                    val results = hitsToResults(firstPage.hits, q)
+                    _uiState.value =
+                        _uiState.value.copy(
+                            results = results,
+                            hasMore = !firstPage.isLastPage,
+                            progressCurrent = results.size,
+                        )
+                } finally {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                }
+            }
     }
 
     // Multi-select toggles for checkboxes
@@ -1383,6 +1696,8 @@ class SearchResultViewModel(
             _selectedCategoryIds.value = next
             updatePersistedSearch { it.copy(selectedCategoryIds = next) }
             maybeClearFiltersIfNoneChecked()
+            // Trigger filtered Lucene search
+            executeFilteredSearch()
         }
     }
 
@@ -1394,9 +1709,10 @@ class SearchResultViewModel(
         _selectedBookIds.value = next
         updatePersistedSearch { it.copy(selectedBookIds = next) }
         if (!checked) {
-            // Ensure coherent clearing when last selection disappears
             maybeClearFiltersIfNoneChecked()
         }
+        // Trigger filtered Lucene search
+        executeFilteredSearch()
     }
 
     fun setTocChecked(
@@ -1409,6 +1725,8 @@ class SearchResultViewModel(
         if (!checked) {
             maybeClearFiltersIfNoneChecked()
         }
+        // Trigger filtered Lucene search
+        executeFilteredSearch()
     }
 
     private fun maybeClearFiltersIfNoneChecked() {
@@ -1436,30 +1754,119 @@ class SearchResultViewModel(
     }
 
     /**
-     * Returns results filtered by the current scope (book or category path) without hitting the DB.
+     * Execute a filtered Lucene search based on current checkbox selections.
+     * This re-queries Lucene with the filter applied, which is instant due to indexing.
+     * NOTE: Does NOT rebuild the tree - keeps the original tree structure for navigation.
      */
-    suspend fun getVisibleResults(): List<SearchResult> {
-        val state = uiState.value
-        val all = state.results
-        val scopeBook = state.scopeBook
-        val scopeCat = state.scopeCategoryPath.lastOrNull()
-        val scopeToc = state.scopeTocId
-        if (scopeBook == null && scopeCat == null && scopeToc == null) return all
-        if (scopeToc != null) {
-            val bookId =
-                scopeBook?.id
-                    ?: runCatching { repository.getTocEntry(scopeToc)?.bookId }.getOrNull()
-                    ?: return all
-            ensureTocCountingCaches(bookId)
-            val allowedLineIds = collectLineIdsForTocSubtree(scopeToc, bookId)
-            return all.filter { it.lineId in allowedLineIds }
-        }
-        if (scopeBook != null) return all.filter { it.bookId == scopeBook.id }
-        if (scopeCat != null) {
-            val allowedBooks = collectBookIdsUnderCategory(scopeCat.id)
-            return all.filter { it.bookId in allowedBooks }
-        }
-        return all
+    private fun executeFilteredSearch() {
+        val q = _uiState.value.query.trim()
+        if (q.isBlank()) return
+
+        currentJob?.cancel()
+        currentJob =
+            viewModelScope.launch(Dispatchers.Default) {
+                _uiState.value = _uiState.value.copy(isLoading = true)
+
+                try {
+                    val selectedCats = _selectedCategoryIds.value
+                    val selectedBooks = _selectedBookIds.value
+                    val selectedTocs = _selectedTocIds.value
+                    val baseBookOnly = !_uiState.value.globalExtended
+
+                    // Build the set of book IDs to filter
+                    val bookIdsToFilter = mutableSetOf<Long>()
+
+                    // Add books from selected categories
+                    for (catId in selectedCats) {
+                        bookIdsToFilter += collectBookIdsUnderCategory(catId)
+                    }
+
+                    // Add directly selected books
+                    bookIdsToFilter += selectedBooks
+
+                    // Determine line IDs from selected TOCs
+                    val lineIdsToFilter = mutableSetOf<Long>()
+                    for (tocId in selectedTocs) {
+                        val bookId =
+                            tocBookCache.getOrPut(tocId) {
+                                runCatching { repository.getTocEntry(tocId)?.bookId }.getOrNull() ?: -1L
+                            }
+                        if (bookId > 0) {
+                            lineIdsToFilter += collectLineIdsForTocSubtree(tocId, bookId)
+                        }
+                    }
+
+                    // If nothing selected, use global search with baseBookOnly filter
+
+                    // Close existing session
+                    lazyLoadMutex.withLock {
+                        currentSession?.close()
+                        currentSession = null
+                    }
+
+                    // Open search session with filter (use baseBookOnly for base-book-only search)
+                    val session =
+                        when {
+                            lineIdsToFilter.isNotEmpty() -> {
+                                lucene.openSession(q, DEFAULT_NEAR, lineIds = lineIdsToFilter, baseBookOnly = baseBookOnly)
+                            }
+
+                            bookIdsToFilter.isNotEmpty() -> {
+                                lucene.openSession(q, DEFAULT_NEAR, bookIds = bookIdsToFilter, baseBookOnly = baseBookOnly)
+                            }
+
+                            else -> {
+                                // No checkbox filter - use baseBookOnly for non-extended search
+                                lucene.openSession(q, DEFAULT_NEAR, baseBookOnly = baseBookOnly)
+                            }
+                        }
+
+                    if (session == null) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                results = emptyList(),
+                                hasMore = false,
+                                progressCurrent = 0,
+                                progressTotal = 0,
+                            )
+                        return@launch
+                    }
+
+                    lazyLoadMutex.withLock {
+                        currentSession = session
+                        currentTocAllowedLineIds = emptySet()
+                        currentSearchQuery = q
+                    }
+
+                    // Load first page
+                    val firstPage = session.nextPage(LAZY_PAGE_SIZE)
+                    if (firstPage == null) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                results = emptyList(),
+                                hasMore = false,
+                                progressCurrent = 0,
+                            )
+                        return@launch
+                    }
+
+                    // Update progress but DON'T rebuild tree - keep original tree for navigation
+                    _uiState.value = _uiState.value.copy(progressTotal = firstPage.totalHits)
+
+                    val results = hitsToResults(firstPage.hits, q)
+                    _uiState.value =
+                        _uiState.value.copy(
+                            results = results,
+                            hasMore = !firstPage.isLastPage,
+                            progressCurrent = results.size,
+                            scrollIndex = 0,
+                            scrollOffset = 0,
+                            scrollToAnchorTimestamp = System.currentTimeMillis(),
+                        )
+                } finally {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                }
+            }
     }
 
     /**
@@ -1498,44 +1905,6 @@ class SearchResultViewModel(
                 _uiState.value = _uiState.value.copy(scopeBook = null)
             }
         }
-    }
-
-    /**
-     * Compute aggregated counts for each TOC entry of the currently selected book, based on
-     * the full results list (ignoring current TOC filter to keep navigation informative).
-     */
-    suspend fun computeTocCountsForSelectedBook(): Map<Long, Int> {
-        val bookId = uiState.value.scopeBook?.id ?: return emptyMap()
-        val relevant = uiState.value.results.filter { it.bookId == bookId }
-        val counts = mutableMapOf<Long, Int>()
-        for (res in relevant) {
-            val tocId = runCatching { repository.getTocEntryIdForLine(res.lineId) }.getOrNull() ?: continue
-            // Walk up parents to aggregate per ancestor as well
-            var current: Long? = tocId
-            var guard = 0
-            while (current != null && guard++ < 500) {
-                counts[current] = (counts[current] ?: 0) + 1
-                val parent = runCatching { repository.getTocEntry(current) }.getOrNull()?.parentId
-                current = parent
-            }
-        }
-        return counts
-    }
-
-    /**
-     * Returns the TOC structure (roots + children map) for the current scope book, or null.
-     */
-    suspend fun getTocStructureForScopeBook(): TocTree? {
-        val bookId = uiState.value.scopeBook?.id ?: return null
-        val all = runCatching { repository.getBookToc(bookId) }.getOrElse { emptyList() }
-        val byParent = all.groupBy { it.parentId ?: -1L }
-        val roots = byParent[-1L] ?: all.filter { it.parentId == null }
-        // Build children map keyed by real IDs only
-        val children: Map<Long, List<TocEntry>> =
-            all
-                .filter { it.parentId != null }
-                .groupBy { it.parentId!! }
-        return TocTree(rootEntries = roots, children = children)
     }
 
     private suspend fun collectBookIdsUnderCategory(categoryId: Long): Set<Long> {
@@ -1655,60 +2024,6 @@ class SearchResultViewModel(
         return index.subtreeLineIds(tocId).toSet()
     }
 
-    private suspend fun getTocSubtreeTocIds(
-        rootTocId: Long,
-        bookId: Long,
-    ): Set<Long> {
-        val result = mutableSetOf<Long>()
-        // Prefer the in-memory TOC tree if it matches the book
-        val tree = _tocTree.value
-        if (tree != null && currentTocBookId == bookId) {
-            val childrenMap = tree.children
-
-            fun dfs(id: Long) {
-                result += id
-                val children = childrenMap[id].orEmpty()
-                for (child in children) dfs(child.id)
-            }
-            dfs(rootTocId)
-            return result
-        }
-        // Fallback: build children map from repository for the book and DFS
-        val all = runCatching { repository.getBookToc(bookId) }.getOrElse { emptyList() }
-        val byParent = all.filter { it.parentId != null }.groupBy { it.parentId!! }
-
-        fun dfs(id: Long) {
-            result += id
-            val children = byParent[id].orEmpty()
-            for (child in children) dfs(child.id)
-        }
-        dfs(rootTocId)
-        return result
-    }
-
-    private suspend fun updateAggregatesForHits(hits: List<LineHit>) {
-        countsMutex.withLock {
-            for (hit in hits) {
-                val book = bookCache[hit.bookId] ?: repository.getBookCore(hit.bookId)?.also { bookCache[hit.bookId] = it } ?: continue
-                bookCountsAcc[book.id] = (bookCountsAcc[book.id] ?: 0) + 1
-                val path =
-                    categoryPathCache[book.categoryId]
-                        ?: buildCategoryPath(book.categoryId).also { categoryPathCache[book.categoryId] = it }
-                for (cat in path) {
-                    categoryCountsAcc[cat.id] = (categoryCountsAcc[cat.id] ?: 0) + 1
-                }
-                val set = booksForCategoryAcc.getOrPut(book.categoryId) { mutableSetOf() }
-                set += book
-            }
-            _categoryAgg.value =
-                CategoryAgg(
-                    categoryCounts = categoryCountsAcc.toMap(),
-                    bookCounts = bookCountsAcc.toMap(),
-                    booksForCategory = booksForCategoryAcc.mapValues { it.value.toList() },
-                )
-        }
-    }
-
     private suspend fun updateTocCountsForHits(
         hits: List<LineHit>,
         scopeBookId: Long,
@@ -1727,29 +2042,6 @@ class SearchResultViewModel(
                 }
             }
             _tocCounts.value = tocCountsAcc.toMap()
-        }
-    }
-
-    private suspend fun updateAggregatesForPage(page: List<SearchResult>) {
-        countsMutex.withLock {
-            for (res in page) {
-                val book = bookCache[res.bookId] ?: repository.getBookCore(res.bookId)?.also { bookCache[res.bookId] = it } ?: continue
-                bookCountsAcc[book.id] = (bookCountsAcc[book.id] ?: 0) + 1
-                val path =
-                    categoryPathCache[book.categoryId]
-                        ?: buildCategoryPath(book.categoryId).also { categoryPathCache[book.categoryId] = it }
-                for (cat in path) {
-                    categoryCountsAcc[cat.id] = (categoryCountsAcc[cat.id] ?: 0) + 1
-                }
-                val set = booksForCategoryAcc.getOrPut(book.categoryId) { mutableSetOf() }
-                set += book
-            }
-            _categoryAgg.value =
-                CategoryAgg(
-                    categoryCounts = categoryCountsAcc.toMap(),
-                    bookCounts = bookCountsAcc.toMap(),
-                    booksForCategory = booksForCategoryAcc.mapValues { it.value.toList() },
-                )
         }
     }
 
@@ -1799,20 +2091,6 @@ class SearchResultViewModel(
         val roots = byParent[-1L] ?: all.filter { it.parentId == null }
         val children = all.filter { it.parentId != null }.groupBy { it.parentId!! }
         return TocTree(roots, children)
-    }
-
-    private suspend fun rebuildAggregatesFromResults(results: List<SearchResult>) {
-        // Rebuild category/book aggregates
-        countsMutex.withLock {
-            categoryCountsAcc.clear()
-            bookCountsAcc.clear()
-            booksForCategoryAcc.clear()
-        }
-        updateAggregatesForPage(results)
-        // Rebuild TOC aggregates only if a book scope is selected
-        uiState.value.scopeBook
-            ?.id
-            ?.let { recomputeTocCountsForBook(it, results) }
     }
 
     private suspend fun ensureTocLineIndex(bookId: Long): TocLineIndex {

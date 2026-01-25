@@ -10,8 +10,13 @@ class BuildSearchTreeUseCase(
     private val repository: SeforimRepository,
 ) {
     private val bookCache: MutableMap<Long, Book> = mutableMapOf()
+    private val categoryCache: MutableMap<Long, Category> = mutableMapOf()
     private val categoryPathCache: MutableMap<Long, List<Category>> = mutableMapOf()
 
+    /**
+     * Build search tree from search results (original implementation).
+     * Iterates through results to compute counts and build the tree.
+     */
     suspend operator fun invoke(results: List<SearchResult>): List<SearchResultViewModel.SearchTreeCategory> {
         if (results.isEmpty()) return emptyList()
 
@@ -41,6 +46,61 @@ class BuildSearchTreeUseCase(
             }
         }
 
+        return buildTreeFromMaps(categoriesById, categoryCounts, booksById, bookCounts)
+    }
+
+    /**
+     * Build search tree from pre-computed facet counts.
+     * This is faster than iterating through results when counts are already available.
+     * Book-to-category mapping is loaded from the repository.
+     */
+    suspend fun invoke(
+        facetCategoryCounts: Map<Long, Int>,
+        facetBookCounts: Map<Long, Int>,
+    ): List<SearchResultViewModel.SearchTreeCategory> {
+        if (facetCategoryCounts.isEmpty() && facetBookCounts.isEmpty()) return emptyList()
+
+        val categoriesById = mutableMapOf<Long, Category>()
+        val booksById = mutableMapOf<Long, Book>()
+
+        // Load categories from cache or repository
+        for (catId in facetCategoryCounts.keys) {
+            val cat =
+                categoryCache[catId]
+                    ?: repository.getCategory(catId)?.also { categoryCache[catId] = it }
+            if (cat != null) {
+                categoriesById[cat.id] = cat
+            }
+        }
+
+        // Load books and ensure their categories are included
+        for (bookId in facetBookCounts.keys) {
+            val book =
+                bookCache[bookId]
+                    ?: repository.getBookCore(bookId)?.also { bookCache[bookId] = it }
+            if (book != null) {
+                booksById[book.id] = book
+                // Ensure the book's category is in the tree
+                if (!categoriesById.containsKey(book.categoryId)) {
+                    val cat =
+                        categoryCache[book.categoryId]
+                            ?: repository.getCategory(book.categoryId)?.also { categoryCache[book.categoryId] = it }
+                    if (cat != null) {
+                        categoriesById[cat.id] = cat
+                    }
+                }
+            }
+        }
+
+        return buildTreeFromMaps(categoriesById, facetCategoryCounts, booksById, facetBookCounts)
+    }
+
+    private fun buildTreeFromMaps(
+        categoriesById: Map<Long, Category>,
+        categoryCounts: Map<Long, Int>,
+        booksById: Map<Long, Book>,
+        bookCounts: Map<Long, Int>,
+    ): List<SearchResultViewModel.SearchTreeCategory> {
         if (categoriesById.isEmpty()) return emptyList()
 
         val childrenByParent: MutableMap<Long?, MutableList<Category>> = mutableMapOf()
@@ -48,14 +108,14 @@ class BuildSearchTreeUseCase(
             val list = childrenByParent.getOrPut(cat.parentId) { mutableListOf() }
             list += cat
         }
-        childrenByParent.values.forEach { it.sortBy { c -> c.title } }
+        childrenByParent.values.forEach { it.sortBy { c -> c.order } }
 
         fun buildNode(cat: Category): SearchResultViewModel.SearchTreeCategory {
             val childCats = childrenByParent[cat.id].orEmpty().map { buildNode(it) }
             val booksInCat =
                 booksById.values
                     .filter { it.categoryId == cat.id }
-                    .sortedBy { it.title }
+                    .sortedBy { it.order }
                     .map { b -> SearchResultViewModel.SearchTreeBook(b, bookCounts[b.id] ?: 0) }
             return SearchResultViewModel.SearchTreeCategory(
                 category = cat,
@@ -69,7 +129,7 @@ class BuildSearchTreeUseCase(
         val roots =
             categoriesById.values
                 .filter { it.parentId == null || it.parentId !in encounteredIds }
-                .sortedBy { it.title }
+                .sortedBy { it.order }
                 .map { buildNode(it) }
         return roots
     }
@@ -78,7 +138,10 @@ class BuildSearchTreeUseCase(
         val path = mutableListOf<Category>()
         var currentId: Long? = categoryId
         while (currentId != null) {
-            val cat = repository.getCategory(currentId) ?: break
+            val cat =
+                categoryCache[currentId]
+                    ?: repository.getCategory(currentId)?.also { categoryCache[currentId] = it }
+            if (cat == null) break
             path += cat
             currentId = cat.parentId
         }

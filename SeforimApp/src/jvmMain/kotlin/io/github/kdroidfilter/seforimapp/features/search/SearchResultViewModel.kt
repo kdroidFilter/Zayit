@@ -316,9 +316,10 @@ class SearchResultViewModel(
     private val scopeCatIdFlow = uiState.map { it.scopeCategoryPath.lastOrNull()?.id }.distinctUntilChanged()
     private val scopeTocIdFlow = uiState.map { it.scopeTocId }.distinctUntilChanged()
 
+    // Use conditional debounce: no delay when null (to immediately clear filters)
     private val allowedBooksFlow: StateFlow<Set<Long>> =
         scopeCatIdFlow
-            .debounce(100)
+            .debounce { catId -> if (catId == null) 0L else 100L }
             .mapLatest { catId ->
                 if (catId == null) emptySet() else collectBookIdsUnderCategory(catId)
             }.flowOn(Dispatchers.Default)
@@ -333,9 +334,10 @@ class SearchResultViewModel(
     val selectedTocIdsFlow: StateFlow<Set<Long>> = _selectedTocIds.asStateFlow()
 
     // Derived unions for multi-select
+    // Use conditional debounce: no delay when empty (to immediately clear filters)
     private val multiAllowedBooksFlow: StateFlow<Set<Long>> =
         _selectedCategoryIds
-            .debounce(100)
+            .debounce { ids -> if (ids.isEmpty()) 0L else 100L }
             .mapLatest { ids ->
                 if (ids.isEmpty()) {
                     emptySet()

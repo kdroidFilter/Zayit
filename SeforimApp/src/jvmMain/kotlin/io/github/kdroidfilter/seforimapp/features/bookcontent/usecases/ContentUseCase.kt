@@ -191,6 +191,9 @@ class ContentUseCase(
             stateManager.updateContent {
                 copy(
                     selectedLine = line,
+                    // Clear multi-selection when selecting from TOC
+                    selectedLineIds = emptySet(),
+                    isTocBasedSelection = true,
                     anchorId = line.id,
                     anchorIndex = computedAnchorIndex,
                     // When selection originates from TOC/breadcrumb, force anchoring at top
@@ -214,6 +217,8 @@ class ContentUseCase(
             stateManager.updateToc(save = false) {
                 copy(
                     selectedEntryId = tocId,
+                    // Clear multi-TOC highlighting when selecting from TOC
+                    selectedEntryIds = emptySet(),
                     breadcrumbPath = tocPath,
                 )
             }

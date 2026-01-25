@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -350,6 +349,21 @@ private fun SearchResultContentMvi(
         }
     }
 
+    // Infinite scroll: automatically load more when approaching the end of the list
+    val currentOnLoadMore by rememberUpdatedState(actions.onLoadMore)
+    LaunchedEffect(listState, state.hasMore, state.isLoadingMore) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            // Trigger when within 10 items of the end
+            lastVisibleItem >= totalItems - 10
+        }
+            .distinctUntilChanged()
+            .filter { it && state.hasMore && !state.isLoadingMore && !state.isLoading }
+            .collect { currentOnLoadMore() }
+    }
+
     val findState = remember(tabId) { TextFieldState() }
     LaunchedEffect(findQuery) {
         val current = findState.text.toString()
@@ -498,70 +512,44 @@ private fun SearchResultContentMvi(
                         }
                     }
                 } else {
-                    VerticallyScrollableContainer(
-                        scrollState = listState as ScrollableState,
-                        modifier = Modifier.fillMaxSize(),
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            // Use a composite key to ensure uniqueness across books and pages
-                            itemsIndexed(items = visibleResults, key = {
-                                index,
-                                it,
-                                ->
-                                Pair(it.bookId, Pair(it.lineId, index))
-                            }) { idx, result ->
-                                val windowInfo = LocalWindowInfo.current
-                                SearchResultItemGoogleStyle(
-                                    result = result,
-                                    textSize = mainTextSize,
-                                    lineHeight = mainLineHeight,
-                                    fontFamily = hebrewFontFamily,
-                                    findQuery = activeFindQuery,
-                                    currentMatchStart = if (idx == currentHitIndex) currentMatchStart else null,
-                                    onClick = {
-                                        val mods = windowInfo.keyboardModifiers
-                                        val openInNewTab = !(mods.isCtrlPressed || mods.isMetaPressed)
-                                        actions.onOpenResult(result, openInNewTab)
-                                    },
-                                    breadcrumbs = breadcrumbs,
-                                    onRequestBreadcrumb = actions.onRequestBreadcrumb,
-                                    bookFontCode = bookFontCode,
-                                )
-                            }
-                            if (state.isLoading) {
-                                item {
-                                    Box(
-                                        Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
-                                    }
-                                }
-                            }
-                            if (state.hasMore && !state.isLoading && !state.isLoadingMore) {
-                                item {
-                                    Box(
-                                        Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        DefaultButton(onClick = actions.onLoadMore) {
-                                            Text(stringResource(Res.string.search_load_more), fontSize = commentSize.sp)
-                                        }
-                                    }
-                                }
-                            }
-                            if (state.isLoadingMore) {
-                                item {
-                                    Box(
-                                        Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
-                                    }
+                        // Use a composite key to ensure uniqueness across books and pages
+                        itemsIndexed(items = visibleResults, key = {
+                            index,
+                            it,
+                            ->
+                            Pair(it.bookId, Pair(it.lineId, index))
+                        }) { idx, result ->
+                            val windowInfo = LocalWindowInfo.current
+                            SearchResultItemGoogleStyle(
+                                result = result,
+                                textSize = mainTextSize,
+                                lineHeight = mainLineHeight,
+                                fontFamily = hebrewFontFamily,
+                                findQuery = activeFindQuery,
+                                currentMatchStart = if (idx == currentHitIndex) currentMatchStart else null,
+                                onClick = {
+                                    val mods = windowInfo.keyboardModifiers
+                                    val openInNewTab = !(mods.isCtrlPressed || mods.isMetaPressed)
+                                    actions.onOpenResult(result, openInNewTab)
+                                },
+                                breadcrumbs = breadcrumbs,
+                                onRequestBreadcrumb = actions.onRequestBreadcrumb,
+                                bookFontCode = bookFontCode,
+                            )
+                        }
+                        // Loading indicator at the end of the list
+                        if (state.isLoading || state.isLoadingMore) {
+                            item {
+                                Box(
+                                    Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator()
                                 }
                             }
                         }

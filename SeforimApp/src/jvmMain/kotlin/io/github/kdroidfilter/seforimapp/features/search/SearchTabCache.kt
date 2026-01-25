@@ -12,7 +12,7 @@ object SearchTabCache {
     data class CategoryAggSnapshot(
         val categoryCounts: Map<Long, Int>,
         val bookCounts: Map<Long, Int>,
-        val booksForCategory: Map<Long, List<Book>>,
+        val booksForCategory: Map<Long, List<Book>> = emptyMap(),
     )
 
     @Serializable

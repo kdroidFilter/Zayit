@@ -39,6 +39,7 @@ import java.util.UUID
 import kotlin.collections.ArrayDeque
 
 private const val PARALLEL_FILTER_THRESHOLD = 2_000
+private const val LAZY_PAGE_SIZE = 25
 
 @Stable
 data class SearchUiState(
@@ -253,6 +254,12 @@ class SearchResultViewModel(
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
     private var currentJob: Job? = null
 
+    // Lazy loading: keep session open for on-demand pagination
+    private var currentSession: SearchSession? = null
+    private var currentTocAllowedLineIds: Set<Long> = emptySet()
+    private var currentSearchQuery: String = ""
+    private val lazyLoadMutex = Mutex()
+
     // Pagination cursors/state
     private var currentKey: SearchParamsKey? = null
 
@@ -296,6 +303,9 @@ class SearchResultViewModel(
     private val _categoryAgg = MutableStateFlow(CategoryAgg(emptyMap(), emptyMap(), emptyMap()))
     private val _tocCounts = MutableStateFlow<Map<Long, Int>>(emptyMap())
     private val _breadcrumbs = MutableStateFlow<Map<Long, List<String>>>(emptyMap())
+
+    // Flag to indicate facets have been computed, so tree doesn't need to be rebuilt from results
+    private var facetsComputed = false
     val breadcrumbsFlow: StateFlow<Map<Long, List<String>>> = _breadcrumbs.asStateFlow()
 
     // Whether the Search UI is currently visible/active. Used to gate heavy flows at startup.
@@ -433,6 +443,7 @@ class SearchResultViewModel(
 
     init {
         // Compute search tree when visible and results change; emits into _searchTree
+        // Skip if facets have been computed (tree is built from facets directly)
         viewModelScope.launch {
             _uiVisible
                 .flatMapLatest { visible ->
@@ -442,7 +453,14 @@ class SearchResultViewModel(
                         uiState
                             .map { it.results }
                             .debounce(100)
-                            .mapLatest { buildSearchResultTree() }
+                            .mapLatest {
+                                // Skip rebuild if facets are computed (tree already built)
+                                if (facetsComputed) {
+                                    _searchTree.value
+                                } else {
+                                    buildSearchResultTree()
+                                }
+                            }
                             .flowOn(Dispatchers.Default)
                     }
                 }.collect { tree -> _searchTree.value = tree }
@@ -940,6 +958,8 @@ class SearchResultViewModel(
             viewModelScope.launch(Dispatchers.Default) {
                 _uiState.value =
                     _uiState.value.copy(isLoading = true, results = emptyList(), hasMore = false, progressCurrent = 0, progressTotal = null)
+                // Reset facetsComputed flag for new search
+                facetsComputed = false
                 // Reset aggregates and counts for a clean run
                 countsMutex.withLock {
                     categoryCountsAcc.clear()
@@ -998,62 +1018,94 @@ class SearchResultViewModel(
                         ensureTocCountingCaches(book.id)
                     }
 
+                    // Phase 1: Compute facets instantly for immediate tree display
+                    val facetsBookIds: Collection<Long>? = when {
+                        fetchTocId != null -> {
+                            val toc = repository.getTocEntry(fetchTocId)
+                            toc?.bookId?.let { listOf(it) }
+                        }
+                        fetchBookId != null -> listOf(fetchBookId)
+                        fetchCategoryId != null -> collectBookIdsUnderCategory(fetchCategoryId)
+                        else -> {
+                            val extendedGlobal = _uiState.value.globalExtended
+                            if (!extendedGlobal) repository.getBaseBookIds() else null
+                        }
+                    }
+
+                    val facets = lucene.computeFacets(
+                        query = q,
+                        near = DEFAULT_NEAR,
+                        bookIds = facetsBookIds
+                    )
+
+                    if (facets != null) {
+                        // Set aggregates immediately
+                        _categoryAgg.value = CategoryAgg(
+                            categoryCounts = facets.categoryCounts,
+                            bookCounts = facets.bookCounts,
+                            booksForCategory = emptyMap() // Not needed for tree building
+                        )
+                        _uiState.value = _uiState.value.copy(progressTotal = facets.totalHits)
+
+                        // Build tree from facets immediately
+                        val tree = buildSearchTreeUseCase.invoke(
+                            facetCategoryCounts = facets.categoryCounts,
+                            facetBookCounts = facets.bookCounts
+                        )
+                        _searchTree.value = tree
+                        facetsComputed = true
+                    }
+
+                    // Close any existing session before opening a new one
+                    lazyLoadMutex.withLock {
+                        currentSession?.close()
+                        currentSession = null
+                    }
+
                     val sessionInfo = prepareSearchSession(q, fetchCategoryId, fetchBookId, fetchTocId)
                     if (sessionInfo == null) {
                         _uiState.value = _uiState.value.copy(results = emptyList(), progressCurrent = 0, progressTotal = 0)
                         return@launch
                     }
                     val (session, tocAllowedLineIds) = sessionInfo
-                    var progressTotal: Long? = null
 
-                    session.use { searchSession ->
-                        var pageSize = batchSizeFor(acc.size, warmup = true)
-                        var page = searchSession.nextPage(pageSize)
-                        while (page != null) {
-                            progressTotal = page.totalHits
-                            val filteredHits =
-                                if (tocAllowedLineIds.isEmpty()) {
-                                    page.hits
-                                } else {
-                                    page.hits.filter {
-                                        it.lineId in tocAllowedLineIds
-                                    }
-                                }
-
-                            if (filteredHits.isNotEmpty()) {
-                                updateAggregatesForHits(filteredHits)
-                                _uiState.value.scopeBook
-                                    ?.id
-                                    ?.let { updateTocCountsForHits(filteredHits, it) }
-                            }
-
-                            val mapped = hitsToResults(filteredHits, q)
-                            if (mapped.isNotEmpty()) {
-                                acc += mapped
-                            }
-                            _uiState.value =
-                                _uiState.value.copy(
-                                    results = ArrayList(acc),
-                                    progressCurrent = acc.size,
-                                    progressTotal = progressTotal,
-                                )
-                            if (page.isLastPage) break
-                            pageSize = batchSizeFor(acc.size)
-                            page = searchSession.nextPage(pageSize)
-                        }
+                    // Store session for lazy loading
+                    lazyLoadMutex.withLock {
+                        currentSession = session
+                        currentTocAllowedLineIds = tocAllowedLineIds
+                        currentSearchQuery = q
                     }
 
-                    _uiState.value =
-                        _uiState.value.copy(
+                    // Load only the first page
+                    val firstPage = session.nextPage(LAZY_PAGE_SIZE)
+                    if (firstPage == null) {
+                        _uiState.value = _uiState.value.copy(
+                            results = emptyList(),
                             hasMore = false,
-                            progressCurrent = acc.size,
-                            progressTotal = progressTotal ?: acc.size.toLong(),
+                            progressCurrent = 0,
+                            progressTotal = 0
                         )
-                    // Persist a snapshot of the full results so cold-boot restore is instant
-                    runCatching {
-                        val snap = buildSnapshot(_uiState.value.results)
-                        updatePersistedSearch { it.copy(snapshot = snap) }
+                        return@launch
                     }
+
+                    val filteredHits = if (tocAllowedLineIds.isEmpty()) {
+                        firstPage.hits
+                    } else {
+                        firstPage.hits.filter { it.lineId in tocAllowedLineIds }
+                    }
+
+                    // Update TOC counts for first page
+                    if (filteredHits.isNotEmpty()) {
+                        _uiState.value.scopeBook?.id?.let { updateTocCountsForHits(filteredHits, it) }
+                    }
+
+                    val results = hitsToResults(filteredHits, q)
+                    _uiState.value = _uiState.value.copy(
+                        results = results,
+                        hasMore = !firstPage.isLastPage,
+                        progressCurrent = results.size,
+                        progressTotal = firstPage.totalHits,
+                    )
                 } finally {
                     // Clear loading promptly; if a new visibleResults emission is pending, wait briefly
                     // but never block indefinitely (important when final results are empty and identical
@@ -1071,6 +1123,51 @@ class SearchResultViewModel(
                     _uiState.value = _uiState.value.copy(isLoading = false)
                 }
             }
+    }
+
+    /**
+     * Load the next page of results (lazy loading).
+     * Called when user scrolls near the bottom of the list.
+     */
+    fun loadMore() {
+        if (_uiState.value.isLoadingMore || !_uiState.value.hasMore) return
+
+        viewModelScope.launch(Dispatchers.Default) {
+            _uiState.value = _uiState.value.copy(isLoadingMore = true)
+            try {
+                val session = lazyLoadMutex.withLock { currentSession } ?: return@launch
+                val tocAllowedLineIds = currentTocAllowedLineIds
+                val query = currentSearchQuery
+
+                val page = session.nextPage(LAZY_PAGE_SIZE)
+                if (page == null) {
+                    _uiState.value = _uiState.value.copy(hasMore = false, isLoadingMore = false)
+                    return@launch
+                }
+
+                val filteredHits = if (tocAllowedLineIds.isEmpty()) {
+                    page.hits
+                } else {
+                    page.hits.filter { it.lineId in tocAllowedLineIds }
+                }
+
+                // Update TOC counts for this page
+                if (filteredHits.isNotEmpty()) {
+                    _uiState.value.scopeBook?.id?.let { updateTocCountsForHits(filteredHits, it) }
+                }
+
+                val newResults = hitsToResults(filteredHits, query)
+                val currentResults = _uiState.value.results
+                _uiState.value = _uiState.value.copy(
+                    results = currentResults + newResults,
+                    hasMore = !page.isLastPage,
+                    progressCurrent = currentResults.size + newResults.size,
+                    isLoadingMore = false,
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoadingMore = false)
+            }
+        }
     }
 
     private suspend fun prepareSearchSession(
@@ -1145,11 +1242,14 @@ class SearchResultViewModel(
         return out
     }
 
-    fun loadMore() { /* no-op: initial fetch loads all results; no cache/pagination */ }
-
     fun cancelSearch() {
         currentJob?.cancel()
-        _uiState.value = _uiState.value.copy(isLoading = false, isLoadingMore = false)
+        // Close session to release resources
+        runCatching {
+            currentSession?.close()
+            currentSession = null
+        }
+        _uiState.value = _uiState.value.copy(isLoading = false, isLoadingMore = false, hasMore = false)
     }
 
     override fun onCleared() {
@@ -1258,11 +1358,11 @@ class SearchResultViewModel(
                     scrollOffset = 0,
                     scrollToAnchorTimestamp = System.currentTimeMillis(),
                 )
-            executeSearch()
+            // visibleResultsFlow will filter the already-loaded results based on scopeCategoryPath
         }
     }
 
-    /** Apply a book filter. Re-query if current dataset is restricted to another scope. */
+    /** Apply a book filter. Filter from already-loaded results. */
     fun filterByBookId(bookId: Long) {
         viewModelScope.launch {
             updatePersistedSearch {
@@ -1294,7 +1394,7 @@ class SearchResultViewModel(
                 }
             }
             if (book != null) ensureTocCountingCaches(book.id)
-            executeSearch()
+            // visibleResultsFlow will filter the already-loaded results based on scopeBook
         }
     }
 
@@ -1332,8 +1432,7 @@ class SearchResultViewModel(
                 }
             }
             scopeBook?.let { ensureTocCountingCaches(it.id) }
-
-            executeSearch()
+            // visibleResultsFlow will filter the already-loaded results based on scopeTocId
         }
     }
 

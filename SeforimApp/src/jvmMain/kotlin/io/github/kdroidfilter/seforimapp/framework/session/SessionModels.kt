@@ -42,10 +42,13 @@ data class BookContentPersistedState(
     val isTocVisible: Boolean = false,
     val expandedTocEntryIds: Set<Long> = emptySet(),
     val selectedTocEntryId: Long = -1L,
+    val selectedTocEntryIds: Set<Long> = emptySet(),
     val tocScrollIndex: Int = 0,
     val tocScrollOffset: Int = 0,
     // Content
     val selectedLineId: Long = -1L,
+    val selectedLineIds: Set<Long> = emptySet(),
+    val isTocBasedSelection: Boolean = false,
     val showCommentaries: Boolean = false,
     val showTargum: Boolean = false,
     val showSources: Boolean = false,

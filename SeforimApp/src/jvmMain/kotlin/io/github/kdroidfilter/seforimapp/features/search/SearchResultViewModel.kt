@@ -5,14 +5,21 @@ package io.github.kdroidfilter.seforimapp.features.search
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactory
+import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactoryKey
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.search.domain.BuildSearchTreeUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.GetBreadcrumbPiecesUseCase
+import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -65,6 +72,15 @@ class SearchResultViewModel(
     private val titleUpdateManager: TabTitleUpdateManager,
     private val tabsViewModel: TabsViewModel,
 ) : ViewModel() {
+    @AssistedFactory
+    @ViewModelAssistedFactoryKey(SearchResultViewModel::class)
+    @ContributesIntoMap(AppScope::class)
+    fun interface Factory : ViewModelAssistedFactory {
+        override fun create(extras: CreationExtras): SearchResultViewModel = create(extras.createSavedStateHandle())
+
+        fun create(savedStateHandle: SavedStateHandle): SearchResultViewModel
+    }
+
     internal val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
 
     private fun persistedSearchState(): SearchPersistedState = persistedStore.get(tabId)?.search ?: SearchPersistedState()
@@ -233,10 +249,6 @@ class SearchResultViewModel(
         val filterTocId: Long?,
     )
 
-    // Batching policy:
-    // - 20 for the first 100 results (best time-to-first-results)
-    // - then 100 until 500
-    // - then 5,000; then 10,000; then double each step up to 200,000
     private companion object {
         private const val DEFAULT_NEAR = 5
     }

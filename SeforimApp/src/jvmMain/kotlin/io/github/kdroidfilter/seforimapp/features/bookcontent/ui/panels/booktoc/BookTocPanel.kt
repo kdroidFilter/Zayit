@@ -10,6 +10,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.Horizontal
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
+import io.github.kdroidfilter.seforimapp.features.search.domain.TocTree
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import org.jetbrains.compose.resources.stringResource
@@ -81,7 +82,7 @@ fun SearchBookTocPanel(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     searchUi: io.github.kdroidfilter.seforimapp.features.search.SearchUiState,
-    tocTree: io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.TocTree?,
+    tocTree: TocTree?,
     tocCounts: Map<Long, Int>,
     selectedTocIds: Set<Long>,
     onToggle: (TocEntry, Boolean) -> Unit,

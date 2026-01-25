@@ -12,7 +12,7 @@ object SearchTabCache {
     data class CategoryAggSnapshot(
         val categoryCounts: Map<Long, Int>,
         val bookCounts: Map<Long, Int>,
-        val booksForCategory: Map<Long, List<Book>>,
+        val booksForCategory: Map<Long, List<Book>> = emptyMap(),
     )
 
     @Serializable
@@ -43,6 +43,9 @@ object SearchTabCache {
         val tocTree: TocTreeSnapshot?,
         // Optional precomputed search tree to accelerate restore
         val searchTree: List<SearchTreeCategorySnapshot>? = null,
+        // Total hits for lazy loading continuation
+        val totalHits: Long = 0L,
+        val hasMore: Boolean = false,
     )
 
     private val cache =

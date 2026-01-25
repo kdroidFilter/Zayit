@@ -6,7 +6,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -27,6 +29,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
@@ -74,6 +78,8 @@ fun BookContentView(
     tabId: String,
     showDiacritics: Boolean,
     modifier: Modifier = Modifier,
+    selectedLineIds: Set<Long> = emptySet(),
+    onLineCtrlClick: (Line) -> Unit = {},
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
     scrollOffset: Int = 0,
@@ -549,13 +555,16 @@ fun BookContentView(
                                         onClick = { onLineSelect(line) },
                                     )
                                 }
+                                // Line is selected if it's the primary selection OR in multi-selection
+                                val isLineSelected = selectedLineId == line.id || line.id in selectedLineIds
                                 LineItem(
                                     lineId = line.id,
                                     lineContent = line.content,
-                                    isSelected = selectedLineId == line.id,
+                                    isSelected = isLineSelected,
                                     fontFamily = hebrewFontFamily,
                                     onClick = { onLineSelect(line) },
                                     scrollToLineTimestamp = scrollToLineTimestamp,
+                                    onCtrlClick = { onLineCtrlClick(line) },
                                     baseTextSize = textSize,
                                     lineHeight = lineHeight,
                                     boldScale = boldScaleForPlatform,
@@ -765,6 +774,7 @@ private fun LineItem(
     fontFamily: FontFamily,
     onClick: () -> Unit,
     scrollToLineTimestamp: Long,
+    onCtrlClick: () -> Unit = {},
     baseTextSize: Float = 16f,
     lineHeight: Float = 1.5f,
     boldScale: Float = 1.0f,
@@ -856,8 +866,20 @@ private fun LineItem(
         remember {
             Modifier.fillMaxWidth()
         }.bringIntoViewRequester(bringRequester)
-            .pointerInput(lineId) {
-                detectTapGestures(onTap = { onClick() })
+            .pointerInput(lineId, onClick, onCtrlClick) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val mods = currentEvent.keyboardModifiers
+                    val isCtrlOrCmd = mods.isCtrlPressed || mods.isMetaPressed
+                    val up = waitForUpOrCancellation()
+                    if (up != null) {
+                        if (isCtrlOrCmd) {
+                            onCtrlClick()
+                        } else {
+                            onClick()
+                        }
+                    }
+                }
             }
 
     Box(

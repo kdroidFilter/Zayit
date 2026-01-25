@@ -9,6 +9,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorI
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.pagination.CommentsForLineOrTocPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.LineTargumPagingSource
+import io.github.kdroidfilter.seforimapp.pagination.MultiLineCommentsPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.PagingDefaults
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -79,6 +80,43 @@ class CommentariesUseCase(
                 CommentsForLineOrTocPagingSource(repository, lineId, ids)
             },
         ).flow.cachedIn(scope)
+    }
+
+    /**
+     * Construit un Pager pour les commentaires de plusieurs lignes (multi-selection via Ctrl+Click)
+     */
+    fun buildMultiLineCommentariesPager(
+        lineIds: List<Long>,
+        commentatorId: Long? = null,
+    ): Flow<PagingData<CommentaryWithText>> {
+        val ids = commentatorId?.let { setOf(it) } ?: emptySet()
+
+        return Pager(
+            config = PagingDefaults.COMMENTS.config(placeholders = false),
+            pagingSourceFactory = {
+                MultiLineCommentsPagingSource(repository, lineIds, ids)
+            },
+        ).flow.cachedIn(scope)
+    }
+
+    /**
+     * Récupère les commentateurs disponibles pour plusieurs lignes (aggregated)
+     */
+    suspend fun getCommentatorGroupsForLines(lineIds: List<Long>): List<CommentatorGroup> {
+        if (lineIds.isEmpty()) return emptyList()
+
+        return try {
+            // Load entries for all lines and aggregate
+            val allEntries = lineIds.flatMap { loadCommentatorEntries(it) }
+            if (allEntries.isEmpty()) return emptyList()
+
+            // Deduplicate by bookId to avoid showing the same commentator multiple times
+            val uniqueEntries = allEntries.distinctBy { it.bookId }
+            val categoryCache = mutableMapOf<Long, Category?>()
+            groupCommentatorEntries(uniqueEntries, categoryCache)
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     /**

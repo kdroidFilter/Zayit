@@ -124,6 +124,8 @@ class BookContentViewModel(
                             getAvailableLinksForLine = commentariesUseCase::getAvailableLinks,
                             buildSourcesPagerFor = commentariesUseCase::buildSourcesPager,
                             getAvailableSourcesForLine = commentariesUseCase::getAvailableSources,
+                            buildMultiLineCommentariesPagerFor = commentariesUseCase::buildMultiLineCommentariesPager,
+                            getCommentatorGroupsForLines = commentariesUseCase::getCommentatorGroupsForLines,
                         ),
                     content =
                         state.content.copy(
@@ -175,6 +177,8 @@ class BookContentViewModel(
                                 getAvailableLinksForLine = commentariesUseCase::getAvailableLinks,
                                 buildSourcesPagerFor = commentariesUseCase::buildSourcesPager,
                                 getAvailableSourcesForLine = commentariesUseCase::getAvailableSources,
+                                buildMultiLineCommentariesPagerFor = commentariesUseCase::buildMultiLineCommentariesPager,
+                                getCommentatorGroupsForLines = commentariesUseCase::getCommentatorGroupsForLines,
                             ),
                         content =
                             s.content.copy(
@@ -360,6 +364,9 @@ class BookContentViewModel(
                 // Content
                 is BookContentEvent.LineSelected ->
                     selectLine(event.line)
+
+                is BookContentEvent.LineCtrlClicked ->
+                    ctrlClickLine(event.line)
 
                 is BookContentEvent.LoadAndSelectLine ->
                     loadAndSelectLine(event.lineId)
@@ -730,6 +737,14 @@ class BookContentViewModel(
     /** Selects a line */
     private suspend fun selectLine(line: Line) {
         contentUseCase.selectLine(line)
+        commentariesUseCase.reapplySelectedCommentators(line)
+        commentariesUseCase.reapplySelectedLinkSources(line)
+        commentariesUseCase.reapplySelectedSources(line)
+    }
+
+    /** Ctrl+Click on a line - toggles multi-selection */
+    private suspend fun ctrlClickLine(line: Line) {
+        contentUseCase.toggleLineInSelection(line)
         commentariesUseCase.reapplySelectedCommentators(line)
         commentariesUseCase.reapplySelectedLinkSources(line)
         commentariesUseCase.reapplySelectedSources(line)

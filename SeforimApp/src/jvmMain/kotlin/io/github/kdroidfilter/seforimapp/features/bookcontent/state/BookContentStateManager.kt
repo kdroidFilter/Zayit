@@ -163,11 +163,16 @@ class BookContentStateManager(
                 selectedTargumSourceIds = emptySet(),
                 selectedSourceIds = emptySet(),
                 selectedLine = null,
+                selectedLineIds = emptySet(),
+                isTocBasedSelection = false,
                 anchorId = -1L,
                 scrollIndex = 0,
                 scrollOffset = 0,
                 showSources = false,
             )
+        }
+        updateToc(save = false) {
+            copy(selectedEntryIds = emptySet())
         }
         updateAltToc(save = false) { AltTocState() }
     }

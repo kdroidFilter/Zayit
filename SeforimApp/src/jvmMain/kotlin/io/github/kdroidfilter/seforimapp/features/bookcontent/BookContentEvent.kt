@@ -72,6 +72,10 @@ sealed interface BookContentEvent {
         val line: Line,
     ) : BookContentEvent
 
+    data class LineCtrlClicked(
+        val line: Line,
+    ) : BookContentEvent
+
     data class LoadAndSelectLine(
         val lineId: Long,
     ) : BookContentEvent

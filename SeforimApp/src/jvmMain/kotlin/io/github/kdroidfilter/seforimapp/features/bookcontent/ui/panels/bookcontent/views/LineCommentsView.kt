@@ -74,6 +74,16 @@ fun LineCommentsView(
 ) {
     val contentState = uiState.content
     val selectedLine = contentState.selectedLine
+    val selectedLineIds = contentState.selectedLineIds
+
+    // Determine if we're in multi-selection mode
+    val isMultiSelection = selectedLineIds.size > 1
+    val effectiveLineIds: List<Long> =
+        if (isMultiSelection) {
+            selectedLineIds.toList()
+        } else {
+            selectedLine?.id?.let { listOf(it) } ?: emptyList()
+        }
 
     // Animation settings with stable memorization
     val textSizes = rememberAnimatedTextSettings()
@@ -98,18 +108,30 @@ fun LineCommentsView(
             },
         )
         Column(modifier = Modifier.padding(horizontal = 8.dp)) {
-            when (selectedLine) {
-                null -> CenteredMessage(stringResource(Res.string.select_line_for_commentaries))
-                else ->
-                    CommentariesContent(
-                        selectedLineId = selectedLine.id,
+            when {
+                effectiveLineIds.isEmpty() -> CenteredMessage(stringResource(Res.string.select_line_for_commentaries))
+                isMultiSelection ->
+                    MultiLineCommentariesContent(
+                        lineIds = effectiveLineIds,
                         uiState = uiState,
                         onEvent = onEvent,
                         textSizes = textSizes,
                         onShowMaxLimit = { onEvent(BookContentEvent.CommentatorsSelectionLimitExceeded) },
                         findQueryText = activeQuery,
                         isCommentatorsListVisible = showCommentatorsList,
-                        prefetchedGroups = lineConnections[selectedLine.id]?.commentatorGroups,
+                        lineConnections = lineConnections,
+                        showDiacritics = showDiacritics,
+                    )
+                else ->
+                    CommentariesContent(
+                        selectedLineId = effectiveLineIds.first(),
+                        uiState = uiState,
+                        onEvent = onEvent,
+                        textSizes = textSizes,
+                        onShowMaxLimit = { onEvent(BookContentEvent.CommentatorsSelectionLimitExceeded) },
+                        findQueryText = activeQuery,
+                        isCommentatorsListVisible = showCommentatorsList,
+                        prefetchedGroups = lineConnections[effectiveLineIds.first()]?.commentatorGroups,
                         showDiacritics = showDiacritics,
                     )
             }
@@ -212,6 +234,119 @@ private fun CommentariesContent(
                 selectedCommentators = selectedInDisplayOrder,
                 titleToIdMap = titleToIdMap,
                 selectedLineId = selectedLineId,
+                uiState = uiState,
+                onEvent = onEvent,
+                textSizes = textSizes,
+                findQueryText = findQueryText,
+                showDiacritics = showDiacritics,
+            )
+        },
+    )
+}
+
+/**
+ * Content for multi-line selection (Ctrl+Click multiple lines).
+ * Aggregates commentators from all selected lines and uses MultiLineCommentsPagingSource.
+ */
+@OptIn(ExperimentalSplitPaneApi::class)
+@Composable
+private fun MultiLineCommentariesContent(
+    lineIds: List<Long>,
+    uiState: BookContentState,
+    onEvent: (BookContentEvent) -> Unit,
+    textSizes: AnimatedTextSizes,
+    onShowMaxLimit: () -> Unit,
+    findQueryText: String,
+    isCommentatorsListVisible: Boolean,
+    lineConnections: Map<Long, LineConnectionsSnapshot>,
+    showDiacritics: Boolean,
+) {
+    val providers = uiState.providers ?: return
+    val contentState = uiState.content
+
+    // Aggregate commentator groups from all selected lines
+    val commentatorSelection =
+        rememberMultiLineCommentarySelectionData(
+            lineIds = lineIds,
+            getCommentatorGroupsForLines = providers.getCommentatorGroupsForLines,
+            lineConnections = lineConnections,
+        )
+
+    val titleToIdMap = commentatorSelection.titleToIdMap
+    val commentatorGroups = commentatorSelection.groups
+
+    if (titleToIdMap.isEmpty()) {
+        CenteredMessage(stringResource(Res.string.no_commentaries_for_line))
+        return
+    }
+
+    // Flatten the grouped commentators to preserve global ordering (category, then pubDate)
+    val commentatorsInDisplayOrder =
+        remember(commentatorGroups) {
+            commentatorGroups.flatMap { group -> group.commentators.map(CommentatorItem::name) }
+        }
+
+    // Use the primary selected line for selection change events
+    val primaryLineId = lineIds.firstOrNull() ?: return
+
+    // Manage selected commentators
+    val selectedCommentators =
+        rememberSelectedCommentators(
+            availableCommentators = commentatorsInDisplayOrder,
+            initiallySelectedIds = contentState.selectedCommentatorIds,
+            titleToIdMap = titleToIdMap,
+            onSelectionChange = { ids ->
+                onEvent(BookContentEvent.SelectedCommentatorsChanged(primaryLineId, ids))
+            },
+        )
+
+    val splitState = rememberSplitPaneState(0.10f)
+
+    LaunchedEffect(isCommentatorsListVisible) {
+        if (!isCommentatorsListVisible) {
+            splitState.positionPercentage = 0f
+        } else if (splitState.positionPercentage <= 0f) {
+            splitState.positionPercentage = 0.10f
+        }
+    }
+
+    EnhancedHorizontalSplitPane(
+        splitPaneState = splitState.asStable(),
+        firstMinSize = if (isCommentatorsListVisible) 150f else 0f,
+        showSplitter = isCommentatorsListVisible,
+        firstContent = {
+            if (isCommentatorsListVisible) {
+                CommentatorsList(
+                    groups = commentatorGroups,
+                    selectedCommentators = selectedCommentators.value,
+                    initialScrollIndex = uiState.content.commentatorsListScrollIndex,
+                    initialScrollOffset = uiState.content.commentatorsListScrollOffset,
+                    onScroll = { index, offset ->
+                        onEvent(BookContentEvent.CommentatorsListScrolled(index, offset))
+                    },
+                    onSelectionChange = { name, checked ->
+                        if (checked && selectedCommentators.value.size >= MAX_COMMENTATORS) {
+                            onShowMaxLimit()
+                        } else {
+                            selectedCommentators.value =
+                                if (checked) {
+                                    selectedCommentators.value + name
+                                } else {
+                                    selectedCommentators.value - name
+                                }
+                        }
+                    },
+                )
+            }
+        },
+        secondContent = {
+            // Ensure selected commentators are always displayed in a stable order,
+            // independent of the order in which they were selected.
+            val selectedInDisplayOrder = commentatorsInDisplayOrder.filter { it in selectedCommentators.value }
+            MultiLineCommentariesDisplay(
+                selectedCommentators = selectedInDisplayOrder,
+                titleToIdMap = titleToIdMap,
+                lineIds = lineIds,
                 uiState = uiState,
                 onEvent = onEvent,
                 textSizes = textSizes,
@@ -391,6 +526,86 @@ private fun CommentariesLayout(
     CommentatorsGridView(layoutConfig, uiState, onEvent)
 }
 
+/**
+ * Display for multi-line selection commentaries (Ctrl+Click multiple lines).
+ * Uses MultiLineCommentsPagingSource for aggregated commentaries.
+ */
+@Composable
+private fun MultiLineCommentariesDisplay(
+    selectedCommentators: List<String>,
+    titleToIdMap: Map<String, Long>,
+    lineIds: List<Long>,
+    uiState: BookContentState,
+    onEvent: (BookContentEvent) -> Unit,
+    textSizes: AnimatedTextSizes,
+    findQueryText: String,
+    showDiacritics: Boolean,
+) {
+    val contentState = uiState.content
+
+    if (selectedCommentators.isEmpty()) {
+        CenteredMessage(
+            message = stringResource(Res.string.select_at_least_one_commentator),
+            fontSize = textSizes.commentTextSize,
+        )
+        return
+    }
+
+    val windowInfo = LocalWindowInfo.current
+
+    // Memorizes the configuration to avoid recreating it
+    val commentaryFontCode by AppSettings.commentaryFontCodeFlow.collectAsState()
+    val commentaryFontFamily = FontCatalog.familyFor(commentaryFontCode)
+    val boldScaleForPlatform =
+        remember(commentaryFontCode) {
+            val lacksBold = commentaryFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
+            if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
+        }
+
+    val layoutConfig =
+        remember(
+            selectedCommentators,
+            titleToIdMap,
+            lineIds,
+            contentState.commentariesScrollIndex,
+            contentState.commentariesScrollOffset,
+            textSizes,
+            commentaryFontFamily,
+            boldScaleForPlatform,
+            findQueryText,
+            showDiacritics,
+        ) {
+            MultiLineCommentariesLayoutConfig(
+                selectedCommentators = selectedCommentators,
+                titleToIdMap = titleToIdMap,
+                lineIds = lineIds,
+                scrollIndex = contentState.commentariesScrollIndex,
+                scrollOffset = contentState.commentariesScrollOffset,
+                onScroll = { index, offset ->
+                    onEvent(BookContentEvent.CommentariesScrolled(index, offset))
+                },
+                onCommentClick = { commentary ->
+                    val mods = windowInfo.keyboardModifiers
+                    if (mods.isCtrlPressed || mods.isMetaPressed) {
+                        onEvent(
+                            BookContentEvent.OpenCommentaryTarget(
+                                bookId = commentary.link.targetBookId,
+                                lineId = commentary.link.targetLineId,
+                            ),
+                        )
+                    }
+                },
+                textSizes = textSizes,
+                fontFamily = commentaryFontFamily,
+                boldScale = boldScaleForPlatform,
+                highlightQuery = findQueryText,
+                showDiacritics = showDiacritics,
+            )
+        }
+
+    MultiLineCommentatorsGridView(layoutConfig, uiState, onEvent)
+}
+
 @Composable
 private fun CommentatorsGridView(
     config: CommentariesLayoutConfig,
@@ -466,6 +681,175 @@ private inline fun buildCommentatorRows(selected: List<String>): List<List<Strin
         3 -> listOf(selected.subList(0, 2), selected.subList(2, selected.size))
         else -> listOf(selected.subList(0, 2), selected.subList(2, minOf(4, selected.size)))
     }
+
+/**
+ * Grid view for multi-line selection commentaries.
+ */
+@Composable
+private fun MultiLineCommentatorsGridView(
+    config: MultiLineCommentariesLayoutConfig,
+    uiState: BookContentState,
+    onEvent: (BookContentEvent) -> Unit,
+) {
+    // Cache the calculation of lines
+    val rows =
+        remember(config.selectedCommentators) {
+            buildCommentatorRows(config.selectedCommentators)
+        }
+
+    var primaryAssigned = false
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        rows.forEachIndexed { _, rowCommentators ->
+            val rowModifier =
+                remember(rows.size) {
+                    if (rows.size > 1) Modifier.weight(1f) else Modifier.fillMaxHeight()
+                }
+            Row(modifier = rowModifier.fillMaxWidth()) {
+                rowCommentators.forEachIndexed { _, name ->
+                    val id = config.titleToIdMap[name] ?: return@forEachIndexed
+                    val isPrimary =
+                        remember(primaryAssigned) {
+                            if (!primaryAssigned) {
+                                primaryAssigned = true
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                    val singleRowSingleCol = rows.size == 1 && rowCommentators.size == 1
+                    val colModifier =
+                        remember(singleRowSingleCol) {
+                            if (singleRowSingleCol) {
+                                Modifier.fillMaxHeight().weight(1f)
+                            } else {
+                                Modifier.weight(1f).padding(horizontal = 4.dp)
+                            }
+                        }
+                    Column(modifier = colModifier) {
+                        CommentatorHeader(name, config.textSizes.commentTextSize)
+                        MultiLineCommentaryListView(
+                            lineIds = config.lineIds,
+                            commentatorId = id,
+                            isPrimary = isPrimary,
+                            config = config,
+                            uiState = uiState,
+                            initialIndex =
+                                uiState.content.commentariesColumnScrollIndexByCommentator[id]
+                                    ?: uiState.content.commentariesScrollIndex,
+                            initialOffset =
+                                uiState.content.commentariesColumnScrollOffsetByCommentator[id]
+                                    ?: uiState.content.commentariesScrollOffset,
+                            onScroll = { i, o ->
+                                onEvent(BookContentEvent.CommentaryColumnScrolled(id, i, o))
+                            },
+                            highlightQuery = config.highlightQuery,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * List view for multi-line selection commentaries.
+ * Uses the multi-line pager to fetch commentaries for multiple lines.
+ */
+@OptIn(FlowPreview::class)
+@Composable
+private fun MultiLineCommentaryListView(
+    lineIds: List<Long>,
+    commentatorId: Long,
+    isPrimary: Boolean,
+    config: MultiLineCommentariesLayoutConfig,
+    uiState: BookContentState,
+    initialIndex: Int,
+    initialOffset: Int,
+    onScroll: (Int, Int) -> Unit,
+    highlightQuery: String,
+) {
+    val providers = uiState.providers ?: return
+    val currentOnScroll by rememberUpdatedState(onScroll)
+
+    val pagerFlow =
+        remember(lineIds, commentatorId) {
+            providers.buildMultiLineCommentariesPagerFor(lineIds, commentatorId)
+        }
+
+    val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
+
+    val listState =
+        rememberLazyListState(
+            initialFirstVisibleItemIndex = initialIndex,
+            initialFirstVisibleItemScrollOffset = initialOffset,
+        )
+
+    var hasRestored by remember(lineIds, commentatorId) { mutableStateOf(false) }
+    LaunchedEffect(lineIds, commentatorId, lazyPagingItems.loadState.refresh, initialIndex, initialOffset) {
+        if (!hasRestored && lazyPagingItems.loadState.refresh !is LoadState.Loading) {
+            if (lazyPagingItems.itemCount > 0) {
+                val safeIndex = initialIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
+                val safeOffset = initialOffset.coerceAtLeast(0)
+                listState.scrollToItem(safeIndex, safeOffset)
+                hasRestored = true
+            }
+        }
+    }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .distinctUntilChanged()
+            .debounce(SCROLL_DEBOUNCE_MS)
+            .collect { (i, o) ->
+                currentOnScroll(i, o)
+            }
+    }
+
+    LazyColumn(
+        state = listState,
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val isShiftPrimaryPress = event.buttons.isPrimaryPressed && event.keyboardModifiers.isShiftPressed
+                        if (isShiftPrimaryPress) {
+                            event.changes.forEach { it.consume() }
+                        }
+                    }
+                },
+    ) {
+        items(
+            count = lazyPagingItems.itemCount,
+            key = { index -> lazyPagingItems[index]?.link?.id ?: index }, // Stable key
+        ) { index ->
+            lazyPagingItems[index]?.let { commentary ->
+                CommentaryItem(
+                    linkId = commentary.link.id,
+                    targetText = commentary.targetText,
+                    textSizes = config.textSizes,
+                    fontFamily = config.fontFamily,
+                    boldScale = config.boldScale,
+                    highlightQuery = highlightQuery,
+                    showDiacritics = config.showDiacritics,
+                    onClick = { config.onCommentClick(commentary) },
+                )
+            }
+        }
+
+        // Loading states
+        when (val loadState = lazyPagingItems.loadState.refresh) {
+            is LoadState.Loading -> item { LoadingIndicator() }
+            is LoadState.Error ->
+                item {
+                    ErrorMessage(loadState.error)
+                }
+            else -> {}
+        }
+    }
+}
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -767,6 +1151,77 @@ private fun rememberCommentarySelectionData(
     }
 }
 
+/**
+ * Remembers aggregated commentator selection data for multiple lines (Ctrl+Click multi-selection).
+ */
+@Composable
+private fun rememberMultiLineCommentarySelectionData(
+    lineIds: List<Long>,
+    getCommentatorGroupsForLines: suspend (List<Long>) -> List<CommentatorGroup>,
+    lineConnections: Map<Long, LineConnectionsSnapshot>,
+): CommentatorSelectionData {
+    // Try to aggregate from prefetched connections first
+    val prefetchedGroups =
+        remember(lineIds, lineConnections) {
+            val allGroups = lineIds.mapNotNull { lineConnections[it]?.commentatorGroups }.flatten()
+            if (allGroups.isEmpty()) {
+                null
+            } else {
+                // Merge groups with the same label and deduplicate commentators by bookId
+                val groupsByLabel = LinkedHashMap<String, MutableList<CommentatorItem>>()
+                val seenBookIds = mutableSetOf<Long>()
+                allGroups.forEach { group ->
+                    group.commentators.forEach { item ->
+                        if (item.bookId !in seenBookIds) {
+                            seenBookIds.add(item.bookId)
+                            groupsByLabel.getOrPut(group.label) { mutableListOf() }.add(item)
+                        }
+                    }
+                }
+                groupsByLabel
+                    .map { (label, commentators) ->
+                        CommentatorGroup(label = label, commentators = commentators)
+                    }.ifEmpty { null }
+            }
+        }
+
+    var groups by remember(lineIds, prefetchedGroups) {
+        mutableStateOf(prefetchedGroups ?: emptyList())
+    }
+    val currentGetCommentatorGroupsForLines by rememberUpdatedState(getCommentatorGroupsForLines)
+
+    LaunchedEffect(lineIds, prefetchedGroups) {
+        if (prefetchedGroups != null) {
+            groups = prefetchedGroups
+            return@LaunchedEffect
+        }
+
+        runCatching { currentGetCommentatorGroupsForLines(lineIds) }
+            .onSuccess { loaded -> groups = loaded }
+            .onFailure { groups = emptyList() }
+    }
+
+    val titleToIdMap =
+        remember(groups) {
+            val map = LinkedHashMap<String, Long>()
+            groups.forEach { group ->
+                group.commentators.forEach { item ->
+                    if (!map.containsKey(item.name)) {
+                        map[item.name] = item.bookId
+                    }
+                }
+            }
+            map
+        }
+
+    return remember(groups, titleToIdMap) {
+        CommentatorSelectionData(
+            titleToIdMap = titleToIdMap,
+            groups = groups,
+        )
+    }
+}
+
 @Composable
 private fun CommentatorGroupHeader(label: String) {
     Box(
@@ -859,6 +1314,22 @@ private data class CommentariesLayoutConfig(
     val selectedCommentators: List<String>,
     val titleToIdMap: Map<String, Long>,
     val lineId: Long,
+    val scrollIndex: Int,
+    val scrollOffset: Int,
+    val onScroll: (Int, Int) -> Unit,
+    val onCommentClick: (CommentaryWithText) -> Unit,
+    val textSizes: AnimatedTextSizes,
+    val fontFamily: FontFamily,
+    val boldScale: Float,
+    val highlightQuery: String,
+    val showDiacritics: Boolean,
+)
+
+@Immutable
+private data class MultiLineCommentariesLayoutConfig(
+    val selectedCommentators: List<String>,
+    val titleToIdMap: Map<String, Long>,
+    val lineIds: List<Long>,
     val scrollIndex: Int,
     val scrollOffset: Int,
     val onScroll: (Int, Int) -> Unit,

@@ -36,13 +36,17 @@ class ContentUseCase(
         ).flow
 
     /**
-     * Sélectionne une ligne
+     * Sélectionne une ligne (single selection - clears multi-selection)
      */
     suspend fun selectLine(line: Line) {
         debugln { "[selectLine] Selecting line with id=${line.id}, index=${line.lineIndex}" }
 
         stateManager.updateContent {
-            copy(selectedLine = line)
+            copy(
+                selectedLine = line,
+                selectedLineIds = emptySet(),
+                isTocBasedSelection = false,
+            )
         }
 
         // Update selected TOC entry for highlighting in TOC
@@ -56,6 +60,115 @@ class ContentUseCase(
         stateManager.updateToc(save = false) {
             copy(
                 selectedEntryId = tocId,
+                selectedEntryIds = emptySet(), // Clear multi-selection highlighting
+                breadcrumbPath = tocPath,
+            )
+        }
+    }
+
+    /**
+     * Toggles a line in multi-selection (Ctrl+Click behavior).
+     * - If the line is already selected, removes it from the selection.
+     * - If the line is not selected, adds it to the selection.
+     * - Always sets selectedLine to the clicked line for backwards compatibility.
+     * - If selection came from TOC, clears to single-line mode with just the clicked line.
+     */
+    suspend fun toggleLineInSelection(line: Line) {
+        debugln { "[toggleLineInSelection] Toggling line with id=${line.id}" }
+
+        val currentState = stateManager.state.first()
+
+        // If selection came from TOC, reset to single-line mode with just the clicked line
+        if (currentState.content.isTocBasedSelection) {
+            debugln { "[toggleLineInSelection] Clearing TOC-based selection" }
+            stateManager.updateContent {
+                copy(
+                    selectedLine = line,
+                    selectedLineIds = setOf(line.id),
+                    isTocBasedSelection = false,
+                )
+            }
+            // Update TOC highlighting for the single clicked line
+            val tocId =
+                try {
+                    repository.getTocEntryIdForLine(line.id)
+                } catch (_: Exception) {
+                    null
+                }
+            val tocPath = if (tocId != null) buildTocPathToRoot(tocId) else emptyList()
+            stateManager.updateToc(save = false) {
+                copy(
+                    selectedEntryId = tocId,
+                    selectedEntryIds = tocId?.let { setOf(it) } ?: emptySet(),
+                    breadcrumbPath = tocPath,
+                )
+            }
+            return
+        }
+
+        val currentSelection = currentState.content.selectedLineIds
+        val currentSelectedLine = currentState.content.selectedLine
+
+        val isDeselecting = line.id in currentSelection
+        val newSelection: Set<Long>
+        val newPrimaryLine: Line
+
+        if (isDeselecting) {
+            // Remove from selection
+            val remaining = currentSelection - line.id
+            if (remaining.isEmpty()) {
+                // If nothing left after removal, keep the clicked line as the only selection
+                newSelection = setOf(line.id)
+                newPrimaryLine = line
+            } else {
+                newSelection = remaining
+                // Keep the current primary line if it's still in selection, otherwise pick the first remaining
+                newPrimaryLine =
+                    if (currentSelectedLine != null && currentSelectedLine.id in remaining) {
+                        currentSelectedLine
+                    } else {
+                        // Load the first remaining line as the new primary
+                        val firstRemainingId = remaining.first()
+                        repository.getLine(firstRemainingId) ?: line
+                    }
+            }
+        } else {
+            // Add to selection
+            // If no multi-selection yet, start with the currently selected line (if any) + new line
+            newSelection =
+                if (currentSelection.isEmpty() && currentSelectedLine != null) {
+                    setOf(currentSelectedLine.id, line.id)
+                } else {
+                    currentSelection + line.id
+                }
+            newPrimaryLine = line
+        }
+
+        debugln { "[toggleLineInSelection] newSelection=$newSelection, newPrimaryLine=${newPrimaryLine.id}" }
+
+        stateManager.updateContent {
+            copy(
+                selectedLine = newPrimaryLine,
+                selectedLineIds = newSelection,
+                isTocBasedSelection = false,
+            )
+        }
+
+        // Update TOC highlighting for all selected lines
+        val tocIds = mutableSetOf<Long>()
+        newSelection.forEach { lineId ->
+            try {
+                repository.getTocEntryIdForLine(lineId)?.let { tocIds.add(it) }
+            } catch (_: Exception) {
+                // Ignore errors for individual lines
+            }
+        }
+        val primaryTocId = tocIds.firstOrNull()
+        val tocPath = if (primaryTocId != null) buildTocPathToRoot(primaryTocId) else emptyList()
+        stateManager.updateToc(save = false) {
+            copy(
+                selectedEntryId = primaryTocId,
+                selectedEntryIds = tocIds,
                 breadcrumbPath = tocPath,
             )
         }

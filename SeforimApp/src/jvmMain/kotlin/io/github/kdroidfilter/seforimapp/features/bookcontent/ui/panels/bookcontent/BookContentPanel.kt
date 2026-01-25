@@ -148,8 +148,12 @@ private fun BookContentPanelContent(
                             bookId = selectedBook.id,
                             linesPagingData = providers.linesPagingData,
                             selectedLineId = uiState.content.selectedLine?.id,
+                            selectedLineIds = uiState.content.selectedLineIds,
                             onLineSelect = { line ->
                                 onEvent(BookContentEvent.LineSelected(line))
+                            },
+                            onLineCtrlClick = { line ->
+                                onEvent(BookContentEvent.LineCtrlClicked(line))
                             },
                             onEvent = onEvent,
                             tabId = uiState.tabId,

@@ -23,6 +23,9 @@ data class Providers(
     val getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
     val buildSourcesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     val getAvailableSourcesForLine: suspend (Long) -> Map<String, Long>,
+    // Multi-line support for Ctrl+Click selection
+    val buildMultiLineCommentariesPagerFor: (List<Long>, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    val getCommentatorGroupsForLines: suspend (List<Long>) -> List<CommentatorGroup>,
 )
 
 /**
@@ -91,6 +94,7 @@ data class TocState(
     val expandedEntries: Set<Long> = emptySet(),
     val children: Map<Long, List<TocEntry>> = emptyMap(),
     val selectedEntryId: Long? = null,
+    val selectedEntryIds: Set<Long> = emptySet(), // For multi-line selection (Ctrl+Click)
     val breadcrumbPath: List<TocEntry> = emptyList(),
     // UI
     val isVisible: Boolean = false,
@@ -103,6 +107,8 @@ data class ContentState(
     // Data
     val lines: List<Line> = emptyList(),
     val selectedLine: Line? = null,
+    val selectedLineIds: Set<Long> = emptySet(), // Multi-selection for Ctrl+Click
+    val isTocBasedSelection: Boolean = false, // Tracks if selection came from TOC
     val commentaries: List<CommentaryWithText> = emptyList(),
     // Visibility
     val showCommentaries: Boolean = false,

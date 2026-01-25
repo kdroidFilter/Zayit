@@ -52,6 +52,8 @@ fun BookTocView(
     onScroll: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
     selectedTocEntryId: Long? = null,
+    // Multi-line selection: highlight multiple TOC entries
+    selectedTocEntryIds: Set<Long> = emptySet(),
     // Search integration
     showCounts: Boolean = false,
     onlyWithResults: Boolean = false,
@@ -125,6 +127,7 @@ fun BookTocView(
                             if (onTocFilter != null) onTocFilter(entry) else onEntryClick(entry)
                         },
                         onEntryExpand = onEntryExpand,
+                        selectedTocEntryIds = selectedTocEntryIds,
                         showCount = showCounts,
                         count = tocCounts[visibleEntry.entry.id] ?: 0,
                         checkboxChecked = if (onToggle != null) multiSelectIds.contains(visibleEntry.entry.id) else null,
@@ -191,6 +194,7 @@ fun BookTocView(
             onEvent(BookContentEvent.TocScrolled(index, offset))
         },
         selectedTocEntryId = uiState.toc.selectedEntryId,
+        selectedTocEntryIds = uiState.toc.selectedEntryIds,
         modifier = modifier,
         showCounts = showCounts,
         onlyWithResults = onlyWithResults,
@@ -248,13 +252,17 @@ private fun TocEntryItem(
     selectedTocEntryId: Long?,
     onEntryClick: (TocEntry) -> Unit,
     onEntryExpand: (TocEntry) -> Unit,
+    selectedTocEntryIds: Set<Long> = emptySet(),
     showCount: Boolean = false,
     count: Int = 0,
     checkboxChecked: Boolean? = null,
     onCheckboxToggle: ((Boolean) -> Unit)? = null,
 ) {
     val isLastChild = visibleEntry.isLastChild
-    val isSelected = selectedTocEntryId != null && visibleEntry.entry.id == selectedTocEntryId
+    // Check both single selection and multi-selection
+    val isSelected =
+        (selectedTocEntryId != null && visibleEntry.entry.id == selectedTocEntryId) ||
+            visibleEntry.entry.id in selectedTocEntryIds
 
     SelectableRow(
         modifier =

@@ -450,7 +450,8 @@ class SearchResultViewModel(
             _uiVisible
                 .flatMapLatest { visible ->
                     if (!visible) {
-                        kotlinx.coroutines.flow.flowOf(emptyList())
+                        // Don't clear tree when tab becomes invisible - just stop emitting
+                        kotlinx.coroutines.flow.emptyFlow()
                     } else {
                         uiState
                             .map { it.results }

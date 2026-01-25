@@ -912,6 +912,20 @@ class SearchResultViewModel(
                 }
             }
         }
+
+        // Continuously save snapshot when results change (debounced) for cold boot restore
+        viewModelScope.launch {
+            uiState
+                .map { it.results }
+                .distinctUntilChanged()
+                .debounce(500) // Wait 500ms after last change before saving
+                .collect { results ->
+                    if (results.isNotEmpty()) {
+                        val snap = buildSnapshot(results)
+                        updatePersistedSearch { it.copy(snapshot = snap, breadcrumbs = _breadcrumbs.value) }
+                    }
+                }
+        }
     }
 
     // Caching continuation removed: searches are executed fresh.

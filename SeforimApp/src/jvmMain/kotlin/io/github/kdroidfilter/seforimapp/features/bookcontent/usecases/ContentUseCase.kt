@@ -37,6 +37,7 @@ class ContentUseCase(
 
     /**
      * Sélectionne une ligne (single selection - clears multi-selection)
+     * When selecting a line directly, don't highlight any TOC entry.
      */
     suspend fun selectLine(line: Line) {
         debugln { "[selectLine] Selecting line with id=${line.id}, index=${line.lineIndex}" }
@@ -49,7 +50,7 @@ class ContentUseCase(
             )
         }
 
-        // Update selected TOC entry for highlighting in TOC
+        // Update breadcrumb path but don't highlight TOC entry (only line is selected)
         val tocId =
             try {
                 repository.getTocEntryIdForLine(line.id)
@@ -59,8 +60,8 @@ class ContentUseCase(
         val tocPath = if (tocId != null) buildTocPathToRoot(tocId) else emptyList()
         stateManager.updateToc(save = false) {
             copy(
-                selectedEntryId = tocId,
-                selectedEntryIds = emptySet(), // Clear multi-selection highlighting
+                selectedEntryId = null, // Don't highlight TOC when line is selected
+                selectedEntryIds = emptySet(),
                 breadcrumbPath = tocPath,
             )
         }

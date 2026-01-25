@@ -26,6 +26,8 @@ data class Providers(
     // Multi-line support for Ctrl+Click selection
     val buildMultiLineCommentariesPagerFor: (List<Long>, Long?) -> Flow<PagingData<CommentaryWithText>>,
     val getCommentatorGroupsForLines: suspend (List<Long>) -> List<CommentatorGroup>,
+    val buildMultiLineLinksPagerFor: (List<Long>, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    val getAvailableLinksForLines: suspend (List<Long>) -> Map<String, Long>,
 )
 
 /**

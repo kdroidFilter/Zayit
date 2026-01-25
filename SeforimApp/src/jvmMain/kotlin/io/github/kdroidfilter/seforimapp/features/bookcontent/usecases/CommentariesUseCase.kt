@@ -10,6 +10,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnecti
 import io.github.kdroidfilter.seforimapp.pagination.CommentsForLineOrTocPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.LineTargumPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.MultiLineCommentsPagingSource
+import io.github.kdroidfilter.seforimapp.pagination.MultiLineTargumPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.PagingDefaults
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -132,6 +133,23 @@ class CommentariesUseCase(
             config = PagingDefaults.COMMENTS.config(placeholders = false),
             pagingSourceFactory = {
                 LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.TARGUM))
+            },
+        ).flow.cachedIn(scope)
+    }
+
+    /**
+     * Construit un Pager pour les liens/targum de plusieurs lignes (multi-selection via Ctrl+Click)
+     */
+    fun buildMultiLineLinksPager(
+        lineIds: List<Long>,
+        sourceBookId: Long? = null,
+    ): Flow<PagingData<CommentaryWithText>> {
+        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+
+        return Pager(
+            config = PagingDefaults.COMMENTS.config(placeholders = false),
+            pagingSourceFactory = {
+                MultiLineTargumPagingSource(repository, lineIds, ids, setOf(ConnectionType.TARGUM))
             },
         ).flow.cachedIn(scope)
     }
@@ -480,6 +498,45 @@ class CommentariesUseCase(
                     .orEmpty()
 
             buildSourceMap(links, currentBookTitle)
+        } catch (e: Exception) {
+            emptyMap()
+        }
+
+    /**
+     * Récupère les sources de liens disponibles pour plusieurs lignes (aggregated)
+     */
+    suspend fun getAvailableLinksForLines(lineIds: List<Long>): Map<String, Long> =
+        try {
+            if (lineIds.isEmpty()) return emptyMap()
+
+            val allLinks =
+                lineIds.flatMap { lineId ->
+                    val resolution = resolveBaseLineResolution(lineId)
+                    val defaultTargumId =
+                        resolution.headingBookId?.let { bookId ->
+                            loadDefaultTargumIds(bookId).firstOrNull()
+                        }
+                    repository
+                        .getCommentarySummariesForLines(resolution.baseLineIds)
+                        .filter { it.link.connectionType == ConnectionType.TARGUM }
+                        .let { targumLinks ->
+                            if (resolution.headingTocEntryId != null && defaultTargumId != null) {
+                                targumLinks.filter { it.link.targetBookId == defaultTargumId }
+                            } else {
+                                targumLinks
+                            }
+                        }
+                }
+
+            val currentBookTitle =
+                stateManager.state
+                    .first()
+                    .navigation.selectedBook
+                    ?.title
+                    ?.trim()
+                    .orEmpty()
+
+            buildSourceMap(allLinks, currentBookTitle)
         } catch (e: Exception) {
             emptyMap()
         }

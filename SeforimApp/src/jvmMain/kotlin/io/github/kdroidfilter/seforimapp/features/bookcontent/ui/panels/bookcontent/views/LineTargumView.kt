@@ -32,7 +32,9 @@ import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalo
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.ContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.Providers
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
@@ -297,10 +299,22 @@ fun LineTargumView(
     val showFind by AppSettings.findBarOpenFlow(uiState.tabId).collectAsState()
     val activeQuery = if (showFind) findQuery else ""
 
+    val selectedLine = contentState.selectedLine
+    val selectedLineIds = contentState.selectedLineIds
+
+    // Determine if we're in multi-selection mode
+    val isMultiSelection = selectedLineIds.size > 1
+    val effectiveLineIds: List<Long> =
+        if (isMultiSelection) {
+            selectedLineIds.toList()
+        } else {
+            selectedLine?.id?.let { listOf(it) } ?: emptyList()
+        }
+
     val onSelectedSourcesChange =
-        remember(contentState.selectedLine) {
+        remember(selectedLine) {
             { ids: Set<Long> ->
-                contentState.selectedLine?.let { line ->
+                selectedLine?.let { line ->
                     onEvent(BookContentEvent.SelectedTargumSourcesChanged(line.id, ids))
                 }
                 Unit
@@ -334,22 +348,261 @@ fun LineTargumView(
             { onEvent(BookContentEvent.ToggleTargum) }
         }
 
-    LineTargumView(
-        selectedLine = contentState.selectedLine,
-        buildLinksPagerFor = providers.buildLinksPagerFor,
-        getAvailableLinksForLine = providers.getAvailableLinksForLine,
-        commentariesScrollIndex = contentState.commentariesScrollIndex,
-        commentariesScrollOffset = contentState.commentariesScrollOffset,
-        initiallySelectedSourceIds = contentState.selectedTargumSourceIds,
-        onSelectedSourcesChange = onSelectedSourcesChange,
-        onLinkClick = onLinkClick,
-        onScroll = onScroll,
-        onHide = onHide,
-        highlightQuery = activeQuery,
-        lineConnections = lineConnections,
-        availabilityType = availabilityType,
-        showDiacritics = showDiacritics,
+    if (isMultiSelection) {
+        MultiLineTargumView(
+            lineIds = effectiveLineIds,
+            providers = providers,
+            contentState = contentState,
+            onSelectedSourcesChange = onSelectedSourcesChange,
+            onLinkClick = onLinkClick,
+            onScroll = onScroll,
+            onHide = onHide,
+            highlightQuery = activeQuery,
+            lineConnections = lineConnections,
+            availabilityType = availabilityType,
+            showDiacritics = showDiacritics,
+        )
+    } else {
+        LineTargumView(
+            selectedLine = selectedLine,
+            buildLinksPagerFor = providers.buildLinksPagerFor,
+            getAvailableLinksForLine = providers.getAvailableLinksForLine,
+            commentariesScrollIndex = contentState.commentariesScrollIndex,
+            commentariesScrollOffset = contentState.commentariesScrollOffset,
+            initiallySelectedSourceIds = contentState.selectedTargumSourceIds,
+            onSelectedSourcesChange = onSelectedSourcesChange,
+            onLinkClick = onLinkClick,
+            onScroll = onScroll,
+            onHide = onHide,
+            highlightQuery = activeQuery,
+            lineConnections = lineConnections,
+            availabilityType = availabilityType,
+            showDiacritics = showDiacritics,
+        )
+    }
+}
+
+/**
+ * Multi-line version of LineTargumView for Ctrl+Click multi-selection.
+ * Aggregates targum sources from all selected lines.
+ */
+@OptIn(ExperimentalSplitPaneApi::class)
+@Composable
+private fun MultiLineTargumView(
+    lineIds: List<Long>,
+    providers: Providers,
+    contentState: ContentState,
+    onSelectedSourcesChange: (Set<Long>) -> Unit,
+    onLinkClick: (CommentaryWithText) -> Unit,
+    onScroll: (Int, Int) -> Unit,
+    onHide: () -> Unit,
+    highlightQuery: String,
+    lineConnections: Map<Long, LineConnectionsSnapshot>,
+    availabilityType: ConnectionType,
+    showDiacritics: Boolean,
+) {
+    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val commentTextSize by animateFloatAsState(
+        targetValue = rawTextSize * 0.875f,
+        animationSpec = tween(durationMillis = 300),
+        label = "linkTextSizeAnim",
     )
+    val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
+    val lineHeight by animateFloatAsState(
+        targetValue = rawLineHeight,
+        animationSpec = tween(durationMillis = 300),
+        label = "linkLineHeightAnim",
+    )
+
+    val currentGetAvailableLinksForLines by rememberUpdatedState(providers.getAvailableLinksForLines)
+    val currentOnSelectedSourcesChange by rememberUpdatedState(onSelectedSourcesChange)
+    val currentOnScroll by rememberUpdatedState(onScroll)
+
+    // Selected font for targumim
+    val targumFontCode by AppSettings.targumFontCodeFlow.collectAsState()
+    val targumFontFamily = FontCatalog.familyFor(targumFontCode)
+    val boldScaleForPlatform =
+        remember(targumFontCode) {
+            val lacksBold = targumFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
+            if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
+        }
+
+    val paneInteractionSource = remember { MutableInteractionSource() }
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .hoverable(paneInteractionSource),
+    ) {
+        PaneHeader(
+            label = stringResource(Res.string.links),
+            interactionSource = paneInteractionSource,
+            onHide = onHide,
+        )
+
+        Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+            if (lineIds.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = stringResource(Res.string.select_line_for_links))
+                }
+            } else {
+                // Aggregate cached sources from all selected lines
+                val cachedSources =
+                    remember(lineIds, lineConnections, availabilityType) {
+                        val allSources = mutableMapOf<String, Long>()
+                        lineIds.forEach { lineId ->
+                            lineConnections[lineId]?.let { snapshot ->
+                                val sources =
+                                    when (availabilityType) {
+                                        ConnectionType.SOURCE -> snapshot.sources
+                                        else -> snapshot.targumSources
+                                    }
+                                allSources.putAll(sources)
+                            }
+                        }
+                        allSources.ifEmpty { null }
+                    }
+
+                var titleToIdMap by remember(lineIds, cachedSources) {
+                    mutableStateOf<Map<String, Long>>(cachedSources ?: emptyMap())
+                }
+
+                LaunchedEffect(lineIds, lineConnections) {
+                    if (cachedSources != null) {
+                        titleToIdMap = cachedSources
+                        return@LaunchedEffect
+                    }
+
+                    runCatching { currentGetAvailableLinksForLines(lineIds) }
+                        .onSuccess { map -> titleToIdMap = map }
+                        .onFailure { titleToIdMap = emptyMap() }
+                }
+
+                if (titleToIdMap.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(text = stringResource(Res.string.no_links_for_line))
+                    }
+                } else {
+                    val availableSources =
+                        remember(titleToIdMap) {
+                            titleToIdMap.entries
+                                .sortedBy { it.key }
+                                .map { SourceMeta(it.key, it.value) }
+                        }
+
+                    val selectedSources =
+                        remember(titleToIdMap, contentState.selectedTargumSourceIds) {
+                            val availableIds = availableSources.map { it.bookId }.toSet()
+                            val initial = contentState.selectedTargumSourceIds.ifEmpty { availableIds }
+                            initial.intersect(availableIds)
+                        }
+
+                    LaunchedEffect(selectedSources) {
+                        currentOnSelectedSourcesChange(selectedSources)
+                    }
+
+                    val sourceSections =
+                        availableSources.mapNotNull { meta ->
+                            val pagerFlow =
+                                remember(lineIds, meta.bookId) {
+                                    providers
+                                        .buildMultiLineLinksPagerFor(lineIds, meta.bookId)
+                                        .distinctUntilChanged()
+                                }
+                            val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
+                            SourceSection(
+                                title = meta.title,
+                                bookId = meta.bookId,
+                                items = lazyPagingItems,
+                            )
+                        }
+
+                    val listState =
+                        rememberSaveable(
+                            lineIds,
+                            saver = LazyListState.Saver,
+                        ) {
+                            LazyListState(
+                                firstVisibleItemIndex = contentState.commentariesScrollIndex,
+                                firstVisibleItemScrollOffset = contentState.commentariesScrollOffset,
+                            )
+                        }
+
+                    LaunchedEffect(listState) {
+                        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+                            .distinctUntilChanged()
+                            .collect { (index, offset) -> currentOnScroll(index, offset) }
+                    }
+
+                    SelectionContainer {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            state = listState,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            sourceSections.forEach { section ->
+                                item(key = "header-${section.bookId}") {
+                                    Text(
+                                        text = section.title,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = (commentTextSize * 1.1f).sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+
+                                items(
+                                    count = section.items.itemCount,
+                                    key = { index ->
+                                        section.items
+                                            .peek(index)
+                                            ?.link
+                                            ?.id ?: "source-${section.bookId}-$index"
+                                    },
+                                ) { index ->
+                                    section.items[index]?.let { item ->
+                                        LinkItem(
+                                            linkId = item.link.id,
+                                            targetText = item.targetText,
+                                            commentTextSize = commentTextSize,
+                                            lineHeight = lineHeight,
+                                            fontFamily = targumFontFamily,
+                                            boldScale = boldScaleForPlatform,
+                                            highlightQuery = highlightQuery,
+                                            onClick = { onLinkClick(item) },
+                                            showDiacritics = showDiacritics,
+                                        )
+                                    }
+                                }
+
+                                when (val state = section.items.loadState.append) {
+                                    is LoadState.Error ->
+                                        item(key = "append-error-${section.bookId}") {
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Text(text = state.error.message ?: "Error loading more")
+                                            }
+                                        }
+
+                                    is LoadState.Loading ->
+                                        item(key = "append-loading-${section.bookId}") {
+                                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                                CircularProgressIndicator()
+                                            }
+                                        }
+
+                                    else -> {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 private data class SourceSection(

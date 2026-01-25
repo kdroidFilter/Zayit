@@ -149,6 +149,7 @@ private fun BookContentPanelContent(
                             linesPagingData = providers.linesPagingData,
                             selectedLineId = uiState.content.selectedLine?.id,
                             selectedLineIds = uiState.content.selectedLineIds,
+                            isTocBasedSelection = uiState.content.isTocBasedSelection,
                             onLineSelect = { line ->
                                 onEvent(BookContentEvent.LineSelected(line))
                             },

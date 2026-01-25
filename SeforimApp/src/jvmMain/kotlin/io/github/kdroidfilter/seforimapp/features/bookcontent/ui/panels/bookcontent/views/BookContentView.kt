@@ -79,6 +79,7 @@ fun BookContentView(
     showDiacritics: Boolean,
     modifier: Modifier = Modifier,
     selectedLineIds: Set<Long> = emptySet(),
+    isTocBasedSelection: Boolean = false,
     onLineCtrlClick: (Line) -> Unit = {},
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
@@ -556,7 +557,9 @@ fun BookContentView(
                                     )
                                 }
                                 // Line is selected if it's the primary selection OR in multi-selection
-                                val isLineSelected = selectedLineId == line.id || line.id in selectedLineIds
+                                // BUT not when selection comes from TOC (isTocBasedSelection)
+                                val isLineSelected =
+                                    !isTocBasedSelection && (selectedLineId == line.id || line.id in selectedLineIds)
                                 LineItem(
                                     lineId = line.id,
                                     lineContent = line.content,

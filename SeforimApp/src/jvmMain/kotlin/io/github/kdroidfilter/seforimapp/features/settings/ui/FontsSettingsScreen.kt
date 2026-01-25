@@ -53,7 +53,7 @@ fun FontsSettingsScreen() {
     FontsSettingsView(state = state, onEvent = viewModel::onEvent)
 }
 
-private const val PREVIEW_TEXT = "דּוֹר הֹלֵךְ וְדוֹר בָּא וְהָאָרֶץ לְעוֹלָם עֹמָדֶת"
+private const val PREVIEW_TEXT = "הֲבֵ֤ל הֲבָלִים֙ אָמַ֣ר קֹהֶ֔לֶת הֲבֵ֥ל הֲבָלִ֖ים הַכֹּ֥ל הָֽבֶל׃"
 
 @Composable
 private fun FontsSettingsView(

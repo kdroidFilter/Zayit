@@ -108,14 +108,14 @@ class BuildSearchTreeUseCase(
             val list = childrenByParent.getOrPut(cat.parentId) { mutableListOf() }
             list += cat
         }
-        childrenByParent.values.forEach { it.sortBy { c -> c.title } }
+        childrenByParent.values.forEach { it.sortBy { c -> c.order } }
 
         fun buildNode(cat: Category): SearchResultViewModel.SearchTreeCategory {
             val childCats = childrenByParent[cat.id].orEmpty().map { buildNode(it) }
             val booksInCat =
                 booksById.values
                     .filter { it.categoryId == cat.id }
-                    .sortedBy { it.title }
+                    .sortedBy { it.order }
                     .map { b -> SearchResultViewModel.SearchTreeBook(b, bookCounts[b.id] ?: 0) }
             return SearchResultViewModel.SearchTreeCategory(
                 category = cat,
@@ -129,7 +129,7 @@ class BuildSearchTreeUseCase(
         val roots =
             categoriesById.values
                 .filter { it.parentId == null || it.parentId !in encounteredIds }
-                .sortedBy { it.title }
+                .sortedBy { it.order }
                 .map { buildNode(it) }
         return roots
     }

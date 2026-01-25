@@ -9,7 +9,6 @@ import kotlin.test.assertTrue
  * Tests for [ExecuteSearchUseCase].
  */
 class ExecuteSearchUseCaseTest {
-
     private val useCase = ExecuteSearchUseCase()
 
     private fun createLineHit(
@@ -33,10 +32,11 @@ class ExecuteSearchUseCaseTest {
 
     @Test
     fun `hitsToResults converts hits to results`() {
-        val hits = listOf(
-            createLineHit(bookId = 1, lineId = 100, score = 2.5f),
-            createLineHit(bookId = 2, lineId = 200, score = 1.5f),
-        )
+        val hits =
+            listOf(
+                createLineHit(bookId = 1, lineId = 100, score = 2.5f),
+                createLineHit(bookId = 2, lineId = 200, score = 1.5f),
+            )
 
         val results = useCase.hitsToResults(hits, "test query")
 
@@ -56,12 +56,13 @@ class ExecuteSearchUseCaseTest {
 
     @Test
     fun `hitsToResults uses snippet when available`() {
-        val hit = createLineHit(
-            bookId = 1,
-            lineId = 100,
-            snippet = "my snippet",
-            rawText = "my raw text",
-        )
+        val hit =
+            createLineHit(
+                bookId = 1,
+                lineId = 100,
+                snippet = "my snippet",
+                rawText = "my raw text",
+            )
 
         val results = useCase.hitsToResults(listOf(hit), "query")
 
@@ -70,12 +71,13 @@ class ExecuteSearchUseCaseTest {
 
     @Test
     fun `hitsToResults uses rawText when snippet is blank`() {
-        val hit = createLineHit(
-            bookId = 1,
-            lineId = 100,
-            snippet = "",
-            rawText = "my raw text",
-        )
+        val hit =
+            createLineHit(
+                bookId = 1,
+                lineId = 100,
+                snippet = "",
+                rawText = "my raw text",
+            )
 
         val results = useCase.hitsToResults(listOf(hit), "query")
 
@@ -84,18 +86,20 @@ class ExecuteSearchUseCaseTest {
 
     @Test
     fun `hitsToResults boosts exact matches`() {
-        val hitWithExact = createLineHit(
-            bookId = 1,
-            lineId = 100,
-            score = 1.0f,
-            rawText = "contains exact query here",
-        )
-        val hitWithoutExact = createLineHit(
-            bookId = 2,
-            lineId = 200,
-            score = 1.0f,
-            rawText = "does not contain the term",
-        )
+        val hitWithExact =
+            createLineHit(
+                bookId = 1,
+                lineId = 100,
+                score = 1.0f,
+                rawText = "contains exact query here",
+            )
+        val hitWithoutExact =
+            createLineHit(
+                bookId = 2,
+                lineId = 200,
+                score = 1.0f,
+                rawText = "does not contain the term",
+            )
 
         val results = useCase.hitsToResults(listOf(hitWithExact, hitWithoutExact), "exact query")
 
@@ -105,12 +109,13 @@ class ExecuteSearchUseCaseTest {
 
     @Test
     fun `hitsToResults does not boost when query is empty`() {
-        val hit = createLineHit(
-            bookId = 1,
-            lineId = 100,
-            score = 1.0f,
-            rawText = "contains anything",
-        )
+        val hit =
+            createLineHit(
+                bookId = 1,
+                lineId = 100,
+                score = 1.0f,
+                rawText = "contains anything",
+            )
 
         val results = useCase.hitsToResults(listOf(hit), "")
 
@@ -119,11 +124,12 @@ class ExecuteSearchUseCaseTest {
 
     @Test
     fun `hitsToResults preserves book title`() {
-        val hit = createLineHit(
-            bookId = 1,
-            lineId = 100,
-            bookTitle = "My Book Title",
-        )
+        val hit =
+            createLineHit(
+                bookId = 1,
+                lineId = 100,
+                bookTitle = "My Book Title",
+            )
 
         val results = useCase.hitsToResults(listOf(hit), "query")
 
@@ -132,11 +138,12 @@ class ExecuteSearchUseCaseTest {
 
     @Test
     fun `hitsToResults preserves line index`() {
-        val hit = createLineHit(
-            bookId = 1,
-            lineId = 100,
-            lineIndex = 42,
-        )
+        val hit =
+            createLineHit(
+                bookId = 1,
+                lineId = 100,
+                lineIndex = 42,
+            )
 
         val results = useCase.hitsToResults(listOf(hit), "query")
 
@@ -145,10 +152,11 @@ class ExecuteSearchUseCaseTest {
 
     @Test
     fun `filterHitsByLineIds returns all hits when allowed set is empty`() {
-        val hits = listOf(
-            createLineHit(bookId = 1, lineId = 100),
-            createLineHit(bookId = 2, lineId = 200),
-        )
+        val hits =
+            listOf(
+                createLineHit(bookId = 1, lineId = 100),
+                createLineHit(bookId = 2, lineId = 200),
+            )
 
         val filtered = useCase.filterHitsByLineIds(hits, emptySet())
 
@@ -157,11 +165,12 @@ class ExecuteSearchUseCaseTest {
 
     @Test
     fun `filterHitsByLineIds filters to allowed line IDs`() {
-        val hits = listOf(
-            createLineHit(bookId = 1, lineId = 100),
-            createLineHit(bookId = 1, lineId = 101),
-            createLineHit(bookId = 2, lineId = 200),
-        )
+        val hits =
+            listOf(
+                createLineHit(bookId = 1, lineId = 100),
+                createLineHit(bookId = 1, lineId = 101),
+                createLineHit(bookId = 2, lineId = 200),
+            )
 
         val filtered = useCase.filterHitsByLineIds(hits, setOf(100L, 200L))
 
@@ -172,10 +181,11 @@ class ExecuteSearchUseCaseTest {
 
     @Test
     fun `filterHitsByLineIds returns empty when no hits match`() {
-        val hits = listOf(
-            createLineHit(bookId = 1, lineId = 100),
-            createLineHit(bookId = 2, lineId = 200),
-        )
+        val hits =
+            listOf(
+                createLineHit(bookId = 1, lineId = 100),
+                createLineHit(bookId = 2, lineId = 200),
+            )
 
         val filtered = useCase.filterHitsByLineIds(hits, setOf(999L))
 

@@ -351,7 +351,10 @@ private fun SearchResultContentMvi(
 
     // Infinite scroll: automatically load more when approaching the end of the list
     val currentOnLoadMore by rememberUpdatedState(actions.onLoadMore)
-    LaunchedEffect(listState, state.hasMore, state.isLoadingMore) {
+    val hasMore = state.hasMore
+    val isLoadingMore = state.isLoadingMore
+    val isLoading = state.isLoading
+    LaunchedEffect(listState, hasMore, isLoadingMore, isLoading) {
         snapshotFlow {
             val layoutInfo = listState.layoutInfo
             val totalItems = layoutInfo.totalItemsCount
@@ -359,7 +362,7 @@ private fun SearchResultContentMvi(
             // Trigger when within 10 items of the end
             lastVisibleItem >= totalItems - 10
         }.distinctUntilChanged()
-            .filter { it && state.hasMore && !state.isLoadingMore && !state.isLoading }
+            .filter { it && hasMore && !isLoadingMore && !isLoading }
             .collect { currentOnLoadMore() }
     }
 

@@ -13,7 +13,6 @@ import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
  * search state after cold boot restoration.
  */
 class SearchStatePersistenceUseCase {
-
     /**
      * Builds a snapshot of the current search state for persistence.
      *

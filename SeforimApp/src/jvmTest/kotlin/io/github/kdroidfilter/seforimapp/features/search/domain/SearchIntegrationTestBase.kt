@@ -31,10 +31,11 @@ import kotlin.test.BeforeTest
  */
 abstract class SearchIntegrationTestBase {
     protected companion object {
-        private val POSSIBLE_BASE_PATHS = listOf(
-            "SeforimLibrary/build",          // From project root
-            "../SeforimLibrary/build",       // From SeforimApp module directory
-        )
+        private val POSSIBLE_BASE_PATHS =
+            listOf(
+                "SeforimLibrary/build", // From project root
+                "../SeforimLibrary/build", // From SeforimApp module directory
+            )
 
         private fun findDataPath(): Pair<Path, String>? {
             for (basePath in POSSIBLE_BASE_PATHS) {

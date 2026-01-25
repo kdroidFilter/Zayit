@@ -11,7 +11,6 @@ import io.github.kdroidfilter.seforimlibrary.search.LineHit
  * - Filter hits based on allowed line IDs
  */
 class ExecuteSearchUseCase {
-
     companion object {
         const val DEFAULT_NEAR = 5
     }

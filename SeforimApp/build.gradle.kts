@@ -174,6 +174,31 @@ kotlin {
     }
 }
 
+// Exclude Skiko runtimes for non-current platforms to reduce package size
+configurations.all {
+    val os = System.getProperty("os.name").lowercase()
+    when {
+        os.contains("mac") -> {
+            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-windows-x64")
+            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-windows-arm64")
+            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-linux-x64")
+            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-linux-arm64")
+        }
+        os.contains("windows") -> {
+            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-arm64")
+            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-x64")
+            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-linux-x64")
+            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-linux-arm64")
+        }
+        else -> { // Linux
+            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-arm64")
+            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-x64")
+            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-windows-x64")
+            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-windows-arm64")
+        }
+    }
+}
+
 // android {
 //    namespace = "io.github.kdroidfilter.seforimapp"
 //    compileSdk = 35

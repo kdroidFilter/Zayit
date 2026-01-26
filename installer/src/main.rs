@@ -20,6 +20,7 @@ use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::HiDpi::{
     SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2,
 };
+use windows::Win32::Globalization::GetUserDefaultUILanguage;
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetSystemMetrics,
     LoadCursorW, PeekMessageW, PostQuitMessage, RegisterClassW, ShowWindow, TranslateMessage, UpdateLayeredWindow,
@@ -433,6 +434,16 @@ fn update_splash_with_progress(hwnd: HWND, width: i32, height: i32, base_pixels:
     }
 }
 
+/// Returns true if the system UI language is Hebrew
+fn is_hebrew_system() -> bool {
+    unsafe {
+        let lang_id = GetUserDefaultUILanguage();
+        // Hebrew language ID is 0x040D (primary language) or check primary language bits
+        // Primary language is in the low 10 bits, Hebrew = 0x0D
+        (lang_id & 0x3FF) == 0x0D
+    }
+}
+
 fn get_install_path() -> PathBuf {
     if let Some(local_app_data) = dirs::data_local_dir() {
         local_app_data.join("Zayit").join("Zayit.exe")
@@ -463,15 +474,27 @@ fn launch_application() {
         }
     }
 
-    // If still not found, show error message
-    use windows::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
+    // If still not found, show error message in appropriate language
+    use windows::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK, MB_RTLREADING, MB_RIGHT};
     unsafe {
-        MessageBoxW(
-            None,
-            w!("L'application n'a pas pu être trouvée après l'installation."),
-            w!("Erreur"),
-            MB_OK | MB_ICONERROR,
-        );
+        if is_hebrew_system() {
+            // Hebrew: "לא ניתן למצוא את האפליקציה לאחר ההתקנה."
+            // Title: "שגיאה"
+            MessageBoxW(
+                None,
+                w!("לא ניתן למצוא את האפליקציה לאחר ההתקנה."),
+                w!("שגיאה"),
+                MB_OK | MB_ICONERROR | MB_RTLREADING | MB_RIGHT,
+            );
+        } else {
+            // English (default)
+            MessageBoxW(
+                None,
+                w!("The application could not be found after installation."),
+                w!("Error"),
+                MB_OK | MB_ICONERROR,
+            );
+        }
     }
 }
 

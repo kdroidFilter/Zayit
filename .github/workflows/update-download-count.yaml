@@ -50,7 +50,7 @@ jobs:
 
       - name: Trigger pages deployment
         if: steps.commit.outputs.changed == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.actions.createWorkflowDispatch({

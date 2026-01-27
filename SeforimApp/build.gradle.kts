@@ -1,4 +1,4 @@
-import io.github.kdroidfilter.buildsrc.NativeCleanupHelper
+import io.github.kdroidfilter.buildsrc.NativeCleanupTransformHelper
 import io.github.kdroidfilter.buildsrc.RenameMacPkgTask
 import io.github.kdroidfilter.buildsrc.RenameMsiTask
 import io.github.kdroidfilter.buildsrc.Versioning
@@ -359,7 +359,7 @@ tasks.matching { it.name.endsWith("Msi") && it.name != "renameMsi" }.configureEa
 }
 
 // --- Clean unused native binaries from JARs for smaller distribution size
-NativeCleanupHelper.registerCleanupTasks(project)
+NativeCleanupTransformHelper.registerTransform(project)
 
 // --- Kover code coverage configuration
 kover {

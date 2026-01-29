@@ -340,6 +340,131 @@ suspend fun expandPathToTocEntry(tocId: Long) {
 }
 ```
 
+## TOC Line Selection: Impact on Panels
+
+When the selected line is a **TOC entry heading** (a line that represents a section title), the behavior of the side panels changes significantly. The panels don't hide—they aggregate data from the entire section.
+
+### Detection
+
+A line is identified as a TOC entry via:
+
+```kotlin
+val headingToc = repository.getHeadingTocEntryByLineId(lineId)
+// headingToc != null ⟺ the line IS a TOC entry heading
+```
+
+**Key files:**
+- `SeforimRepository.kt:186` - `getHeadingTocEntryByLineId(lineId: Long): TocEntry?`
+- `SeforimRepository.kt:195` - `getLineIdsForTocEntry(tocEntryId: Long): List<Long>`
+
+### Resolution Structure
+
+```kotlin
+// CommentariesUseCase.kt:591-625
+private data class BaseLineResolution(
+    val baseLineIds: List<Long>,           // Lines to consider for aggregation
+    val headingTocEntryId: Long? = null,   // Non-null if line is TOC entry
+    val headingBookId: Long? = null,       // Book containing the TOC
+)
+```
+
+### Impact by Panel
+
+| Panel | Normal Line | TOC Entry Line |
+|-------|-------------|----------------|
+| **Commentaries** | Comments for this line only | Aggregates comments from **up to 128 lines** of the section |
+| **Sources** | Sources for this line only | Aggregates sources from entire section |
+| **Targum** | All available Targumim | **Filtered to default Targum only** (if exists) |
+
+### Commentaries Aggregation
+
+**File:** `CommentsForLineOrTocPagingSource.kt:36-53`
+
+```kotlin
+if (resolvedLineIds == null) {
+    val headingToc = repository.getHeadingTocEntryByLineId(baseLineId)
+    resolvedLineIds = if (headingToc != null) {
+        // LINE IS A TOC HEADING: load comments from ENTIRE SECTION
+        val lines = repository.getLineIdsForTocEntry(headingToc.id)
+            .filter { it != baseLineId }
+        // Sliding window centered on current line (max 128 lines)
+        val half = maxBatchSize / 2
+        val start = max(0, idx - half)
+        val end = min(lines.size, start + maxBatchSize)
+        lines.subList(start, end)
+    } else {
+        // Normal line: just this line
+        listOf(baseLineId)
+    }
+}
+```
+
+### Sources/Targum Aggregation
+
+**File:** `LineTargumPagingSource.kt:33-41`
+
+Same pattern as commentaries—aggregates links from the entire TOC section.
+
+### Special Targum Filtering
+
+**File:** `CommentariesUseCase.kt:636-645`
+
+```kotlin
+private fun filterTargumConnections(
+    connections: List<CommentarySummary>,
+    resolution: BaseLineResolution,
+    defaultTargumId: Long?,
+): List<CommentarySummary> {
+    // If line is TOC AND default Targum exists: STRICT FILTERING
+    if (resolution.headingTocEntryId == null || defaultTargumId == null)
+        return connections
+
+    return connections.filter { summary ->
+        summary.link.connectionType != ConnectionType.TARGUM ||
+        summary.link.targetBookId == defaultTargumId
+    }
+}
+```
+
+### Flow Diagram
+
+```
+User selects a line (possibly a TOC heading)
+                    ↓
+    repository.getHeadingTocEntryByLineId(line.id)
+                    ↓
+            headingToc != null?
+                    ↓
+    ┌─── YES: It's a TOC ──────────────────┐
+    │                                       │
+    │  CommentariesUseCase will load:       │
+    │   • Up to 128 lines from section     │
+    │   • Aggregated commentaries          │
+    │   • Aggregated sources               │
+    │   • Targum FILTERED to default       │
+    │     (if default exists)              │
+    │                                       │
+    └───────────────────────────────────────┘
+
+    ┌─── NO: Normal line ──────────────────┐
+    │                                       │
+    │  CommentariesUseCase will load:       │
+    │   • Comments for this line only      │
+    │   • Sources for this line only       │
+    │   • All available Targumim           │
+    │                                       │
+    └───────────────────────────────────────┘
+```
+
+### Key Point: Panels Are Never Hidden
+
+**Important:** No panel is hidden or disabled when the selected line is a TOC entry. All panels remain visible and functional—they simply change:
+
+1. **Data scope** (single line vs. entire section)
+2. **Filtering** (Targum restricted to default if TOC)
+
+The visibility of panels is controlled by user preferences (`showCommentaries`, `showSources`, `showTargum`), not by whether the line is a TOC entry.
+
 ## Dual-Level Selection Model
 
 The app uses a "sticky" selection system for commentaries, links, and sources:

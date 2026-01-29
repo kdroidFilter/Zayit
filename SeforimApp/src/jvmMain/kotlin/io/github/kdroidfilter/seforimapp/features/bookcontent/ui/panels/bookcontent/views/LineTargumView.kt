@@ -220,7 +220,7 @@ private fun SingleLineTargumView(
 
                         VerticallyScrollableContainer(
                             scrollState = listState as ScrollableState,
-                            scrollbarModifier = Modifier.padding(start = 4.dp, top = 4.dp, end = 0.dp, bottom = 4.dp),
+                            scrollbarModifier = Modifier.padding(start = 4.dp, end = 0.dp),
                         ) {
                             SelectionContainer {
                                 LazyColumn(
@@ -542,7 +542,7 @@ private fun MultiLineTargumView(
 
                 VerticallyScrollableContainer(
                     scrollState = listState as ScrollableState,
-                    scrollbarModifier = Modifier.padding(start = 4.dp, top = 4.dp, end = 0.dp, bottom = 4.dp),
+                    scrollbarModifier = Modifier.padding(start = 4.dp, end = 0.dp),
                 ) {
                     SelectionContainer {
                         LazyColumn(

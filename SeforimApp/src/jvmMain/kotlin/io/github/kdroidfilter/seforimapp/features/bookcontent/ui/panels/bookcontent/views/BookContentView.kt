@@ -674,7 +674,7 @@ fun BookContentView(
                         Modifier
                             .align(Alignment.CenterEnd)
                             .fillMaxHeight()
-                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                            .padding(start = 4.dp, top = 2.dp, end = 4.dp, bottom = 0.dp),
                 )
             }
 

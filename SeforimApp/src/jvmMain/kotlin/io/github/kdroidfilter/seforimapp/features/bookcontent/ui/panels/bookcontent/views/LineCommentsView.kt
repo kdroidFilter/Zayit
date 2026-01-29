@@ -555,7 +555,7 @@ private fun MultiLineCommentaryListView(
 
     VerticallyScrollableContainer(
         scrollState = listState as ScrollableState,
-        scrollbarModifier = Modifier.fillMaxHeight().padding(start = 4.dp, top = 4.dp, end = 0.dp, bottom = 4.dp),
+        scrollbarModifier = Modifier.fillMaxHeight().padding(start = 4.dp, end = 0.dp),
     ) {
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             items(
@@ -876,7 +876,7 @@ private fun CommentaryListView(
 
     VerticallyScrollableContainer(
         scrollState = listState as ScrollableState,
-        scrollbarModifier = Modifier.padding(start = 4.dp, top = 4.dp, end = 0.dp, bottom = 4.dp),
+        scrollbarModifier = Modifier.padding(start = 4.dp, end = 0.dp),
     ) {
         LazyColumn(
             state = listState,

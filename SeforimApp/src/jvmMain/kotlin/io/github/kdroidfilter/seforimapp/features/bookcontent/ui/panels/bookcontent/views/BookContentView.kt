@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -21,15 +22,21 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -68,8 +75,9 @@ import org.jetbrains.jewel.ui.component.Text
 fun BookContentView(
     bookId: Long,
     linesPagingData: Flow<PagingData<Line>>,
-    selectedLineId: Long?,
-    onLineSelect: (Line) -> Unit,
+    selectedLineIds: Set<Long>,
+    primarySelectedLineId: Long?,
+    onLineSelect: (Line, Boolean) -> Unit,
     onEvent: (BookContentEvent) -> Unit,
     tabId: String,
     showDiacritics: Boolean,
@@ -172,8 +180,8 @@ fun BookContentView(
     }
 
     // Ensure the selected line is prefetched even if it is not visible yet
-    LaunchedEffect(selectedLineId, lineConnections) {
-        val id = selectedLineId ?: return@LaunchedEffect
+    LaunchedEffect(primarySelectedLineId, lineConnections) {
+        val id = primarySelectedLineId ?: return@LaunchedEffect
         if (lineConnections[id] == null) {
             onPrefetchLineConnections(listOf(id))
         }
@@ -181,11 +189,11 @@ fun BookContentView(
 
     // Ensure the selected line is visible when explicitly requested (keyboard/nav)
     // without forcing it to the very top of the viewport.
-    LaunchedEffect(scrollToLineTimestamp, selectedLineId, topAnchorTimestamp, topAnchorLineId) {
-        if (scrollToLineTimestamp == 0L || selectedLineId == null) return@LaunchedEffect
+    LaunchedEffect(scrollToLineTimestamp, primarySelectedLineId, topAnchorTimestamp, topAnchorLineId) {
+        if (scrollToLineTimestamp == 0L || primarySelectedLineId == null) return@LaunchedEffect
 
         // Skip minimal bring-into-view when a top-anchoring request is active for this selection
-        val isTopAnchorRequest = (topAnchorTimestamp == scrollToLineTimestamp && topAnchorLineId == selectedLineId)
+        val isTopAnchorRequest = (topAnchorTimestamp == scrollToLineTimestamp && topAnchorLineId == primarySelectedLineId)
         if (isTopAnchorRequest) return@LaunchedEffect
 
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
@@ -193,7 +201,7 @@ fun BookContentView(
         }
 
         val snapshot = lazyPagingItems.itemSnapshotList
-        val index = snapshot.indices.firstOrNull { snapshot[it]?.id == selectedLineId }
+        val index = snapshot.indices.firstOrNull { snapshot[it]?.id == primarySelectedLineId }
         if (index != null) {
             val first = listState.firstVisibleItemIndex
             val last =
@@ -476,7 +484,9 @@ fun BookContentView(
                             }
                         }
 
-                        else -> false
+                        else -> {
+                            false
+                        }
                     }
                 } else {
                     false
@@ -540,31 +550,69 @@ fun BookContentView(
 
                         if (line != null) {
                             val altHeadings = altHeadingsByLineId[line.id]
-                            Column {
-                                altHeadings.forEach { entry ->
-                                    AltHeadingItem(
-                                        entryId = entry.id,
-                                        level = entry.level,
-                                        text = entry.text,
-                                        onClick = { onLineSelect(line) },
+                            val isCurrentSelected = line.id in selectedLineIds
+                            // Check adjacent lines for continuous selection bar
+                            val isPrevSelected =
+                                isCurrentSelected &&
+                                    index > 0 &&
+                                    lazyPagingItems.peek(index - 1)?.id in selectedLineIds
+                            val isNextSelected =
+                                isCurrentSelected &&
+                                    index < lazyPagingItems.itemCount - 1 &&
+                                    lazyPagingItems.peek(index + 1)?.id in selectedLineIds
+
+                            val borderColor =
+                                if (isCurrentSelected) {
+                                    JewelTheme.globalColors.outlines.focused
+                                } else {
+                                    Color.Transparent
+                                }
+
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp)
+                                        .height(IntrinsicSize.Min),
+                            ) {
+                                // Selection bar - covers AltHeadings + LineItem
+                                SelectionBar(
+                                    isSelected = isCurrentSelected,
+                                    isPreviousSelected = isPrevSelected,
+                                    isNextSelected = isNextSelected,
+                                    color = borderColor,
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column(
+                                    modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                                ) {
+                                    altHeadings.forEach { entry ->
+                                        AltHeadingItem(
+                                            entryId = entry.id,
+                                            level = entry.level,
+                                            text = entry.text,
+                                            onClick = { onLineSelect(line, false) },
+                                        )
+                                    }
+                                    LineItem(
+                                        lineId = line.id,
+                                        lineContent = line.content,
+                                        fontFamily = hebrewFontFamily,
+                                        onClick = { isModifier -> onLineSelect(line, isModifier) },
+                                        scrollToLineTimestamp = scrollToLineTimestamp,
+                                        isSelected = isCurrentSelected,
+                                        baseTextSize = textSize,
+                                        lineHeight = lineHeight,
+                                        boldScale = boldScaleForPlatform,
+                                        highlightQuery =
+                                            findState.text.toString().takeIf { showFind && !smartModeEnabled },
+                                        highlightTerms = smartHighlightTerms.takeIf { showFind && smartModeEnabled },
+                                        currentMatchStart =
+                                            if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
+                                        annotatedCache = stableAnnotatedCache,
+                                        showDiacritics = showDiacritics,
                                     )
                                 }
-                                LineItem(
-                                    lineId = line.id,
-                                    lineContent = line.content,
-                                    isSelected = selectedLineId == line.id,
-                                    fontFamily = hebrewFontFamily,
-                                    onClick = { onLineSelect(line) },
-                                    scrollToLineTimestamp = scrollToLineTimestamp,
-                                    baseTextSize = textSize,
-                                    lineHeight = lineHeight,
-                                    boldScale = boldScaleForPlatform,
-                                    highlightQuery = findState.text.toString().takeIf { showFind && !smartModeEnabled },
-                                    highlightTerms = smartHighlightTerms.takeIf { showFind && smartModeEnabled },
-                                    currentMatchStart = if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
-                                    annotatedCache = stableAnnotatedCache,
-                                    showDiacritics = showDiacritics,
-                                )
                             }
                         } else {
                             // Placeholder while loading
@@ -581,6 +629,7 @@ fun BookContentView(
                                     LoadingIndicator()
                                 }
                             }
+
                             // Keep small loader for pagination append
                             loadState.append is LoadState.Loading -> {
                                 item(contentType = "loading") {
@@ -722,37 +771,23 @@ private fun AltHeadingItem(
             1 -> 18.sp
             else -> 16.sp
         }
-    val paddingTop = if (level == 0) 12.dp else 8.dp
+    val paddingTop = if (level == 0) 4.dp else 0.dp
     val paddingBottom = 4.dp
 
     Box(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(start = 8.dp, end = 8.dp, top = paddingTop, bottom = paddingBottom)
+                .padding(top = paddingTop, bottom = paddingBottom)
                 .pointerInput(entryId) {
                     detectTapGestures(onTap = { onClick() })
                 },
     ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min),
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .width(4.dp)
-                        .fillMaxHeight(),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = text,
-                fontSize = fontSize,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-            )
-        }
+        Text(
+            text = text,
+            fontSize = fontSize,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+        )
     }
 }
 
@@ -761,10 +796,10 @@ private fun AltHeadingItem(
 private fun LineItem(
     lineId: Long,
     lineContent: String,
-    isSelected: Boolean,
     fontFamily: FontFamily,
-    onClick: () -> Unit,
+    onClick: (isModifierPressed: Boolean) -> Unit,
     scrollToLineTimestamp: Long,
+    isSelected: Boolean = false,
     baseTextSize: Float = 16f,
     lineHeight: Float = 1.5f,
     boldScale: Float = 1.0f,
@@ -836,9 +871,6 @@ private fun LineItem(
             }
         }
 
-    // Get theme color in composable context
-    val borderColor = if (isSelected) JewelTheme.globalColors.outlines.focused else Color.Transparent
-
     val bringRequester = remember { BringIntoViewRequester() }
 
     // On navigation/explicit request, bring the selected line minimally into view
@@ -857,39 +889,63 @@ private fun LineItem(
             Modifier.fillMaxWidth()
         }.bringIntoViewRequester(bringRequester)
             .pointerInput(lineId) {
-                detectTapGestures(onTap = { onClick() })
+                awaitEachGesture {
+                    // Wait for press and capture keyboard modifiers from the event
+                    val downEvent = awaitPointerEvent(PointerEventPass.Main)
+                    if (!downEvent.buttons.isPrimaryPressed) return@awaitEachGesture
+                    val isModifier = downEvent.keyboardModifiers.isCtrlPressed || downEvent.keyboardModifiers.isMetaPressed
+                    // Wait for release
+                    val up = waitForUpOrCancellation()
+                    if (up != null && !up.isConsumed) {
+                        onClick(isModifier)
+                    }
+                }
             }
 
+    Text(
+        text = displayText,
+        textAlign = TextAlign.Justify,
+        fontFamily = fontFamily,
+        lineHeight = (baseTextSize * lineHeight).sp,
+        modifier = textModifier,
+    )
+}
+
+/**
+ * Selection bar that extends into adjacent padding when consecutive lines are selected.
+ */
+@Composable
+private fun SelectionBar(
+    isSelected: Boolean,
+    isPreviousSelected: Boolean,
+    isNextSelected: Boolean,
+    color: Color,
+) {
+    val extendTop = isSelected && isPreviousSelected
+    val extendBottom = isSelected && isNextSelected
     Box(
         modifier =
             Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-    ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min),
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .width(4.dp)
-                        .fillMaxHeight()
-                        .background(borderColor)
-                        .zIndex(1f),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = displayText,
-                textAlign = TextAlign.Justify,
-                fontFamily = fontFamily,
-                lineHeight = (baseTextSize * lineHeight).sp,
-                modifier = textModifier,
-            )
-        }
-    }
+                .width(4.dp)
+                .fillMaxHeight()
+                .zIndex(1f)
+                .layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    val extraTop = if (extendTop) 8.dp.roundToPx() else 0
+                    layout(placeable.width, placeable.height) {
+                        placeable.place(0, -extraTop)
+                    }
+                }.graphicsLayer { clip = false }
+                .drawBehind {
+                    val extraTop = if (extendTop) 8.dp.toPx() else 0f
+                    val extraBottom = if (extendBottom) 8.dp.toPx() else 0f
+                    drawRect(
+                        color = color,
+                        topLeft = Offset(0f, -extraTop),
+                        size = Size(size.width, size.height + extraTop + extraBottom),
+                    )
+                },
+    )
 }
 
 // Extract reusable components to avoid inline composition

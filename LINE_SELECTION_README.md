@@ -16,6 +16,13 @@ When a user clicks on a line in the content view, the following happens:
 6. Sources panel loads available sources for this line
 7. State is persisted for session restoration
 
+**Multi-line selection** (Ctrl+click on Windows/Linux, Cmd+click on macOS):
+
+1. Additional lines are toggled into/out of the selection set
+2. All selected lines display visual highlights
+3. Commentaries/Targum/Sources panels aggregate data from ALL selected lines
+4. TOC highlight and breadcrumb follow the **primary line** (last clicked)
+
 ## Architecture
 
 ### Key Components
@@ -34,7 +41,7 @@ When a user clicks on a line in the content view, the following happens:
 ```kotlin
 data class BookContentState(
     val navigation: NavigationState,
-    val content: ContentState,      // Contains selectedLine
+    val content: ContentState,      // Contains selectedLines, primarySelectedLineId
     val toc: TocState,              // Contains selectedEntryId, breadcrumbPath
     val altToc: AltTocState,
     val layout: LayoutState,
@@ -42,7 +49,10 @@ data class BookContentState(
 )
 
 data class ContentState(
-    val selectedLine: Line? = null,
+    // Multi-line selection
+    val selectedLines: Set<Line> = emptySet(),
+    val primarySelectedLineId: Long? = null,
+    val isTocEntrySelection: Boolean = false,  // True when selection came from TOC entry click
 
     // Per-line selections (temporary, for current line)
     val selectedCommentatorsByLine: Map<Long, Set<Long>> = emptyMap(),
@@ -64,7 +74,19 @@ data class ContentState(
     val scrollIndex: Int = 0,
     val scrollOffset: Int = 0,
     val scrollToLineTimestamp: Long = 0L,
-)
+) {
+    // Computed properties for convenience
+    val primaryLine: Line?
+        get() = selectedLines.firstOrNull { it.id == primarySelectedLineId }
+            ?: selectedLines.firstOrNull()
+
+    val selectedLineIds: Set<Long>
+        get() = selectedLines.mapTo(mutableSetOf()) { it.id }
+
+    // Backward compatibility: single selected line = primary line
+    val selectedLine: Line?
+        get() = primaryLine
+}
 
 data class TocState(
     val entries: List<TocEntry> = emptyList(),
@@ -84,7 +106,7 @@ Line selection can be triggered from multiple sources:
 
 | Event | Source | Description |
 |-------|--------|-------------|
-| `LineSelected(line)` | Content view click | Direct line click |
+| `LineSelected(line, isModifierPressed)` | Content view click | Direct line click with optional Ctrl/Cmd modifier |
 | `LoadAndSelectLine(lineId)` | TOC entry click, search result | Load line by ID then select |
 | `OpenBookAtLine(bookId, lineId)` | Deep link, cross-reference | Open book and jump to line |
 | `NavigateToPreviousLine` | Keyboard (Up arrow) | Select previous line |
@@ -97,34 +119,61 @@ User clicks line in BookContentView
               ↓
     LineItem.onClick()                    [BookContentView.kt:860]
               ↓
-    onLineSelect(line)                    [BookContentView.kt:557]
+    Capture keyboard modifiers via awaitPointerEvent()
               ↓
-    onEvent(LineSelected(line))           [BookContentPanel.kt:151-152]
+    onLineSelect(line, isModifierPressed) [BookContentView.kt:557]
+              ↓
+    onEvent(LineSelected(line, isModifier)) [BookContentPanel.kt:151-152]
               ↓
     BookContentViewModel.onEvent()        [BookContentViewModel.kt:301-363]
               ↓
-    selectLine(line)                      [BookContentViewModel.kt:730-736]
+    selectLine(line, isModifier)          [BookContentViewModel.kt:730-736]
+              ↓
+    ┌─────────────────────────────────────────────────────────────┐
+    │           Branch on isModifierPressed                       │
+    ├─────────────────────────────────────────────────────────────┤
+    │                                                              │
+    │  if (!isModifier) {                                          │
+    │    // Single-click: replace selection                        │
+    │    selectedLines = setOf(line)                               │
+    │    primarySelectedLineId = line.id                           │
+    │    isTocEntrySelection = false                               │
+    │  } else {                                                    │
+    │    // Ctrl/Cmd+click: toggle in selection set                │
+    │    if (line in selectedLines) {                              │
+    │      selectedLines -= line                                   │
+    │      primarySelectedLineId = selectedLines.firstOrNull()?.id │
+    │    } else {                                                  │
+    │      selectedLines += line                                   │
+    │      primarySelectedLineId = line.id                         │
+    │    }                                                         │
+    │    isTocEntrySelection = false                               │
+    │  }                                                           │
+    │                                                              │
+    └─────────────────────────────────────────────────────────────┘
               ↓
     ┌─────────────────────────────────────────────────────────────┐
     │                    Parallel Operations                       │
     ├─────────────────────────────────────────────────────────────┤
-    │  ContentUseCase.selectLine(line)                            │
-    │    ├─→ Update content.selectedLine                          │
-    │    ├─→ Query getTocEntryIdForLine(line.id)                  │
-    │    ├─→ Build breadcrumbPath via buildTocPathToRoot()        │
-    │    └─→ Update toc.selectedEntryId + toc.breadcrumbPath      │
+    │  ContentUseCase.selectLine(line, isMultiSelect)              │
+    │    ├─→ Update content.selectedLines                          │
+    │    ├─→ Update content.primarySelectedLineId                  │
+    │    ├─→ Query getTocEntryIdForLine(primaryLine.id)            │
+    │    ├─→ Build breadcrumbPath via buildTocPathToRoot()         │
+    │    └─→ Update toc.selectedEntryId + toc.breadcrumbPath       │
     │                                                              │
-    │  CommentariesUseCase.reapplySelectedCommentators(line)      │
-    │    ├─→ Get sticky selections from book level                │
-    │    ├─→ Fetch available commentators for line                │
-    │    ├─→ Compute intersection (sticky ∩ available)            │
-    │    └─→ Update selectedCommentatorsByLine                    │
+    │  CommentariesUseCase.reapplySelectedCommentators(...)        │
+    │    ├─→ If multi-line: reapplySelectedCommentatorsForLines()  │
+    │    ├─→ Get sticky selections from book level                 │
+    │    ├─→ Fetch available commentators for line(s)              │
+    │    ├─→ Compute intersection (sticky ∩ available)             │
+    │    └─→ Update selectedCommentatorsByLine                     │
     │                                                              │
-    │  CommentariesUseCase.reapplySelectedLinkSources(line)       │
-    │    └─→ Same pattern for targum/links                        │
+    │  CommentariesUseCase.reapplySelectedLinkSources(...)         │
+    │    └─→ Same pattern for targum/links                         │
     │                                                              │
-    │  CommentariesUseCase.reapplySelectedSources(line)           │
-    │    └─→ Same pattern for sources                             │
+    │  CommentariesUseCase.reapplySelectedSources(...)             │
+    │    └─→ Same pattern for sources                              │
     └─────────────────────────────────────────────────────────────┘
               ↓
     StateManager persists to TabPersistedStateStore
@@ -134,13 +183,117 @@ User clicks line in BookContentView
     ┌─────────────────────────────────────────────────────────────┐
     │                    UI Recomposition                          │
     ├─────────────────────────────────────────────────────────────┤
-    │  BookContentView     → Line border highlights               │
-    │  LineCommentsView    → Loads commentators for line          │
-    │  LineTargumView      → Loads links for line                 │
-    │  SourcesPane         → Loads sources for line               │
-    │  BookTocView         → Highlights TOC entry                 │
-    │  BreadcrumbView      → Updates hierarchical path            │
+    │  BookContentView     → All selected lines show border        │
+    │  LineCommentsView    → Loads commentators for line(s)        │
+    │  LineTargumView      → Loads links for line(s)               │
+    │  SourcesPane         → Loads sources for line(s)             │
+    │  BookTocView         → Highlights TOC entry (primary line)   │
+    │  BreadcrumbView      → Updates path (primary line)           │
     └─────────────────────────────────────────────────────────────┘
+```
+
+## Multi-Line Selection
+
+### Overview
+
+The multi-line selection feature allows users to select multiple lines simultaneously using Ctrl+click (Windows/Linux) or Cmd+click (macOS). This enables viewing aggregated commentaries, targum, and sources for all selected lines at once.
+
+### Selection Modes
+
+| Mode | Trigger | Behavior |
+|------|---------|----------|
+| **Single selection** | Normal click | Replaces selection with clicked line |
+| **Multi-selection** | Ctrl/Cmd + click | Toggles line in/out of selection set |
+| **TOC entry selection** | Click TOC entry | Selects all lines in section (up to 128) |
+
+### Primary Line Concept
+
+When multiple lines are selected, one line is designated as the **primary line**:
+
+- **On normal click**: The clicked line becomes the primary line
+- **On Ctrl/Cmd + click (add)**: The newly added line becomes the primary line
+- **On Ctrl/Cmd + click (remove)**: If the removed line was primary, the first remaining line becomes primary
+
+The primary line determines:
+- Which TOC entry is highlighted
+- The breadcrumb path displayed
+- Keyboard navigation starting point (Up/Down arrows)
+
+### The `isTocEntrySelection` Flag
+
+This boolean flag distinguishes between:
+
+| Scenario | `isTocEntrySelection` | Panel Behavior |
+|----------|----------------------|----------------|
+| User Ctrl+clicks multiple lines | `false` | Panels show aggregated content for ALL selected lines |
+| User clicks a TOC entry | `true` | Panels show content for PRIMARY LINE only (default behavior) |
+
+This preserves the existing behavior where clicking a TOC entry shows only the default commentaries/targum for that section's heading line, while still allowing manual multi-selection to aggregate content.
+
+### Implementation Details
+
+**Event definition:**
+
+```kotlin
+// BookContentEvent.kt
+data class LineSelected(
+    val line: Line,
+    val isModifierPressed: Boolean = false,
+) : BookContentEvent
+```
+
+**Selection logic in ContentUseCase:**
+
+```kotlin
+suspend fun selectLine(line: Line, isMultiSelect: Boolean = false) {
+    stateManager.updateContent {
+        if (isMultiSelect) {
+            // Toggle selection
+            val newSelection = if (line in selectedLines)
+                selectedLines - line
+            else
+                selectedLines + line
+            val newPrimaryId = if (line in selectedLines)
+                newSelection.firstOrNull()?.id
+            else
+                line.id
+            copy(
+                selectedLines = newSelection,
+                primarySelectedLineId = newPrimaryId,
+                isTocEntrySelection = false,  // Manual multi-selection
+            )
+        } else {
+            // Replace with single selection
+            copy(
+                selectedLines = setOf(line),
+                primarySelectedLineId = line.id,
+                isTocEntrySelection = false,
+            )
+        }
+    }
+    // Update TOC based on primary line
+    updateTocForPrimaryLine()
+}
+```
+
+**Modifier detection in BookContentView:**
+
+```kotlin
+// Using awaitPointerEvent() to capture keyboard modifiers
+Box(
+    modifier = Modifier.pointerInput(Unit) {
+        awaitPointerEventScope {
+            while (true) {
+                val event = awaitPointerEvent()
+                if (event.type == PointerEventType.Release) {
+                    val mods = event.keyboardModifiers
+                    val isModifier = mods.isCtrlPressed || mods.isMetaPressed
+                    onClick(isModifier)
+                }
+            }
+        }
+    }
+)
 ```
 
 ## Panel Influences
@@ -151,9 +304,9 @@ User clicks line in BookContentView
 
 | Aspect | Behavior |
 |--------|----------|
-| Observation | `selectedLineId = uiState.content.selectedLine?.id` |
-| Visual effect | Selected line displays colored left border |
-| Scroll | Auto-scrolls to keep selected line visible |
+| Observation | `selectedLineIds = uiState.content.selectedLineIds` |
+| Visual effect | **All** selected lines display colored left border |
+| Scroll | Auto-scrolls to keep primary selected line visible |
 
 ```kotlin
 // Line highlighting (LineItem composable)
@@ -176,22 +329,28 @@ Box(
 
 | Aspect | Behavior |
 |--------|----------|
-| Observation | `contentState.selectedLine` |
-| When null | Displays "select_line_for_commentaries" message |
-| When selected | Fetches `getCommentatorGroupsForLine(lineId)` |
+| Observation | `contentState.selectedLines`, `contentState.isTocEntrySelection` |
+| When empty | Displays "select_line_for_commentaries" message |
+| Single line / TOC entry | Fetches `getCommentatorGroupsForLine(lineId)` |
+| Manual multi-selection | Fetches `getCommentatorGroupsForLines(lineIds)` |
 | Cache | Uses `lineConnections[selectedLine.id]?.commentatorGroups` |
-| Selection | Per-line via `selectedCommentatorsByLine[lineId]` |
 
-**Data flow:**
+**Selection logic:**
+
 ```kotlin
-val cachedGroups = lineConnections[selectedLine.id]?.commentatorGroups
+val selectedLineIds = contentState.selectedLineIds
+val isManualMultiSelection = selectedLineIds.size > 1 && !contentState.isTocEntrySelection
 
-// If not cached, fetch asynchronously
-LaunchedEffect(selectedLine.id) {
-    if (cachedGroups == null) {
-        val groups = getCommentatorGroupsForLine(selectedLine.id)
-        // Update UI with fetched groups
-    }
+when {
+    selectedLine == null -> CenteredMessage(stringResource(Res.string.select_line_for_commentaries))
+    isManualMultiSelection -> MultiLineCommentariesContent(
+        selectedLineIds = selectedLineIds.toList(),
+        // Uses buildCommentariesPagerForLines()
+    )
+    else -> CommentariesContent(
+        selectedLine = selectedLine,
+        // Uses buildCommentariesPager() for single line
+    )
 }
 ```
 
@@ -201,11 +360,12 @@ LaunchedEffect(selectedLine.id) {
 
 | Aspect | Behavior |
 |--------|----------|
-| Observation | `selectedLine.id` |
-| When null | Displays "select_line_for_links" message |
-| When selected | Fetches `getAvailableLinksForLine(lineId)` |
+| Observation | `selectedLineIds`, `isTocEntrySelection` |
+| When empty | Displays "select_line_for_links" message |
+| Single line / TOC entry | Fetches `getAvailableLinksForLine(lineId)` |
+| Manual multi-selection | Fetches aggregated links for all lines |
 | Cache | Uses `lineConnections[selectedLine.id]?.targumSources` |
-| Pager | Creates `buildLinksPagerFor(selectedLine.id, bookId)` |
+| Pager | Single: `buildLinksPager()`, Multi: `buildLinksPagerForLines()` |
 | ConnectionType | `ConnectionType.TARGUM` |
 
 ### 4. Sources Panel (SourcesPane)
@@ -216,20 +376,21 @@ The Sources panel reuses `LineTargumView` with different parameters:
 
 | Aspect | Behavior |
 |--------|----------|
-| Observation | `uiState.content.selectedLine` |
-| When null | Displays "no_sources_for_line" message |
-| When selected | Fetches `getAvailableSourcesForLine(lineId)` |
+| Observation | `uiState.content.selectedLineIds`, `isTocEntrySelection` |
+| When empty | Displays "no_sources_for_line" message |
+| Single line / TOC entry | Fetches `getAvailableSourcesForLine(lineId)` |
+| Manual multi-selection | Fetches aggregated sources for all lines |
 | Cache | Uses `lineConnections[selectedLine.id]?.sources` |
 | ConnectionType | `ConnectionType.SOURCE` |
 | Event | `SelectedSourcesChanged(lineId, ids)` |
 
 **Comparison: Sources vs Targum vs Commentaries:**
 
-| Type | Provider | Cache Field | ConnectionType |
-|------|----------|-------------|----------------|
-| Sources | `getAvailableSourcesForLine` | `snapshot.sources` | `SOURCE` |
-| Targum | `getAvailableLinksForLine` | `snapshot.targumSources` | `TARGUM` |
-| Commentaries | `getCommentatorGroupsForLine` | `snapshot.commentatorGroups` | N/A |
+| Type | Single Pager | Multi Pager | Cache Field | ConnectionType |
+|------|--------------|-------------|-------------|----------------|
+| Sources | `buildSourcesPager` | `buildSourcesPagerForLines` | `snapshot.sources` | `SOURCE` |
+| Targum | `buildLinksPager` | `buildLinksPagerForLines` | `snapshot.targumSources` | `TARGUM` |
+| Commentaries | `buildCommentariesPager` | `buildCommentariesPagerForLines` | `snapshot.commentatorGroups` | N/A |
 
 ### 5. TOC Panel (BookTocView)
 
@@ -237,7 +398,7 @@ The Sources panel reuses `LineTargumView` with different parameters:
 
 | Aspect | Behavior |
 |--------|----------|
-| Observation | `uiState.toc.selectedEntryId` |
+| Observation | `uiState.toc.selectedEntryId` (based on primary line) |
 | Highlight | Entry matching `selectedEntryId` displays in bold |
 | Auto-scroll | Scrolls to bring selected entry into view (once per book) |
 | Breadcrumb | Separate from highlight, used for `BreadcrumbView` |
@@ -246,7 +407,9 @@ The Sources panel reuses `LineTargumView` with different parameters:
 
 ```kotlin
 // In ContentUseCase.selectLine()
-val tocId = repository.getTocEntryIdForLine(line.id)
+// Always uses primary line for TOC highlight
+val primaryLine = stateManager.state.value.content.primaryLine ?: return
+val tocId = repository.getTocEntryIdForLine(primaryLine.id)
 val tocPath = buildTocPathToRoot(tocId)
 
 stateManager.updateToc {
@@ -277,14 +440,14 @@ LaunchedEffect(selectedTocEntryId, hasRestored, didAutoCenter) {
 
 | Aspect | Behavior |
 |--------|----------|
-| Observation | `selectedLine?.id` + `toc.breadcrumbPath` |
+| Observation | `primaryLine?.id` + `toc.breadcrumbPath` |
 | Display | `Category > Book > Chapter > Section` |
 | Clickable | TOC items trigger `LoadAndSelectLine(lineId)` |
 
 **Path construction:**
 
 ```kotlin
-val breadcrumbPath = remember(book, selectedLine?.id, tocPath) {
+val breadcrumbPath = remember(book, primaryLine?.id, tocPath) {
     buildList {
         // 1. Category path (ancestors)
         addAll(categoryPath)
@@ -376,6 +539,13 @@ private data class BaseLineResolution(
 | **Sources** | Sources for this line only | Aggregates sources from entire section |
 | **Targum** | All available Targumim | **Filtered to default Targum only** (if exists) |
 
+**Important distinction with multi-line selection:**
+
+| Selection Type | `isTocEntrySelection` | Panel Data |
+|---------------|----------------------|------------|
+| TOC entry click | `true` | Primary line content only (default behavior) |
+| Manual Ctrl+click | `false` | Aggregated from ALL selected lines |
+
 ### Commentaries Aggregation
 
 **File:** `CommentsForLineOrTocPagingSource.kt:36-53`
@@ -444,6 +614,9 @@ User selects a line (possibly a TOC heading)
     │   • Targum FILTERED to default       │
     │     (if default exists)              │
     │                                       │
+    │  isTocEntrySelection = true          │
+    │  Panels show PRIMARY LINE only       │
+    │                                       │
     └───────────────────────────────────────┘
 
     ┌─── NO: Normal line ──────────────────┐
@@ -486,7 +659,7 @@ The app uses a "sticky" selection system for commentaries, links, and sources:
 ```kotlin
 // BookContentViewModel.kt:88-134
 val uiState = stateManager.state.map { state ->
-    val lineId = state.content.selectedLine?.id
+    val lineId = state.content.primarySelectedLineId
     val bookId = state.navigation.selectedBook?.id
 
     val selectedCommentators = when {
@@ -562,11 +735,19 @@ When a line is selected, state is automatically persisted:
 fun saveAllStates() {
     val currentState = _state.value
     val persisted = BookContentPersistedState(
-        selectedLineId = currentState.content.selectedLine?.id ?: -1L,
+        // Multi-line selection
+        selectedLineIds = currentState.content.selectedLineIds,
+        primarySelectedLineId = currentState.content.primarySelectedLineId ?: -1L,
+        isTocEntrySelection = currentState.content.isTocEntrySelection,
+
+        // Per-book selections
         selectedCommentatorsByBook = currentState.content.selectedCommentatorsByBook,
         selectedLinkSourcesByBook = currentState.content.selectedLinkSourcesByBook,
         selectedSourcesByBook = currentState.content.selectedSourcesByBook,
-        tocExpandedEntries = currentState.toc.expandedEntries,
+
+        // TOC state
+        expandedTocEntryIds = currentState.toc.expandedEntries,
+        selectedTocEntryId = currentState.toc.selectedEntryId ?: -1L,
         // ... other fields
     )
     persistedStore.update(tabId) { current ->
@@ -575,36 +756,77 @@ fun saveAllStates() {
 }
 ```
 
-This enables full session restoration on cold boot.
+**Session restoration:**
+
+```kotlin
+// BookContentStateManager.loadInitialState()
+private fun loadInitialState(): BookContentState {
+    val persisted = persistedStore.get(tabId)?.bookContent ?: BookContentPersistedState()
+
+    return BookContentState(
+        content = ContentState(
+            selectedLines = emptySet(),  // Line objects loaded by ViewModel
+            primarySelectedLineId = persisted.primarySelectedLineId.takeIf { it > 0 },
+            isTocEntrySelection = persisted.isTocEntrySelection,
+            // ...
+        ),
+        // ...
+    )
+}
+
+// BookContentViewModel restores Line objects from persisted IDs
+private suspend fun restoreSelectionFromPersistedState() {
+    val persisted = persistedStore.get(tabId)?.bookContent ?: return
+    val lineIds = persisted.selectedLineIds
+    if (lineIds.isEmpty()) return
+
+    val lines = lineIds.mapNotNull { repository.getLine(it) }.toSet()
+    stateManager.updateContent {
+        copy(
+            selectedLines = lines,
+            primarySelectedLineId = persisted.primarySelectedLineId.takeIf { it > 0 },
+            isTocEntrySelection = persisted.isTocEntrySelection,
+        )
+    }
+}
+```
+
+This enables full session restoration on cold boot, including multi-line selections.
 
 ## Key Files Reference
 
 | File | Path | Purpose |
 |------|------|---------|
 | ViewModel | `features/bookcontent/BookContentViewModel.kt` | Event routing, state coordination |
-| Events | `features/bookcontent/BookContentEvent.kt` | All event types |
-| State | `features/bookcontent/state/BookContentState.kt` | State model definitions |
+| Events | `features/bookcontent/BookContentEvent.kt` | All event types including `LineSelected(line, isModifierPressed)` |
+| State | `features/bookcontent/state/BookContentState.kt` | State model with `selectedLines`, `primarySelectedLineId`, `isTocEntrySelection` |
 | StateManager | `features/bookcontent/state/BookContentStateManager.kt` | State mutation & persistence |
-| ContentUseCase | `features/bookcontent/usecases/ContentUseCase.kt` | Line selection logic |
-| CommentariesUseCase | `features/bookcontent/usecases/CommentariesUseCase.kt` | Commentaries reapplication |
+| ContentUseCase | `features/bookcontent/usecases/ContentUseCase.kt` | Line selection logic (single & multi) |
+| CommentariesUseCase | `features/bookcontent/usecases/CommentariesUseCase.kt` | Commentaries reapplication (single & multi-line) |
 | TocUseCase | `features/bookcontent/usecases/TocUseCase.kt` | TOC expansion |
-| BookContentView | `features/bookcontent/ui/panels/bookcontent/views/BookContentView.kt` | Line rendering |
-| LineCommentsView | `features/bookcontent/ui/panels/bookcontent/views/LineCommentsView.kt` | Commentaries panel |
-| LineTargumView | `features/bookcontent/ui/panels/bookcontent/views/LineTargumView.kt` | Targum/Sources panel |
+| BookContentView | `features/bookcontent/ui/panels/bookcontent/views/BookContentView.kt` | Line rendering with multi-highlight |
+| LineCommentsView | `features/bookcontent/ui/panels/bookcontent/views/LineCommentsView.kt` | Commentaries panel (single/multi) |
+| LineTargumView | `features/bookcontent/ui/panels/bookcontent/views/LineTargumView.kt` | Targum/Sources panel (single/multi) |
 | BookTocView | `features/bookcontent/ui/panels/booktoc/BookTocView.kt` | TOC panel |
 | BreadcrumbView | `features/bookcontent/ui/panels/bookcontent/views/BreadcrumbView.kt` | Breadcrumb display |
 | BookContentPanel | `features/bookcontent/ui/panels/bookcontent/BookContentPanel.kt` | Panel orchestration |
+| SessionModels | `framework/session/SessionModels.kt` | `BookContentPersistedState` with multi-line fields |
+| MultiLineLinksPagingSource | `libs/pagination/src/commonMain/kotlin/.../MultiLineLinksPagingSource.kt` | Paging source for multi-line links |
 
 ## Summary
 
 Line selection is a core interaction that:
 
 1. **Updates central state** via `ContentUseCase.selectLine()`
-2. **Synchronizes TOC** by computing `selectedEntryId` and `breadcrumbPath`
-3. **Reapplies sticky selections** for commentaries, links, and sources
-4. **Triggers UI recomposition** across all dependent panels
-5. **Persists state** for session restoration
-6. **Leverages caching** via `LineConnectionsSnapshot` for performance
+2. **Supports multi-selection** via Ctrl/Cmd+click with `selectedLines` set
+3. **Tracks primary line** for TOC highlight and breadcrumb via `primarySelectedLineId`
+4. **Distinguishes selection modes** via `isTocEntrySelection` flag
+5. **Synchronizes TOC** by computing `selectedEntryId` and `breadcrumbPath` for primary line
+6. **Reapplies sticky selections** for commentaries, links, and sources
+7. **Triggers UI recomposition** across all dependent panels
+8. **Aggregates panel data** for manual multi-selection, preserves default behavior for TOC entry selection
+9. **Persists state** for session restoration including multi-line selections
+10. **Leverages caching** via `LineConnectionsSnapshot` for performance
 
 The architecture follows unidirectional data flow: user interaction → event →
 use case → state manager → UI recomposition.

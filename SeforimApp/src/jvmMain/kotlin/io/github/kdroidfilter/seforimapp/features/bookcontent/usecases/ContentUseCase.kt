@@ -9,7 +9,7 @@ import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimapp.pagination.LinesPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.PagingDefaults
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforimlibrary.dao.repository.LineSelectionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -18,7 +18,7 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
  * UseCase pour gérer le contenu du livre et la navigation dans les lignes
  */
 class ContentUseCase(
-    private val repository: SeforimRepository,
+    private val repository: LineSelectionRepository,
     private val stateManager: BookContentStateManager,
 ) {
     /**
@@ -36,13 +36,94 @@ class ContentUseCase(
         ).flow
 
     /**
-     * Sélectionne une ligne
+     * Sélectionne une ligne.
+     * Si isModifierPressed est true (Ctrl/Cmd+clic), on toggle la ligne dans la sélection.
+     * Sinon, si la ligne est un TOC heading, on sélectionne toutes les lignes de la section.
      */
-    suspend fun selectLine(line: Line) {
-        debugln { "[selectLine] Selecting line with id=${line.id}, index=${line.lineIndex}" }
+    suspend fun selectLine(
+        line: Line,
+        isModifierPressed: Boolean = false,
+    ) {
+        debugln { "[selectLine] Selecting line with id=${line.id}, index=${line.lineIndex}, modifier=$isModifierPressed" }
 
-        stateManager.updateContent {
-            copy(selectedLine = line)
+        // Si Ctrl/Cmd+clic, toggle la ligne dans la sélection
+        if (isModifierPressed) {
+            val currentState = stateManager.state.first()
+            val currentSelection = currentState.content.selectedLines
+            val isAlreadySelected = currentSelection.any { it.id == line.id }
+
+            val newSelection =
+                if (isAlreadySelected) {
+                    // Retirer la ligne de la sélection
+                    currentSelection.filterNot { it.id == line.id }.toSet()
+                } else {
+                    // Ajouter la ligne à la sélection
+                    currentSelection + line
+                }
+
+            // La ligne primaire devient la dernière cliquée (si on ajoute) ou la première restante (si on retire)
+            val newPrimaryId =
+                if (isAlreadySelected) {
+                    newSelection.firstOrNull()?.id
+                } else {
+                    line.id
+                }
+
+            stateManager.updateContent {
+                copy(
+                    selectedLines = newSelection,
+                    primarySelectedLineId = newPrimaryId,
+                    isTocEntrySelection = false, // Ctrl+click = sélection manuelle
+                )
+            }
+        } else {
+            // Vérifier si la ligne est un TOC heading pour sélectionner toute la section
+            val headingToc = runCatching { repository.getHeadingTocEntryByLineId(line.id) }.getOrNull()
+
+            if (headingToc != null) {
+                // La ligne est un TOC heading - sélectionner toutes les lignes de la section (max 128)
+                val sectionLineIds =
+                    runCatching {
+                        repository.getLineIdsForTocEntry(headingToc.id)
+                    }.getOrElse { emptyList() }
+
+                // Appliquer la même limite que CommentsForLineOrTocPagingSource (max 128 lignes)
+                val maxBatchSize = 128
+                val limitedLineIds =
+                    if (sectionLineIds.size > maxBatchSize) {
+                        // Sliding window centered on the heading line
+                        val idx = sectionLineIds.indexOf(line.id).coerceAtLeast(0)
+                        val half = maxBatchSize / 2
+                        val start = (idx - half).coerceAtLeast(0)
+                        val end = (start + maxBatchSize).coerceAtMost(sectionLineIds.size)
+                        sectionLineIds.subList(start, end)
+                    } else {
+                        sectionLineIds
+                    }
+
+                // Charger les objets Line pour les IDs limités
+                val sectionLines =
+                    runCatching {
+                        limitedLineIds.mapNotNull { id -> repository.getLine(id) }.toSet()
+                    }.getOrElse { setOf(line) }
+
+                stateManager.updateContent {
+                    copy(
+                        selectedLines = sectionLines,
+                        primarySelectedLineId = line.id,
+                        isTocEntrySelection = true, // TOC entry = afficher seulement targum par défaut
+                    )
+                }
+            } else {
+                // Ligne normale - sélection simple
+                stateManager.updateContent {
+                    copy(
+                        selectedLines = setOf(line),
+                        primarySelectedLineId = line.id,
+                        isTocEntrySelection = false,
+                    )
+                }
+            }
         }
 
         // Update selected TOC entry for highlighting in TOC
@@ -62,7 +143,8 @@ class ContentUseCase(
     }
 
     /**
-     * Charge et sélectionne une ligne spécifique
+     * Charge et sélectionne une ligne spécifique.
+     * Si la ligne est un TOC heading, sélectionne toutes les lignes de la section.
      */
     suspend fun loadAndSelectLine(lineId: Long): Line? {
         val line = repository.getLine(lineId)
@@ -75,9 +157,40 @@ class ContentUseCase(
             val halfLoad = PagingDefaults.LINES.INITIAL_LOAD_SIZE / 2
             val computedAnchorIndex = minOf(line.lineIndex, halfLoad)
 
+            // Vérifier si la ligne est un TOC heading pour sélectionner toute la section
+            val headingToc = runCatching { repository.getHeadingTocEntryByLineId(line.id) }.getOrNull()
+            val selectedLines: Set<Line> =
+                if (headingToc != null) {
+                    val sectionLineIds =
+                        runCatching {
+                            repository.getLineIdsForTocEntry(headingToc.id)
+                        }.getOrElse { emptyList() }
+
+                    // Appliquer la même limite que CommentsForLineOrTocPagingSource (max 128 lignes)
+                    val maxBatchSize = 128
+                    val limitedLineIds =
+                        if (sectionLineIds.size > maxBatchSize) {
+                            val idx = sectionLineIds.indexOf(line.id).coerceAtLeast(0)
+                            val half = maxBatchSize / 2
+                            val start = (idx - half).coerceAtLeast(0)
+                            val end = (start + maxBatchSize).coerceAtMost(sectionLineIds.size)
+                            sectionLineIds.subList(start, end)
+                        } else {
+                            sectionLineIds
+                        }
+
+                    runCatching {
+                        limitedLineIds.mapNotNull { id -> repository.getLine(id) }.toSet()
+                    }.getOrElse { setOf(line) }
+                } else {
+                    setOf(line)
+                }
+
             stateManager.updateContent {
                 copy(
-                    selectedLine = line,
+                    selectedLines = selectedLines,
+                    primarySelectedLineId = line.id,
+                    isTocEntrySelection = headingToc != null,
                     anchorId = line.id,
                     anchorIndex = computedAnchorIndex,
                     // When selection originates from TOC/breadcrumb, force anchoring at top
@@ -130,7 +243,7 @@ class ContentUseCase(
      */
     suspend fun navigateToPreviousLine(): Line? {
         val currentState = stateManager.state.first()
-        val currentLine = currentState.content.selectedLine ?: return null
+        val currentLine = currentState.content.primaryLine ?: return null
         val currentBook = currentState.navigation.selectedBook ?: return null
 
         debugln { "[navigateToPreviousLine] Current line index=${currentLine.lineIndex}" }
@@ -165,7 +278,7 @@ class ContentUseCase(
      */
     suspend fun navigateToNextLine(): Line? {
         val currentState = stateManager.state.first()
-        val currentLine = currentState.content.selectedLine ?: return null
+        val currentLine = currentState.content.primaryLine ?: return null
         val currentBook = currentState.navigation.selectedBook ?: return null
 
         debugln { "[navigateToNextLine] Current line index=${currentLine.lineIndex}" }

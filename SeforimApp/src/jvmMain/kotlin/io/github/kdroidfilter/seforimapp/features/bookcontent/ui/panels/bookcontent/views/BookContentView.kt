@@ -44,9 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.paging.LoadState
-import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
-import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
@@ -71,10 +69,14 @@ import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
 
 @OptIn(FlowPreview::class)
+@Suppress(
+    "ComposeUnstableCollections",
+    "ParamsComparedByRef",
+) // LazyPagingItems is inherently mutable; recomposition on paging changes is expected
 @Composable
 fun BookContentView(
     bookId: Long,
-    linesPagingData: Flow<PagingData<Line>>,
+    lazyPagingItems: LazyPagingItems<Line>,
     selectedLineIds: Set<Long>,
     primarySelectedLineId: Long?,
     onLineSelect: (Line, Boolean) -> Unit,
@@ -96,9 +98,6 @@ fun BookContentView(
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
     isSelected: Boolean = true,
 ) {
-    // Collect paging data
-    val lazyPagingItems: LazyPagingItems<Line> = linesPagingData.collectAsLazyPagingItems()
-
     // Don't use the saved scroll position initially if we have an anchor
     // The restoration will be handled after pagination loads
     val listState =

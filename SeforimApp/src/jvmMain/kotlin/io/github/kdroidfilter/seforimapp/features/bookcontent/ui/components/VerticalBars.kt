@@ -87,7 +87,7 @@ fun EndVerticalBar(
 
     val selectedBook = uiState.navigation.selectedBook
     val noBookSelected = selectedBook == null
-    val selectedLine = uiState.content.selectedLine
+    val selectedLine = uiState.content.primaryLine
     val providers = uiState.providers
 
     val lineAvailability by produceState(

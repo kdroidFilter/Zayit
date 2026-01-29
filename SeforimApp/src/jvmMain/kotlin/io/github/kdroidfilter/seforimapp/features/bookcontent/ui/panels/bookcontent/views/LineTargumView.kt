@@ -8,8 +8,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,11 +54,14 @@ import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.links
 import seforimapp.seforimapp.generated.resources.no_links_for_line
+import seforimapp.seforimapp.generated.resources.no_sources_for_line
 import seforimapp.seforimapp.generated.resources.select_line_for_links
+import seforimapp.seforimapp.generated.resources.select_line_for_sources
+import seforimapp.seforimapp.generated.resources.sources
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
-fun LineTargumView(
+private fun SingleLineTargumView(
     selectedLine: Line?,
     buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
@@ -292,16 +298,34 @@ fun LineTargumView(
 ) {
     val providers = uiState.providers ?: return
     val contentState = uiState.content
+    val selectedLineIds = contentState.selectedLineIds.toList()
+    // Multi-sélection manuelle (Ctrl+click) = afficher targum/sources de toutes les lignes
+    // TOC entry selection = afficher targum/sources seulement de la ligne primaire
+    val isManualMultiSelection = selectedLineIds.size > 1 && !contentState.isTocEntrySelection
     val windowInfo = LocalWindowInfo.current
     val findQuery by AppSettings.findQueryFlow(uiState.tabId).collectAsState("")
     val showFind by AppSettings.findBarOpenFlow(uiState.tabId).collectAsState()
     val activeQuery = if (showFind) findQuery else ""
 
+    // Sélectionner les bons providers et callbacks selon le type
+    val isSourceType = availabilityType == ConnectionType.SOURCE
+
+    val buildPagerFor =
+        if (isSourceType) providers.buildSourcesPagerFor else providers.buildLinksPagerFor
+    val getAvailableForLine =
+        if (isSourceType) providers.getAvailableSourcesForLine else providers.getAvailableLinksForLine
+    val initiallySelectedIds =
+        if (isSourceType) contentState.selectedSourceIds else contentState.selectedTargumSourceIds
+
     val onSelectedSourcesChange =
-        remember(contentState.selectedLine) {
+        remember(contentState.primaryLine, isSourceType) {
             { ids: Set<Long> ->
-                contentState.selectedLine?.let { line ->
-                    onEvent(BookContentEvent.SelectedTargumSourcesChanged(line.id, ids))
+                contentState.primaryLine?.let { line ->
+                    if (isSourceType) {
+                        onEvent(BookContentEvent.SelectedSourcesChanged(line.id, ids))
+                    } else {
+                        onEvent(BookContentEvent.SelectedTargumSourcesChanged(line.id, ids))
+                    }
                 }
                 Unit
             }
@@ -330,26 +354,261 @@ fun LineTargumView(
         }
 
     val onHide =
-        remember {
-            { onEvent(BookContentEvent.ToggleTargum) }
+        remember(isSourceType) {
+            {
+                if (isSourceType) {
+                    onEvent(BookContentEvent.ToggleSources)
+                } else {
+                    onEvent(BookContentEvent.ToggleTargum)
+                }
+            }
         }
 
-    LineTargumView(
-        selectedLine = contentState.selectedLine,
-        buildLinksPagerFor = providers.buildLinksPagerFor,
-        getAvailableLinksForLine = providers.getAvailableLinksForLine,
-        commentariesScrollIndex = contentState.commentariesScrollIndex,
-        commentariesScrollOffset = contentState.commentariesScrollOffset,
-        initiallySelectedSourceIds = contentState.selectedTargumSourceIds,
-        onSelectedSourcesChange = onSelectedSourcesChange,
-        onLinkClick = onLinkClick,
-        onScroll = onScroll,
-        onHide = onHide,
-        highlightQuery = activeQuery,
-        lineConnections = lineConnections,
-        availabilityType = availabilityType,
-        showDiacritics = showDiacritics,
+    // Titres et messages selon le type
+    val titleRes = if (isSourceType) Res.string.sources else Res.string.links
+    val selectLineRes =
+        if (isSourceType) Res.string.select_line_for_sources else Res.string.select_line_for_links
+    val emptyRes = if (isSourceType) Res.string.no_sources_for_line else Res.string.no_links_for_line
+    val fontCodeFlow = if (isSourceType) AppSettings.sourceFontCodeFlow else AppSettings.targumFontCodeFlow
+
+    if (isManualMultiSelection) {
+        MultiLineTargumView(
+            selectedLineIds = selectedLineIds,
+            uiState = uiState,
+            onEvent = onEvent,
+            showDiacritics = showDiacritics,
+            availabilityType = availabilityType,
+            highlightQuery = activeQuery,
+            onHide = onHide,
+        )
+    } else {
+        SingleLineTargumView(
+            selectedLine = contentState.primaryLine,
+            buildLinksPagerFor = buildPagerFor,
+            getAvailableLinksForLine = getAvailableForLine,
+            commentariesScrollIndex = contentState.commentariesScrollIndex,
+            commentariesScrollOffset = contentState.commentariesScrollOffset,
+            initiallySelectedSourceIds = initiallySelectedIds,
+            onSelectedSourcesChange = onSelectedSourcesChange,
+            onLinkClick = onLinkClick,
+            onScroll = onScroll,
+            onHide = onHide,
+            highlightQuery = activeQuery,
+            lineConnections = lineConnections,
+            availabilityType = availabilityType,
+            fontCodeFlow = fontCodeFlow,
+            titleRes = titleRes,
+            selectLineRes = selectLineRes,
+            emptyRes = emptyRes,
+            showDiacritics = showDiacritics,
+        )
+    }
+}
+
+/**
+ * Multi-line version of LineTargumView.
+ * Aggregates links/targum from all selected lines.
+ */
+@Composable
+private fun MultiLineTargumView(
+    selectedLineIds: List<Long>,
+    uiState: BookContentState,
+    onEvent: (BookContentEvent) -> Unit,
+    showDiacritics: Boolean,
+    availabilityType: ConnectionType,
+    highlightQuery: String,
+    onHide: () -> Unit,
+) {
+    val providers = uiState.providers ?: return
+    val contentState = uiState.content
+    val windowInfo = LocalWindowInfo.current
+
+    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val commentTextSize by animateFloatAsState(
+        targetValue = rawTextSize * 0.875f,
+        animationSpec = tween(durationMillis = 300),
+        label = "multiLineLinkTextSizeAnim",
     )
+    val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
+    val lineHeight by animateFloatAsState(
+        targetValue = rawLineHeight,
+        animationSpec = tween(durationMillis = 300),
+        label = "multiLineLinkLineHeightAnim",
+    )
+
+    // Selected font for targumim
+    val targumFontCode by AppSettings.targumFontCodeFlow.collectAsState()
+    val targumFontFamily = FontCatalog.familyFor(targumFontCode)
+    val boldScaleForPlatform =
+        remember(targumFontCode) {
+            val lacksBold = targumFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
+            if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
+        }
+
+    val paneInteractionSource = remember { MutableInteractionSource() }
+
+    // Use multi-line provider to get aggregated available links
+    val titleToIdMap by produceState<Map<String, Long>>(emptyMap(), selectedLineIds, availabilityType) {
+        value =
+            when (availabilityType) {
+                ConnectionType.SOURCE -> providers.getAvailableSourcesForLines(selectedLineIds)
+                else -> providers.getAvailableLinksForLines(selectedLineIds)
+            }
+    }
+
+    val titleRes =
+        when (availabilityType) {
+            ConnectionType.SOURCE -> Res.string.sources
+            else -> Res.string.links
+        }
+    val emptyRes =
+        when (availabilityType) {
+            ConnectionType.SOURCE -> Res.string.no_sources_for_line
+            else -> Res.string.no_links_for_line
+        }
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .hoverable(paneInteractionSource),
+    ) {
+        PaneHeader(
+            label = stringResource(titleRes),
+            interactionSource = paneInteractionSource,
+            onHide = onHide,
+        )
+
+        Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+            if (titleToIdMap.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = stringResource(emptyRes))
+                }
+            } else {
+                val availableSources =
+                    remember(titleToIdMap) {
+                        titleToIdMap.entries
+                            .sortedBy { it.key }
+                            .map { SourceMeta(it.key, it.value) }
+                    }
+
+                // Build pagers for each source using multi-line provider
+                val sourceSections =
+                    availableSources.mapNotNull { meta ->
+                        val pagerFlow =
+                            remember(selectedLineIds, meta.bookId, availabilityType) {
+                                when (availabilityType) {
+                                    ConnectionType.SOURCE ->
+                                        providers.buildSourcesPagerForLines(selectedLineIds, meta.bookId)
+
+                                    else ->
+                                        providers.buildLinksPagerForLines(selectedLineIds, meta.bookId)
+                                }.distinctUntilChanged()
+                            }
+                        val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
+                        SourceSection(
+                            title = meta.title,
+                            bookId = meta.bookId,
+                            items = lazyPagingItems,
+                        )
+                    }
+
+                val listState =
+                    rememberSaveable(
+                        selectedLineIds,
+                        saver = LazyListState.Saver,
+                    ) {
+                        LazyListState(
+                            firstVisibleItemIndex = contentState.commentariesScrollIndex,
+                            firstVisibleItemScrollOffset = contentState.commentariesScrollOffset,
+                        )
+                    }
+
+                LaunchedEffect(listState) {
+                    snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+                        .distinctUntilChanged()
+                        .collect { (index, offset) ->
+                            onEvent(BookContentEvent.CommentariesScrolled(index, offset))
+                        }
+                }
+
+                SelectionContainer {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        sourceSections.forEach { section ->
+                            item(key = "header-${section.bookId}") {
+                                Text(
+                                    text = section.title,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = (commentTextSize * 1.1f).sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+
+                            items(
+                                count = section.items.itemCount,
+                                key = { index ->
+                                    section.items
+                                        .peek(index)
+                                        ?.link
+                                        ?.id ?: "multi-source-${section.bookId}-$index"
+                                },
+                            ) { index ->
+                                section.items[index]?.let { item ->
+                                    LinkItem(
+                                        linkId = item.link.id,
+                                        targetText = item.targetText,
+                                        commentTextSize = commentTextSize,
+                                        lineHeight = lineHeight,
+                                        fontFamily = targumFontFamily,
+                                        boldScale = boldScaleForPlatform,
+                                        highlightQuery = highlightQuery,
+                                        onClick = {
+                                            val mods = windowInfo.keyboardModifiers
+                                            if (mods.isCtrlPressed || mods.isMetaPressed) {
+                                                onEvent(
+                                                    BookContentEvent.OpenCommentaryTarget(
+                                                        bookId = item.link.targetBookId,
+                                                        lineId = item.link.targetLineId,
+                                                    ),
+                                                )
+                                            }
+                                        },
+                                        showDiacritics = showDiacritics,
+                                    )
+                                }
+                            }
+
+                            when (val state = section.items.loadState.append) {
+                                is LoadState.Error ->
+                                    item(key = "append-error-${section.bookId}") {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Text(text = state.error.message ?: "Error loading more")
+                                        }
+                                    }
+
+                                is LoadState.Loading ->
+                                    item(key = "append-loading-${section.bookId}") {
+                                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                            CircularProgressIndicator()
+                                        }
+                                    }
+
+                                else -> {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 private data class SourceSection(

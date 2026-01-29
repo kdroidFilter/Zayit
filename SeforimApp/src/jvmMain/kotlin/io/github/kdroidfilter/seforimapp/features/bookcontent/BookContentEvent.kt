@@ -70,6 +70,7 @@ sealed interface BookContentEvent {
     // Content events
     data class LineSelected(
         val line: Line,
+        val isModifierPressed: Boolean = false,
     ) : BookContentEvent
 
     data class LoadAndSelectLine(

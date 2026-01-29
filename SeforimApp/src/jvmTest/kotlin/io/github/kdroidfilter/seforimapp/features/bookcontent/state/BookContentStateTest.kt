@@ -51,7 +51,8 @@ class BookContentStateTest {
         val state = ContentState()
 
         assertTrue(state.lines.isEmpty())
-        assertNull(state.selectedLine)
+        assertTrue(state.selectedLines.isEmpty())
+        assertNull(state.primaryLine)
         assertTrue(state.commentaries.isEmpty())
         assertFalse(state.showCommentaries)
         assertFalse(state.showTargum)

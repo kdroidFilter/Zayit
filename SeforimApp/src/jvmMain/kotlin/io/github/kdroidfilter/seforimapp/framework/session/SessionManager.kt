@@ -77,7 +77,8 @@ object SessionManager {
                             append(
                                 "  - BookContent tabId=${dest.tabId} destBookId=${dest.bookId} " +
                                     "persistedBookId=${bc?.selectedBookId} " +
-                                    "selectedLineId=${bc?.selectedLineId} " +
+                                    "selectedLineIds=${bc?.selectedLineIds} " +
+                                    "primarySelectedLineId=${bc?.primarySelectedLineId} " +
                                     "anchorLineId=${bc?.contentAnchorLineId} " +
                                     "scroll=(${bc?.contentScrollIndex},${bc?.contentScrollOffset})\n",
                             )
@@ -154,7 +155,8 @@ object SessionManager {
                                 append(
                                     "  - BookContent tabId=${dest.tabId} destBookId=${dest.bookId} " +
                                         "persistedBookId=${bc?.selectedBookId} " +
-                                        "selectedLineId=${bc?.selectedLineId} " +
+                                        "selectedLineIds=${bc?.selectedLineIds} " +
+                                        "primarySelectedLineId=${bc?.primarySelectedLineId} " +
                                         "anchorLineId=${bc?.contentAnchorLineId} " +
                                         "scroll=(${bc?.contentScrollIndex},${bc?.contentScrollOffset})\n",
                                 )

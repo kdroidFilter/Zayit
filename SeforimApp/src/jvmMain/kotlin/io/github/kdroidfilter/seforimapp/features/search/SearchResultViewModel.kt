@@ -1687,7 +1687,9 @@ class SearchResultViewModel(
                     bookContent =
                         current.bookContent.copy(
                             selectedBookId = result.bookId,
-                            selectedLineId = result.lineId,
+                            selectedLineIds = setOf(result.lineId),
+                            primarySelectedLineId = result.lineId,
+                            isTocEntrySelection = false,
                             contentAnchorLineId = result.lineId,
                             contentAnchorIndex = 0,
                             contentScrollIndex = 0,
@@ -1735,7 +1737,9 @@ class SearchResultViewModel(
                     bookContent =
                         current.bookContent.copy(
                             selectedBookId = result.bookId,
-                            selectedLineId = result.lineId,
+                            selectedLineIds = setOf(result.lineId),
+                            primarySelectedLineId = result.lineId,
+                            isTocEntrySelection = false,
                             contentAnchorLineId = result.lineId,
                             contentAnchorIndex = 0,
                             contentScrollIndex = 0,

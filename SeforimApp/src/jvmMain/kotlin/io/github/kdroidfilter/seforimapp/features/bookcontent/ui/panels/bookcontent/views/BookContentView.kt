@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -27,6 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
@@ -68,8 +71,9 @@ import org.jetbrains.jewel.ui.component.Text
 fun BookContentView(
     bookId: Long,
     linesPagingData: Flow<PagingData<Line>>,
-    selectedLineId: Long?,
-    onLineSelect: (Line) -> Unit,
+    selectedLineIds: Set<Long>,
+    primarySelectedLineId: Long?,
+    onLineSelect: (Line, Boolean) -> Unit,
     onEvent: (BookContentEvent) -> Unit,
     tabId: String,
     showDiacritics: Boolean,
@@ -172,8 +176,8 @@ fun BookContentView(
     }
 
     // Ensure the selected line is prefetched even if it is not visible yet
-    LaunchedEffect(selectedLineId, lineConnections) {
-        val id = selectedLineId ?: return@LaunchedEffect
+    LaunchedEffect(primarySelectedLineId, lineConnections) {
+        val id = primarySelectedLineId ?: return@LaunchedEffect
         if (lineConnections[id] == null) {
             onPrefetchLineConnections(listOf(id))
         }
@@ -181,11 +185,11 @@ fun BookContentView(
 
     // Ensure the selected line is visible when explicitly requested (keyboard/nav)
     // without forcing it to the very top of the viewport.
-    LaunchedEffect(scrollToLineTimestamp, selectedLineId, topAnchorTimestamp, topAnchorLineId) {
-        if (scrollToLineTimestamp == 0L || selectedLineId == null) return@LaunchedEffect
+    LaunchedEffect(scrollToLineTimestamp, primarySelectedLineId, topAnchorTimestamp, topAnchorLineId) {
+        if (scrollToLineTimestamp == 0L || primarySelectedLineId == null) return@LaunchedEffect
 
         // Skip minimal bring-into-view when a top-anchoring request is active for this selection
-        val isTopAnchorRequest = (topAnchorTimestamp == scrollToLineTimestamp && topAnchorLineId == selectedLineId)
+        val isTopAnchorRequest = (topAnchorTimestamp == scrollToLineTimestamp && topAnchorLineId == primarySelectedLineId)
         if (isTopAnchorRequest) return@LaunchedEffect
 
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
@@ -193,7 +197,7 @@ fun BookContentView(
         }
 
         val snapshot = lazyPagingItems.itemSnapshotList
-        val index = snapshot.indices.firstOrNull { snapshot[it]?.id == selectedLineId }
+        val index = snapshot.indices.firstOrNull { snapshot[it]?.id == primarySelectedLineId }
         if (index != null) {
             val first = listState.firstVisibleItemIndex
             val last =
@@ -546,15 +550,15 @@ fun BookContentView(
                                         entryId = entry.id,
                                         level = entry.level,
                                         text = entry.text,
-                                        onClick = { onLineSelect(line) },
+                                        onClick = { onLineSelect(line, false) },
                                     )
                                 }
                                 LineItem(
                                     lineId = line.id,
                                     lineContent = line.content,
-                                    isSelected = selectedLineId == line.id,
+                                    isSelected = line.id in selectedLineIds,
                                     fontFamily = hebrewFontFamily,
-                                    onClick = { onLineSelect(line) },
+                                    onClick = { isModifier -> onLineSelect(line, isModifier) },
                                     scrollToLineTimestamp = scrollToLineTimestamp,
                                     baseTextSize = textSize,
                                     lineHeight = lineHeight,
@@ -763,7 +767,7 @@ private fun LineItem(
     lineContent: String,
     isSelected: Boolean,
     fontFamily: FontFamily,
-    onClick: () -> Unit,
+    onClick: (isModifierPressed: Boolean) -> Unit,
     scrollToLineTimestamp: Long,
     baseTextSize: Float = 16f,
     lineHeight: Float = 1.5f,
@@ -857,7 +861,17 @@ private fun LineItem(
             Modifier.fillMaxWidth()
         }.bringIntoViewRequester(bringRequester)
             .pointerInput(lineId) {
-                detectTapGestures(onTap = { onClick() })
+                awaitEachGesture {
+                    // Wait for press and capture keyboard modifiers from the event
+                    val downEvent = awaitPointerEvent(PointerEventPass.Main)
+                    if (!downEvent.buttons.isPrimaryPressed) return@awaitEachGesture
+                    val isModifier = downEvent.keyboardModifiers.isCtrlPressed || downEvent.keyboardModifiers.isMetaPressed
+                    // Wait for release
+                    val up = waitForUpOrCancellation()
+                    if (up != null && !up.isConsumed) {
+                        onClick(isModifier)
+                    }
+                }
             }
 
     Box(

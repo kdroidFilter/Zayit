@@ -422,6 +422,7 @@ private fun MultiLineTargumView(
     val providers = uiState.providers ?: return
     val contentState = uiState.content
     val windowInfo = LocalWindowInfo.current
+    val currentOnEvent by rememberUpdatedState(onEvent)
 
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val commentTextSize by animateFloatAsState(
@@ -528,7 +529,7 @@ private fun MultiLineTargumView(
                     snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
                         .distinctUntilChanged()
                         .collect { (index, offset) ->
-                            onEvent(BookContentEvent.CommentariesScrolled(index, offset))
+                            currentOnEvent(BookContentEvent.CommentariesScrolled(index, offset))
                         }
                 }
 

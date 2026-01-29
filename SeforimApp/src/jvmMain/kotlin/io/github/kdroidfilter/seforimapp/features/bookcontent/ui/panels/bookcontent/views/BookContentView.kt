@@ -17,6 +17,7 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.v2.ScrollbarAdapter
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
@@ -64,6 +65,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import org.jetbrains.jewel.components.VerticalPagingScrollbar
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
@@ -97,6 +99,7 @@ fun BookContentView(
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
     isSelected: Boolean = true,
+    totalLines: Int = 0,
 ) {
     // Don't use the saved scroll position initially if we have an anchor
     // The restoration will be handled after pagination loads
@@ -538,7 +541,7 @@ fun BookContentView(
                 // which can crash when paging composes/uncomposes items.
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize().padding(end = 16.dp),
+                    modifier = Modifier.fillMaxSize().padding(end = 12.dp),
                 ) {
                     items(
                         count = lazyPagingItems.itemCount,
@@ -652,6 +655,27 @@ fun BookContentView(
                         }
                     }
                 }
+
+                // Custom scrollbar using known total line count for stable size
+                val scrollbarAdapter =
+                    remember(listState, lazyPagingItems, totalLines, onEvent) {
+                        PagingScrollbarAdapter(
+                            listState = listState,
+                            lazyPagingItems = lazyPagingItems,
+                            totalItems = totalLines,
+                            onScrollToLineIndex = { lineIndex ->
+                                onEvent(BookContentEvent.ScrollToLineIndex(lineIndex))
+                            },
+                        )
+                    }
+                VerticalPagingScrollbar(
+                    adapter = scrollbarAdapter,
+                    modifier =
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .fillMaxHeight()
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                )
             }
 
             // Find-in-page bar overlay with result count badge (uniform style)
@@ -991,5 +1015,75 @@ private fun ErrorIndicator(message: String) {
             text = message,
             color = Color.Red,
         )
+    }
+}
+
+/**
+ * Custom scrollbar adapter for paging content that uses the known total line count
+ * instead of the currently loaded item count. This provides a stable scrollbar size
+ * that doesn't shrink as more content loads.
+ *
+ * @param listState The LazyListState from the LazyColumn
+ * @param lazyPagingItems The paging items to get actual line indices from
+ * @param totalItems The total number of lines in the book
+ * @param onScrollToLineIndex Callback to request navigation to a specific line index (for unloaded content)
+ */
+private class PagingScrollbarAdapter(
+    private val listState: LazyListState,
+    private val lazyPagingItems: LazyPagingItems<Line>,
+    private val totalItems: Int,
+    private val onScrollToLineIndex: (Int) -> Unit,
+) : ScrollbarAdapter {
+    // Use a fixed item height estimate for stable scrollbar size
+    // This is calibrated based on typical line heights in the app
+    private val fixedItemHeight: Double = 50.0
+
+    override val contentSize: Double
+        get() = totalItems * fixedItemHeight
+
+    override val viewportSize: Double
+        get() =
+            listState.layoutInfo.viewportSize.height
+                .toDouble()
+
+    override val scrollOffset: Double
+        get() {
+            // Get the actual lineIndex from the first visible item
+            val firstVisibleItemInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+            val firstVisiblePagingIndex = firstVisibleItemInfo?.index ?: 0
+
+            // Get the Line object to access its lineIndex (absolute position in book)
+            val line =
+                if (firstVisiblePagingIndex < lazyPagingItems.itemCount) {
+                    lazyPagingItems.peek(firstVisiblePagingIndex)
+                } else {
+                    null
+                }
+
+            // Use lineIndex (0-based position in book) instead of paging index
+            val absoluteLineIndex = line?.lineIndex ?: firstVisiblePagingIndex
+
+            return absoluteLineIndex * fixedItemHeight +
+                listState.firstVisibleItemScrollOffset
+        }
+
+    override suspend fun scrollTo(scrollOffset: Double) {
+        // Calculate target line index in the book
+        val targetLineIndex = (scrollOffset / fixedItemHeight).toInt().coerceIn(0, totalItems - 1)
+
+        // Find the paging index that corresponds to this line index
+        val snapshot = lazyPagingItems.itemSnapshotList
+        val pagingIndex =
+            snapshot.indices.firstOrNull { idx ->
+                snapshot[idx]?.lineIndex == targetLineIndex
+            }
+
+        if (pagingIndex != null) {
+            val targetOffset = (scrollOffset % fixedItemHeight).toInt()
+            listState.scrollToItem(pagingIndex, targetOffset)
+        } else {
+            // Target line is not loaded - request ViewModel to load content at this position
+            onScrollToLineIndex(targetLineIndex)
+        }
     }
 }

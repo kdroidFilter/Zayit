@@ -174,6 +174,7 @@ private fun BookContentPanelContent(
                             lineConnections = connectionsCache,
                             onPrefetchLineConnections = prefetchConnections,
                             isSelected = isSelected,
+                            totalLines = selectedBook.totalLines,
                         )
                     },
                     secondContent =

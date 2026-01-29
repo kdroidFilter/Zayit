@@ -555,7 +555,7 @@ private fun MultiLineCommentaryListView(
 
     VerticallyScrollableContainer(
         scrollState = listState as ScrollableState,
-        scrollbarModifier = Modifier.fillMaxHeight(),
+        scrollbarModifier = Modifier.fillMaxHeight().padding(start = 4.dp, top = 4.dp, end = 0.dp, bottom = 4.dp),
     ) {
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             items(
@@ -874,52 +874,57 @@ private fun CommentaryListView(
             }
     }
 
-    LazyColumn(
-        state = listState,
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        val event = awaitPointerEvent(PointerEventPass.Initial)
-                        val isShiftPrimaryPress = event.buttons.isPrimaryPressed && event.keyboardModifiers.isShiftPressed
-                        if (isShiftPrimaryPress) {
-                            event.changes.forEach { it.consume() }
-                        }
-                    }
-                },
+    VerticallyScrollableContainer(
+        scrollState = listState as ScrollableState,
+        scrollbarModifier = Modifier.padding(start = 4.dp, top = 4.dp, end = 0.dp, bottom = 4.dp),
     ) {
-        items(
-            count = lazyPagingItems.itemCount,
-            key = { index -> lazyPagingItems[index]?.link?.id ?: index }, // Clé stable
-        ) { index ->
-            lazyPagingItems[index]?.let { commentary ->
-                CommentaryItem(
-                    linkId = commentary.link.id,
-                    targetText = commentary.targetText,
-                    textSizes = config.textSizes,
-                    fontFamily = config.fontFamily,
-                    boldScale = config.boldScale,
-                    highlightQuery = highlightQuery,
-                    showDiacritics = config.showDiacritics,
-                    onClick = { config.onCommentClick(commentary) },
-                )
-            }
-        }
-
-        // Loading states
-        when (val loadState = lazyPagingItems.loadState.refresh) {
-            is LoadState.Loading -> {
-                item { LoadingIndicator() }
-            }
-
-            is LoadState.Error -> {
-                item {
-                    ErrorMessage(loadState.error)
+        LazyColumn(
+            state = listState,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val isShiftPrimaryPress = event.buttons.isPrimaryPressed && event.keyboardModifiers.isShiftPressed
+                            if (isShiftPrimaryPress) {
+                                event.changes.forEach { it.consume() }
+                            }
+                        }
+                    },
+        ) {
+            items(
+                count = lazyPagingItems.itemCount,
+                key = { index -> lazyPagingItems[index]?.link?.id ?: index }, // Clé stable
+            ) { index ->
+                lazyPagingItems[index]?.let { commentary ->
+                    CommentaryItem(
+                        linkId = commentary.link.id,
+                        targetText = commentary.targetText,
+                        textSizes = config.textSizes,
+                        fontFamily = config.fontFamily,
+                        boldScale = config.boldScale,
+                        highlightQuery = highlightQuery,
+                        showDiacritics = config.showDiacritics,
+                        onClick = { config.onCommentClick(commentary) },
+                    )
                 }
             }
 
-            else -> {}
+            // Loading states
+            when (val loadState = lazyPagingItems.loadState.refresh) {
+                is LoadState.Loading -> {
+                    item { LoadingIndicator() }
+                }
+
+                is LoadState.Error -> {
+                    item {
+                        ErrorMessage(loadState.error)
+                    }
+                }
+
+                else -> {}
+            }
         }
     }
 }

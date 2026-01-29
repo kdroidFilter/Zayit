@@ -103,6 +103,10 @@ sealed interface BookContentEvent {
         val scrollOffset: Int,
     ) : BookContentEvent
 
+    data class ScrollToLineIndex(
+        val lineIndex: Int,
+    ) : BookContentEvent
+
     data object NavigateToPreviousLine : BookContentEvent
 
     data object NavigateToNextLine : BookContentEvent

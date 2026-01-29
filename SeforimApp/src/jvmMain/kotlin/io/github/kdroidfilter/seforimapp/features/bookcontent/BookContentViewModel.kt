@@ -446,6 +446,9 @@ class BookContentViewModel(
                         event.scrollOffset,
                     )
 
+                is BookContentEvent.ScrollToLineIndex ->
+                    scrollToLineIndex(event.lineIndex)
+
                 is BookContentEvent.ParagraphScrolled ->
                     contentUseCase.updateParagraphScrollPosition(event.position)
 
@@ -750,6 +753,29 @@ class BookContentViewModel(
                 }
             } finally {
                 stateManager.setLoading(false)
+            }
+        }
+    }
+
+    /**
+     * Scrolls to a specific line index in the current book.
+     * Used by scrollbar drag operations to navigate to unloaded content.
+     */
+    private fun scrollToLineIndex(lineIndex: Int) {
+        val book = stateManager.state.value.navigation.selectedBook ?: return
+        viewModelScope.launch {
+            val line = repository.getLineByIndex(book.id, lineIndex) ?: return@launch
+            // Update anchor and reload content centered on this line
+            stateManager.updateContent {
+                copy(
+                    anchorId = line.id,
+                    scrollIndex = 0,
+                    scrollOffset = 0,
+                )
+            }
+            _linesPagingData.value = contentUseCase.buildLinesPager(book.id, line.id)
+            stateManager.updateContent {
+                copy(scrollToLineTimestamp = System.currentTimeMillis())
             }
         }
     }

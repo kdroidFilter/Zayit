@@ -147,9 +147,10 @@ private fun BookContentPanelContent(
                         BookContentView(
                             bookId = selectedBook.id,
                             linesPagingData = providers.linesPagingData,
-                            selectedLineId = uiState.content.selectedLine?.id,
-                            onLineSelect = { line ->
-                                onEvent(BookContentEvent.LineSelected(line))
+                            selectedLineIds = uiState.content.selectedLineIds,
+                            primarySelectedLineId = uiState.content.primarySelectedLineId,
+                            onLineSelect = { line, isModifier ->
+                                onEvent(BookContentEvent.LineSelected(line, isModifier))
                             },
                             onEvent = onEvent,
                             tabId = uiState.tabId,
@@ -264,37 +265,11 @@ private fun SourcesPane(
     lineConnections: Map<Long, LineConnectionsSnapshot>,
     showDiacritics: Boolean,
 ) {
-    val providers = uiState.providers ?: return
-    val windowInfo = LocalWindowInfo.current
     LineTargumView(
-        selectedLine = uiState.content.selectedLine,
-        buildLinksPagerFor = providers.buildSourcesPagerFor,
-        getAvailableLinksForLine = providers.getAvailableSourcesForLine,
-        commentariesScrollIndex = uiState.content.commentariesScrollIndex,
-        commentariesScrollOffset = uiState.content.commentariesScrollOffset,
-        initiallySelectedSourceIds = uiState.content.selectedSourceIds,
+        uiState = uiState,
+        onEvent = onEvent,
         lineConnections = lineConnections,
         availabilityType = ConnectionType.SOURCE,
-        onSelectedSourcesChange = { ids ->
-            uiState.content.selectedLine?.let { line ->
-                onEvent(BookContentEvent.SelectedSourcesChanged(line.id, ids))
-            }
-        },
-        onLinkClick = { commentary ->
-            val mods = windowInfo.keyboardModifiers
-            if (mods.isCtrlPressed || mods.isMetaPressed) {
-                onEvent(BookContentEvent.OpenCommentaryTarget(commentary.link.targetBookId, commentary.link.targetLineId))
-            }
-        },
-        onScroll = { index, offset ->
-            onEvent(BookContentEvent.CommentariesScrolled(index, offset))
-        },
-        onHide = { onEvent(BookContentEvent.ToggleSources) },
-        highlightQuery = "",
-        fontCodeFlow = AppSettings.sourceFontCodeFlow,
-        titleRes = Res.string.sources,
-        selectLineRes = Res.string.select_line_for_sources,
-        emptyRes = Res.string.no_sources_for_line,
         showDiacritics = showDiacritics,
     )
 }

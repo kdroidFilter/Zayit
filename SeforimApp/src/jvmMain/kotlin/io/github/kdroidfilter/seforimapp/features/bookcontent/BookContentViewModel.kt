@@ -85,7 +85,7 @@ class BookContentViewModel(
     val uiState: StateFlow<BookContentState> =
         stateManager.state
             .map { state ->
-                val lineId = state.content.selectedLine?.id
+                val lineId = state.content.primarySelectedLineId
                 val bookId = state.navigation.selectedBook?.id
                 // Prefer per-line selection; if empty, fall back to sticky per-book selection
                 val selectedCommentators: Set<Long> =
@@ -124,6 +124,13 @@ class BookContentViewModel(
                             getAvailableLinksForLine = commentariesUseCase::getAvailableLinks,
                             buildSourcesPagerFor = commentariesUseCase::buildSourcesPager,
                             getAvailableSourcesForLine = commentariesUseCase::getAvailableSources,
+                            // Multi-line providers
+                            buildCommentariesPagerForLines = commentariesUseCase::buildCommentariesPagerForLines,
+                            getCommentatorGroupsForLines = commentariesUseCase::getCommentatorGroupsForLines,
+                            buildLinksPagerForLines = commentariesUseCase::buildLinksPagerForLines,
+                            getAvailableLinksForLines = commentariesUseCase::getAvailableLinksForLines,
+                            buildSourcesPagerForLines = commentariesUseCase::buildSourcesPagerForLines,
+                            getAvailableSourcesForLines = commentariesUseCase::getAvailableSourcesForLines,
                         ),
                     content =
                         state.content.copy(
@@ -137,7 +144,7 @@ class BookContentViewModel(
                 SharingStarted.WhileSubscribed(5000),
                 run {
                     val s = stateManager.state.value
-                    val lineId = s.content.selectedLine?.id
+                    val lineId = s.content.primarySelectedLineId
                     val bookId = s.navigation.selectedBook?.id
                     val selectedCommentators: Set<Long> =
                         when {
@@ -175,6 +182,13 @@ class BookContentViewModel(
                                 getAvailableLinksForLine = commentariesUseCase::getAvailableLinks,
                                 buildSourcesPagerFor = commentariesUseCase::buildSourcesPager,
                                 getAvailableSourcesForLine = commentariesUseCase::getAvailableSources,
+                                // Multi-line providers
+                                buildCommentariesPagerForLines = commentariesUseCase::buildCommentariesPagerForLines,
+                                getCommentatorGroupsForLines = commentariesUseCase::getCommentatorGroupsForLines,
+                                buildLinksPagerForLines = commentariesUseCase::buildLinksPagerForLines,
+                                getAvailableLinksForLines = commentariesUseCase::getAvailableLinksForLines,
+                                buildSourcesPagerForLines = commentariesUseCase::buildSourcesPagerForLines,
+                                getAvailableSourcesForLines = commentariesUseCase::getAvailableSourcesForLines,
                             ),
                         content =
                             s.content.copy(
@@ -200,7 +214,9 @@ class BookContentViewModel(
 
         debugln {
             "[BookContentViewModel] init tabId=$tabId argBookId=$argBookId persistedBookId=$persistedBookId " +
-                "selectedLineId=${persistedBookState?.selectedLineId} " +
+                "selectedLineIds=${persistedBookState?.selectedLineIds} " +
+                "primarySelectedLineId=${persistedBookState?.primarySelectedLineId} " +
+                "isTocEntrySelection=${persistedBookState?.isTocEntrySelection} " +
                 "anchorLineId=${persistedBookState?.contentAnchorLineId} " +
                 "scroll=(${persistedBookState?.contentScrollIndex},${persistedBookState?.contentScrollOffset})"
         }
@@ -359,7 +375,7 @@ class BookContentViewModel(
 
                 // Content
                 is BookContentEvent.LineSelected ->
-                    selectLine(event.line)
+                    selectLine(event.line, event.isModifierPressed)
 
                 is BookContentEvent.LoadAndSelectLine ->
                     loadAndSelectLine(event.lineId)
@@ -549,8 +565,13 @@ class BookContentViewModel(
                             persisted?.let {
                                 it.showCommentaries || it.showTargum || it.showSources
                             } == true
+                        // Restaurer la sélection multi-ligne ou simple
+                        val selectedLineIds = persisted?.selectedLineIds?.takeIf { it.isNotEmpty() }
+                        val primaryLineId = persisted?.primarySelectedLineId?.takeIf { it > 0 }
+                        val isTocEntrySelection = persisted?.isTocEntrySelection ?: false
+
                         val lineIdToSelect: Long? =
-                            persisted?.selectedLineId?.takeIf { it > 0 }
+                            primaryLineId
                                 ?: persisted?.contentAnchorLineId?.takeIf { it > 0 && shouldEnsureSelectionForPanes }
 
                         // Restore path: load the book without resetting persisted scroll/selection.
@@ -559,7 +580,22 @@ class BookContentViewModel(
                         if (lineIdToSelect != null) {
                             repository.getLine(lineIdToSelect)?.let { line ->
                                 if (line.bookId == book.id) {
-                                    selectLine(line)
+                                    if (isTocEntrySelection || selectedLineIds == null || selectedLineIds.size <= 1) {
+                                        // TOC entry ou sélection simple: utiliser selectLine qui gère automatiquement
+                                        selectLine(line)
+                                    } else {
+                                        // Multi-sélection manuelle: restaurer toutes les lignes
+                                        val lines = selectedLineIds.mapNotNull { id -> repository.getLine(id) }.toSet()
+                                        if (lines.isNotEmpty()) {
+                                            stateManager.updateContent {
+                                                copy(
+                                                    selectedLines = lines,
+                                                    primarySelectedLineId = primaryLineId,
+                                                    isTocEntrySelection = false,
+                                                )
+                                            }
+                                        }
+                                    }
                                     runCatching { tocUseCase.expandPathToLine(line.id) }
                                 }
                             }
@@ -662,11 +698,12 @@ class BookContentViewModel(
 
                 // Resolve initial line anchor if any, otherwise fall back to the first TOC's first line
                 // so that opening a book from the category tree selects the first meaningful section.
+                val currentPrimaryLine = state.content.primaryLine
                 val resolvedInitialLineId: Long? =
                     when {
                         forceAnchorId != null -> forceAnchorId
                         shouldUseAnchor -> state.content.anchorId
-                        state.content.selectedLine != null -> state.content.selectedLine.id
+                        currentPrimaryLine != null -> currentPrimaryLine.id
                         else -> {
                             // Compute from TOC: take the first root TOC entry (or its first leaf) and
                             // select its first associated line. Fallback to the very first line of the book.
@@ -705,7 +742,7 @@ class BookContentViewModel(
                     if (forceAnchorId != null) {
                         loadAndSelectLine(resolvedInitialLineId, recreatePager = false)
                         runCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
-                    } else if (!shouldUseAnchor && state.content.selectedLine == null) {
+                    } else if (!shouldUseAnchor && state.content.primaryLine == null) {
                         loadAndSelectLine(resolvedInitialLineId, recreatePager = false)
                         // Expand TOC path to the resolved initial line (first entry/leaf)
                         runCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
@@ -728,11 +765,31 @@ class BookContentViewModel(
     }
 
     /** Selects a line */
-    private suspend fun selectLine(line: Line) {
-        contentUseCase.selectLine(line)
-        commentariesUseCase.reapplySelectedCommentators(line)
-        commentariesUseCase.reapplySelectedLinkSources(line)
-        commentariesUseCase.reapplySelectedSources(line)
+    private suspend fun selectLine(
+        line: Line,
+        isModifierPressed: Boolean = false,
+    ) {
+        contentUseCase.selectLine(line, isModifierPressed)
+
+        // Après la sélection, vérifier si on a plusieurs lignes sélectionnées
+        val currentState = stateManager.state.value
+        val selectedLines = currentState.content.selectedLines
+        val bookId = currentState.navigation.selectedBook?.id ?: line.bookId
+
+        if (selectedLines.size > 1) {
+            // Multi-sélection: utiliser les méthodes multi-lignes
+            val lineIds = selectedLines.map { it.id }
+            val primaryLineId = currentState.content.primarySelectedLineId ?: lineIds.firstOrNull() ?: return
+            commentariesUseCase.reapplySelectedCommentatorsForLines(lineIds, primaryLineId, bookId)
+            commentariesUseCase.reapplySelectedLinkSourcesForLines(lineIds, primaryLineId, bookId)
+            commentariesUseCase.reapplySelectedSourcesForLines(lineIds, primaryLineId, bookId)
+        } else {
+            // Sélection simple: utiliser les méthodes existantes
+            val primaryLine = selectedLines.firstOrNull() ?: return
+            commentariesUseCase.reapplySelectedCommentators(primaryLine)
+            commentariesUseCase.reapplySelectedLinkSources(primaryLine)
+            commentariesUseCase.reapplySelectedSources(primaryLine)
+        }
     }
 
     /** Loads and selects a line */
@@ -750,9 +807,25 @@ class BookContentViewModel(
                     _linesPagingData.value = contentUseCase.buildLinesPager(book.id, line.id)
                 }
 
-                commentariesUseCase.reapplySelectedCommentators(line)
-                commentariesUseCase.reapplySelectedLinkSources(line)
-                commentariesUseCase.reapplySelectedSources(line)
+                // Après la sélection, vérifier si on a plusieurs lignes sélectionnées (TOC heading)
+                val currentState = stateManager.state.value
+                val selectedLines = currentState.content.selectedLines
+
+                if (selectedLines.size > 1) {
+                    // Multi-sélection: utiliser les méthodes multi-lignes
+                    val selectedLineIds = selectedLines.map { it.id }
+                    val primaryLineId = currentState.content.primarySelectedLineId ?: selectedLineIds.firstOrNull() ?: line.id
+                    commentariesUseCase.reapplySelectedCommentatorsForLines(selectedLineIds, primaryLineId, book.id)
+                    commentariesUseCase.reapplySelectedLinkSourcesForLines(selectedLineIds, primaryLineId, book.id)
+                    commentariesUseCase.reapplySelectedSourcesForLines(selectedLineIds, primaryLineId, book.id)
+                } else {
+                    // Sélection simple: utiliser les méthodes existantes
+                    val primaryLine = selectedLines.firstOrNull() ?: line
+                    commentariesUseCase.reapplySelectedCommentators(primaryLine)
+                    commentariesUseCase.reapplySelectedLinkSources(primaryLine)
+                    commentariesUseCase.reapplySelectedSources(primaryLine)
+                }
+
                 // Sync alternative TOC selection if applicable
                 if (syncAltToc) {
                     altTocUseCase.selectAltEntryForLine(line.id)
@@ -785,7 +858,9 @@ class BookContentViewModel(
                             // Mimic the previous UX: show TOC on first open in the new tab.
                             isTocVisible = true,
                             // Reset per-book scroll/anchor in the new tab to start clean.
-                            selectedLineId = -1L,
+                            selectedLineIds = emptySet(),
+                            primarySelectedLineId = -1L,
+                            isTocEntrySelection = false,
                             contentAnchorLineId = -1L,
                             contentAnchorIndex = 0,
                             contentScrollIndex = 0,
@@ -833,7 +908,9 @@ class BookContentViewModel(
                 bookContent =
                     current.bookContent.copy(
                         selectedBookId = bookId,
-                        selectedLineId = lineId,
+                        selectedLineIds = setOf(lineId),
+                        primarySelectedLineId = lineId,
+                        isTocEntrySelection = false,
                         contentAnchorLineId = lineId,
                         contentAnchorIndex = 0,
                         contentScrollIndex = 0,

@@ -15,6 +15,7 @@ import org.jetbrains.compose.splitpane.SplitPaneState
 @Immutable
 data class Providers(
     val linesPagingData: Flow<PagingData<Line>>,
+    // Single-line pagers
     val buildCommentariesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     val getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
     val getCommentatorGroupsForLine: suspend (Long) -> List<CommentatorGroup>,
@@ -23,6 +24,13 @@ data class Providers(
     val getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
     val buildSourcesPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     val getAvailableSourcesForLine: suspend (Long) -> Map<String, Long>,
+    // Multi-line pagers (for multi-selection)
+    val buildCommentariesPagerForLines: (List<Long>, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    val getCommentatorGroupsForLines: suspend (List<Long>) -> List<CommentatorGroup>,
+    val buildLinksPagerForLines: (List<Long>, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    val getAvailableLinksForLines: suspend (List<Long>) -> Map<String, Long>,
+    val buildSourcesPagerForLines: (List<Long>, Long?) -> Flow<PagingData<CommentaryWithText>>,
+    val getAvailableSourcesForLines: suspend (List<Long>) -> Map<String, Long>,
 )
 
 /**
@@ -102,7 +110,10 @@ data class TocState(
 data class ContentState(
     // Data
     val lines: List<Line> = emptyList(),
-    val selectedLine: Line? = null,
+    val selectedLines: Set<Line> = emptySet(),
+    val primarySelectedLineId: Long? = null,
+    // True si la multi-sélection vient d'un clic sur un TOC entry (pas Ctrl+click)
+    val isTocEntrySelection: Boolean = false,
     val commentaries: List<CommentaryWithText> = emptyList(),
     // Visibility
     val showCommentaries: Boolean = false,
@@ -145,7 +156,17 @@ data class ContentState(
     val topAnchorRequestTimestamp: Long = 0L,
     // Transient UI signals (not persisted)
     val maxCommentatorsLimitSignal: Long = 0L,
-)
+) {
+    /** The primary selected line (for TOC highlight, breadcrumb, etc.) */
+    val primaryLine: Line?
+        get() =
+            selectedLines.firstOrNull { it.id == primarySelectedLineId }
+                ?: selectedLines.firstOrNull()
+
+    /** Set of selected line IDs for efficient lookup */
+    val selectedLineIds: Set<Long>
+        get() = selectedLines.mapTo(mutableSetOf()) { it.id }
+}
 
 /**
  * Layout state uses SplitPaneState to directly bind with UI panes

@@ -9,7 +9,7 @@ import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimapp.pagination.LinesPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.PagingDefaults
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforimlibrary.dao.repository.LineSelectionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -18,7 +18,7 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
  * UseCase pour gérer le contenu du livre et la navigation dans les lignes
  */
 class ContentUseCase(
-    private val repository: SeforimRepository,
+    private val repository: LineSelectionRepository,
     private val stateManager: BookContentStateManager,
 ) {
     /**

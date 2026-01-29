@@ -103,8 +103,11 @@ fun LineCommentsView(
         )
         Column(modifier = Modifier.padding(horizontal = 8.dp)) {
             when {
-                selectedLine == null -> CenteredMessage(stringResource(Res.string.select_line_for_commentaries))
-                isManualMultiSelection ->
+                selectedLine == null -> {
+                    CenteredMessage(stringResource(Res.string.select_line_for_commentaries))
+                }
+
+                isManualMultiSelection -> {
                     MultiLineCommentariesContent(
                         selectedLineIds = selectedLineIds,
                         uiState = uiState,
@@ -115,7 +118,9 @@ fun LineCommentsView(
                         isCommentatorsListVisible = showCommentatorsList,
                         showDiacritics = showDiacritics,
                     )
-                else ->
+                }
+
+                else -> {
                     CommentariesContent(
                         selectedLineId = selectedLine.id,
                         uiState = uiState,
@@ -127,6 +132,7 @@ fun LineCommentsView(
                         prefetchedGroups = lineConnections[selectedLine.id]?.commentatorGroups,
                         showDiacritics = showDiacritics,
                     )
+                }
             }
         }
     }
@@ -903,11 +909,16 @@ private fun CommentaryListView(
 
         // Loading states
         when (val loadState = lazyPagingItems.loadState.refresh) {
-            is LoadState.Loading -> item { LoadingIndicator() }
-            is LoadState.Error ->
+            is LoadState.Loading -> {
+                item { LoadingIndicator() }
+            }
+
+            is LoadState.Error -> {
                 item {
                     ErrorMessage(loadState.error)
                 }
+            }
+
             else -> {}
         }
     }

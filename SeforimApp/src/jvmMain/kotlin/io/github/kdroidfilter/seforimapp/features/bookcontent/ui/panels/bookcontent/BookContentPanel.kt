@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -128,6 +129,9 @@ private fun BookContentPanelContent(
             }
         }
 
+    // Collect paging data here to keep BookContentView skippable
+    val lazyPagingItems = providers.linesPagingData.collectAsLazyPagingItems()
+
     Column(modifier = Modifier.fillMaxSize()) {
         EnhancedVerticalSplitPane(
             splitPaneState = uiState.layout.contentSplitState.asStable(),
@@ -138,7 +142,7 @@ private fun BookContentPanelContent(
                     firstContent = {
                         BookContentView(
                             bookId = selectedBook.id,
-                            linesPagingData = providers.linesPagingData,
+                            lazyPagingItems = lazyPagingItems,
                             selectedLineIds = uiState.content.selectedLineIds,
                             primarySelectedLineId = uiState.content.primarySelectedLineId,
                             onLineSelect = { line, isModifier ->

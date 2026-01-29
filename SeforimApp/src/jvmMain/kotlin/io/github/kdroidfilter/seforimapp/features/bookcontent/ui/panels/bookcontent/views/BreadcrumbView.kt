@@ -142,7 +142,7 @@ fun BreadcrumbView(
     val book = uiState.navigation.selectedBook ?: return
     BreadcrumbView(
         book = book,
-        selectedLine = uiState.content.selectedLine,
+        selectedLine = uiState.content.primaryLine,
         tocEntries = uiState.toc.entries,
         tocChildren = uiState.toc.children,
         tocPath = uiState.toc.breadcrumbPath,

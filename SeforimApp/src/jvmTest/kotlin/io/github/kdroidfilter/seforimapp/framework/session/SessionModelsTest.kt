@@ -54,7 +54,9 @@ class SessionModelsTest {
     fun `BookContentPersistedState has correct content defaults`() {
         val state = BookContentPersistedState()
 
-        assertEquals(-1L, state.selectedLineId)
+        assertTrue(state.selectedLineIds.isEmpty())
+        assertEquals(-1L, state.primarySelectedLineId)
+        assertFalse(state.isTocEntrySelection)
         assertFalse(state.showCommentaries)
         assertFalse(state.showTargum)
         assertFalse(state.showSources)
@@ -103,10 +105,10 @@ class SessionModelsTest {
     @Test
     fun `BookContentPersistedState copy works correctly`() {
         val original = BookContentPersistedState(selectedBookId = 100L)
-        val modified = original.copy(selectedLineId = 200L)
+        val modified = original.copy(primarySelectedLineId = 200L)
 
         assertEquals(100L, modified.selectedBookId)
-        assertEquals(200L, modified.selectedLineId)
+        assertEquals(200L, modified.primarySelectedLineId)
     }
 
     @Test

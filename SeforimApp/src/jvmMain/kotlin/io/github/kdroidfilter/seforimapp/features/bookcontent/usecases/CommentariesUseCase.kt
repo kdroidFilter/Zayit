@@ -9,6 +9,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorI
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.pagination.CommentsForLineOrTocPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.LineTargumPagingSource
+import io.github.kdroidfilter.seforimapp.pagination.MultiLineCommentsPagingSource
+import io.github.kdroidfilter.seforimapp.pagination.MultiLineLinksPagingSource
 import io.github.kdroidfilter.seforimapp.pagination.PagingDefaults
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -110,6 +112,156 @@ class CommentariesUseCase(
                 LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.SOURCE))
             },
         ).flow.cachedIn(scope)
+    }
+
+    // ========== Multi-line pagers for multi-selection ==========
+
+    /**
+     * Construit un Pager pour les commentaires de plusieurs lignes
+     */
+    fun buildCommentariesPagerForLines(
+        lineIds: List<Long>,
+        commentatorId: Long? = null,
+    ): Flow<PagingData<CommentaryWithText>> {
+        val ids = commentatorId?.let { setOf(it) } ?: emptySet()
+
+        return Pager(
+            config = PagingDefaults.COMMENTS.config(placeholders = false),
+            pagingSourceFactory = {
+                MultiLineCommentsPagingSource(repository, lineIds, ids)
+            },
+        ).flow.cachedIn(scope)
+    }
+
+    /**
+     * Construit un Pager pour les liens/targum de plusieurs lignes
+     */
+    fun buildLinksPagerForLines(
+        lineIds: List<Long>,
+        sourceBookId: Long? = null,
+    ): Flow<PagingData<CommentaryWithText>> {
+        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+
+        return Pager(
+            config = PagingDefaults.COMMENTS.config(placeholders = false),
+            pagingSourceFactory = {
+                MultiLineLinksPagingSource(repository, lineIds, ids, setOf(ConnectionType.TARGUM))
+            },
+        ).flow.cachedIn(scope)
+    }
+
+    /**
+     * Construit un Pager pour les sources de plusieurs lignes
+     */
+    fun buildSourcesPagerForLines(
+        lineIds: List<Long>,
+        sourceBookId: Long? = null,
+    ): Flow<PagingData<CommentaryWithText>> {
+        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+
+        return Pager(
+            config = PagingDefaults.COMMENTS.config(placeholders = false),
+            pagingSourceFactory = {
+                MultiLineLinksPagingSource(repository, lineIds, ids, setOf(ConnectionType.SOURCE))
+            },
+        ).flow.cachedIn(scope)
+    }
+
+    /**
+     * Récupère les commentateurs disponibles pour plusieurs lignes (union)
+     */
+    suspend fun getAvailableCommentatorsForLines(lineIds: List<Long>): Map<String, Long> {
+        if (lineIds.isEmpty()) return emptyMap()
+        return try {
+            val allGroups = lineIds.flatMap { getCommentatorGroups(it) }
+            val map = LinkedHashMap<String, Long>()
+            allGroups.forEach { group ->
+                group.commentators.forEach { item ->
+                    if (!map.containsKey(item.name)) {
+                        map[item.name] = item.bookId
+                    }
+                }
+            }
+            map
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    /**
+     * Récupère les groupes de commentateurs pour plusieurs lignes (union)
+     */
+    suspend fun getCommentatorGroupsForLines(lineIds: List<Long>): List<CommentatorGroup> {
+        if (lineIds.isEmpty()) return emptyList()
+        return try {
+            // Aggregate all commentator groups from all lines, deduplicated by book ID
+            val seenBookIds = mutableSetOf<Long>()
+            val allGroups = mutableListOf<CommentatorGroup>()
+
+            for (lineId in lineIds) {
+                val groups = getCommentatorGroups(lineId)
+                for (group in groups) {
+                    val newCommentators = group.commentators.filter { seenBookIds.add(it.bookId) }
+                    if (newCommentators.isNotEmpty()) {
+                        val existingGroup = allGroups.find { it.label == group.label }
+                        if (existingGroup != null) {
+                            val idx = allGroups.indexOf(existingGroup)
+                            allGroups[idx] =
+                                existingGroup.copy(
+                                    commentators = existingGroup.commentators + newCommentators,
+                                )
+                        } else {
+                            allGroups.add(group.copy(commentators = newCommentators))
+                        }
+                    }
+                }
+            }
+            allGroups
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Récupère les liens disponibles pour plusieurs lignes (union)
+     */
+    suspend fun getAvailableLinksForLines(lineIds: List<Long>): Map<String, Long> {
+        if (lineIds.isEmpty()) return emptyMap()
+        return try {
+            val map = LinkedHashMap<String, Long>()
+            for (lineId in lineIds) {
+                val links = getAvailableLinks(lineId)
+                links.forEach { (name, id) ->
+                    if (!map.containsKey(name)) {
+                        map[name] = id
+                    }
+                }
+            }
+            map
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    /**
+     * Récupère les sources disponibles pour plusieurs lignes (union)
+     */
+    suspend fun getAvailableSourcesForLines(lineIds: List<Long>): Map<String, Long> {
+        if (lineIds.isEmpty()) return emptyMap()
+        return try {
+            val map = LinkedHashMap<String, Long>()
+            for (lineId in lineIds) {
+                val sources = getAvailableSources(lineId)
+                sources.forEach { (name, id) ->
+                    if (!map.containsKey(name)) {
+                        map[name] = id
+                    }
+                }
+            }
+            map
+        } catch (e: Exception) {
+            emptyMap()
+        }
     }
 
     /**
@@ -795,6 +947,90 @@ class CommentariesUseCase(
 
             if (intersection.isNotEmpty()) {
                 updateSelectedSources(line.id, intersection)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    /**
+     * Réapplique les commentateurs sélectionnés pour plusieurs lignes (multi-sélection).
+     * Ne sélectionne des commentateurs que s'il y en a de mémorisés pour ce livre.
+     * Par défaut, seul le targum est affiché pour les TOC entries.
+     */
+    suspend fun reapplySelectedCommentatorsForLines(
+        lineIds: List<Long>,
+        primaryLineId: Long,
+        bookId: Long,
+    ) {
+        val currentState = stateManager.state.first()
+        val sticky = currentState.content.selectedCommentatorsByBook[bookId] ?: emptySet()
+
+        // Si aucun commentateur mémorisé, ne rien sélectionner (seul le targum par défaut)
+        if (sticky.isEmpty()) return
+
+        try {
+            // Obtenir l'union des commentateurs disponibles pour toutes les lignes
+            val available = getAvailableCommentatorsForLines(lineIds)
+            if (available.isEmpty()) return
+
+            val desired = mutableListOf<Long>()
+            for ((_, id) in available) {
+                if (id in sticky) desired.add(id)
+                if (desired.size >= MAX_COMMENTATORS) break
+            }
+
+            if (desired.isNotEmpty()) {
+                updateSelectedCommentatorsForLine(primaryLineId, desired.toSet())
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    /**
+     * Réapplique les sources de liens sélectionnées pour plusieurs lignes (multi-sélection)
+     */
+    suspend fun reapplySelectedLinkSourcesForLines(
+        lineIds: List<Long>,
+        primaryLineId: Long,
+        bookId: Long,
+    ) {
+        val currentState = stateManager.state.first()
+        val remembered = currentState.content.selectedLinkSourcesByBook[bookId] ?: emptySet()
+
+        if (remembered.isEmpty()) return
+
+        try {
+            val available = getAvailableLinksForLines(lineIds)
+            val availableIds = available.values.toSet()
+            val intersection = remembered.intersect(availableIds)
+
+            if (intersection.isNotEmpty()) {
+                updateSelectedLinkSources(primaryLineId, intersection)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    /**
+     * Réapplique les sources sélectionnées pour plusieurs lignes (multi-sélection)
+     */
+    suspend fun reapplySelectedSourcesForLines(
+        lineIds: List<Long>,
+        primaryLineId: Long,
+        bookId: Long,
+    ) {
+        val currentState = stateManager.state.first()
+        val remembered = currentState.content.selectedSourcesByBook[bookId] ?: emptySet()
+
+        if (remembered.isEmpty()) return
+
+        try {
+            val available = getAvailableSourcesForLines(lineIds)
+            val availableIds = available.values.toSet()
+            val intersection = remembered.intersect(availableIds)
+
+            if (intersection.isNotEmpty()) {
+                updateSelectedSources(primaryLineId, intersection)
             }
         } catch (_: Exception) {
         }

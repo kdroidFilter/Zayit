@@ -4,10 +4,10 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforimlibrary.dao.repository.LineSelectionRepository
 
 class LinesPagingSource(
-    private val repository: SeforimRepository,
+    private val repository: LineSelectionRepository,
     private val bookId: Long,
     private val initialLineId: Long? = null, // For scrolling to a specific line
 ) : PagingSource<Int, Line>() {

@@ -134,7 +134,7 @@ class BookContentViewModelTest {
         val contentState = stateManager.state.value.content
 
         // Then: It has sensible defaults
-        assertEquals(null, contentState.selectedLine)
+        assertEquals(null, contentState.primaryLine)
         assertEquals(-1L, contentState.anchorId)
         assertEquals(0, contentState.scrollIndex)
         assertEquals(0, contentState.scrollOffset)

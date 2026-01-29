@@ -102,9 +102,11 @@ object NativeCleanupTransformHelper {
             }
         }
 
-        // Request cleaned-jar for all runtime classpaths (existing and future)
+        // Request cleaned-jar for runtime classpaths, excluding test configurations
         project.configurations.configureEach {
-            if (name.contains("RuntimeClasspath", ignoreCase = true)) {
+            val isRuntimeClasspath = name.contains("RuntimeClasspath", ignoreCase = true)
+            val isTestConfig = name.contains("Test", ignoreCase = true)
+            if (isRuntimeClasspath && !isTestConfig) {
                 attributes {
                     attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, "cleaned-jar")
                 }

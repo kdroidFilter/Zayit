@@ -7,6 +7,7 @@ import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStor
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -206,7 +207,9 @@ class SessionPersistenceIntegrationTest {
         val state = BookContentPersistedState()
 
         assertEquals(-1L, state.selectedBookId)
-        assertEquals(-1L, state.selectedLineId)
+        assertTrue(state.selectedLineIds.isEmpty())
+        assertEquals(-1L, state.primarySelectedLineId)
+        assertFalse(state.isTocEntrySelection)
         assertEquals(-1L, state.contentAnchorLineId)
         assertEquals(0, state.contentScrollIndex)
         assertEquals(0, state.contentScrollOffset)
@@ -220,7 +223,9 @@ class SessionPersistenceIntegrationTest {
         val original =
             BookContentPersistedState(
                 selectedBookId = 100,
-                selectedLineId = 200,
+                selectedLineIds = setOf(200L, 201L),
+                primarySelectedLineId = 200,
+                isTocEntrySelection = true,
                 contentAnchorLineId = 300,
                 contentScrollIndex = 10,
                 contentScrollOffset = 50,
@@ -232,7 +237,9 @@ class SessionPersistenceIntegrationTest {
         val copy = original.copy(selectedBookId = 999)
 
         assertEquals(999L, copy.selectedBookId)
-        assertEquals(200L, copy.selectedLineId)
+        assertEquals(setOf(200L, 201L), copy.selectedLineIds)
+        assertEquals(200L, copy.primarySelectedLineId)
+        assertTrue(copy.isTocEntrySelection)
         assertEquals(300L, copy.contentAnchorLineId)
         assertEquals(10, copy.contentScrollIndex)
         assertEquals(50, copy.contentScrollOffset)
@@ -396,7 +403,13 @@ class SessionPersistenceIntegrationTest {
 
         // 4. User selects a line in the book
         store.update("tab-1") { current ->
-            current.copy(bookContent = current.bookContent.copy(selectedLineId = 500))
+            current.copy(
+                bookContent =
+                    current.bookContent.copy(
+                        selectedLineIds = setOf(500L),
+                        primarySelectedLineId = 500,
+                    ),
+            )
         }
 
         // 5. Take a snapshot (simulating session save)
@@ -412,7 +425,8 @@ class SessionPersistenceIntegrationTest {
         assertEquals(100L, tab1State.bookContent.selectedBookId)
         assertEquals(50, tab1State.bookContent.contentScrollIndex)
         assertEquals(100, tab1State.bookContent.contentScrollOffset)
-        assertEquals(500L, tab1State.bookContent.selectedLineId)
+        assertEquals(setOf(500L), tab1State.bookContent.selectedLineIds)
+        assertEquals(500L, tab1State.bookContent.primarySelectedLineId)
         assertTrue(tab1State.bookContent.isTocVisible)
 
         val tab2State = store.get("tab-2")

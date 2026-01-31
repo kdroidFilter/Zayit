@@ -90,6 +90,7 @@ private fun SearchToolbar(
     onQueryChange: (String) -> Unit,
     globalExtended: Boolean,
     onGlobalExtendedChange: (Boolean) -> Unit,
+    baseBooksHadNoResults: Boolean = false,
 ) {
     val searchState = remember { TextFieldState() }
     val currentOnQueryChange by rememberUpdatedState(onQueryChange)
@@ -148,7 +149,13 @@ private fun SearchToolbar(
         CustomToggleableChip(
             checked = globalExtended,
             onClick = onGlobalExtendedChange,
-            tooltipText = stringResource(Res.string.search_extended_tooltip),
+            tooltipText =
+                if (baseBooksHadNoResults) {
+                    stringResource(Res.string.search_extended_no_base_results)
+                } else {
+                    stringResource(Res.string.search_extended_tooltip)
+                },
+            enabled = !baseBooksHadNoResults,
         )
     }
 }
@@ -417,6 +424,7 @@ private fun SearchResultContentMvi(
                 onQueryChange = actions.onQueryChange,
                 globalExtended = state.globalExtended,
                 onGlobalExtendedChange = actions.onGlobalExtendedChange,
+                baseBooksHadNoResults = state.baseBooksHadNoResults,
             )
 
             Spacer(Modifier.height(12.dp))

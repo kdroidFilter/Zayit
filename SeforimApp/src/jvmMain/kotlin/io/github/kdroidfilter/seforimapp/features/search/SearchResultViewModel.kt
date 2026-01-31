@@ -50,6 +50,7 @@ private const val LAZY_PAGE_SIZE = 25
 data class SearchUiState(
     val query: String = "",
     val globalExtended: Boolean = false,
+    val baseBooksHadNoResults: Boolean = false,
     val isLoading: Boolean = false,
     val results: List<SearchResult> = emptyList(),
     val scopeCategoryPath: List<Category> = emptyList(),
@@ -827,7 +828,14 @@ class SearchResultViewModel(
         currentJob =
             viewModelScope.launch(Dispatchers.Default) {
                 _uiState.value =
-                    _uiState.value.copy(isLoading = true, results = emptyList(), hasMore = false, progressCurrent = 0, progressTotal = null)
+                    _uiState.value.copy(
+                        isLoading = true,
+                        results = emptyList(),
+                        hasMore = false,
+                        progressCurrent = 0,
+                        progressTotal = null,
+                        baseBooksHadNoResults = false,
+                    )
                 // Reset facetsComputed flag for new search
                 facetsComputed = false
                 // Reset aggregates and counts for a clean run
@@ -908,13 +916,27 @@ class SearchResultViewModel(
                             } // Use baseBookOnly parameter instead
                         }
 
-                    val facets =
+                    var facets =
                         lucene.computeFacets(
                             query = q,
                             near = DEFAULT_NEAR,
                             bookIds = facetsBookIds,
                             baseBookOnly = baseBookOnly,
                         )
+
+                    // Fallback: si aucun résultat en mode "livres de base", basculer en mode approfondi
+                    if (facets != null && facets.totalHits == 0L && baseBookOnly) {
+                        _uiState.value = _uiState.value.copy(globalExtended = true, baseBooksHadNoResults = true)
+                        updatePersistedSearch { it.copy(globalExtended = true) }
+
+                        facets =
+                            lucene.computeFacets(
+                                query = q,
+                                near = DEFAULT_NEAR,
+                                bookIds = facetsBookIds,
+                                baseBookOnly = false,
+                            )
+                    }
 
                     if (facets != null) {
                         // Set aggregates immediately

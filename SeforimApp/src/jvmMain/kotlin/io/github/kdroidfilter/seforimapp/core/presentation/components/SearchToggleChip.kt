@@ -34,6 +34,7 @@ fun CustomToggleableChip(
     tooltipText: String,
     modifier: Modifier = Modifier,
     withPadding: Boolean = true,
+    enabled: Boolean = true,
 ) {
     // Style inspiré de l'IntegratedSwitch
     Tooltip(
@@ -58,8 +59,9 @@ fun CustomToggleableChip(
             // Bouton avec icône Telescope au lieu du texte
             TelescopeIconButton(
                 isSelected = checked,
-                onClick = { onClick(!checked) },
+                onClick = { if (enabled) onClick(!checked) },
                 withPadding = withPadding,
+                enabled = enabled,
             )
         }
     }
@@ -71,15 +73,26 @@ fun TelescopeIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     withPadding: Boolean = true,
+    enabled: Boolean = true,
 ) {
     val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) Color(0xFF0E639C) else Color.Transparent,
+        targetValue =
+            when {
+                !enabled -> Color(0xFF0E639C).copy(alpha = 0.5f)
+                isSelected -> Color(0xFF0E639C)
+                else -> Color.Transparent
+            },
         animationSpec = tween(200),
         label = "backgroundColor",
     )
 
     val iconColor by animateColorAsState(
-        targetValue = if (isSelected) Color.White else Color(0xFFCCCCCC),
+        targetValue =
+            when {
+                !enabled -> Color.White.copy(alpha = 0.5f)
+                isSelected -> Color.White
+                else -> Color(0xFFCCCCCC)
+            },
         animationSpec = tween(200),
         label = "iconColor",
     )
@@ -87,10 +100,14 @@ fun TelescopeIconButton(
     Box(
         modifier =
             modifier
-                .pointerHoverIcon(PointerIcon.Hand)
+                .pointerHoverIcon(if (enabled) PointerIcon.Hand else PointerIcon.Default)
                 .clip(RoundedCornerShape(18.dp))
                 .background(backgroundColor)
-                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onClick() }
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    enabled = enabled,
+                ) { onClick() }
                 .then(if (withPadding) Modifier.padding(horizontal = 8.dp, vertical = 4.dp) else Modifier)
                 .defaultMinSize(minWidth = 32.dp, minHeight = 24.dp),
         contentAlignment = Alignment.Center,

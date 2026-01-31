@@ -411,6 +411,7 @@
     <string name="search_near_selector_label">קרבה</string>
     <string name="search_extended_label">חיפוש מורחב (כל הספרים)</string>
     <string name="search_extended_tooltip">הפעלת אפשרות זו מאפשרת חיפוש בכל ספרי הספרייה, אחרת החיפוש יתבצע רק בספרי יסוד</string>
+    <string name="search_extended_no_base_results">לא נמצאו תוצאות בספרי יסוד</string>
     <!-- Tab/window title for search: "Search results : query" -->
     <string name="search_results_tab_title">תוצאות חיפוש : %1$s</string>
     <!-- Home tab label: "Home - AppName" -->

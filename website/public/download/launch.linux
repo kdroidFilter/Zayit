@@ -5,14 +5,33 @@ set -euo pipefail
 REPO="kdroidFilter/Zayit"
 API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 
-# Detect package system
+# Detect package system using /etc/os-release (more reliable than checking commands)
 pkg_type=""
-if command -v dpkg >/dev/null 2>&1; then
-  pkg_type="deb"
-elif command -v rpm >/dev/null 2>&1; then
-  pkg_type="rpm"
-else
-  echo "Neither dpkg nor rpm found on this system. Unsupported distribution."
+if [ -f /etc/os-release ]; then
+  # RPM-based distributions
+  if grep -qiE "fedora|rhel|red hat|centos|alma|rocky|oracle|mageia|mandriva|opensuse|suse" /etc/os-release; then
+    pkg_type="rpm"
+  # DEB-based distributions
+  elif grep -qiE "debian|ubuntu|mint|pop|elementary|zorin|kali|mx linux|lmde" /etc/os-release; then
+    pkg_type="deb"
+  fi
+fi
+
+# Fallback: if os-release didn't identify the type, check for package managers
+if [ -z "${pkg_type}" ]; then
+  if command -v apt-get >/dev/null 2>&1; then
+    pkg_type="deb"
+  elif command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1 || command -v zypper >/dev/null 2>&1; then
+    pkg_type="rpm"
+  elif command -v dpkg >/dev/null 2>&1; then
+    pkg_type="deb"
+  elif command -v rpm >/dev/null 2>&1; then
+    pkg_type="rpm"
+  fi
+fi
+
+if [ -z "${pkg_type}" ]; then
+  echo "Could not detect package type. Unsupported distribution."
   exit 1
 fi
 

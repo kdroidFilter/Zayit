@@ -16,6 +16,7 @@ class SearchUiStateTest {
 
         assertEquals("", state.query)
         assertFalse(state.globalExtended)
+        assertFalse(state.baseBooksHadNoResults)
         assertFalse(state.isLoading)
         assertTrue(state.results.isEmpty())
         assertTrue(state.scopeCategoryPath.isEmpty())
@@ -128,5 +129,80 @@ class SearchUiStateTest {
 
         assertEquals(state1, state2)
         assertTrue(state1 != state3)
+    }
+
+    // Tests for baseBooksHadNoResults fallback feature
+
+    @Test
+    fun `state can be created with baseBooksHadNoResults true`() {
+        val state = SearchUiState(baseBooksHadNoResults = true)
+        assertTrue(state.baseBooksHadNoResults)
+    }
+
+    @Test
+    fun `fallback state has globalExtended true and baseBooksHadNoResults true`() {
+        // When fallback occurs, both flags should be true
+        val state = SearchUiState(globalExtended = true, baseBooksHadNoResults = true)
+        assertTrue(state.globalExtended)
+        assertTrue(state.baseBooksHadNoResults)
+    }
+
+    @Test
+    fun `changing query should allow resetting baseBooksHadNoResults`() {
+        // Simulate: fallback occurred, then user changes query
+        val fallbackState =
+            SearchUiState(
+                query = "original",
+                globalExtended = true,
+                baseBooksHadNoResults = true,
+            )
+
+        // When query changes, baseBooksHadNoResults should be reset
+        val newQueryState = fallbackState.copy(query = "new query", baseBooksHadNoResults = false)
+
+        assertEquals("new query", newQueryState.query)
+        assertTrue(newQueryState.globalExtended) // Still extended from before
+        assertFalse(newQueryState.baseBooksHadNoResults) // Reset, toggle now enabled
+    }
+
+    @Test
+    fun `new search should reset baseBooksHadNoResults`() {
+        // Simulate: fallback occurred, then user starts new search
+        val fallbackState =
+            SearchUiState(
+                query = "search",
+                globalExtended = true,
+                baseBooksHadNoResults = true,
+                results = emptyList(),
+            )
+
+        // When new search starts, loading and baseBooksHadNoResults should reset
+        val searchingState =
+            fallbackState.copy(
+                isLoading = true,
+                baseBooksHadNoResults = false,
+            )
+
+        assertTrue(searchingState.isLoading)
+        assertFalse(searchingState.baseBooksHadNoResults)
+    }
+
+    @Test
+    fun `toggle should be logically disabled when baseBooksHadNoResults is true`() {
+        val state = SearchUiState(globalExtended = true, baseBooksHadNoResults = true)
+
+        // The toggle enabled state is derived from baseBooksHadNoResults
+        val toggleEnabled = !state.baseBooksHadNoResults
+
+        assertFalse(toggleEnabled)
+    }
+
+    @Test
+    fun `toggle should be logically enabled when baseBooksHadNoResults is false`() {
+        val state = SearchUiState(globalExtended = true, baseBooksHadNoResults = false)
+
+        val toggleEnabled = !state.baseBooksHadNoResults
+
+        assertTrue(toggleEnabled)
     }
 }

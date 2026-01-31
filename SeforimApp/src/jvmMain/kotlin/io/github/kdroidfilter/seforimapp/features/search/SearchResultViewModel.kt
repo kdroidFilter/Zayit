@@ -791,7 +791,7 @@ class SearchResultViewModel(
      */
     fun setQuery(query: String) {
         val q = query.trim()
-        _uiState.value = _uiState.value.copy(query = q)
+        _uiState.value = _uiState.value.copy(query = q, baseBooksHadNoResults = false)
         updatePersistedSearch { it.copy(query = q) }
         if (q.isNotEmpty()) {
             // Keep the tab title synced with the current query

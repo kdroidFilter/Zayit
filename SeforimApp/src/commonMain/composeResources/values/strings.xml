@@ -40,16 +40,16 @@
     <string name="settings_font_sources_label">גופן למקורות</string>
     <string name="settings_font_reset_defaults">איפוס לברירת מחדל</string>
     <!-- Font names -->
-    <string name="font_noto_serif_hebrew">Noto Serif Hebrew</string>
-    <string name="font_noto_rashi_hebrew">Noto Rashi Hebrew</string>
-    <string name="font_frank_ruhl_libre">Frank Ruhl Libre</string>
-    <string name="font_miriam_libre">Miriam Libre</string>
-    <string name="font_open_sans">Open Sans</string>
-    <string name="font_open_sans_italic">Open Sans Italic</string>
-    <string name="font_cardo">Cardo</string>
-    <string name="font_tinos">Tinos</string>
-    <string name="font_libertinus_serif">Libertinus Serif</string>
-    <string name="font_bona_nova_sc">Bona Nova SC</string>
+    <string name="font_noto_serif_hebrew">נוטו סריף עברית</string>
+    <string name="font_noto_rashi_hebrew">נוטו רש"י עברית</string>
+    <string name="font_frank_ruhl_libre">פרנק רוהל ליברה</string>
+    <string name="font_miriam_libre">מרים ליברה</string>
+    <string name="font_open_sans">אופן סנס</string>
+    <string name="font_open_sans_italic">אופן סנס נטוי</string>
+    <string name="font_cardo">קארדו</string>
+    <string name="font_tinos">טינוס</string>
+    <string name="font_libertinus_serif">ליברטינוס סריף</string>
+    <string name="font_bona_nova_sc">בונה נובה</string>
     <string name="font_keter_aram_tsova">כתר ארם צובה</string>
     <string name="font_keter_yg">כתר יג</string>
     <string name="font_rashi_amiti">רשי אמיתי</string>
@@ -57,6 +57,20 @@
     <string name="font_taamey_ashkenaz">טעמי אשכנז</string>
     <string name="font_taamey_david_clm">טעמי דוד</string>
     <string name="font_taamey_frank_clm">טעמי פרנק</string>
+    <!-- Culmus Fonts -->
+    <string name="font_aharoni_clm">אהרוני</string>
+    <string name="font_david_clm">דוד</string>
+    <string name="font_drugulin_clm">דרוגולין</string>
+    <string name="font_ellinia_clm">אליניה</string>
+    <string name="font_frank_ruehl_clm">פרנק רוהל</string>
+    <string name="font_hadasim_clm">הדסים</string>
+    <string name="font_miriam_clm">מרים</string>
+    <string name="font_miriam_mono_clm">מרים מונו</string>
+    <string name="font_nachlieli_clm">נחלאלי</string>
+    <string name="font_simple_clm">סימפל</string>
+    <string name="font_stam_ashkenaz_clm">סת"ם אשכנז</string>
+    <string name="font_stam_sefarad_clm">סת"ם ספרד</string>
+    <string name="font_yehuda_clm">יהודה</string>
 
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>

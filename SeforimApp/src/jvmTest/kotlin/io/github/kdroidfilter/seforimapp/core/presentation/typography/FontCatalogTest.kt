@@ -15,7 +15,7 @@ class FontCatalogTest {
 
     @Test
     fun `FontCatalog has expected number of options`() {
-        assertEquals(15, FontCatalog.options.size)
+        assertEquals(28, FontCatalog.options.size)
     }
 
     @Test

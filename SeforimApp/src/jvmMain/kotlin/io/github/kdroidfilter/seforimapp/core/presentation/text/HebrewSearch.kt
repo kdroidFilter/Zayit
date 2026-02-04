@@ -10,7 +10,7 @@ package io.github.kdroidfilter.seforimapp.core.presentation.text
 /**
  * Returns the string without nikud+teamim and an index map from plain index -> original index.
  */
-internal fun stripDiacriticsWithMap(src: String): Pair<String, IntArray> {
+fun stripDiacriticsWithMap(src: String): Pair<String, IntArray> {
     val nikudOrTeamim: (Char) -> Boolean = { c ->
         (c.code in 0x0591..0x05AF) ||
             // teamim
@@ -68,6 +68,83 @@ internal fun mapToOrigIndex(
     if (mapToOrig.isEmpty()) return plainIndex
     val idx = plainIndex.coerceIn(0, mapToOrig.size - 1)
     return mapToOrig[idx]
+}
+
+/**
+ * Creates a mapping from original text indices (with diacritics) to stripped text indices (without diacritics).
+ * Returns an IntArray where originalToStripped[origIndex] = strippedIndex, or -1 if that character was stripped.
+ */
+fun createOriginalToStrippedMap(src: String): IntArray {
+    val nikudOrTeamim: (Char) -> Boolean = { c ->
+        (c.code in 0x0591..0x05AF) ||
+            (c.code in 0x05B0..0x05BD) ||
+            (c == '\u05C1') ||
+            (c == '\u05C2') ||
+            (c == '\u05C7')
+    }
+    val result = IntArray(src.length) { -1 }
+    var strippedIndex = 0
+    for (i in src.indices) {
+        val ch = src[i]
+        if (!nikudOrTeamim(ch) && ch != '\u05F4' && ch != '\u05F3') {
+            result[i] = strippedIndex
+            strippedIndex++
+        }
+    }
+    return result
+}
+
+/**
+ * Maps an offset from original text (with diacritics) to stripped text (without diacritics).
+ * If the original offset points to a diacritic, finds the nearest valid position.
+ */
+fun mapOriginalToStripped(
+    originalOffset: Int,
+    originalToStrippedMap: IntArray,
+): Int {
+    if (originalToStrippedMap.isEmpty()) return originalOffset
+    val safeOffset = originalOffset.coerceIn(0, originalToStrippedMap.size)
+
+    // If pointing past the end, return length of stripped text
+    if (safeOffset >= originalToStrippedMap.size) {
+        // Count non-diacritic chars
+        return originalToStrippedMap.count { it >= 0 }
+    }
+
+    // If this position maps directly, use it
+    if (originalToStrippedMap[safeOffset] >= 0) {
+        return originalToStrippedMap[safeOffset]
+    }
+
+    // Otherwise find the next valid position going forward
+    for (i in safeOffset until originalToStrippedMap.size) {
+        if (originalToStrippedMap[i] >= 0) {
+            return originalToStrippedMap[i]
+        }
+    }
+
+    // If no forward position found, return length
+    return originalToStrippedMap.count { it >= 0 }
+}
+
+/**
+ * Maps an offset from stripped text (without diacritics) back to original text (with diacritics).
+ * Uses the mapping created by stripDiacriticsWithMap.
+ */
+fun mapStrippedToOriginal(
+    strippedOffset: Int,
+    strippedToOriginalMap: IntArray,
+): Int {
+    if (strippedToOriginalMap.isEmpty()) return strippedOffset
+    if (strippedOffset >= strippedToOriginalMap.size) {
+        // Return past-the-end position
+        return if (strippedToOriginalMap.isNotEmpty()) {
+            strippedToOriginalMap.last() + 1
+        } else {
+            strippedOffset
+        }
+    }
+    return strippedToOriginalMap[strippedOffset.coerceAtLeast(0)]
 }
 
 /**

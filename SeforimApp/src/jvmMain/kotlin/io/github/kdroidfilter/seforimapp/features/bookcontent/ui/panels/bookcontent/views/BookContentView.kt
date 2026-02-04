@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
@@ -38,6 +39,7 @@ import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,9 +49,17 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.GlobalLineTextRegistry
+import io.github.kdroidfilter.seforimapp.core.HighlightStore
+import io.github.kdroidfilter.seforimapp.core.LineTextRegistry
+import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
+import io.github.kdroidfilter.seforimapp.core.UserHighlight
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
+import io.github.kdroidfilter.seforimapp.core.presentation.text.applyUserHighlights
 import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOriginal
+import io.github.kdroidfilter.seforimapp.core.presentation.text.mapStrippedToOriginal
+import io.github.kdroidfilter.seforimapp.core.presentation.text.stripDiacriticsWithMap
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -413,6 +423,20 @@ fun BookContentView(
         }
     }
 
+    // Collect user highlights for this book
+    val highlightsByBook by HighlightStore.highlightsByBook.collectAsState()
+    val allHighlights = highlightsByBook[bookId].orEmpty()
+
+    // Get the line text registry for this tab (for highlight position lookup)
+    val lineTextRegistry = remember(tabId) { GlobalLineTextRegistry.getForTab(tabId) }
+
+    // Clean up registry when component is disposed
+    DisposableEffect(tabId) {
+        onDispose {
+            lineTextRegistry.clear()
+        }
+    }
+
     var currentHitLineIndex by remember { mutableIntStateOf(-1) }
     var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
     var currentMatchStart by remember { mutableIntStateOf(-1) }
@@ -593,6 +617,12 @@ fun BookContentView(
                                             onClick = { onLineSelect(line, false) },
                                         )
                                     }
+                                    // Filter highlights for this specific line
+                                    val lineHighlights =
+                                        remember(allHighlights, line.id) {
+                                            allHighlights.filter { it.lineId == line.id }
+                                        }
+
                                     LineItem(
                                         lineId = line.id,
                                         lineContent = line.content,
@@ -610,6 +640,8 @@ fun BookContentView(
                                             if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
                                         annotatedCache = stableAnnotatedCache,
                                         showDiacritics = showDiacritics,
+                                        userHighlights = lineHighlights,
+                                        lineTextRegistry = lineTextRegistry,
                                     )
                                 }
                             }
@@ -807,6 +839,8 @@ private fun LineItem(
     currentMatchStart: Int? = null,
     annotatedCache: StableAnnotatedCache? = null,
     showDiacritics: Boolean = true,
+    userHighlights: List<UserHighlight> = emptyList(),
+    lineTextRegistry: LineTextRegistry? = null,
 ) {
     // Process content: remove diacritics if setting is disabled
     val processedContent =
@@ -839,6 +873,19 @@ private fun LineItem(
             )
         }
 
+    // Get the original plain text (with diacritics) from the original lineContent for highlight mapping
+    val originalPlainText =
+        remember(lineContent) {
+            // Strip HTML to get plain text, keeping diacritics
+            buildAnnotatedFromHtml(lineContent, baseTextSize, boldScale = 1f).text
+        }
+
+    // Register the ORIGINAL text (with diacritics) with the registry for highlight position lookup
+    // This ensures highlight offsets are always relative to the original text
+    LaunchedEffect(lineId, originalPlainText, lineTextRegistry) {
+        lineTextRegistry?.registerLine(lineId, originalPlainText)
+    }
+
     // Build highlighted text when a query is active (>= 2 chars)
     val baseHl =
         JewelTheme.globalColors.outlines.focused
@@ -846,12 +893,33 @@ private fun LineItem(
     val currentHl =
         JewelTheme.globalColors.outlines.focused
             .copy(alpha = 0.42f)
+
     val displayText: AnnotatedString =
-        remember(annotated, highlightQuery, highlightTerms, currentMatchStart, baseHl, currentHl) {
+        remember(
+            annotated,
+            highlightQuery,
+            highlightTerms,
+            currentMatchStart,
+            baseHl,
+            currentHl,
+            userHighlights,
+            showDiacritics,
+            originalPlainText,
+        ) {
+            // First apply user highlights with offset mapping for diacritics mode
+            val withUserHighlights =
+                applyUserHighlights(
+                    annotated = annotated,
+                    highlights = userHighlights,
+                    originalText = originalPlainText,
+                    showDiacritics = showDiacritics,
+                )
+
+            // Then apply search highlights on top
             if (!highlightTerms.isNullOrEmpty()) {
                 // Smart mode: highlight multiple terms from dictionary expansion
                 io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithTerms(
-                    annotated = annotated,
+                    annotated = withUserHighlights,
                     terms = highlightTerms,
                     currentStart = currentMatchStart?.takeIf { it >= 0 },
                     baseColor = baseHl,
@@ -860,7 +928,7 @@ private fun LineItem(
             } else {
                 // Normal mode: highlight single query
                 io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
-                    annotated = annotated,
+                    annotated = withUserHighlights,
                     query = highlightQuery,
                     currentStart = currentMatchStart?.takeIf { it >= 0 },
                     currentLength = highlightQuery?.length,
@@ -883,11 +951,55 @@ private fun LineItem(
         }
     }
 
+    // Track TextLayoutResult to convert pointer position to character offset
+    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+    // Pre-compute mapping from stripped to original indices if diacritics are hidden
+    val strippedToOriginalMap =
+        remember(originalPlainText, showDiacritics) {
+            if (!showDiacritics) {
+                val (_, map) = stripDiacriticsWithMap(originalPlainText)
+                map
+            } else {
+                null
+            }
+        }
+
     val textModifier =
         remember {
             Modifier.fillMaxWidth()
         }.bringIntoViewRequester(bringRequester)
-            .pointerInput(lineId) {
+            .pointerInput(lineId, textLayoutResult, strippedToOriginalMap) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        // Track when pointer enters or presses this line for highlight positioning
+                        if (event.type == PointerEventType.Enter ||
+                            event.type == PointerEventType.Press
+                        ) {
+                            val position = event.changes.firstOrNull()?.position
+                            val displayedOffset =
+                                if (position != null && textLayoutResult != null) {
+                                    textLayoutResult!!.getOffsetForPosition(position)
+                                } else {
+                                    null
+                                }
+                            // Map displayed offset to original text offset if diacritics are hidden
+                            val charOffset =
+                                if (displayedOffset != null && strippedToOriginalMap != null) {
+                                    mapStrippedToOriginal(displayedOffset, strippedToOriginalMap)
+                                } else {
+                                    displayedOffset
+                                }
+                            if (charOffset != null) {
+                                TextSelectionStore.updateActivePosition(lineId, charOffset)
+                            } else {
+                                TextSelectionStore.updateActiveLineId(lineId)
+                            }
+                        }
+                    }
+                }
+            }.pointerInput(lineId) {
                 awaitEachGesture {
                     // Wait for press and capture keyboard modifiers from the event
                     val downEvent = awaitPointerEvent(PointerEventPass.Main)
@@ -907,6 +1019,7 @@ private fun LineItem(
         fontFamily = fontFamily,
         lineHeight = (baseTextSize * lineHeight).sp,
         modifier = textModifier,
+        onTextLayout = { textLayoutResult = it },
     )
 }
 

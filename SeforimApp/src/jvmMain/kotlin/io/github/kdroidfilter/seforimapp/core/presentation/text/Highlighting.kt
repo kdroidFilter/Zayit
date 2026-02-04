@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.core.presentation.text
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import io.github.kdroidfilter.seforimapp.core.UserHighlight
 
 /**
  * Returns a copy of [annotated] with background highlight applied to all
@@ -105,5 +106,62 @@ fun highlightAnnotatedWithTerms(
         val color = if (currentStart != null && start == currentStart) currentColor else baseColor
         if (end > start) builder.addStyle(SpanStyle(background = color), start, end)
     }
+    return builder.toAnnotatedString()
+}
+
+/**
+ * Applies user highlights to an annotated string for a specific line.
+ * Only highlights that belong to this line are applied.
+ * Each highlight uses its stored offsets for precise positioning.
+ *
+ * Highlights are stored with offsets relative to the original text (with diacritics).
+ * When displaying without diacritics, the offsets are mapped to the stripped text positions.
+ *
+ * @param annotated The annotated string to apply highlights to
+ * @param highlights List of highlights for this specific line
+ * @param originalText The original text with diacritics (for offset mapping)
+ * @param showDiacritics Whether diacritics are currently shown
+ * @param highlightAlpha The alpha value for highlight colors (default 0.4)
+ */
+fun applyUserHighlights(
+    annotated: AnnotatedString,
+    highlights: List<UserHighlight>,
+    originalText: String? = null,
+    showDiacritics: Boolean = true,
+    highlightAlpha: Float = 0.4f,
+): AnnotatedString {
+    if (highlights.isEmpty()) return annotated
+
+    val builder = AnnotatedString.Builder()
+    builder.append(annotated)
+
+    // Create mapping from original to stripped if diacritics are hidden
+    val originalToStrippedMap =
+        if (!showDiacritics && originalText != null) {
+            createOriginalToStrippedMap(originalText)
+        } else {
+            null
+        }
+
+    for (highlight in highlights) {
+        // Map offsets if diacritics are hidden
+        val (start, end) =
+            if (originalToStrippedMap != null) {
+                val mappedStart = mapOriginalToStripped(highlight.startOffset, originalToStrippedMap)
+                val mappedEnd = mapOriginalToStripped(highlight.endOffset, originalToStrippedMap)
+                mappedStart to mappedEnd
+            } else {
+                highlight.startOffset to highlight.endOffset
+            }
+
+        val clampedStart = start.coerceIn(0, annotated.length)
+        val clampedEnd = end.coerceAtMost(annotated.length)
+        val color = highlight.color.copy(alpha = highlightAlpha)
+
+        if (clampedEnd > clampedStart) {
+            builder.addStyle(SpanStyle(background = color), clampedStart, clampedEnd)
+        }
+    }
+
     return builder.toAnnotatedString()
 }

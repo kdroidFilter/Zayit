@@ -5,14 +5,24 @@ import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.ContextMenuState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalContextMenuRepresentation
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.LocalTextContextMenu
 import androidx.compose.foundation.text.TextContextMenu
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.InputModeManager
 import androidx.compose.ui.input.key.Key
@@ -26,8 +36,14 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
 import com.dokar.sonner.ToastType
 import com.dokar.sonner.rememberToasterState
+import io.github.kdroidfilter.seforimapp.core.GlobalLineTextRegistry
+import io.github.kdroidfilter.seforimapp.core.HighlightColors
+import io.github.kdroidfilter.seforimapp.core.HighlightStore
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppToaster
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -42,6 +58,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.BookTocPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree.CategoryTreePanel
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
+import io.github.kdroidfilter.seforimapp.icons.Ink_pen
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
@@ -55,6 +72,7 @@ import org.jetbrains.jewel.foundation.InternalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.ContextMenuItemOption
 import org.jetbrains.jewel.ui.component.DefaultMenuController
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.LocalMenuController
 import org.jetbrains.jewel.ui.component.MenuContent
 import org.jetbrains.jewel.ui.component.MenuController
@@ -70,6 +88,7 @@ import org.jetbrains.skiko.hostOs
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.context_menu_copy_without_nikud
 import seforimapp.seforimapp.generated.resources.context_menu_find_in_page
+import seforimapp.seforimapp.generated.resources.context_menu_highlight
 import seforimapp.seforimapp.generated.resources.context_menu_search_selected_text
 import seforimapp.seforimapp.generated.resources.max_commentators_limit
 import java.awt.Toolkit
@@ -88,6 +107,15 @@ private class ContextMenuItemOptionWithKeybinding(
     label: String,
     action: () -> Unit,
 ) : ContextMenuItem(label, action)
+
+/**
+ * Custom context menu item that displays a row of highlight color swatches.
+ */
+private class ContextMenuHighlightColorPicker(
+    val colors: List<Color>,
+    val onColorSelected: (Color) -> Unit,
+    val onDismiss: () -> Unit,
+) : ContextMenuItem("highlight", {})
 
 @OptIn(InternalJewelApi::class)
 private object BookContentContextMenuRepresentationWithKeybindings : ComposeContextMenuRepresentation {
@@ -162,6 +190,18 @@ private fun MenuScope.contextItems(items: List<ContextMenuItem>) {
         when (item) {
             is org.jetbrains.jewel.ui.component.ContextMenuDivider -> separator()
             is org.jetbrains.jewel.ui.component.ContextSubmenu -> submenu(submenu = { contextItems(item.submenu()) }) { Text(item.label) }
+            is ContextMenuHighlightColorPicker -> {
+                separator()
+                passiveItem {
+                    HighlightColorPickerRow(
+                        colors = item.colors,
+                        onSelect = { color ->
+                            item.onColorSelected(color)
+                            item.onDismiss()
+                        },
+                    )
+                }
+            }
             is ContextMenuItemOptionWithKeybinding ->
                 selectableItem(
                     selected = false,
@@ -185,6 +225,97 @@ private fun MenuScope.contextItems(items: List<ContextMenuItem>) {
                 }
 
             else -> selectableItem(selected = false, onClick = item.onClick) { Text(item.label) }
+        }
+    }
+}
+
+/**
+ * A row of color swatches for highlighting text.
+ */
+@Composable
+private fun HighlightColorPickerRow(
+    colors: List<Color>,
+    onSelect: (Color) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val highlightLabel = stringResource(Res.string.context_menu_highlight)
+    // Use menu item content color directly since passiveItem doesn't set up LocalContentColor
+    val contentColor = JewelTheme.menuStyle.colors.itemColors.content
+
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Ink_pen,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            text = highlightLabel,
+            color = contentColor,
+            modifier = Modifier.padding(end = 8.dp),
+        )
+        colors.forEach { color ->
+            HighlightColorSwatch(
+                color = color,
+                onClick = { onSelect(color) },
+            )
+        }
+    }
+}
+
+/**
+ * A single color swatch with hover effect matching Jewel menu items.
+ */
+@Composable
+private fun HighlightColorSwatch(
+    color: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isHovered by remember { mutableStateOf(false) }
+    val hoverBackground = JewelTheme.menuStyle.colors.itemColors.backgroundHovered
+    val isTransparent = color == Color.Transparent
+
+    Box(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(if (isHovered) hoverBackground else Color.Transparent)
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            isHovered = event.type == PointerEventType.Enter ||
+                                (event.type == PointerEventType.Move && event.changes.any { it.pressed.not() })
+                            if (event.type == PointerEventType.Exit) {
+                                isHovered = false
+                            }
+                        }
+                    }
+                }.clickable { onClick() }
+                .padding(6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (isTransparent) {
+            Icon(
+                key = AllIconsKeys.Windows.Close,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+        } else {
+            Box(
+                modifier =
+                    Modifier
+                        .size(18.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(color),
+            )
         }
     }
 }
@@ -271,6 +402,9 @@ fun BookContentScreen(
     val selectedBook = uiState.navigation.selectedBook
     val bookHasDiacritics = selectedBook?.hasNekudot == true || selectedBook?.hasTeamim == true
 
+    // Get the book ID for highlight storage
+    val bookId = selectedBook?.id ?: 0L
+
     val textContextMenu =
         remember(
             baseTextContextMenu,
@@ -281,6 +415,7 @@ fun BookContentScreen(
             copyWithoutNikudLabel,
             showDiacritics,
             bookHasDiacritics,
+            bookId,
         ) {
             object : TextContextMenu {
                 @OptIn(ExperimentalFoundationApi::class)
@@ -350,6 +485,52 @@ fun BookContentScreen(
                                         AppSettings.openFindBar(tabId)
                                     },
                                 )
+                                // Highlight color picker - at the end of the menu
+                                if (selectedText.isNotBlank() && bookId > 0) {
+                                    val lineTextRegistry = GlobalLineTextRegistry.getForTab(tabId)
+                                    // Try to find match in the active line first (where user is interacting)
+                                    val activeLineId = TextSelectionStore.activeLineId.value
+                                    val activeCharOffset = TextSelectionStore.activeCharOffset.value
+                                    val match =
+                                        if (activeLineId != null) {
+                                            lineTextRegistry.findMatchInLine(
+                                                selectedText,
+                                                activeLineId,
+                                                activeCharOffset,
+                                            ) ?: lineTextRegistry.findFirstMatch(selectedText)
+                                        } else {
+                                            lineTextRegistry.findFirstMatch(selectedText)
+                                        }
+
+                                    if (match != null) {
+                                        add(
+                                            ContextMenuHighlightColorPicker(
+                                                colors = HighlightColors.allWithClear,
+                                                onColorSelected = { color ->
+                                                    if (color == Color.Transparent) {
+                                                        HighlightStore.removeHighlight(
+                                                            bookId,
+                                                            match.lineId,
+                                                            match.startOffset,
+                                                            match.endOffset,
+                                                        )
+                                                    } else {
+                                                        HighlightStore.addHighlight(
+                                                            bookId,
+                                                            match.lineId,
+                                                            match.startOffset,
+                                                            match.endOffset,
+                                                            color,
+                                                        )
+                                                    }
+                                                },
+                                                onDismiss = {
+                                                    state.status = ContextMenuState.Status.Closed
+                                                },
+                                            ),
+                                        )
+                                    }
+                                }
                             }
                         },
                     ) {

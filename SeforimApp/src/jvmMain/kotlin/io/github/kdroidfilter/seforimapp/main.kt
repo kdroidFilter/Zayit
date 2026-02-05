@@ -80,9 +80,27 @@ import java.util.*
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
 fun main() {
-    // Force OpenGL rendering backend on Windows if enabled (must be set before Skia initialization)
-    if (PlatformInfo.isWindows && AppSettings.isUseOpenGlEnabled()) {
-        System.setProperty("skiko.renderApi", "OPENGL")
+    // AOT training: auto-exit
+    // after the specified duration so JVM shutdown hooks
+    // (which write .aotconf) run reliably on all platforms — including Windows where
+    // external signals (taskkill, Process.destroy) cannot trigger them.
+    System.getProperty("aot.training.autoExit")?.toLongOrNull()?.let { seconds ->
+        Thread({
+            Thread.sleep(seconds * 1000)
+            System.exit(0)
+        }, "aot-training-timer").apply { isDaemon = true; start() }
+    }
+
+    // Configure Skiko render API based on platform (respect pre-set -D flag)
+    if (System.getProperty("skiko.renderApi") == null) {
+        when {
+            PlatformInfo.isWindows -> {
+                // Use DIRECT3D by default on Windows for better performance,
+                // or OPENGL if the user enabled it in settings
+                val renderApi = if (AppSettings.isUseOpenGlEnabled()) "OPENGL" else "DIRECT3D"
+                System.setProperty("skiko.renderApi", renderApi)
+            }
+        }
     }
 
     setMacOsAdaptiveTitleBar()

@@ -240,7 +240,7 @@ compose.desktop {
                     "-XX:MaxGCPauseMillis=50",
                 )
 
-            modules("java.sql", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility", "jdk.incubator.vector")
+            modules("java.sql", "java.management", "jdk.management", "jdk.unsupported", "jdk.security.auth", "jdk.accessibility", "jdk.incubator.vector")
             targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Dmg)
             vendor = "KDroidFilter"
 

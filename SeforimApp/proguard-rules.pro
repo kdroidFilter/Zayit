@@ -239,3 +239,8 @@
 # The Community enum is resolved at runtime via Enum.valueOf(code) where code is stored
 # in AppSettings. If R8/ProGuard optimizes or unboxes this enum, valueOf() will fail.
 -keep enum io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community { *; }
+
+# --- Sentry crash reporting SDK ---
+# Sentry uses reflection for serialization and event processing.
+-keep class io.sentry.** { *; }
+-dontwarn io.sentry.**

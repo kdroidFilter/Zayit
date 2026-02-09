@@ -17,6 +17,7 @@ kotlin {
         }
 
         jvmMain.dependencies {
+            implementation(libs.sentry.core)
         }
     }
 }

@@ -14,6 +14,7 @@ plugins {
     alias(libs.plugins.stability.analyzer) apply false
     alias(libs.plugins.ktlint)
     alias(libs.plugins.kover).apply(false)
+    alias(libs.plugins.sentryJvmGradle).apply(false)
     // TODO: Activer detekt quand la version 2.0.0 sera disponible sur Maven Central (supporte JDK 25)
     // alias(libs.plugins.detekt)
 }

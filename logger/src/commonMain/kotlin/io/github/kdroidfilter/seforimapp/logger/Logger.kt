@@ -10,6 +10,7 @@ var loggingLevel: LoggingLevel = LoggingLevel.VERBOSE
 
 object SentryConfig {
     @Volatile var sentryEnabled: Boolean = true
+
     @Volatile var sentryLevel: LoggingLevel = LoggingLevel.ERROR
 }
 
@@ -35,20 +36,20 @@ private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
 
 private fun getCurrentTimestamp(): String = dateFormat.format(Date())
 
-private fun shouldLogToConsole(minLevel: LoggingLevel): Boolean =
-    isDevEnv && loggingLevel.priority <= minLevel.priority
+private fun shouldLogToConsole(minLevel: LoggingLevel): Boolean = isDevEnv && loggingLevel.priority <= minLevel.priority
 
 private fun shouldLogToSentry(minLevel: LoggingLevel): Boolean =
     SentryConfig.sentryEnabled &&
         Sentry.isEnabled() &&
         minLevel.priority >= SentryConfig.sentryLevel.priority
 
-private fun toSentryLevel(level: LoggingLevel): SentryLevel = when {
-    level.priority <= LoggingLevel.DEBUG.priority -> SentryLevel.DEBUG
-    level.priority == LoggingLevel.INFO.priority -> SentryLevel.INFO
-    level.priority == LoggingLevel.WARN.priority -> SentryLevel.WARNING
-    else -> SentryLevel.ERROR
-}
+private fun toSentryLevel(level: LoggingLevel): SentryLevel =
+    when {
+        level.priority <= LoggingLevel.DEBUG.priority -> SentryLevel.DEBUG
+        level.priority == LoggingLevel.INFO.priority -> SentryLevel.INFO
+        level.priority == LoggingLevel.WARN.priority -> SentryLevel.WARNING
+        else -> SentryLevel.ERROR
+    }
 
 private fun logAt(
     minLevel: LoggingLevel,
@@ -99,7 +100,10 @@ fun warnln(message: () -> String) {
     logAt(LoggingLevel.WARN, COLOR_ORANGE, message = message)
 }
 
-fun warnln(throwable: Throwable, message: () -> String = { throwable.message ?: "Warning" }) {
+fun warnln(
+    throwable: Throwable,
+    message: () -> String = { throwable.message ?: "Warning" },
+) {
     logAt(LoggingLevel.WARN, COLOR_ORANGE, throwable, message)
 }
 
@@ -107,6 +111,9 @@ fun errorln(message: () -> String) {
     logAt(LoggingLevel.ERROR, COLOR_RED, message = message)
 }
 
-fun errorln(throwable: Throwable, message: () -> String = { throwable.message ?: "Error" }) {
+fun errorln(
+    throwable: Throwable,
+    message: () -> String = { throwable.message ?: "Error" },
+) {
     logAt(LoggingLevel.ERROR, COLOR_RED, throwable, message)
 }

@@ -40,7 +40,12 @@ internal fun DecoratedWindowScope.TitleBarOnWindows(
             titleBar.putProperty("controls.rtl", isRtl)
             titleBar.height = height.value
             titleBar.putProperty("controls.dark", style.colors.background.isDark())
+            val savedExtendedState = window.extendedState
             JBR.getWindowDecorations().setCustomTitleBar(window, titleBar)
+            // Restore extended state — setCustomTitleBar may reset maximized/minimized flags
+            if (window.extendedState != savedExtendedState) {
+                window.extendedState = savedExtendedState
+            }
             PaddingValues(start = titleBar.leftInset.dp, end = titleBar.rightInset.dp)
         },
         backgroundContent = { Spacer(modifier = modifier.fillMaxSize().customTitleBarMouseEventHandler(titleBar)) },

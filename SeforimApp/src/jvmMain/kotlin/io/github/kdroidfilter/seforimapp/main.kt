@@ -61,7 +61,6 @@ import io.github.kdroidfilter.seforimapp.logger.isDevEnv
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.Sentry
-import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -142,20 +141,16 @@ fun main() {
     application {
         FileKit.init(appId)
 
-        val screen = Toolkit.getDefaultToolkit().screenSize
+        val workArea =
+            java.awt.GraphicsEnvironment
+                .getLocalGraphicsEnvironment()
+                .maximumWindowBounds
         val windowState =
-            if (!PlatformInfo.isWindows) {
-                rememberWindowState(
-                    position = WindowPosition.Aligned(Alignment.Center),
-                    placement = WindowPlacement.Maximized,
-                    size = DpSize(screen.width.dp, screen.height.dp),
-                )
-            } else {
-                rememberWindowState(
-                    position = WindowPosition.Aligned(Alignment.Center),
-                    placement = WindowPlacement.Maximized,
-                )
-            }
+            rememberWindowState(
+                position = WindowPosition.Aligned(Alignment.Center),
+                placement = WindowPlacement.Maximized,
+                size = DpSize(workArea.width.dp, workArea.height.dp),
+            )
 
         var isWindowVisible by remember { mutableStateOf(true) }
 
@@ -357,10 +352,6 @@ fun main() {
 
                             LaunchedEffect(Unit) {
                                 window.minimumSize = Dimension(600, 300)
-                                if (PlatformInfo.isWindows) {
-                                    delay(10)
-                                    windowState.placement = WindowPlacement.Maximized
-                                }
                             }
                             MainTitleBar()
 

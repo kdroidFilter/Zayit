@@ -46,6 +46,8 @@ detekt = "1.23.8"
 kover = "0.9.5"
 mockk = "1.14.9"
 kotlinx-coroutines-test = "1.10.2"
+sentry = "6.0.0"
+sentrySdk = "8.32.0"
 
 [libraries]
 
@@ -118,6 +120,9 @@ lucene-analysis-common = { module = "org.apache.lucene:lucene-analysis-common", 
 lucene-queryparser = { module = "org.apache.lucene:lucene-queryparser", version.ref = "lucene" }
 lucene-highlighter = { module = "org.apache.lucene:lucene-highlighter", version.ref = "lucene" }
 
+# Sentry
+sentry-core = { module = "io.sentry:sentry", version.ref = "sentrySdk" }
+
 # Testing
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines-test" }
@@ -145,3 +150,4 @@ stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", ve
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+sentryJvmGradle = { id = "io.sentry.jvm.gradle", version.ref = "sentry" }

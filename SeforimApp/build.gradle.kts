@@ -19,9 +19,17 @@ plugins {
     alias(libs.plugins.stability.analyzer)
     alias(libs.plugins.sqlDelight)
     alias(libs.plugins.kover)
+    alias(libs.plugins.sentryJvmGradle)
 }
 
 val version = Versioning.resolveVersion(project)
+
+sentry {
+    includeSourceContext = true
+    org = System.getenv("SENTRY_ORG") ?: "kdroidfilter"
+    projectName = System.getenv("SENTRY_PROJECT") ?: "zayit"
+    authToken = System.getenv("SENTRY_AUTH_TOKEN")
+}
 
 // Turn 0.x[.y] into 1.x[.y] for macOS (DMG/PKG require MAJOR > 0)
 fun macSafeVersion(ver: String): String {
@@ -170,6 +178,9 @@ kotlin {
 
             implementation(libs.knotify)
             implementation(libs.knotify.compose)
+
+            // Sentry crash reporting
+            implementation(libs.sentry.core)
         }
     }
 }

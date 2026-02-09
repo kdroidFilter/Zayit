@@ -140,7 +140,7 @@ sqlDelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
 android-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 caupain =  { id = "com.deezer.caupain", version = "1.7.1"}
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
-linux-deps = { id = "io.github.kdroidfilter.compose.linux.packagedeps", version = "0.2.4"}
+composedeskkit = { id = "io.github.kdroidfilter.composedeskkit", version = "1.0.0" }
 stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version = "0.6.6" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }

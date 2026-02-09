@@ -10,7 +10,7 @@ plugins {
     alias(libs.plugins.sqlDelight).apply(false)
     alias(libs.plugins.metro).apply(false)
     alias(libs.plugins.caupain)
-    alias(libs.plugins.linux.deps).apply(false)
+    alias(libs.plugins.composedeskkit).apply(false)
     alias(libs.plugins.stability.analyzer) apply false
     alias(libs.plugins.ktlint)
     alias(libs.plugins.kover).apply(false)

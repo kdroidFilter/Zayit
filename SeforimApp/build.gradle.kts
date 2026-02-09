@@ -249,7 +249,7 @@ composeDeskKit.desktop {
                 "jdk.accessibility",
                 "jdk.incubator.vector",
             )
-            targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Dmg)
+            targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Dmg, TargetFormat.Msix)
             vendor = "KDroidFilter"
 
             linux {

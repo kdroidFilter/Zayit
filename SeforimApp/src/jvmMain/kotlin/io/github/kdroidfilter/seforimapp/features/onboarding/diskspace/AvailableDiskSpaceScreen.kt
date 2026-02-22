@@ -25,6 +25,7 @@ import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.util.generateHueColorPalette
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.DefaultErrorBanner
 import org.jetbrains.jewel.ui.component.DefaultSuccessBanner
@@ -63,10 +64,16 @@ fun AvailableDiskSpaceView(
     val temporarySpaceBytes = (AvailableDiskSpaceUseCase.TEMPORARY_SPACE_GB * 1024 * 1024 * 1024).toLong()
 
     OnBoardingScaffold(title = stringResource(Res.string.onboarding_disk_title), bottomAction = {
-        DefaultButton(onClick = onNext, enabled = state.hasEnoughSpace) {
+        DefaultButton(onClick = onNext, enabled = state.hasEnoughSpace && !state.isLoading) {
             Text(stringResource(Res.string.next_button))
         }
     }) {
+        if (state.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            return@OnBoardingScaffold
+        }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             // Pie chart: Used, Permanent Space, Temporary Space, Free After Installation
             val total = state.totalDiskSpace

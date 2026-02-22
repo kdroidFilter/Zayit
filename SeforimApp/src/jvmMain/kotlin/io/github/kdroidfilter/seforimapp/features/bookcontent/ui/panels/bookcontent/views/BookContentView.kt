@@ -59,6 +59,8 @@ import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -425,7 +427,10 @@ fun BookContentView(
     // Navigate to next/previous line containing the query (wrap-around)
     val scope = rememberCoroutineScope()
 
-    fun navigateToMatch(next: Boolean) {
+    fun navigateToMatch(
+        next: Boolean,
+        @StructuredScope scope: CoroutineScope,
+    ) {
         val query = findState.text.toString()
         if (query.length < 2) return
         val snapshot = lazyPagingItems.itemSnapshotList
@@ -449,7 +454,6 @@ fun BookContentView(
                 currentMatchLineId = line.id
                 currentMatchStart = start
                 // Bring line into view (slight offset)
-                @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                 scope.launch {
                     listState.scrollToItem(i, 32)
                 }
@@ -704,8 +708,8 @@ fun BookContentView(
                     }
                     FindInPageBar(
                         state = findState,
-                        onEnterNext = { navigateToMatch(true) },
-                        onEnterPrev = { navigateToMatch(false) },
+                        onEnterNext = { navigateToMatch(true, scope) },
+                        onEnterPrev = { navigateToMatch(false, scope) },
                         onClose = { AppSettings.closeFindBar(tabId) },
                         smartModeEnabled = smartModeEnabled,
                         onToggleSmartMode = { AppSettings.toggleFindSmartMode(tabId) },

@@ -16,9 +16,11 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEven
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.santimattius.structured.annotations.StructuredScope
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -54,6 +56,24 @@ fun OfflineUpdateScreen(
         }
     }
 
+    fun startUpdate(
+        @StructuredScope scope: CoroutineScope,
+        p1: String,
+    ) {
+        scope.launch {
+            // Nettoyer les anciens fichiers avant de commencer l'extraction
+            if (!cleanupCompleted) {
+                cleanupUseCase.cleanupDatabaseFiles()
+                cleanupCompleted = true
+            }
+            // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
+            DatabaseUpdateProgressBarState.setDownloadStarted()
+            processRepository.setPendingZstPath(p1)
+            extractViewModel.onEvent(ExtractEvents.StartIfPending)
+            hasStartedExtraction = true
+        }
+    }
+
     // File picker for part02 file
     val pickPart02Launcher =
         rememberFilePickerLauncher(
@@ -62,19 +82,7 @@ fun OfflineUpdateScreen(
             val p2 = file?.path
             val p1 = part01Path
             if (!p2.isNullOrBlank() && !p1.isNullOrBlank()) {
-                @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
-                scope.launch {
-                    // Nettoyer les anciens fichiers avant de commencer l'extraction
-                    if (!cleanupCompleted) {
-                        cleanupUseCase.cleanupDatabaseFiles()
-                        cleanupCompleted = true
-                    }
-                    // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
-                    DatabaseUpdateProgressBarState.setDownloadStarted()
-                    processRepository.setPendingZstPath(p1)
-                    extractViewModel.onEvent(ExtractEvents.StartIfPending)
-                    hasStartedExtraction = true
-                }
+                startUpdate(scope, p1)
             }
         }
 

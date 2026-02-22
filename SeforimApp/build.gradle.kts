@@ -22,7 +22,7 @@ plugins {
 }
 
 structuredCoroutines {
-    useRelaxedProfile()
+    useStrictProfile()
 }
 
 val version = Versioning.resolveVersion(project)
@@ -66,6 +66,7 @@ kotlin {
 
             // KotlinX
             implementation(libs.kotlinx.coroutines.core)
+            implementation("io.github.santimattius:structured-coroutines-annotations:0.3.0")
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.serialization.protobuf)

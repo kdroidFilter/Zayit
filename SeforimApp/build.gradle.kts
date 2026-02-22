@@ -225,7 +225,14 @@ nucleus.application {
             "jdk.accessibility",
             "jdk.incubator.vector",
         )
-        targetFormats(TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Dmg, TargetFormat.Zip)
+        targetFormats(
+            TargetFormat.Msi,
+            TargetFormat.Deb,
+            TargetFormat.Rpm,
+            TargetFormat.Dmg,
+            TargetFormat.Pkg,
+            TargetFormat.Zip
+        )
         vendor = "KDroidFilter"
         cleanupNativeLibs = true
 
@@ -248,6 +255,7 @@ nucleus.application {
             bundleID = "io.github.kdroidfilter.seforimapp.desktopApp"
             packageVersion = version
             packageName = "זית"
+            appStore = true
         }
         buildTypes.release.proguard {
             version.set("7.8.1")

@@ -367,7 +367,7 @@ fun main() {
                                                 if (isDevEnv) return@LaunchedEffect
                                                 mainAppState.setUpdateAvailable(result.latestVersion)
 
-                                                if (!ExecutableRuntime.isDev() || false) {
+                                                if (!ExecutableRuntime.isDev()) {
                                                     // Send system notification
                                                     notification(
                                                         title = updateNotificationTitle,

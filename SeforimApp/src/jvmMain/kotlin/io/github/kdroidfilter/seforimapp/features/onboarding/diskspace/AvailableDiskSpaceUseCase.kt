@@ -10,22 +10,23 @@ class AvailableDiskSpaceUseCase {
      * Reads available and total disk space in a single blocking OSHI call.
      * Must be called from a coroutine — dispatched to IO internally.
      */
-    suspend fun getDiskSpaceInfo(): DiskSpaceInfo = withContext(Dispatchers.IO) {
-        val si = SystemInfo()
-        val fileStores: List<OSFileStore> = si.operatingSystem.fileSystem.fileStores
+    suspend fun getDiskSpaceInfo(): DiskSpaceInfo =
+        withContext(Dispatchers.IO) {
+            val si = SystemInfo()
+            val fileStores: List<OSFileStore> = si.operatingSystem.fileSystem.fileStores
 
-        val systemDir =
-            fileStores.firstOrNull {
-                it.mount.contains(System.getProperty("user.home")) ||
-                    it.mount == "/" ||
-                    it.mount.startsWith("C:")
-            } ?: fileStores.first()
+            val systemDir =
+                fileStores.firstOrNull {
+                    it.mount.contains(System.getProperty("user.home")) ||
+                        it.mount == "/" ||
+                        it.mount.startsWith("C:")
+                } ?: fileStores.first()
 
-        DiskSpaceInfo(
-            availableBytes = systemDir.usableSpace,
-            totalBytes = systemDir.totalSpace,
-        )
-    }
+            DiskSpaceInfo(
+                availableBytes = systemDir.usableSpace,
+                totalBytes = systemDir.totalSpace,
+            )
+        }
 
     data class DiskSpaceInfo(
         val availableBytes: Long,

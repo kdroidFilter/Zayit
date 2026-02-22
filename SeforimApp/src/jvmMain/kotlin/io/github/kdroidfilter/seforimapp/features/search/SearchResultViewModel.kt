@@ -15,6 +15,7 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactoryKey
 import io.github.kdroidfilter.seforim.tabs.*
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.search.domain.BuildSearchTreeUseCase
@@ -37,7 +38,6 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.LineHit
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchSession
-import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -541,7 +541,10 @@ class SearchResultViewModel(
         if (tocActive && scopeTocId != null) {
             val bid =
                 bookId
-                    ?: tocBookCache.getOrPut(scopeTocId) { runSuspendCatching { repository.getTocEntry(scopeTocId)?.bookId }.getOrNull() ?: -1L }
+                    ?: tocBookCache.getOrPut(scopeTocId) {
+                        runSuspendCatching { repository.getTocEntry(scopeTocId)?.bookId }.getOrNull()
+                            ?: -1L
+                    }
             if (bid > 0) {
                 val arr = indicesForTocSubtree(scopeTocId, bid, index)
                 if (arr.isNotEmpty()) toMerge.add(arr)

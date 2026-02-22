@@ -1,9 +1,9 @@
-import io.github.kdroidfilter.buildsrc.NativeCleanupTransformHelper
-import io.github.kdroidfilter.buildsrc.RenameMacPkgTask
-import io.github.kdroidfilter.buildsrc.RenameMsiTask
 import io.github.kdroidfilter.buildsrc.Versioning
+import io.github.kdroidfilter.nucleus.desktop.application.dsl.PublishMode
+import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseChannel
+import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseType
 import org.jetbrains.compose.ExperimentalComposeLibrary
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
 
 plugins {
@@ -19,26 +19,11 @@ plugins {
     alias(libs.plugins.stability.analyzer)
     alias(libs.plugins.sqlDelight)
     alias(libs.plugins.kover)
+    alias(libs.plugins.nucleus)
 }
 
 val version = Versioning.resolveVersion(project)
 
-// Turn 0.x[.y] into 1.x[.y] for macOS (DMG/PKG require MAJOR > 0)
-fun macSafeVersion(ver: String): String {
-    // Strip prerelease/build metadata for packaging (e.g., 0.1.0-beta -> 0.1.0)
-    val core = ver.substringBefore('-').substringBefore('+')
-    val parts = core.split('.')
-
-    return if (parts.isNotEmpty() && parts[0] == "0") {
-        when (parts.size) {
-            1 -> "1.0" // "0"      -> "1.0"
-            2 -> "1.${parts[1]}" // "0.1"    -> "1.1"
-            else -> "1.${parts[1]}.${parts[2]}" // "0.1.2" -> "1.1.2"
-        }
-    } else {
-        core // already >= 1.x or something else; leave as-is
-    }
-}
 
 kotlin {
 //    androidTarget {
@@ -86,7 +71,9 @@ kotlin {
             // Settings & platform utils
             implementation(libs.multiplatformSettings)
             implementation(libs.platformtools.core)
-            implementation(libs.platformtools.darkmodedetector)
+            implementation(libs.nucleus.core.runtime)
+            implementation(libs.nucleus.aot.runtime)
+            implementation(libs.nucleus.darkmode.detector)
             implementation(libs.platformtools.appmanager)
             implementation(libs.platformtools.releasefetcher)
 
@@ -142,14 +129,14 @@ kotlin {
         jvmMain.dependencies {
             api(project(":jewel"))
             implementation(project(":earthwidget"))
+            implementation(libs.nucleus.decorated.window)
+            implementation(libs.nucleus.updater.runtime)
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
             }
 
-            implementation(libs.composenativetray)
             implementation(libs.jdbc.driver)
             implementation(libs.kotlinx.coroutines.swing)
-            implementation(libs.platformtools.rtlwindows)
             implementation(libs.slf4j.simple)
             implementation(libs.split.pane.desktop)
             implementation(libs.sqlite.driver)
@@ -170,31 +157,6 @@ kotlin {
 
             implementation(libs.knotify)
             implementation(libs.knotify.compose)
-        }
-    }
-}
-
-// Exclude Skiko runtimes for non-current platforms to reduce package size
-configurations.all {
-    val os = System.getProperty("os.name").lowercase()
-    when {
-        os.contains("mac") -> {
-            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-windows-x64")
-            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-windows-arm64")
-            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-linux-x64")
-            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-linux-arm64")
-        }
-        os.contains("windows") -> {
-            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-arm64")
-            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-x64")
-            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-linux-x64")
-            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-linux-arm64")
-        }
-        else -> { // Linux
-            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-arm64")
-            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-x64")
-            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-windows-x64")
-            exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-windows-arm64")
         }
     }
 }
@@ -220,16 +182,27 @@ configurations.all {
 //    debugImplementation(libs.androidx.uitest.testManifest)
 // }
 
-compose.desktop {
-    application {
+nucleus.application {
+
         mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
         nativeDistributions {
+
+            publish {
+                github {
+                    enabled = true
+                    owner = "kdroidFilter"
+                    repo = "Zayit"
+                    channel = ReleaseChannel.Latest
+                    releaseType = ReleaseType.Release
+                }
+            }
+
             // Package-time resources root; include files under OS-specific subfolders (common, macos, windows, linux)
             appResourcesRootDir.set(layout.projectDirectory.dir("src/jvmMain/assets"))
-            // Show splash image from the packaged resources directory
+            splashImage = "splash.png"
+            enableAotCache = true
             jvmArgs +=
                 listOf(
-                    "-splash:\$APPDIR/resources/splash.png",
                     "--enable-native-access=ALL-UNNAMED",
                     "--add-modules=jdk.incubator.vector",
                 )
@@ -249,8 +222,9 @@ compose.desktop {
                 "jdk.accessibility",
                 "jdk.incubator.vector",
             )
-            targetFormats(TargetFormat.Pkg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Dmg)
+            targetFormats(TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Dmg, TargetFormat.Zip)
             vendor = "KDroidFilter"
+            cleanupNativeLibs = true
 
             linux {
                 packageName = "zayit"
@@ -269,7 +243,7 @@ compose.desktop {
             macOS {
                 iconFile.set(project.file("desktopAppIcons/MacosIcon.icns"))
                 bundleID = "io.github.kdroidfilter.seforimapp.desktopApp"
-                packageVersion = macSafeVersion(version)
+                packageVersion = version
                 packageName = "זית"
             }
             buildTypes.release.proguard {
@@ -280,7 +254,7 @@ compose.desktop {
                 configurationFiles.from(project.file("proguard-rules.pro"))
             }
         }
-    }
+
 }
 
 sqldelight {
@@ -292,13 +266,6 @@ sqldelight {
     }
 }
 
-linuxDebConfig {
-    // set StartupWMClass to fix dock/taskbar icon
-    startupWMClass.set("io.github.kdroidfilter.seforimapp.MainKt")
-
-    // for Ubuntu 24 t64 dependencies compatibility with older OSes, see below Under Known jpackage issue: Ubuntu t64 transition
-    enableT64AlternativeDeps.set(true)
-}
 
 tasks.withType<ComposeHotRun>().configureEach {
     mainClass.set("io.github.kdroidfilter.seforimapp.MainKt")
@@ -314,60 +281,6 @@ tasks.withType<Jar> {
     exclude("META-INF/*.RSA")
     exclude("META-INF/*.EC")
 }
-
-// --- macOS: rename generated .pkg to include architecture suffix (_arm64 or _x64)
-val isMacHost: Boolean = System.getProperty("os.name").lowercase().contains("mac")
-val macArchSuffix: String =
-    run {
-        val arch = System.getProperty("os.arch").lowercase()
-        if (arch.contains("aarch64") || arch.contains("arm")) "_arm64" else "_x64"
-    }
-
-// Finds all .pkg files under build/compose/binaries and appends arch suffix if missing
-val renameMacPkg =
-    tasks.register<RenameMacPkgTask>("renameMacPkg") {
-        enabled = isMacHost
-        group = "distribution"
-        description = "Rename generated macOS .pkg files to include architecture suffix (e.g., _arm64 or _x64)."
-        archSuffix.set(macArchSuffix)
-    }
-
-// Ensure the rename runs after any Compose Desktop task that produces a PKG or DMG
-// This covers tasks like `packageReleasePkg`, `packageDebugPkg`, `packageReleaseDmg`, etc.
-// Exclude the renamer itself to avoid circular finalizer
-tasks.matching { it.name.endsWith("Pkg") && it.name != "renameMacPkg" }.configureEach {
-    finalizedBy(renameMacPkg)
-}
-tasks.matching { it.name.endsWith("Dmg") && it.name != "renameMacPkg" }.configureEach {
-    finalizedBy(renameMacPkg)
-}
-
-// --- Windows: rename generated .msi to include architecture suffix (_arm64 or _x64)
-val isWindowsHost: Boolean = System.getProperty("os.name").lowercase().contains("windows")
-val windowsArchSuffix: String =
-    run {
-        val arch = System.getProperty("os.arch").lowercase()
-        if (arch.contains("aarch64") || arch.contains("arm")) "_arm64" else "_x64"
-    }
-
-// Finds all .msi files under build/compose/binaries and appends arch suffix if missing
-val renameMsi =
-    tasks.register<RenameMsiTask>("renameMsi") {
-        enabled = isWindowsHost
-        group = "distribution"
-        description = "Rename generated Windows .msi files to include architecture suffix (e.g., _arm64 or _x64)."
-        archSuffix.set(windowsArchSuffix)
-    }
-
-// Ensure the rename runs after any Compose Desktop task that produces an MSI
-// This covers tasks like `packageReleaseMsi`, `packageDebugMsi`, etc.
-// Exclude the renamer itself to avoid circular finalizer
-tasks.matching { it.name.endsWith("Msi") && it.name != "renameMsi" }.configureEach {
-    finalizedBy(renameMsi)
-}
-
-// --- Clean unused native binaries from JARs for smaller distribution size
-NativeCleanupTransformHelper.registerTransform(project)
 
 // --- Kover code coverage configuration
 kover {

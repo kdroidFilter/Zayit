@@ -5,9 +5,9 @@ composeSonner = "0.4.0"
 confettikit = "0.7.0"
 filekitCore = "0.12.0"
 jsoup = "1.22.1"
-jvmNativeTrustedRoots = "1.1.7"
 jvmToolchain = "25"
 knotify = "0.4.3"
+nucleus = "1.2.4"
 koalaplotCore = "0.11.0"
 kotlin = "2.3.0"
 compose = "1.10.0"
@@ -19,18 +19,16 @@ kermit = "2.0.8"
 kotlinpoet = "2.2.0"
 ktor = "3.4.0"
 androidx-lifecycle = "2.9.6"
-androidx-navigation = "2.9.1"
+androidx-navigation = "2.9.2"
 kotlinx-serialization = "1.10.0"
 multiplatformSettings = "1.3.0"
 kotlinx-datetime = "0.7.1"
 buildConfig = "6.0.7"
-materialKolor = "4.1.0"
-jewel = "0.33.0-253.29795"
-jna = "5.18.1"
+materialKolor = "4.1.1"
+jewel = "0.34.0-253.31033.149"
 oshiCore = "6.9.3"
 paging = "3.4.0"
-platformtools = "0.7.4"
-composenativetray = "1.0.4"
+platformtools = "0.7.5"
 kotlinx-coroutines = "1.10.2"
 reorderable = "3.0.0"
 slf4j = "2.0.17"
@@ -38,12 +36,12 @@ maven-publish = "0.36.0"
 sqlDelight = "2.2.1"
 adaptiveNavigation = "1.2.0"
 zmanim = "2.5.0"
-zstdJni = "1.5.7-6"
-metro = "0.10.2"
+zstdJni = "1.5.7-7"
+metro = "0.10.4"
 lucene = "10.3.2"
 ktlint = "14.0.1"
 detekt = "1.23.8"
-kover = "0.9.5"
+kover = "0.9.7"
 mockk = "1.14.9"
 kotlinx-coroutines-test = "1.10.2"
 
@@ -60,10 +58,16 @@ filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref =
 filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekitCore" }
 jdbc-driver = { module = "app.cash.sqldelight:jdbc-driver", version.ref = "sqlDelight" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
-jvm-native-trusted-roots = { module = "org.jetbrains.nativecerts:jvm-native-trusted-roots", version.ref = "jvmNativeTrustedRoots" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 knotify = { module = "io.github.kdroidfilter:knotify", version.ref = "knotify" }
 knotify-compose = { module = "io.github.kdroidfilter:knotify-compose", version.ref = "knotify" }
+nucleus-core-runtime = { module = "io.github.kdroidfilter:nucleus.core-runtime", version.ref = "nucleus" }
+nucleus-aot-runtime = { module = "io.github.kdroidfilter:nucleus.aot-runtime", version.ref = "nucleus" }
+nucleus-darkmode-detector = { module = "io.github.kdroidfilter:nucleus.darkmode-detector", version.ref = "nucleus" }
+nucleus-decorated-window = { module = "io.github.kdroidfilter:nucleus.decorated-window", version.ref = "nucleus" }
+nucleus-updater-runtime = { module = "io.github.kdroidfilter:nucleus.updater-runtime", version.ref = "nucleus" }
+nucleus-native-ssl = { module = "io.github.kdroidfilter:nucleus.native-ssl", version.ref = "nucleus" }
+nucleus-native-http-ktor = { module = "io.github.kdroidfilter:nucleus.native-http-ktor", version.ref = "nucleus" }
 koalaplot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaplotCore" }
 kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 kotlinx-serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "kotlinx-serialization" }
@@ -88,20 +92,14 @@ kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.
 materialKolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
 foundation-desktop = { module = "org.jetbrains.compose.foundation:foundation-desktop", version.ref = "compose" }
 jetbrains-jewel-foundation = { module = "org.jetbrains.jewel:jewel-foundation", version.ref = "jewel" }
-jewel-decorated-window = { module = "org.jetbrains.jewel:jewel-decorated-window", version.ref = "jewel" }
-jewel-int-ui-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version.ref = "jewel" }
 jewel-int-ui-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
 jewel-ui = { module = "org.jetbrains.jewel:jewel-ui", version.ref = "jewel" }
-jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "paging" }
 androidx-paging-compose = { module = "androidx.paging:paging-compose", version = "paging" }
 oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshiCore" }
 platformtools-appmanager = { module = "io.github.kdroidfilter:platformtools.appmanager", version.ref = "platformtools" }
 platformtools-core = { module = "io.github.kdroidfilter:platformtools.core", version.ref = "platformtools" }
-platformtools-darkmodedetector = { module = "io.github.kdroidfilter:platformtools.darkmodedetector", version.ref = "platformtools" }
 platformtools-releasefetcher = { module = "io.github.kdroidfilter:platformtools.releasefetcher", version.ref = "platformtools" }
-platformtools-rtlwindows = { module = "io.github.kdroidfilter:platformtools.rtlwindows", version.ref = "platformtools" }
-composenativetray = { module = "io.github.kdroidfilter:composenativetray", version.ref = "composenativetray" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
@@ -140,6 +138,7 @@ sqlDelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
 android-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 caupain =  { id = "com.deezer.caupain", version = "1.7.1"}
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
+nucleus = { id = "io.github.kdroidfilter.nucleus", version.ref = "nucleus" }
 linux-deps = { id = "io.github.kdroidfilter.compose.linux.packagedeps", version = "0.2.4"}
 stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version = "0.6.6" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }

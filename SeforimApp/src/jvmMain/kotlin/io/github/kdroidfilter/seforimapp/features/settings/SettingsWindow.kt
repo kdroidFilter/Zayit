@@ -26,14 +26,14 @@ import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.intui.standalone.theme.default
-import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.ui.ComponentStyling
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.window.DecoratedDialog
-import org.jetbrains.jewel.window.DialogTitleBar
-import org.jetbrains.jewel.window.newFullscreenControls
+import io.github.kdroidfilter.nucleus.window.DecoratedDialog
+import io.github.kdroidfilter.nucleus.window.NucleusDecoratedWindowTheme
+import io.github.kdroidfilter.nucleus.window.DialogTitleBar
+import io.github.kdroidfilter.nucleus.window.newFullscreenControls
 import seforimapp.seforimapp.generated.resources.*
 
 @Composable
@@ -45,14 +45,13 @@ fun SettingsWindow(onClose: () -> Unit) {
 
 @Composable
 private fun SettingsWindowView(onClose: () -> Unit) {
+    val isDark = ThemeUtils.isDarkTheme()
     val themeDefinition = buildThemeDefinition()
 
+    NucleusDecoratedWindowTheme(isDark = isDark) {
     IntUiTheme(
         theme = themeDefinition,
-        styling =
-            ComponentStyling.default().decoratedWindow(
-                titleBarStyle = ThemeUtils.pickTitleBarStyle(),
-            ),
+        styling = ComponentStyling.default(),
     ) {
         val settingsDialogState = rememberDialogState(position = WindowPosition.Aligned(Alignment.Center), size = DpSize(700.dp, 500.dp))
         DecoratedDialog(
@@ -143,4 +142,5 @@ private fun SettingsWindowView(onClose: () -> Unit) {
             }
         }
     }
+    } // NucleusDecoratedWindowTheme
 }

@@ -26,13 +26,13 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import com.kdroid.composetray.tray.api.ExperimentalTrayAppApi
-import com.kdroid.composetray.utils.SingleInstanceManager
+import io.github.kdroidfilter.nucleus.core.runtime.SingleInstanceManager
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.knotify.compose.builder.notification
-import io.github.kdroidfilter.platformtools.darkmodedetector.mac.setMacOsAdaptiveTitleBar
+import io.github.kdroidfilter.nucleus.aot.runtime.AotRuntime
+import io.github.kdroidfilter.nucleus.core.runtime.ExecutableRuntime
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
@@ -64,9 +64,9 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.intui.standalone.theme.default
-import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.ui.ComponentStyling
-import org.jetbrains.jewel.window.DecoratedWindow
+import io.github.kdroidfilter.nucleus.window.DecoratedWindow
+import io.github.kdroidfilter.nucleus.window.NucleusDecoratedWindowTheme
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.Desktop
 import java.awt.Dimension
@@ -78,14 +78,24 @@ import java.awt.event.KeyEvent
 import java.net.URI
 import java.util.*
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalTrayAppApi::class)
+@OptIn(ExperimentalFoundationApi::class)
+private const val AOT_TRAINING_DURATION_MS = 45_000L
+
 fun main() {
+    if (AotRuntime.isTraining()) {
+        Thread({
+            Thread.sleep(AOT_TRAINING_DURATION_MS)
+            kotlin.system.exitProcess(0)
+        }, "aot-timer").apply {
+            isDaemon = false
+            start()
+        }
+    }
+
     // Force OpenGL rendering backend on Windows if enabled (must be set before Skia initialization)
     if (PlatformInfo.isWindows && AppSettings.isUseOpenGlEnabled()) {
         System.setProperty("skiko.renderApi", "OPENGL")
     }
-
-    setMacOsAdaptiveTitleBar()
 
     // Register global AWT key event dispatcher for Cmd+Shift+C (copy without nikud)
     KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher { event ->
@@ -168,14 +178,13 @@ fun main() {
             LocalAppGraph provides appGraph,
             LocalMetroViewModelFactory provides appGraph.metroViewModelFactory,
         ) {
+            val isDark = ThemeUtils.isDarkTheme()
             val themeDefinition = ThemeUtils.buildThemeDefinition()
 
+            NucleusDecoratedWindowTheme(isDark = isDark) {
             IntUiTheme(
                 theme = themeDefinition,
-                styling =
-                    ComponentStyling.default().decoratedWindow(
-                        titleBarStyle = ThemeUtils.pickTitleBarStyle(),
-                    ),
+                styling = ComponentStyling.default(),
             ) {
                 // Decide whether to show onboarding, database update, or main app
                 LaunchedEffect(Unit) {
@@ -358,25 +367,28 @@ fun main() {
                                         is AppUpdateChecker.UpdateCheckResult.UpdateAvailable -> {
                                             if (isDevEnv) return@LaunchedEffect
                                             mainAppState.setUpdateAvailable(result.latestVersion)
-                                            // Send system notification
-                                            notification(
-                                                title = updateNotificationTitle,
-                                                message = updateNotificationMessage,
-                                                largeIcon = {
-                                                    Image(
-                                                        painter = painterResource(Res.drawable.AppIcon),
-                                                        contentDescription = null,
-                                                        modifier = Modifier.fillMaxSize(),
-                                                    )
-                                                },
-                                                onActivated = {
-                                                    Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
-                                                },
-                                            ) {
-                                                button(title = updateNotificationButton) {
-                                                    Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
-                                                }
-                                            }.send()
+
+                                            if (!ExecutableRuntime.isDev() || false) {
+                                                // Send system notification
+                                                notification(
+                                                    title = updateNotificationTitle,
+                                                    message = updateNotificationMessage,
+                                                    largeIcon = {
+                                                        Image(
+                                                            painter = painterResource(Res.drawable.AppIcon),
+                                                            contentDescription = null,
+                                                            modifier = Modifier.fillMaxSize(),
+                                                        )
+                                                    },
+                                                    onActivated = {
+                                                        Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
+                                                    },
+                                                ) {
+                                                    button(title = updateNotificationButton) {
+                                                        Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
+                                                    }
+                                                }.send()
+                                            }
                                         }
                                         is AppUpdateChecker.UpdateCheckResult.UpToDate -> {
                                             mainAppState.markUpdateCheckDone()
@@ -457,6 +469,7 @@ fun main() {
                     }
                 } // else (null) -> render nothing until decision made
             }
+            } // NucleusDecoratedWindowTheme
         }
     }
 }

@@ -26,13 +26,15 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import io.github.kdroidfilter.nucleus.core.runtime.SingleInstanceManager
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.knotify.compose.builder.notification
 import io.github.kdroidfilter.nucleus.aot.runtime.AotRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.ExecutableRuntime
+import io.github.kdroidfilter.nucleus.core.runtime.SingleInstanceManager
+import io.github.kdroidfilter.nucleus.window.DecoratedWindow
+import io.github.kdroidfilter.nucleus.window.NucleusDecoratedWindowTheme
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
@@ -65,8 +67,6 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.intui.standalone.theme.default
 import org.jetbrains.jewel.ui.ComponentStyling
-import io.github.kdroidfilter.nucleus.window.DecoratedWindow
-import io.github.kdroidfilter.nucleus.window.NucleusDecoratedWindowTheme
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.Desktop
 import java.awt.Dimension
@@ -182,293 +182,293 @@ fun main() {
             val themeDefinition = ThemeUtils.buildThemeDefinition()
 
             NucleusDecoratedWindowTheme(isDark = isDark) {
-            IntUiTheme(
-                theme = themeDefinition,
-                styling = ComponentStyling.default(),
-            ) {
-                // Decide whether to show onboarding, database update, or main app
-                LaunchedEffect(Unit) {
-                    try {
-                        // getDatabasePath() throws if not configured or file missing
-                        getDatabasePath()
+                IntUiTheme(
+                    theme = themeDefinition,
+                    styling = ComponentStyling.default(),
+                ) {
+                    // Decide whether to show onboarding, database update, or main app
+                    LaunchedEffect(Unit) {
+                        try {
+                            // getDatabasePath() throws if not configured or file missing
+                            getDatabasePath()
 
-                        // Check if onboarding is finished
-                        val onboardingFinished = AppSettings.isOnboardingFinished()
+                            // Check if onboarding is finished
+                            val onboardingFinished = AppSettings.isOnboardingFinished()
 
-                        if (!onboardingFinished) {
-                            // Show onboarding if not finished
-                            mainAppState.setShowOnBoarding(true)
-                            showDatabaseUpdate = false
-                        } else {
-                            // Onboarding is finished, check database version
-                            val isVersionCompatible = DatabaseVersionManager.isDatabaseVersionCompatible()
+                            if (!onboardingFinished) {
+                                // Show onboarding if not finished
+                                mainAppState.setShowOnBoarding(true)
+                                showDatabaseUpdate = false
+                            } else {
+                                // Onboarding is finished, check database version
+                                val isVersionCompatible = DatabaseVersionManager.isDatabaseVersionCompatible()
 
-                            if (!isVersionCompatible) {
-                                // Database needs update
-                                mainAppState.setShowOnBoarding(false)
-                                showDatabaseUpdate = true
+                                if (!isVersionCompatible) {
+                                    // Database needs update
+                                    mainAppState.setShowOnBoarding(false)
+                                    showDatabaseUpdate = true
+                                    isDatabaseMissing = false
+                                } else {
+                                    // Everything is ready, show main app
+                                    mainAppState.setShowOnBoarding(false)
+                                    showDatabaseUpdate = false
+                                }
+                            }
+                        } catch (_: Exception) {
+                            // If DB is missing but app is configured, show database update with error message
+                            val onboardingFinished = AppSettings.isOnboardingFinished()
+
+                            if (!onboardingFinished) {
+                                // App not configured, show onboarding
+                                mainAppState.setShowOnBoarding(true)
+                                showDatabaseUpdate = false
                                 isDatabaseMissing = false
                             } else {
-                                // Everything is ready, show main app
+                                // App configured but DB missing, show database update with error
                                 mainAppState.setShowOnBoarding(false)
-                                showDatabaseUpdate = false
+                                showDatabaseUpdate = true
+                                isDatabaseMissing = true
                             }
                         }
-                    } catch (_: Exception) {
-                        // If DB is missing but app is configured, show database update with error message
-                        val onboardingFinished = AppSettings.isOnboardingFinished()
-
-                        if (!onboardingFinished) {
-                            // App not configured, show onboarding
-                            mainAppState.setShowOnBoarding(true)
-                            showDatabaseUpdate = false
-                            isDatabaseMissing = false
-                        } else {
-                            // App configured but DB missing, show database update with error
-                            mainAppState.setShowOnBoarding(false)
-                            showDatabaseUpdate = true
-                            isDatabaseMissing = true
-                        }
                     }
-                }
 
-                if (showOnboarding == true) {
-                    OnBoardingWindow()
-                } else if (showDatabaseUpdate == true) {
-                    DatabaseUpdateWindow(
-                        onUpdateComplete = {
-                            // After database update, refresh the version check and show main app
-                            showDatabaseUpdate = false
-                        },
-                        isDatabaseMissing = isDatabaseMissing,
-                    )
-                } else if (showOnboarding == false && showDatabaseUpdate == false) {
-                    val windowViewModelOwner = rememberWindowViewModelStoreOwner()
-                    val settingsWindowViewModel: SettingsWindowViewModel =
-                        metroViewModel(viewModelStoreOwner = windowViewModelOwner)
+                    if (showOnboarding == true) {
+                        OnBoardingWindow()
+                    } else if (showDatabaseUpdate == true) {
+                        DatabaseUpdateWindow(
+                            onUpdateComplete = {
+                                // After database update, refresh the version check and show main app
+                                showDatabaseUpdate = false
+                            },
+                            isDatabaseMissing = isDatabaseMissing,
+                        )
+                    } else if (showOnboarding == false && showDatabaseUpdate == false) {
+                        val windowViewModelOwner = rememberWindowViewModelStoreOwner()
+                        val settingsWindowViewModel: SettingsWindowViewModel =
+                            metroViewModel(viewModelStoreOwner = windowViewModelOwner)
 
-                    // Build dynamic window title: "AppName - CurrentTab"
-                    val tabsVm = appGraph.tabsViewModel
-                    val tabs by tabsVm.tabs.collectAsState()
-                    val selectedIndex by tabsVm.selectedTabIndex.collectAsState()
-                    val appTitle = stringResource(Res.string.app_name)
-                    val selectedTab = tabs.getOrNull(selectedIndex)
-                    val rawTitle = selectedTab?.title.orEmpty()
-                    val tabType = selectedTab?.tabType
-                    val formattedTabTitle =
-                        when {
-                            rawTitle.isEmpty() -> stringResource(Res.string.home)
-                            tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, rawTitle)
-                            else -> rawTitle
-                        }
-                    val windowTitle =
-                        if (formattedTabTitle.isNotBlank()) {
-                            stringResource(Res.string.window_title_with_tab, appTitle, formattedTabTitle)
-                        } else {
-                            appTitle
-                        }
+                        // Build dynamic window title: "AppName - CurrentTab"
+                        val tabsVm = appGraph.tabsViewModel
+                        val tabs by tabsVm.tabs.collectAsState()
+                        val selectedIndex by tabsVm.selectedTabIndex.collectAsState()
+                        val appTitle = stringResource(Res.string.app_name)
+                        val selectedTab = tabs.getOrNull(selectedIndex)
+                        val rawTitle = selectedTab?.title.orEmpty()
+                        val tabType = selectedTab?.tabType
+                        val formattedTabTitle =
+                            when {
+                                rawTitle.isEmpty() -> stringResource(Res.string.home)
+                                tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, rawTitle)
+                                else -> rawTitle
+                            }
+                        val windowTitle =
+                            if (formattedTabTitle.isNotBlank()) {
+                                stringResource(Res.string.window_title_with_tab, appTitle, formattedTabTitle)
+                            } else {
+                                appTitle
+                            }
 
-                    DecoratedWindow(
-                        onCloseRequest = {
-                            // Persist session if enabled, then exit
-                            SessionManager.saveIfEnabled(appGraph)
-                            exitApplication()
-                        },
-                        title = windowTitle,
-                        icon = if (PlatformInfo.isMacOS) null else painterResource(Res.drawable.AppIcon),
-                        state = windowState,
-                        visible = isWindowVisible,
-                        onKeyEvent = { keyEvent ->
-                            if (keyEvent.type == KeyEventType.KeyDown) {
-                                val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                                if (isCtrlOrCmd && keyEvent.key == Key.T) {
-                                    tabsVm.onEvent(TabsEvents.OnAdd)
-                                    true
-                                } else if (isCtrlOrCmd && keyEvent.key == Key.W) {
-                                    // Close current tab with Ctrl/Cmd + W
-                                    tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))
-                                    true
-                                } else if (isCtrlOrCmd && keyEvent.key == Key.Tab) {
-                                    val count = tabs.size
-                                    if (count > 0) {
-                                        val direction = if (keyEvent.isShiftPressed) -1 else 1
-                                        val newIndex = (selectedIndex + direction + count) % count
-                                        tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
-                                    }
-                                    true
-                                } else if ((keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
-                                    (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H)
-                                ) {
-                                    val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
-                                    if (currentTabId != null) {
-                                        // Navigate current tab back to Home (preserve tab slot, refresh state)
-                                        tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
+                        DecoratedWindow(
+                            onCloseRequest = {
+                                // Persist session if enabled, then exit
+                                SessionManager.saveIfEnabled(appGraph)
+                                exitApplication()
+                            },
+                            title = windowTitle,
+                            icon = if (PlatformInfo.isMacOS) null else painterResource(Res.drawable.AppIcon),
+                            state = windowState,
+                            visible = isWindowVisible,
+                            onKeyEvent = { keyEvent ->
+                                if (keyEvent.type == KeyEventType.KeyDown) {
+                                    val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                                    if (isCtrlOrCmd && keyEvent.key == Key.T) {
+                                        tabsVm.onEvent(TabsEvents.OnAdd)
+                                        true
+                                    } else if (isCtrlOrCmd && keyEvent.key == Key.W) {
+                                        // Close current tab with Ctrl/Cmd + W
+                                        tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))
+                                        true
+                                    } else if (isCtrlOrCmd && keyEvent.key == Key.Tab) {
+                                        val count = tabs.size
+                                        if (count > 0) {
+                                            val direction = if (keyEvent.isShiftPressed) -1 else 1
+                                            val newIndex = (selectedIndex + direction + count) % count
+                                            tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
+                                        }
+                                        true
+                                    } else if ((keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
+                                        (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H)
+                                    ) {
+                                        val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
+                                        if (currentTabId != null) {
+                                            // Navigate current tab back to Home (preserve tab slot, refresh state)
+                                            tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    } else if (isCtrlOrCmd && keyEvent.key == Key.Comma) {
+                                        // Open settings with Cmd+, or Ctrl+,
+                                        settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
+                                        true
+                                    } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
+                                        // Minimize window with Cmd+M on macOS
+                                        windowState.isMinimized = true
                                         true
                                     } else {
-                                        false
+                                        processKeyShortcuts(
+                                            keyEvent = keyEvent,
+                                            onNavigateTo = { /* no-op: legacy shortcuts not used here */ },
+                                            tabId = tabs.getOrNull(selectedIndex)?.destination?.tabId ?: "",
+                                        )
                                     }
-                                } else if (isCtrlOrCmd && keyEvent.key == Key.Comma) {
-                                    // Open settings with Cmd+, or Ctrl+,
-                                    settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
-                                    true
-                                } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
-                                    // Minimize window with Cmd+M on macOS
-                                    windowState.isMinimized = true
-                                    true
                                 } else {
-                                    processKeyShortcuts(
-                                        keyEvent = keyEvent,
-                                        onNavigateTo = { /* no-op: legacy shortcuts not used here */ },
-                                        tabId = tabs.getOrNull(selectedIndex)?.destination?.tabId ?: "",
-                                    )
+                                    false
                                 }
-                            } else {
-                                false
-                            }
-                        },
-                    ) {
-                        CompositionLocalProvider(
-                            LocalWindowViewModelStoreOwner provides windowViewModelOwner,
-                            LocalViewModelStoreOwner provides windowViewModelOwner,
+                            },
                         ) {
-                            /**
-                             * A hack to work around the window flashing its background color when closed
-                             * (https://youtrack.jetbrains.com/issue/CMP-5651).
-                             */
-                            val background = JewelTheme.globalColors.panelBackground
-                            LaunchedEffect(window, background) {
-                                window.background = java.awt.Color(background.toArgb())
-                            }
-
-                            LaunchedEffect(Unit) {
-                                window.minimumSize = Dimension(600, 300)
-                                if (PlatformInfo.isWindows) {
-                                    delay(10)
-                                    windowState.placement = WindowPlacement.Maximized
+                            CompositionLocalProvider(
+                                LocalWindowViewModelStoreOwner provides windowViewModelOwner,
+                                LocalViewModelStoreOwner provides windowViewModelOwner,
+                            ) {
+                                /**
+                                 * A hack to work around the window flashing its background color when closed
+                                 * (https://youtrack.jetbrains.com/issue/CMP-5651).
+                                 */
+                                val background = JewelTheme.globalColors.panelBackground
+                                LaunchedEffect(window, background) {
+                                    window.background = java.awt.Color(background.toArgb())
                                 }
-                            }
-                            MainTitleBar()
 
-                            // Restore previously saved session once when main window becomes active
-                            var sessionRestored by remember { mutableStateOf(false) }
-                            LaunchedEffect(Unit) {
-                                if (!sessionRestored) {
-                                    SessionManager.restoreIfEnabled(appGraph)
-                                    sessionRestored = true
+                                LaunchedEffect(Unit) {
+                                    window.minimumSize = Dimension(600, 300)
+                                    if (PlatformInfo.isWindows) {
+                                        delay(10)
+                                        windowState.placement = WindowPlacement.Maximized
+                                    }
                                 }
-                            }
-                            // Check for updates once at startup
-                            val updateNotificationTitle = stringResource(Res.string.update_available_toast)
-                            val updateNotificationMessage = stringResource(Res.string.update_notification_message)
-                            val updateNotificationButton = stringResource(Res.string.update_download_action)
-                            LaunchedEffect(Unit) {
-                                if (!mainAppState.updateCheckDone.value) {
-                                    when (val result = AppUpdateChecker.checkForUpdate()) {
-                                        is AppUpdateChecker.UpdateCheckResult.UpdateAvailable -> {
-                                            if (isDevEnv) return@LaunchedEffect
-                                            mainAppState.setUpdateAvailable(result.latestVersion)
+                                MainTitleBar()
 
-                                            if (!ExecutableRuntime.isDev() || false) {
-                                                // Send system notification
-                                                notification(
-                                                    title = updateNotificationTitle,
-                                                    message = updateNotificationMessage,
-                                                    largeIcon = {
-                                                        Image(
-                                                            painter = painterResource(Res.drawable.AppIcon),
-                                                            contentDescription = null,
-                                                            modifier = Modifier.fillMaxSize(),
-                                                        )
-                                                    },
-                                                    onActivated = {
-                                                        Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
-                                                    },
-                                                ) {
-                                                    button(title = updateNotificationButton) {
-                                                        Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
-                                                    }
-                                                }.send()
+                                // Restore previously saved session once when main window becomes active
+                                var sessionRestored by remember { mutableStateOf(false) }
+                                LaunchedEffect(Unit) {
+                                    if (!sessionRestored) {
+                                        SessionManager.restoreIfEnabled(appGraph)
+                                        sessionRestored = true
+                                    }
+                                }
+                                // Check for updates once at startup
+                                val updateNotificationTitle = stringResource(Res.string.update_available_toast)
+                                val updateNotificationMessage = stringResource(Res.string.update_notification_message)
+                                val updateNotificationButton = stringResource(Res.string.update_download_action)
+                                LaunchedEffect(Unit) {
+                                    if (!mainAppState.updateCheckDone.value) {
+                                        when (val result = AppUpdateChecker.checkForUpdate()) {
+                                            is AppUpdateChecker.UpdateCheckResult.UpdateAvailable -> {
+                                                if (isDevEnv) return@LaunchedEffect
+                                                mainAppState.setUpdateAvailable(result.latestVersion)
+
+                                                if (!ExecutableRuntime.isDev() || false) {
+                                                    // Send system notification
+                                                    notification(
+                                                        title = updateNotificationTitle,
+                                                        message = updateNotificationMessage,
+                                                        largeIcon = {
+                                                            Image(
+                                                                painter = painterResource(Res.drawable.AppIcon),
+                                                                contentDescription = null,
+                                                                modifier = Modifier.fillMaxSize(),
+                                                            )
+                                                        },
+                                                        onActivated = {
+                                                            Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
+                                                        },
+                                                    ) {
+                                                        button(title = updateNotificationButton) {
+                                                            Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
+                                                        }
+                                                    }.send()
+                                                }
                                             }
-                                        }
-                                        is AppUpdateChecker.UpdateCheckResult.UpToDate -> {
-                                            mainAppState.markUpdateCheckDone()
-                                        }
-                                        is AppUpdateChecker.UpdateCheckResult.Error -> {
-                                            mainAppState.markUpdateCheckDone()
+                                            is AppUpdateChecker.UpdateCheckResult.UpToDate -> {
+                                                mainAppState.markUpdateCheckDone()
+                                            }
+                                            is AppUpdateChecker.UpdateCheckResult.Error -> {
+                                                mainAppState.markUpdateCheckDone()
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            // Intercept key combos early to avoid focus traversal consuming Tab
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .onPreviewKeyEvent { keyEvent ->
-                                            if (keyEvent.type == KeyEventType.KeyDown) {
-                                                val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                                                when {
-                                                    // Ctrl/Cmd + W => close current tab
-                                                    isCtrlOrCmd && keyEvent.key == Key.W -> {
-                                                        tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))
-                                                        true
-                                                    }
-                                                    // Ctrl/Cmd + Shift + Tab => previous tab
-                                                    isCtrlOrCmd && keyEvent.key == Key.Tab && keyEvent.isShiftPressed -> {
-                                                        val count = tabs.size
-                                                        if (count > 0) {
-                                                            val newIndex = (selectedIndex - 1 + count) % count
-                                                            tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
-                                                        }
-                                                        true
-                                                    }
-                                                    // Ctrl/Cmd + Tab => next tab
-                                                    isCtrlOrCmd && keyEvent.key == Key.Tab -> {
-                                                        val count = tabs.size
-                                                        if (count > 0) {
-                                                            val newIndex = (selectedIndex + 1) % count
-                                                            tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
-                                                        }
-                                                        true
-                                                    }
-                                                    // Ctrl/Cmd + T => new tab
-                                                    isCtrlOrCmd && keyEvent.key == Key.T -> {
-                                                        tabsVm.onEvent(TabsEvents.OnAdd)
-                                                        true
-                                                    }
-                                                    // Alt + Home (Windows) or Cmd + Shift + H (macOS) => go Home on current tab
-                                                    (keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
-                                                        (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H) -> {
-                                                        val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
-                                                        if (currentTabId != null) {
-                                                            tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
+                                // Intercept key combos early to avoid focus traversal consuming Tab
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxSize()
+                                            .onPreviewKeyEvent { keyEvent ->
+                                                if (keyEvent.type == KeyEventType.KeyDown) {
+                                                    val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                                                    when {
+                                                        // Ctrl/Cmd + W => close current tab
+                                                        isCtrlOrCmd && keyEvent.key == Key.W -> {
+                                                            tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))
                                                             true
-                                                        } else {
-                                                            false
                                                         }
+                                                        // Ctrl/Cmd + Shift + Tab => previous tab
+                                                        isCtrlOrCmd && keyEvent.key == Key.Tab && keyEvent.isShiftPressed -> {
+                                                            val count = tabs.size
+                                                            if (count > 0) {
+                                                                val newIndex = (selectedIndex - 1 + count) % count
+                                                                tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
+                                                            }
+                                                            true
+                                                        }
+                                                        // Ctrl/Cmd + Tab => next tab
+                                                        isCtrlOrCmd && keyEvent.key == Key.Tab -> {
+                                                            val count = tabs.size
+                                                            if (count > 0) {
+                                                                val newIndex = (selectedIndex + 1) % count
+                                                                tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
+                                                            }
+                                                            true
+                                                        }
+                                                        // Ctrl/Cmd + T => new tab
+                                                        isCtrlOrCmd && keyEvent.key == Key.T -> {
+                                                            tabsVm.onEvent(TabsEvents.OnAdd)
+                                                            true
+                                                        }
+                                                        // Alt + Home (Windows) or Cmd + Shift + H (macOS) => go Home on current tab
+                                                        (keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
+                                                            (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H) -> {
+                                                            val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
+                                                            if (currentTabId != null) {
+                                                                tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
+                                                                true
+                                                            } else {
+                                                                false
+                                                            }
+                                                        }
+                                                        // Ctrl/Cmd + Comma => open settings
+                                                        isCtrlOrCmd && keyEvent.key == Key.Comma -> {
+                                                            settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
+                                                            true
+                                                        }
+                                                        // Cmd + M => minimize window (macOS only)
+                                                        PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
+                                                            windowState.isMinimized = true
+                                                            true
+                                                        }
+                                                        else -> false
                                                     }
-                                                    // Ctrl/Cmd + Comma => open settings
-                                                    isCtrlOrCmd && keyEvent.key == Key.Comma -> {
-                                                        settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
-                                                        true
-                                                    }
-                                                    // Cmd + M => minimize window (macOS only)
-                                                    PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
-                                                        windowState.isMinimized = true
-                                                        true
-                                                    }
-                                                    else -> false
+                                                } else {
+                                                    false
                                                 }
-                                            } else {
-                                                false
-                                            }
-                                        },
-                            ) { TabsContent() }
+                                            },
+                                ) { TabsContent() }
+                            }
                         }
-                    }
-                } // else (null) -> render nothing until decision made
-            }
+                    } // else (null) -> render nothing until decision made
+                }
             } // NucleusDecoratedWindowTheme
         }
     }

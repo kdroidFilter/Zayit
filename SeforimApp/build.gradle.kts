@@ -1,9 +1,8 @@
 import io.github.kdroidfilter.buildsrc.Versioning
-import io.github.kdroidfilter.nucleus.desktop.application.dsl.PublishMode
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseChannel
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseType
-import org.jetbrains.compose.ExperimentalComposeLibrary
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
+import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
 
 plugins {
@@ -23,7 +22,6 @@ plugins {
 }
 
 val version = Versioning.resolveVersion(project)
-
 
 kotlin {
 //    androidTarget {
@@ -184,77 +182,76 @@ kotlin {
 
 nucleus.application {
 
-        mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
-        nativeDistributions {
+    mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
+    nativeDistributions {
 
-            publish {
-                github {
-                    enabled = true
-                    owner = "kdroidFilter"
-                    repo = "Zayit"
-                    channel = ReleaseChannel.Latest
-                    releaseType = ReleaseType.Release
-                }
-            }
-
-            // Package-time resources root; include files under OS-specific subfolders (common, macos, windows, linux)
-            appResourcesRootDir.set(layout.projectDirectory.dir("src/jvmMain/assets"))
-            splashImage = "splash.png"
-            enableAotCache = true
-            jvmArgs +=
-                listOf(
-                    "--enable-native-access=ALL-UNNAMED",
-                    "--add-modules=jdk.incubator.vector",
-                )
-            jvmArgs +=
-                listOf(
-                    "-XX:+UseCompactObjectHeaders",
-                    "-XX:+UseStringDeduplication",
-                    "-XX:MaxGCPauseMillis=50",
-                )
-
-            modules(
-                "java.sql",
-                "java.management",
-                "jdk.management",
-                "jdk.unsupported",
-                "jdk.security.auth",
-                "jdk.accessibility",
-                "jdk.incubator.vector",
-            )
-            targetFormats(TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Dmg, TargetFormat.Zip)
-            vendor = "KDroidFilter"
-            cleanupNativeLibs = true
-
-            linux {
-                packageName = "zayit"
-                iconFile.set(project.file("desktopAppIcons/LinuxIcon.png"))
-                packageVersion = version
-            }
-            windows {
-                iconFile.set(project.file("desktopAppIcons/WindowsIcon.ico"))
-                packageVersion = version
-                packageName = "Zayit"
-                dirChooser = false
-                shortcut = true
-                upgradeUuid = "d9f21975-4359-4818-a623-6e9a3f0a07ca"
-                perUserInstall = true
-            }
-            macOS {
-                iconFile.set(project.file("desktopAppIcons/MacosIcon.icns"))
-                bundleID = "io.github.kdroidfilter.seforimapp.desktopApp"
-                packageVersion = version
-                packageName = "זית"
-            }
-            buildTypes.release.proguard {
-                version.set("7.8.1")
-                isEnabled = true
-                obfuscate.set(false)
-                optimize.set(true)
-                configurationFiles.from(project.file("proguard-rules.pro"))
+        publish {
+            github {
+                enabled = true
+                owner = "kdroidFilter"
+                repo = "Zayit"
+                channel = ReleaseChannel.Latest
+                releaseType = ReleaseType.Release
             }
         }
 
+        // Package-time resources root; include files under OS-specific subfolders (common, macos, windows, linux)
+        appResourcesRootDir.set(layout.projectDirectory.dir("src/jvmMain/assets"))
+        splashImage = "splash.png"
+        enableAotCache = true
+        jvmArgs +=
+            listOf(
+                "--enable-native-access=ALL-UNNAMED",
+                "--add-modules=jdk.incubator.vector",
+            )
+        jvmArgs +=
+            listOf(
+                "-XX:+UseCompactObjectHeaders",
+                "-XX:+UseStringDeduplication",
+                "-XX:MaxGCPauseMillis=50",
+            )
+
+        modules(
+            "java.sql",
+            "java.management",
+            "jdk.management",
+            "jdk.unsupported",
+            "jdk.security.auth",
+            "jdk.accessibility",
+            "jdk.incubator.vector",
+        )
+        targetFormats(TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Dmg, TargetFormat.Zip)
+        vendor = "KDroidFilter"
+        cleanupNativeLibs = true
+
+        linux {
+            packageName = "zayit"
+            iconFile.set(project.file("desktopAppIcons/LinuxIcon.png"))
+            packageVersion = version
+        }
+        windows {
+            iconFile.set(project.file("desktopAppIcons/WindowsIcon.ico"))
+            packageVersion = version
+            packageName = "Zayit"
+            dirChooser = false
+            shortcut = true
+            upgradeUuid = "d9f21975-4359-4818-a623-6e9a3f0a07ca"
+            perUserInstall = true
+        }
+        macOS {
+            iconFile.set(project.file("desktopAppIcons/MacosIcon.icns"))
+            bundleID = "io.github.kdroidfilter.seforimapp.desktopApp"
+            packageVersion = version
+            packageName = "זית"
+        }
+        buildTypes.release.proguard {
+            version.set("7.8.1")
+            isEnabled = true
+            obfuscate.set(false)
+            optimize.set(true)
+            configurationFiles.from(project.file("proguard-rules.pro"))
+        }
+    }
 }
 
 sqldelight {
@@ -265,7 +262,6 @@ sqldelight {
         }
     }
 }
-
 
 tasks.withType<ComposeHotRun>().configureEach {
     mainClass.set("io.github.kdroidfilter.seforimapp.MainKt")

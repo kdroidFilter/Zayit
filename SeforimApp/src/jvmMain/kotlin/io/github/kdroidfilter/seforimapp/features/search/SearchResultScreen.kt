@@ -53,6 +53,8 @@ import io.github.kdroidfilter.seforimapp.features.search.domain.TocTree
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -387,7 +389,10 @@ private fun SearchResultContentMvi(
     fun recomputeMatches(query: String) { // removed: counter not needed
     }
 
-    fun navigateTo(next: Boolean) {
+    fun navigateTo(
+        next: Boolean,
+        @StructuredScope scope: CoroutineScope,
+    ) {
         val q = findState.text.toString()
         if (q.length < 2) return
         val vis = visibleResults
@@ -407,7 +412,6 @@ private fun SearchResultContentMvi(
             if (start >= 0) {
                 currentHitIndex = i
                 currentMatchStart = start
-                @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                 scope.launch { listState.scrollToItem(i, 24) }
                 break
             }
@@ -602,8 +606,8 @@ private fun SearchResultContentMvi(
             Box(modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).zIndex(2f)) {
                 FindInPageBar(
                     state = findState,
-                    onEnterNext = { navigateTo(true) },
-                    onEnterPrev = { navigateTo(false) },
+                    onEnterNext = { navigateTo(true, scope) },
+                    onEnterPrev = { navigateTo(false, scope) },
                     onClose = { AppSettings.closeFindBar(tabId) },
                 )
             }

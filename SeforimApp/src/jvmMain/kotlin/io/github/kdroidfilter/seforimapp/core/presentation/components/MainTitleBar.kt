@@ -10,9 +10,9 @@ import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsView
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
-import org.jetbrains.jewel.window.DecoratedWindowScope
-import org.jetbrains.jewel.window.TitleBar
-import org.jetbrains.jewel.window.newFullscreenControls
+import io.github.kdroidfilter.nucleus.window.DecoratedWindowScope
+import io.github.kdroidfilter.nucleus.window.TitleBar
+import io.github.kdroidfilter.nucleus.window.newFullscreenControls
 
 @Composable
 fun DecoratedWindowScope.MainTitleBar() {

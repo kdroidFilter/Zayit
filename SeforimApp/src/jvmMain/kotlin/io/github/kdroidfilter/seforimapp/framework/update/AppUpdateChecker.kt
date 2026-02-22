@@ -1,18 +1,11 @@
 package io.github.kdroidfilter.seforimapp.framework.update
 
-import io.github.kdroidfilter.platformtools.getAppVersion
+import io.github.kdroidfilter.nucleus.updater.UpdaterConfig
 import io.github.kdroidfilter.platformtools.releasefetcher.github.GitHubReleaseFetcher
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.network.KtorConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Checks for app updates by comparing the local version with the latest GitHub release.
- *
- * Handles macOS version quirk where local version is 1.x.x but GitHub has 0.x.x
- * (due to macOS packaging requiring MAJOR > 0).
- */
 object AppUpdateChecker {
     const val DOWNLOAD_URL = "https://kdroidfilter.github.io/Zayit/download"
 
@@ -50,7 +43,7 @@ object AppUpdateChecker {
                         ?: return@withContext UpdateCheckResult.Error
 
                 val latestVersion = normalizeVersion(release.tag_name)
-                val currentVersion = normalizeLocalVersion(getAppVersion())
+                val currentVersion = UpdaterConfig().currentVersion.trim()
 
                 if (latestVersion != currentVersion) {
                     UpdateCheckResult.UpdateAvailable(latestVersion)
@@ -62,28 +55,5 @@ object AppUpdateChecker {
             }
         }
 
-    /**
-     * Normalizes a GitHub version tag by removing the "v" prefix.
-     * Example: "v0.3.17" -> "0.3.17"
-     */
     private fun normalizeVersion(version: String): String = version.removePrefix("v").trim()
-
-    /**
-     * Normalizes the local app version, handling the macOS quirk.
-     * On macOS, version 1.x.y is converted back to 0.x.y for comparison.
-     * Example: "1.3.17" on macOS -> "0.3.17"
-     */
-    private fun normalizeLocalVersion(version: String): String {
-        val normalized = version.trim()
-
-        // On macOS, convert 1.x.y back to 0.x.y (reverse of macSafeVersion in build.gradle.kts)
-        if (PlatformInfo.isMacOS) {
-            val parts = normalized.split(".")
-            if (parts.isNotEmpty() && parts[0] == "1") {
-                return "0.${parts.drop(1).joinToString(".")}"
-            }
-        }
-
-        return normalized
-    }
 }

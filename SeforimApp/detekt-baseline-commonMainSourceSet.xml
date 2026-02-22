@@ -1,0 +1,23 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ClassNaming:Category_display_settings.kt:Category_display_settings</ID>
+    <ID>FunctionNaming:Drawable0.commonMain.kt:@InternalResourceApi internal fun _collectCommonMainDrawable0Resources</ID>
+    <ID>FunctionNaming:Font0.commonMain.kt:@InternalResourceApi internal fun _collectCommonMainFont0Resources</ID>
+    <ID>FunctionNaming:String0.commonMain.kt:@InternalResourceApi internal fun _collectCommonMainString0Resources</ID>
+    <ID>FunctionNaming:String1.commonMain.kt:@InternalResourceApi internal fun _collectCommonMainString1Resources</ID>
+    <ID>FunctionNaming:String2.commonMain.kt:@InternalResourceApi internal fun _collectCommonMainString2Resources</ID>
+    <ID>FunctionNaming:String3.commonMain.kt:@InternalResourceApi internal fun _collectCommonMainString3Resources</ID>
+    <ID>FunctionNaming:String4.commonMain.kt:@InternalResourceApi internal fun _collectCommonMainString4Resources</ID>
+    <ID>LargeClass:PrecomputedCatalog.kt:PrecomputedCatalog</ID>
+    <ID>LongMethod:Font0.commonMain.kt:@InternalResourceApi internal fun _collectCommonMainFont0Resources</ID>
+    <ID>LongMethod:String0.commonMain.kt:@InternalResourceApi internal fun _collectCommonMainString0Resources</ID>
+    <ID>LongMethod:String1.commonMain.kt:@InternalResourceApi internal fun _collectCommonMainString1Resources</ID>
+    <ID>LongMethod:String2.commonMain.kt:@InternalResourceApi internal fun _collectCommonMainString2Resources</ID>
+    <ID>LongMethod:String3.commonMain.kt:@InternalResourceApi internal fun _collectCommonMainString3Resources</ID>
+    <ID>MaxLineLength:CategoryDisplaySettingsQueries.kt:CategoryDisplaySettingsQueries.SelectShowDiacriticsQuery$override</ID>
+    <ID>MaxLineLength:Res.kt:Res$public suspend</ID>
+    <ID>PackageNaming:UserSettingsDbImpl.kt:package io.github.kdroidfilter.seforimapp.db.SeforimApp</ID>
+  </CurrentIssues>
+</SmellBaseline>

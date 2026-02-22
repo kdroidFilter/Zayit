@@ -41,6 +41,7 @@ metro = "0.10.4"
 lucene = "10.3.2"
 ktlint = "14.0.1"
 detekt = "1.23.8"
+structured-coroutines = "0.3.0"
 kover = "0.9.7"
 mockk = "1.14.9"
 kotlinx-coroutines-test = "1.10.2"
@@ -142,4 +143,5 @@ nucleus = { id = "io.github.kdroidfilter.nucleus", version.ref = "nucleus" }
 stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version = "0.6.6" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+structured-coroutines = { id = "io.github.santimattius.structured-coroutines", version.ref = "structured-coroutines" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

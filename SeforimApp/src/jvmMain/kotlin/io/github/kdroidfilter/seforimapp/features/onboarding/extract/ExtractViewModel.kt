@@ -8,6 +8,7 @@ import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractUseCase
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,7 +71,7 @@ class ExtractViewModel(
             viewModelScope.launch(Dispatchers.Default) {
                 val path = processRepository.pendingZstPath.first()
                 if (path.isNullOrBlank()) return@launch
-                runCatching {
+                runSuspendCatching {
                     _error.value = null
                     _inProgress.value = true
                     _progress.value = 0f

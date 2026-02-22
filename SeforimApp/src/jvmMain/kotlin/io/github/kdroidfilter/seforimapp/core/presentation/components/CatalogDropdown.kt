@@ -25,6 +25,7 @@ import io.github.kdroidfilter.seforimapp.catalog.DropdownSpec
 import io.github.kdroidfilter.seforimapp.catalog.MultiCategoryDropdownSpec
 import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
 import io.github.kdroidfilter.seforimapp.catalog.TocQuickLinksSpec
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import kotlinx.coroutines.launch
@@ -93,7 +94,7 @@ fun CatalogDropdown(
                                     ) {
                                         close()
                                         scope.launch {
-                                            val b: BookModel? = runCatching { repo.getBookCore(bookRef.id) }.getOrNull()
+                                            val b: BookModel? = runSuspendCatching { repo.getBookCore(bookRef.id) }.getOrNull()
                                             if (b != null) onEvent(BookContentEvent.BookSelected(b))
                                         }
                                     }.padding(horizontal = 12.dp, vertical = 8.dp)
@@ -180,7 +181,7 @@ fun CatalogDropdown(
                                         ) {
                                             close()
                                             scope.launch {
-                                                val b: BookModel? = runCatching { repo.getBookCore(bookRef.id) }.getOrNull()
+                                                val b: BookModel? = runSuspendCatching { repo.getBookCore(bookRef.id) }.getOrNull()
                                                 if (b != null) onEvent(BookContentEvent.BookSelected(b))
                                             }
                                         }.padding(horizontal = 12.dp, vertical = 8.dp)

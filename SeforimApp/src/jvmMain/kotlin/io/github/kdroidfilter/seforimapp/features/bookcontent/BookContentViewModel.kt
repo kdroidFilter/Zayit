@@ -27,6 +27,7 @@ import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -520,7 +521,7 @@ class BookContentViewModel(
                 // selection is rehydrated (otherwise IDs can be overwritten with -1).
                 navigationUseCase.selectBook(book, save = !isRestore)
                 // Expand navigation tree up to the selected book's category
-                runCatching { navigationUseCase.expandPathToBook(book, save = !isRestore) }
+                runSuspendCatching { navigationUseCase.expandPathToBook(book, save = !isRestore) }
 
                 if (lineId != null) {
                     if (triggerScroll) {
@@ -540,7 +541,7 @@ class BookContentViewModel(
                                 copy(scrollToLineTimestamp = System.currentTimeMillis())
                             }
                             // Expand TOC to the line's TOC entry so the branch is visible
-                            runCatching { tocUseCase.expandPathToLine(line.id) }
+                            runSuspendCatching { tocUseCase.expandPathToLine(line.id) }
                         }
 
                         // Fermer automatiquement le panneau de l'arbre des livres si l'option est activée
@@ -552,7 +553,7 @@ class BookContentViewModel(
                         repository.getLine(lineId)?.let { line ->
                             selectLine(line)
                             // Expand TOC to the line's TOC entry so the branch is visible
-                            runCatching { tocUseCase.expandPathToLine(line.id) }
+                            runSuspendCatching { tocUseCase.expandPathToLine(line.id) }
                         }
                     }
                 } else {
@@ -596,7 +597,7 @@ class BookContentViewModel(
                                             }
                                         }
                                     }
-                                    runCatching { tocUseCase.expandPathToLine(line.id) }
+                                    runSuspendCatching { tocUseCase.expandPathToLine(line.id) }
                                 }
                             }
                         }
@@ -642,7 +643,7 @@ class BookContentViewModel(
 
         navigationUseCase.selectBook(resolvedBook)
         // Expand navigation tree up to the selected book's category
-        viewModelScope.launch { runCatching { navigationUseCase.expandPathToBook(resolvedBook) } }
+        viewModelScope.launch { runSuspendCatching { navigationUseCase.expandPathToBook(resolvedBook) } }
 
         // Automatically show TOC on first book selection if hidden
         if (previousBook == null && !stateManager.state.value.toc.isVisible) {
@@ -690,7 +691,7 @@ class BookContentViewModel(
             stateManager.setLoading(true)
             try {
                 // Pre-apply default commentators for this book (if defined in database)
-                runCatching { commentariesUseCase.applyDefaultCommentatorsForBook(book.id) }
+                runSuspendCatching { commentariesUseCase.applyDefaultCommentatorsForBook(book.id) }
 
                 val state = stateManager.state.value
                 // Always prefer an explicit anchor when present (e.g., opening from a commentary link)
@@ -707,7 +708,7 @@ class BookContentViewModel(
                         else -> {
                             // Compute from TOC: take the first root TOC entry (or its first leaf) and
                             // select its first associated line. Fallback to the very first line of the book.
-                            runCatching {
+                            runSuspendCatching {
                                 val root = repository.getBookRootToc(book.id)
                                 val first = root.firstOrNull()
                                 val targetEntryId =
@@ -741,11 +742,11 @@ class BookContentViewModel(
                 if (resolvedInitialLineId != null) {
                     if (forceAnchorId != null) {
                         loadAndSelectLine(resolvedInitialLineId, recreatePager = false)
-                        runCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
+                        runSuspendCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
                     } else if (!shouldUseAnchor && state.content.primaryLine == null) {
                         loadAndSelectLine(resolvedInitialLineId, recreatePager = false)
                         // Expand TOC path to the resolved initial line (first entry/leaf)
-                        runCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
+                        runSuspendCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
                     }
                 }
             } finally {
@@ -759,7 +760,7 @@ class BookContentViewModel(
      */
     private suspend fun findFirstLeafTocId(entry: io.github.kdroidfilter.seforimlibrary.core.models.TocEntry): Long? {
         if (!entry.hasChildren) return entry.id
-        val children = runCatching { repository.getTocChildren(entry.id) }.getOrDefault(emptyList())
+        val children = runSuspendCatching { repository.getTocChildren(entry.id) }.getOrDefault(emptyList())
         val firstChild = children.firstOrNull() ?: return entry.id
         return findFirstLeafTocId(firstChild)
     }

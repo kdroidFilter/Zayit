@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItems
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -123,7 +124,7 @@ private fun BookContentPanelContent(
                 val missing = ids.filterNot { connectionsCache.containsKey(it) }.distinct()
                 if (missing.isEmpty()) return@remember
                 prefetchScope.launch {
-                    runCatching { providers.loadLineConnections(missing) }
+                    runSuspendCatching { providers.loadLineConnections(missing) }
                         .onSuccess { connectionsCache.putAll(it) }
                 }
             }

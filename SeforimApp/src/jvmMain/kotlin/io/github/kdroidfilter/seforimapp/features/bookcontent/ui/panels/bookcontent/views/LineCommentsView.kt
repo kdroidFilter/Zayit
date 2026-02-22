@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
@@ -1103,7 +1104,7 @@ private fun rememberCommentarySelectionData(
             return@LaunchedEffect
         }
 
-        runCatching { currentGetCommentatorGroupsForLine(lineId) }
+        runSuspendCatching { currentGetCommentatorGroupsForLine(lineId) }
             .onSuccess { loaded -> groups = loaded }
             .onFailure { groups = emptyList() }
     }

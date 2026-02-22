@@ -31,6 +31,7 @@ import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -157,7 +158,7 @@ private fun SingleLineTargumView(
                             return@LaunchedEffect
                         }
 
-                        runCatching { currentGetAvailableLinksForLine(selectedLine.id) }
+                        runSuspendCatching { currentGetAvailableLinksForLine(selectedLine.id) }
                             .onSuccess { map -> titleToIdMap = map }
                             .onFailure { titleToIdMap = emptyMap() }
                     }

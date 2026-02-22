@@ -2,6 +2,7 @@
 
 package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
@@ -177,7 +178,7 @@ class TocUseCase(
         var currentId: Long? = tocId
         var guard = 0
         while (currentId != null && guard++ < 512) {
-            val entry = runCatching { repository.getTocEntry(currentId) }.getOrNull() ?: break
+            val entry = runSuspendCatching { repository.getTocEntry(currentId) }.getOrNull() ?: break
             path += entry
             currentId = entry.parentId
         }
@@ -192,7 +193,7 @@ class TocUseCase(
                     .toc.children
                     .containsKey(e.id)
             ) {
-                runCatching { loadTocChildren(e.id) }
+                runSuspendCatching { loadTocChildren(e.id) }
             }
             // Expand all ancestors (and optionally the leaf if it has children)
             stateManager.updateToc(save = false) {
@@ -203,7 +204,7 @@ class TocUseCase(
 
     /** Convenience: expand path to the TOC entry associated with a line. */
     suspend fun expandPathToLine(lineId: Long) {
-        val tocId = runCatching { repository.getTocEntryIdForLine(lineId) }.getOrNull() ?: return
+        val tocId = runSuspendCatching { repository.getTocEntryIdForLine(lineId) }.getOrNull() ?: return
         expandPathToTocEntry(tocId)
     }
 }

@@ -14,7 +14,6 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.buildConfig)
     alias(libs.plugins.metro)
-    alias(libs.plugins.linux.deps)
     alias(libs.plugins.stability.analyzer)
     alias(libs.plugins.sqlDelight)
     alias(libs.plugins.kover)

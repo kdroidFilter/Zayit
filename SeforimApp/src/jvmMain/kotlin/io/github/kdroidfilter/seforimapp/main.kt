@@ -81,6 +81,39 @@ import java.util.*
 @OptIn(ExperimentalFoundationApi::class)
 private const val AOT_TRAINING_DURATION_MS = 45_000L
 
+private data class StartupState(
+    val showOnboarding: Boolean,
+    val showDatabaseUpdate: Boolean,
+    val isDatabaseMissing: Boolean,
+)
+
+/**
+ * Determines the initial routing state synchronously.
+ * All operations are fast local I/O (read settings, check file existence, read version file).
+ */
+private fun computeStartupState(): StartupState =
+    try {
+        getDatabasePath()
+        val onboardingFinished = AppSettings.isOnboardingFinished()
+        if (!onboardingFinished) {
+            StartupState(showOnboarding = true, showDatabaseUpdate = false, isDatabaseMissing = false)
+        } else {
+            val isVersionCompatible = DatabaseVersionManager.isDatabaseVersionCompatible()
+            if (!isVersionCompatible) {
+                StartupState(showOnboarding = false, showDatabaseUpdate = true, isDatabaseMissing = false)
+            } else {
+                StartupState(showOnboarding = false, showDatabaseUpdate = false, isDatabaseMissing = false)
+            }
+        }
+    } catch (_: Exception) {
+        val onboardingFinished = AppSettings.isOnboardingFinished()
+        if (!onboardingFinished) {
+            StartupState(showOnboarding = true, showDatabaseUpdate = false, isDatabaseMissing = false)
+        } else {
+            StartupState(showOnboarding = false, showDatabaseUpdate = true, isDatabaseMissing = true)
+        }
+    }
+
 fun main() {
     if (AotRuntime.isTraining()) {
         Thread({
@@ -163,9 +196,21 @@ fun main() {
 
         // Get MainAppState from DI graph
         val mainAppState = appGraph.mainAppState
-        val showOnboarding: Boolean? = mainAppState.showOnBoarding.collectAsState().value
-        var showDatabaseUpdate by remember { mutableStateOf<Boolean?>(null) }
-        var isDatabaseMissing by remember { mutableStateOf(false) }
+
+        // Compute startup routing synchronously — all operations (read settings, check file
+        // existence, read version file) are fast local I/O with no network involved.
+        // Using remember { } instead of LaunchedEffect avoids a blank first frame while
+        // waiting for the coroutine scheduler to run the routing logic.
+        val startupState = remember { computeStartupState() }
+        val showOnboardingFromState by mainAppState.showOnBoarding.collectAsState()
+        val showOnboarding = showOnboardingFromState ?: startupState.showOnboarding
+        var showDatabaseUpdate by remember { mutableStateOf(startupState.showDatabaseUpdate) }
+        var isDatabaseMissing by remember { mutableStateOf(startupState.isDatabaseMissing) }
+
+        // Sync pre-computed state to mainAppState for any other observers of the flow
+        LaunchedEffect(Unit) {
+            mainAppState.setShowOnBoarding(startupState.showOnboarding)
+        }
 
         val initialTheme = remember { AppSettings.getThemeMode() }
         LaunchedEffect(initialTheme) {
@@ -186,55 +231,9 @@ fun main() {
                     theme = themeDefinition,
                     styling = ComponentStyling.default(),
                 ) {
-                    // Decide whether to show onboarding, database update, or main app
-                    LaunchedEffect(Unit) {
-                        try {
-                            // getDatabasePath() throws if not configured or file missing
-                            getDatabasePath()
-
-                            // Check if onboarding is finished
-                            val onboardingFinished = AppSettings.isOnboardingFinished()
-
-                            if (!onboardingFinished) {
-                                // Show onboarding if not finished
-                                mainAppState.setShowOnBoarding(true)
-                                showDatabaseUpdate = false
-                            } else {
-                                // Onboarding is finished, check database version
-                                val isVersionCompatible = DatabaseVersionManager.isDatabaseVersionCompatible()
-
-                                if (!isVersionCompatible) {
-                                    // Database needs update
-                                    mainAppState.setShowOnBoarding(false)
-                                    showDatabaseUpdate = true
-                                    isDatabaseMissing = false
-                                } else {
-                                    // Everything is ready, show main app
-                                    mainAppState.setShowOnBoarding(false)
-                                    showDatabaseUpdate = false
-                                }
-                            }
-                        } catch (_: Exception) {
-                            // If DB is missing but app is configured, show database update with error message
-                            val onboardingFinished = AppSettings.isOnboardingFinished()
-
-                            if (!onboardingFinished) {
-                                // App not configured, show onboarding
-                                mainAppState.setShowOnBoarding(true)
-                                showDatabaseUpdate = false
-                                isDatabaseMissing = false
-                            } else {
-                                // App configured but DB missing, show database update with error
-                                mainAppState.setShowOnBoarding(false)
-                                showDatabaseUpdate = true
-                                isDatabaseMissing = true
-                            }
-                        }
-                    }
-
-                    if (showOnboarding == true) {
+                    if (showOnboarding) {
                         OnBoardingWindow()
-                    } else if (showDatabaseUpdate == true) {
+                    } else if (showDatabaseUpdate) {
                         DatabaseUpdateWindow(
                             onUpdateComplete = {
                                 // After database update, refresh the version check and show main app
@@ -242,7 +241,7 @@ fun main() {
                             },
                             isDatabaseMissing = isDatabaseMissing,
                         )
-                    } else if (showOnboarding == false && showDatabaseUpdate == false) {
+                    } else {
                         val windowViewModelOwner = rememberWindowViewModelStoreOwner()
                         val settingsWindowViewModel: SettingsWindowViewModel =
                             metroViewModel(viewModelStoreOwner = windowViewModelOwner)
@@ -467,7 +466,7 @@ fun main() {
                                 ) { TabsContent() }
                             }
                         }
-                    } // else (null) -> render nothing until decision made
+                    }
                 }
             } // NucleusDecoratedWindowTheme
         }

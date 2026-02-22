@@ -386,6 +386,7 @@ private fun HomeBody(
                                         if (!isReferenceMode) {
                                             // Text mode: expand the scope section and focus secondary bar
                                             scopeExpanded = true
+                                            @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                                             scope.launch {
                                                 delay(100) // Wait for composition to settle
                                                 referenceSectionFocusRequester.requestFocus()
@@ -423,6 +424,7 @@ private fun HomeBody(
                                         tocSearchState.edit { replace(0, length, "") }
                                         skipNextTocQuery = false
                                         tocEditedSinceBook = false
+                                        @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                                         scope.launch {
                                             delay(80)
                                             mainSearchFocusRequester.requestFocus()
@@ -1420,6 +1422,7 @@ private fun SearchBar(
                                         isTocMode && focusedIndex in 0 until totalToc -> {
                                             handlePickToc(tocSuggestions[focusedIndex])
                                             if (submitOnEnterInReference) {
+                                                @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                                                 scope.launch {
                                                     withFrameNanos { }
                                                     handleSubmit()
@@ -1449,6 +1452,7 @@ private fun SearchBar(
                                         }
 
                                         submitOnEnterInReference && selectedBook != null -> {
+                                            @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                                             scope.launch {
                                                 withFrameNanos { }
                                                 handleSubmit()
@@ -1511,6 +1515,7 @@ private fun SearchBar(
                                         }
                                     if (handled) {
                                         if (submitOnEnterInReference && isTocMode) {
+                                            @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                                             scope.launch {
                                                 withFrameNanos { }
                                                 handleSubmit()

@@ -41,6 +41,7 @@ fun TypeOfInstallationScreen(
     val scope = rememberCoroutineScope()
     TypeOfInstallationView(
         onOnlineInstallation = {
+            @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
             scope.launch {
                 // Clean existing database and related files before online installation
                 cleanupUseCase.cleanupDatabaseFiles()
@@ -51,6 +52,7 @@ fun TypeOfInstallationScreen(
             }
         },
         onOfflineInstallation = {
+            @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
             scope.launch {
                 // Clean existing database and related files before offline installation
                 cleanupUseCase.cleanupDatabaseFiles()

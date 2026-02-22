@@ -46,6 +46,7 @@ fun OfflineFileSelectionScreen(
 
     // Function to start extraction with part01 path
     fun startExtraction(p1: String) {
+        @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
         scope.launch {
             // Nettoyer les anciens fichiers avant de commencer l'extraction
             if (!cleanupCompleted) {
@@ -95,6 +96,7 @@ fun OfflineFileSelectionScreen(
                     startExtraction(p1)
                 } else {
                     // Part02 not found, ask user to select it
+                    @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                     pickPart02Launcher.launch()
                 }
             }
@@ -133,7 +135,10 @@ fun OfflineFileSelectionScreen(
             }
 
             DefaultButton(
-                onClick = { pickPart01Launcher.launch() },
+                onClick = {
+                    @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
+                    pickPart01Launcher.launch()
+                },
             ) {
                 Text(stringResource(Res.string.onboarding_choose_files))
             }

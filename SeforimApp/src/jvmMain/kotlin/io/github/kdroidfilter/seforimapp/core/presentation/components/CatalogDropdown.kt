@@ -93,6 +93,7 @@ fun CatalogDropdown(
                                         interactionSource = hoverSource,
                                     ) {
                                         close()
+                                        @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                                         scope.launch {
                                             val b: BookModel? = runSuspendCatching { repo.getBookCore(bookRef.id) }.getOrNull()
                                             if (b != null) onEvent(BookContentEvent.BookSelected(b))
@@ -180,6 +181,7 @@ fun CatalogDropdown(
                                             interactionSource = hoverSource,
                                         ) {
                                             close()
+                                            @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                                             scope.launch {
                                                 val b: BookModel? = runSuspendCatching { repo.getBookCore(bookRef.id) }.getOrNull()
                                                 if (b != null) onEvent(BookContentEvent.BookSelected(b))

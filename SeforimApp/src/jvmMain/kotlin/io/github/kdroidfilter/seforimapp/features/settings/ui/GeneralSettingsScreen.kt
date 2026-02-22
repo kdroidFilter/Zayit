@@ -27,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import io.github.kdroidfilter.nucleus.updater.UpdaterConfig
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ExpandCollapseIcon
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsEvents
@@ -72,7 +73,6 @@ import seforimapp.seforimapp.generated.resources.settings_use_opengl
 import seforimapp.seforimapp.generated.resources.settings_use_opengl_description
 import seforimapp.seforimapp.generated.resources.update_available_banner
 import seforimapp.seforimapp.generated.resources.update_download_action
-import io.github.kdroidfilter.nucleus.updater.UpdaterConfig
 import java.awt.Desktop
 import java.net.URI
 

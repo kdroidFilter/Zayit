@@ -84,10 +84,12 @@ fun TabsContent() {
                 onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
                 onSubmitTextSearch = { query ->
                     val tabId = currentTabId ?: return@HomeSearchCallbacks
+                    @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                     scope.launch { searchHomeViewModel.submitSearch(query, tabId) }
                 },
                 onOpenReference = {
                     val tabId = currentTabId ?: return@HomeSearchCallbacks
+                    @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                     scope.launch { searchHomeViewModel.openSelectedReferenceInCurrentTab(tabId) }
                 },
                 onPickCategory = searchHomeViewModel::onPickCategory,

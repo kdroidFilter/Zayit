@@ -62,6 +62,7 @@ fun OfflineUpdateScreen(
             val p2 = file?.path
             val p1 = part01Path
             if (!p2.isNullOrBlank() && !p1.isNullOrBlank()) {
+                @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                 scope.launch {
                     // Nettoyer les anciens fichiers avant de commencer l'extraction
                     if (!cleanupCompleted) {
@@ -85,6 +86,7 @@ fun OfflineUpdateScreen(
             part01Path = file?.path
             if (part01Path != null) {
                 // Immediately ask for part02
+                @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                 pickPart02Launcher.launch()
             }
         }
@@ -125,7 +127,10 @@ fun OfflineUpdateScreen(
                     }
 
                     DefaultButton(
-                        onClick = { pickPart01Launcher.launch() },
+                        onClick = {
+                            @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
+                            pickPart01Launcher.launch()
+                        },
                     ) {
                         Text(stringResource(Res.string.db_update_choose_files))
                     }

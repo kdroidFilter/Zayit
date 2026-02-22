@@ -123,6 +123,7 @@ private fun BookContentPanelContent(
                 if (ids.isEmpty()) return@remember
                 val missing = ids.filterNot { connectionsCache.containsKey(it) }.distinct()
                 if (missing.isEmpty()) return@remember
+                @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                 prefetchScope.launch {
                     runSuspendCatching { providers.loadLineConnections(missing) }
                         .onSuccess { connectionsCache.putAll(it) }

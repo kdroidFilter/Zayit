@@ -418,6 +418,7 @@ private fun RtlAwareTabStripContent(
                                             onClose = {
                                                 if (!closingKeys.contains(tabEntry.key)) {
                                                     closingKeys = closingKeys + tabEntry.key
+                                                    @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                                                     scope.launch {
                                                         delay(exitDurationMs.toLong())
                                                         tabEntry.onClose()

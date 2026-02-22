@@ -449,6 +449,7 @@ fun BookContentView(
                 currentMatchLineId = line.id
                 currentMatchStart = start
                 // Bring line into view (slight offset)
+                @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                 scope.launch {
                     listState.scrollToItem(i, 32)
                 }

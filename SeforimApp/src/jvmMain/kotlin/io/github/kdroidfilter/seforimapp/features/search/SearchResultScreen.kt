@@ -407,6 +407,7 @@ private fun SearchResultContentMvi(
             if (start >= 0) {
                 currentHitIndex = i
                 currentMatchStart = start
+                @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                 scope.launch { listState.scrollToItem(i, 24) }
                 break
             }

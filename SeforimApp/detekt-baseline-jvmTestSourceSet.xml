@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>FunctionOnlyReturningConstant:BookContentUseCaseFactoryTest.kt:BookContentUseCaseFactoryTest$private fun createFactoryWithNullableDeps: BookContentUseCaseFactory?</ID>
+    <ID>MaxLineLength:BuildSearchTreeUseCaseTest.kt:BuildSearchTreeUseCaseTest$"Categories should be sorted by order: ${current.category.title} (${current.category.order}) should come before ${next.category.title} (${next.category.order})"</ID>
+    <ID>WildcardImport:BookContentViewModelTest.kt:import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

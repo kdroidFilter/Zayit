@@ -18,6 +18,11 @@ plugins {
     alias(libs.plugins.sqlDelight)
     alias(libs.plugins.kover)
     alias(libs.plugins.nucleus)
+    alias(libs.plugins.structured.coroutines)
+}
+
+structuredCoroutines {
+    useRelaxedProfile()
 }
 
 val version = Versioning.resolveVersion(project)

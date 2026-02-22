@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
@@ -101,15 +102,15 @@ fun EndVerticalBar(
         }
 
         val targumAvailable =
-            runCatching {
+            runSuspendCatching {
                 providers.getAvailableLinksForLine(selectedLine.id)
             }.getOrNull()?.isNotEmpty()
         val commentariesAvailable =
-            runCatching {
+            runSuspendCatching {
                 providers.getAvailableCommentatorsForLine(selectedLine.id)
             }.getOrNull()?.isNotEmpty()
         val sourcesAvailable =
-            runCatching {
+            runSuspendCatching {
                 providers.getAvailableSourcesForLine(selectedLine.id)
             }.getOrNull()?.isNotEmpty()
 

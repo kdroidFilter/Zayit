@@ -8,6 +8,7 @@ import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadUseCase
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -89,7 +90,7 @@ class DownloadViewModel(
     private fun startIfNeeded() {
         if (_inProgress.value || _completed.value) return
         viewModelScope.launch(Dispatchers.Default) {
-            runCatching {
+            runSuspendCatching {
                 _error.value = null
                 _completed.value = false
                 _inProgress.value = true

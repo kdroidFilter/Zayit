@@ -12,6 +12,7 @@ import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -126,7 +127,7 @@ object SessionManager {
         try {
             val bytes = withContext(Dispatchers.IO) { file.readBytes() }
             val saved =
-                runCatching {
+                runSuspendCatching {
                     proto.decodeFromByteArray(SavedSessionV2.serializer(), bytes)
                 }.getOrElse {
                     // Corrupt session; delete to avoid repeated restore attempts.

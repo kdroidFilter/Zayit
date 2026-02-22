@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.search.domain
 
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 
@@ -65,7 +66,7 @@ class CategoryNavigationUseCase(
 
         // Use bulk query for efficiency
         val books =
-            runCatching { repository.getBooksUnderCategoryTree(categoryId) }
+            runSuspendCatching { repository.getBooksUnderCategoryTree(categoryId) }
                 .getOrDefault(emptyList())
 
         val result = books.mapTo(mutableSetOf()) { it.id }

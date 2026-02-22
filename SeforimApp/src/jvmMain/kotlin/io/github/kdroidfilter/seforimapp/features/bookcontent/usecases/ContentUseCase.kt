@@ -4,6 +4,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 
 import androidx.paging.Pager
 import androidx.paging.PagingData
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimapp.pagination.LinesPagingSource
@@ -78,12 +79,12 @@ class ContentUseCase(
             }
         } else {
             // Vérifier si la ligne est un TOC heading pour sélectionner toute la section
-            val headingToc = runCatching { repository.getHeadingTocEntryByLineId(line.id) }.getOrNull()
+            val headingToc = runSuspendCatching { repository.getHeadingTocEntryByLineId(line.id) }.getOrNull()
 
             if (headingToc != null) {
                 // La ligne est un TOC heading - sélectionner toutes les lignes de la section (max 128)
                 val sectionLineIds =
-                    runCatching {
+                    runSuspendCatching {
                         repository.getLineIdsForTocEntry(headingToc.id)
                     }.getOrElse { emptyList() }
 
@@ -103,7 +104,7 @@ class ContentUseCase(
 
                 // Charger les objets Line pour les IDs limités
                 val sectionLines =
-                    runCatching {
+                    runSuspendCatching {
                         limitedLineIds.mapNotNull { id -> repository.getLine(id) }.toSet()
                     }.getOrElse { setOf(line) }
 
@@ -158,11 +159,11 @@ class ContentUseCase(
             val computedAnchorIndex = minOf(line.lineIndex, halfLoad)
 
             // Vérifier si la ligne est un TOC heading pour sélectionner toute la section
-            val headingToc = runCatching { repository.getHeadingTocEntryByLineId(line.id) }.getOrNull()
+            val headingToc = runSuspendCatching { repository.getHeadingTocEntryByLineId(line.id) }.getOrNull()
             val selectedLines: Set<Line> =
                 if (headingToc != null) {
                     val sectionLineIds =
-                        runCatching {
+                        runSuspendCatching {
                             repository.getLineIdsForTocEntry(headingToc.id)
                         }.getOrElse { emptyList() }
 
@@ -179,7 +180,7 @@ class ContentUseCase(
                             sectionLineIds
                         }
 
-                    runCatching {
+                    runSuspendCatching {
                         limitedLineIds.mapNotNull { id -> repository.getLine(id) }.toSet()
                     }.getOrElse { setOf(line) }
                 } else {

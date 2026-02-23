@@ -18,6 +18,8 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
 import io.github.kdroidfilter.seforimapp.icons.Unarchive
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -39,27 +41,36 @@ fun TypeOfInstallationScreen(
     }
     val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
     val scope = rememberCoroutineScope()
+
+    fun goOnline(
+        @StructuredScope scope: CoroutineScope,
+    ) {
+        scope.launch {
+            // Clean existing database and related files before online installation
+            cleanupUseCase.cleanupDatabaseFiles()
+            // Move forward and clear all previous onboarding steps so back is disabled
+            navController.navigate(OnBoardingDestination.DatabaseOnlineInstallerScreen) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
+    fun goOffline(
+        @StructuredScope scope: CoroutineScope,
+    ) {
+        scope.launch {
+            // Clean existing database and related files before offline installation
+            cleanupUseCase.cleanupDatabaseFiles()
+            // Move forward and clear all previous onboarding steps so back is disabled
+            navController.navigate(OnBoardingDestination.OfflineFileSelectionScreen) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
     TypeOfInstallationView(
-        onOnlineInstallation = {
-            scope.launch {
-                // Clean existing database and related files before online installation
-                cleanupUseCase.cleanupDatabaseFiles()
-                // Move forward and clear all previous onboarding steps so back is disabled
-                navController.navigate(OnBoardingDestination.DatabaseOnlineInstallerScreen) {
-                    popUpTo(0) { inclusive = true }
-                }
-            }
-        },
-        onOfflineInstallation = {
-            scope.launch {
-                // Clean existing database and related files before offline installation
-                cleanupUseCase.cleanupDatabaseFiles()
-                // Move forward and clear all previous onboarding steps so back is disabled
-                navController.navigate(OnBoardingDestination.OfflineFileSelectionScreen) {
-                    popUpTo(0) { inclusive = true }
-                }
-            }
-        },
+        onOnlineInstallation = { goOnline(scope) },
+        onOfflineInstallation = { goOffline(scope) },
     )
 }
 

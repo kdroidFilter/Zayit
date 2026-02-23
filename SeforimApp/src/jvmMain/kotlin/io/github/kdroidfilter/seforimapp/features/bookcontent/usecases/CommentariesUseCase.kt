@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 import androidx.paging.Pager
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorGroup
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorItem
@@ -60,7 +61,7 @@ class CommentariesUseCase(
             localCache[bookId] = cached
             return cached
         }
-        val loaded = runCatching { repository.getBookWithPubDates(bookId) }.getOrNull() ?: return null
+        val loaded = runSuspendCatching { repository.getBookWithPubDates(bookId) }.getOrNull() ?: return null
         commentatorBookCache[bookId] = loaded
         localCache[bookId] = loaded
         return loaded
@@ -309,7 +310,7 @@ class CommentariesUseCase(
 
         suspend fun loadCategory(id: Long): Category? {
             cache[id]?.let { return it }
-            val loaded = runCatching { repository.getCategory(id) }.getOrNull()
+            val loaded = runSuspendCatching { repository.getCategory(id) }.getOrNull()
             cache[id] = loaded
             return loaded
         }
@@ -678,7 +679,7 @@ class CommentariesUseCase(
         if (!existing.isNullOrEmpty()) return
 
         val defaults =
-            runCatching {
+            runSuspendCatching {
                 repository.getDefaultCommentatorIdsForBook(bookId)
             }.getOrDefault(emptyList())
 
@@ -779,7 +780,7 @@ class CommentariesUseCase(
     private suspend fun loadDefaultTargumIds(bookId: Long): List<Long> {
         defaultTargumCache[bookId]?.let { return it }
         val ids =
-            runCatching { repository.getDefaultTargumIdsForBook(bookId) }
+            runSuspendCatching { repository.getDefaultTargumIdsForBook(bookId) }
                 .getOrElse { emptyList() }
         defaultTargumCache[bookId] = ids
         return ids

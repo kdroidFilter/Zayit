@@ -4,7 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.nucleus.darkmodedetector.isSystemInDarkMode
+import io.github.kdroidfilter.nucleus.window.DecoratedWindowDefaults
+import io.github.kdroidfilter.nucleus.window.styling.TitleBarMetrics
+import io.github.kdroidfilter.nucleus.window.styling.TitleBarStyle
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.jewel.foundation.DisabledAppearanceValues
@@ -41,6 +45,22 @@ object ThemeUtils {
             IntUiThemes.Dark -> true
             IntUiThemes.System -> isSystemInDarkMode()
         }
+    }
+
+    /**
+     * Builds the standard custom title bar style used across all app windows:
+     * - background matches Jewel's panel background
+     * - light golden gradient from the left edge
+     */
+    @Composable
+    fun buildCustomTitleBarStyle(): TitleBarStyle {
+        val isDark = isDarkTheme()
+        val panelBg = buildThemeDefinition().globalColors.panelBackground
+        val base = if (isDark) DecoratedWindowDefaults.darkTitleBarStyle() else DecoratedWindowDefaults.lightTitleBarStyle()
+        return base.copy(
+            colors = base.colors.copy(background = panelBg, inactiveBackground = panelBg),
+            metrics = TitleBarMetrics(height = 40.dp, gradientStartX = 0.dp, gradientEndX = 560.dp),
+        )
     }
 
     /**

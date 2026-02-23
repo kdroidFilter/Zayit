@@ -226,7 +226,12 @@ fun main() {
             val isDark = ThemeUtils.isDarkTheme()
             val themeDefinition = ThemeUtils.buildThemeDefinition()
 
-            NucleusDecoratedWindowTheme(isDark = isDark) {
+            val customTitleBarStyle = ThemeUtils.buildCustomTitleBarStyle()
+
+            NucleusDecoratedWindowTheme(
+                isDark = isDark,
+                titleBarStyle = customTitleBarStyle,
+            ) {
                 IntUiTheme(
                     theme = themeDefinition,
                     styling = ComponentStyling.default(),

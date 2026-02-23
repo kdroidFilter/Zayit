@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/elie/IdeaProjects/Zayit && JAVA_HOME=/Users/elie/Library/Java/JavaVirtualMachines/jbr-25/Contents/Home ./gradlew ktlintFormat build"
+          }
+        ]
+      }
+    ]
+  }
+}

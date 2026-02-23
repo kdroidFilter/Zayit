@@ -48,7 +48,7 @@ private fun SettingsWindowView(onClose: () -> Unit) {
     val isDark = ThemeUtils.isDarkTheme()
     val themeDefinition = buildThemeDefinition()
 
-    NucleusDecoratedWindowTheme(isDark = isDark) {
+    NucleusDecoratedWindowTheme(isDark = isDark, titleBarStyle = ThemeUtils.buildCustomTitleBarStyle()) {
         IntUiTheme(
             theme = themeDefinition,
             styling = ComponentStyling.default(),
@@ -71,7 +71,7 @@ private fun SettingsWindowView(onClose: () -> Unit) {
                     LocalWindowViewModelStoreOwner provides windowViewModelOwner,
                     LocalViewModelStoreOwner provides windowViewModelOwner,
                 ) {
-                    DialogTitleBar(modifier = Modifier.newFullscreenControls()) {
+                    DialogTitleBar(modifier = Modifier.newFullscreenControls(), gradientStartColor = ThemeUtils.titleBarGradientColor()) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),

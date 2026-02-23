@@ -25,8 +25,11 @@ import io.github.kdroidfilter.seforimapp.catalog.DropdownSpec
 import io.github.kdroidfilter.seforimapp.catalog.MultiCategoryDropdownSpec
 import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
 import io.github.kdroidfilter.seforimapp.catalog.TocQuickLinksSpec
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
@@ -45,6 +48,16 @@ fun CatalogDropdown(
 ) {
     val repo = LocalAppGraph.current.repository
     val scope = rememberCoroutineScope()
+
+    fun selectBook(
+        @StructuredScope scope: CoroutineScope,
+        bookId: Long,
+    ) {
+        scope.launch {
+            val b: BookModel? = runSuspendCatching { repo.getBookCore(bookId) }.getOrNull()
+            if (b != null) onEvent(BookContentEvent.BookSelected(b))
+        }
+    }
 
     when (spec) {
         is CategoryDropdownSpec -> {
@@ -92,10 +105,7 @@ fun CatalogDropdown(
                                         interactionSource = hoverSource,
                                     ) {
                                         close()
-                                        scope.launch {
-                                            val b: BookModel? = runCatching { repo.getBookCore(bookRef.id) }.getOrNull()
-                                            if (b != null) onEvent(BookContentEvent.BookSelected(b))
-                                        }
+                                        selectBook(scope, bookRef.id)
                                     }.padding(horizontal = 12.dp, vertical = 8.dp)
                                     .pointerHoverIcon(PointerIcon.Hand),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -179,10 +189,7 @@ fun CatalogDropdown(
                                             interactionSource = hoverSource,
                                         ) {
                                             close()
-                                            scope.launch {
-                                                val b: BookModel? = runCatching { repo.getBookCore(bookRef.id) }.getOrNull()
-                                                if (b != null) onEvent(BookContentEvent.BookSelected(b))
-                                            }
+                                            selectBook(scope, bookRef.id)
                                         }.padding(horizontal = 12.dp, vertical = 8.dp)
                                         .pointerHoverIcon(PointerIcon.Hand),
                                     verticalAlignment = Alignment.CenterVertically,

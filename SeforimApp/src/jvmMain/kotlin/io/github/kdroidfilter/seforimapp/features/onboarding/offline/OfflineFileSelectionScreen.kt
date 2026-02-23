@@ -16,9 +16,11 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardi
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.santimattius.structured.annotations.StructuredScope
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -45,7 +47,10 @@ fun OfflineFileSelectionScreen(
     val scope = rememberCoroutineScope()
 
     // Function to start extraction with part01 path
-    fun startExtraction(p1: String) {
+    fun startExtraction(
+        @StructuredScope scope: CoroutineScope,
+        p1: String,
+    ) {
         scope.launch {
             // Nettoyer les anciens fichiers avant de commencer l'extraction
             if (!cleanupCompleted) {
@@ -74,7 +79,7 @@ fun OfflineFileSelectionScreen(
             val p2 = file?.path
             val p1 = part01Path
             if (!p2.isNullOrBlank() && !p1.isNullOrBlank()) {
-                startExtraction(p1)
+                startExtraction(scope, p1)
             }
         }
 
@@ -92,9 +97,10 @@ fun OfflineFileSelectionScreen(
 
                 if (part02File.exists()) {
                     // Part02 found automatically, start extraction
-                    startExtraction(p1)
+                    startExtraction(scope, p1)
                 } else {
                     // Part02 not found, ask user to select it
+                    @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
                     pickPart02Launcher.launch()
                 }
             }
@@ -133,7 +139,10 @@ fun OfflineFileSelectionScreen(
             }
 
             DefaultButton(
-                onClick = { pickPart01Launcher.launch() },
+                onClick = {
+                    @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
+                    pickPart01Launcher.launch()
+                },
             ) {
                 Text(stringResource(Res.string.onboarding_choose_files))
             }

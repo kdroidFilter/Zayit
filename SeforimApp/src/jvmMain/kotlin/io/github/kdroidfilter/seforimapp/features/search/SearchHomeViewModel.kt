@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
@@ -144,7 +145,7 @@ class SearchHomeViewModel(
         synchronized(categoryDepthCache) { categoryDepthCache[catId]?.let { return it } }
         val depth =
             withContext(Dispatchers.IO) {
-                runCatching { repository.getCategoryDepth(catId) }.getOrDefault(Int.MAX_VALUE)
+                runSuspendCatching { repository.getCategoryDepth(catId) }.getOrDefault(Int.MAX_VALUE)
             }
         synchronized(categoryDepthCache) { categoryDepthCache[catId] = depth }
         return depth
@@ -152,7 +153,7 @@ class SearchHomeViewModel(
 
     private suspend fun buildCategoryPathTitlesCached(catId: Long): List<String> {
         synchronized(categoryPathCache) { categoryPathCache[catId]?.let { return it } }
-        val path = withContext(Dispatchers.IO) { runCatching { buildCategoryPathTitles(catId) }.getOrDefault(emptyList()) }
+        val path = withContext(Dispatchers.IO) { runSuspendCatching { buildCategoryPathTitles(catId) }.getOrDefault(emptyList()) }
         synchronized(categoryPathCache) { categoryPathCache[catId] = path }
         return path
     }
@@ -160,7 +161,7 @@ class SearchHomeViewModel(
     private suspend fun buildTocPathTitlesCached(entry: TocEntry): List<String> {
         val key = entry.id
         synchronized(tocPathCache) { tocPathCache[key]?.let { return it } }
-        val path = withContext(Dispatchers.IO) { runCatching { buildTocPathTitles(entry) }.getOrDefault(emptyList()) }
+        val path = withContext(Dispatchers.IO) { runSuspendCatching { buildTocPathTitles(entry) }.getOrDefault(emptyList()) }
         synchronized(tocPathCache) { tocPathCache[key] = path }
         return path
     }
@@ -419,7 +420,7 @@ class SearchHomeViewModel(
         viewModelScope.launch {
             val tocEntries =
                 tocCache[book.id] ?: withContext(Dispatchers.Default) {
-                    val entries = runCatching { repository.getBookToc(book.id) }.getOrElse { emptyList() }
+                    val entries = runSuspendCatching { repository.getBookToc(book.id) }.getOrElse { emptyList() }
                     val built = mutableListOf<TocSuggestionDto>()
                     val sorted =
                         entries
@@ -585,14 +586,14 @@ class SearchHomeViewModel(
         val book =
             when {
                 selectedBook != null -> selectedBook
-                selectedToc != null -> runCatching { repository.getBookCore(selectedToc.bookId) }.getOrNull()
+                selectedToc != null -> runSuspendCatching { repository.getBookCore(selectedToc.bookId) }.getOrNull()
                 else -> null
             } ?: return
 
         val anchorLineId: Long? =
             when (selectedToc) {
                 null -> null
-                else -> runCatching { repository.getLineIdsForTocEntry(selectedToc.id).firstOrNull() }.getOrNull()
+                else -> runSuspendCatching { repository.getLineIdsForTocEntry(selectedToc.id).firstOrNull() }.getOrNull()
             }
 
         // Pre-seed minimal state so the BookContent shell can show a loader instead of flashing Home.
@@ -656,14 +657,14 @@ class SearchHomeViewModel(
     }
 
     private suspend fun buildTocPathTitles(entry: TocEntry): List<String> {
-        val bookTitle = runCatching { repository.getBookCore(entry.bookId)?.title }.getOrNull()
+        val bookTitle = runSuspendCatching { repository.getBookCore(entry.bookId)?.title }.getOrNull()
         val tocTitles = mutableListOf<String>()
         var current: TocEntry? = entry
         val safety = 128
         var guard = 0
         while (current != null && guard++ < safety) {
             tocTitles += current.text
-            current = current.parentId?.let { pid -> runCatching { repository.getTocEntry(pid) }.getOrNull() }
+            current = current.parentId?.let { pid -> runSuspendCatching { repository.getTocEntry(pid) }.getOrNull() }
         }
         val path = tocTitles.asReversed()
         val combined = if (bookTitle != null) listOf(bookTitle) + path else path

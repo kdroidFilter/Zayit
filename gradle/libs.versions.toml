@@ -7,10 +7,10 @@ filekitCore = "0.12.0"
 jsoup = "1.22.1"
 jvmToolchain = "25"
 knotify = "0.4.3"
-nucleus = "1.2.5"
+nucleus = "1.2.6"
 koalaplotCore = "0.11.0"
-kotlin = "2.3.0"
-compose = "1.10.0"
+kotlin = "2.3.10"
+compose = "1.10.1"
 agp = "8.12.3"
 androidx-activityCompose = "1.12.3"
 androidx-uiTest = "1.10.2"
@@ -40,7 +40,8 @@ zstdJni = "1.5.7-7"
 metro = "0.10.4"
 lucene = "10.3.2"
 ktlint = "14.0.1"
-detekt = "1.23.8"
+detekt = "2.0.0-alpha.2"
+structured-coroutines = "0.3.0"
 kover = "0.9.7"
 mockk = "1.14.9"
 kotlinx-coroutines-test = "1.10.2"
@@ -141,5 +142,6 @@ metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 nucleus = { id = "io.github.kdroidfilter.nucleus", version.ref = "nucleus" }
 stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version = "0.6.6" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
-detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+detekt = { id = "dev.detekt", version.ref = "detekt" }
+structured-coroutines = { id = "io.github.santimattius.structured-coroutines", version.ref = "structured-coroutines" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

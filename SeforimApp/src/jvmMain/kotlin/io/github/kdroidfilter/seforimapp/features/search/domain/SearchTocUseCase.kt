@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.search.domain
 
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import java.util.Arrays
@@ -28,7 +29,7 @@ class SearchTocUseCase(
      * @return TocTree with root entries and children map
      */
     suspend fun buildTocTreeForBook(bookId: Long): TocTree {
-        val all = runCatching { repository.getBookToc(bookId) }.getOrElse { emptyList() }
+        val all = runSuspendCatching { repository.getBookToc(bookId) }.getOrElse { emptyList() }
         val byParent = all.groupBy { it.parentId ?: -1L }
         val roots = byParent[-1L] ?: all.filter { it.parentId == null }
         val children = all.filter { it.parentId != null }.groupBy { it.parentId!! }
@@ -49,7 +50,7 @@ class SearchTocUseCase(
     ): TocLineIndex {
         tocLineIndexCache[bookId]?.let { return it }
 
-        val mappings = runCatching { repository.getLineTocMappingsForBook(bookId) }.getOrElse { emptyList() }
+        val mappings = runSuspendCatching { repository.getLineTocMappingsForBook(bookId) }.getOrElse { emptyList() }
         val grouped =
             mappings.groupBy { it.tocEntryId }.mapValues { entry ->
                 entry.value
@@ -60,7 +61,7 @@ class SearchTocUseCase(
 
         val tocEntries =
             existingTree?.let { it.rootEntries + it.children.values.flatten() }
-                ?: runCatching { repository.getBookToc(bookId) }.getOrElse { emptyList() }
+                ?: runSuspendCatching { repository.getBookToc(bookId) }.getOrElse { emptyList() }
 
         val children = mutableMapOf<Long, MutableList<Long>>()
         val parent = mutableMapOf<Long, Long?>()

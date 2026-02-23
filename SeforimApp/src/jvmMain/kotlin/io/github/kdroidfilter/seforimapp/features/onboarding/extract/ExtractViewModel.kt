@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractUseCase
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
@@ -70,7 +71,7 @@ class ExtractViewModel(
             viewModelScope.launch(Dispatchers.Default) {
                 val path = processRepository.pendingZstPath.first()
                 if (path.isNullOrBlank()) return@launch
-                runCatching {
+                runSuspendCatching {
                     _error.value = null
                     _inProgress.value = true
                     _progress.value = 0f

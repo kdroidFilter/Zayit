@@ -1,10 +1,6 @@
 # Detekt configuration for SeforimApp
 # https://detekt.dev/docs/rules/
 
-build:
-  maxIssues: 0
-  excludeCorrectable: false
-
 config:
   validation: true
   warningsAsErrors: false
@@ -13,33 +9,33 @@ complexity:
   active: true
   ComplexCondition:
     active: true
-    threshold: 4
+    allowedConditions: 3
   CyclomaticComplexMethod:
     active: true
-    threshold: 15
+    allowedComplexity: 15
   LargeClass:
     active: true
-    threshold: 600
+    allowedLines: 600
   LongMethod:
     active: true
-    threshold: 60
+    allowedLines: 60
   LongParameterList:
     active: true
-    functionThreshold: 6
-    constructorThreshold: 8
+    allowedFunctionParameters: 6
+    allowedConstructorParameters: 8
     ignoreDefaultParameters: true
     ignoreDataClasses: true
     ignoreAnnotatedParameter: []
   NestedBlockDepth:
     active: true
-    threshold: 4
+    allowedDepth: 4
   TooManyFunctions:
     active: true
-    thresholdInFiles: 15
-    thresholdInClasses: 15
-    thresholdInInterfaces: 10
-    thresholdInObjects: 15
-    thresholdInEnums: 10
+    allowedFunctionsPerFile: 15
+    allowedFunctionsPerClass: 15
+    allowedFunctionsPerInterface: 10
+    allowedFunctionsPerObject: 15
+    allowedFunctionsPerEnum: 10
     ignoreDeprecated: true
     ignorePrivate: false
     ignoreOverridden: false
@@ -155,9 +151,12 @@ style:
     excludeLabeled: false
     excludeReturnFromLambda: true
     excludeGuardClauses: true
-  UnusedImports:
+  UnusedImport:
     active: true
-  UnusedPrivateMember:
+  UnusedPrivateFunction:
+    active: true
+    allowedNames: '(_|ignored|expected|serialVersionUID)'
+  UnusedPrivateProperty:
     active: true
     allowedNames: '(_|ignored|expected|serialVersionUID)'
   UseCheckOrError:

@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:Generate.kt:fun main</ID>
+    <ID>CyclomaticComplexMethod:Generate.kt:private fun buildCatalogType: TypeSpec</ID>
+    <ID>LongMethod:Generate.kt:fun main</ID>
+    <ID>LongMethod:Generate.kt:private fun buildCatalogType: TypeSpec</ID>
+    <ID>LongMethod:Generate.kt:private suspend fun resolveCatalogIds: ResolvedCatalogIds</ID>
+    <ID>LoopWithTooManyJumpStatements:Generate.kt:for</ID>
+    <ID>WildcardImport:Generate.kt:import com.squareup.kotlinpoet.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

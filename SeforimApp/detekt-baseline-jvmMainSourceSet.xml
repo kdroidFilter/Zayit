@@ -1,0 +1,301 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:BookContentScreen.kt:&lt;no name provided&gt;$bookHasDiacritics &amp;&amp; showDiacritics &amp;&amp; selectedText.isNotBlank() &amp;&amp; (HebrewTextUtils.containsNikud(selectedText) || HebrewTextUtils.containsTeamim(selectedText))</ID>
+    <ID>ComplexCondition:CommentariesUseCase.kt:CommentariesUseCase$title.contains("על התנ״ך") || title.contains("על התלמוד") || title.contains("על המשנה") || title.contains("על המשניות") || title.contains("על הש\"ס") || title.contains("על השס")</ID>
+    <ID>ComplexCondition:DatabaseCleanupUseCase.kt:DatabaseCleanupUseCase$fileName.endsWith(".tar.zst") || fileName.endsWith(".part01") || fileName.endsWith(".part02") || fileName.endsWith(".zst") || fileName.endsWith(".tmp")</ID>
+    <ID>ComplexCondition:HomeView.kt:!isTocMode &amp;&amp; (showCategorySuggestions || showBookEmptyState || showBookLoading)</ID>
+    <ID>ComplexCondition:HomeView.kt:ch == ',' || ch == ' ' || ch == ':' || ch == '-' || ch == '—'</ID>
+    <ID>ComplexCondition:HomeView.kt:isTocMode &amp;&amp; (showTocSuggestions || showTocEmptyState || showTocLoading)</ID>
+    <ID>ComplexCondition:SearchResultViewModel.kt:SearchResultViewModel$!tocActive &amp;&amp; bookId == null &amp;&amp; allowedBooks.isEmpty() &amp;&amp; selectedBooks.isEmpty() &amp;&amp; multiBooks.isEmpty() &amp;&amp; selectedTocIds.isEmpty()</ID>
+    <ID>ComplexCondition:main.kt:(keyEvent.isAltPressed &amp;&amp; keyEvent.key == Key.Home) || (keyEvent.isMetaPressed &amp;&amp; keyEvent.isShiftPressed &amp;&amp; keyEvent.key == Key.H)</ID>
+    <ID>ComplexCondition:main.kt:event.id == KeyEvent.KEY_PRESSED &amp;&amp; event.keyCode == KeyEvent.VK_C &amp;&amp; event.isShiftDown &amp;&amp; (event.isMetaDown || event.isControlDown)</ID>
+    <ID>CyclomaticComplexMethod:BookContentScreen.kt:@OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class, ExperimentalFoundationApi::class) @Composable fun BookContentScreen</ID>
+    <ID>CyclomaticComplexMethod:BookContentView.kt:@OptIn(FlowPreview::class) @Suppress( "ComposeUnstableCollections", "ParamsComparedByRef", ) // LazyPagingItems is inherently mutable; recomposition on paging changes is expected @Composable fun BookContentView</ID>
+    <ID>CyclomaticComplexMethod:BookContentViewModel.kt:BookContentViewModel$fun onEvent</ID>
+    <ID>CyclomaticComplexMethod:BookContentViewModel.kt:BookContentViewModel$private suspend fun loadBookById</ID>
+    <ID>CyclomaticComplexMethod:BookTocPanel.kt:@Composable fun SearchBookTocPanel</ID>
+    <ID>CyclomaticComplexMethod:BookTocView.kt:@OptIn(FlowPreview::class) @Composable fun BookTocView</ID>
+    <ID>CyclomaticComplexMethod:CatalogDropdown.kt:@Composable fun CatalogDropdown</ID>
+    <ID>CyclomaticComplexMethod:CategoryBookTreeView.kt:private fun buildTreeItems: List&lt;TreeItem&gt;</ID>
+    <ID>CyclomaticComplexMethod:CommentariesUseCase.kt:CommentariesUseCase$private suspend fun resolveGroupLabel: String</ID>
+    <ID>CyclomaticComplexMethod:DatabaseCleanupUseCase.kt:DatabaseCleanupUseCase$suspend fun cleanupDatabaseFiles: Unit</ID>
+    <ID>CyclomaticComplexMethod:DownloadUseCase.kt:DownloadUseCase$suspend fun downloadLatestBundle: String</ID>
+    <ID>CyclomaticComplexMethod:ExtractUseCase.kt:ExtractUseCase$private fun extractTarZstFile: File</ID>
+    <ID>CyclomaticComplexMethod:ExtractUseCase.kt:ExtractUseCase$private fun extractTarZstFromPartsStreaming: File</ID>
+    <ID>CyclomaticComplexMethod:FontCatalog.kt:FontCatalog$@Composable fun familyFor: FontFamily</ID>
+    <ID>CyclomaticComplexMethod:GeneralSettingsViewModel.kt:GeneralSettingsViewModel$fun onEvent</ID>
+    <ID>CyclomaticComplexMethod:GetBreadcrumbPiecesUseCase.kt:GetBreadcrumbPiecesUseCase$suspend operator fun invoke: List&lt;String&gt;</ID>
+    <ID>CyclomaticComplexMethod:HomeCelestialWidgets.kt:@Composable fun HomeCelestialWidgets</ID>
+    <ID>CyclomaticComplexMethod:HomeCelestialWidgets.kt:@Composable private fun DualTimeCardContent</ID>
+    <ID>CyclomaticComplexMethod:HomeCelestialWidgets.kt:@Composable private fun ZmanimCardsGrid</ID>
+    <ID>CyclomaticComplexMethod:HomeCelestialWidgets.kt:private fun computeShabbatTimes: ShabbatTimes</ID>
+    <ID>CyclomaticComplexMethod:HomeView.kt:@Composable private fun SearchBar</ID>
+    <ID>CyclomaticComplexMethod:HomeView.kt:@OptIn(ExperimentalJewelApi::class, ExperimentalLayoutApi::class) @Composable private fun HomeBody</ID>
+    <ID>CyclomaticComplexMethod:LineTargumView.kt:@Composable private fun MultiLineTargumView</ID>
+    <ID>CyclomaticComplexMethod:LineTargumView.kt:@OptIn(ExperimentalSplitPaneApi::class) @Composable private fun SingleLineTargumView</ID>
+    <ID>CyclomaticComplexMethod:LineTargumView.kt:@Stable @Composable fun LineTargumView</ID>
+    <ID>CyclomaticComplexMethod:OfflineUpdateScreen.kt:@Composable fun OfflineUpdateScreen</ID>
+    <ID>CyclomaticComplexMethod:OnlineUpdateScreen.kt:@Composable fun OnlineUpdateScreen</ID>
+    <ID>CyclomaticComplexMethod:SearchResultScreen.kt:@Composable private fun SearchResultContentMvi</ID>
+    <ID>CyclomaticComplexMethod:SearchResultViewModel.kt:SearchResultViewModel$fun executeSearch</ID>
+    <ID>CyclomaticComplexMethod:SearchResultViewModel.kt:SearchResultViewModel$fun onEvent</ID>
+    <ID>CyclomaticComplexMethod:SearchResultViewModel.kt:SearchResultViewModel$private suspend fun fastFilterVisibleResults: List&lt;SearchResult&gt;</ID>
+    <ID>CyclomaticComplexMethod:TabsView.kt:@OptIn(ExperimentalComposeUiApi::class) @Composable private fun RtlAwareTabStripContent</ID>
+    <ID>CyclomaticComplexMethod:TabsView.kt:@OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class) @Composable private fun RtlAwareTab</ID>
+    <ID>CyclomaticComplexMethod:TabsView.kt:@OptIn(ExperimentalFoundationApi::class) @Composable private fun DefaultTabShowcase</ID>
+    <ID>CyclomaticComplexMethod:TitleBarActionsButtonsView.kt:@Composable fun TitleBarActionsButtonsView</ID>
+    <ID>CyclomaticComplexMethod:VerticalBars.kt:@Composable fun EndVerticalBar</ID>
+    <ID>CyclomaticComplexMethod:main.kt:fun main</ID>
+    <ID>ExplicitGarbageCollectionCall:BookContentViewModel.kt:BookContentViewModel$gc()</ID>
+    <ID>ExplicitItLambdaMultipleParameters:SearchResultScreen.kt:{ index, it, -&gt; Pair(it.bookId, Pair(it.lineId, index)) }</ID>
+    <ID>LargeClass:BookContentViewModel.kt:BookContentViewModel : ViewModel</ID>
+    <ID>LargeClass:CommentariesUseCase.kt:CommentariesUseCase</ID>
+    <ID>LargeClass:SearchResultViewModel.kt:SearchResultViewModel : ViewModel</ID>
+    <ID>LongMethod:AboutSettingsScreen.kt:@Composable private fun AboutSettingsView</ID>
+    <ID>LongMethod:AvailableDiskSpaceScreen.kt:@OptIn(ExperimentalKoalaPlotApi::class) @Composable fun AvailableDiskSpaceView</ID>
+    <ID>LongMethod:BookContentPanel.kt:@OptIn(ExperimentalSplitPaneApi::class) @Composable private fun BookContentPanelContent</ID>
+    <ID>LongMethod:BookContentScreen.kt:&lt;no name provided&gt;$@OptIn(ExperimentalFoundationApi::class) @Composable override fun Area</ID>
+    <ID>LongMethod:BookContentScreen.kt:@OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class, ExperimentalFoundationApi::class) @Composable fun BookContentScreen</ID>
+    <ID>LongMethod:BookContentStateManager.kt:BookContentStateManager$@OptIn(ExperimentalSplitPaneApi::class) private fun loadInitialState: BookContentState</ID>
+    <ID>LongMethod:BookContentView.kt:@OptIn(ExperimentalFoundationApi::class) @Composable private fun LineItem</ID>
+    <ID>LongMethod:BookContentView.kt:@OptIn(FlowPreview::class) @Suppress( "ComposeUnstableCollections", "ParamsComparedByRef", ) // LazyPagingItems is inherently mutable; recomposition on paging changes is expected @Composable fun BookContentView</ID>
+    <ID>LongMethod:BookContentViewModel.kt:BookContentViewModel$fun onEvent</ID>
+    <ID>LongMethod:BookContentViewModel.kt:BookContentViewModel$private suspend fun loadBookById</ID>
+    <ID>LongMethod:BookTocPanel.kt:@Composable fun SearchBookTocPanel</ID>
+    <ID>LongMethod:BookTocPanel.kt:@Composable private fun AltBookTocSection</ID>
+    <ID>LongMethod:BookTocView.kt:@OptIn(FlowPreview::class) @Composable fun BookTocView</ID>
+    <ID>LongMethod:BreadcrumbView.kt:@Composable fun BreadcrumbView</ID>
+    <ID>LongMethod:CatalogDropdown.kt:@Composable fun CatalogDropdown</ID>
+    <ID>LongMethod:CatalogRow.kt:@Composable fun CatalogRow</ID>
+    <ID>LongMethod:CategoryBookTreeView.kt:@OptIn(FlowPreview::class) @Composable fun CategoryBookTreeView</ID>
+    <ID>LongMethod:CompletionScreen.kt:@Composable fun CompletionScreen</ID>
+    <ID>LongMethod:ConditionsSettingsScreen.kt:@Composable private fun ConditionsSettingsView</ID>
+    <ID>LongMethod:ContentUseCase.kt:ContentUseCase$suspend fun selectLine</ID>
+    <ID>LongMethod:DatabaseUpdateWindow.kt:@Composable fun ApplicationScope.DatabaseUpdateWindow</ID>
+    <ID>LongMethod:DownloadScreen.kt:@Composable fun DownloadView</ID>
+    <ID>LongMethod:DropdownButton.kt:@Composable fun DropdownButton</ID>
+    <ID>LongMethod:FindInPageBar.kt:@Composable fun FindInPageBar</ID>
+    <ID>LongMethod:FontCatalog.kt:FontCatalog$@Composable fun familyFor: FontFamily</ID>
+    <ID>LongMethod:GeneralSettingsScreen.kt:@Composable private fun AppHeader</ID>
+    <ID>LongMethod:GeneralSettingsViewModel.kt:GeneralSettingsViewModel$fun onEvent</ID>
+    <ID>LongMethod:HomeCelestialWidgets.kt:@Composable fun HomeCelestialWidgets</ID>
+    <ID>LongMethod:HomeCelestialWidgets.kt:@Composable private fun DayMomentCard</ID>
+    <ID>LongMethod:HomeCelestialWidgets.kt:@Composable private fun DualTimeCardContent</ID>
+    <ID>LongMethod:HomeCelestialWidgets.kt:@Composable private fun LunarCycleCard</ID>
+    <ID>LongMethod:HomeCelestialWidgets.kt:@Composable private fun MoonIllustration</ID>
+    <ID>LongMethod:HomeCelestialWidgets.kt:@Composable private fun NextFullMoonBar</ID>
+    <ID>LongMethod:HomeCelestialWidgets.kt:@Composable private fun ShabbatDualTimeCard</ID>
+    <ID>LongMethod:HomeCelestialWidgets.kt:@Composable private fun ZmanimCardsGrid</ID>
+    <ID>LongMethod:HomeCelestialWidgets.kt:private fun computeShabbatTimes: ShabbatTimes</ID>
+    <ID>LongMethod:HomeView.kt:@Composable /** * Category/Book/TOC scope picker with predictive suggestions. * * Left field: Categories and Books. Right field: TOC of the selected book. * Both inputs support keyboard navigation (↑/↓/Enter) and mouse selection. * * The caller controls suggestion visibility and supplies current suggestions. * When [submitAfterPick] is true (reference mode), selecting a suggestion triggers [onSubmit]. */ private fun ReferenceByCategorySection</ID>
+    <ID>LongMethod:HomeView.kt:@Composable /** * Displays the five text-search levels as selectable cards synchronized with * a slider. The slider and cards mirror the same selection index. */ private fun SearchLevelsPanel</ID>
+    <ID>LongMethod:HomeView.kt:@Composable /** * Renders the TOC suggestion list for the currently selected book, stripping the * duplicated book prefix from breadcrumb paths for compact display. * Uses native Jewel menu styling for consistent look and feel. */ private fun TocSuggestionsPanel</ID>
+    <ID>LongMethod:HomeView.kt:@Composable /** * Renders the suggestion list for categories and books, keeping the currently * focused row in view as the user navigates with the keyboard. * Uses native Jewel menu styling for consistent look and feel. */ private fun SuggestionsPanel</ID>
+    <ID>LongMethod:HomeView.kt:@Composable private fun SearchBar</ID>
+    <ID>LongMethod:HomeView.kt:@Composable private fun SuggestionRow</ID>
+    <ID>LongMethod:HomeView.kt:@OptIn(ExperimentalJewelApi::class, ExperimentalLayoutApi::class) @Composable private fun HomeBody</ID>
+    <ID>LongMethod:LicenceScreen.kt:@Composable private fun LicenceView</ID>
+    <ID>LongMethod:LineCommentsView.kt:@Composable private fun CommentariesDisplay</ID>
+    <ID>LongMethod:LineCommentsView.kt:@Composable private fun CommentaryItem</ID>
+    <ID>LongMethod:LineCommentsView.kt:@OptIn(ExperimentalSplitPaneApi::class) @Composable private fun CommentariesContent</ID>
+    <ID>LongMethod:LineCommentsView.kt:@OptIn(ExperimentalSplitPaneApi::class) @Composable private fun MultiLineCommentariesContent</ID>
+    <ID>LongMethod:LineCommentsView.kt:@OptIn(FlowPreview::class) @Composable private fun CommentaryListView</ID>
+    <ID>LongMethod:LineCommentsView.kt:@OptIn(FlowPreview::class) @Composable private fun CommentatorsList</ID>
+    <ID>LongMethod:LineTargumView.kt:@Composable private fun MultiLineTargumView</ID>
+    <ID>LongMethod:LineTargumView.kt:@OptIn(ExperimentalSplitPaneApi::class) @Composable private fun SingleLineTargumView</ID>
+    <ID>LongMethod:LineTargumView.kt:@Stable @Composable fun LineTargumView</ID>
+    <ID>LongMethod:OfflineFileSelectionScreen.kt:@Composable fun OfflineFileSelectionScreen</ID>
+    <ID>LongMethod:OfflineUpdateScreen.kt:@Composable fun OfflineUpdateScreen</ID>
+    <ID>LongMethod:OnBoardingWindow.kt:@Composable fun ApplicationScope.OnBoardingWindow</ID>
+    <ID>LongMethod:OnlineUpdateScreen.kt:@Composable fun OnlineUpdateScreen</ID>
+    <ID>LongMethod:ProfileSettingsScreen.kt:@Composable private fun ProfileSettingsView</ID>
+    <ID>LongMethod:RegionConfigScreen.kt:@OptIn(ExperimentalJewelApi::class) @Composable private fun RegionConfigView</ID>
+    <ID>LongMethod:SearchHomeViewModel.kt:SearchHomeViewModel$suspend fun submitSearch</ID>
+    <ID>LongMethod:SearchResultScreen.kt:@Composable private fun SearchResultContentMvi</ID>
+    <ID>LongMethod:SearchResultScreen.kt:@Composable private fun SearchResultItemGoogleStyle</ID>
+    <ID>LongMethod:SearchResultScreen.kt:@OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class) @Composable fun SearchResultInBookShellMvi</ID>
+    <ID>LongMethod:SearchResultViewModel.kt:SearchResultViewModel$fun executeSearch</ID>
+    <ID>LongMethod:SearchResultViewModel.kt:SearchResultViewModel$private fun executeDirectFilterSearch</ID>
+    <ID>LongMethod:SearchResultViewModel.kt:SearchResultViewModel$private fun executeFilteredSearch</ID>
+    <ID>LongMethod:SearchResultViewModel.kt:SearchResultViewModel$private suspend fun fastFilterVisibleResults: List&lt;SearchResult&gt;</ID>
+    <ID>LongMethod:SelectableActionButtonWithTooltip.kt:@OptIn(ExperimentalFoundationApi::class) @Composable fun SelectableIconButtonWithToolip</ID>
+    <ID>LongMethod:SessionManager.kt:SessionManager$fun saveIfEnabled</ID>
+    <ID>LongMethod:SessionManager.kt:SessionManager$suspend fun restoreIfEnabled</ID>
+    <ID>LongMethod:SettingsWindow.kt:@Composable private fun SettingsWindowView</ID>
+    <ID>LongMethod:SplitPanes.kt:@OptIn(ExperimentalSplitPaneApi::class) @Composable fun EnhancedHorizontalSplitPane</ID>
+    <ID>LongMethod:SplitPanes.kt:@OptIn(ExperimentalSplitPaneApi::class) @Composable fun EnhancedVerticalSplitPane</ID>
+    <ID>LongMethod:TabsContent.kt:@Composable fun TabsContent</ID>
+    <ID>LongMethod:TabsContent.kt:@Composable private fun SearchTabContent</ID>
+    <ID>LongMethod:TabsView.kt:@OptIn(ExperimentalComposeUiApi::class) @Composable private fun RtlAwareTabStripContent</ID>
+    <ID>LongMethod:TabsView.kt:@OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class) @Composable private fun RtlAwareTab</ID>
+    <ID>LongMethod:TabsView.kt:@OptIn(ExperimentalFoundationApi::class) @Composable private fun DefaultTabShowcase</ID>
+    <ID>LongMethod:TitleBarActionsButtonsView.kt:@Composable fun TitleBarActionsButtonsView</ID>
+    <ID>LongMethod:TocJumpDropdown.kt:@Composable fun TocJumpDropdown</ID>
+    <ID>LongMethod:UserProfileScreen.kt:@OptIn(ExperimentalJewelApi::class) @Composable private fun UserProfileView</ID>
+    <ID>LongMethod:VersionCheckScreen.kt:@Composable fun VersionCheckScreen</ID>
+    <ID>LongMethod:VersionVerificationScreen.kt:@Composable fun VersionVerificationScreen</ID>
+    <ID>LongMethod:VerticalBars.kt:@Composable fun EndVerticalBar</ID>
+    <ID>LongMethod:VerticalLateralBar.kt:@Composable fun VerticalLateralBar</ID>
+    <ID>LongMethod:main.kt:fun main</ID>
+    <ID>LoopWithTooManyJumpStatements:BookContentView.kt:while</ID>
+    <ID>MatchingDeclarationName:Cities.kt:Place</ID>
+    <ID>MatchingDeclarationName:SearchResultScreen.kt:SearchShellActions</ID>
+    <ID>MatchingDeclarationName:SplitPanes.kt:StableSplitPaneState</ID>
+    <ID>MatchingDeclarationName:TocJumpDropdown.kt:TocQuickLink</ID>
+    <ID>MatchingDeclarationName:VerticalLateralBar.kt:VerticalLateralBarPosition</ID>
+    <ID>MaxLineLength:main.kt:(keyEvent.isMetaPressed &amp;&amp; keyEvent.isShiftPressed &amp;&amp; keyEvent.key == Key.H)</ID>
+    <ID>MayBeConstant:AvailableDiskSpaceUseCase.kt:AvailableDiskSpaceUseCase.Companion$val REQUIRED_SPACE_BYTES = REQUIRED_SPACE_GB * 1024 * 1024 * 1024</ID>
+    <ID>NestedBlockDepth:BookContentViewModel.kt:BookContentViewModel$private suspend fun loadBookById</ID>
+    <ID>NestedBlockDepth:CommentariesUseCase.kt:CommentariesUseCase$suspend fun getCommentatorGroupsForLines: List&lt;CommentatorGroup&gt;</ID>
+    <ID>NestedBlockDepth:ExtractUseCase.kt:ExtractUseCase$private fun extractDbZst: File</ID>
+    <ID>NestedBlockDepth:ExtractUseCase.kt:ExtractUseCase$private fun extractTarZstFile: File</ID>
+    <ID>NestedBlockDepth:ExtractUseCase.kt:ExtractUseCase$private fun extractTarZstFromPartsStreaming: File</ID>
+    <ID>NestedBlockDepth:GeneralSettingsViewModel.kt:GeneralSettingsViewModel$fun onEvent</ID>
+    <ID>ReturnCount:CommentariesUseCase.kt:CommentariesUseCase$private suspend fun resolveGroupLabel: String</ID>
+    <ID>ReturnCount:ContentUseCase.kt:ContentUseCase$suspend fun navigateToPreviousLine: Line?</ID>
+    <ID>ReturnCount:WindowUtils.kt:fun processKeyShortcuts: Boolean</ID>
+    <ID>SwallowedException:CommentariesUseCase.kt:CommentariesUseCase$e: Exception</ID>
+    <ID>SwallowedException:DatabaseVersionManager.kt:DatabaseVersionManager$e: Exception</ID>
+    <ID>TooManyFunctions:AppSettings.kt:AppSettings</ID>
+    <ID>TooManyFunctions:CommentariesUseCase.kt:CommentariesUseCase</ID>
+    <ID>TooManyFunctions:HomeCelestialWidgets.kt:io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeCelestialWidgets.kt</ID>
+    <ID>TooManyFunctions:HomeView.kt:io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeView.kt</ID>
+    <ID>TooManyFunctions:LineCommentsView.kt:io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.LineCommentsView.kt</ID>
+    <ID>TooManyFunctions:SearchHomeViewModel.kt:SearchHomeViewModel : ViewModel</ID>
+    <ID>TooManyFunctions:SearchResultViewModel.kt:SearchResultViewModel : ViewModel</ID>
+    <ID>UnusedParameter:BookTocPanel.kt:onTocFilter: (TocEntry) -&gt; Unit</ID>
+    <ID>UnusedParameter:DropdownButton.kt:textStyle: TextStyle = JewelTheme.defaultTextStyle</ID>
+    <ID>UnusedParameter:Highlighting.kt:currentLength: Int? = null</ID>
+    <ID>UnusedParameter:LicenceScreen.kt:onPrevious: () -&gt; Unit = {}</ID>
+    <ID>UnusedParameter:LineCommentsView.kt:isPrimary: Boolean</ID>
+    <ID>UnusedParameter:OfflineUpdateScreen.kt:onUpdateComplete: () -&gt; Unit</ID>
+    <ID>UnusedParameter:OnlineUpdateScreen.kt:onUpdateComplete: () -&gt; Unit</ID>
+    <ID>UnusedParameter:SearchResultScreen.kt:query: String</ID>
+    <ID>UnusedParameter:SelectableActionButtonWithTooltip.kt:modifier: Modifier = Modifier</ID>
+    <ID>UnusedParameter:TabsView.kt:isRtl: Boolean</ID>
+    <ID>UnusedParameter:TabsView.kt:newTabAdded: Boolean</ID>
+    <ID>WildcardImport:AboutSettingsScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:AboutSettingsScreen.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:AboutSettingsScreen.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:AboutSettingsScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:AvailableDiskSpaceScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:AvailableDiskSpaceScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:BookContentEvent.kt:import io.github.kdroidfilter.seforimlibrary.core.models.*</ID>
+    <ID>WildcardImport:BookContentPanel.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:BookContentPanel.kt:import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.*</ID>
+    <ID>WildcardImport:BookContentScreen.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:BookContentState.kt:import io.github.kdroidfilter.seforimlibrary.core.models.*</ID>
+    <ID>WildcardImport:BookContentView.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:BookContentView.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:BookContentView.kt:import androidx.compose.ui.input.key.*</ID>
+    <ID>WildcardImport:BookContentView.kt:import kotlinx.coroutines.flow.*</ID>
+    <ID>WildcardImport:BookContentViewModel.kt:import io.github.kdroidfilter.seforim.tabs.*</ID>
+    <ID>WildcardImport:BookContentViewModel.kt:import kotlinx.coroutines.flow.*</ID>
+    <ID>WildcardImport:BookTocPanel.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:BookTocPanel.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:BookTocView.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:BookTocView.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:CatalogDropdown.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:CatalogDropdown.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:CategoryBookTreeView.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:CategoryBookTreeView.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:CategoryBookTreeView.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:CategoryTreePanel.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:CategoryTreePanel.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:CompletionScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:CompletionScreen.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:CompletionScreen.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:CompletionScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:ConditionsSettingsScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:ConditionsSettingsScreen.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:ConditionsSettingsScreen.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:ConditionsSettingsScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:DatabaseUpdateWindow.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:DatabaseUpdateWindow.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:DropdownButton.kt:import androidx.compose.foundation.*</ID>
+    <ID>WildcardImport:DropdownButton.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:DropdownButton.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:DropdownButton.kt:import androidx.compose.ui.unit.*</ID>
+    <ID>WildcardImport:ExtractScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:ExtractScreen.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:ExtractScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:FindInPageBar.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:FindInPageBar.kt:import androidx.compose.ui.input.key.*</ID>
+    <ID>WildcardImport:HomeView.kt:import androidx.compose.foundation.*</ID>
+    <ID>WildcardImport:HomeView.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:HomeView.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:HomeView.kt:import androidx.compose.ui.input.key.*</ID>
+    <ID>WildcardImport:HomeView.kt:import androidx.compose.ui.unit.*</ID>
+    <ID>WildcardImport:HomeView.kt:import io.github.kdroidfilter.seforimapp.icons.*</ID>
+    <ID>WildcardImport:HomeView.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:HomeView.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:InitScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:LicenceScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:LicenceScreen.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:LicenceScreen.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:LicenceScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:LineCommentsView.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:LineCommentsView.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:LineCommentsView.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:LineCommentsView.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:LineTargumView.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:LineTargumView.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:MainTitleBar.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:OfflineFileSelectionScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:OfflineFileSelectionScreen.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:OfflineFileSelectionScreen.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:OfflineFileSelectionScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:OfflineUpdateScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:OfflineUpdateScreen.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:OfflineUpdateScreen.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:OfflineUpdateScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:OnlineUpdateScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:OnlineUpdateScreen.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:OnlineUpdateScreen.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:OnlineUpdateScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:SearchResultScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:SearchResultScreen.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:SearchResultScreen.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:SearchResultScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:SearchResultViewModel.kt:import io.github.kdroidfilter.seforim.tabs.*</ID>
+    <ID>WildcardImport:SearchResultViewModel.kt:import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:SearchResultViewModel.kt:import kotlinx.coroutines.flow.*</ID>
+    <ID>WildcardImport:SearchToggleChip.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:SearchToggleChip.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:SelectableActionButtonWithTooltip.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:SettingsWindow.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:SettingsWindow.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:SettingsWindow.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:SplitPanes.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:TabsView.kt:import androidx.compose.animation.core.*</ID>
+    <ID>WildcardImport:TabsView.kt:import androidx.compose.foundation.*</ID>
+    <ID>WildcardImport:TabsView.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:TabsView.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:TabsView.kt:import io.github.kdroidfilter.seforim.tabs.*</ID>
+    <ID>WildcardImport:TabsView.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:TabsView.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:TitleBarActionsButtonsView.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:TocJumpDropdown.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:TypeOfInstallationScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:TypeOfInstallationScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:UpdateOptionsScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:UpdateOptionsScreen.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:UpdateOptionsScreen.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:UpdateOptionsScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:VersionCheckScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:VersionCheckScreen.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:VersionCheckScreen.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:VersionCheckScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:VersionVerificationScreen.kt:import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:VersionVerificationScreen.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:VersionVerificationScreen.kt:import org.jetbrains.jewel.ui.component.*</ID>
+    <ID>WildcardImport:VersionVerificationScreen.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:VerticalBars.kt:import io.github.kdroidfilter.seforimapp.icons.*</ID>
+    <ID>WildcardImport:VerticalBars.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+    <ID>WildcardImport:WindowUtils.kt:import androidx.compose.ui.input.key.*</ID>
+    <ID>WildcardImport:main.kt:import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:main.kt:import seforimapp.seforimapp.generated.resources.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

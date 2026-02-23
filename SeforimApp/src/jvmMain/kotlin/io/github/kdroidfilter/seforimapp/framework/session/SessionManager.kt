@@ -6,6 +6,7 @@ import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.logger.debugln
@@ -126,7 +127,7 @@ object SessionManager {
         try {
             val bytes = withContext(Dispatchers.IO) { file.readBytes() }
             val saved =
-                runCatching {
+                runSuspendCatching {
                     proto.decodeFromByteArray(SavedSessionV2.serializer(), bytes)
                 }.getOrElse {
                     // Corrupt session; delete to avoid repeated restore attempts.

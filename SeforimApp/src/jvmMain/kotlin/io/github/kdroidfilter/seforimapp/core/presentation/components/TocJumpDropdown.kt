@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -61,7 +62,7 @@ fun TocJumpDropdown(
             val loader = prepareItems
             if (links == null && loader != null) {
                 androidx.compose.runtime.LaunchedEffect(Unit) {
-                    links = runCatching { loader() }.getOrNull().orEmpty()
+                    links = runSuspendCatching { loader() }.getOrNull().orEmpty()
                 }
             }
             val render = links.orEmpty()

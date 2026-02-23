@@ -51,6 +51,8 @@ import io.github.kdroidfilter.seforimapp.icons.CloseAll
 import io.github.kdroidfilter.seforimapp.icons.Tab_close
 import io.github.kdroidfilter.seforimapp.icons.Tab_close_right
 import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -317,6 +319,20 @@ private fun RtlAwareTabStripContent(
     val currentKeys = remember(tabs) { tabs.map { it.key } }
 
     val scope = rememberCoroutineScope()
+
+    fun closeTabWithAnimation(
+        @StructuredScope scope: CoroutineScope,
+        delayMs: Long,
+        onClose: () -> Unit,
+        onFinished: () -> Unit,
+    ) {
+        scope.launch {
+            delay(delayMs)
+            onClose()
+            onFinished()
+        }
+    }
+
     BoxWithConstraints(modifier = modifier) {
         val maxWidthDp = this.maxWidth
         // Reserve a non-interactive draggable area at the trailing edge to allow window move
@@ -418,11 +434,12 @@ private fun RtlAwareTabStripContent(
                                             onClose = {
                                                 if (!closingKeys.contains(tabEntry.key)) {
                                                     closingKeys = closingKeys + tabEntry.key
-                                                    scope.launch {
-                                                        delay(exitDurationMs.toLong())
-                                                        tabEntry.onClose()
-                                                        closingKeys = closingKeys - tabEntry.key
-                                                    }
+                                                    closeTabWithAnimation(
+                                                        scope = scope,
+                                                        delayMs = exitDurationMs.toLong(),
+                                                        onClose = tabEntry.onClose,
+                                                        onFinished = { closingKeys = closingKeys - tabEntry.key },
+                                                    )
                                                 }
                                             },
                                             onCloseAll = tabEntry.onCloseAll,

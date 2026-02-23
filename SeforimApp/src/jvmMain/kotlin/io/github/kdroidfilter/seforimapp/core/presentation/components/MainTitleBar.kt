@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -16,7 +17,10 @@ import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 
 @Composable
 fun DecoratedWindowScope.MainTitleBar() {
-    TitleBar(modifier = Modifier.newFullscreenControls()) {
+    TitleBar(
+        modifier = Modifier.newFullscreenControls(),
+        gradientStartColor = Color(0x40FFD700), // Light golden tint, IntelliJ-style
+    ) {
         BoxWithConstraints {
             val windowWidth = maxWidth
             val iconsNumber = 4

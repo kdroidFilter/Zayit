@@ -7,6 +7,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -48,7 +49,7 @@ private fun SettingsWindowView(onClose: () -> Unit) {
     val isDark = ThemeUtils.isDarkTheme()
     val themeDefinition = buildThemeDefinition()
 
-    NucleusDecoratedWindowTheme(isDark = isDark) {
+    NucleusDecoratedWindowTheme(isDark = isDark, titleBarStyle = ThemeUtils.buildCustomTitleBarStyle()) {
         IntUiTheme(
             theme = themeDefinition,
             styling = ComponentStyling.default(),
@@ -71,7 +72,7 @@ private fun SettingsWindowView(onClose: () -> Unit) {
                     LocalWindowViewModelStoreOwner provides windowViewModelOwner,
                     LocalViewModelStoreOwner provides windowViewModelOwner,
                 ) {
-                    DialogTitleBar(modifier = Modifier.newFullscreenControls()) {
+                    DialogTitleBar(modifier = Modifier.newFullscreenControls(), gradientStartColor = Color(0x40FFD700)) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),

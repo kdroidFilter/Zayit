@@ -52,6 +52,8 @@ import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -220,6 +222,18 @@ private fun HomeBody(
             ) {
                 // Keep state outside LazyColumn so it persists across item recompositions
                 val scope = rememberCoroutineScope()
+
+                fun focusAfterDelay(
+                    @StructuredScope scope: CoroutineScope,
+                    ms: Long,
+                    focusRequester: FocusRequester,
+                ) {
+                    scope.launch {
+                        delay(ms)
+                        focusRequester.requestFocus()
+                    }
+                }
+
                 val searchState = remember { TextFieldState() }
                 val referenceSearchState = remember { TextFieldState() }
                 val tocSearchState = remember { TextFieldState() }
@@ -386,10 +400,7 @@ private fun HomeBody(
                                         if (!isReferenceMode) {
                                             // Text mode: expand the scope section and focus secondary bar
                                             scopeExpanded = true
-                                            scope.launch {
-                                                delay(100) // Wait for composition to settle
-                                                referenceSectionFocusRequester.requestFocus()
-                                            }
+                                            focusAfterDelay(scope, 100, referenceSectionFocusRequester)
                                         }
                                     },
                                     modifier = Modifier,
@@ -423,10 +434,7 @@ private fun HomeBody(
                                         tocSearchState.edit { replace(0, length, "") }
                                         skipNextTocQuery = false
                                         tocEditedSinceBook = false
-                                        scope.launch {
-                                            delay(80)
-                                            mainSearchFocusRequester.requestFocus()
-                                        }
+                                        focusAfterDelay(scope, 80, mainSearchFocusRequester)
                                     },
                                     onPickToc = { picked ->
                                         searchCallbacks.onPickToc(picked.toc)
@@ -1364,6 +1372,16 @@ private fun SearchBar(
             // If we were showing an overlay, close it after submission
             if (selectedFilter == SearchFilter.REFERENCE) dismissPopup()
         }
+
+        fun submitAfterFrame(
+            @StructuredScope scope: CoroutineScope,
+        ) {
+            scope.launch {
+                withFrameNanos { }
+                handleSubmit()
+            }
+        }
+
         TextField(
             state = state,
             modifier =
@@ -1420,10 +1438,7 @@ private fun SearchBar(
                                         isTocMode && focusedIndex in 0 until totalToc -> {
                                             handlePickToc(tocSuggestions[focusedIndex])
                                             if (submitOnEnterInReference) {
-                                                scope.launch {
-                                                    withFrameNanos { }
-                                                    handleSubmit()
-                                                }
+                                                submitAfterFrame(scope)
                                             }
                                             true
                                         }
@@ -1449,10 +1464,7 @@ private fun SearchBar(
                                         }
 
                                         submitOnEnterInReference && selectedBook != null -> {
-                                            scope.launch {
-                                                withFrameNanos { }
-                                                handleSubmit()
-                                            }
+                                            submitAfterFrame(scope)
                                             true
                                         }
 
@@ -1511,10 +1523,7 @@ private fun SearchBar(
                                         }
                                     if (handled) {
                                         if (submitOnEnterInReference && isTocMode) {
-                                            scope.launch {
-                                                withFrameNanos { }
-                                                handleSubmit()
-                                            }
+                                            submitAfterFrame(scope)
                                         }
                                         true
                                     } else {

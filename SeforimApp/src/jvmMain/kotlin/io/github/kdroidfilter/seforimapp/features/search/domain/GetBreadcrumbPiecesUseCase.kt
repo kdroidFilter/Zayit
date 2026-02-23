@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.search.domain
 
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
@@ -29,7 +30,7 @@ class GetBreadcrumbPiecesUseCase(
 
         val tocEntries =
             tocPathCache[result.lineId] ?: run {
-                val tocId = runCatching { repository.getTocEntryIdForLine(result.lineId) }.getOrNull()
+                val tocId = runSuspendCatching { repository.getTocEntryIdForLine(result.lineId) }.getOrNull()
                 if (tocId != null) {
                     val path = mutableListOf<TocEntry>()
                     var current: Long? = tocId

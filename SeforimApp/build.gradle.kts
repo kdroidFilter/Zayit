@@ -18,6 +18,11 @@ plugins {
     alias(libs.plugins.sqlDelight)
     alias(libs.plugins.kover)
     alias(libs.plugins.nucleus)
+    alias(libs.plugins.structured.coroutines)
+}
+
+structuredCoroutines {
+    useStrictProfile()
 }
 
 val version = Versioning.resolveVersion(project)
@@ -61,6 +66,7 @@ kotlin {
 
             // KotlinX
             implementation(libs.kotlinx.coroutines.core)
+            implementation("io.github.santimattius:structured-coroutines-annotations:0.3.0")
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.serialization.protobuf)
@@ -219,7 +225,14 @@ nucleus.application {
             "jdk.accessibility",
             "jdk.incubator.vector",
         )
-        targetFormats(TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Dmg, TargetFormat.Zip)
+        targetFormats(
+            TargetFormat.Msi,
+            TargetFormat.Deb,
+            TargetFormat.Rpm,
+            TargetFormat.Dmg,
+            TargetFormat.Pkg,
+            TargetFormat.Zip
+        )
         vendor = "KDroidFilter"
         cleanupNativeLibs = true
 
@@ -242,6 +255,7 @@ nucleus.application {
             bundleID = "io.github.kdroidfilter.seforimapp.desktopApp"
             packageVersion = version
             packageName = "זית"
+            appStore = true
         }
         buildTypes.release.proguard {
             version.set("7.8.1")

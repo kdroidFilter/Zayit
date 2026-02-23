@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItems
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -23,6 +24,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -116,16 +119,24 @@ private fun BookContentPanelContent(
             mutableStateMapOf<Long, LineConnectionsSnapshot>()
         }
     val prefetchScope = rememberCoroutineScope()
+
+    fun prefetch(
+        @StructuredScope scope: CoroutineScope,
+        missing: List<Long>,
+    ) {
+        scope.launch {
+            runSuspendCatching { providers.loadLineConnections(missing) }
+                .onSuccess { connectionsCache.putAll(it) }
+        }
+    }
+
     val prefetchConnections =
         remember(providers, connectionsCache) {
             { ids: List<Long> ->
                 if (ids.isEmpty()) return@remember
                 val missing = ids.filterNot { connectionsCache.containsKey(it) }.distinct()
                 if (missing.isEmpty()) return@remember
-                prefetchScope.launch {
-                    runCatching { providers.loadLineConnections(missing) }
-                        .onSuccess { connectionsCache.putAll(it) }
-                }
+                prefetch(prefetchScope, missing)
             }
         }
 

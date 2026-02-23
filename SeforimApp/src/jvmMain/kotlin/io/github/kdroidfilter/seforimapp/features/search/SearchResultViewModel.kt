@@ -15,6 +15,7 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactoryKey
 import io.github.kdroidfilter.seforim.tabs.*
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.search.domain.BuildSearchTreeUseCase
@@ -232,7 +233,7 @@ class SearchResultViewModel(
 
             is SearchResultEvents.RequestBreadcrumb -> {
                 viewModelScope.launch {
-                    val pieces = runCatching { getBreadcrumbPiecesFor(event.result) }.getOrDefault(emptyList())
+                    val pieces = runSuspendCatching { getBreadcrumbPiecesFor(event.result) }.getOrDefault(emptyList())
                     if (pieces.isNotEmpty()) {
                         val next = _breadcrumbs.value + (event.result.lineId to pieces)
                         _breadcrumbs.value = next
@@ -518,7 +519,7 @@ class SearchResultViewModel(
         if (selectedTocIds.isNotEmpty()) {
             val tocArrays = mutableListOf<IntArray>()
             for (tocId in selectedTocIds) {
-                val bid = tocBookCache.getOrPut(tocId) { runCatching { repository.getTocEntry(tocId)?.bookId }.getOrNull() ?: -1L }
+                val bid = tocBookCache.getOrPut(tocId) { runSuspendCatching { repository.getTocEntry(tocId)?.bookId }.getOrNull() ?: -1L }
                 if (bid > 0) {
                     val arr = indicesForTocSubtree(tocId, bid, index)
                     if (arr.isNotEmpty()) tocArrays.add(arr)
@@ -540,7 +541,10 @@ class SearchResultViewModel(
         if (tocActive && scopeTocId != null) {
             val bid =
                 bookId
-                    ?: tocBookCache.getOrPut(scopeTocId) { runCatching { repository.getTocEntry(scopeTocId)?.bookId }.getOrNull() ?: -1L }
+                    ?: tocBookCache.getOrPut(scopeTocId) {
+                        runSuspendCatching { repository.getTocEntry(scopeTocId)?.bookId }.getOrNull()
+                            ?: -1L
+                    }
             if (bid > 0) {
                 val arr = indicesForTocSubtree(scopeTocId, bid, index)
                 if (arr.isNotEmpty()) toMerge.add(arr)
@@ -633,7 +637,7 @@ class SearchResultViewModel(
         // Restore category scope path if a category filter is persisted.
         if (filterCategoryId != null) {
             viewModelScope.launch {
-                val path = runCatching { buildCategoryPath(filterCategoryId) }.getOrDefault(emptyList())
+                val path = runSuspendCatching { buildCategoryPath(filterCategoryId) }.getOrDefault(emptyList())
                 _uiState.value = _uiState.value.copy(scopeCategoryPath = path)
             }
         }
@@ -678,7 +682,7 @@ class SearchResultViewModel(
                     val allowedBooks: List<Long>? =
                         _selectedCategoryIds.value.takeIf { it.isNotEmpty() }?.let { ids ->
                             ids.flatMap { catId ->
-                                runCatching { collectBookIdsUnderCategory(catId) }.getOrDefault(emptyList())
+                                runSuspendCatching { collectBookIdsUnderCategory(catId) }.getOrDefault(emptyList())
                             }
                         }
                     val finalBookIds: List<Long>? =
@@ -877,7 +881,7 @@ class SearchResultViewModel(
                             else -> null
                         }
                     val resolvedScopeBook =
-                        persistedScopeBook ?: fetchBookId?.let { runCatching { repository.getBookCore(it) }.getOrNull() }
+                        persistedScopeBook ?: fetchBookId?.let { runSuspendCatching { repository.getBookCore(it) }.getOrNull() }
                     _uiState.value =
                         _uiState.value.copy(
                             scopeCategoryPath = initialScopePath,
@@ -1012,7 +1016,7 @@ class SearchResultViewModel(
                     // Clear loading promptly; if a new visibleResults emission is pending, wait briefly
                     // but never block indefinitely (important when final results are empty and identical
                     // to the pre-stream empty list reference).
-                    runCatching {
+                    runSuspendCatching {
                         val initial = Pair(visibleResultsFlow.value.size, System.identityHashCode(visibleResultsFlow.value))
                         withTimeoutOrNull(300) {
                             visibleResultsFlow
@@ -1243,7 +1247,7 @@ class SearchResultViewModel(
                     selectedTocIds = emptySet(),
                 )
             }
-            val book = runCatching { repository.getBookCore(bookId) }.getOrNull()
+            val book = runSuspendCatching { repository.getBookCore(bookId) }.getOrNull()
             _uiState.value =
                 _uiState.value.copy(
                     scopeBook = book,
@@ -1254,7 +1258,7 @@ class SearchResultViewModel(
                     scrollToAnchorTimestamp = System.currentTimeMillis(),
                 )
             if (book != null && currentTocBookId != book.id) {
-                val tree = runCatching { buildTocTreeForBook(book.id) }.getOrNull()
+                val tree = runSuspendCatching { buildTocTreeForBook(book.id) }.getOrNull()
                 if (tree != null) {
                     _tocTree.value = tree
                     currentTocBookId = book.id
@@ -1274,7 +1278,7 @@ class SearchResultViewModel(
             _selectedBookIds.value = emptySet()
             _selectedTocIds.value = emptySet()
 
-            val toc = runCatching { repository.getTocEntry(tocId) }.getOrNull()
+            val toc = runSuspendCatching { repository.getTocEntry(tocId) }.getOrNull()
             val bookIdFromToc = toc?.bookId
             updatePersistedSearch {
                 it.copy(
@@ -1291,7 +1295,7 @@ class SearchResultViewModel(
                 )
             }
 
-            val scopeBook = if (bookIdFromToc != null) runCatching { repository.getBookCore(bookIdFromToc) }.getOrNull() else null
+            val scopeBook = if (bookIdFromToc != null) runSuspendCatching { repository.getBookCore(bookIdFromToc) }.getOrNull() else null
             _uiState.value =
                 _uiState.value.copy(
                     scopeBook = scopeBook,
@@ -1302,7 +1306,7 @@ class SearchResultViewModel(
                     scrollToAnchorTimestamp = System.currentTimeMillis(),
                 )
             if (scopeBook != null && currentTocBookId != scopeBook.id) {
-                val tree = runCatching { buildTocTreeForBook(scopeBook.id) }.getOrNull()
+                val tree = runSuspendCatching { buildTocTreeForBook(scopeBook.id) }.getOrNull()
                 if (tree != null) {
                     _tocTree.value = tree
                     currentTocBookId = scopeBook.id
@@ -1441,7 +1445,7 @@ class SearchResultViewModel(
             val ids = mutableSetOf<Long>()
             ids += categoryId
             // Prefer current search tree to derive descendants (only categories present in results)
-            val tree = runCatching { searchTreeFlow.value }.getOrElse { emptyList() }
+            val tree = runSuspendCatching { searchTreeFlow.value }.getOrElse { emptyList() }
             if (tree.isNotEmpty()) {
                 fun findNode(list: List<SearchTreeCategory>): SearchTreeCategory? {
                     for (n in list) {
@@ -1467,8 +1471,9 @@ class SearchResultViewModel(
                 stack.addLast(categoryId)
                 var guard = 0
                 while (stack.isNotEmpty() && guard++ < 10000) {
+                    ensureActive()
                     val current = stack.removeFirst()
-                    val children = runCatching { repository.getCategoryChildren(current) }.getOrElse { emptyList() }
+                    val children = runSuspendCatching { repository.getCategoryChildren(current) }.getOrElse { emptyList() }
                     for (ch in children) {
                         if (ids.add(ch.id)) stack.addLast(ch.id)
                     }
@@ -1571,7 +1576,7 @@ class SearchResultViewModel(
                     for (tocId in selectedTocs) {
                         val bookId =
                             tocBookCache.getOrPut(tocId) {
-                                runCatching { repository.getTocEntry(tocId)?.bookId }.getOrNull() ?: -1L
+                                runSuspendCatching { repository.getTocEntry(tocId)?.bookId }.getOrNull() ?: -1L
                             }
                         if (bookId > 0) {
                             lineIdsToFilter += collectLineIdsForTocSubtree(tocId, bookId)
@@ -1657,11 +1662,11 @@ class SearchResultViewModel(
      */
     fun ensureScopeBookForToc(bookId: Long) {
         viewModelScope.launch {
-            val book = runCatching { repository.getBookCore(bookId) }.getOrNull() ?: return@launch
+            val book = runSuspendCatching { repository.getBookCore(bookId) }.getOrNull() ?: return@launch
             if (uiState.value.scopeBook?.id == book.id) return@launch
             _uiState.value = _uiState.value.copy(scopeBook = book)
             if (currentTocBookId != book.id) {
-                val tree = runCatching { buildTocTreeForBook(book.id) }.getOrNull()
+                val tree = runSuspendCatching { buildTocTreeForBook(book.id) }.getOrNull()
                 if (tree != null) {
                     _tocTree.value = tree
                     currentTocBookId = book.id

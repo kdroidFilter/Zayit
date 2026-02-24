@@ -11,6 +11,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +37,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -67,11 +69,14 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.component.styling.MenuStyle
 import org.jetbrains.jewel.ui.component.styling.TabStyle
+import org.jetbrains.jewel.ui.component.styling.TooltipMetrics
+import org.jetbrains.jewel.ui.component.styling.TooltipStyle
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import org.jetbrains.jewel.ui.theme.menuStyle
+import org.jetbrains.jewel.ui.theme.tooltipStyle
 import seforimapp.seforimapp.generated.resources.*
 import sh.calvin.reorderable.ReorderableRow
 import kotlin.math.roundToInt
@@ -714,8 +719,58 @@ private fun RtlAwareTab(
             label.isNotBlank() &&
                 (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold)
 
+        // Read theme colors outside remember so they act as a cache key.
+        val tooltipColors = JewelTheme.tooltipStyle.colors
+        val chromeTooltipStyle =
+            remember(tooltipColors) {
+                // Positions the tooltip centered below the anchor (the tab) — Chrome style.
+                // ComponentRect relies on LayoutBoundsHolder which isn't wired in JewelTooltipArea,
+                // so we use a raw PopupPositionProvider that reads anchorBounds directly.
+                @OptIn(ExperimentalFoundationApi::class)
+                val belowAnchorPlacement = object : TooltipPlacement {
+                    @Composable
+                    override fun positionProvider(cursorPosition: Offset): PopupPositionProvider =
+                        object : PopupPositionProvider {
+                            override fun calculatePosition(
+                                anchorBounds: IntRect,
+                                windowSize: IntSize,
+                                layoutDirection: LayoutDirection,
+                                popupContentSize: IntSize,
+                            ): IntOffset =
+                                IntOffset(
+                                    x = (anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2)
+                                        .coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
+                                    y = anchorBounds.bottom,
+                                )
+                        }
+                }
+                TooltipStyle(
+                    colors = tooltipColors,
+                    metrics =
+                        TooltipMetrics.defaults(
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            cornerSize = CornerSize(8.dp),
+                            shadowSize = 16.dp,
+                            placement = belowAnchorPlacement,
+                        ),
+                )
+            }
+
         val contentWithTooltip: @Composable () -> Unit = {
-            if (showTooltip) Tooltip({ Text(label) }) { container() } else container()
+            if (showTooltip) {
+                Tooltip(
+                    tooltip = {
+                        Text(
+                            text = label,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.widthIn(max = 360.dp),
+                        )
+                    },
+                    style = chromeTooltipStyle,
+                ) { container() }
+            } else {
+                container()
+            }
         }
 
         contentWithTooltip()

@@ -11,6 +11,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,8 +37,10 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -67,6 +70,9 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.component.styling.MenuStyle
 import org.jetbrains.jewel.ui.component.styling.TabStyle
+import org.jetbrains.jewel.ui.component.styling.TooltipColors
+import org.jetbrains.jewel.ui.component.styling.TooltipMetrics
+import org.jetbrains.jewel.ui.component.styling.TooltipStyle
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
@@ -714,8 +720,74 @@ private fun RtlAwareTab(
             label.isNotBlank() &&
                 (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold)
 
+        val isDark = JewelTheme.isDark
+        val chromeTooltipStyle =
+            remember(isDark) {
+                val colors =
+                    if (isDark) {
+                        TooltipColors(
+                            background = Color(0xFF292A2D),
+                            content = Color(0xFFE8EAED),
+                            border = Color.Transparent,
+                            shadow = Color(0x66000000),
+                        )
+                    } else {
+                        TooltipColors(
+                            background = Color(0xFFFFFFFF),
+                            content = Color(0xFF202124),
+                            border = Color(0xFFDADCE0),
+                            shadow = Color(0x33000000),
+                        )
+                    }
+                // Positions the tooltip directly below the anchor (the tab), left-aligned — Chrome style.
+                // ComponentRect relies on LayoutBoundsHolder which isn't wired in JewelTooltipArea,
+                // so we provide a raw PopupPositionProvider that reads anchorBounds directly.
+                @OptIn(ExperimentalFoundationApi::class)
+                val belowAnchorPlacement = object : TooltipPlacement {
+                    @Composable
+                    override fun positionProvider(cursorPosition: Offset): PopupPositionProvider =
+                        object : PopupPositionProvider {
+                            override fun calculatePosition(
+                                anchorBounds: IntRect,
+                                windowSize: IntSize,
+                                layoutDirection: LayoutDirection,
+                                popupContentSize: IntSize,
+                            ): IntOffset =
+                                IntOffset(
+                                    x = (anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2)
+                                        .coerceIn(0, windowSize.width - popupContentSize.width),
+                                    y = anchorBounds.bottom,
+                                )
+                        }
+                }
+                TooltipStyle(
+                    colors = colors,
+                    metrics =
+                        TooltipMetrics.defaults(
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            cornerSize = CornerSize(8.dp),
+                            borderWidth = if (isDark) 0.dp else 1.dp,
+                            shadowSize = 16.dp,
+                            placement = belowAnchorPlacement,
+                        ),
+                )
+            }
+
         val contentWithTooltip: @Composable () -> Unit = {
-            if (showTooltip) Tooltip({ Text(label) }) { container() } else container()
+            if (showTooltip) {
+                Tooltip(
+                    tooltip = {
+                        Text(
+                            text = label,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.widthIn(max = 360.dp),
+                        )
+                    },
+                    style = chromeTooltipStyle,
+                ) { container() }
+            } else {
+                container()
+            }
         }
 
         contentWithTooltip()

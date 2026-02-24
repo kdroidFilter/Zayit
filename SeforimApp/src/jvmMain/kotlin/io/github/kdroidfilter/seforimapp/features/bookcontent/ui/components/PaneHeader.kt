@@ -91,13 +91,7 @@ fun PaneHeader(
             }
         }
 
-        val dividerColor =
-            if (ThemeUtils.isIslandsStyle()) {
-                JewelTheme.globalColors.borders.normal.copy(alpha = 0.3f)
-            } else {
-                JewelTheme.globalColors.borders.normal
-            }
-        HorizontalDivider(color = dividerColor)
+        HorizontalDivider()
     }
 }
 

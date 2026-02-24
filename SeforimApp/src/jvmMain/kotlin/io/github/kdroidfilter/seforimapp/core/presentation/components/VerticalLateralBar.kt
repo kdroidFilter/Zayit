@@ -27,8 +27,6 @@ import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.Orientation
-import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 
 enum class VerticalLateralBarPosition {
@@ -109,14 +107,8 @@ fun VerticalLateralBar(
                         ) {
                             topContent()
                         }
-                        Divider(
-                            orientation = Orientation.Horizontal,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth(0.5f)
-                                    .width(1.dp)
-                                    .padding(vertical = 4.dp),
-                            color = JewelTheme.globalColors.borders.disabled,
+                        HorizontalDivider(
+                            modifier = Modifier.fillMaxWidth(0.5f).padding(top = 4.dp),
                         )
                     }
                 }

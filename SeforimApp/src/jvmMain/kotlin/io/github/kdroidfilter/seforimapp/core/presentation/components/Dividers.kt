@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
@@ -24,18 +25,24 @@ fun VerticalDivider() {
     )
 }
 
+/**
+ * A horizontal divider that automatically adapts to island mode.
+ * In island mode, the divider is shown with a softer appearance (lower alpha).
+ * Pass [modifier] to control width — defaults to full width.
+ */
 @Composable
 fun HorizontalDivider(
-    color: Color = JewelTheme.globalColors.borders.disabled,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    color: Color =
+        if (ThemeUtils.isIslandsStyle()) {
+            JewelTheme.globalColors.borders.normal.copy(alpha = 0.3f)
+        } else {
+            JewelTheme.globalColors.borders.disabled
+        },
 ) {
     Divider(
         orientation = Orientation.Horizontal,
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .width(1.dp)
-                .padding(bottom = 4.dp),
+        modifier = modifier.width(1.dp).padding(bottom = 4.dp),
         color = color,
     )
 }

@@ -215,6 +215,8 @@ nucleus.application {
         appResourcesRootDir.set(layout.projectDirectory.dir("src/jvmMain/assets"))
         splashImage = "splash.png"
         enableAotCache = true
+        homepage = "https://zayitapp.com"
+        licenseFile.set(File(project.rootDir, "LICENSE"))
         jvmArgs +=
             listOf(
                 "--enable-native-access=ALL-UNNAMED",
@@ -251,6 +253,7 @@ nucleus.application {
             packageName = "zayit"
             iconFile.set(project.file("desktopAppIcons/LinuxIcon.png"))
             packageVersion = version
+            debMaintainer = "elyahou.hadass@gmail.com"
         }
         windows {
             iconFile.set(project.file("desktopAppIcons/WindowsIcon.ico"))

@@ -3,11 +3,6 @@ package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -182,30 +177,13 @@ fun TabsContent() {
             JewelTheme.globalColors.panelBackground
         }
 
-    val canvasModifier =
-        if (isIslands) {
-            val gradientColor = ThemeUtils.titleBarGradientColor()
-            val density = LocalDensity.current
-            val titleBarOffset = with(density) { 40.dp.toPx() }
-            val gradientRadius = with(density) { 400.dp.toPx() }
+    Box(
+        modifier =
             Modifier
                 .trackActivation()
                 .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(gradientColor, canvasBg),
-                        center = Offset(0f, -titleBarOffset),
-                        radius = gradientRadius,
-                    ),
-                )
-        } else {
-            Modifier
-                .trackActivation()
-                .fillMaxSize()
-                .background(canvasBg)
-        }
-
-    Box(modifier = canvasModifier) {
+                .background(canvasBg),
+    ) {
         tabs.forEachIndexed { index, tabItem ->
             key(tabItem.id) {
                 val isSelected = index == selectedTabIndex

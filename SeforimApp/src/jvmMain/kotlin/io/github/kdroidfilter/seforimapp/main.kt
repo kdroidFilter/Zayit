@@ -492,7 +492,11 @@ fun main() {
                                                         }
                                                         // Alt + Home (Windows) or Cmd + Shift + H (macOS) => go Home on current tab
                                                         (keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
-                                                            (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H) -> {
+                                                            (
+                                                                keyEvent.isMetaPressed &&
+                                                                    keyEvent.isShiftPressed &&
+                                                                    keyEvent.key == Key.H
+                                                            ) -> {
                                                             val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
                                                             if (currentTabId != null) {
                                                                 tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))

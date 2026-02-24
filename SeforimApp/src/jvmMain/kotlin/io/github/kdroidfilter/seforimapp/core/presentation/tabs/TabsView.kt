@@ -40,7 +40,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -70,7 +69,6 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.component.styling.MenuStyle
 import org.jetbrains.jewel.ui.component.styling.TabStyle
-import org.jetbrains.jewel.ui.component.styling.TooltipColors
 import org.jetbrains.jewel.ui.component.styling.TooltipMetrics
 import org.jetbrains.jewel.ui.component.styling.TooltipStyle
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
@@ -78,6 +76,7 @@ import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import org.jetbrains.jewel.ui.theme.menuStyle
+import org.jetbrains.jewel.ui.theme.tooltipStyle
 import seforimapp.seforimapp.generated.resources.*
 import sh.calvin.reorderable.ReorderableRow
 import kotlin.math.roundToInt
@@ -720,28 +719,13 @@ private fun RtlAwareTab(
             label.isNotBlank() &&
                 (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold)
 
-        val isDark = JewelTheme.isDark
+        // Read theme colors outside remember so they act as a cache key.
+        val tooltipColors = JewelTheme.tooltipStyle.colors
         val chromeTooltipStyle =
-            remember(isDark) {
-                val colors =
-                    if (isDark) {
-                        TooltipColors(
-                            background = Color(0xFF292A2D),
-                            content = Color(0xFFE8EAED),
-                            border = Color.Transparent,
-                            shadow = Color(0x66000000),
-                        )
-                    } else {
-                        TooltipColors(
-                            background = Color(0xFFFFFFFF),
-                            content = Color(0xFF202124),
-                            border = Color(0xFFDADCE0),
-                            shadow = Color(0x33000000),
-                        )
-                    }
-                // Positions the tooltip directly below the anchor (the tab), left-aligned — Chrome style.
+            remember(tooltipColors) {
+                // Positions the tooltip centered below the anchor (the tab) — Chrome style.
                 // ComponentRect relies on LayoutBoundsHolder which isn't wired in JewelTooltipArea,
-                // so we provide a raw PopupPositionProvider that reads anchorBounds directly.
+                // so we use a raw PopupPositionProvider that reads anchorBounds directly.
                 @OptIn(ExperimentalFoundationApi::class)
                 val belowAnchorPlacement = object : TooltipPlacement {
                     @Composable
@@ -755,18 +739,17 @@ private fun RtlAwareTab(
                             ): IntOffset =
                                 IntOffset(
                                     x = (anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2)
-                                        .coerceIn(0, windowSize.width - popupContentSize.width),
+                                        .coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
                                     y = anchorBounds.bottom,
                                 )
                         }
                 }
                 TooltipStyle(
-                    colors = colors,
+                    colors = tooltipColors,
                     metrics =
                         TooltipMetrics.defaults(
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                             cornerSize = CornerSize(8.dp),
-                            borderWidth = if (isDark) 0.dp else 1.dp,
                             shadowSize = 16.dp,
                             placement = belowAnchorPlacement,
                         ),

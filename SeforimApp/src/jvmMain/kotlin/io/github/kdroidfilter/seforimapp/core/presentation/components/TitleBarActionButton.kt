@@ -99,8 +99,9 @@ fun TitleBarActionButton(
                             popupContentSize: IntSize,
                         ): IntOffset =
                             IntOffset(
-                                x = (anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2)
-                                    .coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
+                                x =
+                                    (anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2)
+                                        .coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
                                 y = anchorBounds.bottom,
                             )
                     }

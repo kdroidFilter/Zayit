@@ -11,11 +11,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -616,10 +616,12 @@ private fun RtlAwareTab(
                     .height(tabStyle.metrics.tabHeight)
                     .width(widthForThisTab)
                     .let { m ->
-                        if (isIslands) m.padding(horizontal = 2.dp, vertical = 4.dp).clip(RoundedCornerShape(8.dp))
-                        else m
-                    }
-                    .background(backgroundColor)
+                        if (isIslands) {
+                            m.padding(horizontal = 2.dp, vertical = 4.dp).clip(RoundedCornerShape(8.dp))
+                        } else {
+                            m
+                        }
+                    }.background(backgroundColor)
                     .alpha(if (isDragging) 0.7f else 1f) // Visual feedback when dragging
                     .onGloballyPositioned { coords ->
                         val pos = coords.positionInWindow()

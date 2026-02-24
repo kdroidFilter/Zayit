@@ -31,29 +31,31 @@ fun TitleBarActionButton(
 ) {
     val accent = JewelTheme.globalColors.outlines.focused
     val baseStyle = JewelTheme.iconButtonStyle
-    val style = remember(accent, baseStyle) {
-        val c = baseStyle.colors
-        IconButtonStyle(
-            colors = IconButtonColors(
-                foregroundSelectedActivated = c.foregroundSelectedActivated,
-                background = c.background,
-                backgroundDisabled = c.backgroundDisabled,
-                backgroundSelected = c.backgroundSelected,
-                backgroundSelectedActivated = c.backgroundSelectedActivated,
-                backgroundFocused = c.backgroundFocused,
-                backgroundPressed = accent.copy(alpha = 0.20f),
-                backgroundHovered = accent.copy(alpha = 0.12f),
-                border = c.border,
-                borderDisabled = c.borderDisabled,
-                borderSelected = c.borderSelected,
-                borderSelectedActivated = c.borderSelectedActivated,
-                borderFocused = c.borderFocused,
-                borderPressed = Color.Transparent,
-                borderHovered = Color.Transparent,
-            ),
-            metrics = baseStyle.metrics,
-        )
-    }
+    val style =
+        remember(accent, baseStyle) {
+            val c = baseStyle.colors
+            IconButtonStyle(
+                colors =
+                    IconButtonColors(
+                        foregroundSelectedActivated = c.foregroundSelectedActivated,
+                        background = c.background,
+                        backgroundDisabled = c.backgroundDisabled,
+                        backgroundSelected = c.backgroundSelected,
+                        backgroundSelectedActivated = c.backgroundSelectedActivated,
+                        backgroundFocused = c.backgroundFocused,
+                        backgroundPressed = accent.copy(alpha = 0.20f),
+                        backgroundHovered = accent.copy(alpha = 0.12f),
+                        border = c.border,
+                        borderDisabled = c.borderDisabled,
+                        borderSelected = c.borderSelected,
+                        borderSelectedActivated = c.borderSelectedActivated,
+                        borderFocused = c.borderFocused,
+                        borderPressed = Color.Transparent,
+                        borderHovered = Color.Transparent,
+                    ),
+                metrics = baseStyle.metrics,
+            )
+        }
 
     Tooltip({
         if (shortcutHint.isNullOrBlank()) {

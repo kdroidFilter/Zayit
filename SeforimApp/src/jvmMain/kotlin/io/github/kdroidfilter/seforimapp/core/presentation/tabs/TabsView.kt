@@ -727,23 +727,25 @@ private fun RtlAwareTab(
                 // ComponentRect relies on LayoutBoundsHolder which isn't wired in JewelTooltipArea,
                 // so we use a raw PopupPositionProvider that reads anchorBounds directly.
                 @OptIn(ExperimentalFoundationApi::class)
-                val belowAnchorPlacement = object : TooltipPlacement {
-                    @Composable
-                    override fun positionProvider(cursorPosition: Offset): PopupPositionProvider =
-                        object : PopupPositionProvider {
-                            override fun calculatePosition(
-                                anchorBounds: IntRect,
-                                windowSize: IntSize,
-                                layoutDirection: LayoutDirection,
-                                popupContentSize: IntSize,
-                            ): IntOffset =
-                                IntOffset(
-                                    x = (anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2)
-                                        .coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
-                                    y = anchorBounds.bottom,
-                                )
-                        }
-                }
+                val belowAnchorPlacement =
+                    object : TooltipPlacement {
+                        @Composable
+                        override fun positionProvider(cursorPosition: Offset): PopupPositionProvider =
+                            object : PopupPositionProvider {
+                                override fun calculatePosition(
+                                    anchorBounds: IntRect,
+                                    windowSize: IntSize,
+                                    layoutDirection: LayoutDirection,
+                                    popupContentSize: IntSize,
+                                ): IntOffset =
+                                    IntOffset(
+                                        x =
+                                            (anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2)
+                                                .coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
+                                        y = anchorBounds.bottom,
+                                    )
+                            }
+                    }
                 TooltipStyle(
                     colors = tooltipColors,
                     metrics =

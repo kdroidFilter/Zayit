@@ -50,11 +50,12 @@ fun SelectableIconButtonWithToolip(
     val compactMode by AppSettings.compactModeFlow.collectAsState()
     val isIslands = ThemeUtils.isIslandsStyle()
     val iconSize = if (compactMode) 22.dp else 24.dp
-    val buttonPadding = when {
-        compactMode -> 2.dp
-        isIslands -> 2.dp
-        else -> 4.dp
-    }
+    val buttonPadding =
+        when {
+            compactMode -> 2.dp
+            isIslands -> 2.dp
+            else -> 4.dp
+        }
 
     val barPosition = LocalVerticalBarPosition.current
     val density = LocalDensity.current
@@ -148,8 +149,7 @@ fun SelectableIconButtonWithToolip(
                     .fillMaxWidth()
                     .then(
                         if (compactMode) Modifier.aspectRatio(1f) else Modifier.height(64.dp),
-                    )
-                    .pointerHoverIcon(PointerIcon.Hand),
+                    ).pointerHoverIcon(PointerIcon.Hand),
             focusable = false,
             enabled = enabled,
             style = buttonStyle,

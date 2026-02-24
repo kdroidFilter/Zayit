@@ -35,7 +35,8 @@ fun HorizontalDivider(
     modifier: Modifier = Modifier.fillMaxWidth(),
     color: Color =
         if (ThemeUtils.isIslandsStyle()) {
-            JewelTheme.globalColors.borders.normal.copy(alpha = 0.3f)
+            JewelTheme.globalColors.borders.normal
+                .copy(alpha = 0.3f)
         } else {
             JewelTheme.globalColors.borders.disabled
         },

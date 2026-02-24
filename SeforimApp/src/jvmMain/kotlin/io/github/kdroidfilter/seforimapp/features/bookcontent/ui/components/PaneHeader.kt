@@ -45,8 +45,11 @@ fun PaneHeader(
     val isHovered by headerHoverSource.collectIsHoveredAsState()
     val isIslands = ThemeUtils.isIslandsStyle()
     val headerBackground =
-        if (isIslands) JewelTheme.globalColors.toolwindowBackground.copy(alpha = 0.15f)
-        else JewelTheme.globalColors.panelBackground
+        if (isIslands) {
+            JewelTheme.globalColors.toolwindowBackground.copy(alpha = 0.15f)
+        } else {
+            JewelTheme.globalColors.panelBackground
+        }
 
     Column(
         modifier =

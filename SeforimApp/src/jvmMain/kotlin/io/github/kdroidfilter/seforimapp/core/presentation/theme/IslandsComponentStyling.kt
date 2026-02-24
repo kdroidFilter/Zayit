@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.core.presentation.theme
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.ui.unit.dp
+import org.jetbrains.jewel.intui.core.theme.IntUiLightTheme
 import org.jetbrains.jewel.intui.standalone.styling.Default
 import org.jetbrains.jewel.intui.standalone.styling.Outlined
 import org.jetbrains.jewel.intui.standalone.styling.dark
@@ -23,6 +24,7 @@ import org.jetbrains.jewel.ui.component.styling.TextAreaMetrics
 import org.jetbrains.jewel.ui.component.styling.TextAreaStyle
 import org.jetbrains.jewel.ui.component.styling.TextFieldMetrics
 import org.jetbrains.jewel.ui.component.styling.TextFieldStyle
+import org.jetbrains.jewel.ui.component.styling.TooltipColors
 import org.jetbrains.jewel.ui.component.styling.TooltipMetrics
 import org.jetbrains.jewel.ui.component.styling.TooltipStyle
 import kotlin.time.Duration.Companion.milliseconds
@@ -112,6 +114,12 @@ fun islandsComponentStyling(isDark: Boolean): ComponentStyling =
                 ),
             tooltipStyle =
                 TooltipStyle.light(
+                    intUiTooltipColors =
+                        TooltipColors.light(
+                            backgroundColor = IntUiLightTheme.colors.gray(13),
+                            contentColor = IntUiLightTheme.colors.gray(2),
+                            borderColor = IntUiLightTheme.colors.gray(9),
+                        ),
                     intUiTooltipMetrics =
                         TooltipMetrics.defaults(
                             cornerSize = roundedCorner,

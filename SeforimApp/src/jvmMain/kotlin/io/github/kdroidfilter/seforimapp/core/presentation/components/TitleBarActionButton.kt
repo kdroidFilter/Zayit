@@ -4,17 +4,21 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.styling.IconButtonColors
+import org.jetbrains.jewel.ui.component.styling.IconButtonMetrics
 import org.jetbrains.jewel.ui.component.styling.IconButtonStyle
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.theme.iconButtonStyle
@@ -31,8 +35,9 @@ fun TitleBarActionButton(
 ) {
     val accent = JewelTheme.globalColors.outlines.focused
     val baseStyle = JewelTheme.iconButtonStyle
+    val isIslands = ThemeUtils.isIslandsStyle()
     val style =
-        remember(accent, baseStyle) {
+        remember(accent, baseStyle, isIslands) {
             val c = baseStyle.colors
             IconButtonStyle(
                 colors =
@@ -53,8 +58,25 @@ fun TitleBarActionButton(
                         borderPressed = Color.Transparent,
                         borderHovered = Color.Transparent,
                     ),
-                metrics = baseStyle.metrics,
+                metrics =
+                    if (isIslands) {
+                        IconButtonMetrics(
+                            cornerSize = CornerSize(8.dp),
+                            borderWidth = baseStyle.metrics.borderWidth,
+                            padding = baseStyle.metrics.padding,
+                            minSize = baseStyle.metrics.minSize,
+                        )
+                    } else {
+                        baseStyle.metrics
+                    },
             )
+        }
+
+    val buttonModifier =
+        if (isIslands) {
+            Modifier.width(40.dp).fillMaxHeight().padding(horizontal = 2.dp, vertical = 4.dp)
+        } else {
+            Modifier.width(40.dp).fillMaxHeight()
         }
 
     Tooltip({
@@ -72,7 +94,7 @@ fun TitleBarActionButton(
             onClick = onClick,
             enabled = enabled,
             contentDescription = contentDescription,
-            modifier = Modifier.width(40.dp).fillMaxHeight(),
+            modifier = buttonModifier,
             style = style,
         )
     }

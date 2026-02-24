@@ -66,10 +66,14 @@ import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.intui.core.theme.IntUiLightTheme
+import org.jetbrains.jewel.intui.standalone.styling.light
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.intui.standalone.theme.dark
 import org.jetbrains.jewel.intui.standalone.theme.light
 import org.jetbrains.jewel.ui.ComponentStyling
+import org.jetbrains.jewel.ui.component.styling.TooltipColors
+import org.jetbrains.jewel.ui.component.styling.TooltipStyle
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.Desktop
 import java.awt.Dimension
@@ -237,7 +241,22 @@ fun main() {
             val componentStyling =
                 when (themeStyle) {
                     ThemeStyle.Islands -> islandsComponentStyling(isDark)
-                    ThemeStyle.Classic -> if (isDark) ComponentStyling.dark() else ComponentStyling.light()
+                    ThemeStyle.Classic ->
+                        if (isDark) {
+                            ComponentStyling.dark()
+                        } else {
+                            ComponentStyling.light(
+                                tooltipStyle =
+                                    TooltipStyle.light(
+                                        intUiTooltipColors =
+                                            TooltipColors.light(
+                                                backgroundColor = IntUiLightTheme.colors.gray(13),
+                                                contentColor = IntUiLightTheme.colors.gray(2),
+                                                borderColor = IntUiLightTheme.colors.gray(9),
+                                            ),
+                                    ),
+                            )
+                        }
                 }
 
             NucleusDecoratedWindowTheme(

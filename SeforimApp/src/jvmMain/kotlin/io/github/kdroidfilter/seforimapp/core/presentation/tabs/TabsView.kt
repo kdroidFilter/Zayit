@@ -756,24 +756,17 @@ private fun RtlAwareTab(
                 )
             }
 
-        val contentWithTooltip: @Composable () -> Unit = {
-            if (showTooltip) {
-                Tooltip(
-                    tooltip = {
-                        Text(
-                            text = label,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.widthIn(max = 360.dp),
-                        )
-                    },
-                    style = chromeTooltipStyle,
-                ) { container() }
-            } else {
-                container()
-            }
-        }
-
-        contentWithTooltip()
+        Tooltip(
+            tooltip = {
+                Text(
+                    text = label,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.widthIn(max = 360.dp),
+                )
+            },
+            enabled = showTooltip,
+            style = chromeTooltipStyle,
+        ) { container() }
 
         if (contextMenuOpen) {
             // Resource strings must be resolved outside MenuScope

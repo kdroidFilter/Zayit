@@ -7,6 +7,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.Progress
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigState
 import io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall.TypeOfInstallationState
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileState
+import kotlinx.coroutines.test.runTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -300,26 +301,20 @@ class OnboardingFlowIntegrationTest {
     // ==================== Disk Space Calculation Tests ====================
 
     @Test
-    fun `disk space use case provides consistent calculations`() {
-        val useCase = AvailableDiskSpaceUseCase()
+    fun `disk space use case provides consistent calculations`() =
+        runTest {
+            val info = AvailableDiskSpaceUseCase().getDiskSpaceInfo()
 
-        val availableSpace = useCase.getAvailableDiskSpace()
-        val totalSpace = useCase.getTotalDiskSpace()
-        val remainingAfterInstall = useCase.getRemainingSpaceAfterInstall()
-        val hasEnoughSpace = useCase.hasEnoughSpace()
+            // Total should be >= available
+            assertTrue(info.totalBytes >= info.availableBytes)
 
-        // Total should be >= available
-        assertTrue(totalSpace >= availableSpace)
+            // remainingAfterInstall should equal available - required
+            val expectedRemaining = info.availableBytes - AvailableDiskSpaceUseCase.REQUIRED_SPACE_BYTES
+            assertEquals(expectedRemaining, info.remainingAfterInstall)
 
-        // Remaining should be approximately available - required
-        val expectedRemaining = availableSpace - AvailableDiskSpaceUseCase.REQUIRED_SPACE_BYTES
-        // Allow 1GB tolerance for disk changes between calls
-        val tolerance = 1L * 1024 * 1024 * 1024
-        assertTrue(kotlin.math.abs(remainingAfterInstall - expectedRemaining) < tolerance)
-
-        // hasEnoughSpace should be consistent
-        assertEquals(availableSpace >= AvailableDiskSpaceUseCase.REQUIRED_SPACE_BYTES, hasEnoughSpace)
-    }
+            // hasEnoughSpace should be consistent
+            assertEquals(info.availableBytes >= AvailableDiskSpaceUseCase.REQUIRED_SPACE_BYTES, info.hasEnoughSpace)
+        }
 
     // ==================== Edge Case Tests ====================
 

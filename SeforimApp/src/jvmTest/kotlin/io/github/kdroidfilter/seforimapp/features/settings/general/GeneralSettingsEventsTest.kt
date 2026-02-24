@@ -77,6 +77,7 @@ class GeneralSettingsEventsTest {
                 GeneralSettingsEvents.SetPersistSession(true),
                 GeneralSettingsEvents.SetShowZmanimWidgets(true),
                 GeneralSettingsEvents.SetUseOpenGl(true),
+                GeneralSettingsEvents.SetCompactMode(true),
                 GeneralSettingsEvents.ResetApp,
             )
 
@@ -86,6 +87,7 @@ class GeneralSettingsEventsTest {
                 is GeneralSettingsEvents.SetPersistSession -> assertEquals(true, event.value)
                 is GeneralSettingsEvents.SetShowZmanimWidgets -> assertEquals(true, event.value)
                 is GeneralSettingsEvents.SetUseOpenGl -> assertEquals(true, event.value)
+                is GeneralSettingsEvents.SetCompactMode -> assertEquals(true, event.value)
                 GeneralSettingsEvents.ResetApp -> { /* ok */ }
             }
         }

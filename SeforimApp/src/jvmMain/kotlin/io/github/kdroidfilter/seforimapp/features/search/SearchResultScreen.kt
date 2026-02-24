@@ -39,6 +39,7 @@ import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -213,6 +214,19 @@ fun SearchResultInBookShellMvi(
     DisposableEffect(Unit) {
         onDispose { currentOnEvent(BookContentEvent.SaveState) }
     }
+
+    val isIslands = ThemeUtils.isIslandsStyle()
+    val panelCardModifier =
+        if (isIslands) {
+            Modifier
+                .fillMaxSize()
+                .padding(vertical = 6.dp, horizontal = 4.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(JewelTheme.globalColors.panelBackground)
+        } else {
+            Modifier
+        }
+
     Row(modifier = Modifier.fillMaxSize()) {
         StartVerticalBar(uiState = bookUiState, onEvent = onEvent)
 
@@ -232,6 +246,7 @@ fun SearchResultInBookShellMvi(
                         onCategoryCheckedChange = actions.onCategoryCheckedChange,
                         onBookCheckedChange = actions.onBookCheckedChange,
                         onEnsureScopeBookForToc = actions.onEnsureScopeBookForToc,
+                        modifier = panelCardModifier,
                     )
                 }
             },
@@ -250,6 +265,7 @@ fun SearchResultInBookShellMvi(
                                 selectedTocIds = selectedTocIds,
                                 onToggle = actions.onTocToggle,
                                 onTocFilter = actions.onTocFilter,
+                                modifier = panelCardModifier,
                             )
                         }
                     },
@@ -263,14 +279,16 @@ fun SearchResultInBookShellMvi(
                                 showDiacritics = showDiacritics,
                             )
                         } else {
-                            SearchResultContentMvi(
-                                state = searchUi,
-                                visibleResults = visibleResults,
-                                isFiltering = isFiltering,
-                                breadcrumbs = breadcrumbs,
-                                actions = actions,
-                                tabId = tabId,
-                            )
+                            Box(modifier = panelCardModifier) {
+                                SearchResultContentMvi(
+                                    state = searchUi,
+                                    visibleResults = visibleResults,
+                                    isFiltering = isFiltering,
+                                    breadcrumbs = breadcrumbs,
+                                    actions = actions,
+                                    tabId = tabId,
+                                )
+                            }
                         }
                     },
                     showSplitter = bookUiState.toc.isVisible,

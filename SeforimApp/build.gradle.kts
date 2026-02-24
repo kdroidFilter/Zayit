@@ -231,7 +231,7 @@ nucleus.application {
             TargetFormat.Rpm,
             TargetFormat.Dmg,
             TargetFormat.Pkg,
-            TargetFormat.Zip
+            TargetFormat.Zip,
         )
         vendor = "KDroidFilter"
         cleanupNativeLibs = true

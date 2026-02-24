@@ -128,9 +128,9 @@
     <string name="commentaries">מפרשים</string>
     <string name="sources">מקורות</string>
     <string name="show_commentaries_tooltip">הצג את המפרשים הקיימים על פסקה זו</string>
-    <string name="show_commentaries">הצג מפרשים</string>
+    <string name="show_commentaries">מפרשים</string>
     <string name="show_sources_tooltip">הצג מקור לטקסט זה</string>
-    <string name="show_sources">הצג מקור</string>
+    <string name="show_sources">מקור</string>
     <string name="columns_gap_tooltip">שנה את מבנה העמודות</string>
     <string name="columns_gap">מבנה עמודות</string>
     <string name="filter_commentators_tooltip">סנן את המפרשים</string>
@@ -142,9 +142,9 @@
     <string name="write_note_tooltip">כתוב הערה על שורה זאת</string>
     <string name="write_note">כתוב הערה</string>
     <string name="show_targumim_tooltip">הצג תרגומים</string>
-    <string name="show_targumim">הצג תרגומים</string>
+    <string name="show_targumim">תרגומים</string>
     <string name="show_links_tooltip">הצג קישורים על שורה זאת</string>
-    <string name="show_links">הצג קישורים</string>
+    <string name="show_links">קישורים</string>
 
     <!-- Book Content Screen - Main Content -->
     <string name="search_placeholder">חפש</string>
@@ -152,7 +152,7 @@
     <string name="paragraph">פסקה %1$d מפרק %2$d</string>
     <string name="select_book">בחר ספר כדי לצפות בתוכן</string>
     <string name="select_book_for_toc">בחר ספר כדי לצפות בתוכן העניינים שלו</string>
-    
+
     <!-- Line Comments View -->
     <string name="select_line_for_commentaries">בחר שורה כדי לצפות במפרשים שלה</string>
     <string name="no_commentaries_for_line">אין מפרשים זמינים לפסקה זו</string>
@@ -299,6 +299,12 @@
     <string name="settings_show_zmanim_widgets_description">כאשר אפשרות זו מופעלת, יוצגו בדף הבית וידג'טים עם זמני היום ההלכתיים (נץ החמה, שקיעה, זמני תפילה וכו').</string>
     <string name="settings_use_opengl">השתמש ב-OpenGL במקום DirectX</string>
     <string name="settings_use_opengl_description">הפעל אפשרות זו רק אם אתה נתקל בבעיות תצוגה עם DirectX, כגון הבהובים או ריצודים במסך. שינוי זה יחול לאחר הפעלה מחדש של היישום.</string>
+    <string name="settings_compact_mode">מצב קומפקטי לסרגל הצדדי</string>
+    <string name="settings_compact_mode_description">כאשר אפשרות זו מופעלת, הסרגלים הצדדיים יוצגו בצורה צפופה יותר: האייקונים יהיו קטנים יותר והטקסט שמתחת לאייקונים לא יוצג.</string>
+    <!-- Theme style selector -->
+    <string name="settings_theme_style_label">סגנון ערכת נושא</string>
+    <string name="settings_theme_style_classic">קלאסי</string>
+    <string name="settings_theme_style_islands">Islands</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title_bar">מדריך ההגדרה של זית</string>
@@ -459,7 +465,7 @@
 
     <!-- Database Update Window -->
     <string name="db_update_title_bar">עדכון מסד הנתונים</string>
-    
+
     <!-- Version Check Screen -->
     <string name="db_update_version_check_title">יש לעדכן את מסד הנתונים</string>
     <string name="db_update_reinstall_title">יש להתקין מחדש את מסד הנתונים</string>
@@ -470,7 +476,7 @@
     <string name="db_update_need_to_update">מסד הנתונים שלכם דורש עדכון כדי להיות תואם לגרסה זו של היישום. ניתן להוריד אותו מהאינטרנט או להשתמש בקובץ מקומי.</string>
     <string name="db_update_database_missing_error">חלה תקלה במסד הנתונים וכעת עליכם להתקין אותו מחדש. ניתן להוריד אותו מהאינטרנט או להשתמש בקובץ מקומי.</string>
     <string name="db_update_continue">המשך</string>
-    
+
     <!-- Update Options Screen -->
     <string name="db_update_options_title">אפשרויות עדכון</string>
     <string name="db_update_local_file_title">קובץ מקומי</string>
@@ -479,7 +485,7 @@
     <string name="db_update_download_title">הורדה</string>
     <string name="db_update_download_desc">הורידו באופן אוטומטי את הגרסה העדכנית ביותר של מסד הנתונים מהאינטרנט</string>
     <string name="db_update_download_button">הורדה</string>
-    
+
     <!-- Online Update Screen -->
     <string name="db_update_downloading_title">הורדת מאגר</string>
     <string name="db_update_preparing_download">מתכונן להורדה...</string>
@@ -490,7 +496,7 @@
     <string name="db_update_download_error_unknown">שגיאה לא ידועה</string>
     <string name="db_update_back">חזור</string>
     <string name="db_update_retry">נסה שוב</string>
-    
+
     <!-- Offline Update Screen -->
     <string name="db_update_offline_title">עדכון מקובץ מקומי</string>
     <string name="db_update_file_selection">בחירת קבצים</string>
@@ -500,7 +506,7 @@
     <string name="db_update_extracting">מחלץ מאגר...</string>
     <string name="db_update_extraction_completed">החילוץ הושלם!</string>
     <string name="db_update_extraction_error">שגיאה בחילוץ</string>
-    
+
     <!-- Completion Screen -->
     <string name="db_update_completion_title">העדכון הושלם</string>
     <string name="db_update_success_title">העדכון בוצע בהצלחה!</string>

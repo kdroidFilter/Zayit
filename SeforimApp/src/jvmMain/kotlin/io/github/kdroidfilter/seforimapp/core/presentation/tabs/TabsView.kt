@@ -11,13 +11,17 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -33,6 +37,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -44,6 +49,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
@@ -63,11 +69,14 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.component.styling.MenuStyle
 import org.jetbrains.jewel.ui.component.styling.TabStyle
+import org.jetbrains.jewel.ui.component.styling.TooltipMetrics
+import org.jetbrains.jewel.ui.component.styling.TooltipStyle
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import org.jetbrains.jewel.ui.theme.menuStyle
+import org.jetbrains.jewel.ui.theme.tooltipStyle
 import seforimapp.seforimapp.generated.resources.*
 import sh.calvin.reorderable.ReorderableRow
 import kotlin.math.roundToInt
@@ -556,9 +565,22 @@ private fun RtlAwareTab(
     }
 
     var closeButtonState by remember(isActive) { mutableStateOf(ButtonState.of(active = isActive)) }
+    val isIslands = ThemeUtils.isIslandsStyle()
     val lineColor by tabStyle.colors.underlineFor(tabState)
     val lineThickness = tabStyle.metrics.underlineThickness
-    val backgroundColor by tabStyle.colors.backgroundFor(state = tabState)
+    val defaultBg by tabStyle.colors.backgroundFor(state = tabState)
+    val accent = JewelTheme.globalColors.outlines.focused
+    val backgroundColor =
+        if (isIslands) {
+            when {
+                tabState.isSelected -> accent.copy(alpha = 0.20f)
+                tabState.isPressed -> accent.copy(alpha = 0.18f)
+                tabState.isHovered -> accent.copy(alpha = 0.10f)
+                else -> Color.Transparent
+            }
+        } else {
+            defaultBg
+        }
     val resolvedContentColor =
         tabStyle.colors
             .contentFor(tabState)
@@ -598,7 +620,13 @@ private fun RtlAwareTab(
                 modifier
                     .height(tabStyle.metrics.tabHeight)
                     .width(widthForThisTab)
-                    .background(backgroundColor)
+                    .let { m ->
+                        if (isIslands) {
+                            m.padding(horizontal = 2.dp, vertical = 4.dp).clip(RoundedCornerShape(8.dp))
+                        } else {
+                            m
+                        }
+                    }.background(backgroundColor)
                     .alpha(if (isDragging) 0.7f else 1f) // Visual feedback when dragging
                     .onGloballyPositioned { coords ->
                         val pos = coords.positionInWindow()
@@ -610,19 +638,25 @@ private fun RtlAwareTab(
                         interactionSource = interactionSource,
                         indication = null,
                         role = Role.Tab,
-                    ).drawBehind {
-                        val strokeThickness = lineThickness.toPx()
-                        val startY = size.height - (strokeThickness / 2f)
-                        val endX = size.width
-                        val capDxFix = strokeThickness / 2f
+                    ).let { m ->
+                        if (isIslands) {
+                            m
+                        } else {
+                            m.drawBehind {
+                                val strokeThickness = lineThickness.toPx()
+                                val startY = size.height - (strokeThickness / 2f)
+                                val endX = size.width
+                                val capDxFix = strokeThickness / 2f
 
-                        drawLine(
-                            brush = SolidColor(lineColor),
-                            start = Offset(0 + capDxFix, startY),
-                            end = Offset(endX - capDxFix, startY),
-                            strokeWidth = strokeThickness,
-                            cap = StrokeCap.Round,
-                        )
+                                drawLine(
+                                    brush = SolidColor(lineColor),
+                                    start = Offset(0 + capDxFix, startY),
+                                    end = Offset(endX - capDxFix, startY),
+                                    strokeWidth = strokeThickness,
+                                    cap = StrokeCap.Round,
+                                )
+                            }
+                        }
                     }.padding(tabStyle.metrics.tabPadding)
                     .onPointerEvent(PointerEventType.Release) { ev ->
                         // Middle-click closes tab (Chrome-like)
@@ -685,11 +719,54 @@ private fun RtlAwareTab(
             label.isNotBlank() &&
                 (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold)
 
-        val contentWithTooltip: @Composable () -> Unit = {
-            if (showTooltip) Tooltip({ Text(label) }) { container() } else container()
-        }
+        // Read theme colors outside remember so they act as a cache key.
+        val tooltipColors = JewelTheme.tooltipStyle.colors
+        val chromeTooltipStyle =
+            remember(tooltipColors) {
+                // Positions the tooltip centered below the anchor (the tab) — Chrome style.
+                // ComponentRect relies on LayoutBoundsHolder which isn't wired in JewelTooltipArea,
+                // so we use a raw PopupPositionProvider that reads anchorBounds directly.
+                @OptIn(ExperimentalFoundationApi::class)
+                val belowAnchorPlacement = object : TooltipPlacement {
+                    @Composable
+                    override fun positionProvider(cursorPosition: Offset): PopupPositionProvider =
+                        object : PopupPositionProvider {
+                            override fun calculatePosition(
+                                anchorBounds: IntRect,
+                                windowSize: IntSize,
+                                layoutDirection: LayoutDirection,
+                                popupContentSize: IntSize,
+                            ): IntOffset =
+                                IntOffset(
+                                    x = (anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2)
+                                        .coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
+                                    y = anchorBounds.bottom,
+                                )
+                        }
+                }
+                TooltipStyle(
+                    colors = tooltipColors,
+                    metrics =
+                        TooltipMetrics.defaults(
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            cornerSize = CornerSize(8.dp),
+                            shadowSize = 16.dp,
+                            placement = belowAnchorPlacement,
+                        ),
+                )
+            }
 
-        contentWithTooltip()
+        Tooltip(
+            tooltip = {
+                Text(
+                    text = label,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.widthIn(max = 360.dp),
+                )
+            },
+            enabled = showTooltip,
+            style = chromeTooltipStyle,
+        ) { container() }
 
         if (contextMenuOpen) {
             // Resource strings must be resolved outside MenuScope

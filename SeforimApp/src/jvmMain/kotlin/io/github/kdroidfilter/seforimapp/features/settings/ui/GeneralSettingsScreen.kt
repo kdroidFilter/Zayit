@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.nucleus.updater.UpdaterConfig
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ExpandCollapseIcon
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsState
@@ -47,6 +48,7 @@ import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.InlineInformationBanner
 import org.jetbrains.jewel.ui.component.InlineWarningBanner
 import org.jetbrains.jewel.ui.component.OutlinedButton
+import org.jetbrains.jewel.ui.component.RadioButtonRow
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
@@ -55,6 +57,8 @@ import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book_description
+import seforimapp.seforimapp.generated.resources.settings_compact_mode
+import seforimapp.seforimapp.generated.resources.settings_compact_mode_description
 import seforimapp.seforimapp.generated.resources.settings_info_app_version
 import seforimapp.seforimapp.generated.resources.settings_info_created_by
 import seforimapp.seforimapp.generated.resources.settings_info_license
@@ -69,6 +73,9 @@ import seforimapp.seforimapp.generated.resources.settings_reset_done
 import seforimapp.seforimapp.generated.resources.settings_reset_warning
 import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets
 import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets_description
+import seforimapp.seforimapp.generated.resources.settings_theme_style_classic
+import seforimapp.seforimapp.generated.resources.settings_theme_style_islands
+import seforimapp.seforimapp.generated.resources.settings_theme_style_label
 import seforimapp.seforimapp.generated.resources.settings_use_opengl
 import seforimapp.seforimapp.generated.resources.settings_use_opengl_description
 import seforimapp.seforimapp.generated.resources.update_available_banner
@@ -84,7 +91,15 @@ fun GeneralSettingsScreen() {
     val version = UpdaterConfig().currentVersion
     val mainAppState = LocalAppGraph.current.mainAppState
     val updateVersion by mainAppState.updateAvailable.collectAsState()
-    GeneralSettingsView(state = state, version = version, updateVersion = updateVersion, onEvent = viewModel::onEvent)
+    val themeStyle by mainAppState.themeStyle.collectAsState()
+    GeneralSettingsView(
+        state = state,
+        version = version,
+        updateVersion = updateVersion,
+        themeStyle = themeStyle,
+        onEvent = viewModel::onEvent,
+        onThemeStyleChange = { mainAppState.setThemeStyle(it) },
+    )
 }
 
 @Composable
@@ -92,7 +107,9 @@ private fun GeneralSettingsView(
     state: GeneralSettingsState,
     version: String,
     updateVersion: String?,
+    themeStyle: ThemeStyle,
     onEvent: (GeneralSettingsEvents) -> Unit,
+    onThemeStyleChange: (ThemeStyle) -> Unit,
 ) {
     VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -103,6 +120,8 @@ private fun GeneralSettingsView(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             AppHeader(version = version, updateVersion = updateVersion)
+
+            ThemeStyleCard(themeStyle = themeStyle, onStyleChange = onThemeStyleChange)
 
             SettingCard(
                 title = Res.string.close_book_tree_on_new_book,
@@ -123,6 +142,13 @@ private fun GeneralSettingsView(
                 description = Res.string.settings_show_zmanim_widgets_description,
                 checked = state.showZmanimWidgets,
                 onCheckedChange = { onEvent(GeneralSettingsEvents.SetShowZmanimWidgets(it)) },
+            )
+
+            SettingCard(
+                title = Res.string.settings_compact_mode,
+                description = Res.string.settings_compact_mode_description,
+                checked = state.compactMode,
+                onCheckedChange = { onEvent(GeneralSettingsEvents.SetCompactMode(it)) },
             )
 
             // OpenGL setting - Windows only
@@ -362,9 +388,53 @@ private fun ResetSection(
 }
 
 @Composable
+private fun ThemeStyleCard(
+    themeStyle: ThemeStyle,
+    onStyleChange: (ThemeStyle) -> Unit,
+) {
+    val shape = RoundedCornerShape(8.dp)
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                .background(JewelTheme.globalColors.panelBackground)
+                .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(text = stringResource(Res.string.settings_theme_style_label))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ThemeStyle.entries.forEach { style ->
+                val label =
+                    when (style) {
+                        ThemeStyle.Classic -> stringResource(Res.string.settings_theme_style_classic)
+                        ThemeStyle.Islands -> stringResource(Res.string.settings_theme_style_islands)
+                    }
+                RadioButtonRow(
+                    text = label,
+                    selected = themeStyle == style,
+                    onClick = { onStyleChange(style) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 @Preview
 private fun GeneralSettingsView_Preview() {
     PreviewContainer {
-        GeneralSettingsView(state = GeneralSettingsState.preview, version = "0.3.0", updateVersion = "0.4.0", onEvent = {})
+        GeneralSettingsView(
+            state = GeneralSettingsState.preview,
+            version = "0.3.0",
+            updateVersion = "0.4.0",
+            themeStyle = ThemeStyle.Classic,
+            onEvent = {},
+            onThemeStyleChange = {},
+        )
     }
 }

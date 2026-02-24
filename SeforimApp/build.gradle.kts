@@ -19,6 +19,7 @@ plugins {
     alias(libs.plugins.kover)
     alias(libs.plugins.nucleus)
     alias(libs.plugins.structured.coroutines)
+    alias(libs.plugins.sentryJvmGradle)
 }
 
 structuredCoroutines {
@@ -26,6 +27,13 @@ structuredCoroutines {
 }
 
 val version = Versioning.resolveVersion(project)
+
+sentry {
+    includeSourceContext = true
+    org = System.getenv("SENTRY_ORG") ?: "kdroidfilter"
+    projectName = System.getenv("SENTRY_PROJECT") ?: "zayit"
+    authToken = System.getenv("SENTRY_AUTH_TOKEN")
+}
 
 kotlin {
 //    androidTarget {
@@ -160,6 +168,9 @@ kotlin {
 
             implementation(libs.knotify)
             implementation(libs.knotify.compose)
+
+            // Sentry crash reporting
+            implementation(libs.sentry.core)
         }
     }
 }

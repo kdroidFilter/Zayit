@@ -35,6 +35,7 @@ import io.github.kdroidfilter.nucleus.core.runtime.ExecutableRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.SingleInstanceManager
 import io.github.kdroidfilter.nucleus.window.DecoratedWindow
 import io.github.kdroidfilter.nucleus.window.NucleusDecoratedWindowTheme
+import io.github.kdroidfilter.platformtools.getAppVersion
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
@@ -59,10 +60,11 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateChecker
+import io.github.kdroidfilter.seforimapp.logger.infoln
 import io.github.kdroidfilter.seforimapp.logger.isDevEnv
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.vinceglb.filekit.FileKit
-import kotlinx.coroutines.delay
+import io.sentry.Sentry
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -121,7 +123,29 @@ private fun computeStartupState(): StartupState =
         }
     }
 
+private fun initializeSentry() {
+    val sentryEnvironment =
+        System
+            .getenv("SENTRY_ENVIRONMENT")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: "development"
+
+    Sentry.init { options ->
+        options.dsn = "https://09cbadaf522c567b431dd4384c8f080b@o4510855773093888.ingest.de.sentry.io/4510857007726672"
+        options.environment = sentryEnvironment
+        options.release = getAppVersion()
+        options.isDebug = isDevEnv
+    }
+    infoln { "Sentry initialized for environment '$sentryEnvironment'." }
+}
+
 fun main() {
+    val loggingEnv = System.getenv("SEFORIMAPP_LOGGING")?.lowercase()
+    isDevEnv = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"
+
+    initializeSentry()
+
     if (AotRuntime.isTraining()) {
         Thread({
             Thread.sleep(AOT_TRAINING_DURATION_MS)
@@ -155,8 +179,6 @@ fun main() {
             false
         }
     }
-    val loggingEnv = System.getenv("SEFORIMAPP_LOGGING")?.lowercase()
-    isDevEnv = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"
 
     val appId = "io.github.kdroidfilter.seforimapp"
     SingleInstanceManager.configuration =
@@ -168,20 +190,16 @@ fun main() {
     application {
         FileKit.init(appId)
 
-        val screen = Toolkit.getDefaultToolkit().screenSize
+        val workArea =
+            java.awt.GraphicsEnvironment
+                .getLocalGraphicsEnvironment()
+                .maximumWindowBounds
         val windowState =
-            if (!PlatformInfo.isWindows) {
-                rememberWindowState(
-                    position = WindowPosition.Aligned(Alignment.Center),
-                    placement = WindowPlacement.Maximized,
-                    size = DpSize(screen.width.dp, screen.height.dp),
-                )
-            } else {
-                rememberWindowState(
-                    position = WindowPosition.Aligned(Alignment.Center),
-                    placement = WindowPlacement.Maximized,
-                )
-            }
+            rememberWindowState(
+                position = WindowPosition.Aligned(Alignment.Center),
+                placement = WindowPlacement.Maximized,
+                size = DpSize(workArea.width.dp, workArea.height.dp),
+            )
 
         var isWindowVisible by remember { mutableStateOf(true) }
 

@@ -25,11 +25,14 @@ fun VerticalDivider() {
 }
 
 @Composable
-fun HorizontalDivider(color: Color = JewelTheme.globalColors.borders.disabled) {
+fun HorizontalDivider(
+    color: Color = JewelTheme.globalColors.borders.disabled,
+    modifier: Modifier = Modifier,
+) {
     Divider(
         orientation = Orientation.Horizontal,
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .width(1.dp)
                 .padding(bottom = 4.dp),

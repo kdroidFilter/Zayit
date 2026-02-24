@@ -341,8 +341,8 @@ private fun BreadcrumbSection(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     verticalPadding: Dp,
-    isIslands: Boolean = false,
     modifier: Modifier = Modifier,
+    isIslands: Boolean = false,
 ) {
     val sectionModifier =
         if (isIslands) {

@@ -57,6 +57,8 @@ import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book_description
+import seforimapp.seforimapp.generated.resources.settings_compact_mode
+import seforimapp.seforimapp.generated.resources.settings_compact_mode_description
 import seforimapp.seforimapp.generated.resources.settings_info_app_version
 import seforimapp.seforimapp.generated.resources.settings_info_created_by
 import seforimapp.seforimapp.generated.resources.settings_info_license
@@ -140,6 +142,13 @@ private fun GeneralSettingsView(
                 description = Res.string.settings_show_zmanim_widgets_description,
                 checked = state.showZmanimWidgets,
                 onCheckedChange = { onEvent(GeneralSettingsEvents.SetShowZmanimWidgets(it)) },
+            )
+
+            SettingCard(
+                title = Res.string.settings_compact_mode,
+                description = Res.string.settings_compact_mode_description,
+                checked = state.compactMode,
+                onCheckedChange = { onEvent(GeneralSettingsEvents.SetCompactMode(it)) },
             )
 
             // OpenGL setting - Windows only

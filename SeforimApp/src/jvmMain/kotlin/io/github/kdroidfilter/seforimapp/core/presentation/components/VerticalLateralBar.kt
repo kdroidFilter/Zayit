@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,16 +9,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
@@ -43,13 +48,34 @@ fun VerticalLateralBar(
             .padding(4.dp)
     val lazyColumnVerticalArrangement = Arrangement.spacedBy(4.dp)
 
-    Row(modifier = modifier.width(64.dp).fillMaxHeight()) {
-        if (position == VerticalLateralBarPosition.End) {
+    val isIslands = ThemeUtils.isIslandsStyle()
+    val outerModifier =
+        if (isIslands) {
+            val horizontalPadding =
+                when (position) {
+                    VerticalLateralBarPosition.Start -> PaddingValues(start = 6.dp, end = 4.dp)
+                    VerticalLateralBarPosition.End -> PaddingValues(start = 4.dp, end = 6.dp)
+                }
+            modifier.width(64.dp).fillMaxHeight().padding(vertical = 6.dp).padding(horizontalPadding)
+        } else {
+            modifier.width(64.dp).fillMaxHeight()
+        }
+    Row(modifier = outerModifier) {
+        if (!isIslands && position == VerticalLateralBarPosition.End) {
             Column {
                 VerticalDivider()
             }
         }
-        Column(modifier = Modifier.weight(1f)) {
+        val innerModifier =
+            if (isIslands) {
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(JewelTheme.globalColors.panelBackground)
+            } else {
+                Modifier.weight(1f)
+            }
+        Column(modifier = innerModifier) {
             Box(
                 modifier = boxModifier,
                 contentAlignment = Alignment.TopCenter,
@@ -114,7 +140,7 @@ fun VerticalLateralBar(
                 }
             }
         }
-        if (position == VerticalLateralBarPosition.Start) {
+        if (!isIslands && position == VerticalLateralBarPosition.Start) {
             Column {
                 VerticalDivider()
             }

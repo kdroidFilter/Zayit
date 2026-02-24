@@ -41,7 +41,9 @@ import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.islandsComponentStyling
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
@@ -65,7 +67,8 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
-import org.jetbrains.jewel.intui.standalone.theme.default
+import org.jetbrains.jewel.intui.standalone.theme.dark
+import org.jetbrains.jewel.intui.standalone.theme.light
 import org.jetbrains.jewel.ui.ComponentStyling
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.Desktop
@@ -219,14 +222,23 @@ fun main() {
             }
         }
 
+        // themeStyle is already initialized from AppSettings in MainAppState, no separate LaunchedEffect needed
+
         CompositionLocalProvider(
             LocalAppGraph provides appGraph,
             LocalMetroViewModelFactory provides appGraph.metroViewModelFactory,
         ) {
             val isDark = ThemeUtils.isDarkTheme()
             val themeDefinition = ThemeUtils.buildThemeDefinition()
+            val themeStyle by mainAppState.themeStyle.collectAsState()
 
             val customTitleBarStyle = ThemeUtils.buildCustomTitleBarStyle()
+
+            val componentStyling =
+                when (themeStyle) {
+                    ThemeStyle.Islands -> islandsComponentStyling(isDark)
+                    ThemeStyle.Classic -> if (isDark) ComponentStyling.dark() else ComponentStyling.light()
+                }
 
             NucleusDecoratedWindowTheme(
                 isDark = isDark,
@@ -234,7 +246,7 @@ fun main() {
             ) {
                 IntUiTheme(
                     theme = themeDefinition,
-                    styling = ComponentStyling.default(),
+                    styling = componentStyling,
                 ) {
                     if (showOnboarding) {
                         OnBoardingWindow()

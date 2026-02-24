@@ -35,6 +35,7 @@ import androidx.savedstate.savedState
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
@@ -168,12 +169,20 @@ fun TabsContent() {
     }
 
     // Render all tabs with visibility control
+    val isIslands = ThemeUtils.isIslandsStyle()
+    val canvasBg =
+        if (isIslands) {
+            JewelTheme.globalColors.toolwindowBackground
+        } else {
+            JewelTheme.globalColors.panelBackground
+        }
+
     Box(
         modifier =
             Modifier
                 .trackActivation()
                 .fillMaxSize()
-                .background(JewelTheme.globalColors.panelBackground),
+                .background(canvasBg),
     ) {
         tabs.forEachIndexed { index, tabItem ->
             key(tabItem.id) {

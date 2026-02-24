@@ -299,6 +299,10 @@
     <string name="settings_show_zmanim_widgets_description">כאשר אפשרות זו מופעלת, יוצגו בדף הבית וידג'טים עם זמני היום ההלכתיים (נץ החמה, שקיעה, זמני תפילה וכו').</string>
     <string name="settings_use_opengl">השתמש ב-OpenGL במקום DirectX</string>
     <string name="settings_use_opengl_description">הפעל אפשרות זו רק אם אתה נתקל בבעיות תצוגה עם DirectX, כגון הבהובים או ריצודים במסך. שינוי זה יחול לאחר הפעלה מחדש של היישום.</string>
+    <!-- Theme style selector -->
+    <string name="settings_theme_style_label">סגנון ערכת נושא</string>
+    <string name="settings_theme_style_classic">קלאסי</string>
+    <string name="settings_theme_style_islands">Islands</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title_bar">מדריך ההגדרה של זית</string>

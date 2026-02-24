@@ -5,12 +5,16 @@ import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.ContextMenuState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalContextMenuRepresentation
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.LocalTextContextMenu
 import androidx.compose.foundation.text.TextContextMenu
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.input.InputMode
@@ -26,10 +30,12 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.unit.dp
 import com.dokar.sonner.ToastType
 import com.dokar.sonner.rememberToasterState
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppToaster
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults
@@ -447,13 +453,25 @@ fun BookContentScreen(
         ) {
             StartVerticalBar(uiState = uiState, onEvent = onEvent)
 
+            val isIslands = ThemeUtils.isIslandsStyle()
+            val panelCardModifier =
+                if (isIslands) {
+                    Modifier
+                        .fillMaxSize()
+                        .padding(vertical = 6.dp, horizontal = 4.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(JewelTheme.globalColors.panelBackground)
+                } else {
+                    Modifier
+                }
+
             EnhancedHorizontalSplitPane(
                 splitPaneState = uiState.layout.mainSplitState.asStable(),
                 modifier = Modifier.weight(1f),
                 firstMinSize = if (uiState.navigation.isVisible) SplitDefaults.MIN_MAIN else 0f,
                 firstContent = {
                     if (uiState.navigation.isVisible) {
-                        CategoryTreePanel(uiState = uiState, onEvent = onEvent)
+                        CategoryTreePanel(uiState = uiState, onEvent = onEvent, modifier = panelCardModifier)
                     }
                 },
                 secondContent = {
@@ -462,7 +480,7 @@ fun BookContentScreen(
                         firstMinSize = if (uiState.toc.isVisible) SplitDefaults.MIN_TOC else 0f,
                         firstContent = {
                             if (uiState.toc.isVisible) {
-                                BookTocPanel(uiState = uiState, onEvent = onEvent)
+                                BookTocPanel(uiState = uiState, onEvent = onEvent, modifier = panelCardModifier)
                             }
                         },
                         secondContent = {

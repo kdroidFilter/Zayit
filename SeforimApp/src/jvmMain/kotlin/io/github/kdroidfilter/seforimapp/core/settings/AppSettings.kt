@@ -4,6 +4,7 @@ import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
 import com.russhwolf.settings.set
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -67,6 +68,7 @@ object AppSettings {
 
     // Theme configuration
     private const val KEY_THEME_MODE = "theme_mode"
+    private const val KEY_THEME_STYLE = "theme_style"
 
     // Zmanim widgets visibility
     private const val KEY_SHOW_ZMANIM_WIDGETS = "show_zmanim_widgets"
@@ -404,6 +406,20 @@ object AppSettings {
 
     fun setThemeMode(theme: IntUiThemes) {
         settings[KEY_THEME_MODE] = theme.name
+    }
+
+    // Theme style (Classic / Islands)
+    fun getThemeStyle(): ThemeStyle {
+        val storedValue: String = settings[KEY_THEME_STYLE, ThemeStyle.Classic.name]
+        return try {
+            ThemeStyle.valueOf(storedValue)
+        } catch (_: IllegalArgumentException) {
+            ThemeStyle.Classic
+        }
+    }
+
+    fun setThemeStyle(style: ThemeStyle) {
+        settings[KEY_THEME_STYLE] = style.name
     }
 
     fun setSavedSessionJson(json: String?) {

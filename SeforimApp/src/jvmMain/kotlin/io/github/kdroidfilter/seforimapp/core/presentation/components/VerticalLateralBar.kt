@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +25,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
@@ -49,6 +52,8 @@ fun VerticalLateralBar(
     val lazyColumnVerticalArrangement = Arrangement.spacedBy(4.dp)
 
     val isIslands = ThemeUtils.isIslandsStyle()
+    val compactMode by AppSettings.compactModeFlow.collectAsState()
+    val barWidth = if (compactMode) 48.dp else 64.dp
     val outerModifier =
         if (isIslands) {
             val horizontalPadding =
@@ -57,12 +62,12 @@ fun VerticalLateralBar(
                     VerticalLateralBarPosition.End -> PaddingValues(start = 4.dp, end = 6.dp)
                 }
             modifier
-                .width(64.dp)
+                .width(barWidth)
                 .fillMaxHeight()
                 .padding(vertical = 6.dp)
                 .padding(horizontalPadding)
         } else {
-            modifier.width(64.dp).fillMaxHeight()
+            modifier.width(barWidth).fillMaxHeight()
         }
     Row(modifier = outerModifier) {
         if (!isIslands && position == VerticalLateralBarPosition.End) {

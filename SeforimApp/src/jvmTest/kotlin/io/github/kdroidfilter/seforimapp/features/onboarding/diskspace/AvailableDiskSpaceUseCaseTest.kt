@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.diskspace
 
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -19,51 +20,42 @@ class AvailableDiskSpaceUseCaseTest {
     }
 
     @Test
-    fun `getAvailableDiskSpace returns positive value`() {
-        val useCase = AvailableDiskSpaceUseCase()
-        val availableSpace = useCase.getAvailableDiskSpace()
-        assertTrue(availableSpace > 0, "Available disk space should be positive")
-    }
+    fun `available disk space returns positive value`() =
+        runTest {
+            val info = AvailableDiskSpaceUseCase().getDiskSpaceInfo()
+            assertTrue(info.availableBytes > 0, "Available disk space should be positive")
+        }
 
     @Test
-    fun `getTotalDiskSpace returns positive value`() {
-        val useCase = AvailableDiskSpaceUseCase()
-        val totalSpace = useCase.getTotalDiskSpace()
-        assertTrue(totalSpace > 0, "Total disk space should be positive")
-    }
+    fun `total disk space returns positive value`() =
+        runTest {
+            val info = AvailableDiskSpaceUseCase().getDiskSpaceInfo()
+            assertTrue(info.totalBytes > 0, "Total disk space should be positive")
+        }
 
     @Test
-    fun `total disk space is greater than or equal to available space`() {
-        val useCase = AvailableDiskSpaceUseCase()
-        val totalSpace = useCase.getTotalDiskSpace()
-        val availableSpace = useCase.getAvailableDiskSpace()
-        assertTrue(
-            totalSpace >= availableSpace,
-            "Total space ($totalSpace) should be >= available space ($availableSpace)",
-        )
-    }
+    fun `total disk space is greater than or equal to available space`() =
+        runTest {
+            val info = AvailableDiskSpaceUseCase().getDiskSpaceInfo()
+            assertTrue(
+                info.totalBytes >= info.availableBytes,
+                "Total space (${info.totalBytes}) should be >= available space (${info.availableBytes})",
+            )
+        }
 
     @Test
-    fun `getRemainingSpaceAfterInstall returns consistent value`() {
-        val useCase = AvailableDiskSpaceUseCase()
-        val availableSpace = useCase.getAvailableDiskSpace()
-        val remainingSpace = useCase.getRemainingSpaceAfterInstall()
-        // Remaining space should be less than available space by approximately REQUIRED_SPACE_BYTES
-        // We allow a small tolerance for disk changes between calls
-        val expectedApprox = availableSpace - AvailableDiskSpaceUseCase.REQUIRED_SPACE_BYTES
-        val tolerance = 1024 * 1024 * 100 // 100 MB tolerance
-        assertTrue(
-            kotlin.math.abs(remainingSpace - expectedApprox) <= tolerance,
-            "Remaining space ($remainingSpace) should be approximately equal to available ($availableSpace) - required",
-        )
-    }
+    fun `remainingAfterInstall is consistent with available space`() =
+        runTest {
+            val info = AvailableDiskSpaceUseCase().getDiskSpaceInfo()
+            val expectedRemaining = info.availableBytes - AvailableDiskSpaceUseCase.REQUIRED_SPACE_BYTES
+            assertEquals(expectedRemaining, info.remainingAfterInstall)
+        }
 
     @Test
-    fun `hasEnoughSpace is consistent with available space`() {
-        val useCase = AvailableDiskSpaceUseCase()
-        val availableSpace = useCase.getAvailableDiskSpace()
-        val hasEnough = useCase.hasEnoughSpace()
-        val expectedHasEnough = availableSpace >= AvailableDiskSpaceUseCase.REQUIRED_SPACE_BYTES
-        assertEquals(expectedHasEnough, hasEnough)
-    }
+    fun `hasEnoughSpace is consistent with available space`() =
+        runTest {
+            val info = AvailableDiskSpaceUseCase().getDiskSpaceInfo()
+            val expectedHasEnough = info.availableBytes >= AvailableDiskSpaceUseCase.REQUIRED_SPACE_BYTES
+            assertEquals(expectedHasEnough, info.hasEnoughSpace)
+        }
 }

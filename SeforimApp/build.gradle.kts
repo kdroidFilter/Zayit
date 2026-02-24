@@ -28,6 +28,21 @@ structuredCoroutines {
 
 val version = Versioning.resolveVersion(project)
 
+// macOS jpackage requires the major version to be >= 1; bump 0.x.y to 1.x.y
+fun macSafeVersion(ver: String): String {
+    val core = ver.substringBefore('-').substringBefore('+')
+    val parts = core.split('.')
+    return if (parts.isNotEmpty() && parts[0] == "0") {
+        when (parts.size) {
+            1 -> "1.0"
+            2 -> "1.${parts[1]}"
+            else -> "1.${parts[1]}.${parts[2]}"
+        }
+    } else {
+        core
+    }
+}
+
 sentry {
     includeSourceContext = true
     org = System.getenv("SENTRY_ORG") ?: "kdroidfilter"
@@ -267,7 +282,7 @@ nucleus.application {
         macOS {
             iconFile.set(project.file("desktopAppIcons/MacosIcon.icns"))
             bundleID = "io.github.kdroidfilter.seforimapp.desktopApp"
-            packageVersion = version
+            packageVersion = macSafeVersion(version)
             packageName = "זית"
             appStore = true
         }

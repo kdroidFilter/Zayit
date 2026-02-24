@@ -7,6 +7,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -71,7 +72,10 @@ private fun SettingsWindowView(onClose: () -> Unit) {
                     LocalWindowViewModelStoreOwner provides windowViewModelOwner,
                     LocalViewModelStoreOwner provides windowViewModelOwner,
                 ) {
-                    DialogTitleBar(modifier = Modifier.newFullscreenControls(), gradientStartColor = ThemeUtils.titleBarGradientColor()) {
+                    DialogTitleBar(
+                        modifier = Modifier.newFullscreenControls(),
+                        gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Transparent,
+                    ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),

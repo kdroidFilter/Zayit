@@ -9,6 +9,7 @@ data class GeneralSettingsState(
     val persistSession: Boolean = true,
     val showZmanimWidgets: Boolean = true,
     val useOpenGl: Boolean = false,
+    val compactMode: Boolean = false,
     val resetDone: Boolean = false,
 ) {
     companion object {
@@ -19,6 +20,7 @@ data class GeneralSettingsState(
                 persistSession = true,
                 showZmanimWidgets = true,
                 useOpenGl = false,
+                compactMode = false,
                 resetDone = false,
             )
     }

@@ -15,9 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -44,6 +47,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
@@ -556,9 +560,22 @@ private fun RtlAwareTab(
     }
 
     var closeButtonState by remember(isActive) { mutableStateOf(ButtonState.of(active = isActive)) }
+    val isIslands = ThemeUtils.isIslandsStyle()
     val lineColor by tabStyle.colors.underlineFor(tabState)
     val lineThickness = tabStyle.metrics.underlineThickness
-    val backgroundColor by tabStyle.colors.backgroundFor(state = tabState)
+    val defaultBg by tabStyle.colors.backgroundFor(state = tabState)
+    val accent = JewelTheme.globalColors.outlines.focused
+    val backgroundColor =
+        if (isIslands) {
+            when {
+                tabState.isSelected -> accent.copy(alpha = 0.20f)
+                tabState.isPressed -> accent.copy(alpha = 0.18f)
+                tabState.isHovered -> accent.copy(alpha = 0.10f)
+                else -> Color.Transparent
+            }
+        } else {
+            defaultBg
+        }
     val resolvedContentColor =
         tabStyle.colors
             .contentFor(tabState)
@@ -598,6 +615,10 @@ private fun RtlAwareTab(
                 modifier
                     .height(tabStyle.metrics.tabHeight)
                     .width(widthForThisTab)
+                    .let { m ->
+                        if (isIslands) m.padding(horizontal = 2.dp, vertical = 4.dp).clip(RoundedCornerShape(8.dp))
+                        else m
+                    }
                     .background(backgroundColor)
                     .alpha(if (isDragging) 0.7f else 1f) // Visual feedback when dragging
                     .onGloballyPositioned { coords ->
@@ -610,19 +631,25 @@ private fun RtlAwareTab(
                         interactionSource = interactionSource,
                         indication = null,
                         role = Role.Tab,
-                    ).drawBehind {
-                        val strokeThickness = lineThickness.toPx()
-                        val startY = size.height - (strokeThickness / 2f)
-                        val endX = size.width
-                        val capDxFix = strokeThickness / 2f
+                    ).let { m ->
+                        if (isIslands) {
+                            m
+                        } else {
+                            m.drawBehind {
+                                val strokeThickness = lineThickness.toPx()
+                                val startY = size.height - (strokeThickness / 2f)
+                                val endX = size.width
+                                val capDxFix = strokeThickness / 2f
 
-                        drawLine(
-                            brush = SolidColor(lineColor),
-                            start = Offset(0 + capDxFix, startY),
-                            end = Offset(endX - capDxFix, startY),
-                            strokeWidth = strokeThickness,
-                            cap = StrokeCap.Round,
-                        )
+                                drawLine(
+                                    brush = SolidColor(lineColor),
+                                    start = Offset(0 + capDxFix, startY),
+                                    end = Offset(endX - capDxFix, startY),
+                                    strokeWidth = strokeThickness,
+                                    cap = StrokeCap.Round,
+                                )
+                            }
+                        }
                     }.padding(tabStyle.metrics.tabPadding)
                     .onPointerEvent(PointerEventType.Release) { ev ->
                         // Middle-click closes tab (Chrome-like)

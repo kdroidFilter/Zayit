@@ -57,6 +57,17 @@ fun BookContentPanel(
         ),
     isSelected: Boolean = true,
 ) {
+    val isIslands = ThemeUtils.isIslandsStyle()
+    val homeCardModifier =
+        if (isIslands) {
+            Modifier
+                .fillMaxSize()
+                .padding(vertical = 6.dp, horizontal = 4.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(JewelTheme.globalColors.panelBackground)
+        } else {
+            Modifier.fillMaxSize()
+        }
     Box(modifier = modifier.fillMaxSize()) {
         when {
             // If no book is selected
@@ -70,6 +81,7 @@ fun BookContentPanel(
                         onEvent = onEvent,
                         searchUi = searchUi,
                         searchCallbacks = searchCallbacks,
+                        modifier = homeCardModifier,
                     )
                 }
             }

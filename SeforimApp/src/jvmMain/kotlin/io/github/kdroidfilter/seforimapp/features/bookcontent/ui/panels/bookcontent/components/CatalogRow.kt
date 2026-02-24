@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CatalogDropdown
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 
 @Composable
@@ -25,12 +26,13 @@ fun CatalogRow(
     buttonWidth: Dp = 130.dp,
     spacing: Dp = 8.dp,
 ) {
+    val outerPadding = if (ThemeUtils.isIslandsStyle()) 12.dp else 6.dp
     Box(
         modifier =
             modifier
                 .fillMaxSize()
                 .zIndex(1f)
-                .padding(6.dp),
+                .padding(outerPadding),
         contentAlignment = Alignment.TopStart,
     ) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {

@@ -8,6 +8,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForHorizontalResize
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForVerticalResize
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -41,6 +42,7 @@ fun EnhancedHorizontalSplitPane(
     secondMinSize: Float = 200f,
     showSplitter: Boolean = true,
 ) {
+    val isIslands = ThemeUtils.isIslandsStyle()
     val state = splitPaneState.value
     val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
 
@@ -95,11 +97,13 @@ fun EnhancedHorizontalSplitPane(
         if (showSplitter && secondContent != null) {
             splitter {
                 visiblePart {
-                    Divider(
-                        Orientation.Vertical,
-                        Modifier.fillMaxHeight().width(1.dp),
-                        color = JewelTheme.globalColors.borders.disabled,
-                    )
+                    if (!isIslands) {
+                        Divider(
+                            Orientation.Vertical,
+                            Modifier.fillMaxHeight().width(1.dp),
+                            color = JewelTheme.globalColors.borders.disabled,
+                        )
+                    }
                 }
                 handle {
                     Box(
@@ -127,6 +131,7 @@ fun EnhancedVerticalSplitPane(
     secondMinSize: Float = 200f,
     showSplitter: Boolean = true,
 ) {
+    val isIslands = ThemeUtils.isIslandsStyle()
     val state = splitPaneState.value
     val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
 
@@ -181,11 +186,13 @@ fun EnhancedVerticalSplitPane(
         if (showSplitter && secondContent != null) {
             splitter {
                 visiblePart {
-                    Divider(
-                        Orientation.Horizontal,
-                        Modifier.fillMaxWidth().height(1.dp),
-                        color = JewelTheme.globalColors.borders.disabled,
-                    )
+                    if (!isIslands) {
+                        Divider(
+                            Orientation.Horizontal,
+                            Modifier.fillMaxWidth().height(1.dp),
+                            color = JewelTheme.globalColors.borders.disabled,
+                        )
+                    }
                 }
                 handle {
                     Box(

@@ -3,6 +3,8 @@ package io.github.kdroidfilter.seforimapp.core.presentation.components
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -11,6 +13,8 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.ActionButton
 import org.jetbrains.jewel.ui.component.Icon
@@ -33,6 +37,15 @@ fun SelectableIconButtonWithToolip(
     enabled: Boolean = true,
     shortcutHint: String? = null,
 ) {
+    val compactMode by AppSettings.compactModeFlow.collectAsState()
+    val isIslands = ThemeUtils.isIslandsStyle()
+    val iconSize = if (compactMode) 22.dp else 24.dp
+    val buttonPadding = when {
+        compactMode -> 2.dp
+        isIslands -> 2.dp
+        else -> 4.dp
+    }
+
     Tooltip({
         if (shortcutHint.isNullOrBlank()) {
             Text(toolTipText)
@@ -49,7 +62,9 @@ fun SelectableIconButtonWithToolip(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
+                    .then(
+                        if (compactMode) Modifier.aspectRatio(1f) else Modifier.height(64.dp),
+                    )
                     .pointerHoverIcon(PointerIcon.Hand),
             focusable = false,
             enabled = enabled,
@@ -97,22 +112,24 @@ fun SelectableIconButtonWithToolip(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(4.dp),
+                modifier = Modifier.padding(buttonPadding),
             ) {
                 Icon(
                     icon,
                     iconDescription,
-                    tint = if (enabled)JewelTheme.globalColors.text.selected else JewelTheme.globalColors.text.disabled,
-                    modifier = Modifier.size(24.dp),
+                    tint = if (enabled) JewelTheme.globalColors.text.selected else JewelTheme.globalColors.text.disabled,
+                    modifier = Modifier.size(iconSize),
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    label,
-                    color = if (enabled) JewelTheme.globalColors.text.normal else JewelTheme.globalColors.text.disabled,
-                    fontSize = 10.sp,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 10.sp,
-                )
+                if (!compactMode) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        label,
+                        color = if (enabled) JewelTheme.globalColors.text.normal else JewelTheme.globalColors.text.disabled,
+                        fontSize = 10.sp,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 10.sp,
+                    )
+                }
             }
         }
     }

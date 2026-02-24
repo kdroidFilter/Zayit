@@ -14,6 +14,7 @@ plugins {
     alias(libs.plugins.ktlint)
     alias(libs.plugins.kover).apply(false)
     alias(libs.plugins.structured.coroutines).apply(false)
+    alias(libs.plugins.sentryJvmGradle).apply(false)
     alias(libs.plugins.detekt)
 }
 

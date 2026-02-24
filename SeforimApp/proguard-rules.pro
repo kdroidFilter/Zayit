@@ -272,3 +272,8 @@
 -keep class io.github.kdroidfilter.nucleus.nativessl.windows.WindowsSslBridge {
     native <methods>;
 }
+
+# --- Sentry crash reporting SDK ---
+# Sentry uses reflection for serialization and event processing.
+-keep class io.sentry.** { *; }
+-dontwarn io.sentry.**

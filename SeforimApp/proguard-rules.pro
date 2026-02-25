@@ -1,4 +1,4 @@
--keepclasseswithmembers public class io.github.kdroidfilter.ytdlpgui.MainKt {  #
+-keepclasseswithmembers public class io.github.kdroidfilter.seforimapp.MainKt {
     public static void main(java.lang.String[]);
 }
 
@@ -20,8 +20,6 @@
 -keep class com.sun.jna.win32.** { *; }
 -dontwarn com.sun.jna.platform.**
 
-
--keep class com.kdroid.composetray.** { *; }
 
 -assumenosideeffects public class androidx.compose.runtime.ComposerKt {
     void sourceInformation(androidx.compose.runtime.Composer,java.lang.String);
@@ -64,12 +62,7 @@
 # OkHttp platform used only on JVM and when Conscrypt and other security providers are available.
 -dontwarn okhttp3.internal.platform.**
 -dontwarn org.conscrypt.**
--dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
-# Keep BouncyCastle and NativeCerts classes intact to avoid bytecode changes
-# that can invalidate signed JAR digests during release optimization.
--keep class org.bouncycastle.** { *; }
--keep class org.jetbrains.nativecerts.** { *; }
 
 # Keep Ktor Kotlinx Serialization provider loaded via ServiceLoader
 -keep class io.ktor.serialization.kotlinx.json.KotlinxSerializationJsonExtensionProvider { *; }
@@ -141,9 +134,6 @@
 
 -dontnote org.jetbrains.jewel.foundation.util.**
 -dontwarn org.jetbrains.jewel.foundation.util.**
-
--dontnote org.jetbrains.jewel.window.utils.**
--dontwarn org.jetbrains.jewel.window.utils.**
 
 # Preserve sealed interface metadata so R8/ProGuard doesn't break sealed hierarchies (Java 17)
 -keepattributes PermittedSubclasses
@@ -239,6 +229,49 @@
 # The Community enum is resolved at runtime via Enum.valueOf(code) where code is stored
 # in AppSettings. If R8/ProGuard optimizes or unboxes this enum, valueOf() will fail.
 -keep enum io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community { *; }
+
+
+# =============================================================================
+# Nucleus JNI keep rules (must be added manually because Zayit overrides the
+# default ProGuard config via configurationFiles.from(...), which prevents the
+# Nucleus plugin from auto-injecting its own rules)
+# =============================================================================
+
+# Nucleus decorated-window JNI (macOS)
+-keep class io.github.kdroidfilter.nucleus.window.utils.macos.NativeMacBridge {
+    native <methods>;
+}
+-keep class io.github.kdroidfilter.nucleus.window.** { *; }
+
+# Nucleus darkmode-detector JNI (macOS)
+# NativeDarkModeBridge is looked up by name from native code (FindClass + GetStaticMethodID)
+-keep class io.github.kdroidfilter.nucleus.darkmodedetector.mac.NativeDarkModeBridge {
+    native <methods>;
+    static void onThemeChanged(boolean);
+}
+
+# Nucleus darkmode-detector JNI (Linux)
+# NativeLinuxBridge is looked up by name from native code (FindClass + GetStaticMethodID)
+-keep class io.github.kdroidfilter.nucleus.darkmodedetector.linux.NativeLinuxBridge {
+    native <methods>;
+    static void onThemeChanged(boolean);
+}
+
+# Nucleus darkmode-detector JNI (Windows)
+-keep class io.github.kdroidfilter.nucleus.darkmodedetector.windows.NativeWindowsBridge {
+    native <methods>;
+}
+-keep class io.github.kdroidfilter.nucleus.darkmodedetector.** { *; }
+
+# Nucleus native-ssl JNI (macOS)
+-keep class io.github.kdroidfilter.nucleus.nativessl.mac.NativeSslBridge {
+    native <methods>;
+}
+
+# Nucleus native-ssl JNI (Windows)
+-keep class io.github.kdroidfilter.nucleus.nativessl.windows.WindowsSslBridge {
+    native <methods>;
+}
 
 # --- Sentry crash reporting SDK ---
 # Sentry uses reflection for serialization and event processing.

@@ -26,19 +26,22 @@ class GeneralSettingsViewModel : ViewModel() {
     private val persist = MutableStateFlow(AppSettings.isPersistSessionEnabled())
     private val showZmanim = MutableStateFlow(AppSettings.isShowZmanimWidgetsEnabled())
     private val useOpenGl = MutableStateFlow(AppSettings.isUseOpenGlEnabled())
+    private val compactMode = MutableStateFlow(AppSettings.isCompactModeEnabled())
     private val resetDone = MutableStateFlow(false)
 
     val state =
         combine(
             combine(dbPath, closeTree, persist) { path, c, p -> Triple(path, c, p) },
             combine(showZmanim, useOpenGl, resetDone) { z, gl, r -> Triple(z, gl, r) },
-        ) { (path, c, p), (z, gl, r) ->
+            compactMode,
+        ) { (path, c, p), (z, gl, r), compact ->
             GeneralSettingsState(
                 databasePath = path,
                 closeTreeOnNewBook = c,
                 persistSession = p,
                 showZmanimWidgets = z,
                 useOpenGl = gl,
+                compactMode = compact,
                 resetDone = r,
             )
         }.stateIn(
@@ -50,6 +53,7 @@ class GeneralSettingsViewModel : ViewModel() {
                 persistSession = persist.value,
                 showZmanimWidgets = showZmanim.value,
                 useOpenGl = useOpenGl.value,
+                compactMode = compactMode.value,
                 resetDone = resetDone.value,
             ),
         )
@@ -71,6 +75,10 @@ class GeneralSettingsViewModel : ViewModel() {
             is GeneralSettingsEvents.SetUseOpenGl -> {
                 AppSettings.setUseOpenGlEnabled(event.value)
                 useOpenGl.value = event.value
+            }
+            is GeneralSettingsEvents.SetCompactMode -> {
+                AppSettings.setCompactModeEnabled(event.value)
+                compactMode.value = event.value
             }
             is GeneralSettingsEvents.ResetApp -> {
                 // Get the databases directory

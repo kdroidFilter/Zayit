@@ -2,6 +2,7 @@
 
 package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.AltTocState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
@@ -191,7 +192,7 @@ class AltTocUseCase(
             val cached = stateManager.state.value.altToc.entriesById[currentId]
             val entry =
                 cached ?: withContext(Dispatchers.IO) {
-                    runCatching { repository.getAltTocEntry(currentId) }.getOrNull()
+                    runSuspendCatching { repository.getAltTocEntry(currentId) }.getOrNull()
                 }
             if (entry == null) break
             path += entry
@@ -202,7 +203,7 @@ class AltTocUseCase(
         for (e in ordered) {
             val altState = stateManager.state.value.altToc
             if (e.hasChildren && !altState.children.containsKey(e.id)) {
-                runCatching { loadChildren(e.id) }
+                runSuspendCatching { loadChildren(e.id) }
             }
             stateManager.updateAltToc(save = false) {
                 copy(expandedEntries = expandedEntries + e.id)

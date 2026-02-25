@@ -21,7 +21,6 @@ kotlin {
 
         jvmMain.dependencies {
             implementation(libs.foundation.desktop)
-            implementation(libs.jna)
             // Define the Jewel version once
             val jewelVersion = libs.versions.jewel.get()
 
@@ -35,7 +34,6 @@ kotlin {
 
             // Apply the exclusions to all Jewel libraries
             api("org.jetbrains.jewel:jewel-ui:$jewelVersion", jewelExclusions)
-            api("org.jetbrains.jewel:jewel-decorated-window:$jewelVersion", jewelExclusions)
             api("com.jetbrains.intellij.platform:icons:252.26830.102")
             api("org.jetbrains.runtime:jbr-api:1.9.0")
             api("org.jetbrains.jewel:jewel-markdown-core:$jewelVersion", jewelExclusions)

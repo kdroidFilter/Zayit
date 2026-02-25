@@ -39,6 +39,7 @@ import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -53,6 +54,8 @@ import io.github.kdroidfilter.seforimapp.features.search.domain.TocTree
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -211,6 +214,19 @@ fun SearchResultInBookShellMvi(
     DisposableEffect(Unit) {
         onDispose { currentOnEvent(BookContentEvent.SaveState) }
     }
+
+    val isIslands = ThemeUtils.isIslandsStyle()
+    val panelCardModifier =
+        if (isIslands) {
+            Modifier
+                .fillMaxSize()
+                .padding(vertical = 6.dp, horizontal = 4.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(JewelTheme.globalColors.panelBackground)
+        } else {
+            Modifier
+        }
+
     Row(modifier = Modifier.fillMaxSize()) {
         StartVerticalBar(uiState = bookUiState, onEvent = onEvent)
 
@@ -230,6 +246,7 @@ fun SearchResultInBookShellMvi(
                         onCategoryCheckedChange = actions.onCategoryCheckedChange,
                         onBookCheckedChange = actions.onBookCheckedChange,
                         onEnsureScopeBookForToc = actions.onEnsureScopeBookForToc,
+                        modifier = panelCardModifier,
                     )
                 }
             },
@@ -248,6 +265,7 @@ fun SearchResultInBookShellMvi(
                                 selectedTocIds = selectedTocIds,
                                 onToggle = actions.onTocToggle,
                                 onTocFilter = actions.onTocFilter,
+                                modifier = panelCardModifier,
                             )
                         }
                     },
@@ -261,14 +279,16 @@ fun SearchResultInBookShellMvi(
                                 showDiacritics = showDiacritics,
                             )
                         } else {
-                            SearchResultContentMvi(
-                                state = searchUi,
-                                visibleResults = visibleResults,
-                                isFiltering = isFiltering,
-                                breadcrumbs = breadcrumbs,
-                                actions = actions,
-                                tabId = tabId,
-                            )
+                            Box(modifier = panelCardModifier) {
+                                SearchResultContentMvi(
+                                    state = searchUi,
+                                    visibleResults = visibleResults,
+                                    isFiltering = isFiltering,
+                                    breadcrumbs = breadcrumbs,
+                                    actions = actions,
+                                    tabId = tabId,
+                                )
+                            }
                         }
                     },
                     showSplitter = bookUiState.toc.isVisible,
@@ -387,7 +407,10 @@ private fun SearchResultContentMvi(
     fun recomputeMatches(query: String) { // removed: counter not needed
     }
 
-    fun navigateTo(next: Boolean) {
+    fun navigateTo(
+        next: Boolean,
+        @StructuredScope scope: CoroutineScope,
+    ) {
         val q = findState.text.toString()
         if (q.length < 2) return
         val vis = visibleResults
@@ -601,8 +624,8 @@ private fun SearchResultContentMvi(
             Box(modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).zIndex(2f)) {
                 FindInPageBar(
                     state = findState,
-                    onEnterNext = { navigateTo(true) },
-                    onEnterPrev = { navigateTo(false) },
+                    onEnterNext = { navigateTo(true, scope) },
+                    onEnterPrev = { navigateTo(false, scope) },
                     onClose = { AppSettings.closeFindBar(tabId) },
                 )
             }

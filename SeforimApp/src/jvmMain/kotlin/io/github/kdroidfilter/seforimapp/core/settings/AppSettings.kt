@@ -4,6 +4,7 @@ import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
 import com.russhwolf.settings.set
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -67,12 +68,16 @@ object AppSettings {
 
     // Theme configuration
     private const val KEY_THEME_MODE = "theme_mode"
+    private const val KEY_THEME_STYLE = "theme_style"
 
     // Zmanim widgets visibility
     private const val KEY_SHOW_ZMANIM_WIDGETS = "show_zmanim_widgets"
 
     // Rendering backend (Windows only)
     private const val KEY_USE_OPENGL = "use_opengl"
+
+    // Compact mode for vertical bars
+    private const val KEY_COMPACT_MODE = "compact_mode"
 
     // Backing Settings storage (can be replaced at startup if needed)
     @Volatile
@@ -120,6 +125,10 @@ object AppSettings {
     // StateFlow for zmanim widgets visibility
     private val _showZmanimWidgetsFlow = MutableStateFlow(isShowZmanimWidgetsEnabled())
     val showZmanimWidgetsFlow: StateFlow<Boolean> = _showZmanimWidgetsFlow.asStateFlow()
+
+    // StateFlow for compact mode
+    private val _compactModeFlow = MutableStateFlow(isCompactModeEnabled())
+    val compactModeFlow: StateFlow<Boolean> = _compactModeFlow.asStateFlow()
 
     // Font preference flows
     private val _bookFontCodeFlow = MutableStateFlow(getBookFontCode())
@@ -306,6 +315,14 @@ object AppSettings {
         settings[KEY_USE_OPENGL] = enabled
     }
 
+    // Compact mode for vertical bars
+    fun isCompactModeEnabled(): Boolean = settings[KEY_COMPACT_MODE, false]
+
+    fun setCompactModeEnabled(enabled: Boolean) {
+        settings[KEY_COMPACT_MODE] = enabled
+        _compactModeFlow.value = enabled
+    }
+
     // Saved session blob (JSON)
     fun getSavedSessionJson(): String? {
         // Prefer chunked storage if present
@@ -406,6 +423,20 @@ object AppSettings {
         settings[KEY_THEME_MODE] = theme.name
     }
 
+    // Theme style (Classic / Islands)
+    fun getThemeStyle(): ThemeStyle {
+        val storedValue: String = settings[KEY_THEME_STYLE, ThemeStyle.Classic.name]
+        return try {
+            ThemeStyle.valueOf(storedValue)
+        } catch (_: IllegalArgumentException) {
+            ThemeStyle.Classic
+        }
+    }
+
+    fun setThemeStyle(style: ThemeStyle) {
+        settings[KEY_THEME_STYLE] = style.name
+    }
+
     fun setSavedSessionJson(json: String?) {
         if (json.isNullOrBlank()) {
             // Clear legacy and chunked storage
@@ -444,6 +475,7 @@ object AppSettings {
         _databasePathFlow.value = null
         _persistSessionFlow.value = true
         _showZmanimWidgetsFlow.value = true
+        _compactModeFlow.value = false
         _bookFontCodeFlow.value = DEFAULT_BOOK_FONT
         _commentaryFontCodeFlow.value = DEFAULT_COMMENTARY_FONT
         _targumFontCodeFlow.value = DEFAULT_TARGUM_FONT

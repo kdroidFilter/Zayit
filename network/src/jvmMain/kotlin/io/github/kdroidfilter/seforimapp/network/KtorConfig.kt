@@ -1,9 +1,9 @@
 package io.github.kdroidfilter.seforimapp.network
 
+import io.github.kdroidfilter.nucleus.nativehttp.ktor.installNativeSsl
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.logging.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 
@@ -12,7 +12,7 @@ import kotlinx.serialization.json.Json
  */
 object KtorConfig {
     /**
-     * Creates a Ktor HttpClient configured with native trusted roots
+     * Creates a Ktor HttpClient configured with native trusted roots via Nucleus.
      *
      * @param json Custom JSON configuration (default: ignoreUnknownKeys + isLenient)
      * @return Configured HttpClient instance
@@ -25,12 +25,7 @@ object KtorConfig {
             },
     ): HttpClient =
         HttpClient(CIO) {
-            engine {
-                https {
-                    trustManager = TrustedRootsSSL.trustManager
-                }
-            }
-
+            installNativeSsl()
             install(ContentNegotiation) {
                 json(json)
             }

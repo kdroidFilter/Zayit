@@ -10,13 +10,12 @@ plugins {
     alias(libs.plugins.sqlDelight).apply(false)
     alias(libs.plugins.metro).apply(false)
     alias(libs.plugins.caupain)
-    alias(libs.plugins.linux.deps).apply(false)
     alias(libs.plugins.stability.analyzer) apply false
     alias(libs.plugins.ktlint)
     alias(libs.plugins.kover).apply(false)
+    alias(libs.plugins.structured.coroutines).apply(false)
     alias(libs.plugins.sentryJvmGradle).apply(false)
-    // TODO: Activer detekt quand la version 2.0.0 sera disponible sur Maven Central (supporte JDK 25)
-    // alias(libs.plugins.detekt)
+    alias(libs.plugins.detekt)
 }
 
 allprojects {
@@ -24,8 +23,7 @@ allprojects {
     if (project.name != "jewel") {
         apply(plugin = "org.jlleitschuh.gradle.ktlint")
     }
-    // TODO: Activer detekt quand la version 2.0.0 sera disponible
-    // apply(plugin = "io.gitlab.arturbosch.detekt")
+    apply(plugin = "dev.detekt")
 
     if (project.name != "jewel") {
         ktlint {
@@ -44,10 +42,9 @@ allprojects {
         }
     }
 
-    // TODO: Décommenter quand detekt 2.0.0 sera disponible
-    // detekt {
-    //     buildUponDefaultConfig = true
-    //     config.setFrom(files("${rootProject.projectDir}/detekt.yml"))
-    //     parallel = true
-    // }
+    detekt {
+        buildUponDefaultConfig = true
+        config.setFrom(files("${rootProject.projectDir}/detekt.yml"))
+        parallel = true
+    }
 }

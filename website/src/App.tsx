@@ -431,7 +431,7 @@ function App() {
         </motion.div>
       </section>
 
-      
+
       {/* Vision Section - delayed to appear after hero */}
       <section className="py-10 md:py-20 px-4 md:px-6">
         <motion.div
@@ -466,7 +466,7 @@ function App() {
         </motion.div>
       </section>
 
-      
+
       {/* Spirit Section - Slow dramatic scale reveal */}
       <section className="py-12 md:py-20 px-4 md:px-6" style={{ background: 'var(--section-alt-bg)' }}>
         <motion.div
@@ -504,7 +504,7 @@ function App() {
         </motion.div>
       </section>
 
-      
+
       {/* Interface Section - Slow cinematic slide */}
       <section className="py-12 md:py-20 px-4 md:px-6 overflow-hidden">
         <div className="max-w-6xl mx-auto">
@@ -566,11 +566,11 @@ function App() {
         </div>
       </section>
 
-      
+
       {/* Modular Panels Section - Apple-style horizontal slider */}
       <PanelsSlider t={t} isRTL={isRTL} cinematicEase={cinematicEase} />
 
-      
+
       {/* Search Section - Slow dramatic reveal with suspense */}
       <section id="search" className="py-12 md:py-20 px-4 md:px-6 overflow-hidden">
         <div className="max-w-6xl mx-auto">
@@ -680,7 +680,7 @@ function App() {
         </div>
       </section>
 
-      
+
       {/* Features Section - Slow dramatic card reveal */}
       <section id="features" className="py-12 md:py-20 px-4 md:px-6 overflow-hidden">
         <div className="max-w-6xl mx-auto">
@@ -749,7 +749,7 @@ function App() {
         </div>
       </section>
 
-      
+
       {/* Promise Section - Fast 3D reveal */}
       <section className="py-12 md:py-20 px-4 md:px-6 overflow-hidden" style={{ background: 'var(--section-alt-bg)', perspective: '1200px' }}>
         <div className="max-w-5xl mx-auto">
@@ -828,7 +828,7 @@ function App() {
         </div>
       </section>
 
-      
+
       {/* Crafted Section - Fast elegant text reveal */}
       <section className="py-12 md:py-20 px-4 md:px-6">
         <div className="max-w-4xl mx-auto text-center">
@@ -867,7 +867,7 @@ function App() {
         </div>
       </section>
 
-      
+
       {/* Download Section - Fast finale */}
       <section
         id="download"
@@ -957,7 +957,18 @@ function App() {
       <footer className="py-12 px-6" style={{ borderTop: '1px solid var(--card-border)' }}>
         <div className="max-w-6xl mx-auto text-center">
           <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>
-            {t('footer.createdBy')} &#10084;
+            {t('footer.createdByPrefix')}{' '}
+            <a
+              href="https://eliegambache.kdroidfilter.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--gold)', textDecoration: 'none' }}
+              onMouseOver={e => (e.currentTarget.style.textDecoration = 'underline')}
+              onMouseOut={e => (e.currentTarget.style.textDecoration = 'none')}
+            >
+              {t('footer.createdByName')}
+            </a>{' '}
+            &#10084;
           </p>
           <p className="text-xs" style={{ color: 'var(--gold-muted)' }}>
             {t('footer.license')}

@@ -99,7 +99,8 @@
     "platforms": "זמין בכל הפלטפורמות העיקריות"
   },
   "footer": {
-    "createdBy": "נבנה באהבה על ידי אליהו גמבש",
+    "createdByPrefix": "נבנה באהבה על ידי",
+    "createdByName": "אליהו גמבש",
     "sourceCode": "קוד מקור",
     "support": "תמכו בפרויקט",
     "license": "חינם וקוד פתוח תחת AGPL v3"

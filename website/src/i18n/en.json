@@ -99,7 +99,8 @@
     "platforms": "Available on all major platforms"
   },
   "footer": {
-    "createdBy": "Built with love by Elie Gambache",
+    "createdByPrefix": "Built with love by",
+    "createdByName": "Elie Gambache",
     "sourceCode": "Source Code",
     "support": "Support the Project",
     "license": "Free and open source under AGPL v3"

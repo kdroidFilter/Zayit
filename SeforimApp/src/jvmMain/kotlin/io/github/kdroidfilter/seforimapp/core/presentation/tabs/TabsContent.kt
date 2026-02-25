@@ -35,6 +35,7 @@ import androidx.savedstate.savedState
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
@@ -46,6 +47,8 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchShellActions
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -75,6 +78,21 @@ fun TabsContent() {
         }
     }
 
+    fun launchSubmitSearch(
+        @StructuredScope scope: CoroutineScope,
+        query: String,
+        tabId: String,
+    ) {
+        scope.launch { searchHomeViewModel.submitSearch(query, tabId) }
+    }
+
+    fun launchOpenReference(
+        @StructuredScope scope: CoroutineScope,
+        tabId: String,
+    ) {
+        scope.launch { searchHomeViewModel.openSelectedReferenceInCurrentTab(tabId) }
+    }
+
     val homeSearchCallbacks =
         remember(searchHomeViewModel, scope) {
             HomeSearchCallbacks(
@@ -84,11 +102,11 @@ fun TabsContent() {
                 onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
                 onSubmitTextSearch = { query ->
                     val tabId = currentTabId ?: return@HomeSearchCallbacks
-                    scope.launch { searchHomeViewModel.submitSearch(query, tabId) }
+                    launchSubmitSearch(scope, query, tabId)
                 },
                 onOpenReference = {
                     val tabId = currentTabId ?: return@HomeSearchCallbacks
-                    scope.launch { searchHomeViewModel.openSelectedReferenceInCurrentTab(tabId) }
+                    launchOpenReference(scope, tabId)
                 },
                 onPickCategory = searchHomeViewModel::onPickCategory,
                 onPickBook = searchHomeViewModel::onPickBook,
@@ -151,12 +169,20 @@ fun TabsContent() {
     }
 
     // Render all tabs with visibility control
+    val isIslands = ThemeUtils.isIslandsStyle()
+    val canvasBg =
+        if (isIslands) {
+            JewelTheme.globalColors.toolwindowBackground
+        } else {
+            JewelTheme.globalColors.panelBackground
+        }
+
     Box(
         modifier =
             Modifier
                 .trackActivation()
                 .fillMaxSize()
-                .background(JewelTheme.globalColors.panelBackground),
+                .background(canvasBg),
     ) {
         tabs.forEachIndexed { index, tabItem ->
             key(tabItem.id) {

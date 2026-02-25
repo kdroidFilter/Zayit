@@ -3,16 +3,20 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcon
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItems
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
@@ -23,6 +27,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -51,6 +57,17 @@ fun BookContentPanel(
         ),
     isSelected: Boolean = true,
 ) {
+    val isIslands = ThemeUtils.isIslandsStyle()
+    val homeCardModifier =
+        if (isIslands) {
+            Modifier
+                .fillMaxSize()
+                .padding(vertical = 6.dp, horizontal = 4.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(JewelTheme.globalColors.panelBackground)
+        } else {
+            Modifier.fillMaxSize()
+        }
     Box(modifier = modifier.fillMaxSize()) {
         when {
             // If no book is selected
@@ -64,6 +81,7 @@ fun BookContentPanel(
                         onEvent = onEvent,
                         searchUi = searchUi,
                         searchCallbacks = searchCallbacks,
+                        modifier = homeCardModifier,
                     )
                 }
             }
@@ -116,17 +134,37 @@ private fun BookContentPanelContent(
             mutableStateMapOf<Long, LineConnectionsSnapshot>()
         }
     val prefetchScope = rememberCoroutineScope()
+
+    fun prefetch(
+        @StructuredScope scope: CoroutineScope,
+        missing: List<Long>,
+    ) {
+        scope.launch {
+            runSuspendCatching { providers.loadLineConnections(missing) }
+                .onSuccess { connectionsCache.putAll(it) }
+        }
+    }
+
     val prefetchConnections =
         remember(providers, connectionsCache) {
             { ids: List<Long> ->
                 if (ids.isEmpty()) return@remember
                 val missing = ids.filterNot { connectionsCache.containsKey(it) }.distinct()
                 if (missing.isEmpty()) return@remember
-                prefetchScope.launch {
-                    runCatching { providers.loadLineConnections(missing) }
-                        .onSuccess { connectionsCache.putAll(it) }
-                }
+                prefetch(prefetchScope, missing)
             }
+        }
+
+    val isIslands = ThemeUtils.isIslandsStyle()
+    val paneCardModifier =
+        if (isIslands) {
+            Modifier
+                .fillMaxSize()
+                .padding(vertical = 6.dp, horizontal = 4.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(JewelTheme.globalColors.panelBackground)
+        } else {
+            Modifier
         }
 
     // Collect paging data here to keep BookContentView skippable
@@ -151,7 +189,7 @@ private fun BookContentPanelContent(
                             onEvent = onEvent,
                             tabId = uiState.tabId,
                             showDiacritics = showDiacritics,
-                            modifier = Modifier,
+                            modifier = paneCardModifier,
                             preservedListState = bookListState,
                             scrollIndex = uiState.content.scrollIndex,
                             scrollOffset = uiState.content.scrollOffset,
@@ -184,6 +222,7 @@ private fun BookContentPanelContent(
                                     onEvent = onEvent,
                                     lineConnections = connectionsCache,
                                     showDiacritics = showDiacritics,
+                                    modifier = paneCardModifier,
                                 )
                             }
                         } else {
@@ -200,6 +239,7 @@ private fun BookContentPanelContent(
                                 onEvent = onEvent,
                                 lineConnections = connectionsCache,
                                 showDiacritics = showDiacritics,
+                                modifier = paneCardModifier,
                             )
                         }
                     }
@@ -211,6 +251,7 @@ private fun BookContentPanelContent(
                                 onEvent = onEvent,
                                 lineConnections = connectionsCache,
                                 showDiacritics = showDiacritics,
+                                modifier = paneCardModifier,
                             )
                         }
                     }
@@ -223,6 +264,7 @@ private fun BookContentPanelContent(
             uiState = uiState,
             onEvent = onEvent,
             verticalPadding = 8.dp,
+            isIslands = isIslands,
         )
     }
 }
@@ -245,13 +287,16 @@ private fun CommentsPane(
     onEvent: (BookContentEvent) -> Unit,
     lineConnections: Map<Long, LineConnectionsSnapshot>,
     showDiacritics: Boolean,
+    modifier: Modifier = Modifier,
 ) {
-    LineCommentsView(
-        uiState = uiState,
-        onEvent = onEvent,
-        lineConnections = lineConnections,
-        showDiacritics = showDiacritics,
-    )
+    Box(modifier = modifier) {
+        LineCommentsView(
+            uiState = uiState,
+            onEvent = onEvent,
+            lineConnections = lineConnections,
+            showDiacritics = showDiacritics,
+        )
+    }
 }
 
 @Composable
@@ -260,14 +305,17 @@ private fun SourcesPane(
     onEvent: (BookContentEvent) -> Unit,
     lineConnections: Map<Long, LineConnectionsSnapshot>,
     showDiacritics: Boolean,
+    modifier: Modifier = Modifier,
 ) {
-    LineTargumView(
-        uiState = uiState,
-        onEvent = onEvent,
-        lineConnections = lineConnections,
-        availabilityType = ConnectionType.SOURCE,
-        showDiacritics = showDiacritics,
-    )
+    Box(modifier = modifier) {
+        LineTargumView(
+            uiState = uiState,
+            onEvent = onEvent,
+            lineConnections = lineConnections,
+            availabilityType = ConnectionType.SOURCE,
+            showDiacritics = showDiacritics,
+        )
+    }
 }
 
 @Composable
@@ -276,13 +324,16 @@ private fun TargumPane(
     onEvent: (BookContentEvent) -> Unit,
     lineConnections: Map<Long, LineConnectionsSnapshot>,
     showDiacritics: Boolean,
+    modifier: Modifier = Modifier,
 ) {
-    LineTargumView(
-        uiState = uiState,
-        onEvent = onEvent,
-        lineConnections = lineConnections,
-        showDiacritics = showDiacritics,
-    )
+    Box(modifier = modifier) {
+        LineTargumView(
+            uiState = uiState,
+            onEvent = onEvent,
+            lineConnections = lineConnections,
+            showDiacritics = showDiacritics,
+        )
+    }
 }
 
 @Composable
@@ -291,11 +342,20 @@ private fun BreadcrumbSection(
     onEvent: (BookContentEvent) -> Unit,
     verticalPadding: Dp,
     modifier: Modifier = Modifier,
+    isIslands: Boolean = false,
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth().background(JewelTheme.globalColors.panelBackground),
-    ) {
-        HorizontalDivider()
+    val sectionModifier =
+        if (isIslands) {
+            modifier
+                .fillMaxWidth()
+                .padding(bottom = 6.dp, start = 4.dp, end = 4.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(JewelTheme.globalColors.panelBackground)
+        } else {
+            modifier.fillMaxWidth().background(JewelTheme.globalColors.panelBackground)
+        }
+    Column(modifier = sectionModifier) {
+        if (!isIslands) HorizontalDivider()
         BreadcrumbView(
             uiState = uiState,
             onEvent = onEvent,

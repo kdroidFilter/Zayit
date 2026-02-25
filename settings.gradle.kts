@@ -2,6 +2,7 @@ rootProject.name = "SeforimApp"
 
 pluginManagement {
     repositories {
+        mavenLocal()
         google {
             content {
                 includeGroupByRegex("com\\.android.*")

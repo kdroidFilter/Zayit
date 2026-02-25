@@ -19,13 +19,8 @@ kotlin {
             implementation(libs.ktor.client.logging)
             implementation(libs.ktor.client.serialization)
             implementation(libs.ktor.serialization.json)
-            implementation("org.jetbrains.nativecerts:jvm-native-trusted-roots:${libs.versions.jvmNativeTrustedRoots.get()}") {
-                exclude(group = "org.bouncycastle", module = "bcpkix-jdk18on")
-                exclude(group = "org.bouncycastle", module = "bcprov-jdk18on")
-            }
-            // Re-introduce BouncyCastle via local, de-signed jars placed in this module's `libs/` folder.
-            // See `network/libs/README-bouncycastle.txt` for instructions to strip signatures.
-            implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+            implementation(libs.nucleus.native.ssl)
+            implementation(libs.nucleus.native.http.ktor)
         }
     }
 }

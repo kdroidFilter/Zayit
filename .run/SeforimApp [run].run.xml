@@ -3,7 +3,6 @@
     <ExternalSystemSettings>
       <option name="env">
         <map>
-          <entry key="SEFORIMAPP_DATABASE_PATH" value="$PROJECT_DIR$/SeforimLibrary/build/seforim.db" />
           <entry key="SEFORIMAPP_LOGGING" value="true" />
           <entry key="SEFORIMAPP_REPOSITORY_LOGGIN" value="true" />
         </map>

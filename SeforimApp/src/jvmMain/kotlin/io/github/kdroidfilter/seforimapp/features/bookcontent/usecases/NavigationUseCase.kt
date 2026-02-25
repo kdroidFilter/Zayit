@@ -2,6 +2,7 @@
 
 package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.logger.debugln
@@ -35,7 +36,7 @@ class NavigationUseCase(
         }
 
         // Merge alt-structure flags from DB to ensure navigation tree knows about them
-        val altFlags = runCatching { repository.getAllBookAltFlags() }.getOrDefault(emptyMap())
+        val altFlags = runSuspendCatching { repository.getAllBookAltFlags() }.getOrDefault(emptyMap())
         val booksWithFlags: Set<Book> =
             allBooks
                 .map { book ->
@@ -165,7 +166,7 @@ class NavigationUseCase(
         bookId: Long,
         save: Boolean = true,
     ) {
-        val book = runCatching { repository.getBookCore(bookId) }.getOrNull() ?: return
+        val book = runSuspendCatching { repository.getBookCore(bookId) }.getOrNull() ?: return
         expandPathToBook(book, save = save)
     }
 

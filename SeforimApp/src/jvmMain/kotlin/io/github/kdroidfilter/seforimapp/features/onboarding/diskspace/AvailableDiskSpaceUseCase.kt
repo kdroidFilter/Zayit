@@ -1,41 +1,39 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.diskspace
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import oshi.SystemInfo
 import oshi.software.os.OSFileStore
-import oshi.software.os.OperatingSystem
 
 class AvailableDiskSpaceUseCase {
-    /** Returns the available space on the main disk in bytes using OSHI. */
-    fun getAvailableDiskSpace(): Long {
-        val si = SystemInfo()
-        val os: OperatingSystem = si.operatingSystem
-        val fileStores: List<OSFileStore> = os.fileSystem.fileStores
+    /**
+     * Reads available and total disk space in a single blocking OSHI call.
+     * Must be called from a coroutine — dispatched to IO internally.
+     */
+    suspend fun getDiskSpaceInfo(): DiskSpaceInfo =
+        withContext(Dispatchers.IO) {
+            val si = SystemInfo()
+            val fileStores: List<OSFileStore> = si.operatingSystem.fileSystem.fileStores
 
-        // Heuristic: main disk = one that contains the system directory
-        val systemDir =
-            os.fileSystem.fileStores.firstOrNull {
-                it.mount.contains(System.getProperty("user.home")) ||
-                    it.mount == "/" ||
-                    it.mount.startsWith("C:")
-            } ?: fileStores.first()
+            val systemDir =
+                fileStores.firstOrNull {
+                    it.mount.contains(System.getProperty("user.home")) ||
+                        it.mount == "/" ||
+                        it.mount.startsWith("C:")
+                } ?: fileStores.first()
 
-        return systemDir.usableSpace
-    }
+            DiskSpaceInfo(
+                availableBytes = systemDir.usableSpace,
+                totalBytes = systemDir.totalSpace,
+            )
+        }
 
-    /** Returns the total capacity in bytes of the main disk using OSHI. */
-    fun getTotalDiskSpace(): Long {
-        val si = SystemInfo()
-        val os: OperatingSystem = si.operatingSystem
-        val fileStores: List<OSFileStore> = os.fileSystem.fileStores
-
-        val systemDir =
-            os.fileSystem.fileStores.firstOrNull {
-                it.mount.contains(System.getProperty("user.home")) ||
-                    it.mount == "/" ||
-                    it.mount.startsWith("C:")
-            } ?: fileStores.first()
-
-        return systemDir.totalSpace
+    data class DiskSpaceInfo(
+        val availableBytes: Long,
+        val totalBytes: Long,
+    ) {
+        val hasEnoughSpace: Boolean get() = availableBytes >= REQUIRED_SPACE_BYTES
+        val remainingAfterInstall: Long get() = availableBytes - REQUIRED_SPACE_BYTES
     }
 
     companion object {
@@ -49,20 +47,5 @@ class AvailableDiskSpaceUseCase {
         const val FINAL_SPACE_GB = 8.5
 
         val REQUIRED_SPACE_BYTES = REQUIRED_SPACE_GB * 1024 * 1024 * 1024
-    }
-
-    /** Returns true if there is at least 11 GB free on the main disk. */
-    fun hasEnoughSpace(): Boolean {
-        val freeBytes = getAvailableDiskSpace()
-        return freeBytes >= REQUIRED_SPACE_BYTES
-    }
-
-    /**
-     * Returns how many bytes remain *after subtracting the required space*.
-     * If result is negative, it means not enough space is available.
-     */
-    fun getRemainingSpaceAfterInstall(): Long {
-        val freeBytes = getAvailableDiskSpace()
-        return freeBytes - REQUIRED_SPACE_BYTES
     }
 }

@@ -16,6 +16,7 @@ import org.apache.lucene.search.SortField
 import org.apache.lucene.search.TermQuery
 import org.apache.lucene.search.UsageTrackingQueryCachingPolicy
 import org.apache.lucene.store.FSDirectory
+import org.apache.lucene.store.NIOFSDirectory
 import java.nio.file.Path
 
 class LuceneLookupSearchService(
@@ -23,8 +24,15 @@ class LuceneLookupSearchService(
     private val analyzer: Analyzer = StandardAnalyzer(),
     private val acronymCache: AcronymFrequencyCache? = null,
 ) {
-    // Open Lucene directory lazily to avoid any I/O at app startup
-    private val dir by lazy { FSDirectory.open(indexDir) }
+    // Open Lucene directory lazily to avoid any I/O at app startup.
+    // Falls back to NIOFSDirectory if FSDirectory (MMapDirectory) fails on Linux GraalVM.
+    private val dir by lazy {
+        try {
+            FSDirectory.open(indexDir)
+        } catch (t: Throwable) {
+            NIOFSDirectory(indexDir)
+        }
+    }
 
     // Cache searchers; refresh explicitly when index changes
     private val searcherManager by lazy {

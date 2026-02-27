@@ -52,11 +52,21 @@ object ThemeUtils {
         }
     }
 
-    /** Jewel's primary accent color at 25% opacity, used as the title bar gradient tint. */
+    /** Jewel's primary accent color blended at 25% over the panel background,
+     *  used as the title bar gradient tint. Fully opaque to avoid the AWT
+     *  window background bleeding through semi-transparent pixels. */
     @Composable
-    fun titleBarGradientColor(): Color =
-        JewelTheme.globalColors.outlines.focused
-            .copy(alpha = 0.25f)
+    fun titleBarGradientColor(): Color {
+        val accent = JewelTheme.globalColors.outlines.focused
+        val bg = JewelTheme.globalColors.panelBackground
+        val t = 0.25f
+        return Color(
+            red = bg.red * (1f - t) + accent.red * t,
+            green = bg.green * (1f - t) + accent.green * t,
+            blue = bg.blue * (1f - t) + accent.blue * t,
+            alpha = 1f,
+        )
+    }
 
     /**
      * Builds the standard custom title bar style used across all app windows:

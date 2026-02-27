@@ -74,7 +74,7 @@ private fun SettingsWindowView(onClose: () -> Unit) {
                 ) {
                     DialogTitleBar(
                         modifier = Modifier.newFullscreenControls(),
-                        gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Transparent,
+                        gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,

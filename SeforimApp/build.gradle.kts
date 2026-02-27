@@ -222,7 +222,6 @@ nucleus.application {
         javaLanguageVersion = 25
         jvmVendor = JvmVendorSpec.BELLSOFT
         imageName = "zayit"
-        march = providers.gradleProperty("nativeMarch").getOrElse("native")
         buildArgs.addAll(
             "-H:+AddAllCharsets",
             "-Djava.awt.headless=false",

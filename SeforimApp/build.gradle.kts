@@ -347,7 +347,7 @@ nucleus.application {
             version.set("7.8.1")
             isEnabled = true
             obfuscate.set(false)
-            optimize.set(false)
+            optimize.set(true)
             configurationFiles.from(project.file("proguard-rules.pro"))
         }
     }

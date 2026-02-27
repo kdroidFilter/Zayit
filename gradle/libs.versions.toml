@@ -7,7 +7,7 @@ filekitCore = "0.12.0"
 jsoup = "1.22.1"
 jvmToolchain = "25"
 knotify = "0.4.3"
-nucleus = "1.2.6"
+nucleus = "1.3.0-beta-05"
 koalaplotCore = "0.11.0"
 kotlin = "2.3.10"
 compose = "1.10.1"
@@ -67,7 +67,7 @@ knotify-compose = { module = "io.github.kdroidfilter:knotify-compose", version.r
 nucleus-core-runtime = { module = "io.github.kdroidfilter:nucleus.core-runtime", version.ref = "nucleus" }
 nucleus-aot-runtime = { module = "io.github.kdroidfilter:nucleus.aot-runtime", version.ref = "nucleus" }
 nucleus-darkmode-detector = { module = "io.github.kdroidfilter:nucleus.darkmode-detector", version.ref = "nucleus" }
-nucleus-decorated-window = { module = "io.github.kdroidfilter:nucleus.decorated-window", version.ref = "nucleus" }
+nucleus-decorated-window = { module = "io.github.kdroidfilter:nucleus.decorated-window-jni", version.ref = "nucleus" }
 nucleus-updater-runtime = { module = "io.github.kdroidfilter:nucleus.updater-runtime", version.ref = "nucleus" }
 nucleus-native-ssl = { module = "io.github.kdroidfilter:nucleus.native-ssl", version.ref = "nucleus" }
 nucleus-native-http-ktor = { module = "io.github.kdroidfilter:nucleus.native-http-ktor", version.ref = "nucleus" }

@@ -186,6 +186,9 @@ kotlin {
 
             // Sentry crash reporting
             implementation(libs.sentry.core)
+
+            // GraalVM SVM annotations for native-image substitutions (compile-only)
+            compileOnly("org.graalvm.nativeimage:svm:25.0.0")
         }
     }
 }
@@ -211,9 +214,54 @@ kotlin {
 //    debugImplementation(libs.androidx.uitest.testManifest)
 // }
 
+// Exclude sqlite-jdbc's built-in GraalVM native-image.properties from the uber JAR.
+// It references org.sqlite.nativeimage.SqliteJdbcFeature which lives in META-INF/versions/9/
+// of the multi-release JAR and is not resolved by native-image. The equivalent JNI / reflection /
+// resource metadata is already in the project's reachability-metadata.json.
+tasks.withType<Jar>().matching { it.name.contains("UberJar", ignoreCase = true) }.configureEach {
+    exclude("META-INF/native-image/org.xerial/**")
+}
+
 nucleus.application {
 
     mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
+
+
+    graalvm {
+        isEnabled = true
+        javaLanguageVersion = 25
+        jvmVendor = JvmVendorSpec.BELLSOFT
+        imageName = "zayit"
+        march = providers.gradleProperty("nativeMarch").getOrElse("native")
+        buildArgs.addAll(
+            "-H:+AddAllCharsets",
+            "-Djava.awt.headless=false",
+            "-Os",
+            "-H:-IncludeMethodData",
+            // Enable shared arenas for Lucene's memory-mapped I/O (MemorySegmentIndexInput)
+            "-H:+SharedArenaSupport",
+            // Parallel GC for better throughput with large heaps
+            "--gc=parallel",
+            // Default max heap 2 GB
+            "-R:MaxHeapSize=2147483648",
+            // Lucene classes initialize at runtime (GraalVM default).
+            // MethodHandle-based code paths are handled by substitution classes
+            // in io.github.kdroidfilter.seforimapp.graalvm.
+            )
+        nativeImageConfigBaseDir.set(
+            layout.projectDirectory.dir(
+                when {
+                    org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "src/main/resources-macos/META-INF/native-image"
+                    org.gradle.internal.os.OperatingSystem.current().isWindows -> "src/main/resources-windows/META-INF/native-image"
+                    org.gradle.internal.os.OperatingSystem.current().isLinux -> "src/main/resources-linux/META-INF/native-image"
+                    else -> throw GradleException("Unsupported OS")
+                }
+            )
+        )
+        macOS {
+            cStubsSrc.set(layout.projectDirectory.file("src/main/c/cursor_stub.c"))
+        }
+    }
     nativeDistributions {
 
         publish {

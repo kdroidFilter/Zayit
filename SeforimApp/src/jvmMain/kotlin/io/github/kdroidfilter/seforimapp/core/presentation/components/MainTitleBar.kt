@@ -19,7 +19,7 @@ import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 fun DecoratedWindowScope.MainTitleBar() {
     TitleBar(
         modifier = Modifier.newFullscreenControls(),
-        gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Transparent,
+        gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
     ) {
         BoxWithConstraints {
             val windowWidth = maxWidth

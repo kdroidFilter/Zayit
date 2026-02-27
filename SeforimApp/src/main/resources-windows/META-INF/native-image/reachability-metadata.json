@@ -6279,6 +6279,33 @@
         },
         {
             "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/notorashihebrew.ttf"
+        },
+        {
+            "glob": "expui/meetNewUi/systemTheme_dark.svg"
+        },
+        {
+            "glob": "expui/general/closeSmallHovered_dark.svg"
+        },
+        {
+            "glob": "expui/general/closeSmallPressed_dark.svg"
+        },
+        {
+            "glob": "expui/general/refresh_dark.svg"
+        },
+        {
+            "glob": "expui/status/warning_dark.svg"
+        },
+        {
+            "glob": "themes/expUI/icons/dark/checkBoxSelected_dark.svg"
+        },
+        {
+            "glob": "themes/expUI/icons/dark/radioSelected_dark.svg"
+        },
+        {
+            "glob": "themes/expUI/icons/dark/radio_dark.svg"
+        },
+        {
+            "glob": "vcs/vendors/github_dark.svg"
         }
     ]
 }

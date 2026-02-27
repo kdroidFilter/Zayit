@@ -1,4 +1,5 @@
 import io.github.kdroidfilter.buildsrc.Versioning
+import io.github.kdroidfilter.nucleus.desktop.application.dsl.CompressionLevel
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseChannel
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseType
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
@@ -244,6 +245,11 @@ nucleus.application {
             "--gc=parallel",
             // Default max heap 2 GB
             "-R:MaxHeapSize=2147483648",
+            // Exclude sqlite-jdbc's native-image.properties which references
+            // SqliteJdbcFeature (lives in META-INF/versions/9/ of the multi-release
+            // JAR, stripped by ProGuard shrinking). Equivalent metadata is already
+            // in the project's reachability-metadata.json.
+            "--exclude-config", ".*\\.jar", "META-INF/native-image/org\\.xerial/.*",
             // Lucene classes initialize at runtime (GraalVM default).
             // MethodHandle-based code paths are handled by substitution classes
             // in io.github.kdroidfilter.seforimapp.graalvm.
@@ -275,6 +281,7 @@ nucleus.application {
         }
 
         // Package-time resources root; include files under OS-specific subfolders (common, macos, windows, linux)
+        compressionLevel = CompressionLevel.Maximum
         appResourcesRootDir.set(layout.projectDirectory.dir("src/jvmMain/assets"))
         splashImage = "splash.png"
         enableAotCache = true
@@ -308,6 +315,7 @@ nucleus.application {
             TargetFormat.Dmg,
             TargetFormat.Pkg,
             TargetFormat.Zip,
+            TargetFormat.Nsis,
         )
         vendor = "KDroidFilter"
         cleanupNativeLibs = true
@@ -326,6 +334,20 @@ nucleus.application {
             shortcut = true
             upgradeUuid = "d9f21975-4359-4818-a623-6e9a3f0a07ca"
             perUserInstall = true
+
+            nsis {
+                oneClick = true // Default: true
+                allowElevation = false // Default: false
+                perMachine = false // Default: false (current user)
+                allowToChangeInstallationDirectory = false // Default: false
+                createDesktopShortcut = true
+                createStartMenuShortcut = true
+                runAfterFinish = true
+                deleteAppDataOnUninstall = false // Default: false
+                multiLanguageInstaller = true // Default: false
+                // Languages: "en_US", "fr_FR", "de_DE", "es_ES", "ja_JP", "zh_CN", etc.
+                installerLanguages = listOf("he_IL",)
+            }
         }
         macOS {
             iconFile.set(project.file("desktopAppIcons/MacosIcon.icns"))
@@ -338,7 +360,7 @@ nucleus.application {
             version.set("7.8.1")
             isEnabled = true
             obfuscate.set(false)
-            optimize.set(true)
+            optimize.set(false)
             configurationFiles.from(project.file("proguard-rules.pro"))
         }
     }

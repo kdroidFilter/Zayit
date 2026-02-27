@@ -1,5 +1,4 @@
 import io.github.kdroidfilter.buildsrc.Versioning
-import io.github.kdroidfilter.nucleus.desktop.application.dsl.CompressionLevel
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseChannel
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseType
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
@@ -187,9 +186,6 @@ kotlin {
 
             // Sentry crash reporting
             implementation(libs.sentry.core)
-
-            // GraalVM SVM annotations for native-image substitutions (compile-only)
-            compileOnly("org.graalvm.nativeimage:svm:25.0.0")
         }
     }
 }
@@ -214,14 +210,6 @@ kotlin {
 //    androidTestImplementation(libs.androidx.uitest.junit4)
 //    debugImplementation(libs.androidx.uitest.testManifest)
 // }
-
-// Exclude sqlite-jdbc's built-in GraalVM native-image.properties from the uber JAR.
-// It references org.sqlite.nativeimage.SqliteJdbcFeature which lives in META-INF/versions/9/
-// of the multi-release JAR and is not resolved by native-image. The equivalent JNI / reflection /
-// resource metadata is already in the project's reachability-metadata.json.
-tasks.withType<Jar>().matching { it.name.contains("UberJar", ignoreCase = true) }.configureEach {
-    exclude("META-INF/native-image/org.xerial/**")
-}
 
 nucleus.application {
 
@@ -281,7 +269,6 @@ nucleus.application {
         }
 
         // Package-time resources root; include files under OS-specific subfolders (common, macos, windows, linux)
-        compressionLevel = CompressionLevel.Maximum
         appResourcesRootDir.set(layout.projectDirectory.dir("src/jvmMain/assets"))
         splashImage = "splash.png"
         enableAotCache = true
@@ -315,7 +302,6 @@ nucleus.application {
             TargetFormat.Dmg,
             TargetFormat.Pkg,
             TargetFormat.Zip,
-            TargetFormat.Nsis,
         )
         vendor = "KDroidFilter"
         cleanupNativeLibs = true

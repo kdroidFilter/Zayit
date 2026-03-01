@@ -19,7 +19,6 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,6 +31,7 @@ import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.knotify.compose.builder.notification
+import io.github.kdroidfilter.nucleus.graalvm.GraalVmInitializer
 import io.github.kdroidfilter.nucleus.aot.runtime.AotRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.ExecutableRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.SingleInstanceManager
@@ -44,7 +44,6 @@ import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.LocalJewelEditorTextStyle
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.islandsComponentStyling
@@ -73,12 +72,8 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.core.theme.IntUiLightTheme
-import org.jetbrains.jewel.intui.standalone.Inter
-import org.jetbrains.jewel.intui.standalone.JetBrainsMono
 import org.jetbrains.jewel.intui.standalone.styling.light
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
-import org.jetbrains.jewel.intui.standalone.theme.createDefaultTextStyle
-import org.jetbrains.jewel.intui.standalone.theme.createEditorTextStyle
 import org.jetbrains.jewel.intui.standalone.theme.dark
 import org.jetbrains.jewel.intui.standalone.theme.light
 import org.jetbrains.jewel.ui.ComponentStyling
@@ -92,13 +87,8 @@ import java.awt.Toolkit
 import java.awt.Window
 import java.awt.datatransfer.StringSelection
 import java.awt.event.KeyEvent
-import java.awt.Font as AwtFont
-import java.awt.font.FontRenderContext
-import java.awt.geom.AffineTransform
-import java.io.File
 import java.net.URI
 import java.util.*
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class)
 private const val AOT_TRAINING_DURATION_MS = 45_000L
@@ -152,84 +142,11 @@ private fun initializeSentry() {
     }
     infoln { "Sentry initialized for environment '$sentryEnvironment'." }
 }
-private val isNativeImage = System.getProperty("org.graalvm.nativeimage.imagecode") != null
 
-// ---------------------------------------------------------------------------
-// Font setup: pre-load Jewel's Inter / JetBrains Mono from classpath bytes
-// so that Font.createFont() uses a ByteArrayInputStream (which supports
-// mark/reset) instead of the raw classpath resource stream (which may not
-// support mark/reset in GraalVM native image, causing "Problem reading font
-// data" IOException). We also compute line heights explicitly to bypass
-// Jewel's default createDefaultTextStyle / createEditorTextStyle which
-// trigger the crashing Font.createFont() internally.
-// ---------------------------------------------------------------------------
-
-private data class JewelFontSetup(
-    val interFontFamily: FontFamily,
-    val jbMonoFontFamily: FontFamily,
-    val textLineHeight: androidx.compose.ui.unit.TextUnit,
-    val editorLineHeight: androidx.compose.ui.unit.TextUnit,
-)
-
-private fun loadAwtFont(resource: String): AwtFont? = try {
-    Thread.currentThread().contextClassLoader.getResourceAsStream(resource)
-        ?.readAllBytes()
-        ?.let { AwtFont.createFont(AwtFont.TRUETYPE_FONT, it.inputStream()) }
-} catch (_: Throwable) { null }
-
-private fun setupJewelFonts(fontSize: Float = 13f): JewelFontSetup {
-    val ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
-
-    val interRegular = loadAwtFont("fonts/inter/Inter-Regular.ttf")?.also { ge.registerFont(it) }
-    for (res in listOf(
-        "fonts/inter/Inter-Bold.ttf", "fonts/inter/Inter-Italic.ttf",
-        "fonts/inter/Inter-SemiBold.ttf", "fonts/inter/Inter-Medium.ttf",
-        "fonts/inter/Inter-Light.ttf",
-    )) loadAwtFont(res)?.let { ge.registerFont(it) }
-
-    val jbMonoRegular = loadAwtFont("fonts/jetbrains-mono/JetBrainsMono-Regular.ttf")?.also { ge.registerFont(it) }
-    for (res in listOf(
-        "fonts/jetbrains-mono/JetBrainsMono-Bold.ttf",
-        "fonts/jetbrains-mono/JetBrainsMono-Italic.ttf",
-    )) loadAwtFont(res)?.let { ge.registerFont(it) }
-
-    val frc = FontRenderContext(AffineTransform(), false, false)
-    val interLineHeightPx = interRegular?.deriveFont(fontSize)?.let { f ->
-        val lm = f.getLineMetrics("Ag", frc)
-        (lm.ascent + lm.descent + lm.leading).roundToInt()
-    } ?: (fontSize * 1.3f).roundToInt()
-
-    val editorLineHeight = ((interLineHeightPx * 0.87f).roundToInt() * 1.2f).sp
-
-    return JewelFontSetup(
-        interFontFamily = FontFamily.Inter,
-        jbMonoFontFamily = FontFamily.JetBrainsMono,
-        textLineHeight = interLineHeightPx.sp,
-        editorLineHeight = editorLineHeight,
-    )
-}
 
 fun main() {
 
-    if (isNativeImage) {
-        // Metal L&F avoids loading platform-specific modules unsupported in native image
-        System.setProperty("swing.defaultlaf", "javax.swing.plaf.metal.MetalLookAndFeel")
-        // Set java.home to the executable's dir so Skiko can find jawt (lib/ on macOS/Linux, bin/ on Windows)
-        val execDir = File(ProcessHandle.current().info().command().orElse("")).parentFile?.absolutePath ?: "."
-        System.setProperty("java.home", execDir)
-        // Ensure the native libraries next to the executable (fontmanager, freetype, awt, etc.) are
-        // discoverable. After overriding java.home, the default java.library.path may only include
-        // <java.home>/bin, missing the DLLs in the executable's root directory.
-        val sep = File.pathSeparator
-        System.setProperty("java.library.path", "$execDir$sep$execDir${File.separator}bin")
-
-        // Force early initialization of the charset subsystem and fontmanager native library
-        // to avoid "InternalError: platform encoding not initialized" at runtime.
-        java.nio.charset.Charset.defaultCharset()
-        try {
-            System.loadLibrary("fontmanager")
-        } catch (_: Throwable) { }
-    }
+    GraalVmInitializer.initialize()
 
     val loggingEnv = System.getenv("SEFORIMAPP_LOGGING")?.lowercase()
     isDevEnv = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"
@@ -276,17 +193,8 @@ fun main() {
             lockIdentifier = appId,
         )
 
-    // Pre-load Jewel's Inter / JetBrains Mono fonts from bytes and compute line
-    // heights before entering the composition.
-    val jewelFontSetup = setupJewelFonts()
-
     Locale.setDefault(Locale.Builder().setLanguage("he").build())
     application {
-        val jewelEditorStyle = JewelTheme.createEditorTextStyle(
-            fontFamily = jewelFontSetup.jbMonoFontFamily,
-            lineHeight = jewelFontSetup.editorLineHeight,
-        )
-
         FileKit.init(appId)
 
 
@@ -344,7 +252,6 @@ fun main() {
         CompositionLocalProvider(
             LocalAppGraph provides appGraph,
             LocalMetroViewModelFactory provides appGraph.metroViewModelFactory,
-            LocalJewelEditorTextStyle provides jewelEditorStyle,
         ) {
             val isDark = ThemeUtils.isDarkTheme()
             val themeDefinition = ThemeUtils.buildThemeDefinition()

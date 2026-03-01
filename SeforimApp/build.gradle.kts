@@ -156,6 +156,7 @@ kotlin {
             api(project(":jewel"))
             implementation(project(":earthwidget"))
             implementation(libs.nucleus.decorated.window)
+            implementation(libs.nucleus.graalvm.runtime)
             implementation(libs.nucleus.updater.runtime)
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
@@ -242,6 +243,7 @@ nucleus.application {
             // MethodHandle-based code paths are handled by substitution classes
             // in io.github.kdroidfilter.seforimapp.graalvm.
             )
+        march = providers.gradleProperty("nativeMarch").getOrElse("compatibility")
         nativeImageConfigBaseDir.set(
             layout.projectDirectory.dir(
                 when {
@@ -252,9 +254,6 @@ nucleus.application {
                 }
             )
         )
-        macOS {
-            cStubsSrc.set(layout.projectDirectory.file("src/main/c/cursor_stub.c"))
-        }
     }
     nativeDistributions {
 

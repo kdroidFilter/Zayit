@@ -2,7 +2,6 @@ package io.github.kdroidfilter.seforimapp.core.presentation.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -25,13 +24,6 @@ import org.jetbrains.jewel.intui.standalone.theme.light
 import org.jetbrains.jewel.intui.standalone.theme.lightThemeDefinition
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.notoserifhebrew
-
-/**
- * Pre-computed Jewel editor text style (JetBrains Mono with explicit line height)
- * so that [ThemeUtils.buildThemeDefinition] can pass it to Jewel's theme definitions
- * and avoid the default createEditorTextStyle call which crashes on GraalVM native image.
- */
-val LocalJewelEditorTextStyle = staticCompositionLocalOf { TextStyle.Default }
 
 /**
  * Utilities to build consistent Jewel theme definitions and related styling across the app.
@@ -115,7 +107,6 @@ object ThemeUtils {
             val isDark = isDarkTheme()
             val themeStyle = mainAppState.themeStyle.collectAsState().value
             val disabledValues = if (isDark) DisabledAppearanceValues.dark() else DisabledAppearanceValues.light()
-            val editorTextStyle = LocalJewelEditorTextStyle.current
 
             when (themeStyle) {
                 ThemeStyle.Islands ->
@@ -123,7 +114,6 @@ object ThemeUtils {
                         JewelTheme.darkThemeDefinition(
                             colors = islandsDarkGlobalColors(),
                             defaultTextStyle = defaultTextStyle(),
-                            editorTextStyle = editorTextStyle,
                             disabledAppearanceValues = disabledValues,
                         )
                     } else {
@@ -131,7 +121,6 @@ object ThemeUtils {
                         JewelTheme.lightThemeDefinition(
                             colors = lightIslandsGlobalColors(),
                             defaultTextStyle = defaultTextStyle(),
-                            editorTextStyle = editorTextStyle,
                             disabledAppearanceValues = disabledValues,
                         )
                     }
@@ -139,13 +128,11 @@ object ThemeUtils {
                     if (isDark) {
                         JewelTheme.darkThemeDefinition(
                             defaultTextStyle = defaultTextStyle(),
-                            editorTextStyle = editorTextStyle,
                             disabledAppearanceValues = disabledValues,
                         )
                     } else {
                         JewelTheme.lightThemeDefinition(
                             defaultTextStyle = defaultTextStyle(),
-                            editorTextStyle = editorTextStyle,
                             disabledAppearanceValues = disabledValues,
                         )
                     }

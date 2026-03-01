@@ -25,7 +25,7 @@ class LuceneLookupSearchService(
     private val acronymCache: AcronymFrequencyCache? = null,
 ) {
     // Open Lucene directory lazily to avoid any I/O at app startup.
-    // Falls back to NIOFSDirectory if FSDirectory (MMapDirectory) fails on Linux GraalVM.
+    // Falls back to NIOFSDirectory if FSDirectory (MMapDirectory) fails on GraalVM native image.
     private val dir by lazy {
         try {
             FSDirectory.open(indexDir)

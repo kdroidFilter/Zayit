@@ -5464,6 +5464,30 @@
         },
         {
             "glob": "themes/expUI/icons/dark/radioSelectedFocused@2x.svg"
+        },
+        {
+            "glob": "expui/general/copy.svg"
+        },
+        {
+            "glob": "expui/general/copy@2x.svg"
+        },
+        {
+            "glob": "expui/general/copy@2x_dark.svg"
+        },
+        {
+            "glob": "expui/general/copy_dark.svg"
+        },
+        {
+            "glob": "icons/lucide_text_search.svg"
+        },
+        {
+            "glob": "icons/lucide_text_search@2x.svg"
+        },
+        {
+            "glob": "icons/lucide_text_search@2x_dark.svg"
+        },
+        {
+            "glob": "icons/lucide_text_search_dark.svg"
         }
     ],
     "foreign": {

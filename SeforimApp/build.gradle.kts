@@ -241,6 +241,9 @@ nucleus.application {
             // Lucene classes initialize at runtime (GraalVM default).
             // MethodHandle-based code paths are handled by substitution classes
             // in io.github.kdroidfilter.seforimapp.graalvm.
+
+            // Allow Nucleus/JNI to access sun.awt internals (NSWindow pointer retrieval on macOS)
+            "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
             )
         nativeImageConfigBaseDir.set(
             layout.projectDirectory.dir(
@@ -252,9 +255,7 @@ nucleus.application {
                 }
             )
         )
-        macOS {
-            cStubsSrc.set(layout.projectDirectory.file("src/main/c/cursor_stub.c"))
-        }
+
     }
     nativeDistributions {
 

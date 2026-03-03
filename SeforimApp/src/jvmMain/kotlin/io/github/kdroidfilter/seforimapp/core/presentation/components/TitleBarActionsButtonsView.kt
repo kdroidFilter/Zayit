@@ -30,9 +30,8 @@ fun TitleBarActionsButtonsView() {
 
     // Access app graph outside of callbacks to avoid reading CompositionLocals in non-composable contexts
     val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
-    val tabs = tabsViewModel.tabs.collectAsState().value
-    val selectedTabIndex = tabsViewModel.selectedTabIndex.collectAsState().value
-    val currentTab = tabs.getOrNull(selectedTabIndex)
+    val tabsState = tabsViewModel.state.collectAsState().value
+    val currentTab = tabsState.tabs.getOrNull(tabsState.selectedTabIndex)
     val findEnabled =
         when (val dest = currentTab?.destination) {
             is TabsDestination.Search -> true

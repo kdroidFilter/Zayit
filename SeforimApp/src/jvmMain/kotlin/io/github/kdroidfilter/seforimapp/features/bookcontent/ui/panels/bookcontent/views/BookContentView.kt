@@ -579,7 +579,9 @@ fun BookContentView(
                                     Color.Transparent
                                 }
 
-                            if (altHeadings.isNotEmpty()) {
+                            // Alt headings outside the selection bar for primary/thick bar,
+                            // inside for secondary/thin bar to keep the bar continuous.
+                            if (altHeadings.isNotEmpty() && useThickBar) {
                                 Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp)) {
                                     altHeadings.forEach { entry ->
                                         AltHeadingItem(
@@ -608,6 +610,16 @@ fun BookContentView(
                                 Column(
                                     modifier = Modifier.weight(1f).padding(vertical = 8.dp),
                                 ) {
+                                    if (altHeadings.isNotEmpty() && !useThickBar) {
+                                        altHeadings.forEach { entry ->
+                                            AltHeadingItem(
+                                                entryId = entry.id,
+                                                level = entry.level,
+                                                text = entry.text,
+                                                onClick = { onLineSelect(line, false) },
+                                            )
+                                        }
+                                    }
                                     LineItem(
                                         lineId = line.id,
                                         lineContent = line.content,

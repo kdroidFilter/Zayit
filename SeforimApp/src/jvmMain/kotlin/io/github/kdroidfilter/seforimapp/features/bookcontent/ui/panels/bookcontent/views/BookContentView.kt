@@ -557,15 +557,11 @@ fun BookContentView(
                         if (line != null) {
                             val altHeadings = altHeadingsByLineId[line.id]
                             val isCurrentSelected = line.id in selectedLineIds
-                            val useThickBar = line.id == primarySelectedLineId || !isTocEntrySelection
-                            // Check if next line is also selected with same bar style to extend downward
+                            val useThickBar = shouldUseThickBar(line.id, primarySelectedLineId, isTocEntrySelection)
                             val nextLineId = if (index < lazyPagingItems.itemCount - 1) lazyPagingItems.peek(index + 1)?.id else null
-                            val nextUseThickBar = nextLineId == primarySelectedLineId || !isTocEntrySelection
+                            val nextUseThickBar = shouldUseThickBar(nextLineId ?: -1, primarySelectedLineId, isTocEntrySelection)
                             val isNextSelected =
-                                isCurrentSelected &&
-                                    nextLineId != null &&
-                                    nextLineId in selectedLineIds &&
-                                    nextUseThickBar == useThickBar
+                                shouldExtendToNext(isCurrentSelected, nextLineId, selectedLineIds, useThickBar, nextUseThickBar)
 
                             val borderColor =
                                 if (isCurrentSelected) {

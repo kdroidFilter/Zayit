@@ -207,13 +207,14 @@ fun BookContentView(
         val index = snapshot.indices.firstOrNull { snapshot[it]?.id == primarySelectedLineId }
         if (index != null) {
             val first = listState.firstVisibleItemIndex
-            val last =
-                listState.layoutInfo.visibleItemsInfo
-                    .lastOrNull()
-                    ?.index ?: first
-            if (index < first || index > last) {
-                val targetOffsetPx = 32
-                listState.scrollToItem(index, targetOffsetPx)
+            val visibleItems = listState.layoutInfo.visibleItemsInfo
+            val last = visibleItems.lastOrNull()?.index ?: first
+            if (index < first) {
+                // Line is above viewport — place it at the top
+                listState.scrollToItem(index, 0)
+            } else if (index > last) {
+                // Line is below viewport — place it at the top
+                listState.scrollToItem(index, 0)
             }
         }
     }
@@ -472,7 +473,14 @@ fun BookContentView(
         val layout = listState.layoutInfo
         val viewportHeight = (layout.viewportEndOffset - layout.viewportStartOffset).toFloat()
         val delta = if (forward) viewportHeight * 0.95f else -viewportHeight * 0.95f
-        scope.launch { listState.animateScrollBy(delta) }
+        scope.launch {
+            listState.animateScrollBy(delta)
+            // Snap so the first visible line is fully shown (not cut off at the top)
+            val offset = listState.firstVisibleItemScrollOffset
+            if (offset > 0) {
+                listState.animateScrollBy((-offset).toFloat())
+            }
+        }
     }
 
     // Global preview handler: handle basic navigation keys regardless of inner focus

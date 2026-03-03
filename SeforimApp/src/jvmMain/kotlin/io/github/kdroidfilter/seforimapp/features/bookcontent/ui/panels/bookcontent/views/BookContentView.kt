@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -188,13 +189,14 @@ fun BookContentView(
         }
     }
 
-    // Ensure the selected line is visible when explicitly requested (keyboard/nav)
-    // without forcing it to the very top of the viewport.
+    // Ensure the selected line is visible when selection changes (keyboard nav or explicit request).
+    // Only scrolls if the line is outside the visible viewport.
     LaunchedEffect(scrollToLineTimestamp, primarySelectedLineId, topAnchorTimestamp, topAnchorLineId) {
-        if (scrollToLineTimestamp == 0L || primarySelectedLineId == null) return@LaunchedEffect
+        if (primarySelectedLineId == null) return@LaunchedEffect
 
         // Skip minimal bring-into-view when a top-anchoring request is active for this selection
-        val isTopAnchorRequest = (topAnchorTimestamp == scrollToLineTimestamp && topAnchorLineId == primarySelectedLineId)
+        val isTopAnchorRequest =
+            scrollToLineTimestamp != 0L && topAnchorTimestamp == scrollToLineTimestamp && topAnchorLineId == primarySelectedLineId
         if (isTopAnchorRequest) return@LaunchedEffect
 
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
@@ -210,8 +212,7 @@ fun BookContentView(
                     .lastOrNull()
                     ?.index ?: first
             if (index < first || index > last) {
-                // Scroll just enough so the item is not glued to the top
-                val targetOffsetPx = 32 // small top padding in px; minimal jump
+                val targetOffsetPx = 32
                 listState.scrollToItem(index, targetOffsetPx)
             }
         }
@@ -464,6 +465,17 @@ fun BookContentView(
         }
     }
 
+    fun scrollByPage(
+        forward: Boolean,
+        @StructuredScope scope: CoroutineScope,
+    ) {
+        val viewportHeight = listState.layoutInfo.let {
+            it.viewportEndOffset - it.viewportStartOffset
+        }.toFloat()
+        val delta = if (forward) viewportHeight * 0.95f else -viewportHeight * 0.95f
+        scope.launch { listState.animateScrollBy(delta) }
+    }
+
     // Global preview handler: handle basic navigation keys regardless of inner focus
     val previewKeyHandler =
         remember(onEvent) {
@@ -478,6 +490,16 @@ fun BookContentView(
 
                         Key.DirectionDown -> {
                             onEvent(BookContentEvent.NavigateToNextLine)
+                            true
+                        }
+
+                        Key.PageUp -> {
+                            scrollByPage(forward = false, scope)
+                            true
+                        }
+
+                        Key.PageDown -> {
+                            scrollByPage(forward = true, scope)
                             true
                         }
 

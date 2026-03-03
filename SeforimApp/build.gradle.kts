@@ -217,7 +217,6 @@ nucleus.application {
 
     mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
 
-
     graalvm {
         isEnabled = true
         javaLanguageVersion = 25
@@ -238,21 +237,29 @@ nucleus.application {
             // SqliteJdbcFeature (lives in META-INF/versions/9/ of the multi-release
             // JAR, stripped by ProGuard shrinking). Equivalent metadata is already
             // in the project's reachability-metadata.json.
-            "--exclude-config", ".*\\.jar", "META-INF/native-image/org\\.xerial/.*",
+            "--exclude-config",
+            ".*\\.jar",
+            "META-INF/native-image/org\\.xerial/.*",
             // Lucene classes initialize at runtime (GraalVM default).
             // MethodHandle-based code paths are handled by substitution classes
             // in io.github.kdroidfilter.seforimapp.graalvm.
-            )
+        )
         march = providers.gradleProperty("nativeMarch").getOrElse("compatibility")
         nativeImageConfigBaseDir.set(
             layout.projectDirectory.dir(
                 when {
-                    org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "src/main/resources-macos/META-INF/native-image"
-                    org.gradle.internal.os.OperatingSystem.current().isWindows -> "src/main/resources-windows/META-INF/native-image"
-                    org.gradle.internal.os.OperatingSystem.current().isLinux -> "src/main/resources-linux/META-INF/native-image"
+                    org.gradle.internal.os.OperatingSystem
+                        .current()
+                        .isMacOsX -> "src/main/resources-macos/META-INF/native-image"
+                    org.gradle.internal.os.OperatingSystem
+                        .current()
+                        .isWindows -> "src/main/resources-windows/META-INF/native-image"
+                    org.gradle.internal.os.OperatingSystem
+                        .current()
+                        .isLinux -> "src/main/resources-linux/META-INF/native-image"
                     else -> throw GradleException("Unsupported OS")
-                }
-            )
+                },
+            ),
         )
     }
     nativeDistributions {
@@ -332,7 +339,7 @@ nucleus.application {
                 deleteAppDataOnUninstall = false // Default: false
                 multiLanguageInstaller = true // Default: false
                 // Languages: "en_US", "fr_FR", "de_DE", "es_ES", "ja_JP", "zh_CN", etc.
-                installerLanguages = listOf("he_IL",)
+                installerLanguages = listOf("he_IL")
             }
         }
         macOS {

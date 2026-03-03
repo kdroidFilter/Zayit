@@ -26,10 +26,11 @@ fun DecoratedWindowScope.MainTitleBar() {
         // Windows-fallback. Their total width must be subtracted from the available width so
         // that the BoxWithConstraints content doesn't push them outside the window boundary.
         val windowControlButtonWidth = LocalTitleBarStyle.current.metrics.titlePaneButtonSize.width
-        val windowControlCount = when (PlatformInfo.currentOS) {
-            OperatingSystem.MACOS -> 0  // native traffic lights, not in Compose layout
-            else -> 3                   // close + maximize/restore + minimize
-        }
+        val windowControlCount =
+            when (PlatformInfo.currentOS) {
+                OperatingSystem.MACOS -> 0 // native traffic lights, not in Compose layout
+                else -> 3 // close + maximize/restore + minimize
+            }
         BoxWithConstraints(modifier = Modifier.align(Alignment.Start)) {
             val windowWidth = maxWidth
             val iconsNumber = 4

@@ -438,26 +438,28 @@ fun BookContentView(
         val startIndex =
             if (currentHitLineIndex in snapshot.indices) currentHitLineIndex else listState.firstVisibleItemIndex
         val step = if (next) 1 else -1
-        var i = startIndex
-        var guard = 0
         val size = snapshot.size
-        while (guard++ < size) {
-            i = (i + step + size) % size
-            val line = snapshot[i] ?: continue
-            val text =
-                plainTextCache.getOrPut(line.id) {
-                    buildAnnotatedFromHtml(line.content, textSize).text
+
+        scope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            var i = startIndex
+            var guard = 0
+            while (guard++ < size) {
+                i = (i + step + size) % size
+                val line = snapshot[i] ?: continue
+                val text =
+                    plainTextCache.getOrPut(line.id) {
+                        buildAnnotatedFromHtml(line.content, textSize).text
+                    }
+                val start = findAllMatchesOriginal(text, query).firstOrNull()?.first ?: -1
+                if (start >= 0) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        currentHitLineIndex = i
+                        currentMatchLineId = line.id
+                        currentMatchStart = start
+                        listState.scrollToItem(i, 32)
+                    }
+                    break
                 }
-            val start = findAllMatchesOriginal(text, query).firstOrNull()?.first ?: -1
-            if (start >= 0) {
-                currentHitLineIndex = i
-                currentMatchLineId = line.id
-                currentMatchStart = start
-                // Bring line into view (slight offset)
-                scope.launch {
-                    listState.scrollToItem(i, 32)
-                }
-                break
             }
         }
     }
@@ -664,25 +666,26 @@ fun BookContentView(
                 // Compute total matches across currently loaded snapshot (approximate)
                 val queryText = findState.text.toString()
                 val snapshotItems = lazyPagingItems.itemSnapshotList.items
-                val matchCount =
-                    remember(queryText, snapshotItems) {
+                val matchCount by produceState(0, queryText, snapshotItems) {
+                    value =
                         if (queryText.length < 2) {
                             0
                         } else {
-                            var total = 0
-                            // Count non-overlapping occurrences per visible/loaded line
-                            for (ln in snapshotItems) {
-                                val text =
-                                    try {
-                                        buildAnnotatedFromHtml(ln.content, textSize).text
-                                    } catch (_: Throwable) {
-                                        ln.content
-                                    }
-                                total += findAllMatchesOriginal(text, queryText).size
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                var total = 0
+                                for (ln in snapshotItems) {
+                                    val text =
+                                        try {
+                                            buildAnnotatedFromHtml(ln.content, textSize).text
+                                        } catch (_: Throwable) {
+                                            ln.content
+                                        }
+                                    total += findAllMatchesOriginal(text, queryText).size
+                                }
+                                total
                             }
-                            total
                         }
-                    }
+                }
                 Row(
                     modifier =
                         Modifier

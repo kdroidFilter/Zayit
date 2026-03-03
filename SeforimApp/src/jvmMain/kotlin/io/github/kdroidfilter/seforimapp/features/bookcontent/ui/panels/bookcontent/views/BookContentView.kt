@@ -205,15 +205,20 @@ fun BookContentView(
         val snapshot = lazyPagingItems.itemSnapshotList
         val index = snapshot.indices.firstOrNull { snapshot[it]?.id == primarySelectedLineId }
         if (index != null) {
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val viewportEnd = layoutInfo.viewportEndOffset
             val first = listState.firstVisibleItemIndex
-            val visibleItems = listState.layoutInfo.visibleItemsInfo
-            val last = visibleItems.lastOrNull()?.index ?: first
-            if (index < first) {
-                // Line is above viewport — place it at the top
-                listState.scrollToItem(index, 0)
-            } else if (index > last) {
-                // Line is below viewport — place it at the top
-                listState.scrollToItem(index, 0)
+            val itemInfo = visibleItems.firstOrNull { it.index == index }
+            val isFullyVisible =
+                itemInfo != null && itemInfo.offset >= 0 && itemInfo.offset + itemInfo.size <= viewportEnd
+            if (!isFullyVisible) {
+                if (index <= first) {
+                    listState.scrollToItem(index, 0)
+                } else {
+                    // Place the item so its bottom aligns with the viewport bottom
+                    listState.scrollToItem(index, 0)
+                }
             }
         }
     }

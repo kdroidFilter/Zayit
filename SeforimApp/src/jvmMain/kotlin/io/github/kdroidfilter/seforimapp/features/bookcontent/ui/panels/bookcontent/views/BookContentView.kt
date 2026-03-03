@@ -209,7 +209,7 @@ fun BookContentView(
             val first = listState.firstVisibleItemIndex
             val itemInfo = visibleItems.firstOrNull { it.index == index }
             val isFullyVisible =
-                itemInfo != null && itemInfo.offset >= 0 && itemInfo.offset + itemInfo.size <= viewportEnd
+                isLineFullyVisible(itemInfo?.offset, itemInfo?.size, viewportEnd)
             if (!isFullyVisible) {
                 if (index <= first) {
                     listState.scrollToItem(index, 0)
@@ -475,14 +475,13 @@ fun BookContentView(
         val visibleItems = listState.layoutInfo.visibleItemsInfo
         if (visibleItems.isEmpty()) return
         val targetIndex =
-            if (forward) {
-                val viewportEnd = listState.layoutInfo.viewportEndOffset
-                val lastFully = visibleItems.lastOrNull { it.offset + it.size <= viewportEnd }
-                (lastFully ?: visibleItems.last()).index
-            } else {
-                val count = visibleItems.size.coerceAtLeast(1)
-                (listState.firstVisibleItemIndex - count + 1).coerceAtLeast(0)
-            }
+            computePageScrollTargetIndex(
+                forward = forward,
+                visibleItemIndices = visibleItems.map { it.index },
+                visibleItemEndOffsets = visibleItems.associate { it.index to (it.offset + it.size) },
+                viewportEnd = listState.layoutInfo.viewportEndOffset,
+                firstVisibleItemIndex = listState.firstVisibleItemIndex,
+            ) ?: return
         scope.launch { listState.animateScrollToItem(targetIndex, 0) }
     }
 
@@ -602,7 +601,7 @@ fun BookContentView(
                             // Alt headings go inside the selection bar only when
                             // the previous line is also selected (consecutive selection).
                             val altHeadingsInsideBar =
-                                isCurrentSelected && isPrevSelected && altHeadings.isNotEmpty()
+                                shouldPlaceAltHeadingsInsideBar(isCurrentSelected, isPrevSelected, altHeadings.isNotEmpty())
 
                             val borderColor =
                                 if (isCurrentSelected) {

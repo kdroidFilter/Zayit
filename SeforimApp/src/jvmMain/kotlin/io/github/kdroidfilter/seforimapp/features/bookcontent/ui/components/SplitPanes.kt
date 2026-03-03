@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -18,7 +17,6 @@ import org.jetbrains.compose.splitpane.VerticalSplitPane
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
-import kotlin.math.roundToInt
 
 @Stable
 @JvmInline
@@ -45,6 +43,7 @@ fun EnhancedHorizontalSplitPane(
     val isIslands = ThemeUtils.isIslandsStyle()
     val state = splitPaneState.value
     val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
+    val splitterVisible = showSplitter && secondContent != null
 
     // When the second pane is hidden, expand the first to 100% to avoid blank space
     LaunchedEffect(secondContent == null) {
@@ -60,17 +59,10 @@ fun EnhancedHorizontalSplitPane(
         }
     }
 
-    // Quantize splitter position to 2 decimal places to avoid layout jitter from
-    // floating-point noise, especially on small or non-integer pixel widths.
-    LaunchedEffect(state) {
-        snapshotFlow { state.positionPercentage }
-            .collect { rawPosition ->
-                val clamped = rawPosition.coerceIn(0f, 1f)
-                val quantized = (clamped * 100f).roundToInt() / 100f
-                if (quantized != rawPosition) {
-                    state.positionPercentage = quantized
-                }
-            }
+    // Disable drag when splitter is hidden so the library's default handle
+    // (8dp invisible drag zone) is never placed.
+    LaunchedEffect(splitterVisible) {
+        state.moveEnabled = splitterVisible
     }
 
     HorizontalSplitPane(
@@ -94,7 +86,7 @@ fun EnhancedHorizontalSplitPane(
                 Box(modifier = Modifier.fillMaxSize())
             }
         }
-        if (showSplitter && secondContent != null) {
+        if (splitterVisible) {
             splitter {
                 visiblePart {
                     if (!isIslands) {
@@ -134,6 +126,7 @@ fun EnhancedVerticalSplitPane(
     val isIslands = ThemeUtils.isIslandsStyle()
     val state = splitPaneState.value
     val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
+    val splitterVisible = showSplitter && secondContent != null
 
     // When the second pane is hidden, expand the first to 100% to avoid blank space
     LaunchedEffect(secondContent == null) {
@@ -149,17 +142,10 @@ fun EnhancedVerticalSplitPane(
         }
     }
 
-    // Quantize splitter position to 2 decimal places to avoid layout jitter from
-    // floating-point noise, especially on small or non-integer pixel widths.
-    LaunchedEffect(state) {
-        snapshotFlow { state.positionPercentage }
-            .collect { rawPosition ->
-                val clamped = rawPosition.coerceIn(0f, 1f)
-                val quantized = (clamped * 100f).roundToInt() / 100f
-                if (quantized != rawPosition) {
-                    state.positionPercentage = quantized
-                }
-            }
+    // Disable drag when splitter is hidden so the library's default handle
+    // (8dp invisible drag zone) is never placed.
+    LaunchedEffect(splitterVisible) {
+        state.moveEnabled = splitterVisible
     }
 
     VerticalSplitPane(
@@ -183,7 +169,7 @@ fun EnhancedVerticalSplitPane(
                 Box(modifier = Modifier.fillMaxSize())
             }
         }
-        if (showSplitter && secondContent != null) {
+        if (splitterVisible) {
             splitter {
                 visiblePart {
                     if (!isIslands) {

@@ -469,9 +469,8 @@ fun BookContentView(
         forward: Boolean,
         @StructuredScope scope: CoroutineScope,
     ) {
-        val viewportHeight = listState.layoutInfo.let {
-            it.viewportEndOffset - it.viewportStartOffset
-        }.toFloat()
+        val layout = listState.layoutInfo
+        val viewportHeight = (layout.viewportEndOffset - layout.viewportStartOffset).toFloat()
         val delta = if (forward) viewportHeight * 0.95f else -viewportHeight * 0.95f
         scope.launch { listState.animateScrollBy(delta) }
     }

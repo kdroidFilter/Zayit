@@ -305,8 +305,9 @@ fun main() {
 
                         // Build dynamic window title: "AppName - CurrentTab"
                         val tabsVm = appGraph.tabsViewModel
-                        val tabs by tabsVm.tabs.collectAsState()
-                        val selectedIndex by tabsVm.selectedTabIndex.collectAsState()
+                        val tabsState by tabsVm.state.collectAsState()
+                        val tabs = tabsState.tabs
+                        val selectedIndex = tabsState.selectedTabIndex
                         val appTitle = stringResource(Res.string.app_name)
                         val selectedTab = tabs.getOrNull(selectedIndex)
                         val rawTitle = selectedTab?.title.orEmpty()

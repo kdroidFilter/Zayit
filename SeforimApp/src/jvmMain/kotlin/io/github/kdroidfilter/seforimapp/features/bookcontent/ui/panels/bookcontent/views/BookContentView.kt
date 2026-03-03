@@ -577,11 +577,7 @@ fun BookContentView(
                 // which can crash when paging composes/uncomposes items.
                 LazyColumn(
                     state = listState,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(end = 16.dp)
-                            .onPreviewKeyEvent(previewKeyHandler),
+                    modifier = Modifier.fillMaxSize().padding(end = 16.dp),
                 ) {
                     items(
                         count = lazyPagingItems.itemCount,

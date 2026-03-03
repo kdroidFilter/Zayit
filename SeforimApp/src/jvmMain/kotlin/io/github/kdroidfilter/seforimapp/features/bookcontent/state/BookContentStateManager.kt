@@ -28,6 +28,12 @@ class BookContentStateManager(
     private fun loadInitialState(): BookContentState {
         val persisted: BookContentPersistedState = persistedStore.get(tabId)?.bookContent ?: BookContentPersistedState()
 
+        // Derive visibility flags so split pane positions match from the first frame
+        val navVisible = persisted.isBookTreeVisible
+        val tocVisible = persisted.isTocVisible
+        val bottomPaneVisible = persisted.showCommentaries || persisted.showSources
+        val targumVisible = persisted.showTargum
+
         return BookContentState(
             tabId = tabId,
             navigation =
@@ -38,7 +44,7 @@ class BookContentStateManager(
                     selectedCategory = null,
                     selectedBook = null,
                     searchText = persisted.navigationSearchText,
-                    isVisible = persisted.isBookTreeVisible,
+                    isVisible = navVisible,
                     scrollIndex = persisted.bookTreeScrollIndex,
                     scrollOffset = persisted.bookTreeScrollOffset,
                 ),
@@ -47,7 +53,7 @@ class BookContentStateManager(
                     expandedEntries = persisted.expandedTocEntryIds,
                     children = emptyMap(),
                     selectedEntryId = persisted.selectedTocEntryId.takeIf { it > 0 },
-                    isVisible = persisted.isTocVisible,
+                    isVisible = tocVisible,
                     scrollIndex = persisted.tocScrollIndex,
                     scrollOffset = persisted.tocScrollOffset,
                 ),
@@ -83,10 +89,26 @@ class BookContentStateManager(
                 ),
             layout =
                 LayoutState(
-                    mainSplitState = SplitPaneState(initialPositionPercentage = persisted.mainSplitPosition, moveEnabled = true),
-                    tocSplitState = SplitPaneState(initialPositionPercentage = persisted.tocSplitPosition, moveEnabled = true),
-                    contentSplitState = SplitPaneState(initialPositionPercentage = persisted.contentSplitPosition, moveEnabled = true),
-                    targumSplitState = SplitPaneState(initialPositionPercentage = persisted.targumSplitPosition, moveEnabled = true),
+                    mainSplitState =
+                        SplitPaneState(
+                            initialPositionPercentage = if (navVisible) persisted.mainSplitPosition else 0f,
+                            moveEnabled = navVisible,
+                        ),
+                    tocSplitState =
+                        SplitPaneState(
+                            initialPositionPercentage = if (tocVisible) persisted.tocSplitPosition else 0f,
+                            moveEnabled = tocVisible,
+                        ),
+                    contentSplitState =
+                        SplitPaneState(
+                            initialPositionPercentage = if (bottomPaneVisible) persisted.contentSplitPosition else 1f,
+                            moveEnabled = bottomPaneVisible,
+                        ),
+                    targumSplitState =
+                        SplitPaneState(
+                            initialPositionPercentage = if (targumVisible) persisted.targumSplitPosition else 1f,
+                            moveEnabled = targumVisible,
+                        ),
                     previousPositions =
                         PreviousPositions(
                             main = persisted.previousMainSplitPosition,

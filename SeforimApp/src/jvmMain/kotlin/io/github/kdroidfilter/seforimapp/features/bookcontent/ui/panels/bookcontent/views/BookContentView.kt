@@ -5,7 +5,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -470,17 +469,18 @@ fun BookContentView(
         forward: Boolean,
         @StructuredScope scope: CoroutineScope,
     ) {
-        val layout = listState.layoutInfo
-        val viewportHeight = (layout.viewportEndOffset - layout.viewportStartOffset).toFloat()
-        val delta = if (forward) viewportHeight * 0.95f else -viewportHeight * 0.95f
-        scope.launch {
-            listState.animateScrollBy(delta)
-            // Snap so the first visible line is fully shown (not cut off at the top)
-            val offset = listState.firstVisibleItemScrollOffset
-            if (offset > 0) {
-                listState.animateScrollBy((-offset).toFloat())
+        val visibleItems = listState.layoutInfo.visibleItemsInfo
+        if (visibleItems.isEmpty()) return
+        val targetIndex =
+            if (forward) {
+                val viewportEnd = listState.layoutInfo.viewportEndOffset
+                val lastFully = visibleItems.lastOrNull { it.offset + it.size <= viewportEnd }
+                (lastFully ?: visibleItems.last()).index
+            } else {
+                val count = visibleItems.size.coerceAtLeast(1)
+                (listState.firstVisibleItemIndex - count + 1).coerceAtLeast(0)
             }
-        }
+        scope.launch { listState.animateScrollToItem(targetIndex, 0) }
     }
 
     // Global preview handler: handle basic navigation keys regardless of inner focus

@@ -579,9 +579,11 @@ fun BookContentView(
                                     Color.Transparent
                                 }
 
-                            // Alt headings outside the selection bar for primary/thick bar,
-                            // inside for secondary/thin bar to keep the bar continuous.
-                            if (altHeadings.isNotEmpty() && useThickBar) {
+                            // Alt headings outside the selection bar only for the primary
+                            // TOC heading line; everywhere else they go inside to keep
+                            // the bar continuous (Ctrl+click and secondary TOC lines).
+                            val altHeadingsOutside = isTocEntrySelection && useThickBar
+                            if (altHeadings.isNotEmpty() && altHeadingsOutside) {
                                 Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp)) {
                                     altHeadings.forEach { entry ->
                                         AltHeadingItem(
@@ -610,7 +612,7 @@ fun BookContentView(
                                 Column(
                                     modifier = Modifier.weight(1f).padding(vertical = 8.dp),
                                 ) {
-                                    if (altHeadings.isNotEmpty() && !useThickBar) {
+                                    if (altHeadings.isNotEmpty() && !altHeadingsOutside) {
                                         altHeadings.forEach { entry ->
                                             AltHeadingItem(
                                                 entryId = entry.id,

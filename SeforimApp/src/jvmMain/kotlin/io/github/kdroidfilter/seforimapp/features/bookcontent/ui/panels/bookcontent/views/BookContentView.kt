@@ -557,17 +557,15 @@ fun BookContentView(
                         if (line != null) {
                             val altHeadings = altHeadingsByLineId[line.id]
                             val isCurrentSelected = line.id in selectedLineIds
-                            // Thin bar only for secondary lines in a TOC selection; default to thick
-                            // (including unselected lines) so the bar width stays constant.
-                            val useThickBar =
-                                !isCurrentSelected || line.id == primarySelectedLineId || !isTocEntrySelection
+                            val useThickBar = line.id == primarySelectedLineId || !isTocEntrySelection
                             // Check if next line is also selected with same bar style to extend downward
                             val nextLineId = if (index < lazyPagingItems.itemCount - 1) lazyPagingItems.peek(index + 1)?.id else null
-                            val nextIsSelected = nextLineId != null && nextLineId in selectedLineIds
-                            val nextUseThickBar =
-                                !nextIsSelected || nextLineId == primarySelectedLineId || !isTocEntrySelection
+                            val nextUseThickBar = nextLineId == primarySelectedLineId || !isTocEntrySelection
                             val isNextSelected =
-                                isCurrentSelected && nextIsSelected && nextUseThickBar == useThickBar
+                                isCurrentSelected &&
+                                    nextLineId != null &&
+                                    nextLineId in selectedLineIds &&
+                                    nextUseThickBar == useThickBar
 
                             val borderColor =
                                 if (isCurrentSelected) {
@@ -943,22 +941,24 @@ private fun SelectionBar(
     color: Color,
     isPrimary: Boolean = true,
 ) {
-    val barWidth = if (isPrimary) 4.dp else 2.dp
-    // Only extend downward to bridge the gap to the next item.
+    // Layout always occupies 4.dp so switching between thick/thin doesn't shift content.
+    val drawWidth = if (isPrimary) 4.dp else 2.dp
     val extendBottom = isSelected && isNextSelected
     Box(
         modifier =
             Modifier
-                .width(barWidth)
+                .width(4.dp)
                 .fillMaxHeight()
                 .zIndex(1f)
                 .graphicsLayer { clip = false }
                 .drawBehind {
                     val extraBottom = if (extendBottom) 8.dp.toPx() else 0f
+                    val w = drawWidth.toPx()
+                    val offsetX = (size.width - w) / 2f
                     drawRect(
                         color = color,
-                        topLeft = Offset.Zero,
-                        size = Size(size.width, size.height + extraBottom),
+                        topLeft = Offset(offsetX, 0f),
+                        size = Size(w, size.height + extraBottom),
                     )
                 },
     )

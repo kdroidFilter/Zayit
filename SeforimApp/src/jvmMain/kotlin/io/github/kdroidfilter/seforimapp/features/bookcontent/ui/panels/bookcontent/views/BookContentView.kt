@@ -85,6 +85,7 @@ fun BookContentView(
     tabId: String,
     showDiacritics: Boolean,
     modifier: Modifier = Modifier,
+    isTocEntrySelection: Boolean = false,
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
     scrollOffset: Int = 0,
@@ -556,18 +557,20 @@ fun BookContentView(
                         if (line != null) {
                             val altHeadings = altHeadingsByLineId[line.id]
                             val isCurrentSelected = line.id in selectedLineIds
-                            val isCurrentPrimary = line.id == primarySelectedLineId
+                            // Primary bar style only differs from secondary in TOC entry selection mode
+                            val useThickBar = line.id == primarySelectedLineId || !isTocEntrySelection
                             // Check if next line is also selected with same bar style to extend downward
                             val nextLineId = if (index < lazyPagingItems.itemCount - 1) lazyPagingItems.peek(index + 1)?.id else null
+                            val nextUseThickBar = nextLineId == primarySelectedLineId || !isTocEntrySelection
                             val isNextSelected =
                                 isCurrentSelected &&
                                     nextLineId != null &&
                                     nextLineId in selectedLineIds &&
-                                    (nextLineId == primarySelectedLineId) == isCurrentPrimary
+                                    nextUseThickBar == useThickBar
 
                             val borderColor =
                                 if (isCurrentSelected) {
-                                    if (isCurrentPrimary) {
+                                    if (useThickBar) {
                                         JewelTheme.globalColors.outlines.focused
                                     } else {
                                         JewelTheme.globalColors.borders.normal
@@ -599,7 +602,7 @@ fun BookContentView(
                                     isSelected = isCurrentSelected,
                                     isNextSelected = isNextSelected,
                                     color = borderColor,
-                                    isPrimary = isCurrentPrimary,
+                                    isPrimary = useThickBar,
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column(
@@ -612,7 +615,7 @@ fun BookContentView(
                                         onClick = { isModifier -> onLineSelect(line, isModifier) },
                                         scrollToLineTimestamp = scrollToLineTimestamp,
                                         isSelected = isCurrentSelected,
-                                        isPrimary = isCurrentPrimary,
+                                        isPrimary = useThickBar,
                                         baseTextSize = textSize,
                                         lineHeight = lineHeight,
                                         boldScale = boldScaleForPlatform,

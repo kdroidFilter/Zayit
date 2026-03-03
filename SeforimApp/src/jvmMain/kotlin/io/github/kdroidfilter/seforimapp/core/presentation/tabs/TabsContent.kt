@@ -64,8 +64,9 @@ fun TabsContent() {
     val searchHomeViewModel = appGraph.searchHomeViewModel
     val persistedStore = appGraph.tabPersistedStateStore
 
-    val tabs by tabsViewModel.tabs.collectAsState()
-    val selectedTabIndex by tabsViewModel.selectedTabIndex.collectAsState()
+    val tabsState by tabsViewModel.state.collectAsState()
+    val tabs = tabsState.tabs
+    val selectedTabIndex = tabsState.selectedTabIndex
     val isRestoringSession by SessionManager.isRestoringSession.collectAsState()
 
     val searchUi by remember(searchHomeViewModel) { searchHomeViewModel.uiState }.collectAsState()
@@ -74,7 +75,7 @@ fun TabsContent() {
     // Helper to get current tab ID
     val currentTabId by remember {
         derivedStateOf {
-            tabs.getOrNull(selectedTabIndex)?.destination?.tabId
+            tabsState.tabs.getOrNull(tabsState.selectedTabIndex)?.destination?.tabId
         }
     }
 

@@ -565,6 +565,10 @@ private fun RtlAwareTab(
     }
 
     var closeButtonState by remember(isActive) { mutableStateOf(ButtonState.of(active = isActive)) }
+    val dragAlpha by animateFloatAsState(
+        targetValue = if (isDragging) 0.7f else 1f,
+        animationSpec = tween(durationMillis = 150),
+    )
     val isIslands = ThemeUtils.isIslandsStyle()
     val lineColor by tabStyle.colors.underlineFor(tabState)
     val lineThickness = tabStyle.metrics.underlineThickness
@@ -627,7 +631,7 @@ private fun RtlAwareTab(
                             m
                         }
                     }.background(backgroundColor)
-                    .alpha(if (isDragging) 0.7f else 1f) // Visual feedback when dragging
+                    .alpha(dragAlpha)
                     .onGloballyPositioned { coords ->
                         val pos = coords.positionInWindow()
                         anchorOffset = IntOffset(pos.x.roundToInt(), pos.y.roundToInt())

@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -643,7 +641,6 @@ fun BookContentView(
                                             lineContent = line.content,
                                             fontFamily = hebrewFontFamily,
                                             onClick = { isModifier -> onLineSelect(line, isModifier) },
-                                            scrollToLineTimestamp = scrollToLineTimestamp,
                                             isSelected = isCurrentSelected,
                                             isPrimary = useThickBar,
                                             baseTextSize = textSize,
@@ -845,7 +842,6 @@ private fun LineItem(
     lineContent: String,
     fontFamily: FontFamily,
     onClick: (isModifierPressed: Boolean) -> Unit,
-    scrollToLineTimestamp: Long,
     isSelected: Boolean = false,
     isPrimary: Boolean = false,
     baseTextSize: Float = 16f,
@@ -919,24 +915,9 @@ private fun LineItem(
             }
         }
 
-    val bringRequester = remember { BringIntoViewRequester() }
-
-    // On navigation/explicit request, bring the primary selected line minimally into view.
-    // Only the primary line triggers scroll to avoid section selection pushing viewport to the middle.
-    LaunchedEffect(isPrimary, scrollToLineTimestamp) {
-        if (isPrimary && scrollToLineTimestamp != 0L) {
-            try {
-                bringRequester.bringIntoView()
-            } catch (_: Throwable) {
-                // no-op: layout might not be ready yet
-            }
-        }
-    }
-
     val textModifier =
-        remember {
-            Modifier.fillMaxWidth()
-        }.bringIntoViewRequester(bringRequester)
+        Modifier
+            .fillMaxWidth()
             .pointerInput(lineId) {
                 awaitEachGesture {
                     // Wait for press and capture keyboard modifiers from the event

@@ -557,8 +557,8 @@ fun BookContentView(
                 .fillMaxSize()
                 .graphicsLayer { alpha = contentAlpha } // Hide until positioned to prevent glitch
                 .focusRequester(focusRequester)
-                .focusable()
                 .onPreviewKeyEvent(previewKeyHandler)
+                .focusable()
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         val event = awaitPointerEvent(PointerEventPass.Initial)

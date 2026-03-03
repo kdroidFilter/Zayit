@@ -75,7 +75,10 @@ fun TabsContent() {
     // Helper to get current tab ID
     val currentTabId by remember {
         derivedStateOf {
-            tabsState.tabs.getOrNull(tabsState.selectedTabIndex)?.destination?.tabId
+            tabsState.tabs
+                .getOrNull(tabsState.selectedTabIndex)
+                ?.destination
+                ?.tabId
         }
     }
 

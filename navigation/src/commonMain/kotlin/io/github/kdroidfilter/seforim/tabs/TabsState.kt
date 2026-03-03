@@ -11,5 +11,4 @@ data class TabsState(
 )
 
 @Composable
-fun rememberTabsState(viewModel: TabsViewModel): TabsState =
-    viewModel.state.collectAsState().value
+fun rememberTabsState(viewModel: TabsViewModel): TabsState = viewModel.state.collectAsState().value

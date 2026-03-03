@@ -223,21 +223,8 @@ class ContentUseCase(
         return line
     }
 
-    private suspend fun buildTocPathToRoot(startId: Long): List<io.github.kdroidfilter.seforimlibrary.core.models.TocEntry> {
-        val path = mutableListOf<io.github.kdroidfilter.seforimlibrary.core.models.TocEntry>()
-        var currentId: Long? = startId
-        var safety = 0
-        while (currentId != null && safety++ < 200) {
-            val entry = repository.getTocEntry(currentId)
-            if (entry != null) {
-                path.add(0, entry)
-                currentId = entry.parentId
-            } else {
-                break
-            }
-        }
-        return path
-    }
+    private suspend fun buildTocPathToRoot(startId: Long): List<io.github.kdroidfilter.seforimlibrary.core.models.TocEntry> =
+        repository.getAncestorPath(startId)
 
     /**
      * Navigue vers la ligne précédente

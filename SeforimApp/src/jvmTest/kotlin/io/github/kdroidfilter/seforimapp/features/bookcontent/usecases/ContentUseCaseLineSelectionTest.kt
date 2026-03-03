@@ -42,6 +42,7 @@ class ContentUseCaseLineSelectionTest {
         coEvery { repository.getLineIdsForTocEntry(any()) } returns emptyList()
         coEvery { repository.getLine(any()) } returns null
         coEvery { repository.getTocEntry(any()) } returns null
+        coEvery { repository.getAncestorPath(any()) } returns emptyList()
     }
 
     // ==================== selectLine Tests ====================
@@ -248,8 +249,7 @@ class ContentUseCaseLineSelectionTest {
             val parentToc = TestFactories.createTocEntry(id = 1L, bookId = 100L, text = "Part I")
 
             coEvery { repository.getTocEntryIdForLine(line.id) } returns tocEntry.id
-            coEvery { repository.getTocEntry(tocEntry.id) } returns tocEntry.copy(parentId = parentToc.id)
-            coEvery { repository.getTocEntry(parentToc.id) } returns parentToc
+            coEvery { repository.getAncestorPath(tocEntry.id) } returns listOf(parentToc, tocEntry.copy(parentId = parentToc.id))
 
             // When: Selecting the line
             useCase.selectLine(line, isModifierPressed = false)

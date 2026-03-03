@@ -156,15 +156,24 @@ private fun BookContentPanelContent(
         }
 
     val isIslands = ThemeUtils.isIslandsStyle()
+    val hasBottomPane = uiState.content.showCommentaries || uiState.content.showSources
+    val panelBackground = JewelTheme.globalColors.panelBackground
+
     val paneCardModifier =
-        if (isIslands) {
-            Modifier
-                .fillMaxSize()
-                .padding(vertical = 6.dp, horizontal = 4.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(JewelTheme.globalColors.panelBackground)
-        } else {
-            Modifier
+        remember(isIslands, panelBackground) {
+            islandsCardModifier(isIslands, panelBackground)
+        }
+    val topPaneCardModifier =
+        remember(isIslands, hasBottomPane, panelBackground) {
+            if (hasBottomPane) {
+                islandsCardModifier(isIslands, panelBackground, bottom = 3.dp)
+            } else {
+                islandsCardModifier(isIslands, panelBackground)
+            }
+        }
+    val bottomPaneCardModifier =
+        remember(isIslands, panelBackground) {
+            islandsCardModifier(isIslands, panelBackground, top = 3.dp)
         }
 
     // Collect paging data here to keep BookContentView skippable
@@ -189,7 +198,7 @@ private fun BookContentPanelContent(
                             onEvent = onEvent,
                             tabId = uiState.tabId,
                             showDiacritics = showDiacritics,
-                            modifier = paneCardModifier,
+                            modifier = topPaneCardModifier,
                             preservedListState = bookListState,
                             scrollIndex = uiState.content.scrollIndex,
                             scrollOffset = uiState.content.scrollOffset,
@@ -222,7 +231,7 @@ private fun BookContentPanelContent(
                                     onEvent = onEvent,
                                     lineConnections = connectionsCache,
                                     showDiacritics = showDiacritics,
-                                    modifier = paneCardModifier,
+                                    modifier = topPaneCardModifier,
                                 )
                             }
                         } else {
@@ -239,7 +248,7 @@ private fun BookContentPanelContent(
                                 onEvent = onEvent,
                                 lineConnections = connectionsCache,
                                 showDiacritics = showDiacritics,
-                                modifier = paneCardModifier,
+                                modifier = bottomPaneCardModifier,
                             )
                         }
                     }
@@ -251,7 +260,7 @@ private fun BookContentPanelContent(
                                 onEvent = onEvent,
                                 lineConnections = connectionsCache,
                                 showDiacritics = showDiacritics,
-                                modifier = paneCardModifier,
+                                modifier = bottomPaneCardModifier,
                             )
                         }
                     }
@@ -363,3 +372,19 @@ private fun BreadcrumbSection(
         )
     }
 }
+
+private fun islandsCardModifier(
+    isIslands: Boolean,
+    panelBackground: androidx.compose.ui.graphics.Color,
+    top: Dp = 6.dp,
+    bottom: Dp = 6.dp,
+): Modifier =
+    if (isIslands) {
+        Modifier
+            .fillMaxSize()
+            .padding(top = top, bottom = bottom, start = 4.dp, end = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(panelBackground)
+    } else {
+        Modifier
+    }

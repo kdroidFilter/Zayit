@@ -595,6 +595,15 @@ fun BookContentView(
                             val isNextSelected =
                                 shouldExtendToNext(isCurrentSelected, nextLineId, selectedLineIds, useThickBar, nextUseThickBar)
 
+                            val prevLineId =
+                                if (index > 0) lazyPagingItems.peek(index - 1)?.id else null
+                            val isPrevSelected =
+                                prevLineId != null && prevLineId in selectedLineIds
+                            // Alt headings go inside the selection bar only when
+                            // the previous line is also selected (consecutive selection).
+                            val altHeadingsInsideBar =
+                                isCurrentSelected && isPrevSelected && altHeadings.isNotEmpty()
+
                             val borderColor =
                                 if (isCurrentSelected) {
                                     if (useThickBar) {
@@ -605,6 +614,23 @@ fun BookContentView(
                                 } else {
                                     Color.Transparent
                                 }
+
+                            // Alt headings outside the selection bar when line is
+                            // selected alone or is the first in a consecutive selection
+                            if (altHeadings.isNotEmpty() && !altHeadingsInsideBar) {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 8.dp).padding(start = 12.dp),
+                                ) {
+                                    altHeadings.forEach { entry ->
+                                        AltHeadingItem(
+                                            entryId = entry.id,
+                                            level = entry.level,
+                                            text = entry.text,
+                                            onClick = { onLineSelect(line, false) },
+                                        )
+                                    }
+                                }
+                            }
 
                             Row(
                                 modifier =
@@ -623,8 +649,8 @@ fun BookContentView(
                                 Column(
                                     modifier = Modifier.weight(1f),
                                 ) {
-                                    if (altHeadings.isNotEmpty()) {
-                                        Column(modifier = Modifier.padding(start = 12.dp)) {
+                                    if (altHeadingsInsideBar) {
+                                        Column {
                                             altHeadings.forEach { entry ->
                                                 AltHeadingItem(
                                                     entryId = entry.id,

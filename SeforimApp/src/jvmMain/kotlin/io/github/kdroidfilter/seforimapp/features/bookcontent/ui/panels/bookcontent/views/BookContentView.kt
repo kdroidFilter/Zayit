@@ -36,7 +36,6 @@ import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -557,41 +556,28 @@ fun BookContentView(
                         if (line != null) {
                             val altHeadings = altHeadingsByLineId[line.id]
                             val isCurrentSelected = line.id in selectedLineIds
-                            // Check adjacent lines for continuous selection bar
-                            val isPrevSelected =
-                                isCurrentSelected &&
-                                    index > 0 &&
-                                    lazyPagingItems.peek(index - 1)?.id in selectedLineIds
+                            val isCurrentPrimary = line.id == primarySelectedLineId
+                            // Check if next line is also selected with same bar style to extend downward
+                            val nextLineId = if (index < lazyPagingItems.itemCount - 1) lazyPagingItems.peek(index + 1)?.id else null
                             val isNextSelected =
                                 isCurrentSelected &&
-                                    index < lazyPagingItems.itemCount - 1 &&
-                                    lazyPagingItems.peek(index + 1)?.id in selectedLineIds
+                                    nextLineId != null &&
+                                    nextLineId in selectedLineIds &&
+                                    (nextLineId == primarySelectedLineId) == isCurrentPrimary
 
                             val borderColor =
                                 if (isCurrentSelected) {
-                                    JewelTheme.globalColors.outlines.focused
+                                    if (isCurrentPrimary) {
+                                        JewelTheme.globalColors.outlines.focused
+                                    } else {
+                                        JewelTheme.globalColors.borders.normal
+                                    }
                                 } else {
                                     Color.Transparent
                                 }
 
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 8.dp)
-                                        .height(IntrinsicSize.Min),
-                            ) {
-                                // Selection bar - covers AltHeadings + LineItem
-                                SelectionBar(
-                                    isSelected = isCurrentSelected,
-                                    isPreviousSelected = isPrevSelected,
-                                    isNextSelected = isNextSelected,
-                                    color = borderColor,
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column(
-                                    modifier = Modifier.weight(1f).padding(vertical = 8.dp),
-                                ) {
+                            if (altHeadings.isNotEmpty()) {
+                                Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp)) {
                                     altHeadings.forEach { entry ->
                                         AltHeadingItem(
                                             entryId = entry.id,
@@ -600,6 +586,25 @@ fun BookContentView(
                                             onClick = { onLineSelect(line, false) },
                                         )
                                     }
+                                }
+                            }
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp)
+                                        .height(IntrinsicSize.Min),
+                            ) {
+                                SelectionBar(
+                                    isSelected = isCurrentSelected,
+                                    isNextSelected = isNextSelected,
+                                    color = borderColor,
+                                    isPrimary = isCurrentPrimary,
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column(
+                                    modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                                ) {
                                     LineItem(
                                         lineId = line.id,
                                         lineContent = line.content,
@@ -607,6 +612,7 @@ fun BookContentView(
                                         onClick = { isModifier -> onLineSelect(line, isModifier) },
                                         scrollToLineTimestamp = scrollToLineTimestamp,
                                         isSelected = isCurrentSelected,
+                                        isPrimary = isCurrentPrimary,
                                         baseTextSize = textSize,
                                         lineHeight = lineHeight,
                                         boldScale = boldScaleForPlatform,
@@ -807,6 +813,7 @@ private fun LineItem(
     onClick: (isModifierPressed: Boolean) -> Unit,
     scrollToLineTimestamp: Long,
     isSelected: Boolean = false,
+    isPrimary: Boolean = false,
     baseTextSize: Float = 16f,
     lineHeight: Float = 1.5f,
     boldScale: Float = 1.0f,
@@ -880,9 +887,10 @@ private fun LineItem(
 
     val bringRequester = remember { BringIntoViewRequester() }
 
-    // On navigation/explicit request, bring the selected line minimally into view
-    LaunchedEffect(isSelected, scrollToLineTimestamp) {
-        if (isSelected && scrollToLineTimestamp != 0L) {
+    // On navigation/explicit request, bring the primary selected line minimally into view.
+    // Only the primary line triggers scroll to avoid section selection pushing viewport to the middle.
+    LaunchedEffect(isPrimary, scrollToLineTimestamp) {
+        if (isPrimary && scrollToLineTimestamp != 0L) {
             try {
                 bringRequester.bringIntoView()
             } catch (_: Throwable) {
@@ -920,36 +928,31 @@ private fun LineItem(
 
 /**
  * Selection bar that extends into adjacent padding when consecutive lines are selected.
+ * [isPrimary] controls the bar thickness: 4.dp for the primary line, 1.5.dp for secondary.
  */
 @Composable
 private fun SelectionBar(
     isSelected: Boolean,
-    isPreviousSelected: Boolean,
     isNextSelected: Boolean,
     color: Color,
+    isPrimary: Boolean = true,
 ) {
-    val extendTop = isSelected && isPreviousSelected
+    val barWidth = if (isPrimary) 4.dp else 2.dp
+    // Only extend downward to bridge the gap to the next item.
     val extendBottom = isSelected && isNextSelected
     Box(
         modifier =
             Modifier
-                .width(4.dp)
+                .width(barWidth)
                 .fillMaxHeight()
                 .zIndex(1f)
-                .layout { measurable, constraints ->
-                    val placeable = measurable.measure(constraints)
-                    val extraTop = if (extendTop) 8.dp.roundToPx() else 0
-                    layout(placeable.width, placeable.height) {
-                        placeable.place(0, -extraTop)
-                    }
-                }.graphicsLayer { clip = false }
+                .graphicsLayer { clip = false }
                 .drawBehind {
-                    val extraTop = if (extendTop) 8.dp.toPx() else 0f
                     val extraBottom = if (extendBottom) 8.dp.toPx() else 0f
                     drawRect(
                         color = color,
-                        topLeft = Offset(0f, -extraTop),
-                        size = Size(size.width, size.height + extraTop + extraBottom),
+                        topLeft = Offset.Zero,
+                        size = Size(size.width, size.height + extraBottom),
                     )
                 },
     )

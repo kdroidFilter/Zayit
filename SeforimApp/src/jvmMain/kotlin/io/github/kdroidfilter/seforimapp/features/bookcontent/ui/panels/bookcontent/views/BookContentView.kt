@@ -942,21 +942,21 @@ private fun LineItem(
         }
 
     val textModifier =
-        Modifier
-            .fillMaxWidth()
-            .pointerInput(lineId) {
-                awaitEachGesture {
-                    // Wait for press and capture keyboard modifiers from the event
-                    val downEvent = awaitPointerEvent(PointerEventPass.Main)
-                    if (!downEvent.buttons.isPrimaryPressed) return@awaitEachGesture
-                    val isModifier = downEvent.keyboardModifiers.isCtrlPressed || downEvent.keyboardModifiers.isMetaPressed
-                    // Wait for release
-                    val up = waitForUpOrCancellation()
-                    if (up != null && !up.isConsumed) {
-                        onClick(isModifier)
-                    }
+        remember(lineId) {
+            Modifier.fillMaxWidth()
+        }.pointerInput(lineId) {
+            awaitEachGesture {
+                // Wait for press and capture keyboard modifiers from the event
+                val downEvent = awaitPointerEvent(PointerEventPass.Main)
+                if (!downEvent.buttons.isPrimaryPressed) return@awaitEachGesture
+                val isModifier = downEvent.keyboardModifiers.isCtrlPressed || downEvent.keyboardModifiers.isMetaPressed
+                // Wait for release
+                val up = waitForUpOrCancellation()
+                if (up != null && !up.isConsumed) {
+                    onClick(isModifier)
                 }
             }
+        }
 
     Text(
         text = displayText,

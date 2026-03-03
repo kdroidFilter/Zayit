@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.sp
  *       2. Extract footnotes to separate books with links at database generation level
  *       See: https://github.com/kdroidFilter/SeforimApp - footnotes issue
  */
+private val htmlParser = HtmlParser()
+
 fun buildAnnotatedFromHtml(
     html: String,
     baseTextSize: Float,
@@ -34,7 +36,7 @@ fun buildAnnotatedFromHtml(
     footnoteMarkerColor: Color = Color(0xFF1976D2),
     footnoteContentColor: Color = Color.Unspecified,
 ): AnnotatedString {
-    val parsedElements = HtmlParser().parse(html)
+    val parsedElements = htmlParser.parse(html)
 
     // Optimization: we only add styles if necessary
     val headerSizes =

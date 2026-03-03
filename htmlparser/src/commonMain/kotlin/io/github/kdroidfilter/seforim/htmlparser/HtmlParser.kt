@@ -20,6 +20,10 @@ data class ParsedHtmlElement(
 )
 
 class HtmlParser {
+    companion object {
+        private val WHITESPACE_REGEX = Regex("\\s+")
+    }
+
     fun parse(html: String): List<ParsedHtmlElement> {
         val doc = Jsoup.parse(html)
         val out = mutableListOf<ParsedHtmlElement>()
@@ -147,7 +151,7 @@ class HtmlParser {
         isFootnoteContent: Boolean,
     ) {
         // Normalizes multiple spaces into a single space, but preserves leading/trailing spaces
-        val normalizedText = textRaw.replace(Regex("\\s+"), " ")
+        val normalizedText = textRaw.replace(WHITESPACE_REGEX, " ")
 
         // Preserve whitespace-only nodes so inline tags do not collapse words
         if (normalizedText.isBlank()) {

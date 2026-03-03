@@ -260,10 +260,6 @@ class ContentUseCase(
             if (previousLine != null) {
                 debugln { "[navigateToPreviousLine] Found line at index ${previousLine.lineIndex}" }
                 selectLine(previousLine)
-
-                stateManager.updateContent {
-                    copy(scrollToLineTimestamp = System.currentTimeMillis())
-                }
             }
 
             previousLine
@@ -292,10 +288,6 @@ class ContentUseCase(
             if (nextLine != null) {
                 debugln { "[navigateToNextLine] Found line at index ${nextLine.lineIndex}" }
                 selectLine(nextLine)
-
-                stateManager.updateContent {
-                    copy(scrollToLineTimestamp = System.currentTimeMillis())
-                }
             }
 
             nextLine

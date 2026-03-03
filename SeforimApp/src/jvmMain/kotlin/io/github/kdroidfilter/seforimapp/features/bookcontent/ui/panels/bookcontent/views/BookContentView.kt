@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -188,13 +186,14 @@ fun BookContentView(
         }
     }
 
-    // Ensure the selected line is visible when explicitly requested (keyboard/nav)
-    // without forcing it to the very top of the viewport.
+    // Ensure the selected line is visible when selection changes (keyboard nav or explicit request).
+    // Only scrolls if the line is outside the visible viewport.
     LaunchedEffect(scrollToLineTimestamp, primarySelectedLineId, topAnchorTimestamp, topAnchorLineId) {
-        if (scrollToLineTimestamp == 0L || primarySelectedLineId == null) return@LaunchedEffect
+        if (primarySelectedLineId == null) return@LaunchedEffect
 
         // Skip minimal bring-into-view when a top-anchoring request is active for this selection
-        val isTopAnchorRequest = (topAnchorTimestamp == scrollToLineTimestamp && topAnchorLineId == primarySelectedLineId)
+        val isTopAnchorRequest =
+            scrollToLineTimestamp != 0L && topAnchorTimestamp == scrollToLineTimestamp && topAnchorLineId == primarySelectedLineId
         if (isTopAnchorRequest) return@LaunchedEffect
 
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
@@ -204,15 +203,20 @@ fun BookContentView(
         val snapshot = lazyPagingItems.itemSnapshotList
         val index = snapshot.indices.firstOrNull { snapshot[it]?.id == primarySelectedLineId }
         if (index != null) {
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val viewportEnd = layoutInfo.viewportEndOffset
             val first = listState.firstVisibleItemIndex
-            val last =
-                listState.layoutInfo.visibleItemsInfo
-                    .lastOrNull()
-                    ?.index ?: first
-            if (index < first || index > last) {
-                // Scroll just enough so the item is not glued to the top
-                val targetOffsetPx = 32 // small top padding in px; minimal jump
-                listState.scrollToItem(index, targetOffsetPx)
+            val itemInfo = visibleItems.firstOrNull { it.index == index }
+            val isFullyVisible =
+                isLineFullyVisible(itemInfo?.offset, itemInfo?.size, viewportEnd)
+            if (!isFullyVisible) {
+                if (index <= first) {
+                    listState.scrollToItem(index, 0)
+                } else {
+                    // Place the item so its bottom aligns with the viewport bottom
+                    listState.scrollToItem(index, 0)
+                }
             }
         }
     }
@@ -464,6 +468,23 @@ fun BookContentView(
         }
     }
 
+    fun scrollByPage(
+        forward: Boolean,
+        @StructuredScope scope: CoroutineScope,
+    ) {
+        val visibleItems = listState.layoutInfo.visibleItemsInfo
+        if (visibleItems.isEmpty()) return
+        val targetIndex =
+            computePageScrollTargetIndex(
+                forward = forward,
+                visibleItemIndices = visibleItems.map { it.index },
+                visibleItemEndOffsets = visibleItems.associate { it.index to (it.offset + it.size) },
+                viewportEnd = listState.layoutInfo.viewportEndOffset,
+                firstVisibleItemIndex = listState.firstVisibleItemIndex,
+            ) ?: return
+        scope.launch { listState.animateScrollToItem(targetIndex, 0) }
+    }
+
     // Global preview handler: handle basic navigation keys regardless of inner focus
     val previewKeyHandler =
         remember(onEvent) {
@@ -478,6 +499,16 @@ fun BookContentView(
 
                         Key.DirectionDown -> {
                             onEvent(BookContentEvent.NavigateToNextLine)
+                            true
+                        }
+
+                        Key.PageUp -> {
+                            scrollByPage(forward = false, scope)
+                            true
+                        }
+
+                        Key.PageDown -> {
+                            scrollByPage(forward = true, scope)
                             true
                         }
 
@@ -525,8 +556,8 @@ fun BookContentView(
                 .fillMaxSize()
                 .graphicsLayer { alpha = contentAlpha } // Hide until positioned to prevent glitch
                 .focusRequester(focusRequester)
-                .focusable()
                 .onPreviewKeyEvent(previewKeyHandler)
+                .focusable()
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -563,6 +594,15 @@ fun BookContentView(
                             val isNextSelected =
                                 shouldExtendToNext(isCurrentSelected, nextLineId, selectedLineIds, useThickBar, nextUseThickBar)
 
+                            val prevLineId =
+                                if (index > 0) lazyPagingItems.peek(index - 1)?.id else null
+                            val isPrevSelected =
+                                prevLineId != null && prevLineId in selectedLineIds
+                            // Alt headings go inside the selection bar only when
+                            // the previous line is also selected (consecutive selection).
+                            val altHeadingsInsideBar =
+                                shouldPlaceAltHeadingsInsideBar(isCurrentSelected, isPrevSelected, altHeadings.isNotEmpty())
+
                             val borderColor =
                                 if (isCurrentSelected) {
                                     if (useThickBar) {
@@ -573,6 +613,23 @@ fun BookContentView(
                                 } else {
                                     Color.Transparent
                                 }
+
+                            // Alt headings outside the selection bar when line is
+                            // selected alone or is the first in a consecutive selection
+                            if (altHeadings.isNotEmpty() && !altHeadingsInsideBar) {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 8.dp).padding(start = 12.dp),
+                                ) {
+                                    altHeadings.forEach { entry ->
+                                        AltHeadingItem(
+                                            entryId = entry.id,
+                                            level = entry.level,
+                                            text = entry.text,
+                                            onClick = { onLineSelect(line, false) },
+                                        )
+                                    }
+                                }
+                            }
 
                             Row(
                                 modifier =
@@ -591,8 +648,8 @@ fun BookContentView(
                                 Column(
                                     modifier = Modifier.weight(1f),
                                 ) {
-                                    if (altHeadings.isNotEmpty()) {
-                                        Column(modifier = Modifier.padding(start = 12.dp)) {
+                                    if (altHeadingsInsideBar) {
+                                        Column {
                                             altHeadings.forEach { entry ->
                                                 AltHeadingItem(
                                                     entryId = entry.id,
@@ -609,7 +666,6 @@ fun BookContentView(
                                             lineContent = line.content,
                                             fontFamily = hebrewFontFamily,
                                             onClick = { isModifier -> onLineSelect(line, isModifier) },
-                                            scrollToLineTimestamp = scrollToLineTimestamp,
                                             isSelected = isCurrentSelected,
                                             isPrimary = useThickBar,
                                             baseTextSize = textSize,
@@ -811,7 +867,6 @@ private fun LineItem(
     lineContent: String,
     fontFamily: FontFamily,
     onClick: (isModifierPressed: Boolean) -> Unit,
-    scrollToLineTimestamp: Long,
     isSelected: Boolean = false,
     isPrimary: Boolean = false,
     baseTextSize: Float = 16f,
@@ -885,37 +940,22 @@ private fun LineItem(
             }
         }
 
-    val bringRequester = remember { BringIntoViewRequester() }
-
-    // On navigation/explicit request, bring the primary selected line minimally into view.
-    // Only the primary line triggers scroll to avoid section selection pushing viewport to the middle.
-    LaunchedEffect(isPrimary, scrollToLineTimestamp) {
-        if (isPrimary && scrollToLineTimestamp != 0L) {
-            try {
-                bringRequester.bringIntoView()
-            } catch (_: Throwable) {
-                // no-op: layout might not be ready yet
-            }
-        }
-    }
-
     val textModifier =
-        remember {
+        remember(lineId) {
             Modifier.fillMaxWidth()
-        }.bringIntoViewRequester(bringRequester)
-            .pointerInput(lineId) {
-                awaitEachGesture {
-                    // Wait for press and capture keyboard modifiers from the event
-                    val downEvent = awaitPointerEvent(PointerEventPass.Main)
-                    if (!downEvent.buttons.isPrimaryPressed) return@awaitEachGesture
-                    val isModifier = downEvent.keyboardModifiers.isCtrlPressed || downEvent.keyboardModifiers.isMetaPressed
-                    // Wait for release
-                    val up = waitForUpOrCancellation()
-                    if (up != null && !up.isConsumed) {
-                        onClick(isModifier)
-                    }
+        }.pointerInput(lineId) {
+            awaitEachGesture {
+                // Wait for press and capture keyboard modifiers from the event
+                val downEvent = awaitPointerEvent(PointerEventPass.Main)
+                if (!downEvent.buttons.isPrimaryPressed) return@awaitEachGesture
+                val isModifier = downEvent.keyboardModifiers.isCtrlPressed || downEvent.keyboardModifiers.isMetaPressed
+                // Wait for release
+                val up = waitForUpOrCancellation()
+                if (up != null && !up.isConsumed) {
+                    onClick(isModifier)
                 }
             }
+        }
 
     Text(
         text = displayText,

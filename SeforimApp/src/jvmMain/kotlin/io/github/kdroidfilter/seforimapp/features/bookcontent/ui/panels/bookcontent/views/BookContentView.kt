@@ -579,19 +579,6 @@ fun BookContentView(
                                     Color.Transparent
                                 }
 
-                            // Alt headings always outside the selection bar
-                            if (altHeadings.isNotEmpty()) {
-                                Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp)) {
-                                    altHeadings.forEach { entry ->
-                                        AltHeadingItem(
-                                            entryId = entry.id,
-                                            level = entry.level,
-                                            text = entry.text,
-                                            onClick = { onLineSelect(line, false) },
-                                        )
-                                    }
-                                }
-                            }
                             Row(
                                 modifier =
                                     Modifier
@@ -607,27 +594,41 @@ fun BookContentView(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column(
-                                    modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                                    modifier = Modifier.weight(1f),
                                 ) {
-                                    LineItem(
-                                        lineId = line.id,
-                                        lineContent = line.content,
-                                        fontFamily = hebrewFontFamily,
-                                        onClick = { isModifier -> onLineSelect(line, isModifier) },
-                                        scrollToLineTimestamp = scrollToLineTimestamp,
-                                        isSelected = isCurrentSelected,
-                                        isPrimary = useThickBar,
-                                        baseTextSize = textSize,
-                                        lineHeight = lineHeight,
-                                        boldScale = boldScaleForPlatform,
-                                        highlightQuery =
-                                            findState.text.toString().takeIf { showFind && !smartModeEnabled },
-                                        highlightTerms = smartHighlightTerms.takeIf { showFind && smartModeEnabled },
-                                        currentMatchStart =
-                                            if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
-                                        annotatedCache = stableAnnotatedCache,
-                                        showDiacritics = showDiacritics,
-                                    )
+                                    if (altHeadings.isNotEmpty()) {
+                                        Column(modifier = Modifier.padding(start = 12.dp)) {
+                                            altHeadings.forEach { entry ->
+                                                AltHeadingItem(
+                                                    entryId = entry.id,
+                                                    level = entry.level,
+                                                    text = entry.text,
+                                                    onClick = { onLineSelect(line, false) },
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Box(modifier = Modifier.padding(vertical = 8.dp)) {
+                                        LineItem(
+                                            lineId = line.id,
+                                            lineContent = line.content,
+                                            fontFamily = hebrewFontFamily,
+                                            onClick = { isModifier -> onLineSelect(line, isModifier) },
+                                            scrollToLineTimestamp = scrollToLineTimestamp,
+                                            isSelected = isCurrentSelected,
+                                            isPrimary = useThickBar,
+                                            baseTextSize = textSize,
+                                            lineHeight = lineHeight,
+                                            boldScale = boldScaleForPlatform,
+                                            highlightQuery =
+                                                findState.text.toString().takeIf { showFind && !smartModeEnabled },
+                                            highlightTerms = smartHighlightTerms.takeIf { showFind && smartModeEnabled },
+                                            currentMatchStart =
+                                                if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
+                                            annotatedCache = stableAnnotatedCache,
+                                            showDiacritics = showDiacritics,
+                                        )
+                                    }
                                 }
                             }
                         } else {

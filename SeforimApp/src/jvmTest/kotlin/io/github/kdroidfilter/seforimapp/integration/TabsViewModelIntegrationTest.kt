@@ -5,10 +5,15 @@ import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import java.util.UUID
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,8 +29,11 @@ class TabsViewModelIntegrationTest {
     private lateinit var titleUpdateManager: TabTitleUpdateManager
     private lateinit var viewModel: TabsViewModel
 
+    private val testDispatcher = UnconfinedTestDispatcher()
+
     @BeforeTest
     fun setup() {
+        Dispatchers.setMain(testDispatcher)
         titleUpdateManager = TabTitleUpdateManager()
         val startDestination =
             TabsDestination.BookContent(
@@ -37,6 +45,11 @@ class TabsViewModelIntegrationTest {
                 titleUpdateManager = titleUpdateManager,
                 startDestination = startDestination,
             )
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     // ==================== Initialization Tests ====================
@@ -421,9 +434,6 @@ class TabsViewModelIntegrationTest {
             val newTitle = "Updated Title"
 
             titleUpdateManager.updateTabTitle(tabId, newTitle, TabType.BOOK)
-
-            // Allow the coroutine to process
-            kotlinx.coroutines.delay(100)
 
             val tab =
                 viewModel.state.value.tabs

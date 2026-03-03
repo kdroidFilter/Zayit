@@ -192,6 +192,7 @@ private fun BookContentPanelContent(
                             lazyPagingItems = lazyPagingItems,
                             selectedLineIds = uiState.content.selectedLineIds,
                             primarySelectedLineId = uiState.content.primarySelectedLineId,
+                            isTocEntrySelection = uiState.content.isTocEntrySelection,
                             onLineSelect = { line, isModifier ->
                                 onEvent(BookContentEvent.LineSelected(line, isModifier))
                             },

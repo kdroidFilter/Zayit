@@ -742,7 +742,7 @@ class BookContentViewModel(
                     launch { altTocUseCase.loadStructures(book) }
                     if (resolvedInitialLineId != null && shouldSelectLine) {
                         launch {
-                            loadAndSelectLine(resolvedInitialLineId, recreatePager = false)
+                            loadAndSelectLine(resolvedInitialLineId, recreatePager = false, scroll = false)
                             runSuspendCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
                         }
                     }
@@ -786,10 +786,11 @@ class BookContentViewModel(
         lineId: Long,
         syncAltToc: Boolean = true,
         recreatePager: Boolean = true,
+        scroll: Boolean = true,
     ) {
         val book = stateManager.state.value.navigation.selectedBook ?: return
 
-        contentUseCase.loadAndSelectLine(lineId)?.let { line ->
+        contentUseCase.loadAndSelectLine(lineId, scroll = scroll)?.let { line ->
             if (line.bookId == book.id) {
                 // Recreate pager centered on the line (unless already created with correct position)
                 if (recreatePager) {

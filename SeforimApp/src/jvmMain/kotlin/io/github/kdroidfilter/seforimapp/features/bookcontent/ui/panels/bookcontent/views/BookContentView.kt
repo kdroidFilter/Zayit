@@ -36,7 +36,6 @@ import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -86,6 +85,7 @@ fun BookContentView(
     tabId: String,
     showDiacritics: Boolean,
     modifier: Modifier = Modifier,
+    isTocEntrySelection: Boolean = false,
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
     scrollOffset: Int = 0,
@@ -557,19 +557,19 @@ fun BookContentView(
                         if (line != null) {
                             val altHeadings = altHeadingsByLineId[line.id]
                             val isCurrentSelected = line.id in selectedLineIds
-                            // Check adjacent lines for continuous selection bar
-                            val isPrevSelected =
-                                isCurrentSelected &&
-                                    index > 0 &&
-                                    lazyPagingItems.peek(index - 1)?.id in selectedLineIds
+                            val useThickBar = shouldUseThickBar(line.id, primarySelectedLineId, isTocEntrySelection)
+                            val nextLineId = if (index < lazyPagingItems.itemCount - 1) lazyPagingItems.peek(index + 1)?.id else null
+                            val nextUseThickBar = shouldUseThickBar(nextLineId ?: -1, primarySelectedLineId, isTocEntrySelection)
                             val isNextSelected =
-                                isCurrentSelected &&
-                                    index < lazyPagingItems.itemCount - 1 &&
-                                    lazyPagingItems.peek(index + 1)?.id in selectedLineIds
+                                shouldExtendToNext(isCurrentSelected, nextLineId, selectedLineIds, useThickBar, nextUseThickBar)
 
                             val borderColor =
                                 if (isCurrentSelected) {
-                                    JewelTheme.globalColors.outlines.focused
+                                    if (useThickBar) {
+                                        JewelTheme.globalColors.outlines.focused
+                                    } else {
+                                        JewelTheme.globalColors.borders.normal
+                                    }
                                 } else {
                                     Color.Transparent
                                 }
@@ -581,43 +581,49 @@ fun BookContentView(
                                         .padding(horizontal = 8.dp)
                                         .height(IntrinsicSize.Min),
                             ) {
-                                // Selection bar - covers AltHeadings + LineItem
                                 SelectionBar(
                                     isSelected = isCurrentSelected,
-                                    isPreviousSelected = isPrevSelected,
                                     isNextSelected = isNextSelected,
                                     color = borderColor,
+                                    isPrimary = useThickBar,
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column(
-                                    modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                                    modifier = Modifier.weight(1f),
                                 ) {
-                                    altHeadings.forEach { entry ->
-                                        AltHeadingItem(
-                                            entryId = entry.id,
-                                            level = entry.level,
-                                            text = entry.text,
-                                            onClick = { onLineSelect(line, false) },
+                                    if (altHeadings.isNotEmpty()) {
+                                        Column(modifier = Modifier.padding(start = 12.dp)) {
+                                            altHeadings.forEach { entry ->
+                                                AltHeadingItem(
+                                                    entryId = entry.id,
+                                                    level = entry.level,
+                                                    text = entry.text,
+                                                    onClick = { onLineSelect(line, false) },
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Box(modifier = Modifier.padding(vertical = 8.dp)) {
+                                        LineItem(
+                                            lineId = line.id,
+                                            lineContent = line.content,
+                                            fontFamily = hebrewFontFamily,
+                                            onClick = { isModifier -> onLineSelect(line, isModifier) },
+                                            scrollToLineTimestamp = scrollToLineTimestamp,
+                                            isSelected = isCurrentSelected,
+                                            isPrimary = useThickBar,
+                                            baseTextSize = textSize,
+                                            lineHeight = lineHeight,
+                                            boldScale = boldScaleForPlatform,
+                                            highlightQuery =
+                                                findState.text.toString().takeIf { showFind && !smartModeEnabled },
+                                            highlightTerms = smartHighlightTerms.takeIf { showFind && smartModeEnabled },
+                                            currentMatchStart =
+                                                if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
+                                            annotatedCache = stableAnnotatedCache,
+                                            showDiacritics = showDiacritics,
                                         )
                                     }
-                                    LineItem(
-                                        lineId = line.id,
-                                        lineContent = line.content,
-                                        fontFamily = hebrewFontFamily,
-                                        onClick = { isModifier -> onLineSelect(line, isModifier) },
-                                        scrollToLineTimestamp = scrollToLineTimestamp,
-                                        isSelected = isCurrentSelected,
-                                        baseTextSize = textSize,
-                                        lineHeight = lineHeight,
-                                        boldScale = boldScaleForPlatform,
-                                        highlightQuery =
-                                            findState.text.toString().takeIf { showFind && !smartModeEnabled },
-                                        highlightTerms = smartHighlightTerms.takeIf { showFind && smartModeEnabled },
-                                        currentMatchStart =
-                                            if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
-                                        annotatedCache = stableAnnotatedCache,
-                                        showDiacritics = showDiacritics,
-                                    )
                                 }
                             }
                         } else {
@@ -807,6 +813,7 @@ private fun LineItem(
     onClick: (isModifierPressed: Boolean) -> Unit,
     scrollToLineTimestamp: Long,
     isSelected: Boolean = false,
+    isPrimary: Boolean = false,
     baseTextSize: Float = 16f,
     lineHeight: Float = 1.5f,
     boldScale: Float = 1.0f,
@@ -880,9 +887,10 @@ private fun LineItem(
 
     val bringRequester = remember { BringIntoViewRequester() }
 
-    // On navigation/explicit request, bring the selected line minimally into view
-    LaunchedEffect(isSelected, scrollToLineTimestamp) {
-        if (isSelected && scrollToLineTimestamp != 0L) {
+    // On navigation/explicit request, bring the primary selected line minimally into view.
+    // Only the primary line triggers scroll to avoid section selection pushing viewport to the middle.
+    LaunchedEffect(isPrimary, scrollToLineTimestamp) {
+        if (isPrimary && scrollToLineTimestamp != 0L) {
             try {
                 bringRequester.bringIntoView()
             } catch (_: Throwable) {
@@ -920,15 +928,17 @@ private fun LineItem(
 
 /**
  * Selection bar that extends into adjacent padding when consecutive lines are selected.
+ * [isPrimary] controls the bar thickness: 4.dp for the primary line, 1.5.dp for secondary.
  */
 @Composable
 private fun SelectionBar(
     isSelected: Boolean,
-    isPreviousSelected: Boolean,
     isNextSelected: Boolean,
     color: Color,
+    isPrimary: Boolean = true,
 ) {
-    val extendTop = isSelected && isPreviousSelected
+    // Layout always occupies 4.dp so switching between thick/thin doesn't shift content.
+    val drawWidth = if (isPrimary) 4.dp else 2.dp
     val extendBottom = isSelected && isNextSelected
     Box(
         modifier =
@@ -936,20 +946,15 @@ private fun SelectionBar(
                 .width(4.dp)
                 .fillMaxHeight()
                 .zIndex(1f)
-                .layout { measurable, constraints ->
-                    val placeable = measurable.measure(constraints)
-                    val extraTop = if (extendTop) 8.dp.roundToPx() else 0
-                    layout(placeable.width, placeable.height) {
-                        placeable.place(0, -extraTop)
-                    }
-                }.graphicsLayer { clip = false }
+                .graphicsLayer { clip = false }
                 .drawBehind {
-                    val extraTop = if (extendTop) 8.dp.toPx() else 0f
                     val extraBottom = if (extendBottom) 8.dp.toPx() else 0f
+                    val w = drawWidth.toPx()
+                    val offsetX = (size.width - w) / 2f
                     drawRect(
                         color = color,
-                        topLeft = Offset(0f, -extraTop),
-                        size = Size(size.width, size.height + extraTop + extraBottom),
+                        topLeft = Offset(offsetX, 0f),
+                        size = Size(w, size.height + extraBottom),
                     )
                 },
     )

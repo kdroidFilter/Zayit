@@ -486,6 +486,27 @@ fun BookContentView(
         scope.launch { listState.animateScrollToItem(targetIndex, 0) }
     }
 
+    fun isSelectedLineVisible(): Boolean {
+        val selId = primarySelectedLineId ?: return false
+        val visibleItems = listState.layoutInfo.visibleItemsInfo
+        val snapshot = lazyPagingItems.itemSnapshotList
+        return visibleItems.any { info ->
+            val line = snapshot.getOrNull(info.index)
+            line?.id == selId
+        }
+    }
+
+    fun selectVisibleEdgeLine(
+        first: Boolean,
+        @StructuredScope scope: CoroutineScope,
+    ) {
+        val visibleItems = listState.layoutInfo.visibleItemsInfo
+        if (visibleItems.isEmpty()) return
+        val targetInfo = if (first) visibleItems.first() else visibleItems.last()
+        val line = lazyPagingItems.itemSnapshotList.getOrNull(targetInfo.index) ?: return
+        scope.launch { onLineSelect(line, false) }
+    }
+
     // Global preview handler: handle basic navigation keys regardless of inner focus
     val previewKeyHandler =
         remember(onEvent) {
@@ -494,12 +515,20 @@ fun BookContentView(
                 if (keyEvent.type == KeyEventType.KeyDown) {
                     when (keyEvent.key) {
                         Key.DirectionUp -> {
-                            onEvent(BookContentEvent.NavigateToPreviousLine)
+                            if (isSelectedLineVisible()) {
+                                onEvent(BookContentEvent.NavigateToPreviousLine)
+                            } else {
+                                selectVisibleEdgeLine(first = true, scope)
+                            }
                             true
                         }
 
                         Key.DirectionDown -> {
-                            onEvent(BookContentEvent.NavigateToNextLine)
+                            if (isSelectedLineVisible()) {
+                                onEvent(BookContentEvent.NavigateToNextLine)
+                            } else {
+                                selectVisibleEdgeLine(first = false, scope)
+                            }
                             true
                         }
 

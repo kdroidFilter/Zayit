@@ -147,7 +147,10 @@ class ContentUseCase(
      * Charge et sélectionne une ligne spécifique.
      * Si la ligne est un TOC heading, sélectionne toutes les lignes de la section.
      */
-    suspend fun loadAndSelectLine(lineId: Long): Line? {
+    suspend fun loadAndSelectLine(
+        lineId: Long,
+        scroll: Boolean = true,
+    ): Line? {
         val line = repository.getLine(lineId)
 
         if (line != null) {
@@ -187,21 +190,30 @@ class ContentUseCase(
                     setOf(line)
                 }
 
-            stateManager.updateContent {
-                copy(
-                    selectedLines = selectedLines,
-                    primarySelectedLineId = line.id,
-                    isTocEntrySelection = headingToc != null,
-                    anchorId = line.id,
-                    anchorIndex = computedAnchorIndex,
-                    // When selection originates from TOC/breadcrumb, force anchoring at top
-                    // by resetting scroll position before pager restoration.
-                    scrollIndex = computedAnchorIndex,
-                    scrollOffset = 0,
-                    scrollToLineTimestamp = System.currentTimeMillis(),
-                    topAnchorLineId = line.id,
-                    topAnchorRequestTimestamp = System.currentTimeMillis(),
-                )
+            if (scroll) {
+                val now = System.currentTimeMillis()
+                stateManager.updateContent {
+                    copy(
+                        selectedLines = selectedLines,
+                        primarySelectedLineId = line.id,
+                        isTocEntrySelection = headingToc != null,
+                        anchorId = line.id,
+                        anchorIndex = computedAnchorIndex,
+                        scrollIndex = computedAnchorIndex,
+                        scrollOffset = 0,
+                        scrollToLineTimestamp = now,
+                        topAnchorLineId = line.id,
+                        topAnchorRequestTimestamp = now,
+                    )
+                }
+            } else {
+                stateManager.updateContent {
+                    copy(
+                        selectedLines = selectedLines,
+                        primarySelectedLineId = line.id,
+                        isTocEntrySelection = headingToc != null,
+                    )
+                }
             }
 
             // Update selected TOC entry for highlighting and breadcrumb path

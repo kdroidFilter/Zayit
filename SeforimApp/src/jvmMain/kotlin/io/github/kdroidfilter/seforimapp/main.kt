@@ -19,8 +19,6 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
@@ -33,6 +31,7 @@ import io.github.kdroidfilter.knotify.compose.builder.notification
 import io.github.kdroidfilter.nucleus.aot.runtime.AotRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.ExecutableRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.SingleInstanceManager
+import io.github.kdroidfilter.nucleus.graalvm.GraalVmInitializer
 import io.github.kdroidfilter.nucleus.window.DecoratedWindow
 import io.github.kdroidfilter.nucleus.window.NucleusDecoratedWindowTheme
 import io.github.kdroidfilter.platformtools.getAppVersion
@@ -65,7 +64,6 @@ import io.github.kdroidfilter.seforimapp.logger.isDevEnv
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.Sentry
-import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -142,6 +140,8 @@ private fun initializeSentry() {
 }
 
 fun main() {
+    GraalVmInitializer.initialize()
+
     val loggingEnv = System.getenv("SEFORIMAPP_LOGGING")?.lowercase()
     isDevEnv = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"
 
@@ -191,15 +191,10 @@ fun main() {
     application {
         FileKit.init(appId)
 
-        val workArea =
-            java.awt.GraphicsEnvironment
-                .getLocalGraphicsEnvironment()
-                .maximumWindowBounds
         val windowState =
             rememberWindowState(
                 position = WindowPosition.Aligned(Alignment.Center),
                 placement = WindowPlacement.Maximized,
-                size = DpSize(workArea.width.dp, workArea.height.dp),
             )
 
         var isWindowVisible by remember { mutableStateOf(true) }
@@ -335,46 +330,46 @@ fun main() {
                             visible = isWindowVisible,
                             onKeyEvent = { keyEvent ->
                                 if (keyEvent.type == KeyEventType.KeyDown) {
+                                    // Read fresh state to avoid stale captures in cached lambda
+                                    val currentState = tabsVm.state.value
+                                    val currentTabs = currentState.tabs
+                                    val currentIndex = currentState.selectedTabIndex
                                     val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
                                     if (isCtrlOrCmd && keyEvent.key == Key.T) {
                                         tabsVm.onEvent(TabsEvents.OnAdd)
                                         true
                                     } else if (isCtrlOrCmd && keyEvent.key == Key.W) {
-                                        // Close current tab with Ctrl/Cmd + W
-                                        tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))
+                                        tabsVm.onEvent(TabsEvents.OnClose(currentIndex))
                                         true
                                     } else if (isCtrlOrCmd && keyEvent.key == Key.Tab) {
-                                        val count = tabs.size
+                                        val count = currentTabs.size
                                         if (count > 0) {
                                             val direction = if (keyEvent.isShiftPressed) -1 else 1
-                                            val newIndex = (selectedIndex + direction + count) % count
+                                            val newIndex = (currentIndex + direction + count) % count
                                             tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
                                         }
                                         true
                                     } else if ((keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
                                         (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H)
                                     ) {
-                                        val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
+                                        val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId
                                         if (currentTabId != null) {
-                                            // Navigate current tab back to Home (preserve tab slot, refresh state)
                                             tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
                                             true
                                         } else {
                                             false
                                         }
                                     } else if (isCtrlOrCmd && keyEvent.key == Key.Comma) {
-                                        // Open settings with Cmd+, or Ctrl+,
                                         settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
                                         true
                                     } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
-                                        // Minimize window with Cmd+M on macOS
                                         windowState.isMinimized = true
                                         true
                                     } else {
                                         processKeyShortcuts(
                                             keyEvent = keyEvent,
                                             onNavigateTo = { /* no-op: legacy shortcuts not used here */ },
-                                            tabId = tabs.getOrNull(selectedIndex)?.destination?.tabId ?: "",
+                                            tabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: "",
                                         )
                                     }
                                 } else {
@@ -397,10 +392,6 @@ fun main() {
 
                                 LaunchedEffect(Unit) {
                                     window.minimumSize = Dimension(600, 300)
-                                    if (PlatformInfo.isWindows) {
-                                        delay(10)
-                                        windowState.placement = WindowPlacement.Maximized
-                                    }
                                 }
                                 MainTitleBar()
 
@@ -420,7 +411,7 @@ fun main() {
                                     if (!mainAppState.updateCheckDone.value) {
                                         when (val result = AppUpdateChecker.checkForUpdate()) {
                                             is AppUpdateChecker.UpdateCheckResult.UpdateAvailable -> {
-                                                if (isDevEnv) return@LaunchedEffect
+                                                if (true) return@LaunchedEffect
                                                 mainAppState.setUpdateAvailable(result.latestVersion)
 
                                                 if (!ExecutableRuntime.isDev()) {

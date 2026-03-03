@@ -156,6 +156,7 @@ kotlin {
             api(project(":jewel"))
             implementation(project(":earthwidget"))
             implementation(libs.nucleus.decorated.window)
+            implementation(libs.nucleus.graalvm.runtime)
             implementation(libs.nucleus.updater.runtime)
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
@@ -184,6 +185,7 @@ kotlin {
             implementation(libs.knotify)
             implementation(libs.knotify.compose)
 
+            compileOnly("org.graalvm.nativeimage:graal-hotspot-library:22.0.0.2")
             // Sentry crash reporting
             implementation(libs.sentry.core)
         }
@@ -214,6 +216,52 @@ kotlin {
 nucleus.application {
 
     mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
+
+    graalvm {
+        isEnabled = true
+        javaLanguageVersion = 25
+        jvmVendor = JvmVendorSpec.BELLSOFT
+        imageName = "zayit"
+        buildArgs.addAll(
+            "-H:+AddAllCharsets",
+            "-Djava.awt.headless=false",
+            "-Os",
+            "-H:-IncludeMethodData",
+            // Enable shared arenas for Lucene's memory-mapped I/O (MemorySegmentIndexInput)
+            "-H:+SharedArenaSupport",
+            // Parallel GC for better throughput with large heaps
+            "--gc=parallel",
+            // Default max heap 2 GB
+            "-R:MaxHeapSize=2147483648",
+            // Exclude sqlite-jdbc's native-image.properties which references
+            // SqliteJdbcFeature (lives in META-INF/versions/9/ of the multi-release
+            // JAR, stripped by ProGuard shrinking). Equivalent metadata is already
+            // in the project's reachability-metadata.json.
+            "--exclude-config",
+            ".*\\.jar",
+            "META-INF/native-image/org\\.xerial/.*",
+            // Lucene classes initialize at runtime (GraalVM default).
+            // MethodHandle-based code paths are handled by substitution classes
+            // in io.github.kdroidfilter.seforimapp.graalvm.
+        )
+        march = providers.gradleProperty("nativeMarch").getOrElse("compatibility")
+        nativeImageConfigBaseDir.set(
+            layout.projectDirectory.dir(
+                when {
+                    org.gradle.internal.os.OperatingSystem
+                        .current()
+                        .isMacOsX -> "src/main/resources-macos/META-INF/native-image"
+                    org.gradle.internal.os.OperatingSystem
+                        .current()
+                        .isWindows -> "src/main/resources-windows/META-INF/native-image"
+                    org.gradle.internal.os.OperatingSystem
+                        .current()
+                        .isLinux -> "src/main/resources-linux/META-INF/native-image"
+                    else -> throw GradleException("Unsupported OS")
+                },
+            ),
+        )
+    }
     nativeDistributions {
 
         publish {
@@ -260,6 +308,7 @@ nucleus.application {
             TargetFormat.Dmg,
             TargetFormat.Pkg,
             TargetFormat.Zip,
+            TargetFormat.Nsis,
         )
         vendor = "KDroidFilter"
         cleanupNativeLibs = true
@@ -278,6 +327,20 @@ nucleus.application {
             shortcut = true
             upgradeUuid = "d9f21975-4359-4818-a623-6e9a3f0a07ca"
             perUserInstall = true
+
+            nsis {
+                oneClick = true // Default: true
+                allowElevation = false // Default: false
+                perMachine = false // Default: false (current user)
+                allowToChangeInstallationDirectory = false // Default: false
+                createDesktopShortcut = true
+                createStartMenuShortcut = true
+                runAfterFinish = true
+                deleteAppDataOnUninstall = false // Default: false
+                multiLanguageInstaller = true // Default: false
+                // Languages: "en_US", "fr_FR", "de_DE", "es_ES", "ja_JP", "zh_CN", etc.
+                installerLanguages = listOf("he_IL")
+            }
         }
         macOS {
             iconFile.set(project.file("desktopAppIcons/MacosIcon.icns"))

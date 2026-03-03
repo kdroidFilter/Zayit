@@ -29,6 +29,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -606,7 +607,6 @@ class BookContentViewModel(
             }
         } finally {
             stateManager.setLoading(false)
-            System.gc()
         }
     }
 
@@ -675,8 +675,6 @@ class BookContentViewModel(
 
             // Automatically close the book tree panel if the setting is enabled
             closeBookTreeIfEnabled()
-
-            System.gc()
         }
 
         loadBookData(resolvedBook)
@@ -700,6 +698,8 @@ class BookContentViewModel(
                 // Resolve initial line anchor if any, otherwise fall back to the first TOC's first line
                 // so that opening a book from the category tree selects the first meaningful section.
                 val currentPrimaryLine = state.content.primaryLine
+                val shouldSelectLine = forceAnchorId != null ||
+                    (!shouldUseAnchor && state.content.primaryLine == null)
                 val resolvedInitialLineId: Long? =
                     when {
                         forceAnchorId != null -> forceAnchorId
@@ -715,7 +715,7 @@ class BookContentViewModel(
                                     if (first == null) {
                                         null
                                     } else {
-                                        findFirstLeafTocId(first)
+                                        repository.getFirstLeafTocId(first.id)
                                             ?: first.id
                                     }
                                 val fromToc =
@@ -729,40 +729,27 @@ class BookContentViewModel(
 
                 debugln { "Loading book data - initialLineId: $resolvedInitialLineId" }
 
-                // Build pager centered on the resolved initial line when available
+                // Build pager — content can now render
                 _linesPagingData.value = contentUseCase.buildLinesPager(book.id, resolvedInitialLineId)
 
-                // Load TOC after pager creation
-                tocUseCase.loadRootToc(book.id)
-                altTocUseCase.loadStructures(book)
+                // Release loading indicator immediately so the user sees content
+                stateManager.setLoading(false)
 
-                // If we have an explicit forced anchor, always select it to ensure correct scroll/selection.
-                // Otherwise, when opening with no prior anchor and no selection, select the computed initial line.
-                // Note: recreatePager = false because we already created the pager above with the correct initialLineId
-                if (resolvedInitialLineId != null) {
-                    if (forceAnchorId != null) {
-                        loadAndSelectLine(resolvedInitialLineId, recreatePager = false)
-                        runSuspendCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
-                    } else if (!shouldUseAnchor && state.content.primaryLine == null) {
-                        loadAndSelectLine(resolvedInitialLineId, recreatePager = false)
-                        // Expand TOC path to the resolved initial line (first entry/leaf)
-                        runSuspendCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
+                // Load TOC, alt-TOC, and line selection in parallel
+                coroutineScope {
+                    launch { tocUseCase.loadRootToc(book.id) }
+                    launch { altTocUseCase.loadStructures(book) }
+                    if (resolvedInitialLineId != null && shouldSelectLine) {
+                        launch {
+                            loadAndSelectLine(resolvedInitialLineId, recreatePager = false)
+                            runSuspendCatching { tocUseCase.expandPathToLine(resolvedInitialLineId) }
+                        }
                     }
                 }
             } finally {
                 stateManager.setLoading(false)
             }
         }
-    }
-
-    /**
-     * Finds the first leaf TOC entry under the given entry, depth-first.
-     */
-    private suspend fun findFirstLeafTocId(entry: io.github.kdroidfilter.seforimlibrary.core.models.TocEntry): Long? {
-        if (!entry.hasChildren) return entry.id
-        val children = runSuspendCatching { repository.getTocChildren(entry.id) }.getOrDefault(emptyList())
-        val firstChild = children.firstOrNull() ?: return entry.id
-        return findFirstLeafTocId(firstChild)
     }
 
     /** Selects a line */

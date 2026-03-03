@@ -173,20 +173,12 @@ class TocUseCase(
      * are loaded on demand.
      */
     suspend fun expandPathToTocEntry(tocId: Long) {
-        // Build path from leaf to root
-        val path = mutableListOf<TocEntry>()
-        var currentId: Long? = tocId
-        var guard = 0
-        while (currentId != null && guard++ < 512) {
-            val entry = runSuspendCatching { repository.getTocEntry(currentId) }.getOrNull() ?: break
-            path += entry
-            currentId = entry.parentId
-        }
-        if (path.isEmpty()) return
-        val ordered = path.asReversed()
+        // Single CTE query returns the full ancestor path ordered by level ASC
+        val ordered = runSuspendCatching { repository.getAncestorPath(tocId) }.getOrElse { emptyList() }
+        if (ordered.isEmpty()) return
+
         // Ensure children for each ancestor are loaded and mark as expanded
-        for ((idx, e) in ordered.withIndex()) {
-            // Skip the last element (leaf) for children loading; expanding its parent is enough
+        for (e in ordered) {
             if (e.hasChildren &&
                 !stateManager.state
                     .first()

@@ -698,8 +698,9 @@ class BookContentViewModel(
                 // Resolve initial line anchor if any, otherwise fall back to the first TOC's first line
                 // so that opening a book from the category tree selects the first meaningful section.
                 val currentPrimaryLine = state.content.primaryLine
-                val shouldSelectLine = forceAnchorId != null ||
-                    (!shouldUseAnchor && state.content.primaryLine == null)
+                val shouldSelectLine =
+                    forceAnchorId != null ||
+                        (!shouldUseAnchor && state.content.primaryLine == null)
                 val resolvedInitialLineId: Long? =
                     when {
                         forceAnchorId != null -> forceAnchorId

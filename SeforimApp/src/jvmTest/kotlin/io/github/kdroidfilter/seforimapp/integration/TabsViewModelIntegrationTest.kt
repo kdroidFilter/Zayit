@@ -53,7 +53,9 @@ class TabsViewModelIntegrationTest {
     @Test
     fun `initial tab has correct structure`() =
         runTest {
-            val tab = viewModel.state.value.tabs.first()
+            val tab =
+                viewModel.state.value.tabs
+                    .first()
 
             assertEquals(1, tab.id)
             assertTrue(tab.destination is TabsDestination.BookContent)
@@ -274,14 +276,26 @@ class TabsViewModelIntegrationTest {
             viewModel.onEvent(TabsEvents.OnAdd)
             viewModel.onEvent(TabsEvents.OnAdd)
 
-            val originalFirstTabId = viewModel.state.value.tabs[0].id
-            val originalLastTabId = viewModel.state.value.tabs[3].id
+            val originalFirstTabId =
+                viewModel.state.value.tabs[0]
+                    .id
+            val originalLastTabId =
+                viewModel.state.value.tabs[3]
+                    .id
 
             // Move first tab to last position
             viewModel.onEvent(TabsEvents.OnReorder(0, 3))
 
-            assertEquals(originalFirstTabId, viewModel.state.value.tabs[3].id)
-            assertNotEquals(originalFirstTabId, viewModel.state.value.tabs[0].id)
+            assertEquals(
+                originalFirstTabId,
+                viewModel.state.value.tabs[3]
+                    .id,
+            )
+            assertNotEquals(
+                originalFirstTabId,
+                viewModel.state.value.tabs[0]
+                    .id,
+            )
         }
 
     @Test
@@ -290,18 +304,24 @@ class TabsViewModelIntegrationTest {
             viewModel.onEvent(TabsEvents.OnAdd)
             viewModel.onEvent(TabsEvents.OnAdd)
 
-            val tabsBefore = viewModel.state.value.tabs.map { it.id }
+            val tabsBefore =
+                viewModel.state.value.tabs
+                    .map { it.id }
 
             viewModel.onEvent(TabsEvents.OnReorder(1, 1))
 
-            val tabsAfter = viewModel.state.value.tabs.map { it.id }
+            val tabsAfter =
+                viewModel.state.value.tabs
+                    .map { it.id }
             assertEquals(tabsBefore, tabsAfter)
         }
 
     @Test
     fun `OnReorder with invalid indices does nothing`() =
         runTest {
-            val tabsBefore = viewModel.state.value.tabs.toList()
+            val tabsBefore =
+                viewModel.state.value.tabs
+                    .toList()
 
             viewModel.onEvent(TabsEvents.OnReorder(-1, 999))
 
@@ -321,7 +341,9 @@ class TabsViewModelIntegrationTest {
 
             viewModel.replaceCurrentTabDestination(newDestination)
 
-            val updatedTab = viewModel.state.value.tabs.first()
+            val updatedTab =
+                viewModel.state.value.tabs
+                    .first()
             assertEquals(originalTabId, updatedTab.destination.tabId)
             assertTrue(updatedTab.destination is TabsDestination.Search)
         }
@@ -337,7 +359,9 @@ class TabsViewModelIntegrationTest {
 
             viewModel.replaceCurrentTabWithNewTabId(newDestination)
 
-            val updatedTab = viewModel.state.value.tabs.first()
+            val updatedTab =
+                viewModel.state.value.tabs
+                    .first()
             assertNotEquals(originalTabId, updatedTab.destination.tabId)
         }
 
@@ -362,7 +386,9 @@ class TabsViewModelIntegrationTest {
     @Test
     fun `restoreTabs with empty list does nothing`() =
         runTest {
-            val tabsBefore = viewModel.state.value.tabs.toList()
+            val tabsBefore =
+                viewModel.state.value.tabs
+                    .toList()
 
             viewModel.restoreTabs(emptyList(), selectedIndex = 0)
 
@@ -399,7 +425,9 @@ class TabsViewModelIntegrationTest {
             // Allow the coroutine to process
             kotlinx.coroutines.delay(100)
 
-            val tab = viewModel.state.value.tabs.first()
+            val tab =
+                viewModel.state.value.tabs
+                    .first()
             assertEquals(newTitle, tab.title)
             assertEquals(TabType.BOOK, tab.tabType)
         }
@@ -417,7 +445,9 @@ class TabsViewModelIntegrationTest {
 
             viewModel.openTab(destination)
 
-            val tab = viewModel.state.value.tabs.first()
+            val tab =
+                viewModel.state.value.tabs
+                    .first()
             assertEquals(TabType.BOOK, tab.tabType)
         }
 
@@ -432,7 +462,9 @@ class TabsViewModelIntegrationTest {
 
             viewModel.openTab(destination)
 
-            val tab = viewModel.state.value.tabs.first()
+            val tab =
+                viewModel.state.value.tabs
+                    .first()
             assertEquals(TabType.SEARCH, tab.tabType)
         }
 
@@ -447,7 +479,9 @@ class TabsViewModelIntegrationTest {
 
             viewModel.openTab(destination)
 
-            val tab = viewModel.state.value.tabs.first()
+            val tab =
+                viewModel.state.value.tabs
+                    .first()
             assertEquals(TabType.SEARCH, tab.tabType)
         }
 
@@ -461,7 +495,9 @@ class TabsViewModelIntegrationTest {
 
             viewModel.openTab(destination)
 
-            val tab = viewModel.state.value.tabs.first()
+            val tab =
+                viewModel.state.value.tabs
+                    .first()
             assertEquals(TabType.SEARCH, tab.tabType)
         }
 
@@ -513,7 +549,9 @@ class TabsViewModelIntegrationTest {
             viewModel.onEvent(TabsEvents.OnAdd)
             viewModel.onEvent(TabsEvents.OnAdd)
 
-            val tabIds = viewModel.state.value.tabs.map { it.id }
+            val tabIds =
+                viewModel.state.value.tabs
+                    .map { it.id }
             assertEquals(tabIds.size, tabIds.toSet().size) // All IDs should be unique
         }
 }

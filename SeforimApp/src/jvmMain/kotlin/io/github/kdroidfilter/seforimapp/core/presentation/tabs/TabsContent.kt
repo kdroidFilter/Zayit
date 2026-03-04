@@ -448,6 +448,7 @@ internal class SimpleTabViewModelOwner(
     }
 
     fun clear() {
+        if (lifecycleRegistry.currentState == Lifecycle.State.DESTROYED) return
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         viewModelStore.clear()
     }

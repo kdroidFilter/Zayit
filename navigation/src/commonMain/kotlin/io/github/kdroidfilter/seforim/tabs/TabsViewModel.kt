@@ -161,7 +161,6 @@ class TabsViewModel(
         _state.update { current ->
             TabsState(tabs = listOf(newTab) + current.tabs, selectedTabIndex = 0)
         }
-        System.gc()
     }
 
     private fun addTabWithDestination(destination: TabsDestination) {
@@ -194,7 +193,6 @@ class TabsViewModel(
                 tabType = TabType.SEARCH,
             )
         _state.value = TabsState(tabs = listOf(newTab), selectedTabIndex = 0)
-        System.gc()
     }
 
     private fun closeOthers(index: Int) {
@@ -202,7 +200,6 @@ class TabsViewModel(
             if (index !in 0..current.tabs.lastIndex) return@update current
             TabsState(tabs = listOf(current.tabs[index]), selectedTabIndex = 0)
         }
-        System.gc()
     }
 
     private fun closeLeft(index: Int) {
@@ -217,7 +214,6 @@ class TabsViewModel(
                 }
             TabsState(tabs = newTabs, selectedTabIndex = newSelected)
         }
-        System.gc()
     }
 
     private fun closeRight(index: Int) {
@@ -227,7 +223,6 @@ class TabsViewModel(
             val newSelected = if (current.selectedTabIndex <= index) current.selectedTabIndex else newTabs.lastIndex
             TabsState(tabs = newTabs, selectedTabIndex = newSelected)
         }
-        System.gc()
     }
 
     fun openTab(destination: TabsDestination) {
@@ -321,16 +316,19 @@ class TabsViewModel(
     fun restoreTabs(
         destinations: List<TabsDestination>,
         selectedIndex: Int,
+        titles: Map<String, Pair<String, TabType>> = emptyMap(),
     ) {
         if (destinations.isEmpty()) return
 
         val restoredTabs =
             destinations.mapIndexed { index, destination ->
+                val (title, tabType) = titles[destination.tabId]
+                    ?: (getTabTitle(destination) to tabTypeFor(destination))
                 TabItem(
                     id = index + 1,
-                    title = getTabTitle(destination),
+                    title = title,
                     destination = destination,
-                    tabType = tabTypeFor(destination),
+                    tabType = tabType,
                 )
             }
 

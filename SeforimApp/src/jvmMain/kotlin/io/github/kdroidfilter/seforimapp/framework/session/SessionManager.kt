@@ -2,7 +2,6 @@
 
 package io.github.kdroidfilter.seforimapp.framework.session
 
-import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
@@ -184,35 +183,30 @@ object SessionManager {
             // Restore persisted tab state first, so viewmodels can consume it as they start.
             appGraph.tabPersistedStateStore.restore(saved.tabStates)
 
-            // Restore tabs and selection.
-            val tabsVm: TabsViewModel = appGraph.tabsViewModel
-            tabsVm.restoreTabs(destinations, saved.selectedIndex)
+            // Compute titles before restoring tabs so TabItems are created with correct titles.
+            val titles = computeTabTitles(destinations, saved.tabStates, appGraph)
 
-            // Best-effort immediate title hydration to avoid showing raw IDs.
-            hydrateTabTitles(
-                destinations = destinations,
-                tabStates = saved.tabStates,
-                titleUpdateManager = appGraph.tabTitleUpdateManager,
-                appGraph = appGraph,
-            )
+            // Restore tabs, selection, and pre-computed titles in one shot.
+            val tabsVm: TabsViewModel = appGraph.tabsViewModel
+            tabsVm.restoreTabs(destinations, saved.selectedIndex, titles)
         } finally {
             _isRestoringSession.value = false
         }
     }
 
-    private suspend fun hydrateTabTitles(
+    private suspend fun computeTabTitles(
         destinations: List<TabsDestination>,
         tabStates: Map<String, TabPersistedState>,
-        titleUpdateManager: TabTitleUpdateManager,
         appGraph: AppGraph,
-    ) {
+    ): Map<String, Pair<String, TabType>> {
+        val titles = mutableMapOf<String, Pair<String, TabType>>()
         for (dest in destinations) {
             val tabId = dest.tabId
             when (dest) {
                 is TabsDestination.Search -> {
                     val q = tabStates[tabId]?.search?.query?.takeIf { it.isNotBlank() } ?: dest.searchQuery
                     if (q.isNotBlank()) {
-                        titleUpdateManager.updateTabTitle(tabId, q, TabType.SEARCH)
+                        titles[tabId] = q to TabType.SEARCH
                     }
                 }
 
@@ -221,7 +215,7 @@ object SessionManager {
                     if (bookId > 0) {
                         val book = withContext(Dispatchers.IO) { appGraph.repository.getBookCore(bookId) }
                         if (book != null) {
-                            titleUpdateManager.updateTabTitle(tabId, book.title, TabType.BOOK)
+                            titles[tabId] = book.title to TabType.BOOK
                         }
                     }
                 }
@@ -231,5 +225,6 @@ object SessionManager {
                 }
             }
         }
+        return titles
     }
 }

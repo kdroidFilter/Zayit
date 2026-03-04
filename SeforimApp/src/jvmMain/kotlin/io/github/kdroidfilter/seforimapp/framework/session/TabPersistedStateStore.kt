@@ -1,5 +1,7 @@
 package io.github.kdroidfilter.seforimapp.framework.session
 
+import java.util.concurrent.ConcurrentHashMap
+
 /**
  * In-memory store for per-tab persisted UI state.
  *
@@ -8,45 +10,40 @@ package io.github.kdroidfilter.seforimapp.framework.session
  * does not need to know about individual keys.
  */
 class TabPersistedStateStore {
-    private val lock = Any()
-    private val states: MutableMap<String, TabPersistedState> = mutableMapOf()
+    private val states = ConcurrentHashMap<String, TabPersistedState>()
 
-    fun get(tabId: String): TabPersistedState? = synchronized(lock) { states[tabId] }
+    fun get(tabId: String): TabPersistedState? = states[tabId]
 
-    fun getOrCreate(tabId: String): TabPersistedState =
-        synchronized(lock) {
-            states.getOrPut(tabId) { TabPersistedState() }
-        }
+    fun getOrCreate(tabId: String): TabPersistedState = states.getOrPut(tabId) { TabPersistedState() }
 
     fun set(
         tabId: String,
         state: TabPersistedState,
     ) {
-        synchronized(lock) { states[tabId] = state }
+        states[tabId] = state
     }
 
     fun update(
         tabId: String,
         transform: (TabPersistedState) -> TabPersistedState,
     ) {
-        synchronized(lock) {
-            val current = states[tabId] ?: TabPersistedState()
-            states[tabId] = transform(current)
+        states.compute(tabId) { _, current ->
+            transform(current ?: TabPersistedState())
         }
     }
 
     fun remove(tabId: String) {
-        synchronized(lock) { states.remove(tabId) }
+        states.remove(tabId)
     }
 
     fun clearAll() {
-        synchronized(lock) { states.clear() }
+        states.clear()
     }
 
-    fun snapshot(): Map<String, TabPersistedState> = synchronized(lock) { states.toMap() }
+    fun snapshot(): Map<String, TabPersistedState> = states.toMap()
 
     fun restore(snapshot: Map<String, TabPersistedState>) {
-        synchronized(lock) {
+        synchronized(states) {
             states.clear()
             states.putAll(snapshot)
         }

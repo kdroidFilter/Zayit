@@ -97,6 +97,11 @@ private data class TabEntry(
 )
 
 private val TabTooltipWidthThreshold = 140.dp
+private val CompactTabWidthThreshold = 50.dp
+private val HideCloseTabWidthThreshold = 80.dp
+
+/** When true, [SingleLineTabContent] hides the label and shows only the icon. */
+private val LocalCompactIconOnly = compositionLocalOf { false }
 
 @Composable
 fun TabsView() {
@@ -673,11 +678,19 @@ private fun RtlAwareTab(
                             ev.changes.forEach { it.consume() }
                         }
                     },
-                horizontalArrangement = Arrangement.spacedBy(tabStyle.metrics.closeContentGap),
+                horizontalArrangement =
+                    if (tabWidth >= HideCloseTabWidthThreshold || tabData.selected) {
+                        Arrangement.spacedBy(tabStyle.metrics.closeContentGap)
+                    } else {
+                        Arrangement.spacedBy(0.dp)
+                    },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Build content/close order to keep close at the trailing edge
-                val showCloseIcon = tabData.closable
+                val isCompact = tabWidth < CompactTabWidthThreshold
+                val isSelected = tabData.selected
+                // Hide close for non-selected tabs when space is tight, always show for selected
+                val showCloseIcon =
+                    tabData.closable && (isSelected || tabWidth >= HideCloseTabWidthThreshold)
 
                 val closeIconComposable: @Composable () -> Unit = {
                     if (showCloseIcon) {
@@ -711,10 +724,20 @@ private fun RtlAwareTab(
                     }
                 }
 
-                Box(Modifier.weight(1f)) {
-                    tabData.content(TabContentScopeContainer(), tabState)
+                // In compact mode, selected tab shows only close icon (centered)
+                if (isCompact && isSelected) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        closeIconComposable()
+                    }
+                } else {
+                    val iconOnly = isCompact && !isSelected
+                    Box(Modifier.weight(1f)) {
+                        CompositionLocalProvider(LocalCompactIconOnly provides iconOnly) {
+                            tabData.content(TabContentScopeContainer(), tabState)
+                        }
+                    }
+                    closeIconComposable()
                 }
-                closeIconComposable()
             }
         }
 
@@ -848,6 +871,7 @@ private fun SingleLineTabContent(
     icon: Painter?,
     modifier: Modifier = Modifier,
 ) {
+    val iconOnly = LocalCompactIconOnly.current
     val contentAlpha =
         JewelTheme.defaultTabStyle.contentAlpha
             .contentFor(state)
@@ -864,12 +888,14 @@ private fun SingleLineTabContent(
                 modifier = Modifier.size(16.dp).alpha(contentAlpha),
             )
         }
-        Text(
-            label,
-            modifier = Modifier.alpha(contentAlpha),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (!iconOnly) {
+            Text(
+                label,
+                modifier = Modifier.alpha(contentAlpha),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

@@ -132,7 +132,11 @@ fun HomeView(
 ) {
     CatalogRow(onEvent = onEvent)
 
-    Box(modifier = modifier.fillMaxSize()) {
+    // Add end padding to compensate for the hidden EndVerticalBar on Home
+    val compactMode by AppSettings.compactModeFlow.collectAsState()
+    val endPadding = if (compactMode) 48.dp else 64.dp
+
+    Box(modifier = modifier.fillMaxSize().padding(end = endPadding)) {
         HomeBody(
             searchUi = searchUi,
             searchCallbacks = searchCallbacks,

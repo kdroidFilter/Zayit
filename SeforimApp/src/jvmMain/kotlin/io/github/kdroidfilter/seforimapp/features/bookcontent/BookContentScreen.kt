@@ -453,6 +453,7 @@ fun BookContentScreen(
         ) {
             StartVerticalBar(uiState = uiState, onEvent = onEvent)
 
+            val isHome = uiState.navigation.selectedBook == null
             val isIslands = ThemeUtils.isIslandsStyle()
             val panelCardModifier =
                 if (isIslands) {
@@ -500,7 +501,9 @@ fun BookContentScreen(
                 showSplitter = uiState.navigation.isVisible,
             )
 
-            EndVerticalBar(uiState = uiState, onEvent = onEvent, showDiacritics = showDiacritics)
+            if (!isHome) {
+                EndVerticalBar(uiState = uiState, onEvent = onEvent, showDiacritics = showDiacritics)
+            }
         }
     }
 

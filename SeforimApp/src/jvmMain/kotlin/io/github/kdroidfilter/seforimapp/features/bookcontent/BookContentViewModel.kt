@@ -58,8 +58,22 @@ class BookContentViewModel(
 
     internal val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
 
+    // Pre-set loading before uiState is initialized to avoid a single-frame Home flash.
+    private val hasBookToLoad: Boolean =
+        savedStateHandle
+            .get<Long>(StateKeys.BOOK_ID)
+            ?.let { it > 0 } == true ||
+            persistedStore
+                .get(tabId)
+                ?.bookContent
+                ?.selectedBookId
+                ?.let { it > 0 } == true
+
     // Centralized State Manager
-    private val stateManager = BookContentStateManager(tabId, persistedStore)
+    private val stateManager =
+        BookContentStateManager(tabId, persistedStore).also { manager ->
+            if (hasBookToLoad) manager.setLoading(true)
+        }
 
     // UseCases - created via factory
     private val navigationUseCase = useCaseFactory.createNavigationUseCase(stateManager)
@@ -221,11 +235,6 @@ class BookContentViewModel(
                 "isTocEntrySelection=${persistedBookState?.isTocEntrySelection} " +
                 "anchorLineId=${persistedBookState?.contentAnchorLineId} " +
                 "scroll=(${persistedBookState?.contentScrollIndex},${persistedBookState?.contentScrollOffset})"
-        }
-
-        // Avoid flashing Home before starting an async load when a book is known upfront.
-        if (bookIdToOpen != null) {
-            stateManager.setLoading(true)
         }
 
         viewModelScope.launch {

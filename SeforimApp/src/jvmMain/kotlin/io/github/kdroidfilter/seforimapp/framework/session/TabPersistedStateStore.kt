@@ -14,8 +14,7 @@ class TabPersistedStateStore {
 
     fun get(tabId: String): TabPersistedState? = states[tabId]
 
-    fun getOrCreate(tabId: String): TabPersistedState =
-        states.getOrPut(tabId) { TabPersistedState() }
+    fun getOrCreate(tabId: String): TabPersistedState = states.getOrPut(tabId) { TabPersistedState() }
 
     fun set(
         tabId: String,

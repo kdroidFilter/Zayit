@@ -322,8 +322,9 @@ class TabsViewModel(
 
         val restoredTabs =
             destinations.mapIndexed { index, destination ->
-                val (title, tabType) = titles[destination.tabId]
-                    ?: (getTabTitle(destination) to tabTypeFor(destination))
+                val (title, tabType) =
+                    titles[destination.tabId]
+                        ?: (getTabTitle(destination) to tabTypeFor(destination))
                 TabItem(
                     id = index + 1,
                     title = title,

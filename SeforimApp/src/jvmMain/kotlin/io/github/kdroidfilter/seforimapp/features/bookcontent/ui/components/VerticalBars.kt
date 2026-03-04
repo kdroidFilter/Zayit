@@ -33,15 +33,17 @@ fun StartVerticalBar(
                 label = stringResource(Res.string.books),
                 shortcutHint = if (PlatformInfo.isMacOS) "B+⌘" else "B+Ctrl",
             )
-            SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.book_content),
-                onClick = { onEvent(BookContentEvent.ToggleToc) },
-                isSelected = uiState.toc.isVisible,
-                icon = TableOfContents,
-                iconDescription = stringResource(Res.string.table_of_contents),
-                label = stringResource(Res.string.table_of_contents),
-                shortcutHint = if (PlatformInfo.isMacOS) "B+⇧+⌘" else "B+Shift+Ctrl",
-            )
+            if (uiState.navigation.selectedBook != null) {
+                SelectableIconButtonWithToolip(
+                    toolTipText = stringResource(Res.string.book_content),
+                    onClick = { onEvent(BookContentEvent.ToggleToc) },
+                    isSelected = uiState.toc.isVisible,
+                    icon = TableOfContents,
+                    iconDescription = stringResource(Res.string.table_of_contents),
+                    label = stringResource(Res.string.table_of_contents),
+                    shortcutHint = if (PlatformInfo.isMacOS) "B+⇧+⌘" else "B+Shift+Ctrl",
+                )
+            }
         },
         bottomContent = {
 //            SelectableIconButtonWithToolip(
@@ -125,57 +127,60 @@ fun EndVerticalBar(
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
         topContent = {
-            // Platform-specific shortcut hint for Zoom In
-            SelectableIconButtonWithToolip(
-                toolTipText =
-                    if (canZoomIn) {
-                        stringResource(Res.string.zoom_in_tooltip)
-                    } else {
-                        stringResource(Res.string.zoom_in_tooltip) + " (${AppSettings.MAX_TEXT_SIZE.toInt()}sp max)"
-                    },
-                onClick = { AppSettings.increaseTextSize() },
-                isSelected = false,
-                enabled = canZoomIn,
-                icon = ZoomIn,
-                iconDescription = stringResource(Res.string.zoom_in),
-                label = stringResource(Res.string.zoom_in),
-                shortcutHint = if (PlatformInfo.isMacOS) "+⌘" else "+Ctrl",
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText =
-                    if (canZoomOut) {
-                        stringResource(Res.string.zoom_out_tooltip)
-                    } else {
-                        stringResource(Res.string.zoom_out_tooltip) + " (${AppSettings.MIN_TEXT_SIZE.toInt()}sp min)"
-                    },
-                onClick = { AppSettings.decreaseTextSize() },
-                isSelected = false,
-                enabled = canZoomOut,
-                icon = ZoomOut,
-                iconDescription = stringResource(Res.string.zoom_out),
-                label = stringResource(Res.string.zoom_out),
-                shortcutHint = if (PlatformInfo.isMacOS) "-⌘" else "-Ctrl",
-            )
-
-            // Diacritics toggle button - only show when book has nekudot or teamim
-            val bookHasDiacritics = selectedBook?.hasNekudot == true || selectedBook?.hasTeamim == true
-            if (bookHasDiacritics) {
+            // Hide zoom and diacritics buttons on Home (no book selected)
+            if (!noBookSelected) {
+                // Platform-specific shortcut hint for Zoom In
                 SelectableIconButtonWithToolip(
                     toolTipText =
-                        stringResource(
-                            if (showDiacritics) {
-                                Res.string.hide_diacritics_tooltip
-                            } else {
-                                Res.string.show_diacritics_tooltip
-                            },
-                        ),
-                    onClick = { onEvent(BookContentEvent.ToggleDiacritics) },
-                    isSelected = showDiacritics,
-                    icon = TextDiacritics,
-                    iconDescription = stringResource(Res.string.toggle_diacritics),
-                    label = stringResource(Res.string.toggle_diacritics),
-                    shortcutHint = if (PlatformInfo.isMacOS) "J+⌘" else "J+Ctrl",
+                        if (canZoomIn) {
+                            stringResource(Res.string.zoom_in_tooltip)
+                        } else {
+                            stringResource(Res.string.zoom_in_tooltip) + " (${AppSettings.MAX_TEXT_SIZE.toInt()}sp max)"
+                        },
+                    onClick = { AppSettings.increaseTextSize() },
+                    isSelected = false,
+                    enabled = canZoomIn,
+                    icon = ZoomIn,
+                    iconDescription = stringResource(Res.string.zoom_in),
+                    label = stringResource(Res.string.zoom_in),
+                    shortcutHint = if (PlatformInfo.isMacOS) "+⌘" else "+Ctrl",
                 )
+                SelectableIconButtonWithToolip(
+                    toolTipText =
+                        if (canZoomOut) {
+                            stringResource(Res.string.zoom_out_tooltip)
+                        } else {
+                            stringResource(Res.string.zoom_out_tooltip) + " (${AppSettings.MIN_TEXT_SIZE.toInt()}sp min)"
+                        },
+                    onClick = { AppSettings.decreaseTextSize() },
+                    isSelected = false,
+                    enabled = canZoomOut,
+                    icon = ZoomOut,
+                    iconDescription = stringResource(Res.string.zoom_out),
+                    label = stringResource(Res.string.zoom_out),
+                    shortcutHint = if (PlatformInfo.isMacOS) "-⌘" else "-Ctrl",
+                )
+
+                // Diacritics toggle button - only show when book has nekudot or teamim
+                val bookHasDiacritics = selectedBook?.hasNekudot == true || selectedBook?.hasTeamim == true
+                if (bookHasDiacritics) {
+                    SelectableIconButtonWithToolip(
+                        toolTipText =
+                            stringResource(
+                                if (showDiacritics) {
+                                    Res.string.hide_diacritics_tooltip
+                                } else {
+                                    Res.string.show_diacritics_tooltip
+                                },
+                            ),
+                        onClick = { onEvent(BookContentEvent.ToggleDiacritics) },
+                        isSelected = showDiacritics,
+                        icon = TextDiacritics,
+                        iconDescription = stringResource(Res.string.toggle_diacritics),
+                        label = stringResource(Res.string.toggle_diacritics),
+                        shortcutHint = if (PlatformInfo.isMacOS) "J+⌘" else "J+Ctrl",
+                    )
+                }
             }
 //            SelectableIconButtonWithToolip(
 //                toolTipText = stringResource(

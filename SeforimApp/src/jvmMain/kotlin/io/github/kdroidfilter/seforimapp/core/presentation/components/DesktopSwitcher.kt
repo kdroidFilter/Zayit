@@ -56,6 +56,7 @@ import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.MaterialSymbolsDesktop_landscape
+import io.github.kdroidfilter.seforimapp.icons.MaterialSymbolsDesktop_landscape_add
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.stringResource
@@ -241,11 +242,11 @@ private fun DesktopDropdownContent(
                 color = JewelTheme.globalColors.text.info,
                 modifier = Modifier.weight(1f),
             )
-            Icon(
-                key = AllIconsKeys.General.Add,
+            Image(
+                painter = rememberVectorPainter(MaterialSymbolsDesktop_landscape_add),
                 contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = JewelTheme.globalColors.text.info,
+                modifier = Modifier.size(16.dp),
+                colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.info),
             )
         }
     }

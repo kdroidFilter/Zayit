@@ -5,6 +5,7 @@ import io.github.kdroidfilter.platformtools.releasefetcher.github.GitHubReleaseF
 import io.github.kdroidfilter.seforimapp.network.KtorConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 
 object AppUpdateChecker {
     const val DOWNLOAD_URL = "https://kdroidfilter.github.io/Zayit/download"
@@ -50,7 +51,8 @@ object AppUpdateChecker {
                 } else {
                     UpdateCheckResult.UpToDate
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 UpdateCheckResult.Error
             }
         }

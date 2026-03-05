@@ -8,6 +8,7 @@ import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlin.coroutines.cancellation.CancellationException
 
 class DatabaseCleanupUseCase {
     suspend fun cleanupDatabaseFiles(): Unit =
@@ -68,6 +69,7 @@ class DatabaseCleanupUseCase {
                     }
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 // Log error but don't fail the cleanup process
                 debugln { "Warning: Error during database cleanup: ${e.message}" }
             }

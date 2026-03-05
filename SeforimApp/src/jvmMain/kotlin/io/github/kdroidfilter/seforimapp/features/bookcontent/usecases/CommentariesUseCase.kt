@@ -26,6 +26,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.max
 import kotlin.math.min
 
@@ -185,6 +186,7 @@ class CommentariesUseCase(
             }
             map
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             emptyMap()
         }
     }
@@ -219,6 +221,7 @@ class CommentariesUseCase(
             }
             allGroups
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             emptyList()
         }
     }
@@ -240,6 +243,7 @@ class CommentariesUseCase(
             }
             map
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             emptyMap()
         }
     }
@@ -261,6 +265,7 @@ class CommentariesUseCase(
             }
             map
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             emptyMap()
         }
     }
@@ -283,6 +288,7 @@ class CommentariesUseCase(
             }
             map
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             emptyMap()
         }
     }
@@ -298,6 +304,7 @@ class CommentariesUseCase(
             val categoryCache = mutableMapOf<Long, Category?>()
             groupCommentatorEntries(entries, categoryCache)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             emptyList()
         }
     }
@@ -603,6 +610,7 @@ class CommentariesUseCase(
 
             buildSourceMap(links, currentBookTitle)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             emptyMap()
         }
 
@@ -624,6 +632,7 @@ class CommentariesUseCase(
 
             buildSourceMap(links, currentBookTitle)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             emptyMap()
         }
 
@@ -893,7 +902,8 @@ class CommentariesUseCase(
             if (desired.isNotEmpty()) {
                 updateSelectedCommentatorsForLine(line.id, desired.toSet())
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
         }
     }
 
@@ -930,6 +940,7 @@ class CommentariesUseCase(
                 updateSelectedLinkSources(line.id, intersection)
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             // Ignorer les erreurs silencieusement
         }
     }
@@ -949,7 +960,8 @@ class CommentariesUseCase(
             if (intersection.isNotEmpty()) {
                 updateSelectedSources(line.id, intersection)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
         }
     }
 
@@ -983,7 +995,8 @@ class CommentariesUseCase(
             if (desired.isNotEmpty()) {
                 updateSelectedCommentatorsForLine(primaryLineId, desired.toSet())
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
         }
     }
 
@@ -1008,7 +1021,8 @@ class CommentariesUseCase(
             if (intersection.isNotEmpty()) {
                 updateSelectedLinkSources(primaryLineId, intersection)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
         }
     }
 
@@ -1033,7 +1047,8 @@ class CommentariesUseCase(
             if (intersection.isNotEmpty()) {
                 updateSelectedSources(primaryLineId, intersection)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
         }
     }
 

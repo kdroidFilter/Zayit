@@ -187,7 +187,6 @@ class SearchTocUseCaseTest : SearchIntegrationTestBase() {
             val lineIds = useCase.getSubtreeLineIds(tocId, bookId)
 
             assertNotNull(lineIds)
-            assertTrue(lineIds is LongArray)
         }
 
     @Test

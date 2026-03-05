@@ -14,6 +14,7 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.LineSelectionReposit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * UseCase pour gérer le contenu du livre et la navigation dans les lignes
@@ -131,7 +132,8 @@ class ContentUseCase(
         val tocId =
             try {
                 repository.getTocEntryIdForLine(line.id)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 null
             }
         val tocPath = if (tocId != null) buildTocPathToRoot(tocId) else emptyList()
@@ -220,7 +222,8 @@ class ContentUseCase(
             val tocId =
                 try {
                     repository.getTocEntryIdForLine(line.id)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     null
                 }
             val tocPath = if (tocId != null) buildTocPathToRoot(tocId) else emptyList()
@@ -264,6 +267,7 @@ class ContentUseCase(
 
             previousLine
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             debugln { "[navigateToPreviousLine] Error: ${e.message}" }
             null
         }
@@ -292,6 +296,7 @@ class ContentUseCase(
 
             nextLine
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             debugln { "[navigateToNextLine] Error: ${e.message}" }
             null
         }

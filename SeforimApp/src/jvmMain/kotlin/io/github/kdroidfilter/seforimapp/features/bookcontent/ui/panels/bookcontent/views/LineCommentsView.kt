@@ -816,7 +816,7 @@ private fun CommentatorsGridView(
     }
 }
 
-private inline fun buildCommentatorRows(selected: List<String>): List<List<String>> =
+private fun buildCommentatorRows(selected: List<String>): List<List<String>> =
     when (selected.size) {
         0 -> emptyList()
         1 -> listOf(selected)

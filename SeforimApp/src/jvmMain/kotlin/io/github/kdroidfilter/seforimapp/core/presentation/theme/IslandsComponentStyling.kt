@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.core.presentation.theme
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.intui.core.theme.IntUiLightTheme
 import org.jetbrains.jewel.intui.standalone.styling.Default
@@ -116,9 +117,9 @@ fun islandsComponentStyling(isDark: Boolean): ComponentStyling =
                 TooltipStyle.light(
                     intUiTooltipColors =
                         TooltipColors.light(
-                            backgroundColor = IntUiLightTheme.colors.gray(13),
-                            contentColor = IntUiLightTheme.colors.gray(2),
-                            borderColor = IntUiLightTheme.colors.gray(9),
+                            backgroundColor = IntUiLightTheme.colors.grayOrNull(13) ?: Color.White,
+                            contentColor = IntUiLightTheme.colors.grayOrNull(2) ?: Color.Black,
+                            borderColor = IntUiLightTheme.colors.grayOrNull(9) ?: Color.Gray,
                         ),
                     intUiTooltipMetrics =
                         TooltipMetrics.defaults(

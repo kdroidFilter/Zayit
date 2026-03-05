@@ -11,7 +11,7 @@ dependencies {
     implementation(libs.kotlinpoet)
     implementation(libs.jdbc.driver)
     implementation(libs.sqlite.driver)
-    implementation("io.github.kdroidfilter.seforimlibrary:dao")
+    implementation(libs.seforimlibrary.dao)
     implementation(libs.kotlinx.coroutines.core)
 }
 

@@ -25,10 +25,10 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.kdroidfilter.seforimlibrary:core")
-            implementation("io.github.kdroidfilter.seforimlibrary:dao")
-            implementation(compose.runtime)
-            implementation(compose.foundation)
+            implementation(libs.seforimlibrary.core)
+            implementation(libs.seforimlibrary.dao)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
             // AndroidX Paging 3 (common)
             implementation(libs.androidx.paging.common)
             implementation(project(":logger"))

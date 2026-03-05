@@ -15,30 +15,28 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
         }
 
         jvmMain.dependencies {
             implementation(libs.foundation.desktop)
-            // Define the Jewel version once
-            val jewelVersion = libs.versions.jewel.get()
+            api(libs.intellij.platform.icons)
+            api(libs.jbr.api)
 
-            // Common exclusions for all Jewel libraries
-            val jewelExclusions =
-                Action<ExternalModuleDependency> {
+            // Jewel libraries with common exclusions
+            listOf(
+                libs.jewel.ui,
+                libs.jewel.markdown.core,
+                libs.jewel.markdown.extensions.autolink,
+                libs.jewel.markdown.int.ui.standalone.styling,
+            ).forEach { dep ->
+                api(dep.get().toString()) {
                     exclude(group = "org.jetbrains.compose.foundation", module = "foundation-desktop")
                     exclude(group = "org.jetbrains.skiko", module = "skiko-awt")
                     exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-all")
                 }
-
-            // Apply the exclusions to all Jewel libraries
-            api("org.jetbrains.jewel:jewel-ui:$jewelVersion", jewelExclusions)
-            api("com.jetbrains.intellij.platform:icons:252.26830.102")
-            api("org.jetbrains.runtime:jbr-api:1.9.0")
-            api("org.jetbrains.jewel:jewel-markdown-core:$jewelVersion", jewelExclusions)
-            api("org.jetbrains.jewel:jewel-markdown-extensions-autolink:$jewelVersion", jewelExclusions)
-            api("org.jetbrains.jewel:jewel-markdown-int-ui-standalone-styling:$jewelVersion", jewelExclusions)
+            }
         }
     }
 }

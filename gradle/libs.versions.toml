@@ -46,6 +46,9 @@ mockk = "1.14.9"
 kotlinx-coroutines-test = "1.10.2"
 sentry = "6.1.0"
 sentrySdk = "8.33.0"
+graalHotspot = "22.0.0.2"
+intellijPlatformIcons = "252.26830.102"
+jbrApi = "1.9.0"
 
 [libraries]
 
@@ -96,6 +99,11 @@ foundation-desktop = { module = "org.jetbrains.compose.foundation:foundation-des
 jetbrains-jewel-foundation = { module = "org.jetbrains.jewel:jewel-foundation", version.ref = "jewel" }
 jewel-int-ui-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
 jewel-ui = { module = "org.jetbrains.jewel:jewel-ui", version.ref = "jewel" }
+jewel-markdown-core = { module = "org.jetbrains.jewel:jewel-markdown-core", version.ref = "jewel" }
+jewel-markdown-extensions-autolink = { module = "org.jetbrains.jewel:jewel-markdown-extensions-autolink", version.ref = "jewel" }
+jewel-markdown-int-ui-standalone-styling = { module = "org.jetbrains.jewel:jewel-markdown-int-ui-standalone-styling", version.ref = "jewel" }
+intellij-platform-icons = { module = "com.jetbrains.intellij.platform:icons", version.ref = "intellijPlatformIcons" }
+jbr-api = { module = "org.jetbrains.runtime:jbr-api", version.ref = "jbrApi" }
 androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "paging" }
 androidx-paging-compose = { module = "androidx.paging:paging-compose", version = "paging" }
 oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshiCore" }
@@ -135,6 +143,7 @@ structured-coroutines-annotations = { module = "io.github.santimattius:structure
 
 # Sentry
 sentry-core = { module = "io.sentry:sentry", version.ref = "sentrySdk" }
+graal-hotspot-library = { module = "org.graalvm.nativeimage:graal-hotspot-library", version.ref = "graalHotspot" }
 
 # Testing
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }

@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.core.presentation.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,7 +34,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
@@ -53,6 +56,7 @@ import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.icons.MaterialSymbolsDesktop_landscape
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
@@ -115,7 +119,7 @@ private fun DesktopSwitcherTrigger(
     Row(
         modifier =
             Modifier
-                .width(TRIGGER_WIDTH)
+                .width(DESKTOP_SWITCHER_WIDTH)
                 .fillMaxHeight()
                 .then(
                     if (isIslands) {
@@ -128,11 +132,16 @@ private fun DesktopSwitcherTrigger(
                 .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
                 .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        Image(
+            painter = rememberVectorPainter(MaterialSymbolsDesktop_landscape),
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
+        )
         Text(
             text = desktopName,
-            fontSize = 12.sp,
             color = JewelTheme.globalColors.text.normal,
             maxLines = 1,
             modifier = Modifier.weight(1f),
@@ -140,7 +149,7 @@ private fun DesktopSwitcherTrigger(
         Icon(
             key = AllIconsKeys.General.ChevronDown,
             contentDescription = null,
-            modifier = Modifier.size(10.dp),
+            modifier = Modifier.size(14.dp),
             tint = JewelTheme.globalColors.text.normal,
         )
     }
@@ -396,7 +405,7 @@ private fun DesktopRenameField(
     }
 }
 
-private val TRIGGER_WIDTH = 80.dp
+internal val DESKTOP_SWITCHER_WIDTH = 110.dp
 private val DROPDOWN_WIDTH = 130.dp
 private const val MAX_DESKTOP_NAME_LENGTH = 8
 private val DropdownShape = RoundedCornerShape(6.dp)

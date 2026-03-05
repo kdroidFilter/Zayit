@@ -1,5 +1,7 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -54,6 +57,8 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import sh.calvin.reorderable.ReorderableColumn
+import sh.calvin.reorderable.ReorderableItem
 
 @Composable
 fun DesktopSwitcher(modifier: Modifier = Modifier) {
@@ -156,31 +161,46 @@ private fun DesktopDropdownContent(
                 .border(1.dp, JewelTheme.globalColors.borders.normal, DropdownShape)
                 .padding(4.dp),
     ) {
-        desktops.forEach { desktop ->
-            if (renamingDesktopId == desktop.id) {
-                DesktopRenameField(
-                    currentName = desktop.name,
-                    onRename = { newName ->
-                        if (newName.isNotBlank()) desktopManager.renameDesktop(desktop.id, newName)
-                        renamingDesktopId = null
-                    },
-                    onCancel = { renamingDesktopId = null },
-                )
-            } else {
-                DesktopItem(
-                    desktop = desktop,
-                    isActive = desktop.id == activeDesktopId,
-                    canDelete = desktops.size > 1,
-                    onClick = {
-                        desktopManager.switchTo(desktop.id)
-                        onDismiss()
-                    },
-                    onRename = { renamingDesktopId = desktop.id },
-                    onDelete = {
-                        desktopManager.deleteDesktop(desktop.id)
-                        if (desktops.size <= 2) onDismiss()
-                    },
-                )
+        val desktopKeys = remember(desktops) { desktops.map { it.id } }
+
+        ReorderableColumn(
+            list = desktopKeys,
+            onSettle = { fromIndex, toIndex -> desktopManager.moveDesktop(fromIndex, toIndex) },
+        ) { index, desktopId, isDragging ->
+            val desktop = desktops.getOrNull(index) ?: return@ReorderableColumn
+            val dragAlpha by animateFloatAsState(
+                targetValue = if (isDragging) 0.7f else 1f,
+                animationSpec = tween(durationMillis = 150),
+            )
+
+            ReorderableItem {
+                Box(modifier = Modifier.alpha(dragAlpha).draggableHandle()) {
+                    if (renamingDesktopId == desktop.id) {
+                        DesktopRenameField(
+                            currentName = desktop.name,
+                            onRename = { newName ->
+                                if (newName.isNotBlank()) desktopManager.renameDesktop(desktop.id, newName)
+                                renamingDesktopId = null
+                            },
+                            onCancel = { renamingDesktopId = null },
+                        )
+                    } else {
+                        DesktopItem(
+                            desktop = desktop,
+                            isActive = desktop.id == activeDesktopId,
+                            canDelete = desktops.size > 1,
+                            onClick = {
+                                desktopManager.switchTo(desktop.id)
+                                onDismiss()
+                            },
+                            onRename = { renamingDesktopId = desktop.id },
+                            onDelete = {
+                                desktopManager.deleteDesktop(desktop.id)
+                                if (desktops.size <= 2) onDismiss()
+                            },
+                        )
+                    }
+                }
             }
         }
 

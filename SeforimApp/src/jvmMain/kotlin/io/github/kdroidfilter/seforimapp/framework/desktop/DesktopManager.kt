@@ -105,6 +105,19 @@ class DesktopManager(
         _desktops.update { desktops -> desktops.filter { it.id != id } }
     }
 
+    fun moveDesktop(
+        fromIndex: Int,
+        toIndex: Int,
+    ) {
+        _desktops.update { current ->
+            if (fromIndex !in current.indices || toIndex !in current.indices || fromIndex == toIndex) return@update current
+            val list = current.toMutableList()
+            val moved = list.removeAt(fromIndex)
+            list.add(toIndex, moved)
+            list
+        }
+    }
+
     fun switchToNext() {
         val current = _desktops.value
         if (current.size <= 1) return

@@ -378,8 +378,7 @@ fun main() {
                                         desktopMgr.switchToPrevious()
                                         true
                                     } else if (isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.N) {
-                                        val nextNumber = desktopMgr.desktops.value.size + 1
-                                        desktopMgr.createDesktop("$nextNumber")
+                                        desktopMgr.createDesktop()
                                         true
                                     } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
                                         windowState.isMinimized = true
@@ -534,8 +533,7 @@ fun main() {
                                                         }
                                                         // Ctrl/Cmd + Alt + N => new desktop
                                                         isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.N -> {
-                                                            val nextNumber = desktopMgr.desktops.value.size + 1
-                                                            desktopMgr.createDesktop("$nextNumber")
+                                                            desktopMgr.createDesktop()
                                                             true
                                                         }
                                                         // Cmd + M => minimize window (macOS only)

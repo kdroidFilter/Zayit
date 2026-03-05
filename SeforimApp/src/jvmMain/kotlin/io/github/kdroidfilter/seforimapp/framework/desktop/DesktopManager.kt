@@ -26,7 +26,7 @@ class DesktopManager(
 
     private val _desktops =
         MutableStateFlow(
-            listOf(VirtualDesktop(id = defaultDesktopId, name = "1")),
+            listOf(VirtualDesktop(id = defaultDesktopId, name = "\u05E9\u05F4\u05E2 1")),
         )
     val desktops: StateFlow<List<VirtualDesktop>> = _desktops.asStateFlow()
 
@@ -58,6 +58,8 @@ class DesktopManager(
 
         _activeDesktopId.value = desktopId
     }
+
+    fun createDesktop(): String = createDesktop("\u05E9\u05F4\u05E2 ${_desktops.value.size + 1}")
 
     fun createDesktop(name: String): String {
         val id = UUID.randomUUID().toString()

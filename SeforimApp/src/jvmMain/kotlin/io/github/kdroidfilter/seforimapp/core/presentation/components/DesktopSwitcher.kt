@@ -53,8 +53,9 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
-import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.MaterialSymbolsDesktop_landscape
 import org.jetbrains.compose.resources.stringResource
@@ -73,6 +74,7 @@ fun DesktopSwitcher(modifier: Modifier = Modifier) {
     val appGraph = LocalAppGraph.current
     val desktopManager = appGraph.desktopManager
     val desktops by desktopManager.desktops.collectAsState()
+    val immutableDesktops = remember(desktops) { desktops.toImmutableList() }
     val activeDesktopId by desktopManager.activeDesktopId.collectAsState()
     val activeDesktop = desktops.find { it.id == activeDesktopId }
 
@@ -94,9 +96,13 @@ fun DesktopSwitcher(modifier: Modifier = Modifier) {
                 properties = PopupProperties(focusable = true),
             ) {
                 DesktopDropdownContent(
-                    desktops = desktops,
+                    desktops = immutableDesktops,
                     activeDesktopId = activeDesktopId,
-                    desktopManager = desktopManager,
+                    onMove = desktopManager::moveDesktop,
+                    onSwitch = desktopManager::switchTo,
+                    onRename = desktopManager::renameDesktop,
+                    onDelete = desktopManager::deleteDesktop,
+                    onCreate = desktopManager::createDesktop,
                     onDismiss = { showDropdown = false },
                 )
             }
@@ -157,9 +163,13 @@ private fun DesktopSwitcherTrigger(
 
 @Composable
 private fun DesktopDropdownContent(
-    desktops: List<VirtualDesktop>,
+    desktops: ImmutableList<VirtualDesktop>,
     activeDesktopId: String,
-    desktopManager: DesktopManager,
+    onMove: (Int, Int) -> Unit,
+    onSwitch: (String) -> Unit,
+    onRename: (String, String) -> Unit,
+    onDelete: (String) -> Unit,
+    onCreate: () -> String,
     onDismiss: () -> Unit,
 ) {
     val accent = JewelTheme.globalColors.outlines.focused
@@ -178,7 +188,7 @@ private fun DesktopDropdownContent(
 
         ReorderableColumn(
             list = desktopKeys,
-            onSettle = { fromIndex, toIndex -> desktopManager.moveDesktop(fromIndex, toIndex) },
+            onSettle = { fromIndex, toIndex -> onMove(fromIndex, toIndex) },
         ) { index, desktopId, isDragging ->
             val desktop = desktops.getOrNull(index) ?: return@ReorderableColumn
             val dragAlpha by animateFloatAsState(
@@ -192,7 +202,7 @@ private fun DesktopDropdownContent(
                         DesktopRenameField(
                             currentName = desktop.name,
                             onRename = { newName ->
-                                if (newName.isNotBlank()) desktopManager.renameDesktop(desktop.id, newName)
+                                if (newName.isNotBlank()) onRename(desktop.id, newName)
                                 renamingDesktopId = null
                             },
                             onCancel = { renamingDesktopId = null },
@@ -203,12 +213,12 @@ private fun DesktopDropdownContent(
                             isActive = desktop.id == activeDesktopId,
                             canDelete = desktops.size > 1,
                             onClick = {
-                                desktopManager.switchTo(desktop.id)
+                                onSwitch(desktop.id)
                                 onDismiss()
                             },
                             onRename = { renamingDesktopId = desktop.id },
                             onDelete = {
-                                desktopManager.deleteDesktop(desktop.id)
+                                onDelete(desktop.id)
                                 if (desktops.size <= 2) onDismiss()
                             },
                         )
@@ -220,7 +230,7 @@ private fun DesktopDropdownContent(
         // New desktop button
         HoverableRow(
             onClick = {
-                desktopManager.createDesktop()
+                onCreate()
                 onDismiss()
             },
             hoverColor = accent.copy(alpha = 0.06f),

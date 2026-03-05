@@ -128,9 +128,8 @@ private fun SidebarItem(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val selectedBackground =
-        JewelTheme.globalColors.borders.focused
-            .copy(alpha = 0.15f)
+    val accent = JewelTheme.globalColors.outlines.focused
+    val selectedBackground = accent.copy(alpha = 0.15f)
     val bg = if (selected) selectedBackground else JewelTheme.globalColors.panelBackground
     val iconTint = if (selected) JewelTheme.globalColors.text.selected else JewelTheme.globalColors.text.normal
 
@@ -149,7 +148,7 @@ private fun SidebarItem(
                     .width(3.dp)
                     .height(18.dp)
                     .background(
-                        if (selected) JewelTheme.globalColors.borders.focused else Color.Transparent,
+                        if (selected) accent else Color.Transparent,
                     ),
         )
         Spacer(Modifier.width(8.dp))

@@ -78,6 +78,7 @@
     <string name="shortcut_settings_mac">,+⌘</string>
     <string name="shortcut_settings_windows">,+Ctrl</string>
     <string name="settings_category_general">כללי</string>
+    <string name="settings_category_display">תצוגה</string>
     <string name="settings_category_profile">פרופיל</string>
     <string name="settings_category_region">אזור</string>
     <string name="settings_category_fonts">גופנים</string>
@@ -304,7 +305,7 @@
     <!-- Theme style selector -->
     <string name="settings_theme_style_label">סגנון ערכת נושא</string>
     <string name="settings_theme_style_classic">קלאסי</string>
-    <string name="settings_theme_style_islands">Islands</string>
+    <string name="settings_theme_style_islands">איילנדס</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title_bar">מדריך ההגדרה של זית</string>

@@ -68,6 +68,8 @@ fun TabsContent() {
     val tabs = tabsState.tabs
     val selectedTabIndex = tabsState.selectedTabIndex
     val isRestoringSession by SessionManager.isRestoringSession.collectAsState()
+    val isSwitchingDesktop by appGraph.desktopManager.isSwitching.collectAsState()
+    val isTransitioning = isRestoringSession || isSwitchingDesktop
 
     val searchUi by remember(searchHomeViewModel) { searchHomeViewModel.uiState }.collectAsState()
     val scope = rememberCoroutineScope()
@@ -172,6 +174,15 @@ fun TabsContent() {
         }
     }
 
+    // Clear the desktop-switching flag after the first frame so the loader disappears
+    LaunchedEffect(isSwitchingDesktop) {
+        if (isSwitchingDesktop) {
+            // Wait one frame for ViewModels to initialize with persisted state
+            kotlinx.coroutines.delay(100)
+            appGraph.desktopManager.clearSwitching()
+        }
+    }
+
     // Render all tabs with visibility control
     val isIslands = ThemeUtils.isIslandsStyle()
     val canvasBg =
@@ -208,7 +219,7 @@ fun TabsContent() {
                                 tabOwner = tabOwner,
                                 tabId = tabId,
                                 isSelected = isSelected,
-                                isRestoringSession = isRestoringSession,
+                                isRestoringSession = isTransitioning,
                                 searchUi = searchUi,
                                 searchCallbacks = homeSearchCallbacks,
                             )
@@ -227,7 +238,7 @@ fun TabsContent() {
                                 tabOwner = tabOwner,
                                 destination = destination,
                                 isSelected = isSelected,
-                                isRestoringSession = isRestoringSession,
+                                isRestoringSession = isTransitioning,
                                 searchUi = searchUi,
                                 searchCallbacks = homeSearchCallbacks,
                             )

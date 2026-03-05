@@ -35,14 +35,15 @@ class DesktopManager(
 
     private val snapshots = mutableMapOf<String, DesktopTabsSnapshot>()
 
-    private var isSwitching = false
+    private val _isSwitching = MutableStateFlow(false)
+    val isSwitching: StateFlow<Boolean> = _isSwitching.asStateFlow()
 
     fun switchTo(desktopId: String) {
-        if (isSwitching) return
+        if (_isSwitching.value) return
         if (desktopId == _activeDesktopId.value) return
         val target = _desktops.value.find { it.id == desktopId } ?: return
 
-        isSwitching = true
+        _isSwitching.value = true
         try {
             // Snapshot current desktop
             snapshots[_activeDesktopId.value] = snapshotCurrentDesktop()
@@ -64,16 +65,20 @@ class DesktopManager(
 
             _activeDesktopId.value = desktopId
         } finally {
-            isSwitching = false
+            // Keep isSwitching true — cleared by UI after first frame renders
         }
+    }
+
+    fun clearSwitching() {
+        _isSwitching.value = false
     }
 
     fun createDesktop(): String = createDesktop("\u05E9\u05F4\u05E2 ${_desktops.value.size + 1}")
 
     fun createDesktop(name: String): String {
-        if (isSwitching) return _activeDesktopId.value
+        if (_isSwitching.value) return _activeDesktopId.value
 
-        isSwitching = true
+        _isSwitching.value = true
         try {
             val id = UUID.randomUUID().toString()
             val desktop = VirtualDesktop(id = id, name = name)
@@ -94,7 +99,7 @@ class DesktopManager(
             _activeDesktopId.value = id
             return id
         } finally {
-            isSwitching = false
+            // Keep isSwitching true — cleared by UI after first frame renders
         }
     }
 

@@ -15,8 +15,6 @@ class GeneralSettingsStateTest {
         assertNull(state.databasePath)
         assertFalse(state.closeTreeOnNewBook)
         assertTrue(state.persistSession)
-        assertTrue(state.showZmanimWidgets)
-        assertFalse(state.useOpenGl)
         assertFalse(state.resetDone)
     }
 
@@ -27,16 +25,12 @@ class GeneralSettingsStateTest {
                 databasePath = "/custom/path/db.sqlite",
                 closeTreeOnNewBook = true,
                 persistSession = false,
-                showZmanimWidgets = false,
-                useOpenGl = true,
                 resetDone = true,
             )
 
         assertEquals("/custom/path/db.sqlite", state.databasePath)
         assertTrue(state.closeTreeOnNewBook)
         assertFalse(state.persistSession)
-        assertFalse(state.showZmanimWidgets)
-        assertTrue(state.useOpenGl)
         assertTrue(state.resetDone)
     }
 
@@ -62,8 +56,6 @@ class GeneralSettingsStateTest {
         assertEquals("/Users/you/.zayit/seforim.db", preview.databasePath)
         assertTrue(preview.closeTreeOnNewBook)
         assertTrue(preview.persistSession)
-        assertTrue(preview.showZmanimWidgets)
-        assertFalse(preview.useOpenGl)
         assertFalse(preview.resetDone)
     }
 

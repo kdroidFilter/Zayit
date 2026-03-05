@@ -118,6 +118,21 @@ lucene-analysis-common = { module = "org.apache.lucene:lucene-analysis-common", 
 lucene-queryparser = { module = "org.apache.lucene:lucene-queryparser", version.ref = "lucene" }
 lucene-highlighter = { module = "org.apache.lucene:lucene-highlighter", version.ref = "lucene" }
 
+# Compose Multiplatform (direct dependencies, replacing deprecated plugin accessors)
+compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
+compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
+compose-components-ui-tooling-preview = { module = "org.jetbrains.compose.components:components-ui-tooling-preview", version.ref = "compose" }
+compose-ui-test = { module = "org.jetbrains.compose.ui:ui-test-junit4", version.ref = "compose" }
+
+# SeforimLibrary composite build
+seforimlibrary-core = { module = "io.github.kdroidfilter.seforimlibrary:core" }
+seforimlibrary-dao = { module = "io.github.kdroidfilter.seforimlibrary:dao" }
+seforimlibrary-search = { module = "io.github.kdroidfilter.seforimlibrary:search" }
+
+# Structured coroutines annotations
+structured-coroutines-annotations = { module = "io.github.santimattius:structured-coroutines-annotations", version.ref = "structured-coroutines" }
+
 # Sentry
 sentry-core = { module = "io.sentry:sentry", version.ref = "sentrySdk" }
 

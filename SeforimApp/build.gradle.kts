@@ -2,7 +2,6 @@ import io.github.kdroidfilter.buildsrc.Versioning
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseChannel
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseType
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
-import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
 
 plugins {
@@ -66,10 +65,10 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             // Compose
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.components.resources)
+            implementation(libs.compose.components.ui.tooling.preview)
 
             // Ktor
             implementation(libs.ktor.client.core)
@@ -89,7 +88,7 @@ kotlin {
 
             // KotlinX
             implementation(libs.kotlinx.coroutines.core)
-            implementation("io.github.santimattius:structured-coroutines-annotations:0.3.0")
+            implementation(libs.structured.coroutines.annotations)
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.serialization.protobuf)
@@ -109,8 +108,8 @@ kotlin {
             implementation(libs.filekit.dialogs.compose)
 
             // Project / domain libs
-            implementation("io.github.kdroidfilter.seforimlibrary:core")
-            implementation("io.github.kdroidfilter.seforimlibrary:dao")
+            implementation(libs.seforimlibrary.core)
+            implementation(libs.seforimlibrary.dao)
 
             // Local projects
             implementation(project(":htmlparser"))
@@ -137,8 +136,7 @@ kotlin {
 
         commonTest.dependencies {
             implementation(kotlin("test"))
-            @OptIn(ExperimentalComposeLibrary::class)
-            implementation(compose.uiTest)
+            implementation(libs.compose.ui.test)
         }
 
         jvmTest.dependencies {
@@ -173,7 +171,7 @@ kotlin {
             implementation(libs.reorderable)
 
             // SeforimLibrary search module
-            implementation("io.github.kdroidfilter.seforimlibrary:search")
+            implementation(libs.seforimlibrary.search)
 
             implementation(libs.commons.compress)
 

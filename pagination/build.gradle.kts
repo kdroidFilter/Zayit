@@ -5,7 +5,6 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose)
     alias(libs.plugins.kotlinx.serialization)
-    id("com.android.kotlin.multiplatform.library")
 }
 
 kotlin {
@@ -14,12 +13,6 @@ kotlin {
             .get()
             .toInt(),
     )
-
-    androidLibrary {
-        namespace = "io.github.kdroidfilter.seforimapp"
-        compileSdk = 35
-        minSdk = 21
-    }
 
     jvm()
 
@@ -32,9 +25,6 @@ kotlin {
             // AndroidX Paging 3 (common)
             implementation(libs.androidx.paging.common)
             implementation(project(":logger"))
-        }
-
-        androidMain.dependencies {
         }
 
         jvmMain.dependencies {

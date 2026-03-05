@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose)
-    id("com.android.kotlin.multiplatform.library")
 }
 
 val version = Versioning.resolveVersion(project)
@@ -16,22 +15,13 @@ kotlin {
             .toInt(),
     )
 
-    androidLibrary {
-        namespace = "io.github.kdroidfilter.seforimapp"
-        compileSdk = 35
-        minSdk = 21
-    }
-
     jvm()
 
     sourceSets {
         commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.components.resources)
-        }
-
-        androidMain.dependencies {
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.components.resources)
         }
 
         jvmMain.dependencies {

@@ -183,7 +183,7 @@ kotlin {
             implementation(libs.knotify)
             implementation(libs.knotify.compose)
 
-            compileOnly("org.graalvm.nativeimage:graal-hotspot-library:22.0.0.2")
+            compileOnly(libs.graal.hotspot.library)
             // Sentry crash reporting
             implementation(libs.sentry.core)
         }

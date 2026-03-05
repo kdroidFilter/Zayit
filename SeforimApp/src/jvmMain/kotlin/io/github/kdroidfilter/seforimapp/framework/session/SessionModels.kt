@@ -2,6 +2,8 @@
 
 package io.github.kdroidfilter.seforimapp.framework.session
 
+import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
+import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults
 import io.github.kdroidfilter.seforimapp.features.search.SearchTabCache
@@ -82,6 +84,29 @@ data class BookContentPersistedState(
     val previousContentSplitPosition: Float = SplitDefaults.CONTENT,
     val previousSourcesSplitPosition: Float = SplitDefaults.SOURCES,
     val previousTargumSplitPosition: Float = 0.8f,
+)
+
+// -- Virtual desktops persistence models --
+
+@Serializable
+data class DesktopTabsSnapshot(
+    val destinations: List<TabsDestination> = emptyList(),
+    val selectedIndex: Int = 0,
+    val titles: Map<String, SerializableTabTitle> = emptyMap(),
+    val tabStates: Map<String, TabPersistedState> = emptyMap(),
+)
+
+@Serializable
+data class SerializableTabTitle(
+    val title: String,
+    val tabType: TabType,
+)
+
+@Serializable
+data class DesktopsState(
+    val desktops: List<VirtualDesktop> = emptyList(),
+    val activeDesktopId: String = "",
+    val snapshots: Map<String, DesktopTabsSnapshot> = emptyMap(),
 )
 
 @Serializable

@@ -1,6 +1,9 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.components
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,20 +36,21 @@ fun DecoratedWindowScope.MainTitleBar() {
             }
         BoxWithConstraints(modifier = Modifier.align(Alignment.Start)) {
             val windowWidth = maxWidth
-            val iconsNumber = 4
+            val actionButtonCount = 4
             val iconWidth: Dp = 40.dp
+            val desktopSwitcherWidth: Dp = 80.dp
+            val actionButtonsWidth = iconWidth * actionButtonCount + desktopSwitcherWidth
             val iconsAreaWidth: Dp =
                 when (PlatformInfo.currentOS) {
-                    OperatingSystem.MACOS -> iconWidth * (iconsNumber + 2)
-                    OperatingSystem.WINDOWS -> iconWidth * (iconsNumber + 3.5f)
-                    else -> iconWidth * iconsNumber + windowControlButtonWidth * windowControlCount
+                    OperatingSystem.MACOS -> actionButtonsWidth + iconWidth * 2 // traffic lights space
+                    OperatingSystem.WINDOWS -> actionButtonsWidth + iconWidth * 3.5f // window controls
+                    else -> actionButtonsWidth + windowControlButtonWidth * windowControlCount
                 }
             val tabsAreaWidth: Dp = (windowWidth - iconsAreaWidth).coerceAtLeast(0.dp)
             Row {
                 Row(
                     modifier =
                         Modifier
-                            .padding(start = 0.dp)
                             .align(Alignment.Start)
                             .width(tabsAreaWidth),
                 ) {
@@ -59,6 +63,7 @@ fun DecoratedWindowScope.MainTitleBar() {
                             .fillMaxHeight(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    DesktopSwitcher()
                     TitleBarActionsButtonsView()
                 }
             }

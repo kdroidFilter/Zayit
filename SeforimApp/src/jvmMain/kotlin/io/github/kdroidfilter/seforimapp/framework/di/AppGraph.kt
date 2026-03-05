@@ -10,6 +10,7 @@ import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsSt
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
+import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
@@ -29,6 +30,7 @@ abstract class AppGraph : ViewModelGraph {
     abstract val repository: SeforimRepository
     abstract val searchEngine: SearchEngine
     abstract val tabsViewModel: TabsViewModel
+    abstract val desktopManager: DesktopManager
     abstract val searchHomeViewModel: SearchHomeViewModel
 
     abstract val onboardingProcessRepository: OnboardingProcessRepository

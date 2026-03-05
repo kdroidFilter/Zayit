@@ -72,6 +72,11 @@
     <string name="font_stam_sefarad_clm">סת"ם ספרד</string>
     <string name="font_yehuda_clm">יהודה</string>
 
+    <!-- Virtual Desktops -->
+    <string name="desktop_new">חדש</string>
+    <string name="desktop_rename">שנה שם</string>
+    <string name="desktop_delete">מחק</string>
+
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>
     <!-- Shortcut hints (OS-specific) for Settings action -->

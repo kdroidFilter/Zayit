@@ -297,11 +297,15 @@ fun main() {
                         val settingsWindowViewModel: SettingsWindowViewModel =
                             metroViewModel(viewModelStoreOwner = windowViewModelOwner)
 
-                        // Build dynamic window title: "AppName - CurrentTab"
+                        // Build dynamic window title: "AppName - [DesktopName] - CurrentTab"
                         val tabsVm = appGraph.tabsViewModel
+                        val desktopMgr = appGraph.desktopManager
                         val tabsState by tabsVm.state.collectAsState()
                         val tabs = tabsState.tabs
                         val selectedIndex = tabsState.selectedTabIndex
+                        val allDesktops by desktopMgr.desktops.collectAsState()
+                        val currentDesktopId by desktopMgr.activeDesktopId.collectAsState()
+                        val currentDesktopName = allDesktops.find { it.id == currentDesktopId }?.name
                         val appTitle = stringResource(Res.string.app_name)
                         val selectedTab = tabs.getOrNull(selectedIndex)
                         val rawTitle = selectedTab?.title.orEmpty()
@@ -313,10 +317,14 @@ fun main() {
                                 else -> rawTitle
                             }
                         val windowTitle =
-                            if (formattedTabTitle.isNotBlank()) {
-                                stringResource(Res.string.window_title_with_tab, appTitle, formattedTabTitle)
-                            } else {
-                                appTitle
+                            buildString {
+                                append(appTitle)
+                                if (allDesktops.size > 1 && currentDesktopName != null) {
+                                    append(" - [$currentDesktopName]")
+                                }
+                                if (formattedTabTitle.isNotBlank()) {
+                                    append(" - $formattedTabTitle")
+                                }
                             }
 
                         DecoratedWindow(
@@ -362,6 +370,16 @@ fun main() {
                                         }
                                     } else if (isCtrlOrCmd && keyEvent.key == Key.Comma) {
                                         settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
+                                        true
+                                    } else if (isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionRight) {
+                                        desktopMgr.switchToNext()
+                                        true
+                                    } else if (isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionLeft) {
+                                        desktopMgr.switchToPrevious()
+                                        true
+                                    } else if (isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.N) {
+                                        val nextNumber = desktopMgr.desktops.value.size + 1
+                                        desktopMgr.createDesktop("$nextNumber")
                                         true
                                     } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
                                         windowState.isMinimized = true
@@ -502,6 +520,22 @@ fun main() {
                                                         // Ctrl/Cmd + Comma => open settings
                                                         isCtrlOrCmd && keyEvent.key == Key.Comma -> {
                                                             settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
+                                                            true
+                                                        }
+                                                        // Ctrl/Cmd + Alt + Right => next desktop
+                                                        isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionRight -> {
+                                                            desktopMgr.switchToNext()
+                                                            true
+                                                        }
+                                                        // Ctrl/Cmd + Alt + Left => previous desktop
+                                                        isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionLeft -> {
+                                                            desktopMgr.switchToPrevious()
+                                                            true
+                                                        }
+                                                        // Ctrl/Cmd + Alt + N => new desktop
+                                                        isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.N -> {
+                                                            val nextNumber = desktopMgr.desktops.value.size + 1
+                                                            desktopMgr.createDesktop("$nextNumber")
                                                             true
                                                         }
                                                         // Cmd + M => minimize window (macOS only)

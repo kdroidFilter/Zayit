@@ -2,11 +2,12 @@
 
 package io.github.kdroidfilter.seforimapp.framework.session
 
+import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.vinceglb.filekit.FileKit
@@ -23,7 +24,8 @@ import java.io.File
 /**
  * Persists and restores the navigation session (open tabs + per-tab persisted UI state) when enabled.
  *
- * Persistence is performed only at app close.
+ * Now supports multiple virtual desktops via [DesktopsState].
+ * Migrates transparently from the legacy single-desktop [SavedSessionV2] format.
  */
 object SessionManager {
     private val proto = ProtoBuf
@@ -36,82 +38,34 @@ object SessionManager {
         return root
     }
 
-    private fun sessionFile(): File = File(sessionDir(), "session_v2.pb")
+    private fun legacySessionFile(): File = File(sessionDir(), "session_v2.pb")
 
-    private fun hasSavedSessionToRestore(): Boolean = AppSettings.isPersistSessionEnabled() && sessionFile().exists()
+    private fun desktopsFile(): File = File(sessionDir(), "desktops_v1.pb")
+
+    private fun hasSavedSessionToRestore(): Boolean =
+        AppSettings.isPersistSessionEnabled() && (desktopsFile().exists() || legacySessionFile().exists())
 
     /** Saves the current session snapshot if the user enabled persistence in settings. */
     fun saveIfEnabled(appGraph: AppGraph) {
         if (!AppSettings.isPersistSessionEnabled()) return
 
-        val tabsVm: TabsViewModel = appGraph.tabsViewModel
-        val store: TabPersistedStateStore = appGraph.tabPersistedStateStore
-
-        val tabs = tabsVm.tabs.value
-        if (tabs.isEmpty()) return
-
-        // `TabsDestination.BookContent.lineId` is an ephemeral navigation hint (e.g., open from search).
-        // Session restore should rely on the per-tab persisted UI state (scroll/selection) instead.
-        val destinations =
-            tabs.map { it.destination }.map { dest ->
-                when (dest) {
-                    is TabsDestination.BookContent -> dest.copy(lineId = null)
-                    else -> dest
-                }
-            }
-        val selectedIndex = tabsVm.selectedTabIndex.value.coerceIn(0, destinations.lastIndex)
-
-        val storeSnapshot = store.snapshot()
-        val tabStates =
-            destinations.associate { dest ->
-                dest.tabId to (storeSnapshot[dest.tabId] ?: TabPersistedState())
-            }
+        val desktopManager: DesktopManager = appGraph.desktopManager
+        val desktopsState = desktopManager.buildDesktopsState()
 
         debugln {
             buildString {
-                append("[SessionManager] Saving session: tabs=${destinations.size}, selectedIndex=$selectedIndex\n")
-                destinations.forEach { dest ->
-                    when (dest) {
-                        is TabsDestination.BookContent -> {
-                            val bc = tabStates[dest.tabId]?.bookContent
-                            append(
-                                "  - BookContent tabId=${dest.tabId} destBookId=${dest.bookId} " +
-                                    "persistedBookId=${bc?.selectedBookId} " +
-                                    "selectedLineIds=${bc?.selectedLineIds} " +
-                                    "primarySelectedLineId=${bc?.primarySelectedLineId} " +
-                                    "anchorLineId=${bc?.contentAnchorLineId} " +
-                                    "scroll=(${bc?.contentScrollIndex},${bc?.contentScrollOffset})\n",
-                            )
-                        }
-
-                        is TabsDestination.Search -> {
-                            val s = tabStates[dest.tabId]?.search
-                            append(
-                                "  - Search tabId=${dest.tabId} query=${dest.searchQuery} " +
-                                    "persistedQuery=${s?.query} " +
-                                    "scroll=(${s?.scrollIndex},${s?.scrollOffset}) " +
-                                    "anchorId=${s?.anchorId}\n",
-                            )
-                        }
-
-                        is TabsDestination.Home -> {
-                            append("  - Home tabId=${dest.tabId}\n")
-                        }
-                    }
+                append("[SessionManager] Saving desktops session: ${desktopsState.desktops.size} desktops, ")
+                append("active=${desktopsState.activeDesktopId}\n")
+                desktopsState.snapshots.forEach { (id, snap) ->
+                    val desktopName = desktopsState.desktops.find { it.id == id }?.name ?: "?"
+                    append("  Desktop '$desktopName': ${snap.destinations.size} tabs, selectedIndex=${snap.selectedIndex}\n")
                 }
             }
         }
 
-        val saved =
-            SavedSessionV2(
-                tabs = destinations,
-                selectedIndex = selectedIndex,
-                tabStates = tabStates,
-            )
-
         runCatching {
-            val bytes = proto.encodeToByteArray(SavedSessionV2.serializer(), saved)
-            sessionFile().writeBytes(bytes)
+            val bytes = proto.encodeToByteArray(DesktopsState.serializer(), desktopsState)
+            desktopsFile().writeBytes(bytes)
         }
     }
 
@@ -119,24 +73,71 @@ object SessionManager {
     suspend fun restoreIfEnabled(appGraph: AppGraph) {
         if (!AppSettings.isPersistSessionEnabled()) return
 
-        val file = sessionFile()
-        if (!file.exists()) return
-
         _isRestoringSession.value = true
         try {
-            val bytes = withContext(Dispatchers.IO) { file.readBytes() }
+            val desktopsState = loadDesktopsState() ?: return
+            if (desktopsState.desktops.isEmpty()) return
+
+            // Compute titles for the active desktop snapshot
+            val activeSnapshot = desktopsState.snapshots[desktopsState.activeDesktopId]
+            val enrichedSnapshots = desktopsState.snapshots.toMutableMap()
+
+            if (activeSnapshot != null) {
+                val computedTitles = computeTabTitles(activeSnapshot.destinations, activeSnapshot.tabStates, appGraph)
+                val mergedTitles = activeSnapshot.titles.toMutableMap()
+                computedTitles.forEach { (tabId, pair) ->
+                    mergedTitles[tabId] = SerializableTabTitle(title = pair.first, tabType = pair.second)
+                }
+                enrichedSnapshots[desktopsState.activeDesktopId] = activeSnapshot.copy(titles = mergedTitles)
+            }
+
+            val enrichedState = desktopsState.copy(snapshots = enrichedSnapshots)
+
+            debugln {
+                buildString {
+                    append("[SessionManager] Restoring desktops session: ${enrichedState.desktops.size} desktops, ")
+                    append("active=${enrichedState.activeDesktopId}\n")
+                }
+            }
+
+            appGraph.desktopManager.restoreFromDesktopsState(enrichedState)
+        } finally {
+            _isRestoringSession.value = false
+        }
+    }
+
+    /**
+     * Loads [DesktopsState], migrating from legacy [SavedSessionV2] if needed.
+     */
+    private suspend fun loadDesktopsState(): DesktopsState? {
+        val desktopsF = desktopsFile()
+        val legacyF = legacySessionFile()
+
+        // Try new format first
+        if (desktopsF.exists()) {
+            val bytes = withContext(Dispatchers.IO) { desktopsF.readBytes() }
+            return runSuspendCatching {
+                proto.decodeFromByteArray(DesktopsState.serializer(), bytes)
+            }.getOrElse {
+                runCatching { desktopsF.delete() }
+                null
+            }
+        }
+
+        // Migrate from legacy format
+        if (legacyF.exists()) {
+            val bytes = withContext(Dispatchers.IO) { legacyF.readBytes() }
             val saved =
                 runSuspendCatching {
                     proto.decodeFromByteArray(SavedSessionV2.serializer(), bytes)
                 }.getOrElse {
-                    // Corrupt session; delete to avoid repeated restore attempts.
-                    runCatching { file.delete() }
-                    return
+                    runCatching { legacyF.delete() }
+                    return null
                 }
-            if (saved.tabs.isEmpty()) return
 
-            // Ignore ephemeral `lineId` navigation hints on cold boot restore.
-            // Scroll/selection restoration is handled via `tabStates`.
+            if (saved.tabs.isEmpty()) return null
+
+            // Strip ephemeral lineId
             val destinations =
                 saved.tabs.map { dest ->
                     when (dest) {
@@ -145,53 +146,33 @@ object SessionManager {
                     }
                 }
 
-            debugln {
-                buildString {
-                    append("[SessionManager] Restoring session: tabs=${destinations.size}, selectedIndex=${saved.selectedIndex}\n")
-                    destinations.forEach { dest ->
-                        when (dest) {
-                            is TabsDestination.BookContent -> {
-                                val bc = saved.tabStates[dest.tabId]?.bookContent
-                                append(
-                                    "  - BookContent tabId=${dest.tabId} destBookId=${dest.bookId} " +
-                                        "persistedBookId=${bc?.selectedBookId} " +
-                                        "selectedLineIds=${bc?.selectedLineIds} " +
-                                        "primarySelectedLineId=${bc?.primarySelectedLineId} " +
-                                        "anchorLineId=${bc?.contentAnchorLineId} " +
-                                        "scroll=(${bc?.contentScrollIndex},${bc?.contentScrollOffset})\n",
-                                )
-                            }
+            val desktopId = "migrated-desktop"
+            val snapshot =
+                DesktopTabsSnapshot(
+                    destinations = destinations,
+                    selectedIndex = saved.selectedIndex,
+                    titles = emptyMap(),
+                    tabStates = saved.tabStates,
+                )
 
-                            is TabsDestination.Search -> {
-                                val s = saved.tabStates[dest.tabId]?.search
-                                append(
-                                    "  - Search tabId=${dest.tabId} query=${dest.searchQuery} " +
-                                        "persistedQuery=${s?.query} " +
-                                        "scroll=(${s?.scrollIndex},${s?.scrollOffset}) " +
-                                        "anchorId=${s?.anchorId}\n",
-                                )
-                            }
+            val state =
+                DesktopsState(
+                    desktops = listOf(VirtualDesktop(id = desktopId, name = "1")),
+                    activeDesktopId = desktopId,
+                    snapshots = mapOf(desktopId to snapshot),
+                )
 
-                            is TabsDestination.Home -> {
-                                append("  - Home tabId=${dest.tabId}\n")
-                            }
-                        }
-                    }
-                }
+            // Save in new format and delete legacy file
+            runCatching {
+                val newBytes = proto.encodeToByteArray(DesktopsState.serializer(), state)
+                desktopsF.writeBytes(newBytes)
+                legacyF.delete()
             }
 
-            // Restore persisted tab state first, so viewmodels can consume it as they start.
-            appGraph.tabPersistedStateStore.restore(saved.tabStates)
-
-            // Compute titles before restoring tabs so TabItems are created with correct titles.
-            val titles = computeTabTitles(destinations, saved.tabStates, appGraph)
-
-            // Restore tabs, selection, and pre-computed titles in one shot.
-            val tabsVm: TabsViewModel = appGraph.tabsViewModel
-            tabsVm.restoreTabs(destinations, saved.selectedIndex, titles)
-        } finally {
-            _isRestoringSession.value = false
+            return state
         }
+
+        return null
     }
 
     private suspend fun computeTabTitles(

@@ -371,15 +371,6 @@ fun main() {
                                     } else if (isCtrlOrCmd && keyEvent.key == Key.Comma) {
                                         settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
                                         true
-                                    } else if (isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionRight) {
-                                        desktopMgr.switchToNext()
-                                        true
-                                    } else if (isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionLeft) {
-                                        desktopMgr.switchToPrevious()
-                                        true
-                                    } else if (isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.N) {
-                                        desktopMgr.createDesktop()
-                                        true
                                     } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
                                         windowState.isMinimized = true
                                         true

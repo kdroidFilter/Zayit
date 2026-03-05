@@ -53,11 +53,14 @@ import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.desktop_new
 import sh.calvin.reorderable.ReorderableColumn
 import sh.calvin.reorderable.ReorderableItem
 
@@ -214,7 +217,7 @@ private fun DesktopDropdownContent(
             hoverColor = accent.copy(alpha = 0.06f),
         ) {
             Text(
-                text = "\u05D7\u05D3\u05E9",
+                text = stringResource(Res.string.desktop_new),
                 fontSize = 12.sp,
                 color = JewelTheme.globalColors.text.info,
                 modifier = Modifier.weight(1f),

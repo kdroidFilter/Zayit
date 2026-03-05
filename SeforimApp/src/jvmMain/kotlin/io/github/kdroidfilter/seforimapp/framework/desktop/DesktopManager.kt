@@ -35,19 +35,54 @@ class DesktopManager(
 
     private val snapshots = mutableMapOf<String, DesktopTabsSnapshot>()
 
+    private var isSwitching = false
+
     fun switchTo(desktopId: String) {
+        if (isSwitching) return
         if (desktopId == _activeDesktopId.value) return
         val target = _desktops.value.find { it.id == desktopId } ?: return
 
-        // Snapshot current desktop
-        snapshots[_activeDesktopId.value] = snapshotCurrentDesktop()
+        isSwitching = true
+        try {
+            // Snapshot current desktop
+            snapshots[_activeDesktopId.value] = snapshotCurrentDesktop()
 
-        // Restore target desktop
-        val targetSnapshot = snapshots[target.id]
-        if (targetSnapshot != null) {
-            restoreDesktop(targetSnapshot)
-        } else {
-            // Empty desktop: single Home tab
+            // Restore target desktop
+            val targetSnapshot = snapshots[target.id]
+            if (targetSnapshot != null) {
+                restoreDesktop(targetSnapshot)
+            } else {
+                // Empty desktop: single Home tab
+                val tabId = UUID.randomUUID().toString()
+                tabPersistedStateStore.restore(emptyMap())
+                tabsViewModel.restoreTabs(
+                    destinations = listOf(TabsDestination.BookContent(bookId = -1, tabId = tabId)),
+                    selectedIndex = 0,
+                    skipAnimation = true,
+                )
+            }
+
+            _activeDesktopId.value = desktopId
+        } finally {
+            isSwitching = false
+        }
+    }
+
+    fun createDesktop(): String = createDesktop("\u05E9\u05F4\u05E2 ${_desktops.value.size + 1}")
+
+    fun createDesktop(name: String): String {
+        if (isSwitching) return _activeDesktopId.value
+
+        isSwitching = true
+        try {
+            val id = UUID.randomUUID().toString()
+            val desktop = VirtualDesktop(id = id, name = name)
+            _desktops.update { it + desktop }
+
+            // Snapshot current before switching
+            snapshots[_activeDesktopId.value] = snapshotCurrentDesktop()
+
+            // Switch to new empty desktop
             val tabId = UUID.randomUUID().toString()
             tabPersistedStateStore.restore(emptyMap())
             tabsViewModel.restoreTabs(
@@ -55,32 +90,12 @@ class DesktopManager(
                 selectedIndex = 0,
                 skipAnimation = true,
             )
+
+            _activeDesktopId.value = id
+            return id
+        } finally {
+            isSwitching = false
         }
-
-        _activeDesktopId.value = desktopId
-    }
-
-    fun createDesktop(): String = createDesktop("\u05E9\u05F4\u05E2 ${_desktops.value.size + 1}")
-
-    fun createDesktop(name: String): String {
-        val id = UUID.randomUUID().toString()
-        val desktop = VirtualDesktop(id = id, name = name)
-        _desktops.update { it + desktop }
-
-        // Snapshot current before switching
-        snapshots[_activeDesktopId.value] = snapshotCurrentDesktop()
-
-        // Switch to new empty desktop
-        val tabId = UUID.randomUUID().toString()
-        tabPersistedStateStore.restore(emptyMap())
-        tabsViewModel.restoreTabs(
-            destinations = listOf(TabsDestination.BookContent(bookId = -1, tabId = tabId)),
-            selectedIndex = 0,
-            skipAnimation = true,
-        )
-
-        _activeDesktopId.value = id
-        return id
     }
 
     fun renameDesktop(

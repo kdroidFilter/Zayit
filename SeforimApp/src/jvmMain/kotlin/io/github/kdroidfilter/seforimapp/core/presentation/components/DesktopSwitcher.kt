@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
@@ -207,7 +208,7 @@ private fun DesktopDropdownContent(
         // New desktop button
         HoverableRow(
             onClick = {
-                desktopManager.createDesktop("${desktops.size + 1}")
+                desktopManager.createDesktop()
                 onDismiss()
             },
             hoverColor = accent.copy(alpha = 0.06f),
@@ -260,18 +261,17 @@ private fun DesktopItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        ActionIcon(
+            key = AllIconsKeys.Actions.Edit,
+            visible = showActions,
+            onClick = onRename,
+        )
         Text(
             text = desktop.name,
             fontSize = 12.sp,
             color = JewelTheme.globalColors.text.normal,
             modifier = Modifier.weight(1f),
             maxLines = 1,
-        )
-
-        ActionIcon(
-            key = AllIconsKeys.Actions.Edit,
-            visible = showActions,
-            onClick = onRename,
         )
         if (canDelete) {
             ActionIcon(
@@ -289,15 +289,27 @@ private fun ActionIcon(
     visible: Boolean,
     onClick: () -> Unit,
 ) {
-    Icon(
-        key = key,
-        contentDescription = null,
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val accent = JewelTheme.globalColors.outlines.focused
+    val hoverBg = if (isHovered && visible) accent.copy(alpha = 0.12f) else Color.Transparent
+
+    Box(
         modifier =
             Modifier
-                .size(14.dp)
-                .clickable(onClick = onClick),
-        tint = if (visible) JewelTheme.globalColors.text.normal else Color.Transparent,
-    )
+                .size(16.dp)
+                .hoverable(interactionSource)
+                .background(hoverBg, CircleShape)
+                .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            key = key,
+            contentDescription = null,
+            modifier = Modifier.size(12.dp),
+            tint = if (visible) JewelTheme.globalColors.text.normal else Color.Transparent,
+        )
+    }
 }
 
 @Composable
@@ -383,7 +395,7 @@ private fun DesktopRenameField(
 
 private val TRIGGER_WIDTH = 80.dp
 private val DROPDOWN_WIDTH = 130.dp
-private const val MAX_DESKTOP_NAME_LENGTH = 10
+private const val MAX_DESKTOP_NAME_LENGTH = 8
 private val DropdownShape = RoundedCornerShape(6.dp)
 private val ItemShape = RoundedCornerShape(4.dp)
 

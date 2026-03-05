@@ -53,11 +53,11 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.toImmutableList
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.MaterialSymbolsDesktop_landscape
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
@@ -319,7 +319,7 @@ private fun ActionIcon(
     Box(
         modifier =
             Modifier
-                .size(16.dp)
+                .size(18.dp)
                 .hoverable(interactionSource)
                 .background(hoverBg, CircleShape)
                 .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
@@ -328,7 +328,7 @@ private fun ActionIcon(
         Icon(
             key = key,
             contentDescription = null,
-            modifier = Modifier.size(12.dp),
+            modifier = Modifier.size(14.dp),
             tint = if (visible) JewelTheme.globalColors.text.normal else Color.Transparent,
         )
     }

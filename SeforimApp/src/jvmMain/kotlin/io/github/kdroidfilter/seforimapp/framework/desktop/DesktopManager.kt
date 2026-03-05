@@ -53,6 +53,7 @@ class DesktopManager(
             tabsViewModel.restoreTabs(
                 destinations = listOf(TabsDestination.BookContent(bookId = -1, tabId = tabId)),
                 selectedIndex = 0,
+                skipAnimation = true,
             )
         }
 
@@ -75,6 +76,7 @@ class DesktopManager(
         tabsViewModel.restoreTabs(
             destinations = listOf(TabsDestination.BookContent(bookId = -1, tabId = tabId)),
             selectedIndex = 0,
+            skipAnimation = true,
         )
 
         _activeDesktopId.value = id
@@ -186,6 +188,7 @@ class DesktopManager(
             destinations = snapshot.destinations,
             selectedIndex = snapshot.selectedIndex,
             titles = titles,
+            skipAnimation = true,
         )
     }
 

@@ -32,6 +32,14 @@ class TabsViewModel(
 ) : ViewModel() {
     private var _nextTabId = 2
 
+    /** When true, the next tab state change should not animate new tabs. Reset by the view after consuming. */
+    private val _skipNextAnimation = MutableStateFlow(false)
+    val skipNextAnimation: StateFlow<Boolean> = _skipNextAnimation.asStateFlow()
+
+    fun consumeSkipAnimation() {
+        _skipNextAnimation.value = false
+    }
+
     private val _state =
         MutableStateFlow(
             TabsState(
@@ -317,7 +325,9 @@ class TabsViewModel(
         destinations: List<TabsDestination>,
         selectedIndex: Int,
         titles: Map<String, Pair<String, TabType>> = emptyMap(),
+        skipAnimation: Boolean = false,
     ) {
+        if (skipAnimation) _skipNextAnimation.value = true
         if (destinations.isEmpty()) return
 
         val restoredTabs =

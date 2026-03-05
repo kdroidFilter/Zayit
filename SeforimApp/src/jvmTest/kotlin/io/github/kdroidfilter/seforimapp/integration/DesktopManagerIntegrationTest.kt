@@ -24,7 +24,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 /**
@@ -144,7 +143,10 @@ class DesktopManagerIntegrationTest {
             val newId = desktopManager.createDesktop("Desktop 2")
             desktopManager.clearSwitching()
 
-            val originalId = desktopManager.desktops.value.first().id
+            val originalId =
+                desktopManager.desktops.value
+                    .first()
+                    .id
             desktopManager.switchTo(originalId)
 
             assertEquals(originalId, desktopManager.activeDesktopId.value)
@@ -186,7 +188,10 @@ class DesktopManagerIntegrationTest {
             assertEquals(1, tabsViewModel.state.value.tabs.size)
 
             // Switch back to desktop 1
-            val desktop1Id = desktopManager.desktops.value.first().id
+            val desktop1Id =
+                desktopManager.desktops.value
+                    .first()
+                    .id
             desktopManager.switchTo(desktop1Id)
             desktopManager.clearSwitching()
 
@@ -201,7 +206,10 @@ class DesktopManagerIntegrationTest {
             val newId = desktopManager.createDesktop("Desktop 2")
             desktopManager.clearSwitching()
 
-            val originalId = desktopManager.desktops.value.first().id
+            val originalId =
+                desktopManager.desktops.value
+                    .first()
+                    .id
             desktopManager.switchTo(originalId)
 
             assertTrue(desktopManager.isSwitching.value)
@@ -214,7 +222,10 @@ class DesktopManagerIntegrationTest {
             val desktop2Id = desktopManager.createDesktop("Desktop 2")
             // isSwitching is still true from createDesktop
 
-            val desktop1Id = desktopManager.desktops.value.first().id
+            val desktop1Id =
+                desktopManager.desktops.value
+                    .first()
+                    .id
             desktopManager.switchTo(desktop1Id)
 
             // Should still be on desktop 2 because switch was blocked
@@ -236,19 +247,35 @@ class DesktopManagerIntegrationTest {
     @Test
     fun `renameDesktop changes desktop name`() =
         runTest {
-            val desktopId = desktopManager.desktops.value.first().id
+            val desktopId =
+                desktopManager.desktops.value
+                    .first()
+                    .id
             desktopManager.renameDesktop(desktopId, "Renamed")
 
-            assertEquals("Renamed", desktopManager.desktops.value.first().name)
+            assertEquals(
+                "Renamed",
+                desktopManager.desktops.value
+                    .first()
+                    .name,
+            )
         }
 
     @Test
     fun `renameDesktop with unknown id does nothing`() =
         runTest {
-            val originalName = desktopManager.desktops.value.first().name
+            val originalName =
+                desktopManager.desktops.value
+                    .first()
+                    .name
             desktopManager.renameDesktop("unknown-id", "Renamed")
 
-            assertEquals(originalName, desktopManager.desktops.value.first().name)
+            assertEquals(
+                originalName,
+                desktopManager.desktops.value
+                    .first()
+                    .name,
+            )
         }
 
     @Test
@@ -258,12 +285,28 @@ class DesktopManagerIntegrationTest {
             desktopManager.createDesktop("Desktop 2")
             desktopManager.clearSwitching()
 
-            val firstId = desktopManager.desktops.value.first().id
-            val secondId = desktopManager.desktops.value.last().id
+            val firstId =
+                desktopManager.desktops.value
+                    .first()
+                    .id
+            val secondId =
+                desktopManager.desktops.value
+                    .last()
+                    .id
             desktopManager.renameDesktop(firstId, "Renamed")
 
-            assertEquals("Renamed", desktopManager.desktops.value.first().name)
-            assertEquals("Desktop 2", desktopManager.desktops.value.last().name)
+            assertEquals(
+                "Renamed",
+                desktopManager.desktops.value
+                    .first()
+                    .name,
+            )
+            assertEquals(
+                "Desktop 2",
+                desktopManager.desktops.value
+                    .last()
+                    .name,
+            )
         }
 
     // ==================== Desktop Deletion Tests ====================
@@ -276,7 +319,10 @@ class DesktopManagerIntegrationTest {
             desktopManager.clearSwitching()
             assertEquals(2, desktopManager.desktops.value.size)
 
-            val secondId = desktopManager.desktops.value.last().id
+            val secondId =
+                desktopManager.desktops.value
+                    .last()
+                    .id
             desktopManager.deleteDesktop(secondId)
 
             assertEquals(1, desktopManager.desktops.value.size)
@@ -285,7 +331,10 @@ class DesktopManagerIntegrationTest {
     @Test
     fun `deleteDesktop cannot remove last desktop`() =
         runTest {
-            val desktopId = desktopManager.desktops.value.first().id
+            val desktopId =
+                desktopManager.desktops.value
+                    .first()
+                    .id
             desktopManager.deleteDesktop(desktopId)
 
             assertEquals(1, desktopManager.desktops.value.size)
@@ -299,7 +348,10 @@ class DesktopManagerIntegrationTest {
             desktopManager.clearSwitching()
 
             val activeId = desktopManager.activeDesktopId.value
-            val otherId = desktopManager.desktops.value.first { it.id != activeId }.id
+            val otherId =
+                desktopManager.desktops.value
+                    .first { it.id != activeId }
+                    .id
 
             desktopManager.deleteDesktop(activeId)
             desktopManager.clearSwitching()
@@ -462,7 +514,10 @@ class DesktopManagerIntegrationTest {
     @Test
     fun `snapshotCurrentDesktop captures persisted state`() =
         runTest {
-            val tabId = tabsViewModel.state.value.tabs.first().destination.tabId
+            val tabId =
+                tabsViewModel.state.value.tabs
+                    .first()
+                    .destination.tabId
             persistedStore.set(tabId, TabPersistedState(bookContent = BookContentPersistedState(selectedBookId = 99)))
 
             val snapshot = desktopManager.snapshotCurrentDesktop()
@@ -519,7 +574,14 @@ class DesktopManagerIntegrationTest {
             assertEquals("d1", desktopManager.activeDesktopId.value)
             // Active desktop tabs restored
             assertEquals(1, tabsViewModel.state.value.tabs.size)
-            assertEquals(10L, (tabsViewModel.state.value.tabs.first().destination as TabsDestination.BookContent).bookId)
+            assertEquals(
+                10L,
+                (
+                    tabsViewModel.state.value.tabs
+                        .first()
+                        .destination as TabsDestination.BookContent
+                ).bookId,
+            )
         }
 
     @Test
@@ -535,7 +597,10 @@ class DesktopManagerIntegrationTest {
     fun `switching desktops preserves persisted tab state`() =
         runTest {
             // Set up state on desktop 1
-            val tabId1 = tabsViewModel.state.value.tabs.first().destination.tabId
+            val tabId1 =
+                tabsViewModel.state.value.tabs
+                    .first()
+                    .destination.tabId
             persistedStore.set(tabId1, TabPersistedState(bookContent = BookContentPersistedState(selectedBookId = 77)))
 
             // Create desktop 2
@@ -544,7 +609,10 @@ class DesktopManagerIntegrationTest {
             desktopManager.clearSwitching()
 
             // Switch back to desktop 1
-            val desktop1Id = desktopManager.desktops.value.first().id
+            val desktop1Id =
+                desktopManager.desktops.value
+                    .first()
+                    .id
             desktopManager.switchTo(desktop1Id)
             desktopManager.clearSwitching()
 
@@ -568,7 +636,10 @@ class DesktopManagerIntegrationTest {
             tabsViewModel.openTab(TabsDestination.BookContent(bookId = 2, tabId = UUID.randomUUID().toString()))
 
             // Switch back to desktop 1
-            val desktop1Id = desktopManager.desktops.value.first().id
+            val desktop1Id =
+                desktopManager.desktops.value
+                    .first()
+                    .id
             desktopManager.switchTo(desktop1Id)
             desktopManager.clearSwitching()
 
@@ -583,13 +654,19 @@ class DesktopManagerIntegrationTest {
             tabsViewModel.openTab(TabsDestination.BookContent(bookId = 1, tabId = UUID.randomUUID().toString()))
             tabsViewModel.openTab(TabsDestination.BookContent(bookId = 2, tabId = UUID.randomUUID().toString()))
             val desiredIndex = 1
-            tabsViewModel.onEvent(io.github.kdroidfilter.seforim.tabs.TabsEvents.OnSelect(desiredIndex))
+            tabsViewModel.onEvent(
+                io.github.kdroidfilter.seforim.tabs.TabsEvents
+                    .OnSelect(desiredIndex),
+            )
 
             // Switch away and back
             desktopManager.clearSwitching()
             desktopManager.createDesktop("Desktop 2")
             desktopManager.clearSwitching()
-            val desktop1Id = desktopManager.desktops.value.first().id
+            val desktop1Id =
+                desktopManager.desktops.value
+                    .first()
+                    .id
             desktopManager.switchTo(desktop1Id)
             desktopManager.clearSwitching()
 
@@ -603,7 +680,10 @@ class DesktopManagerIntegrationTest {
             desktopManager.createDesktop("Desktop 2")
             desktopManager.clearSwitching()
 
-            val desktop1Id = desktopManager.desktops.value.first().id
+            val desktop1Id =
+                desktopManager.desktops.value
+                    .first()
+                    .id
             desktopManager.switchTo(desktop1Id)
 
             assertTrue(tabsViewModel.skipNextAnimation.value)

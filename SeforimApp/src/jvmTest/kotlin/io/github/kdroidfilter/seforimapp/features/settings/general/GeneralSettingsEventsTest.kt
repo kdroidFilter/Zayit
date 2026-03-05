@@ -33,30 +33,6 @@ class GeneralSettingsEventsTest {
     }
 
     @Test
-    fun `SetShowZmanimWidgets stores value`() {
-        val event = GeneralSettingsEvents.SetShowZmanimWidgets(true)
-        assertEquals(true, event.value)
-    }
-
-    @Test
-    fun `SetShowZmanimWidgets implements GeneralSettingsEvents`() {
-        val event: GeneralSettingsEvents = GeneralSettingsEvents.SetShowZmanimWidgets(false)
-        assertIs<GeneralSettingsEvents.SetShowZmanimWidgets>(event)
-    }
-
-    @Test
-    fun `SetUseOpenGl stores value`() {
-        val event = GeneralSettingsEvents.SetUseOpenGl(true)
-        assertEquals(true, event.value)
-    }
-
-    @Test
-    fun `SetUseOpenGl implements GeneralSettingsEvents`() {
-        val event: GeneralSettingsEvents = GeneralSettingsEvents.SetUseOpenGl(false)
-        assertIs<GeneralSettingsEvents.SetUseOpenGl>(event)
-    }
-
-    @Test
     fun `ResetApp is singleton`() {
         val event1 = GeneralSettingsEvents.ResetApp
         val event2 = GeneralSettingsEvents.ResetApp
@@ -75,9 +51,6 @@ class GeneralSettingsEventsTest {
             listOf(
                 GeneralSettingsEvents.SetCloseTreeOnNewBook(true),
                 GeneralSettingsEvents.SetPersistSession(true),
-                GeneralSettingsEvents.SetShowZmanimWidgets(true),
-                GeneralSettingsEvents.SetUseOpenGl(true),
-                GeneralSettingsEvents.SetCompactMode(true),
                 GeneralSettingsEvents.ResetApp,
             )
 
@@ -85,9 +58,6 @@ class GeneralSettingsEventsTest {
             when (event) {
                 is GeneralSettingsEvents.SetCloseTreeOnNewBook -> assertEquals(true, event.value)
                 is GeneralSettingsEvents.SetPersistSession -> assertEquals(true, event.value)
-                is GeneralSettingsEvents.SetShowZmanimWidgets -> assertEquals(true, event.value)
-                is GeneralSettingsEvents.SetUseOpenGl -> assertEquals(true, event.value)
-                is GeneralSettingsEvents.SetCompactMode -> assertEquals(true, event.value)
                 GeneralSettingsEvents.ResetApp -> { /* ok */ }
             }
         }

@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.integration
 
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadState
+import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsState
 import kotlin.test.Test
@@ -23,8 +24,6 @@ class SettingsAndDownloadStateIntegrationTest {
         assertNull(state.databasePath)
         assertFalse(state.closeTreeOnNewBook)
         assertTrue(state.persistSession)
-        assertTrue(state.showZmanimWidgets)
-        assertFalse(state.useOpenGl)
         assertFalse(state.resetDone)
     }
 
@@ -35,16 +34,12 @@ class SettingsAndDownloadStateIntegrationTest {
                 databasePath = "/custom/path/db.sqlite",
                 closeTreeOnNewBook = true,
                 persistSession = false,
-                showZmanimWidgets = false,
-                useOpenGl = true,
                 resetDone = true,
             )
 
         assertEquals("/custom/path/db.sqlite", state.databasePath)
         assertTrue(state.closeTreeOnNewBook)
         assertFalse(state.persistSession)
-        assertFalse(state.showZmanimWidgets)
-        assertTrue(state.useOpenGl)
         assertTrue(state.resetDone)
     }
 
@@ -55,8 +50,6 @@ class SettingsAndDownloadStateIntegrationTest {
                 databasePath = "/path/db.sqlite",
                 closeTreeOnNewBook = true,
                 persistSession = true,
-                showZmanimWidgets = true,
-                useOpenGl = false,
                 resetDone = false,
             )
 
@@ -65,8 +58,6 @@ class SettingsAndDownloadStateIntegrationTest {
         assertEquals("/path/db.sqlite", modified.databasePath)
         assertFalse(modified.closeTreeOnNewBook)
         assertTrue(modified.persistSession)
-        assertTrue(modified.showZmanimWidgets)
-        assertFalse(modified.useOpenGl)
     }
 
     @Test
@@ -76,8 +67,6 @@ class SettingsAndDownloadStateIntegrationTest {
         assertEquals("/Users/you/.zayit/seforim.db", preview.databasePath)
         assertTrue(preview.closeTreeOnNewBook)
         assertTrue(preview.persistSession)
-        assertTrue(preview.showZmanimWidgets)
-        assertFalse(preview.useOpenGl)
     }
 
     // ==================== GeneralSettingsEvents Tests ====================
@@ -102,8 +91,8 @@ class SettingsAndDownloadStateIntegrationTest {
 
     @Test
     fun `SetShowZmanimWidgets event contains correct value`() {
-        val eventTrue = GeneralSettingsEvents.SetShowZmanimWidgets(true)
-        val eventFalse = GeneralSettingsEvents.SetShowZmanimWidgets(false)
+        val eventTrue = DisplaySettingsEvents.SetShowZmanimWidgets(true)
+        val eventFalse = DisplaySettingsEvents.SetShowZmanimWidgets(false)
 
         assertTrue(eventTrue.value)
         assertFalse(eventFalse.value)
@@ -111,8 +100,8 @@ class SettingsAndDownloadStateIntegrationTest {
 
     @Test
     fun `SetUseOpenGl event contains correct value`() {
-        val eventTrue = GeneralSettingsEvents.SetUseOpenGl(true)
-        val eventFalse = GeneralSettingsEvents.SetUseOpenGl(false)
+        val eventTrue = DisplaySettingsEvents.SetUseOpenGl(true)
+        val eventFalse = DisplaySettingsEvents.SetUseOpenGl(false)
 
         assertTrue(eventTrue.value)
         assertFalse(eventFalse.value)
@@ -350,14 +339,9 @@ class SettingsAndDownloadStateIntegrationTest {
         state = state.copy(persistSession = false)
         assertFalse(state.persistSession)
 
-        // User enables OpenGL
-        state = state.copy(useOpenGl = true)
-        assertTrue(state.useOpenGl)
-
         // Verify all changes persisted
         assertTrue(state.closeTreeOnNewBook)
         assertFalse(state.persistSession)
-        assertTrue(state.useOpenGl)
     }
 
     @Test

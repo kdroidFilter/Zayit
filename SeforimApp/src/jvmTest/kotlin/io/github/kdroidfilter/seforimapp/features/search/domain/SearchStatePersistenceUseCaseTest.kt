@@ -138,9 +138,10 @@ class SearchStatePersistenceUseCaseTest {
                 hasMore = false,
             )
 
-        assertNotNull(snapshot.tocTree)
-        assertEquals(1, snapshot.tocTree!!.rootEntries.size)
-        assertEquals(1, snapshot.tocTree!!.children.size)
+        val restoredTocTree = snapshot.tocTree
+        assertNotNull(restoredTocTree)
+        assertEquals(1, restoredTocTree.rootEntries.size)
+        assertEquals(1, restoredTocTree.children.size)
     }
 
     @Test
@@ -169,11 +170,12 @@ class SearchStatePersistenceUseCaseTest {
                 hasMore = false,
             )
 
-        assertNotNull(snapshot.searchTree)
-        assertEquals(1, snapshot.searchTree!!.size)
-        assertEquals(1, snapshot.searchTree!![0].category.id)
-        assertEquals(10, snapshot.searchTree!![0].count)
-        assertEquals(1, snapshot.searchTree!![0].books.size)
+        val restoredSearchTree = snapshot.searchTree
+        assertNotNull(restoredSearchTree)
+        assertEquals(1, restoredSearchTree.size)
+        assertEquals(1, restoredSearchTree[0].category.id)
+        assertEquals(10, restoredSearchTree[0].count)
+        assertEquals(1, restoredSearchTree[0].books.size)
     }
 
     @Test
@@ -267,12 +269,13 @@ class SearchStatePersistenceUseCaseTest {
                 hasMore = false,
             )
 
-        assertNotNull(snapshot.searchTree)
-        assertEquals(1, snapshot.searchTree!!.size)
-        assertEquals(1, snapshot.searchTree!![0].children.size)
+        val restoredSearchTree = snapshot.searchTree
+        assertNotNull(restoredSearchTree)
+        assertEquals(1, restoredSearchTree.size)
+        assertEquals(1, restoredSearchTree[0].children.size)
         assertEquals(
             2,
-            snapshot.searchTree!![0]
+            restoredSearchTree[0]
                 .children[0]
                 .category.id,
         )

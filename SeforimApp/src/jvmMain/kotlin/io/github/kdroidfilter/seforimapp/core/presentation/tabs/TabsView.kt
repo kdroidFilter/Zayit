@@ -82,6 +82,7 @@ import sh.calvin.reorderable.ReorderableRow
 import kotlin.math.roundToInt
 import kotlin.ranges.coerceAtLeast
 import kotlin.ranges.coerceAtMost
+import kotlin.time.Duration.Companion.milliseconds
 
 // Carry both TabData and its label for tooltips anchored on the whole tab container
 private data class TabEntry(
@@ -781,6 +782,8 @@ private fun RtlAwareTab(
                             cornerSize = CornerSize(8.dp),
                             shadowSize = 16.dp,
                             placement = belowAnchorPlacement,
+                            regularDisappearDelay = 5000.milliseconds,
+                            fullDisappearDelay = 15000.milliseconds,
                         ),
                 )
             }

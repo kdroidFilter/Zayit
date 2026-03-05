@@ -1583,7 +1583,7 @@ private fun DualTimeCardContent(
             Modifier
                 .hoverable(leftHoverSource)
                 .pointerHoverIcon(PointerIcon.Hand)
-                .clickable(onClick = leftClick!!)
+                .clickable(onClick = leftClick)
         } else {
             Modifier
         }
@@ -1592,7 +1592,7 @@ private fun DualTimeCardContent(
             Modifier
                 .hoverable(rightHoverSource)
                 .pointerHoverIcon(PointerIcon.Hand)
-                .clickable(onClick = rightClick!!)
+                .clickable(onClick = rightClick)
         } else {
             Modifier
         }

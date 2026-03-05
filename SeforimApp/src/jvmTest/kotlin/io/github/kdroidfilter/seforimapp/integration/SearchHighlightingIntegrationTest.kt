@@ -10,6 +10,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotat
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -71,8 +72,8 @@ class SearchHighlightingIntegrationTest {
         val result = parser.parse(html)
 
         val boldPart = result.find { it.isBold }
-        assertTrue(boldPart != null)
-        assertEquals("בראשית", boldPart!!.text.trim())
+        assertNotNull(boldPart)
+        assertEquals("בראשית", boldPart.text.trim())
     }
 
     @Test

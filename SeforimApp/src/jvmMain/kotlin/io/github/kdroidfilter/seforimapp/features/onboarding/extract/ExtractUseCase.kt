@@ -155,7 +155,7 @@ class ExtractUseCase {
                 ZstdInputStream(cis).use { zIn ->
                     TarArchiveInputStream(zIn).use { tar ->
                         while (true) {
-                            val entry = tar.nextTarEntry ?: break
+                            val entry = tar.nextEntry ?: break
                             val name = entry.name
                             val outFile = File(destDir, name)
                             if (entry.isDirectory) {
@@ -241,7 +241,7 @@ class ExtractUseCase {
             ZstdInputStream(cis).use { zIn ->
                 TarArchiveInputStream(zIn).use { tar ->
                     while (true) {
-                        val entry = tar.nextTarEntry ?: break
+                        val entry = tar.nextEntry ?: break
                         val name = entry.name
                         val outFile = File(destDir, name)
                         if (entry.isDirectory) {

@@ -162,7 +162,7 @@ fun EndVerticalBar(
                 )
 
                 // Diacritics toggle button - only show when book has nekudot or teamim
-                val bookHasDiacritics = selectedBook?.hasNekudot == true || selectedBook?.hasTeamim == true
+                val bookHasDiacritics = selectedBook.hasNekudot || selectedBook.hasTeamim
                 if (bookHasDiacritics) {
                     SelectableIconButtonWithToolip(
                         toolTipText =

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -264,9 +265,9 @@ fun main() {
                                     TooltipStyle.light(
                                         intUiTooltipColors =
                                             TooltipColors.light(
-                                                backgroundColor = IntUiLightTheme.colors.gray(13),
-                                                contentColor = IntUiLightTheme.colors.gray(2),
-                                                borderColor = IntUiLightTheme.colors.gray(9),
+                                                backgroundColor = IntUiLightTheme.colors.grayOrNull(13) ?: Color.White,
+                                                contentColor = IntUiLightTheme.colors.grayOrNull(2) ?: Color.Black,
+                                                borderColor = IntUiLightTheme.colors.grayOrNull(9) ?: Color.Gray,
                                             ),
                                     ),
                             )

@@ -52,7 +52,7 @@ class DesktopManagerIntegrationTest {
                         tabId = UUID.randomUUID().toString(),
                     ),
             )
-        desktopManager = DesktopManager(tabsViewModel, persistedStore)
+        desktopManager = DesktopManager(tabsViewModel, persistedStore, desktopNameProvider = { "Desktop $it" })
     }
 
     @AfterTest
@@ -743,7 +743,7 @@ class DesktopManagerIntegrationTest {
                     startDestination = TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString()),
                 )
             val freshStore = TabPersistedStateStore()
-            val freshManager = DesktopManager(freshTabsVm, freshStore)
+            val freshManager = DesktopManager(freshTabsVm, freshStore, desktopNameProvider = { "Desktop $it" })
 
             freshManager.restoreFromDesktopsState(state)
 

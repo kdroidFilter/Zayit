@@ -529,7 +529,7 @@ fun HomeCelestialWidgets(
                         ),
                     )
                 }
-            }
+            }.toImmutableList()
         val zmanimItemCount = zmanimItems.size
         val baseColumns = maxColumnsLimit.coerceAtMost(zmanimItemCount).coerceAtLeast(1)
         val columns =
@@ -570,9 +570,8 @@ fun HomeCelestialWidgets(
                             .height(leftColumnHeight),
                     verticalArrangement = Arrangement.spacedBy(verticalSpacing),
                 ) {
-                    val immutableZmanimItems = remember(zmanimItems) { zmanimItems.toImmutableList() }
                     ZmanimCardsGrid(
-                        items = immutableZmanimItems,
+                        items = zmanimItems,
                         columns = columns,
                         horizontalSpacing = horizontalSpacing,
                         verticalSpacing = verticalSpacing,

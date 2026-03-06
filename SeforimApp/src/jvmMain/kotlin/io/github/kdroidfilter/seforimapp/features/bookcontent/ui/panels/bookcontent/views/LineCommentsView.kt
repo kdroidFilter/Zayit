@@ -77,7 +77,7 @@ fun LineCommentsView(
 ) {
     val contentState = uiState.content
     val selectedLine = contentState.primaryLine
-    val selectedLineIds = contentState.selectedLineIds.toList()
+    val selectedLineIds = contentState.selectedLineIds.toImmutableList()
     // Multi-sélection manuelle (Ctrl+click) = afficher commentaires de toutes les lignes
     // TOC entry selection = afficher commentaires seulement de la ligne primaire
     val isManualMultiSelection = selectedLineIds.size > 1 && !contentState.isTocEntrySelection
@@ -253,7 +253,7 @@ private fun CommentariesContent(
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 private fun MultiLineCommentariesContent(
-    selectedLineIds: List<Long>,
+    selectedLineIds: ImmutableList<Long>,
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
@@ -336,13 +336,14 @@ private fun MultiLineCommentariesContent(
             }
         },
         secondContent = {
-            val selectedInDisplayOrder = commentatorsInDisplayOrder.filter { it in selectedCommentators.value }
-            val immutableCommentators = remember(selectedInDisplayOrder) { selectedInDisplayOrder.toImmutableList() }
-            val immutableLineIds = remember(selectedLineIds) { selectedLineIds.toImmutableList() }
+            val selectedInDisplayOrder =
+                remember(commentatorsInDisplayOrder, selectedCommentators.value) {
+                    commentatorsInDisplayOrder.filter { it in selectedCommentators.value }.toImmutableList()
+                }
             MultiLineCommentariesDisplay(
-                selectedCommentators = immutableCommentators,
+                selectedCommentators = selectedInDisplayOrder,
                 titleToIdMap = titleToIdMap,
-                selectedLineIds = immutableLineIds,
+                selectedLineIds = selectedLineIds,
                 uiState = uiState,
                 onEvent = onEvent,
                 textSizes = textSizes,

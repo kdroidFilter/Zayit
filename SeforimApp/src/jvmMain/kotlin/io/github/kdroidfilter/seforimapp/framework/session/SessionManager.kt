@@ -2,6 +2,7 @@
 
 package io.github.kdroidfilter.seforimapp.framework.session
 
+import com.kdroid.gematria.converter.toHebrewNumeral
 import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
@@ -13,16 +14,15 @@ import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
-import com.kdroid.gematria.converter.toHebrewNumeral
-import org.jetbrains.compose.resources.getString
-import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.desktop_default_name
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
+import org.jetbrains.compose.resources.getString
+import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.desktop_default_name
 import java.io.File
 
 /**
@@ -161,7 +161,13 @@ object SessionManager {
 
             val state =
                 DesktopsState(
-                    desktops = listOf(VirtualDesktop(id = desktopId, name = getString(Res.string.desktop_default_name, 1.toHebrewNumeral(includeGeresh = false)))),
+                    desktops =
+                        listOf(
+                            VirtualDesktop(
+                                id = desktopId,
+                                name = getString(Res.string.desktop_default_name, 1.toHebrewNumeral(includeGeresh = false)),
+                            ),
+                        ),
                     activeDesktopId = desktopId,
                     snapshots = mapOf(desktopId to snapshot),
                 )

@@ -39,6 +39,7 @@ class DesktopManager(
             desktops.map { if (it.id == defaultDesktopId) it.copy(name = name) else it }.toPersistentList()
         }
     }
+
     val desktops: StateFlow<ImmutableList<VirtualDesktop>> = _desktops.asStateFlow()
 
     private val _activeDesktopId = MutableStateFlow(defaultDesktopId)

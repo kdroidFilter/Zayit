@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.framework.di.modules
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
+import com.kdroid.gematria.converter.toHebrewNumeral
 import com.russhwolf.settings.Settings
 import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.ContributesTo
@@ -24,7 +25,6 @@ import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStor
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.LuceneSearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
-import com.kdroid.gematria.converter.toHebrewNumeral
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 import seforimapp.seforimapp.generated.resources.Res

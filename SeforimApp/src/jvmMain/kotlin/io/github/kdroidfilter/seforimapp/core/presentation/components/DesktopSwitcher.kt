@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -236,17 +237,17 @@ private fun DesktopDropdownContent(
             },
             hoverColor = accent.copy(alpha = 0.06f),
         ) {
-            Text(
-                text = stringResource(Res.string.desktop_new),
-                fontSize = 12.sp,
-                color = JewelTheme.globalColors.text.info,
-                modifier = Modifier.weight(1f),
-            )
             Image(
                 painter = rememberVectorPainter(MaterialSymbolsDesktop_landscape_add),
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
                 colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.info),
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = stringResource(Res.string.desktop_new),
+                fontSize = 12.sp,
+                color = JewelTheme.globalColors.text.info,
             )
         }
     }

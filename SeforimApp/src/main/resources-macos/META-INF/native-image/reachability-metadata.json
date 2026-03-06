@@ -4756,6 +4756,61 @@
         },
         {
             "type": "sun.text.resources.JavaTimeSupplementary"
+        },
+        {
+            "type": "java.security.interfaces.RSAPrivateKey"
+        },
+        {
+            "type": "java.security.interfaces.RSAPublicKey"
+        },
+        {
+            "type": "sun.security.provider.certpath.CollectionCertStore",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "java.security.cert.CertStoreParameters"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.security.provider.certpath.SunCertPathBuilder",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.security.rsa.RSASignature$SHA256withRSA",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$Display",
+            "fields": [
+                {
+                    "name": "INSTANCE"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "serializer",
+                    "parameterTypes": [
+                        
+                    ]
+                }
+            ]
         }
     ],
     "resources": [
@@ -5488,6 +5543,84 @@
         },
         {
             "glob": "icons/lucide_text_search_dark.svg"
+        },
+        {
+            "glob": "expui/general/edit@2x.svg"
+        },
+        {
+            "glob": "expui/general/edit@2x_dark.svg"
+        },
+        {
+            "glob": "expui/general/edit_dark.svg"
+        },
+        {
+            "glob": "com/intellij/ide/ui/laf/icons/darcula/radioHovered.svg"
+        },
+        {
+            "glob": "com/intellij/ide/ui/laf/icons/darcula/radioHovered@2x.svg"
+        },
+        {
+            "glob": "com/intellij/ide/ui/laf/icons/darcula/radioHovered@2x_dark.svg"
+        },
+        {
+            "glob": "com/intellij/ide/ui/laf/icons/darcula/radioHovered_dark.svg"
+        },
+        {
+            "glob": "expui/actions/checked.svg"
+        },
+        {
+            "glob": "expui/actions/checked@2x.svg"
+        },
+        {
+            "glob": "expui/actions/checked@2x_dark.svg"
+        },
+        {
+            "glob": "expui/actions/checked_dark.svg"
+        },
+        {
+            "glob": "expui/general/edit.svg"
+        },
+        {
+            "glob": "expui/meetNewUi/lightTheme@2x_dark.svg"
+        },
+        {
+            "glob": "expui/meetNewUi/lightTheme_dark.svg"
+        },
+        {
+            "glob": "expui/status/warning@2x_dark.svg"
+        },
+        {
+            "glob": "expui/status/warning_dark.svg"
+        },
+        {
+            "glob": "themes/expUI/icons/dark/radio@2x_dark.svg"
+        },
+        {
+            "glob": "themes/expUI/icons/dark/radioFocused@2x_dark.svg"
+        },
+        {
+            "glob": "themes/expUI/icons/dark/radioFocused_dark.svg"
+        },
+        {
+            "glob": "themes/expUI/icons/dark/radioSelected@2x_dark.svg"
+        },
+        {
+            "glob": "themes/expUI/icons/dark/radioSelectedFocused@2x_dark.svg"
+        },
+        {
+            "glob": "themes/expUI/icons/dark/radioSelectedFocused_dark.svg"
+        },
+        {
+            "glob": "themes/expUI/icons/dark/radioSelected_dark.svg"
+        },
+        {
+            "glob": "themes/expUI/icons/dark/radio_dark.svg"
+        },
+        {
+            "glob": "vcs/vendors/github@2x_dark.svg"
+        },
+        {
+            "glob": "vcs/vendors/github_dark.svg"
         }
     ],
     "foreign": {

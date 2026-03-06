@@ -762,32 +762,43 @@ class BookContentViewModel(
         }
     }
 
+    /** Reapplies commentaries and syncs alt-TOC after a line selection change. */
+    private suspend fun postSelectLine(
+        line: Line,
+        bookId: Long,
+        syncAltToc: Boolean = true,
+    ) {
+        val currentState = stateManager.state.value
+        val selectedLines = currentState.content.selectedLines
+
+        if (selectedLines.size > 1) {
+            val lineIds = selectedLines.map { it.id }
+            val primaryLineId = currentState.content.primarySelectedLineId ?: lineIds.firstOrNull() ?: line.id
+            commentariesUseCase.reapplySelectedCommentatorsForLines(lineIds, primaryLineId, bookId)
+            commentariesUseCase.reapplySelectedLinkSourcesForLines(lineIds, primaryLineId, bookId)
+            commentariesUseCase.reapplySelectedSourcesForLines(lineIds, primaryLineId, bookId)
+        } else {
+            val primaryLine = selectedLines.firstOrNull() ?: line
+            commentariesUseCase.reapplySelectedCommentators(primaryLine)
+            commentariesUseCase.reapplySelectedLinkSources(primaryLine)
+            commentariesUseCase.reapplySelectedSources(primaryLine)
+        }
+
+        if (syncAltToc) {
+            altTocUseCase.selectAltEntryForLine(line.id)
+        }
+    }
+
     /** Selects a line */
     private suspend fun selectLine(
         line: Line,
         isModifierPressed: Boolean = false,
     ) {
         contentUseCase.selectLine(line, isModifierPressed)
-
-        // Après la sélection, vérifier si on a plusieurs lignes sélectionnées
-        val currentState = stateManager.state.value
-        val selectedLines = currentState.content.selectedLines
-        val bookId = currentState.navigation.selectedBook?.id ?: line.bookId
-
-        if (selectedLines.size > 1) {
-            // Multi-sélection: utiliser les méthodes multi-lignes
-            val lineIds = selectedLines.map { it.id }
-            val primaryLineId = currentState.content.primarySelectedLineId ?: lineIds.firstOrNull() ?: return
-            commentariesUseCase.reapplySelectedCommentatorsForLines(lineIds, primaryLineId, bookId)
-            commentariesUseCase.reapplySelectedLinkSourcesForLines(lineIds, primaryLineId, bookId)
-            commentariesUseCase.reapplySelectedSourcesForLines(lineIds, primaryLineId, bookId)
-        } else {
-            // Sélection simple: utiliser les méthodes existantes
-            val primaryLine = selectedLines.firstOrNull() ?: return
-            commentariesUseCase.reapplySelectedCommentators(primaryLine)
-            commentariesUseCase.reapplySelectedLinkSources(primaryLine)
-            commentariesUseCase.reapplySelectedSources(primaryLine)
-        }
+        val bookId =
+            stateManager.state.value.navigation.selectedBook
+                ?.id ?: line.bookId
+        postSelectLine(line, bookId)
     }
 
     /** Loads and selects a line */
@@ -801,34 +812,10 @@ class BookContentViewModel(
 
         contentUseCase.loadAndSelectLine(lineId, scroll = scroll)?.let { line ->
             if (line.bookId == book.id) {
-                // Recreate pager centered on the line (unless already created with correct position)
                 if (recreatePager) {
                     _linesPagingData.value = contentUseCase.buildLinesPager(book.id, line.id)
                 }
-
-                // Après la sélection, vérifier si on a plusieurs lignes sélectionnées (TOC heading)
-                val currentState = stateManager.state.value
-                val selectedLines = currentState.content.selectedLines
-
-                if (selectedLines.size > 1) {
-                    // Multi-sélection: utiliser les méthodes multi-lignes
-                    val selectedLineIds = selectedLines.map { it.id }
-                    val primaryLineId = currentState.content.primarySelectedLineId ?: selectedLineIds.firstOrNull() ?: line.id
-                    commentariesUseCase.reapplySelectedCommentatorsForLines(selectedLineIds, primaryLineId, book.id)
-                    commentariesUseCase.reapplySelectedLinkSourcesForLines(selectedLineIds, primaryLineId, book.id)
-                    commentariesUseCase.reapplySelectedSourcesForLines(selectedLineIds, primaryLineId, book.id)
-                } else {
-                    // Sélection simple: utiliser les méthodes existantes
-                    val primaryLine = selectedLines.firstOrNull() ?: line
-                    commentariesUseCase.reapplySelectedCommentators(primaryLine)
-                    commentariesUseCase.reapplySelectedLinkSources(primaryLine)
-                    commentariesUseCase.reapplySelectedSources(primaryLine)
-                }
-
-                // Sync alternative TOC selection if applicable
-                if (syncAltToc) {
-                    altTocUseCase.selectAltEntryForLine(line.id)
-                }
+                postSelectLine(line, book.id, syncAltToc)
             }
         }
     }

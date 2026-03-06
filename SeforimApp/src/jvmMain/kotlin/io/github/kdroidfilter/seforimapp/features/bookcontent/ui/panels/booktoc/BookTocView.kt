@@ -96,7 +96,7 @@ fun BookTocView(
     }
 
     // Bring selected TOC entry into view once per book after restore
-    var didAutoCenter by remember(tocEntries) { mutableStateOf(false) }
+    var didAutoCenter by remember(tocEntries, selectedTocOverride ?: selectedTocEntryId) { mutableStateOf(false) }
     LaunchedEffect(selectedTocOverride ?: selectedTocEntryId, visibleEntries.size, hasRestored, didAutoCenter) {
         val selId = (selectedTocOverride ?: selectedTocEntryId) ?: return@LaunchedEffect
         if (!didAutoCenter && hasRestored && visibleEntries.isNotEmpty()) {

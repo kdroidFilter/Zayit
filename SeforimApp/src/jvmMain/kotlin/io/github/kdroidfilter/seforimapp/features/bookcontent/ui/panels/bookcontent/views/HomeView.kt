@@ -53,6 +53,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -314,9 +315,10 @@ private fun HomeBody(
                                 }
                             }
                             val mappedBookSuggestionsForBar =
-                                searchUi.bookSuggestions.map { bs ->
-                                    BookSuggestion(bs.book, bs.path)
-                                }
+                                searchUi.bookSuggestions
+                                    .map { bs ->
+                                        BookSuggestion(bs.book, bs.path)
+                                    }.toImmutableList()
                             val mappedTocSuggestionsForBar =
                                 searchUi.tocSuggestions.map { ts ->
                                     TocSuggestion(ts.toc, ts.path)
@@ -360,8 +362,15 @@ private fun HomeBody(
                                 focusRequester = mainSearchFocusRequester,
                                 // Suggestions: in REFERENCE mode show only books; in TEXT mode none here
                                 suggestionsVisible = if (isReferenceMode && !isTocInTopBar) searchUi.suggestionsVisible else false,
-                                categorySuggestions = emptyList(),
-                                bookSuggestions = if (isReferenceMode && !isTocInTopBar) mappedBookSuggestionsForBar else emptyList(),
+                                categorySuggestions = persistentListOf(),
+                                bookSuggestions =
+                                    if (isReferenceMode &&
+                                        !isTocInTopBar
+                                    ) {
+                                        mappedBookSuggestionsForBar
+                                    } else {
+                                        persistentListOf()
+                                    },
                                 tocSuggestionsVisible = isTocInTopBar && searchUi.tocSuggestionsVisible,
                                 tocSuggestions = if (isTocInTopBar) mappedTocSuggestionsForBar else emptyList(),
                                 selectedBook = searchUi.selectedScopeBook,
@@ -424,13 +433,15 @@ private fun HomeBody(
                                 ) {
                                     val breadcrumbSeparator = stringResource(Res.string.breadcrumb_separator)
                                     val mappedCategorySuggestions =
-                                        searchUi.categorySuggestions.map { cs ->
-                                            CategorySuggestion(cs.category, cs.path)
-                                        }
+                                        searchUi.categorySuggestions
+                                            .map { cs ->
+                                                CategorySuggestion(cs.category, cs.path)
+                                            }.toImmutableList()
                                     val mappedBookSuggestions =
-                                        searchUi.bookSuggestions.map { bs ->
-                                            BookSuggestion(bs.book, bs.path)
-                                        }
+                                        searchUi.bookSuggestions
+                                            .map { bs ->
+                                                BookSuggestion(bs.book, bs.path)
+                                            }.toImmutableList()
                                     val mappedTocSuggestions =
                                         searchUi.tocSuggestions.map { ts ->
                                             TocSuggestion(ts.toc, ts.path)
@@ -625,8 +636,8 @@ private fun ReferenceByCategorySection(
     isExpanded: Boolean = false,
     onExpandedChange: (Boolean) -> Unit = {},
     suggestionsVisible: Boolean = false,
-    categorySuggestions: List<CategorySuggestion> = emptyList(),
-    bookSuggestions: List<BookSuggestion> = emptyList(),
+    categorySuggestions: ImmutableList<CategorySuggestion> = persistentListOf(),
+    bookSuggestions: ImmutableList<BookSuggestion> = persistentListOf(),
     selectedBook: BookModel? = null,
     selectedCategory: Category? = null,
     tocSuggestionsVisible: Boolean = false,
@@ -699,8 +710,8 @@ private fun ReferenceByCategorySection(
                 showIcon = false,
                 enabled = true,
                 suggestionsVisible = suggestionsVisible && !isTocMode,
-                categorySuggestions = if (isTocMode) emptyList() else categorySuggestions,
-                bookSuggestions = if (isTocMode) emptyList() else bookSuggestions,
+                categorySuggestions = if (isTocMode) persistentListOf() else categorySuggestions,
+                bookSuggestions = if (isTocMode) persistentListOf() else bookSuggestions,
                 selectedBook = selectedBook,
                 selectedCategory = selectedCategory,
                 placeholderHints = if (isTocMode) tocHints else bookHints,
@@ -1146,8 +1157,8 @@ private fun SearchBar(
     enabled: Boolean = true,
     // Reference-mode suggestion parameters (ignored in TEXT mode)
     suggestionsVisible: Boolean = false,
-    categorySuggestions: List<CategorySuggestion> = emptyList(),
-    bookSuggestions: List<BookSuggestion> = emptyList(),
+    categorySuggestions: ImmutableList<CategorySuggestion> = persistentListOf(),
+    bookSuggestions: ImmutableList<BookSuggestion> = persistentListOf(),
     onPickCategory: (CategorySuggestion) -> Unit = {},
     onPickBook: (BookSuggestion) -> Unit = {},
     // TOC suggestions (for the second field)
@@ -1629,11 +1640,9 @@ private fun SearchBar(
                             loadingMessage = stringResource(Res.string.autocomplete_loading),
                         )
                     } else if (!isTocMode && (showCategorySuggestions || showBookEmptyState || showBookLoading)) {
-                        val immutableCategorySuggestions = remember(categorySuggestions) { categorySuggestions.toImmutableList() }
-                        val immutableBookSuggestions = remember(bookSuggestions) { bookSuggestions.toImmutableList() }
                         SuggestionsPanel(
-                            categorySuggestions = immutableCategorySuggestions,
-                            bookSuggestions = immutableBookSuggestions,
+                            categorySuggestions = categorySuggestions,
+                            bookSuggestions = bookSuggestions,
                             onPickCategory = ::handlePickCategory,
                             onPickBook = ::handlePickBook,
                             focusedIndex = focusedIndex,

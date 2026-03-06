@@ -18,6 +18,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.VisibleTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -42,7 +44,7 @@ import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 @OptIn(FlowPreview::class)
 @Composable
 fun BookTocView(
-    tocEntries: List<TocEntry>,
+    tocEntries: ImmutableList<TocEntry>,
     expandedEntries: Set<Long>,
     tocChildren: Map<Long, List<TocEntry>>,
     scrollIndex: Int,
@@ -172,7 +174,7 @@ fun BookTocView(
     }
 
     BookTocView(
-        tocEntries = displayEntries,
+        tocEntries = displayEntries.toImmutableList(),
         expandedEntries = uiState.toc.expandedEntries,
         tocChildren = uiState.toc.children,
         scrollIndex = uiState.toc.scrollIndex,

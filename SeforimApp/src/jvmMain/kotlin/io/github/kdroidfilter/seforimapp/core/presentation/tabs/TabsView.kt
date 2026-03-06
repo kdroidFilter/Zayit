@@ -58,6 +58,8 @@ import io.github.kdroidfilter.seforimapp.icons.Tab_close
 import io.github.kdroidfilter.seforimapp.icons.Tab_close_right
 import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -126,7 +128,7 @@ private fun DefaultTabShowcase(
     LaunchedEffect(state.tabs.size) { previousTabCount = state.tabs.size }
 
     // Create TabData objects with RTL support
-    val tabs =
+    val tabs: ImmutableList<TabEntry> =
         remember(state.tabs, state.selectedTabIndex, isRtl) {
             if (isRtl) {
                 // For RTL: reverse the list and use the reversed index for display
@@ -197,7 +199,7 @@ private fun DefaultTabShowcase(
                         onCloseLeft = { onEvents(TabsEvents.CloseRight(actualIndex)) },
                         onCloseRight = { onEvents(TabsEvents.CloseLeft(actualIndex)) },
                     )
-                }
+                }.toImmutableList()
             } else {
                 // For LTR: use normal order
                 state.tabs.mapIndexed { index, tabItem ->
@@ -264,7 +266,7 @@ private fun DefaultTabShowcase(
                         onCloseLeft = { onEvents(TabsEvents.CloseLeft(index)) },
                         onCloseRight = { onEvents(TabsEvents.CloseRight(index)) },
                     )
-                }
+                }.toImmutableList()
             }
         }
 
@@ -287,7 +289,7 @@ private fun DefaultTabShowcase(
 
 @Composable
 private fun RtlAwareTabStripWithAddButton(
-    tabs: List<TabEntry>,
+    tabs: ImmutableList<TabEntry>,
     style: TabStyle,
     isRtl: Boolean,
     newTabAdded: Boolean,
@@ -313,7 +315,7 @@ private fun RtlAwareTabStripWithAddButton(
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun RtlAwareTabStripContent(
-    tabs: List<TabEntry>,
+    tabs: ImmutableList<TabEntry>,
     style: TabStyle,
     onAddClick: () -> Unit,
     onReorder: (Int, Int) -> Unit,
@@ -442,7 +444,7 @@ private fun RtlAwareTabStripContent(
                             ) {
                                 var visible by remember(isClosing) { mutableStateOf(!isClosing) }
                                 LaunchedEffect(isClosing) {
-                                    if (isClosing) visible = false else visible = true
+                                    visible = !isClosing
                                 }
                                 Row {
                                     AnimatedVisibility(
@@ -747,7 +749,7 @@ private fun RtlAwareTab(
                         closeIconComposable()
                     }
                 } else {
-                    val iconOnly = isCompact && !isSelected
+                    val iconOnly = isCompact
                     Box(Modifier.weight(1f)) {
                         CompositionLocalProvider(LocalCompactIconOnly provides iconOnly) {
                             tabData.content(TabContentScopeContainer(), tabState)

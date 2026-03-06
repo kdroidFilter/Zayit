@@ -52,6 +52,8 @@ import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
@@ -106,6 +108,7 @@ data class SearchFilterCard(
  * interactions to the SearchHomeViewModel without referencing it
  * directly inside UI code.
  */
+@Stable
 data class HomeSearchCallbacks(
     val onReferenceQueryChanged: (String) -> Unit,
     val onTocQueryChanged: (String) -> Unit,
@@ -742,8 +745,8 @@ private fun ReferenceByCategorySection(
  * Uses native Jewel menu styling for consistent look and feel.
  */
 private fun SuggestionsPanel(
-    categorySuggestions: List<CategorySuggestion>,
-    bookSuggestions: List<BookSuggestion>,
+    categorySuggestions: ImmutableList<CategorySuggestion>,
+    bookSuggestions: ImmutableList<BookSuggestion>,
     onPickCategory: (CategorySuggestion) -> Unit,
     onPickBook: (BookSuggestion) -> Unit,
     focusedIndex: Int = -1,
@@ -1627,8 +1630,8 @@ private fun SearchBar(
                         )
                     } else if (!isTocMode && (showCategorySuggestions || showBookEmptyState || showBookLoading)) {
                         SuggestionsPanel(
-                            categorySuggestions = categorySuggestions,
-                            bookSuggestions = bookSuggestions,
+                            categorySuggestions = categorySuggestions.toImmutableList(),
+                            bookSuggestions = bookSuggestions.toImmutableList(),
                             onPickCategory = ::handlePickCategory,
                             onPickBook = ::handlePickBook,
                             focusedIndex = focusedIndex,

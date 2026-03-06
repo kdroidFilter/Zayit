@@ -29,6 +29,7 @@ import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -210,7 +211,7 @@ fun CatalogDropdown(
         is TocQuickLinksSpec -> {
             TocJumpDropdownByIds(
                 bookId = spec.bookId,
-                tocTextIds = spec.tocTextIds,
+                tocTextIds = spec.tocTextIds.toImmutableList(),
                 onEvent = onEvent,
                 modifier = modifier,
                 popupWidthMultiplier = popupWidthMultiplier ?: 1.5f,

@@ -25,6 +25,7 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import com.kdroid.gematria.converter.toHebrewNumeral
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.metroViewModel
@@ -285,6 +286,13 @@ fun main() {
                         val allDesktops by desktopMgr.desktops.collectAsState()
                         val currentDesktopId by desktopMgr.activeDesktopId.collectAsState()
                         val currentDesktopName = allDesktops.find { it.id == currentDesktopId }?.name
+                        val nextDesktopName =
+                            stringResource(
+                                Res.string.desktop_default_name,
+                                remember(allDesktops.size) {
+                                    (allDesktops.size + 1).toHebrewNumeral(includeGeresh = false) + "׳"
+                                },
+                            )
                         val appTitle = stringResource(Res.string.app_name)
                         val selectedTab = tabs.getOrNull(selectedIndex)
                         val rawTitle = selectedTab?.title.orEmpty()
@@ -503,7 +511,7 @@ fun main() {
                                                         }
                                                         // Ctrl/Cmd + Alt + N => new desktop
                                                         isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.N -> {
-                                                            desktopMgr.createDesktop()
+                                                            desktopMgr.createDesktop(nextDesktopName)
                                                             true
                                                         }
                                                         // Cmd + M => minimize window (macOS only)

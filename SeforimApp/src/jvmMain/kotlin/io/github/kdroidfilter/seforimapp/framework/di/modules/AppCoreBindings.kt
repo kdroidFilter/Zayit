@@ -1,7 +1,6 @@
 package io.github.kdroidfilter.seforimapp.framework.di.modules
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
-import com.kdroid.gematria.converter.toHebrewNumeral
 import com.russhwolf.settings.Settings
 import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.ContributesTo
@@ -25,10 +24,6 @@ import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStor
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.LuceneSearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
-import kotlinx.coroutines.runBlocking
-import org.jetbrains.compose.resources.getString
-import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.desktop_default_name
 import java.nio.file.Paths
 import java.util.UUID
 
@@ -112,10 +107,7 @@ object AppCoreBindings {
         DesktopManager(
             tabsViewModel = tabsViewModel,
             tabPersistedStateStore = tabPersistedStateStore,
-            desktopNameProvider = { index ->
-                val hebrewIndex = index.toHebrewNumeral(includeGeresh = false) + "׳"
-                runBlocking { getString(Res.string.desktop_default_name, hebrewIndex) }
-            },
+            defaultDesktopName = "\u05DE\u05E8\u05D7\u05D1 \u05D0׳",
         )
 
     @Provides

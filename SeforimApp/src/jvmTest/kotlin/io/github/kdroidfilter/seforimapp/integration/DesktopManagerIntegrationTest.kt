@@ -52,7 +52,7 @@ class DesktopManagerIntegrationTest {
                         tabId = UUID.randomUUID().toString(),
                     ),
             )
-        desktopManager = DesktopManager(tabsViewModel, persistedStore, desktopNameProvider = { "Desktop $it" })
+        desktopManager = DesktopManager(tabsViewModel, persistedStore, defaultDesktopName = "Desktop 1")
     }
 
     @AfterTest
@@ -103,14 +103,14 @@ class DesktopManagerIntegrationTest {
         }
 
     @Test
-    fun `createDesktop without name auto-generates name`() =
+    fun `createDesktop uses provided name`() =
         runTest {
             desktopManager.clearSwitching()
-            desktopManager.createDesktop()
+            desktopManager.createDesktop("Desktop 2")
 
             val desktops = desktopManager.desktops.value
             assertEquals(2, desktops.size)
-            assertTrue(desktops.last().name.contains("2"))
+            assertEquals("Desktop 2", desktops.last().name)
         }
 
     @Test
@@ -743,7 +743,7 @@ class DesktopManagerIntegrationTest {
                     startDestination = TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString()),
                 )
             val freshStore = TabPersistedStateStore()
-            val freshManager = DesktopManager(freshTabsVm, freshStore, desktopNameProvider = { "Desktop $it" })
+            val freshManager = DesktopManager(freshTabsVm, freshStore, defaultDesktopName = "Desktop 1")
 
             freshManager.restoreFromDesktopsState(state)
 

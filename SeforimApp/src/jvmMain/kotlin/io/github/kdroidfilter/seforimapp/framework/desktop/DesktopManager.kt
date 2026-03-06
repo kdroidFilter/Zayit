@@ -24,21 +24,14 @@ import java.util.UUID
 class DesktopManager(
     private val tabsViewModel: TabsViewModel,
     private val tabPersistedStateStore: TabPersistedStateStore,
-    private val desktopNameProvider: (index: Int) -> String,
+    defaultDesktopName: String,
 ) {
     private val defaultDesktopId = UUID.randomUUID().toString()
 
     private val _desktops =
         MutableStateFlow(
-            persistentListOf(VirtualDesktop(id = defaultDesktopId, name = "")),
+            persistentListOf(VirtualDesktop(id = defaultDesktopId, name = defaultDesktopName)),
         )
-
-    init {
-        val name = desktopNameProvider(1)
-        _desktops.update { desktops ->
-            desktops.map { if (it.id == defaultDesktopId) it.copy(name = name) else it }.toPersistentList()
-        }
-    }
 
     val desktops: StateFlow<ImmutableList<VirtualDesktop>> = _desktops.asStateFlow()
 
@@ -84,8 +77,6 @@ class DesktopManager(
     fun clearSwitching() {
         _isSwitching.value = false
     }
-
-    fun createDesktop(): String = createDesktop(desktopNameProvider(_desktops.value.size + 1))
 
     fun createDesktop(name: String): String {
         if (_isSwitching.value) return _activeDesktopId.value

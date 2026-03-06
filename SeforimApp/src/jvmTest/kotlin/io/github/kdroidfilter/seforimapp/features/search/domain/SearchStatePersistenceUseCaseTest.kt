@@ -7,6 +7,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import kotlinx.collections.immutable.persistentListOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -123,7 +124,7 @@ class SearchStatePersistenceUseCaseTest {
 
         val tocTree =
             TocTree(
-                rootEntries = listOf(rootEntry),
+                rootEntries = persistentListOf(rootEntry),
                 children = mapOf(1L to listOf(childEntry)),
             )
 

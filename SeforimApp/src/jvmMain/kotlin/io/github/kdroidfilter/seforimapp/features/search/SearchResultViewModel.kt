@@ -727,7 +727,7 @@ class SearchResultViewModel(
             _tocCounts.value = cached.tocCounts
             // Restore TOC tree if present
             cached.tocTree?.let { snap ->
-                _tocTree.value = TocTree(snap.rootEntries, snap.children)
+                _tocTree.value = TocTree(snap.rootEntries.toImmutableList(), snap.children)
             }
             // Restore precomputed search tree if present to avoid recomputation on cold restore
             cached.searchTree?.let { snapList ->

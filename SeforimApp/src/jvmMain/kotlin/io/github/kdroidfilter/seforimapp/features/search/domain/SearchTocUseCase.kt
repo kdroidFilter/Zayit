@@ -3,6 +3,8 @@ package io.github.kdroidfilter.seforimapp.features.search.domain
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import java.util.Arrays
 
 /**
@@ -31,7 +33,7 @@ class SearchTocUseCase(
     suspend fun buildTocTreeForBook(bookId: Long): TocTree {
         val all = runSuspendCatching { repository.getBookToc(bookId) }.getOrElse { emptyList() }
         val byParent = all.groupBy { it.parentId ?: -1L }
-        val roots = byParent[-1L] ?: all.filter { it.parentId == null }
+        val roots = (byParent[-1L] ?: all.filter { it.parentId == null }).toImmutableList()
         val children = all.filter { it.parentId != null }.groupBy { it.parentId!! }
         return TocTree(roots, children)
     }
@@ -160,7 +162,7 @@ class SearchTocUseCase(
  * @property children Map of parent ID to list of child entries
  */
 data class TocTree(
-    val rootEntries: List<TocEntry>,
+    val rootEntries: ImmutableList<TocEntry>,
     val children: Map<Long, List<TocEntry>>,
 )
 

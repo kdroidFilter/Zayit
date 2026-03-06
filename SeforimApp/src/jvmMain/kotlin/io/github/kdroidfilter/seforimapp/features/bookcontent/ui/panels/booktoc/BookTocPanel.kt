@@ -147,7 +147,7 @@ fun SearchBookTocPanel(
                     }
 
                     BookTocView(
-                        tocEntries = tocTree?.rootEntries?.toImmutableList() ?: persistentListOf(),
+                        tocEntries = tocTree?.rootEntries ?: persistentListOf(),
                         expandedEntries = expanded,
                         tocChildren = tocTree?.children ?: emptyMap(),
                         scrollIndex = uiState.toc.scrollIndex,

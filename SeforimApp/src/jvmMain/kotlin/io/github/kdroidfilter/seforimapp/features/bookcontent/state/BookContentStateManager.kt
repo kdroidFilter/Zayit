@@ -192,6 +192,8 @@ class BookContentStateManager(
                 scrollIndex = 0,
                 scrollOffset = 0,
                 showSources = false,
+                topAnchorLineId = -1L,
+                topAnchorRequestTimestamp = 0L,
             )
         }
         updateAltToc(save = false) { AltTocState() }

@@ -44,6 +44,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleB
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.classicComponentStyling
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.islandsComponentStyling
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
@@ -68,14 +69,7 @@ import io.sentry.Sentry
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.intui.core.theme.IntUiLightTheme
-import org.jetbrains.jewel.intui.standalone.styling.light
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
-import org.jetbrains.jewel.intui.standalone.theme.dark
-import org.jetbrains.jewel.intui.standalone.theme.light
-import org.jetbrains.jewel.ui.ComponentStyling
-import org.jetbrains.jewel.ui.component.styling.TooltipColors
-import org.jetbrains.jewel.ui.component.styling.TooltipStyle
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.Desktop
 import java.awt.Dimension
@@ -256,22 +250,7 @@ fun main() {
             val componentStyling =
                 when (themeStyle) {
                     ThemeStyle.Islands -> islandsComponentStyling(isDark)
-                    ThemeStyle.Classic ->
-                        if (isDark) {
-                            ComponentStyling.dark()
-                        } else {
-                            ComponentStyling.light(
-                                tooltipStyle =
-                                    TooltipStyle.light(
-                                        intUiTooltipColors =
-                                            TooltipColors.light(
-                                                backgroundColor = IntUiLightTheme.colors.grayOrNull(13) ?: Color.White,
-                                                contentColor = IntUiLightTheme.colors.grayOrNull(2) ?: Color.Black,
-                                                borderColor = IntUiLightTheme.colors.grayOrNull(9) ?: Color.Gray,
-                                            ),
-                                    ),
-                            )
-                        }
+                    ThemeStyle.Classic -> classicComponentStyling(isDark)
                 }
 
             NucleusDecoratedWindowTheme(

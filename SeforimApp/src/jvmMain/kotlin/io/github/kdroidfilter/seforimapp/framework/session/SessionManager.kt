@@ -165,7 +165,7 @@ object SessionManager {
                         listOf(
                             VirtualDesktop(
                                 id = desktopId,
-                                name = getString(Res.string.desktop_default_name, 1.toHebrewNumeral(includeGeresh = false)),
+                                name = getString(Res.string.desktop_default_name, 1.toHebrewNumeral(includeGeresh = false) + "׳"),
                             ),
                         ),
                     activeDesktopId = desktopId,

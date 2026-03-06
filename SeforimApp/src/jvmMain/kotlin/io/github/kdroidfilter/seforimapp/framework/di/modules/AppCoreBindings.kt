@@ -113,7 +113,7 @@ object AppCoreBindings {
             tabsViewModel = tabsViewModel,
             tabPersistedStateStore = tabPersistedStateStore,
             desktopNameProvider = { index ->
-                val hebrewIndex = index.toHebrewNumeral(includeGeresh = false)
+                val hebrewIndex = index.toHebrewNumeral(includeGeresh = false) + "׳"
                 runBlocking { getString(Res.string.desktop_default_name, hebrewIndex) }
             },
         )

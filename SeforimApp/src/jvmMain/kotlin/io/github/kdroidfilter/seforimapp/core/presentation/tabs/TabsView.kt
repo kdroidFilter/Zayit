@@ -58,6 +58,8 @@ import io.github.kdroidfilter.seforimapp.icons.Tab_close
 import io.github.kdroidfilter.seforimapp.icons.Tab_close_right
 import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -126,145 +128,148 @@ private fun DefaultTabShowcase(
     LaunchedEffect(state.tabs.size) { previousTabCount = state.tabs.size }
 
     // Create TabData objects with RTL support
-    val tabs =
+    val tabs: ImmutableList<TabEntry> =
         remember(state.tabs, state.selectedTabIndex, isRtl) {
             if (isRtl) {
                 // For RTL: reverse the list and use the reversed index for display
-                state.tabs.reversed().mapIndexed { visualIndex, tabItem ->
-                    // The actual index in the original list
-                    val actualIndex = state.tabs.size - 1 - visualIndex
-                    val isSelected = actualIndex == state.selectedTabIndex
+                state.tabs
+                    .reversed()
+                    .mapIndexed { visualIndex, tabItem ->
+                        // The actual index in the original list
+                        val actualIndex = state.tabs.size - 1 - visualIndex
+                        val isSelected = actualIndex == state.selectedTabIndex
 
-                    val tabData =
-                        TabData.Default(
-                            selected = isSelected,
-                            content = { tabState ->
-                                val icon: Painter =
-                                    if (tabItem.tabType == TabType.BOOK) {
-                                        rememberVectorPainter(bookOpenTabs(JewelTheme.contentColor))
-                                    } else {
-                                        if (tabItem.title.isEmpty()) {
-                                            rememberVectorPainter(
-                                                io.github.kdroidfilter.seforimapp.icons
-                                                    .homeTabs(JewelTheme.contentColor),
-                                            )
+                        val tabData =
+                            TabData.Default(
+                                selected = isSelected,
+                                content = { tabState ->
+                                    val icon: Painter =
+                                        if (tabItem.tabType == TabType.BOOK) {
+                                            rememberVectorPainter(bookOpenTabs(JewelTheme.contentColor))
                                         } else {
-                                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
-                                            iconProvider.getPainter(Stateful(tabState)).value
+                                            if (tabItem.title.isEmpty()) {
+                                                rememberVectorPainter(
+                                                    io.github.kdroidfilter.seforimapp.icons
+                                                        .homeTabs(JewelTheme.contentColor),
+                                                )
+                                            } else {
+                                                val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
+                                                iconProvider.getPainter(Stateful(tabState)).value
+                                            }
                                         }
-                                    }
 
-                                val appTitle = stringResource(Res.string.app_name)
-                                val label =
-                                    when {
-                                        tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
-                                        tabItem.tabType == TabType.SEARCH ->
-                                            stringResource(
-                                                Res.string.search_results_tab_title,
-                                                tabItem.title,
-                                            )
-                                        else -> tabItem.title
-                                    }
+                                    val appTitle = stringResource(Res.string.app_name)
+                                    val label =
+                                        when {
+                                            tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
+                                            tabItem.tabType == TabType.SEARCH ->
+                                                stringResource(
+                                                    Res.string.search_results_tab_title,
+                                                    tabItem.title,
+                                                )
+                                            else -> tabItem.title
+                                        }
 
-                                SingleLineTabContent(
-                                    label = label,
-                                    state = tabState,
-                                    icon = icon,
-                                )
-                            },
-                            onClose = {},
-                            onClick = {},
-                        )
+                                    SingleLineTabContent(
+                                        label = label,
+                                        state = tabState,
+                                        icon = icon,
+                                    )
+                                },
+                                onClose = {},
+                                onClick = {},
+                            )
 
-                    val labelProvider: @Composable () -> String = {
-                        val appTitle = stringResource(Res.string.app_name)
-                        when {
-                            tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
-                            tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
-                            else -> tabItem.title
+                        val labelProvider: @Composable () -> String = {
+                            val appTitle = stringResource(Res.string.app_name)
+                            when {
+                                tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
+                                tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
+                                else -> tabItem.title
+                            }
                         }
-                    }
 
-                    TabEntry(
-                        key = tabItem.destination.tabId,
-                        data = tabData,
-                        labelProvider = labelProvider,
-                        onClose = { onEvents(TabsEvents.OnClose(actualIndex)) },
-                        onClick = { onEvents(TabsEvents.OnSelect(actualIndex)) },
-                        onCloseAll = { onEvents(TabsEvents.CloseAll) },
-                        onCloseOthers = { onEvents(TabsEvents.CloseOthers(actualIndex)) },
-                        // RTL: visual "left" corresponds to higher indices (right of actual index)
-                        onCloseLeft = { onEvents(TabsEvents.CloseRight(actualIndex)) },
-                        onCloseRight = { onEvents(TabsEvents.CloseLeft(actualIndex)) },
-                    )
-                }
+                        TabEntry(
+                            key = tabItem.destination.tabId,
+                            data = tabData,
+                            labelProvider = labelProvider,
+                            onClose = { onEvents(TabsEvents.OnClose(actualIndex)) },
+                            onClick = { onEvents(TabsEvents.OnSelect(actualIndex)) },
+                            onCloseAll = { onEvents(TabsEvents.CloseAll) },
+                            onCloseOthers = { onEvents(TabsEvents.CloseOthers(actualIndex)) },
+                            // RTL: visual "left" corresponds to higher indices (right of actual index)
+                            onCloseLeft = { onEvents(TabsEvents.CloseRight(actualIndex)) },
+                            onCloseRight = { onEvents(TabsEvents.CloseLeft(actualIndex)) },
+                        )
+                    }.toImmutableList()
             } else {
                 // For LTR: use normal order
-                state.tabs.mapIndexed { index, tabItem ->
-                    val isSelected = index == state.selectedTabIndex
+                state.tabs
+                    .mapIndexed { index, tabItem ->
+                        val isSelected = index == state.selectedTabIndex
 
-                    val tabData =
-                        TabData.Default(
-                            selected = isSelected,
-                            content = { tabState ->
-                                val icon: Painter =
-                                    if (tabItem.tabType == TabType.BOOK) {
-                                        rememberVectorPainter(bookOpenTabs(JewelTheme.globalColors.text.normal))
-                                    } else {
-                                        if (tabItem.title.isEmpty()) {
-                                            rememberVectorPainter(
-                                                io.github.kdroidfilter.seforimapp.icons
-                                                    .homeTabs(JewelTheme.globalColors.text.normal),
-                                            )
+                        val tabData =
+                            TabData.Default(
+                                selected = isSelected,
+                                content = { tabState ->
+                                    val icon: Painter =
+                                        if (tabItem.tabType == TabType.BOOK) {
+                                            rememberVectorPainter(bookOpenTabs(JewelTheme.globalColors.text.normal))
                                         } else {
-                                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
-                                            iconProvider.getPainter(Stateful(tabState)).value
+                                            if (tabItem.title.isEmpty()) {
+                                                rememberVectorPainter(
+                                                    io.github.kdroidfilter.seforimapp.icons
+                                                        .homeTabs(JewelTheme.globalColors.text.normal),
+                                                )
+                                            } else {
+                                                val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Actions.Find)
+                                                iconProvider.getPainter(Stateful(tabState)).value
+                                            }
                                         }
-                                    }
 
-                                val appTitle = stringResource(Res.string.app_name)
-                                val label =
-                                    when {
-                                        tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
-                                        tabItem.tabType == TabType.SEARCH ->
-                                            stringResource(
-                                                Res.string.search_results_tab_title,
-                                                tabItem.title,
-                                            )
-                                        else -> tabItem.title
-                                    }
+                                    val appTitle = stringResource(Res.string.app_name)
+                                    val label =
+                                        when {
+                                            tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
+                                            tabItem.tabType == TabType.SEARCH ->
+                                                stringResource(
+                                                    Res.string.search_results_tab_title,
+                                                    tabItem.title,
+                                                )
+                                            else -> tabItem.title
+                                        }
 
-                                SingleLineTabContent(
-                                    label = label,
-                                    state = tabState,
-                                    icon = icon,
-                                )
-                            },
-                            onClose = {},
-                            onClick = {},
-                        )
+                                    SingleLineTabContent(
+                                        label = label,
+                                        state = tabState,
+                                        icon = icon,
+                                    )
+                                },
+                                onClose = {},
+                                onClick = {},
+                            )
 
-                    val labelProvider: @Composable () -> String = {
-                        val appTitle = stringResource(Res.string.app_name)
-                        when {
-                            tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
-                            tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
-                            else -> tabItem.title
+                        val labelProvider: @Composable () -> String = {
+                            val appTitle = stringResource(Res.string.app_name)
+                            when {
+                                tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
+                                tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
+                                else -> tabItem.title
+                            }
                         }
-                    }
 
-                    TabEntry(
-                        key = tabItem.destination.tabId,
-                        data = tabData,
-                        labelProvider = labelProvider,
-                        onClose = { onEvents(TabsEvents.OnClose(index)) },
-                        onClick = { onEvents(TabsEvents.OnSelect(index)) },
-                        onCloseAll = { onEvents(TabsEvents.CloseAll) },
-                        onCloseOthers = { onEvents(TabsEvents.CloseOthers(index)) },
-                        onCloseLeft = { onEvents(TabsEvents.CloseLeft(index)) },
-                        onCloseRight = { onEvents(TabsEvents.CloseRight(index)) },
-                    )
-                }
+                        TabEntry(
+                            key = tabItem.destination.tabId,
+                            data = tabData,
+                            labelProvider = labelProvider,
+                            onClose = { onEvents(TabsEvents.OnClose(index)) },
+                            onClick = { onEvents(TabsEvents.OnSelect(index)) },
+                            onCloseAll = { onEvents(TabsEvents.CloseAll) },
+                            onCloseOthers = { onEvents(TabsEvents.CloseOthers(index)) },
+                            onCloseLeft = { onEvents(TabsEvents.CloseLeft(index)) },
+                            onCloseRight = { onEvents(TabsEvents.CloseRight(index)) },
+                        )
+                    }.toImmutableList()
             }
         }
 
@@ -287,7 +292,7 @@ private fun DefaultTabShowcase(
 
 @Composable
 private fun RtlAwareTabStripWithAddButton(
-    tabs: List<TabEntry>,
+    tabs: ImmutableList<TabEntry>,
     style: TabStyle,
     isRtl: Boolean,
     newTabAdded: Boolean,
@@ -313,7 +318,7 @@ private fun RtlAwareTabStripWithAddButton(
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun RtlAwareTabStripContent(
-    tabs: List<TabEntry>,
+    tabs: ImmutableList<TabEntry>,
     style: TabStyle,
     onAddClick: () -> Unit,
     onReorder: (Int, Int) -> Unit,
@@ -442,7 +447,7 @@ private fun RtlAwareTabStripContent(
                             ) {
                                 var visible by remember(isClosing) { mutableStateOf(!isClosing) }
                                 LaunchedEffect(isClosing) {
-                                    if (isClosing) visible = false else visible = true
+                                    visible = !isClosing
                                 }
                                 Row {
                                     AnimatedVisibility(
@@ -747,7 +752,7 @@ private fun RtlAwareTab(
                         closeIconComposable()
                     }
                 } else {
-                    val iconOnly = isCompact && !isSelected
+                    val iconOnly = isCompact
                     Box(Modifier.weight(1f)) {
                         CompositionLocalProvider(LocalCompactIconOnly provides iconOnly) {
                             tabData.content(TabContentScopeContainer(), tabState)

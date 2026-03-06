@@ -64,6 +64,8 @@ import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -527,7 +529,7 @@ fun HomeCelestialWidgets(
                         ),
                     )
                 }
-            }
+            }.toImmutableList()
         val zmanimItemCount = zmanimItems.size
         val baseColumns = maxColumnsLimit.coerceAtMost(zmanimItemCount).coerceAtLeast(1)
         val columns =
@@ -1112,7 +1114,7 @@ private fun MoonPhaseIcon(
 
 @Composable
 private fun ZmanimCardsGrid(
-    items: List<ZmanimGridItem>,
+    items: ImmutableList<ZmanimGridItem>,
     columns: Int,
     horizontalSpacing: Dp,
     verticalSpacing: Dp,

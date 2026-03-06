@@ -13,6 +13,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.Pane
 import io.github.kdroidfilter.seforimapp.features.search.domain.TocTree
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
@@ -145,7 +147,7 @@ fun SearchBookTocPanel(
                     }
 
                     BookTocView(
-                        tocEntries = tocTree?.rootEntries ?: emptyList(),
+                        tocEntries = tocTree?.rootEntries ?: persistentListOf(),
                         expandedEntries = expanded,
                         tocChildren = tocTree?.children ?: emptyMap(),
                         scrollIndex = uiState.toc.scrollIndex,
@@ -236,7 +238,7 @@ private fun AltBookTocSection(
             }
 
         BookTocView(
-            tocEntries = altTocUi.rootEntries,
+            tocEntries = altTocUi.rootEntries.toImmutableList(),
             expandedEntries = altState.expandedEntries,
             tocChildren = altTocUi.childrenMap,
             scrollIndex = altState.scrollIndex,

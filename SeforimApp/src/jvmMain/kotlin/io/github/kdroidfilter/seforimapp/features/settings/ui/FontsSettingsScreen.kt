@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +30,8 @@ import io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsEv
 import io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsViewModel
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -60,8 +61,8 @@ private fun FontsSettingsView(
     state: FontsSettingsState,
     onEvent: (FontsSettingsEvents) -> Unit,
 ) {
-    val options = remember { FontCatalog.options }
-    val optionLabels = options.map { stringResource(it.label) }
+    val options = FontCatalog.options
+    val optionLabels = options.map { stringResource(it.label) }.toImmutableList()
 
     VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -119,8 +120,8 @@ private fun FontsSettingsView(
 private fun FontSettingCard(
     label: StringResource,
     fontCode: String,
-    options: List<FontOption>,
-    optionLabels: List<String>,
+    options: ImmutableList<FontOption>,
+    optionLabels: ImmutableList<String>,
     onFontChange: (String) -> Unit,
 ) {
     val selectedIndex = options.indexOfFirst { it.code == fontCode }.let { if (it >= 0) it else 0 }

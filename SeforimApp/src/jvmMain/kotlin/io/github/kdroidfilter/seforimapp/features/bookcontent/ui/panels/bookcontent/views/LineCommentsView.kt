@@ -52,6 +52,8 @@ import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -75,7 +77,7 @@ fun LineCommentsView(
 ) {
     val contentState = uiState.content
     val selectedLine = contentState.primaryLine
-    val selectedLineIds = contentState.selectedLineIds.toList()
+    val selectedLineIds = contentState.selectedLineIds.toImmutableList()
     // Multi-sélection manuelle (Ctrl+click) = afficher commentaires de toutes les lignes
     // TOC entry selection = afficher commentaires seulement de la ligne primaire
     val isManualMultiSelection = selectedLineIds.size > 1 && !contentState.isTocEntrySelection
@@ -251,7 +253,7 @@ private fun CommentariesContent(
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 private fun MultiLineCommentariesContent(
-    selectedLineIds: List<Long>,
+    selectedLineIds: ImmutableList<Long>,
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
@@ -334,7 +336,10 @@ private fun MultiLineCommentariesContent(
             }
         },
         secondContent = {
-            val selectedInDisplayOrder = commentatorsInDisplayOrder.filter { it in selectedCommentators.value }
+            val selectedInDisplayOrder =
+                remember(commentatorsInDisplayOrder, selectedCommentators.value) {
+                    commentatorsInDisplayOrder.filter { it in selectedCommentators.value }.toImmutableList()
+                }
             MultiLineCommentariesDisplay(
                 selectedCommentators = selectedInDisplayOrder,
                 titleToIdMap = titleToIdMap,
@@ -355,9 +360,9 @@ private fun MultiLineCommentariesContent(
  */
 @Composable
 private fun MultiLineCommentariesDisplay(
-    selectedCommentators: List<String>,
+    selectedCommentators: ImmutableList<String>,
     titleToIdMap: Map<String, Long>,
-    selectedLineIds: List<Long>,
+    selectedLineIds: ImmutableList<Long>,
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
@@ -431,10 +436,11 @@ private fun MultiLineCommentariesDisplay(
 /**
  * Multi-line config, similar to CommentariesLayoutConfig but with multiple line IDs.
  */
+@Stable
 private data class MultiLineCommentariesLayoutConfig(
-    val selectedCommentators: List<String>,
+    val selectedCommentators: ImmutableList<String>,
     val titleToIdMap: Map<String, Long>,
-    val lineIds: List<Long>,
+    val lineIds: ImmutableList<Long>,
     val scrollIndex: Int,
     val scrollOffset: Int,
     val onScroll: (Int, Int) -> Unit,

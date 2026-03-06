@@ -55,6 +55,8 @@ import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
@@ -70,6 +72,7 @@ import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.*
 
+@Stable
 data class SearchShellActions(
     val onSubmit: (query: String) -> Unit,
     val onQueryChange: (String) -> Unit,
@@ -171,10 +174,10 @@ fun SearchResultInBookShellMvi(
     showDiacritics: Boolean,
     // Search state
     searchUi: SearchUiState,
-    visibleResults: List<SearchResult>,
+    visibleResults: ImmutableList<SearchResult>,
     isFiltering: Boolean,
-    breadcrumbs: Map<Long, List<String>>,
-    searchTree: List<SearchResultViewModel.SearchTreeCategory>,
+    breadcrumbs: ImmutableMap<Long, List<String>>,
+    searchTree: ImmutableList<SearchResultViewModel.SearchTreeCategory>,
     selectedCategoryIds: Set<Long>,
     selectedBookIds: Set<Long>,
     selectedTocIds: Set<Long>,
@@ -301,6 +304,7 @@ fun SearchResultInBookShellMvi(
     }
 }
 
+@Stable
 private data class SplitPaneConfig
     @OptIn(ExperimentalSplitPaneApi::class)
     constructor(
@@ -312,9 +316,9 @@ private data class SplitPaneConfig
 @Composable
 private fun SearchResultContentMvi(
     state: SearchUiState,
-    visibleResults: List<SearchResult>,
+    visibleResults: ImmutableList<SearchResult>,
     isFiltering: Boolean,
-    breadcrumbs: Map<Long, List<String>>,
+    breadcrumbs: ImmutableMap<Long, List<String>>,
     actions: SearchShellActions,
     tabId: String,
 ) {
@@ -641,7 +645,7 @@ private fun SearchResultItemGoogleStyle(
     fontFamily: FontFamily,
     findQuery: String?,
     onClick: () -> Unit,
-    breadcrumbs: Map<Long, List<String>>,
+    breadcrumbs: ImmutableMap<Long, List<String>>,
     onRequestBreadcrumb: (SearchResult) -> Unit,
     bookFontCode: String,
     currentMatchStart: Int? = null,

@@ -38,6 +38,12 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.LineHit
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchSession
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -235,7 +241,7 @@ class SearchResultViewModel(
                 viewModelScope.launch {
                     val pieces = runSuspendCatching { getBreadcrumbPiecesFor(event.result) }.getOrDefault(emptyList())
                     if (pieces.isNotEmpty()) {
-                        val next = _breadcrumbs.value + (event.result.lineId to pieces)
+                        val next = (_breadcrumbs.value + (event.result.lineId to pieces)).toImmutableMap()
                         _breadcrumbs.value = next
                         updatePersistedSearch { it.copy(breadcrumbs = next) }
                     }
@@ -306,11 +312,11 @@ class SearchResultViewModel(
 
     private val _categoryAgg = MutableStateFlow(CategoryAgg(emptyMap(), emptyMap(), emptyMap()))
     private val _tocCounts = MutableStateFlow<Map<Long, Int>>(emptyMap())
-    private val _breadcrumbs = MutableStateFlow<Map<Long, List<String>>>(emptyMap())
+    private val _breadcrumbs = MutableStateFlow<ImmutableMap<Long, List<String>>>(persistentMapOf())
 
     // Flag to indicate facets have been computed, so tree doesn't need to be rebuilt from results
     private var facetsComputed = false
-    val breadcrumbsFlow: StateFlow<Map<Long, List<String>>> = _breadcrumbs.asStateFlow()
+    val breadcrumbsFlow: StateFlow<ImmutableMap<Long, List<String>>> = _breadcrumbs.asStateFlow()
 
     // Whether the Search UI is currently visible/active. Used to gate heavy flows at startup.
     private val _uiVisible = MutableStateFlow(false)
@@ -371,7 +377,7 @@ class SearchResultViewModel(
             Triple(selBooks, multiBooks, selectedTocs)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Triple(emptySet(), emptySet(), emptySet()))
 
-    private val rawVisibleFlow: Flow<List<SearchResult>> =
+    private val rawVisibleFlow: Flow<ImmutableList<SearchResult>> =
         combine(baseScopeFlow, extraMultiFlow) { base, extra -> Pair(base, extra) }
             .distinctUntilChanged()
             .mapLatest { (base, extra) ->
@@ -383,25 +389,23 @@ class SearchResultViewModel(
                     val selectedBooks = extra.first
                     val multiBooks = extra.second
                     val multiLines = extra.third
-                    val out =
-                        fastFilterVisibleResults(
-                            results = results,
-                            bookId = bookId,
-                            allowedBooks = allowedBooks,
-                            tocActive = tocId != null,
-                            selectedBooks = selectedBooks,
-                            multiBooks = multiBooks,
-                            selectedTocIds = multiLines,
-                            scopeTocId = tocId,
-                        )
-                    ArrayList(out)
+                    fastFilterVisibleResults(
+                        results = results,
+                        bookId = bookId,
+                        allowedBooks = allowedBooks,
+                        tocActive = tocId != null,
+                        selectedBooks = selectedBooks,
+                        multiBooks = multiBooks,
+                        selectedTocIds = multiLines,
+                        scopeTocId = tocId,
+                    ).toImmutableList()
                 }
             }
 
-    val visibleResultsFlow: StateFlow<List<SearchResult>> =
+    val visibleResultsFlow: StateFlow<ImmutableList<SearchResult>> =
         rawVisibleFlow
             .debounce { if (_uiState.value.isLoading) 0 else 50 }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), persistentListOf())
 
     // Emits true whenever a filter key changes (category/book/toc), and becomes false
     // after the next visibleResultsFlow emission reflecting that change.
@@ -442,8 +446,8 @@ class SearchResultViewModel(
 
     private val _tocTree = MutableStateFlow<TocTree?>(null)
     val tocTreeFlow: StateFlow<TocTree?> = _tocTree.asStateFlow()
-    private val _searchTree = MutableStateFlow<List<SearchTreeCategory>>(emptyList())
-    val searchTreeFlow: StateFlow<List<SearchTreeCategory>> = _searchTree.asStateFlow()
+    private val _searchTree = MutableStateFlow<ImmutableList<SearchTreeCategory>>(persistentListOf())
+    val searchTreeFlow: StateFlow<ImmutableList<SearchTreeCategory>> = _searchTree.asStateFlow()
 
     init {
         // Compute search tree when visible and results change; emits into _searchTree
@@ -467,7 +471,7 @@ class SearchResultViewModel(
                                 }
                             }.flowOn(Dispatchers.Default)
                     }
-                }.collect { tree -> _searchTree.value = tree }
+                }.collect { tree -> _searchTree.value = tree.toImmutableList() }
         }
     }
 
@@ -598,7 +602,7 @@ class SearchResultViewModel(
         _selectedCategoryIds.value = persisted.selectedCategoryIds
         _selectedBookIds.value = persisted.selectedBookIds
         _selectedTocIds.value = persisted.selectedTocIds
-        _breadcrumbs.value = persisted.breadcrumbs
+        _breadcrumbs.value = persisted.breadcrumbs.toImmutableMap()
 
         _uiState.value =
             _uiState.value.copy(
@@ -723,7 +727,7 @@ class SearchResultViewModel(
             _tocCounts.value = cached.tocCounts
             // Restore TOC tree if present
             cached.tocTree?.let { snap ->
-                _tocTree.value = TocTree(snap.rootEntries, snap.children)
+                _tocTree.value = TocTree(snap.rootEntries.toImmutableList(), snap.children)
             }
             // Restore precomputed search tree if present to avoid recomputation on cold restore
             cached.searchTree?.let { snapList ->
@@ -734,7 +738,7 @@ class SearchResultViewModel(
                         children = n.children.map { mapNode(it) },
                         books = n.books.map { SearchTreeBook(it.book, it.count) },
                     )
-                _searchTree.value = snapList.map { mapNode(it) }
+                _searchTree.value = snapList.map { mapNode(it) }.toImmutableList()
                 // Mark facets as computed so the tree won't be rebuilt from partial results
                 facetsComputed = true
             }
@@ -808,7 +812,7 @@ class SearchResultViewModel(
         if (q.isBlank()) return
         // New search: clear any previous streaming job and reset scroll/anchor state
         currentJob?.cancel()
-        _breadcrumbs.value = emptyMap()
+        _breadcrumbs.value = persistentMapOf()
         // Reset persisted scroll/anchor so restoration targets the top for fresh results.
         updatePersistedSearch {
             it.copy(
@@ -958,7 +962,7 @@ class SearchResultViewModel(
                                 facetCategoryCounts = facets.categoryCounts,
                                 facetBookCounts = facets.bookCounts,
                             )
-                        _searchTree.value = tree
+                        _searchTree.value = tree.toImmutableList()
                         facetsComputed = true
                     }
 

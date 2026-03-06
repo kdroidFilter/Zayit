@@ -25,6 +25,8 @@ import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 
@@ -41,7 +43,7 @@ fun TocJumpDropdown(
     bookId: Long,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier,
-    items: List<TocQuickLink> = emptyList(),
+    items: ImmutableList<TocQuickLink> = persistentListOf(),
     popupWidthMultiplier: Float = 1.5f,
     minPopupHeight: Dp = Dp.Unspecified,
     maxPopupHeight: Dp = 360.dp,
@@ -115,7 +117,7 @@ fun TocJumpDropdown(
 fun TocJumpDropdownByIds(
     title: String,
     bookId: Long,
-    tocTextIds: List<Long>,
+    tocTextIds: ImmutableList<Long>,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier,
     popupWidthMultiplier: Float = 1.5f,
@@ -135,7 +137,7 @@ fun TocJumpDropdownByIds(
         bookId = bookId,
         onEvent = onEvent,
         modifier = modifier,
-        items = emptyList(),
+        items = persistentListOf(),
         popupWidthMultiplier = popupWidthMultiplier,
         minPopupHeight = minPopupHeight,
         maxPopupHeight = maxPopupHeight,
@@ -146,7 +148,7 @@ fun TocJumpDropdownByIds(
 @Composable
 fun TocJumpDropdownByIds(
     bookId: Long,
-    tocTextIds: List<Long>,
+    tocTextIds: ImmutableList<Long>,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier,
     popupWidthMultiplier: Float = 1.5f,

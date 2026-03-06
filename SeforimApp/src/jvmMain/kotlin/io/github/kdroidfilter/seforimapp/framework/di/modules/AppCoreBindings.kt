@@ -15,6 +15,7 @@ import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.database.getUserSettingsDatabasePath
+import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
@@ -95,6 +96,17 @@ object AppCoreBindings {
                     bookId = -1,
                     tabId = UUID.randomUUID().toString(),
                 ),
+        )
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideDesktopManager(
+        tabsViewModel: TabsViewModel,
+        tabPersistedStateStore: TabPersistedStateStore,
+    ): DesktopManager =
+        DesktopManager(
+            tabsViewModel = tabsViewModel,
+            tabPersistedStateStore = tabPersistedStateStore,
         )
 
     @Provides

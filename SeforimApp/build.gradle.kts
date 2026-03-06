@@ -169,6 +169,7 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.lucene.core)
             implementation(libs.reorderable)
+            implementation(libs.kotlinx.collections.immutable)
 
             // SeforimLibrary search module
             implementation(libs.seforimlibrary.search)

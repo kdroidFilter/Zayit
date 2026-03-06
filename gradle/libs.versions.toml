@@ -28,6 +28,7 @@ jewel = "0.34.0-261.22158.19"
 oshiCore = "6.10.0"
 paging = "3.4.1"
 platformtools = "0.7.5"
+kotlinx-collections-immutable = "0.4.0"
 kotlinx-coroutines = "1.10.2"
 reorderable = "3.0.0"
 slf4j = "2.0.17"
@@ -110,6 +111,7 @@ oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshiCore" }
 platformtools-appmanager = { module = "io.github.kdroidfilter:platformtools.appmanager", version.ref = "platformtools" }
 platformtools-core = { module = "io.github.kdroidfilter:platformtools.core", version.ref = "platformtools" }
 platformtools-releasefetcher = { module = "io.github.kdroidfilter:platformtools.releasefetcher", version.ref = "platformtools" }
+kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }

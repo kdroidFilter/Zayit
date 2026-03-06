@@ -330,8 +330,18 @@ private fun RtlAwareTabStripContent(
     val containerTransitionDurationMs = enterDurationMs + 80
 
     // Track which tabs already existed to avoid double width + expand animation on new entries
+    val tabsViewModel = LocalAppGraph.current.tabsViewModel
+    val skipAnimation by tabsViewModel.skipNextAnimation.collectAsState()
     var knownKeys by remember { mutableStateOf(tabs.map { it.key }.toSet()) }
     val currentKeys = remember(tabs) { tabs.map { it.key } }
+
+    // When desktop switch restores tabs, treat all as already known to skip enter animation
+    var skipContainerAnimation by remember { mutableStateOf(false) }
+    if (skipAnimation) {
+        knownKeys = currentKeys.toSet()
+        skipContainerAnimation = true
+        tabsViewModel.consumeSkipAnimation()
+    }
 
     val scope = rememberCoroutineScope()
 
@@ -383,11 +393,17 @@ private fun RtlAwareTabStripContent(
             var lastShrinkToFitActive by remember { mutableStateOf(shrinkToFitActive) }
             val shouldAnimateTabsContainer = shrinkToFitActive != lastShrinkToFitActive
             val tabsContainerAnimationSpec: FiniteAnimationSpec<IntSize> =
-                if (shouldAnimateTabsContainer) {
+                if (shouldAnimateTabsContainer && !skipContainerAnimation) {
                     tween(durationMillis = containerTransitionDurationMs, easing = FastOutSlowInEasing)
                 } else {
                     snap()
                 }
+            LaunchedEffect(skipContainerAnimation) {
+                if (skipContainerAnimation) {
+                    delay(containerTransitionDurationMs.toLong())
+                    skipContainerAnimation = false
+                }
+            }
             SideEffect {
                 lastShrinkToFitActive = shrinkToFitActive
             }

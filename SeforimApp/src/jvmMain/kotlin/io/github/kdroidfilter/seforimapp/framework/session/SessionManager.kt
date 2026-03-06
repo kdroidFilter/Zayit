@@ -13,6 +13,9 @@ import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
+import org.jetbrains.compose.resources.getString
+import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.desktop_default_name
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -157,7 +160,7 @@ object SessionManager {
 
             val state =
                 DesktopsState(
-                    desktops = listOf(VirtualDesktop(id = desktopId, name = "\u05E9\u05F4\u05E2 1")),
+                    desktops = listOf(VirtualDesktop(id = desktopId, name = getString(Res.string.desktop_default_name, 1))),
                     activeDesktopId = desktopId,
                     snapshots = mapOf(desktopId to snapshot),
                 )

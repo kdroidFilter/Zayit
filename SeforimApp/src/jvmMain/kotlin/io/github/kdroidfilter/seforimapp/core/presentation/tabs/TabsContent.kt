@@ -48,8 +48,6 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchShellActions
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.santimattius.structured.annotations.StructuredScope
-import kotlinx.collections.immutable.toImmutableList
-import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.modifier.trackActivation
@@ -359,19 +357,15 @@ private fun SearchTabContent(
             )
         }
 
-    val immutableResults = remember(visibleResults) { visibleResults.toImmutableList() }
-    val immutableBreadcrumbs = remember(breadcrumbs) { breadcrumbs.toImmutableMap() }
-    val immutableSearchTree = remember(searchTree) { searchTree.toImmutableList() }
-
     SearchResultInBookShellMvi(
         bookUiState = bcUiState,
         onEvent = bookVm::onEvent,
         showDiacritics = showDiacritics,
         searchUi = searchUi,
-        visibleResults = immutableResults,
+        visibleResults = visibleResults,
         isFiltering = isFiltering,
-        breadcrumbs = immutableBreadcrumbs,
-        searchTree = immutableSearchTree,
+        breadcrumbs = breadcrumbs,
+        searchTree = searchTree,
         selectedCategoryIds = selectedCategoryIds,
         selectedBookIds = selectedBookIds,
         selectedTocIds = selectedTocIds,

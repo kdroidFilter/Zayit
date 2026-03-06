@@ -59,7 +59,6 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.MaterialSymbolsDesktop_landscape
 import io.github.kdroidfilter.seforimapp.icons.MaterialSymbolsDesktop_landscape_add
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
@@ -76,7 +75,6 @@ fun DesktopSwitcher(modifier: Modifier = Modifier) {
     val appGraph = LocalAppGraph.current
     val desktopManager = appGraph.desktopManager
     val desktops by desktopManager.desktops.collectAsState()
-    val immutableDesktops = remember(desktops) { desktops.toImmutableList() }
     val activeDesktopId by desktopManager.activeDesktopId.collectAsState()
     val activeDesktop = desktops.find { it.id == activeDesktopId }
 
@@ -98,7 +96,7 @@ fun DesktopSwitcher(modifier: Modifier = Modifier) {
                 properties = PopupProperties(focusable = true),
             ) {
                 DesktopDropdownContent(
-                    desktops = immutableDesktops,
+                    desktops = desktops,
                     activeDesktopId = activeDesktopId,
                     onMove = desktopManager::moveDesktop,
                     onSwitch = desktopManager::switchTo,

@@ -8,6 +8,9 @@ import io.github.kdroidfilter.seforimapp.framework.session.DesktopsState
 import io.github.kdroidfilter.seforimapp.framework.session.SerializableTabTitle
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,9 +29,9 @@ class DesktopManager(
 
     private val _desktops =
         MutableStateFlow(
-            listOf(VirtualDesktop(id = defaultDesktopId, name = "\u05E9\u05F4\u05E2 1")),
+            persistentListOf(VirtualDesktop(id = defaultDesktopId, name = "\u05E9\u05F4\u05E2 1")),
         )
-    val desktops: StateFlow<List<VirtualDesktop>> = _desktops.asStateFlow()
+    val desktops: StateFlow<ImmutableList<VirtualDesktop>> = _desktops.asStateFlow()
 
     private val _activeDesktopId = MutableStateFlow(defaultDesktopId)
     val activeDesktopId: StateFlow<String> = _activeDesktopId.asStateFlow()
@@ -82,7 +85,7 @@ class DesktopManager(
         try {
             val id = UUID.randomUUID().toString()
             val desktop = VirtualDesktop(id = id, name = name)
-            _desktops.update { it + desktop }
+            _desktops.update { (it + desktop).toPersistentList() }
 
             // Snapshot current before switching
             snapshots[_activeDesktopId.value] = snapshotCurrentDesktop()
@@ -108,7 +111,7 @@ class DesktopManager(
         newName: String,
     ) {
         _desktops.update { desktops ->
-            desktops.map { if (it.id == id) it.copy(name = newName) else it }
+            desktops.map { if (it.id == id) it.copy(name = newName) else it }.toPersistentList()
         }
     }
 
@@ -126,7 +129,7 @@ class DesktopManager(
         }
 
         snapshots.remove(id)
-        _desktops.update { desktops -> desktops.filter { it.id != id } }
+        _desktops.update { desktops -> desktops.filter { it.id != id }.toPersistentList() }
     }
 
     fun moveDesktop(
@@ -138,7 +141,7 @@ class DesktopManager(
             val list = current.toMutableList()
             val moved = list.removeAt(fromIndex)
             list.add(toIndex, moved)
-            list
+            list.toPersistentList()
         }
     }
 
@@ -228,7 +231,7 @@ class DesktopManager(
     fun restoreFromDesktopsState(state: DesktopsState) {
         if (state.desktops.isEmpty()) return
 
-        _desktops.value = state.desktops
+        _desktops.value = state.desktops.toPersistentList()
         _activeDesktopId.value = state.activeDesktopId
 
         // Store all non-active snapshots

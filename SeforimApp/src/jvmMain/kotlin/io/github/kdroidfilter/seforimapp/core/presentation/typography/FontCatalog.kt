@@ -5,6 +5,8 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.StringResource
 import seforimapp.seforimapp.generated.resources.AharoniCLM_Bold
@@ -130,8 +132,8 @@ data class FontOption(
 
 object FontCatalog {
     // Public list of options in a stable order (no Composable calls here)
-    val options: List<FontOption> =
-        listOf(
+    val options: ImmutableList<FontOption> =
+        persistentListOf(
             FontOption(code = "notoserifhebrew", label = Res.string.font_noto_serif_hebrew),
             FontOption(code = "notorashihebrew", label = Res.string.font_noto_rashi_hebrew),
             FontOption(code = "frankruhllibre", label = Res.string.font_frank_ruhl_libre),

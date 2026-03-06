@@ -24,6 +24,7 @@ import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStor
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.LuceneSearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
+import com.kdroid.gematria.converter.toHebrewNumeral
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 import seforimapp.seforimapp.generated.resources.Res
@@ -112,7 +113,8 @@ object AppCoreBindings {
             tabsViewModel = tabsViewModel,
             tabPersistedStateStore = tabPersistedStateStore,
             desktopNameProvider = { index ->
-                runBlocking { getString(Res.string.desktop_default_name, index) }
+                val hebrewIndex = index.toHebrewNumeral(includeGeresh = false)
+                runBlocking { getString(Res.string.desktop_default_name, hebrewIndex) }
             },
         )
 

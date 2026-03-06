@@ -1629,9 +1629,11 @@ private fun SearchBar(
                             loadingMessage = stringResource(Res.string.autocomplete_loading),
                         )
                     } else if (!isTocMode && (showCategorySuggestions || showBookEmptyState || showBookLoading)) {
+                        val immutableCategorySuggestions = remember(categorySuggestions) { categorySuggestions.toImmutableList() }
+                        val immutableBookSuggestions = remember(bookSuggestions) { bookSuggestions.toImmutableList() }
                         SuggestionsPanel(
-                            categorySuggestions = categorySuggestions.toImmutableList(),
-                            bookSuggestions = bookSuggestions.toImmutableList(),
+                            categorySuggestions = immutableCategorySuggestions,
+                            bookSuggestions = immutableBookSuggestions,
                             onPickCategory = ::handlePickCategory,
                             onPickBook = ::handlePickBook,
                             focusedIndex = focusedIndex,

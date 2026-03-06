@@ -359,15 +359,19 @@ private fun SearchTabContent(
             )
         }
 
+    val immutableResults = remember(visibleResults) { visibleResults.toImmutableList() }
+    val immutableBreadcrumbs = remember(breadcrumbs) { breadcrumbs.toImmutableMap() }
+    val immutableSearchTree = remember(searchTree) { searchTree.toImmutableList() }
+
     SearchResultInBookShellMvi(
         bookUiState = bcUiState,
         onEvent = bookVm::onEvent,
         showDiacritics = showDiacritics,
         searchUi = searchUi,
-        visibleResults = visibleResults.toImmutableList(),
+        visibleResults = immutableResults,
         isFiltering = isFiltering,
-        breadcrumbs = breadcrumbs.toImmutableMap(),
-        searchTree = searchTree.toImmutableList(),
+        breadcrumbs = immutableBreadcrumbs,
+        searchTree = immutableSearchTree,
         selectedCategoryIds = selectedCategoryIds,
         selectedBookIds = selectedBookIds,
         selectedTocIds = selectedTocIds,

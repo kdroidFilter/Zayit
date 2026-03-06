@@ -337,10 +337,12 @@ private fun MultiLineCommentariesContent(
         },
         secondContent = {
             val selectedInDisplayOrder = commentatorsInDisplayOrder.filter { it in selectedCommentators.value }
+            val immutableCommentators = remember(selectedInDisplayOrder) { selectedInDisplayOrder.toImmutableList() }
+            val immutableLineIds = remember(selectedLineIds) { selectedLineIds.toImmutableList() }
             MultiLineCommentariesDisplay(
-                selectedCommentators = selectedInDisplayOrder.toImmutableList(),
+                selectedCommentators = immutableCommentators,
                 titleToIdMap = titleToIdMap,
-                selectedLineIds = selectedLineIds.toImmutableList(),
+                selectedLineIds = immutableLineIds,
                 uiState = uiState,
                 onEvent = onEvent,
                 textSizes = textSizes,

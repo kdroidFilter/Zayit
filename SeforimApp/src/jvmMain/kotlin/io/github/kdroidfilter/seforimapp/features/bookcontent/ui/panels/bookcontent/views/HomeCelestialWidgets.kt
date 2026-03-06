@@ -570,8 +570,9 @@ fun HomeCelestialWidgets(
                             .height(leftColumnHeight),
                     verticalArrangement = Arrangement.spacedBy(verticalSpacing),
                 ) {
+                    val immutableZmanimItems = remember(zmanimItems) { zmanimItems.toImmutableList() }
                     ZmanimCardsGrid(
-                        items = zmanimItems.toImmutableList(),
+                        items = immutableZmanimItems,
                         columns = columns,
                         horizontalSpacing = horizontalSpacing,
                         verticalSpacing = verticalSpacing,

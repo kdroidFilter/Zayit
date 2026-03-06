@@ -438,9 +438,9 @@ private fun MultiLineCommentariesDisplay(
  */
 @Stable
 private data class MultiLineCommentariesLayoutConfig(
-    val selectedCommentators: List<String>,
+    val selectedCommentators: ImmutableList<String>,
     val titleToIdMap: Map<String, Long>,
-    val lineIds: List<Long>,
+    val lineIds: ImmutableList<Long>,
     val scrollIndex: Int,
     val scrollOffset: Int,
     val onScroll: (Int, Int) -> Unit,

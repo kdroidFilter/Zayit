@@ -73,8 +73,8 @@
     <string name="font_yehuda_clm">יהודה</string>
 
     <!-- Virtual Desktops -->
-    <string name="desktop_default_name">סטנדר %1$d</string>
-    <string name="desktop_new">סטנדר חדש</string>
+    <string name="desktop_default_name">מרחב %1$d</string>
+    <string name="desktop_new">מרחב חדש</string>
     <string name="desktop_rename">שנה שם</string>
     <string name="desktop_delete">מחק</string>
 

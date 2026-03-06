@@ -529,6 +529,7 @@ fun BookContentScreen(
  * @property isVisible Indicates whether the split-pane is visible or not.
  * @property positionFilter A filter function applied to the split position value to determine its validity.
  */
+@Stable
 private data class SplitPaneConfig
     @OptIn(ExperimentalSplitPaneApi::class)
     constructor(

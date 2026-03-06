@@ -11,6 +11,7 @@ import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
+import kotlinx.collections.immutable.ImmutableList
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import org.jetbrains.compose.resources.stringResource
@@ -93,7 +94,7 @@ private fun SearchField(
 fun SearchCategoryTreePanel(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    searchTree: List<io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory>,
+    searchTree: ImmutableList<io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel.SearchTreeCategory>,
     isFiltering: Boolean,
     selectedCategoryIds: Set<Long>,
     selectedBookIds: Set<Long>,

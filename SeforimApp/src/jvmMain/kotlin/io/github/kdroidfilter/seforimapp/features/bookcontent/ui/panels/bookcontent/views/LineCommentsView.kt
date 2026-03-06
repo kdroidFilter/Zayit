@@ -52,6 +52,8 @@ import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -336,9 +338,9 @@ private fun MultiLineCommentariesContent(
         secondContent = {
             val selectedInDisplayOrder = commentatorsInDisplayOrder.filter { it in selectedCommentators.value }
             MultiLineCommentariesDisplay(
-                selectedCommentators = selectedInDisplayOrder,
+                selectedCommentators = selectedInDisplayOrder.toImmutableList(),
                 titleToIdMap = titleToIdMap,
-                selectedLineIds = selectedLineIds,
+                selectedLineIds = selectedLineIds.toImmutableList(),
                 uiState = uiState,
                 onEvent = onEvent,
                 textSizes = textSizes,
@@ -355,9 +357,9 @@ private fun MultiLineCommentariesContent(
  */
 @Composable
 private fun MultiLineCommentariesDisplay(
-    selectedCommentators: List<String>,
+    selectedCommentators: ImmutableList<String>,
     titleToIdMap: Map<String, Long>,
-    selectedLineIds: List<Long>,
+    selectedLineIds: ImmutableList<Long>,
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
@@ -431,6 +433,7 @@ private fun MultiLineCommentariesDisplay(
 /**
  * Multi-line config, similar to CommentariesLayoutConfig but with multiple line IDs.
  */
+@Stable
 private data class MultiLineCommentariesLayoutConfig(
     val selectedCommentators: List<String>,
     val titleToIdMap: Map<String, Long>,

@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.sp
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontOption
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsState
@@ -60,8 +62,8 @@ private fun FontsSettingsView(
     state: FontsSettingsState,
     onEvent: (FontsSettingsEvents) -> Unit,
 ) {
-    val options = remember { FontCatalog.options }
-    val optionLabels = options.map { stringResource(it.label) }
+    val options = remember { FontCatalog.options.toImmutableList() }
+    val optionLabels = options.map { stringResource(it.label) }.toImmutableList()
 
     VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -119,8 +121,8 @@ private fun FontsSettingsView(
 private fun FontSettingCard(
     label: StringResource,
     fontCode: String,
-    options: List<FontOption>,
-    optionLabels: List<String>,
+    options: ImmutableList<FontOption>,
+    optionLabels: ImmutableList<String>,
     onFontChange: (String) -> Unit,
 ) {
     val selectedIndex = options.indexOfFirst { it.code == fontCode }.let { if (it >= 0) it else 0 }

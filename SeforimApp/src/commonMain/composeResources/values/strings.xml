@@ -312,6 +312,8 @@
     <string name="settings_theme_style_label">סגנון ערכת נושא</string>
     <string name="settings_theme_style_classic">קלאסי</string>
     <string name="settings_theme_style_islands">איילנדס</string>
+    <!-- Accent color selector -->
+    <string name="settings_accent_color_label">צבע מבטא</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title_bar">מדריך ההגדרה של זית</string>

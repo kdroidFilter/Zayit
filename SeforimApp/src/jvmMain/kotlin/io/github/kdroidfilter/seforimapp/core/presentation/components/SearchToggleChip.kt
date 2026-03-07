@@ -75,11 +75,12 @@ fun TelescopeIconButton(
     withPadding: Boolean = true,
     enabled: Boolean = true,
 ) {
+    val accent = JewelTheme.globalColors.outlines.focused
     val backgroundColor by animateColorAsState(
         targetValue =
             when {
-                !enabled -> Color(0xFF0E639C).copy(alpha = 0.5f)
-                isSelected -> Color(0xFF0E639C)
+                !enabled -> accent.copy(alpha = 0.5f)
+                isSelected -> accent
                 else -> Color.Transparent
             },
         animationSpec = tween(200),

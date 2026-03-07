@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import com.kdroid.gematria.converter.toHebrewNumeral
 import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -66,6 +67,7 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.desktop_default_name
 import seforimapp.seforimapp.generated.resources.desktop_new
 import sh.calvin.reorderable.ReorderableColumn
 import sh.calvin.reorderable.ReorderableItem
@@ -102,7 +104,7 @@ fun DesktopSwitcher(modifier: Modifier = Modifier) {
                     onSwitch = desktopManager::switchTo,
                     onRename = desktopManager::renameDesktop,
                     onDelete = desktopManager::deleteDesktop,
-                    onCreate = desktopManager::createDesktop,
+                    onCreate = { name -> desktopManager.createDesktop(name) },
                     onDismiss = { showDropdown = false },
                 )
             }
@@ -169,7 +171,7 @@ private fun DesktopDropdownContent(
     onSwitch: (String) -> Unit,
     onRename: (String, String) -> Unit,
     onDelete: (String) -> Unit,
-    onCreate: () -> String,
+    onCreate: (String) -> String,
     onDismiss: () -> Unit,
 ) {
     val accent = JewelTheme.globalColors.outlines.focused
@@ -228,9 +230,15 @@ private fun DesktopDropdownContent(
         }
 
         // New desktop button
+        val nextIndex = desktops.size + 1
+        val nextHebrewIndex =
+            remember(nextIndex) {
+                nextIndex.toHebrewNumeral(includeGeresh = false) + "׳"
+            }
+        val nextDesktopName = stringResource(Res.string.desktop_default_name, nextHebrewIndex)
         HoverableRow(
             onClick = {
-                onCreate()
+                onCreate(nextDesktopName)
                 onDismiss()
             },
             hoverColor = accent.copy(alpha = 0.06f),

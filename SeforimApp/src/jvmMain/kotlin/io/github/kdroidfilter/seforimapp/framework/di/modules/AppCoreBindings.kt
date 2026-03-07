@@ -107,6 +107,7 @@ object AppCoreBindings {
         DesktopManager(
             tabsViewModel = tabsViewModel,
             tabPersistedStateStore = tabPersistedStateStore,
+            defaultDesktopName = "\u05DE\u05E8\u05D7\u05D1 \u05D0׳",
         )
 
     @Provides

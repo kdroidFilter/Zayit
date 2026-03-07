@@ -125,7 +125,11 @@ fun AccentMarkdownView(
 
     val blockRenderer =
         remember(markdownStyling) {
-            if (isDark) MarkdownBlockRenderer.dark(styling = markdownStyling) else MarkdownBlockRenderer.light(styling = markdownStyling)
+            if (isDark) {
+                MarkdownBlockRenderer.dark(styling = markdownStyling)
+            } else {
+                MarkdownBlockRenderer.light(styling = markdownStyling)
+            }
         }
 
     var blocks by remember { mutableStateOf(emptyList<MarkdownBlock>()) }

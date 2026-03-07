@@ -30,8 +30,6 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
-import org.jetbrains.jewel.intui.standalone.theme.default
-import org.jetbrains.jewel.ui.ComponentStyling
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
@@ -52,7 +50,7 @@ private fun SettingsWindowView(onClose: () -> Unit) {
     NucleusDecoratedWindowTheme(isDark = isDark, titleBarStyle = ThemeUtils.buildCustomTitleBarStyle()) {
         IntUiTheme(
             theme = themeDefinition,
-            styling = ComponentStyling.default(),
+            styling = ThemeUtils.buildComponentStyling(),
         ) {
             val settingsDialogState =
                 rememberDialogState(position = WindowPosition.Aligned(Alignment.Center), size = DpSize(700.dp, 500.dp))

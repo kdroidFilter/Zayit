@@ -1743,8 +1743,9 @@ private fun FilterButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val accent = JewelTheme.globalColors.outlines.focused
     val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) Color(0xFF0E639C) else Color.Transparent,
+        targetValue = if (isSelected) accent else Color.Transparent,
         animationSpec = tween(200),
         label = "backgroundColor",
     )
@@ -1781,7 +1782,7 @@ private fun SearchLevelCard(
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(16.dp)
-    val backgroundColor = if (selected) Color(0xFF0E639C) else Color.Transparent
+    val backgroundColor = if (selected) JewelTheme.globalColors.outlines.focused else Color.Transparent
 
     val borderColor =
         if (selected) JewelTheme.globalColors.borders.focused else JewelTheme.globalColors.borders.disabled

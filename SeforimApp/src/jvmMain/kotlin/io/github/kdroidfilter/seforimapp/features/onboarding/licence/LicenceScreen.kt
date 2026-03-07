@@ -10,7 +10,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,6 +85,7 @@ private fun LicenceView(
     var isChecked by remember { mutableStateOf(false) }
 
     val isDark = JewelTheme.isDark
+    val accent = JewelTheme.globalColors.outlines.focused
 
     val textStyle =
         LocalTextStyle.current.copy(
@@ -98,13 +101,22 @@ private fun LicenceView(
 
     val h2Padding = PaddingValues(top = 12.dp, bottom = 8.dp)
 
+    val linkStyle = SpanStyle(color = accent)
+    val linkHoveredStyle = SpanStyle(color = accent, textDecoration = TextDecoration.Underline)
+
     val markdownStyling =
-        remember(isDark, textStyle) {
+        remember(isDark, textStyle, accent) {
             // Make Markdown more compact: smaller block spacing and tighter heading paddings.
             if (isDark) {
                 MarkdownStyling.dark(
                     baseTextStyle = textStyle,
-                    inlinesStyling = InlinesStyling.dark(textStyle),
+                    inlinesStyling =
+                        InlinesStyling.dark(
+                            textStyle,
+                            link = linkStyle,
+                            linkHovered = linkHoveredStyle,
+                            linkVisited = linkStyle,
+                        ),
                     blockVerticalSpacing = 8.dp,
                     heading =
                         MarkdownStyling.Heading.dark(
@@ -119,7 +131,13 @@ private fun LicenceView(
             } else {
                 MarkdownStyling.light(
                     baseTextStyle = textStyle,
-                    inlinesStyling = InlinesStyling.light(textStyle),
+                    inlinesStyling =
+                        InlinesStyling.light(
+                            textStyle,
+                            link = linkStyle,
+                            linkHovered = linkHoveredStyle,
+                            linkVisited = linkStyle,
+                        ),
                     blockVerticalSpacing = 8.dp,
                     heading =
                         MarkdownStyling.Heading.light(

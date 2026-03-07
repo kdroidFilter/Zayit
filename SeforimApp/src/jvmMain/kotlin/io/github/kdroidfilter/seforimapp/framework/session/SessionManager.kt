@@ -157,7 +157,13 @@ object SessionManager {
 
             val state =
                 DesktopsState(
-                    desktops = listOf(VirtualDesktop(id = desktopId, name = "\u05E9\u05F4\u05E2 1")),
+                    desktops =
+                        listOf(
+                            VirtualDesktop(
+                                id = desktopId,
+                                name = "\u05DE\u05E8\u05D7\u05D1 \u05D0׳",
+                            ),
+                        ),
                     activeDesktopId = desktopId,
                     snapshots = mapOf(desktopId to snapshot),
                 )

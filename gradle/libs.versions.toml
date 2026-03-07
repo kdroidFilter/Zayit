@@ -4,6 +4,7 @@ commonsCompress = "1.28.0"
 composeSonner = "0.4.0"
 confettikit = "0.8.0"
 filekitCore = "0.13.0"
+hebrewNumerals = "0.2.6"
 jsoup = "1.22.1"
 jvmToolchain = "25"
 knotify = "0.4.3"
@@ -62,6 +63,7 @@ confettikit = { module = "io.github.vinceglb:confettikit", version.ref = "confet
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekitCore" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekitCore" }
 filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekitCore" }
+hebrew-numerals = { module = "io.github.kdroidfilter:hebrewnumerals", version.ref = "hebrewNumerals" }
 jdbc-driver = { module = "app.cash.sqldelight:jdbc-driver", version.ref = "sqlDelight" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 knotify = { module = "io.github.kdroidfilter:knotify", version.ref = "knotify" }

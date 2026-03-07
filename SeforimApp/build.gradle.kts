@@ -151,6 +151,7 @@ kotlin {
 //        }
 
         jvmMain.dependencies {
+            implementation(libs.hebrew.numerals)
             api(project(":jewel"))
             implementation(project(":earthwidget"))
             implementation(libs.nucleus.decorated.window)

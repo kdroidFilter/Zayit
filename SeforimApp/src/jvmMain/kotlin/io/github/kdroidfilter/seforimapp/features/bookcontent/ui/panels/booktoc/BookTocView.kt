@@ -95,11 +95,17 @@ fun BookTocView(
         }
     }
 
-    // Bring selected TOC entry into view once per book after restore
+    // Bring selected TOC entry into view — skip when the change originates from a click inside this panel
+    var skipNextAutoCenter by remember { mutableStateOf(false) }
     var didAutoCenter by remember(tocEntries, selectedTocOverride ?: selectedTocEntryId) { mutableStateOf(false) }
     LaunchedEffect(selectedTocOverride ?: selectedTocEntryId, visibleEntries.size, hasRestored, didAutoCenter) {
         val selId = (selectedTocOverride ?: selectedTocEntryId) ?: return@LaunchedEffect
         if (!didAutoCenter && hasRestored && visibleEntries.isNotEmpty()) {
+            if (skipNextAutoCenter) {
+                skipNextAutoCenter = false
+                didAutoCenter = true
+                return@LaunchedEffect
+            }
             val idx = visibleEntries.indexOfFirst { it.entry.id == selId }
             if (idx >= 0) {
                 listState.scrollToItem(idx, 0)
@@ -124,6 +130,7 @@ fun BookTocView(
                         visibleEntry = visibleEntry,
                         selectedTocEntryId = selectedTocOverride ?: selectedTocEntryId,
                         onEntryClick = { entry ->
+                            skipNextAutoCenter = true
                             if (onTocFilter != null) onTocFilter(entry) else onEntryClick(entry)
                         },
                         onEntryExpand = onEntryExpand,

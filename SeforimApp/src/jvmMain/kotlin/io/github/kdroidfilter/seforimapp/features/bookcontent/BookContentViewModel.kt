@@ -422,18 +422,20 @@ class BookContentViewModel(
                 BookContentEvent.NavigateToPreviousLine -> {
                     val line = contentUseCase.navigateToPreviousLine()
                     if (line != null) {
-                        commentariesUseCase.reapplySelectedCommentators(line)
-                        commentariesUseCase.reapplySelectedLinkSources(line)
-                        commentariesUseCase.reapplySelectedSources(line)
+                        val bookId =
+                            stateManager.state.value.navigation.selectedBook
+                                ?.id ?: line.bookId
+                        postSelectLine(line, bookId)
                     }
                 }
 
                 BookContentEvent.NavigateToNextLine -> {
                     val line = contentUseCase.navigateToNextLine()
                     if (line != null) {
-                        commentariesUseCase.reapplySelectedCommentators(line)
-                        commentariesUseCase.reapplySelectedLinkSources(line)
-                        commentariesUseCase.reapplySelectedSources(line)
+                        val bookId =
+                            stateManager.state.value.navigation.selectedBook
+                                ?.id ?: line.bookId
+                        postSelectLine(line, bookId)
                     }
                 }
 

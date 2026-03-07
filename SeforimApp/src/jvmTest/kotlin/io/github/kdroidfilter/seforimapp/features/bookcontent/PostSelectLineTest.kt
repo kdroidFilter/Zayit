@@ -228,6 +228,88 @@ class PostSelectLineTest {
             coVerify { commentariesUseCase.reapplySelectedSources(any()) }
         }
 
+    // --- NavigateToPreviousLine ---
+
+    @Test
+    fun `NavigateToPreviousLine syncs alt-TOC`() =
+        runTest {
+            val vm = createViewModelWithBook()
+            coEvery { contentUseCase.navigateToPreviousLine() } returns testLine
+
+            vm.onEvent(BookContentEvent.NavigateToPreviousLine)
+            testScheduler.advanceUntilIdle()
+
+            coVerify { altTocUseCase.selectAltEntryForLine(testLine.id) }
+        }
+
+    @Test
+    fun `NavigateToPreviousLine reapplies commentaries`() =
+        runTest {
+            val vm = createViewModelWithBook()
+            coEvery { contentUseCase.navigateToPreviousLine() } returns testLine
+
+            vm.onEvent(BookContentEvent.NavigateToPreviousLine)
+            testScheduler.advanceUntilIdle()
+
+            coVerify { commentariesUseCase.reapplySelectedCommentators(any()) }
+            coVerify { commentariesUseCase.reapplySelectedLinkSources(any()) }
+            coVerify { commentariesUseCase.reapplySelectedSources(any()) }
+        }
+
+    @Test
+    fun `NavigateToPreviousLine does nothing when no previous line`() =
+        runTest {
+            val vm = createViewModelWithBook()
+            coEvery { contentUseCase.navigateToPreviousLine() } returns null
+
+            vm.onEvent(BookContentEvent.NavigateToPreviousLine)
+            testScheduler.advanceUntilIdle()
+
+            coVerify(exactly = 0) { altTocUseCase.selectAltEntryForLine(any()) }
+            coVerify(exactly = 0) { commentariesUseCase.reapplySelectedCommentators(any()) }
+        }
+
+    // --- NavigateToNextLine ---
+
+    @Test
+    fun `NavigateToNextLine syncs alt-TOC`() =
+        runTest {
+            val vm = createViewModelWithBook()
+            coEvery { contentUseCase.navigateToNextLine() } returns testLine
+
+            vm.onEvent(BookContentEvent.NavigateToNextLine)
+            testScheduler.advanceUntilIdle()
+
+            coVerify { altTocUseCase.selectAltEntryForLine(testLine.id) }
+        }
+
+    @Test
+    fun `NavigateToNextLine reapplies commentaries`() =
+        runTest {
+            val vm = createViewModelWithBook()
+            coEvery { contentUseCase.navigateToNextLine() } returns testLine
+
+            vm.onEvent(BookContentEvent.NavigateToNextLine)
+            testScheduler.advanceUntilIdle()
+
+            coVerify { commentariesUseCase.reapplySelectedCommentators(any()) }
+            coVerify { commentariesUseCase.reapplySelectedLinkSources(any()) }
+            coVerify { commentariesUseCase.reapplySelectedSources(any()) }
+        }
+
+    @Test
+    fun `NavigateToNextLine does nothing when no next line`() =
+        runTest {
+            val vm = createViewModelWithBook()
+            coEvery { contentUseCase.navigateToNextLine() } returns null
+
+            vm.onEvent(BookContentEvent.NavigateToNextLine)
+            testScheduler.advanceUntilIdle()
+
+            coVerify(exactly = 0) { altTocUseCase.selectAltEntryForLine(any()) }
+            coVerify(exactly = 0) { commentariesUseCase.reapplySelectedCommentators(any()) }
+        }
+
     // --- AltTocEntrySelected ---
 
     @Test

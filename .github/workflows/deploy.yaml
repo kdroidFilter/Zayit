@@ -289,41 +289,41 @@ jobs:
 
       # Download Artifacts
       - name: Download Linux DEB artefacts (amd64 + arm64)
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: linux-deb-*
           merge-multiple: true
 
       - name: Download Linux RPM artefacts (amd64 + arm64)
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: linux-rpm-*
           merge-multiple: true
 
       - name: Download Windows MSI artefacts (amd64 + arm64)
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: windows-msi-*
           merge-multiple: true
 
       - name: Download Windows EXE artefacts (amd64 + arm64)
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: windows-exe-*
           merge-multiple: true
 
       - name: Download macOS artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: macos-pkg-*
           merge-multiple: true
       - name: Download macOS dmg artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: macos-dmg-*
           merge-multiple: true
       - name: Download macOS zip artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: macos-zip-*
           merge-multiple: true

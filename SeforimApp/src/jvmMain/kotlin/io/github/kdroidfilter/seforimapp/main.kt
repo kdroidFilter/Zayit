@@ -33,6 +33,7 @@ import io.github.kdroidfilter.knotify.compose.builder.notification
 import io.github.kdroidfilter.nucleus.aot.runtime.AotRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.ExecutableRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.SingleInstanceManager
+import io.github.kdroidfilter.nucleus.energymanager.EnergyManager
 import io.github.kdroidfilter.nucleus.graalvm.GraalVmInitializer
 import io.github.kdroidfilter.nucleus.window.DecoratedWindow
 import io.github.kdroidfilter.nucleus.window.NucleusDecoratedWindowTheme
@@ -76,6 +77,8 @@ import java.awt.Toolkit
 import java.awt.Window
 import java.awt.datatransfer.StringSelection
 import java.awt.event.KeyEvent
+import java.awt.event.WindowEvent
+import java.awt.event.WindowFocusListener
 import java.net.URI
 import java.util.*
 
@@ -380,6 +383,13 @@ fun main() {
                                     window.minimumSize = Dimension(600, 300)
                                 }
                                 MainTitleBar()
+                                LaunchedEffect(state.isMinimized, ) {
+                                    if (state.isMinimized ) {
+                                        EnergyManager.enableEfficiencyMode()
+                                    } else {
+                                        EnergyManager.disableEfficiencyMode()
+                                    }
+                                }
 
                                 // Restore previously saved session once when main window becomes active
                                 var sessionRestored by remember { mutableStateOf(false) }

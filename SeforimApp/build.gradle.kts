@@ -154,9 +154,11 @@ kotlin {
             implementation(libs.hebrew.numerals)
             api(project(":jewel"))
             implementation(project(":earthwidget"))
+            implementation(libs.nucleus.system.color)
             implementation(libs.nucleus.decorated.window)
             implementation(libs.nucleus.graalvm.runtime)
             implementation(libs.nucleus.updater.runtime)
+            implementation(libs.nucleus.energy.manager)
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
             }

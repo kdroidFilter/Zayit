@@ -112,7 +112,7 @@ object ThemeUtils {
             val isDark = isDarkTheme()
             val themeStyle = mainAppState.themeStyle.collectAsState().value
             val accentColor = mainAppState.accentColor.collectAsState().value
-            val accent = accentColor.forMode(isDark)
+            val accent = accentColor.resolveColor(isDark)
             val disabledValues = if (isDark) DisabledAppearanceValues.dark() else DisabledAppearanceValues.light()
             val iconData = accentIconData(accent, isDark)
 
@@ -164,7 +164,7 @@ object ThemeUtils {
             mainAppState.accentColor
                 .collectAsState()
                 .value
-                .forMode(isDark)
+                .resolveColor(isDark)
         return when (themeStyle) {
             ThemeStyle.Islands -> islandsComponentStyling(isDark, accent)
             ThemeStyle.Classic -> classicComponentStyling(isDark, accent)

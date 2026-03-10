@@ -238,10 +238,11 @@ private fun AccentColorCard(
                     if (isSelected) {
                         Text(
                             text = accentColorLabel(accent),
-                            style = JewelTheme.defaultTextStyle.copy(
-                                color = JewelTheme.globalColors.text.info,
-                                fontSize = 10.sp,
-                            ),
+                            style =
+                                JewelTheme.defaultTextStyle.copy(
+                                    color = JewelTheme.globalColors.text.info,
+                                    fontSize = 10.sp,
+                                ),
                             maxLines = 1,
                             softWrap = false,
                         )

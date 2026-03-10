@@ -15,7 +15,6 @@ import io.github.kdroidfilter.nucleus.window.TitleBar
 import io.github.kdroidfilter.nucleus.window.macOSLargeCornerRadius
 import io.github.kdroidfilter.nucleus.window.newFullscreenControls
 import io.github.kdroidfilter.nucleus.window.styling.LocalTitleBarStyle
-import io.github.kdroidfilter.nucleus.window.styling.TitleBarMetrics
 import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsView
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
@@ -25,7 +24,7 @@ import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 fun DecoratedWindowScope.MainTitleBar() {
     TitleBar(
         modifier = Modifier.newFullscreenControls().macOSLargeCornerRadius(),
-            gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
+        gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
     ) {
         // Window control buttons (close/maximize/minimize) are Compose-based on Linux and
         // Windows-fallback. Their total width must be subtracted from the available width so

@@ -33,6 +33,7 @@ import io.github.kdroidfilter.knotify.compose.builder.notification
 import io.github.kdroidfilter.nucleus.aot.runtime.AotRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.ExecutableRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.SingleInstanceManager
+import io.github.kdroidfilter.nucleus.energymanager.EnergyManager
 import io.github.kdroidfilter.nucleus.graalvm.GraalVmInitializer
 import io.github.kdroidfilter.nucleus.window.DecoratedWindow
 import io.github.kdroidfilter.nucleus.window.NucleusDecoratedWindowTheme
@@ -43,10 +44,7 @@ import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.classicComponentStyling
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.islandsComponentStyling
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
@@ -244,15 +242,8 @@ fun main() {
         ) {
             val isDark = ThemeUtils.isDarkTheme()
             val themeDefinition = ThemeUtils.buildThemeDefinition()
-            val themeStyle by mainAppState.themeStyle.collectAsState()
-
             val customTitleBarStyle = ThemeUtils.buildCustomTitleBarStyle()
-
-            val componentStyling =
-                when (themeStyle) {
-                    ThemeStyle.Islands -> islandsComponentStyling(isDark)
-                    ThemeStyle.Classic -> classicComponentStyling(isDark)
-                }
+            val componentStyling = ThemeUtils.buildComponentStyling()
 
             NucleusDecoratedWindowTheme(
                 isDark = isDark,
@@ -390,6 +381,13 @@ fun main() {
                                     window.minimumSize = Dimension(600, 300)
                                 }
                                 MainTitleBar()
+                                LaunchedEffect(state.isMinimized) {
+                                    if (state.isMinimized) {
+                                        EnergyManager.enableEfficiencyMode()
+                                    } else {
+                                        EnergyManager.disableEfficiencyMode()
+                                    }
+                                }
 
                                 // Restore previously saved session once when main window becomes active
                                 var sessionRestored by remember { mutableStateOf(false) }

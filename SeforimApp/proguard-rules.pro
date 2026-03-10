@@ -273,7 +273,33 @@
     native <methods>;
 }
 
+-keep class io.github.kdroidfilter.nucleus.energymanager.** { *; }
+
+# macOS
+-keep class io.github.kdroidfilter.nucleus.systemcolor.mac.NativeMacSystemColorBridge {
+    native <methods>;
+    static void onAccentColorChanged(float, float, float);
+    static void onContrastChanged(boolean);
+}
+
+# Windows
+-keep class io.github.kdroidfilter.nucleus.systemcolor.windows.NativeWindowsSystemColorBridge {
+    native <methods>;
+    static void onAccentColorChanged(int, int, int);
+    static void onHighContrastChanged(boolean);
+}
+
+# Linux
+-keep class io.github.kdroidfilter.nucleus.systemcolor.linux.NativeLinuxSystemColorBridge {
+    native <methods>;
+    static void onAccentColorChanged(float, float, float);
+    static void onHighContrastChanged(boolean);
+}
+
+-keep class io.github.kdroidfilter.nucleus.systemcolor.** { *; }
+
 # --- Sentry crash reporting SDK ---
 # Sentry uses reflection for serialization and event processing.
 -keep class io.sentry.** { *; }
 -dontwarn io.sentry.**
+

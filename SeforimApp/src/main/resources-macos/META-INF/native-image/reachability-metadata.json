@@ -2394,6 +2394,12 @@
                     "parameterTypes": [
                         
                     ]
+                },
+                {
+                    "name": "systemColorsChanged",
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -4195,6 +4201,13 @@
                         "java.lang.String",
                         "java.lang.Throwable"
                     ]
+                },
+                {
+                    "name": "debug",
+                    "parameterTypes": [
+                        "java.lang.String",
+                        "java.lang.Throwable"
+                    ]
                 }
             ]
         },
@@ -4808,6 +4821,33 @@
                     "name": "serializer",
                     "parameterTypes": [
                         
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "io.github.kdroidfilter.nucleus.window.utils.macos.JniMacTitleBarBridge",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "onMenuBarOffsetChanged",
+                    "parameterTypes": [
+                        "long",
+                        "float"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "io.github.kdroidfilter.nucleus.systemcolor.mac.NativeMacSystemColorBridge",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "onAccentColorChanged",
+                    "parameterTypes": [
+                        "float",
+                        "float",
+                        "float"
                     ]
                 }
             ]
@@ -5621,6 +5661,12 @@
         },
         {
             "glob": "vcs/vendors/github_dark.svg"
+        },
+        {
+            "glob": "nucleus/native/darwin-aarch64/libnucleus_energy_manager.dylib"
+        },
+        {
+            "glob": "nucleus/native/darwin-aarch64/libnucleus_systemcolor.dylib"
         }
     ],
     "foreign": {

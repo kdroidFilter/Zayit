@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.core
 
 import androidx.compose.runtime.Stable
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -28,6 +29,14 @@ class MainAppState {
     fun setThemeStyle(style: ThemeStyle) {
         _themeStyle.value = style
         AppSettings.setThemeStyle(style)
+    }
+
+    private val _accentColor = MutableStateFlow(AppSettings.getAccentColor())
+    val accentColor: StateFlow<AccentColor> = _accentColor.asStateFlow()
+
+    fun setAccentColor(accent: AccentColor) {
+        _accentColor.value = accent
+        AppSettings.setAccentColor(accent)
     }
 
     private val _showOnboarding = MutableStateFlow<Boolean?>(null)

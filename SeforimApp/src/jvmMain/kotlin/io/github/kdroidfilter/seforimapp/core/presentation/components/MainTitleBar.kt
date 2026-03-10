@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.nucleus.window.DecoratedWindowScope
 import io.github.kdroidfilter.nucleus.window.TitleBar
+import io.github.kdroidfilter.nucleus.window.macOSLargeCornerRadius
 import io.github.kdroidfilter.nucleus.window.newFullscreenControls
 import io.github.kdroidfilter.nucleus.window.styling.LocalTitleBarStyle
 import io.github.kdroidfilter.platformtools.OperatingSystem
@@ -22,7 +23,7 @@ import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 @Composable
 fun DecoratedWindowScope.MainTitleBar() {
     TitleBar(
-        modifier = Modifier.newFullscreenControls(),
+        modifier = Modifier.newFullscreenControls().macOSLargeCornerRadius(),
         gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
     ) {
         // Window control buttons (close/maximize/minimize) are Compose-based on Linux and

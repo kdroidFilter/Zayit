@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.core.settings
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
 import com.russhwolf.settings.set
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,6 +70,7 @@ object AppSettings {
     // Theme configuration
     private const val KEY_THEME_MODE = "theme_mode"
     private const val KEY_THEME_STYLE = "theme_style"
+    private const val KEY_ACCENT_COLOR = "accent_color"
 
     // Zmanim widgets visibility
     private const val KEY_SHOW_ZMANIM_WIDGETS = "show_zmanim_widgets"
@@ -435,6 +437,20 @@ object AppSettings {
 
     fun setThemeStyle(style: ThemeStyle) {
         settings[KEY_THEME_STYLE] = style.name
+    }
+
+    // Accent color preset
+    fun getAccentColor(): AccentColor {
+        val storedValue: String = settings[KEY_ACCENT_COLOR, AccentColor.System.name]
+        return try {
+            AccentColor.valueOf(storedValue)
+        } catch (_: IllegalArgumentException) {
+            AccentColor.System
+        }
+    }
+
+    fun setAccentColor(accent: AccentColor) {
+        settings[KEY_ACCENT_COLOR] = accent.name
     }
 
     fun setSavedSessionJson(json: String?) {

@@ -312,6 +312,13 @@
     <string name="settings_theme_style_label">סגנון ערכת נושא</string>
     <string name="settings_theme_style_classic">קלאסי</string>
     <string name="settings_theme_style_islands">איילנדס</string>
+    <!-- Accent color selector -->
+    <string name="settings_accent_color_label">צבע מבטא</string>
+    <string name="accent_color_system">מערכת</string>
+    <string name="accent_color_default">כחול</string>
+    <string name="accent_color_teal">טורקיז</string>
+    <string name="accent_color_green">ירוק</string>
+    <string name="accent_color_gold">זהב</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title_bar">מדריך ההגדרה של זית</string>

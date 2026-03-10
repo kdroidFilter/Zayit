@@ -441,11 +441,11 @@ object AppSettings {
 
     // Accent color preset
     fun getAccentColor(): AccentColor {
-        val storedValue: String = settings[KEY_ACCENT_COLOR, AccentColor.Default.name]
+        val storedValue: String = settings[KEY_ACCENT_COLOR, AccentColor.System.name]
         return try {
             AccentColor.valueOf(storedValue)
         } catch (_: IllegalArgumentException) {
-            AccentColor.Default
+            AccentColor.System
         }
     }
 

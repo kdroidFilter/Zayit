@@ -352,7 +352,7 @@ nucleus.application {
             appStore = true
         }
         buildTypes.release.proguard {
-            version.set("7.8.1")
+            version.set("7.9.0")
             isEnabled = true
             obfuscate.set(false)
             optimize.set(true)

@@ -38,7 +38,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -49,7 +49,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -184,7 +184,7 @@
                 {
                     "name": "getAccessibleContextWithFocus",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -772,7 +772,7 @@
                 {
                     "name": "getJavaVersionProperty",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -988,7 +988,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -1024,7 +1024,7 @@
                 {
                     "name": "getValue",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -1081,7 +1081,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -1200,7 +1200,7 @@
                 {
                     "name": "getRGB",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -1256,25 +1256,25 @@
                 {
                     "name": "getFont_NoClientCode",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "getLocationOnScreen_NoTreeLock",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "getToolkitImpl",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "isEnabledImpl",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -1383,7 +1383,7 @@
                 {
                     "name": "getFontPeer",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -1400,7 +1400,7 @@
                 {
                     "name": "getHeight",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -1584,7 +1584,7 @@
                 {
                     "name": "getDefaultToolkit",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -1654,7 +1654,7 @@
                 {
                     "name": "getButtonDownMasks",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -1765,7 +1765,7 @@
                 {
                     "name": "getWheelRotation",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -1801,7 +1801,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -1882,7 +1882,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -1970,7 +1970,7 @@
                 {
                     "name": "getRGBdefault",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2114,7 +2114,7 @@
                 {
                     "name": "flush",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -2152,7 +2152,7 @@
                 {
                     "name": "booleanValue",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -2170,7 +2170,7 @@
                 {
                     "name": "name",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2251,7 +2251,7 @@
                 {
                     "name": "currentThread",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2263,13 +2263,13 @@
                 {
                     "name": "printStackTrace",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "toString",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2353,13 +2353,13 @@
                 {
                     "name": "hasNext",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "next",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2603,7 +2603,7 @@
                 {
                     "name": "invoke",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2692,7 +2692,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2712,7 +2712,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2726,7 +2726,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2737,7 +2737,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2748,7 +2748,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2759,7 +2759,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2770,7 +2770,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2781,7 +2781,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2792,7 +2792,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2803,7 +2803,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2814,7 +2814,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2825,7 +2825,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2836,7 +2836,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2847,7 +2847,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2858,7 +2858,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2869,7 +2869,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2916,7 +2916,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -2936,7 +2936,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -3032,7 +3032,7 @@
                 {
                     "name": "onGetBounds",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -3229,7 +3229,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -3542,7 +3542,7 @@
                 {
                     "name": "_getFontPtr",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -3574,13 +3574,13 @@
                 {
                     "name": "beginLine",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "commitLine",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -3595,7 +3595,7 @@
                 {
                     "name": "commitRunInfo",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -3728,7 +3728,15 @@
             "type": "org.jetbrains.skiko.HardwareLayer"
         },
         {
-            "type": "org.jetbrains.skiko.SkiaLayer"
+            "type": "org.jetbrains.skiko.SkiaLayer",
+            "methods": [
+                {
+                    "name": "setTransparency",
+                    "parameterTypes": [
+                        "boolean"
+                    ]
+                }
+            ]
         },
         {
             "type": "org.jetbrains.skiko.SkiaLayer$1"
@@ -3750,6 +3758,13 @@
             "methods": [
                 {
                     "name": "trace",
+                    "parameterTypes": [
+                        "java.lang.String",
+                        "java.lang.Throwable"
+                    ]
+                },
+                {
+                    "name": "debug",
                     "parameterTypes": [
                         "java.lang.String",
                         "java.lang.Throwable"
@@ -3814,7 +3829,7 @@
                 {
                     "name": "xFunc",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -3826,19 +3841,19 @@
                 {
                     "name": "clone",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "xFinal",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "xStep",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -3850,13 +3865,13 @@
                 {
                     "name": "xInverse",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "xValue",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -3871,7 +3886,7 @@
                 {
                     "name": "progress",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -3898,7 +3913,7 @@
                 {
                     "name": "throwex",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -3964,7 +3979,7 @@
                 {
                     "name": "getComponentAccessor",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -3988,13 +4003,13 @@
                 {
                     "name": "notifyToolkitThreadBusy",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "notifyToolkitThreadFree",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -4067,7 +4082,7 @@
                 {
                     "name": "isTouchKeyboardAutoShowEnabled",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -4078,7 +4093,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -4208,13 +4223,13 @@
                 {
                     "name": "disposeLater",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "getHWnd",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -4235,19 +4250,19 @@
                 {
                     "name": "replaceSurfaceData",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "replaceSurfaceDataLater",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "dynamicallyLayoutContainer",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -4344,7 +4359,7 @@
                 {
                     "name": "getExtendedState",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -4403,19 +4418,19 @@
                 {
                     "name": "displayChanged",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "paletteChanged",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
                     "name": "windowsSettingChange",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -4432,7 +4447,7 @@
                 {
                     "name": "draggedToNewScreen",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -4462,7 +4477,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -4505,7 +4520,7 @@
                 {
                     "name": "getMapper",
                     "parameterTypes": [
-
+                        
                     ]
                 },
                 {
@@ -4535,7 +4550,7 @@
                 {
                     "name": "debugFonts",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -4547,7 +4562,7 @@
                 {
                     "name": "invalidateScaler",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5153,7 +5168,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5227,7 +5242,7 @@
                 {
                     "name": "getApplicationClass",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5268,7 +5283,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5279,7 +5294,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5301,7 +5316,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5312,7 +5327,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5323,7 +5338,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5334,7 +5349,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5356,7 +5371,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5367,7 +5382,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5378,7 +5393,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5389,7 +5404,7 @@
                 {
                     "name": "<init>",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5564,7 +5579,7 @@
                 {
                     "name": "serializer",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5580,7 +5595,7 @@
                 {
                     "name": "serializer",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5596,7 +5611,7 @@
                 {
                     "name": "serializer",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5612,7 +5627,7 @@
                 {
                     "name": "serializer",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5628,7 +5643,7 @@
                 {
                     "name": "serializer",
                     "parameterTypes": [
-
+                        
                     ]
                 }
             ]
@@ -5653,6 +5668,31 @@
         },
         {
             "type": "org.apache.lucene.util.RoaringDocIdSet$ShortArrayDocIdSet"
+        },
+        {
+            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$Display",
+            "fields": [
+                {
+                    "name": "INSTANCE"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "serializer",
+                    "parameterTypes": [
+                        
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "javax.swing.JLayeredPane"
+        },
+        {
+            "type": "javax.swing.JPanel"
+        },
+        {
+            "type": "javax.swing.JRootPane"
         }
     ],
     "resources": [
@@ -6306,6 +6346,31 @@
         },
         {
             "glob": "vcs/vendors/github_dark.svg"
+        },
+        {
+            "glob": "com/intellij/ide/ui/laf/icons/darcula/checkBoxSelectedHovered.svg"
+        },
+        {
+            "glob": "com/intellij/ide/ui/laf/icons/darcula/checkBoxSelectedHovered_dark.svg"
+        },
+        {
+            "glob": "nucleus/native/win32-x64/nucleus_energy_manager.dll"
+        },
+        {
+            "module": "java.desktop",
+            "glob": "com/sun/java/swing/plaf/windows/resources/windows_fr_FR.properties"
+        },
+        {
+            "module": "java.desktop",
+            "glob": "com/sun/swing/internal/plaf/basic/resources/basic_fr_FR.properties"
+        },
+        {
+            "module": "java.xml",
+            "glob": "com/sun/org/apache/xml/internal/serializer/XMLEntities_fr.properties"
+        },
+        {
+            "module": "java.xml",
+            "glob": "com/sun/org/apache/xml/internal/serializer/XMLEntities_fr_FR.properties"
         }
     ]
 }

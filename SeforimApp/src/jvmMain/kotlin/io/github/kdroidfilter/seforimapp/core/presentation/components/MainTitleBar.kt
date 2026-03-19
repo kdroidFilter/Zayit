@@ -10,8 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.nucleus.window.ControlButtonsDirection
 import io.github.kdroidfilter.nucleus.window.DecoratedWindowScope
-import io.github.kdroidfilter.nucleus.window.TitleBar
+import io.github.kdroidfilter.nucleus.window.jewel.JewelTitleBar
 import io.github.kdroidfilter.nucleus.window.macOSLargeCornerRadius
 import io.github.kdroidfilter.nucleus.window.newFullscreenControls
 import io.github.kdroidfilter.nucleus.window.styling.LocalTitleBarStyle
@@ -22,9 +23,10 @@ import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 
 @Composable
 fun DecoratedWindowScope.MainTitleBar() {
-    TitleBar(
+    JewelTitleBar(
         modifier = Modifier.newFullscreenControls().macOSLargeCornerRadius(),
         gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
+        controlButtonsDirection = ControlButtonsDirection.System,
     ) {
         // Window control buttons (close/maximize/minimize) are Compose-based on Linux and
         // Windows-fallback. Their total width must be subtracted from the available width so

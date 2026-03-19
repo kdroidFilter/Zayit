@@ -462,6 +462,7 @@
 
     <!-- Settings > App Info (General Settings Header) -->
     <string name="settings_info_app_version">גרסה: %1$s</string>
+    <string name="settings_info_jdk_version">JDK: %1$s %2$s — %3$s (%4$s)</string>
     <string name="settings_info_created_by">נוצר על ידי Elie Gambache - KdroidFilter</string>
     <string name="settings_info_license">יישום זה הוא קוד פתוח תחת רישיון AGPL-3.0</string>
     <string name="settings_info_license_usage">ניתן להשתמש ולהפיץ בהתאם לתנאי הרישיון.</string>

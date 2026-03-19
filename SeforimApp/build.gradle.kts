@@ -156,6 +156,7 @@ kotlin {
             implementation(project(":earthwidget"))
             implementation(libs.nucleus.system.color)
             implementation(libs.nucleus.decorated.window)
+            implementation(libs.nucleus.decorated.window.jewel)
             implementation(libs.nucleus.graalvm.runtime)
             implementation(libs.nucleus.updater.runtime)
             implementation(libs.nucleus.energy.manager)
@@ -350,6 +351,7 @@ nucleus.application {
             packageVersion = macSafeVersion(version)
             packageName = "זית"
             appStore = true
+
         }
         buildTypes.release.proguard {
             version.set("7.9.0")

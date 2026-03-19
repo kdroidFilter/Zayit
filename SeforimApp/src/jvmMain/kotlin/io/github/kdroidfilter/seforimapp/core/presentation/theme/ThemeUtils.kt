@@ -5,11 +5,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.nucleus.darkmodedetector.isSystemInDarkMode
-import io.github.kdroidfilter.nucleus.window.DecoratedWindowDefaults
-import io.github.kdroidfilter.nucleus.window.styling.TitleBarMetrics
-import io.github.kdroidfilter.nucleus.window.styling.TitleBarStyle
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.jewel.foundation.BorderColors
@@ -69,33 +65,6 @@ object ThemeUtils {
             green = bg.green * (1f - t) + accent.green * t,
             blue = bg.blue * (1f - t) + accent.blue * t,
             alpha = 1f,
-        )
-    }
-
-    /**
-     * Builds the standard custom title bar style used across all app windows:
-     * - background matches Jewel's panel background
-     * - gradient metrics from the left edge
-     */
-    @Composable
-    fun buildCustomTitleBarStyle(): TitleBarStyle {
-        val isDark = isDarkTheme()
-        val themeDefinition = buildThemeDefinition()
-        val panelBg = themeDefinition.globalColors.panelBackground
-        val accent = themeDefinition.globalColors.outlines.focused
-        val base = if (isDark) DecoratedWindowDefaults.darkTitleBarStyle() else DecoratedWindowDefaults.lightTitleBarStyle()
-        return base.copy(
-            colors =
-                base.colors.copy(
-                    background = panelBg,
-                    inactiveBackground = panelBg,
-                    // Transparent so the gradient shows through the macOS traffic lights area
-                    fullscreenControlButtonsBackground = Color.Transparent,
-                    // Icon button states blend with the gradient using the accent color
-                    iconButtonHoveredBackground = accent.copy(alpha = 0.12f),
-                    iconButtonPressedBackground = accent.copy(alpha = 0.20f),
-                ),
-            metrics = TitleBarMetrics(height = 40.dp, gradientStartX = 0.dp, gradientEndX = 280.dp),
         )
     }
 

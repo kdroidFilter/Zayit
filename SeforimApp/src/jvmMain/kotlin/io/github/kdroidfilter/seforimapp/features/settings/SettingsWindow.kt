@@ -9,15 +9,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberDialogState
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
-import io.github.kdroidfilter.nucleus.window.DecoratedDialog
-import io.github.kdroidfilter.nucleus.window.DialogTitleBar
-import io.github.kdroidfilter.nucleus.window.NucleusDecoratedWindowTheme
+import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedDialog
+import io.github.kdroidfilter.nucleus.window.jewel.JewelDialogTitleBar
 import io.github.kdroidfilter.nucleus.window.newFullscreenControls
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils.buildThemeDefinition
@@ -44,33 +45,32 @@ fun SettingsWindow(onClose: () -> Unit) {
 
 @Composable
 private fun SettingsWindowView(onClose: () -> Unit) {
-    val isDark = ThemeUtils.isDarkTheme()
     val themeDefinition = buildThemeDefinition()
 
-    NucleusDecoratedWindowTheme(isDark = isDark, titleBarStyle = ThemeUtils.buildCustomTitleBarStyle()) {
-        IntUiTheme(
-            theme = themeDefinition,
-            styling = ThemeUtils.buildComponentStyling(),
+    IntUiTheme(
+        theme = themeDefinition,
+        styling = ThemeUtils.buildComponentStyling(),
+    ) {
+        val settingsDialogState =
+            rememberDialogState(position = WindowPosition.Aligned(Alignment.Center), size = DpSize(700.dp, 500.dp))
+        JewelDecoratedDialog(
+            onCloseRequest = onClose,
+            title = stringResource(Res.string.settings),
+            icon = painterResource(Res.drawable.AppIcon),
+            state = settingsDialogState,
+            visible = true,
+            resizable = true,
         ) {
-            val settingsDialogState =
-                rememberDialogState(position = WindowPosition.Aligned(Alignment.Center), size = DpSize(700.dp, 500.dp))
-            DecoratedDialog(
-                onCloseRequest = onClose,
-                title = stringResource(Res.string.settings),
-                icon = painterResource(Res.drawable.AppIcon),
-                state = settingsDialogState,
-                visible = true,
-                resizable = true,
-            ) {
                 val background = JewelTheme.globalColors.panelBackground
                 LaunchedEffect(window, background) { window.background = java.awt.Color(background.toArgb()) }
 
                 val windowViewModelOwner = rememberWindowViewModelStoreOwner()
                 CompositionLocalProvider(
+                    LocalLayoutDirection provides LayoutDirection.Rtl,
                     LocalWindowViewModelStoreOwner provides windowViewModelOwner,
                     LocalViewModelStoreOwner provides windowViewModelOwner,
                 ) {
-                    DialogTitleBar(
+                    JewelDialogTitleBar(
                         modifier = Modifier.newFullscreenControls(),
                         gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
                     ) {
@@ -144,6 +144,5 @@ private fun SettingsWindowView(onClose: () -> Unit) {
                     }
                 }
             }
-        }
-    } // NucleusDecoratedWindowTheme
+    }
 }

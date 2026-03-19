@@ -9,7 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -35,8 +36,7 @@ import io.github.kdroidfilter.nucleus.core.runtime.ExecutableRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.SingleInstanceManager
 import io.github.kdroidfilter.nucleus.energymanager.EnergyManager
 import io.github.kdroidfilter.nucleus.graalvm.GraalVmInitializer
-import io.github.kdroidfilter.nucleus.window.DecoratedWindow
-import io.github.kdroidfilter.nucleus.window.NucleusDecoratedWindowTheme
+import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
 import io.github.kdroidfilter.platformtools.getAppVersion
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
@@ -181,7 +181,6 @@ fun main() {
             lockIdentifier = appId,
         )
 
-    Locale.setDefault(Locale.Builder().setLanguage("he").build())
     application {
         FileKit.init(appId)
 
@@ -240,19 +239,13 @@ fun main() {
             LocalAppGraph provides appGraph,
             LocalMetroViewModelFactory provides appGraph.metroViewModelFactory,
         ) {
-            val isDark = ThemeUtils.isDarkTheme()
             val themeDefinition = ThemeUtils.buildThemeDefinition()
-            val customTitleBarStyle = ThemeUtils.buildCustomTitleBarStyle()
             val componentStyling = ThemeUtils.buildComponentStyling()
 
-            NucleusDecoratedWindowTheme(
-                isDark = isDark,
-                titleBarStyle = customTitleBarStyle,
+            IntUiTheme(
+                theme = themeDefinition,
+                styling = componentStyling,
             ) {
-                IntUiTheme(
-                    theme = themeDefinition,
-                    styling = componentStyling,
-                ) {
                     if (showOnboarding) {
                         OnBoardingWindow()
                     } else if (showDatabaseUpdate) {
@@ -305,7 +298,7 @@ fun main() {
                                 }
                             }
 
-                        DecoratedWindow(
+                        JewelDecoratedWindow(
                             onCloseRequest = {
                                 // Persist session if enabled, then exit
                                 SessionManager.saveIfEnabled(appGraph)
@@ -365,6 +358,7 @@ fun main() {
                             },
                         ) {
                             CompositionLocalProvider(
+                                LocalLayoutDirection provides LayoutDirection.Rtl,
                                 LocalWindowViewModelStoreOwner provides windowViewModelOwner,
                                 LocalViewModelStoreOwner provides windowViewModelOwner,
                             ) {
@@ -528,7 +522,7 @@ fun main() {
                         }
                     }
                 }
-            } // NucleusDecoratedWindowTheme
+            }
         }
-    }
+
 }

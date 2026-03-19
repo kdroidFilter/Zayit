@@ -7,12 +7,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
-import io.github.kdroidfilter.nucleus.window.DecoratedWindow
-import io.github.kdroidfilter.nucleus.window.TitleBar
+import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
+import io.github.kdroidfilter.nucleus.window.jewel.JewelTitleBar
 import io.github.kdroidfilter.nucleus.window.newFullscreenControls
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
@@ -40,7 +42,7 @@ fun ApplicationScope.DatabaseUpdateWindow(
     isDatabaseMissing: Boolean = false,
 ) {
     val updateWindowState = remember { getCenteredWindowState(720, 420) }
-    DecoratedWindow(
+    JewelDecoratedWindow(
         onCloseRequest = { exitApplication() },
         title = stringResource(Res.string.app_name),
         icon = if (PlatformInfo.isMacOS) null else painterResource(Res.drawable.AppIcon),
@@ -59,6 +61,7 @@ fun ApplicationScope.DatabaseUpdateWindow(
 
         val windowViewModelOwner = rememberWindowViewModelStoreOwner()
         CompositionLocalProvider(
+            LocalLayoutDirection provides LayoutDirection.Rtl,
             LocalWindowViewModelStoreOwner provides windowViewModelOwner,
             LocalViewModelStoreOwner provides windowViewModelOwner,
         ) {
@@ -73,7 +76,7 @@ fun ApplicationScope.DatabaseUpdateWindow(
                 }
             }
 
-            TitleBar(modifier = Modifier.newFullscreenControls(), gradientStartColor = ThemeUtils.titleBarGradientColor()) {
+            JewelTitleBar(modifier = Modifier.newFullscreenControls(), gradientStartColor = ThemeUtils.titleBarGradientColor()) {
                 // Keep the back button pinned to the start and
                 // center the title (icon + text) regardless of OS/window controls.
                 Box(

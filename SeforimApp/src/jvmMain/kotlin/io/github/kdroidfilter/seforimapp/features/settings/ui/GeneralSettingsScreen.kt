@@ -51,8 +51,8 @@ import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book_description
 import seforimapp.seforimapp.generated.resources.settings_info_app_version
-import seforimapp.seforimapp.generated.resources.settings_info_jdk_version
 import seforimapp.seforimapp.generated.resources.settings_info_created_by
+import seforimapp.seforimapp.generated.resources.settings_info_jdk_version
 import seforimapp.seforimapp.generated.resources.settings_info_license
 import seforimapp.seforimapp.generated.resources.settings_info_license_usage
 import seforimapp.seforimapp.generated.resources.settings_persist_session
@@ -186,13 +186,14 @@ private fun AppHeader(
                     color = JewelTheme.globalColors.text.info,
                 )
                 Text(
-                    text = stringResource(
-                        Res.string.settings_info_jdk_version,
-                        System.getProperty("java.runtime.name", "Unknown"),
-                        System.getProperty("java.version", "?"),
-                        System.getProperty("java.vendor", "Unknown"),
-                        System.getProperty("os.arch", "?"),
-                    ),
+                    text =
+                        stringResource(
+                            Res.string.settings_info_jdk_version,
+                            System.getProperty("java.runtime.name", "Unknown"),
+                            System.getProperty("java.version", "?"),
+                            System.getProperty("java.vendor", "Unknown"),
+                            System.getProperty("os.arch", "?"),
+                        ),
                     fontSize = 13.sp,
                     color = JewelTheme.globalColors.text.info,
                 )

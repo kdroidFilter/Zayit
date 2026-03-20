@@ -6,7 +6,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -49,8 +48,6 @@ fun ApplicationScope.DatabaseUpdateWindow(
         visible = true,
         resizable = false,
     ) {
-
-
         val windowViewModelOwner = rememberWindowViewModelStoreOwner()
         CompositionLocalProvider(
             LocalWindowViewModelStoreOwner provides windowViewModelOwner,
@@ -67,7 +64,11 @@ fun ApplicationScope.DatabaseUpdateWindow(
                 }
             }
 
-            JewelTitleBar(modifier = Modifier.newFullscreenControls(), gradientStartColor = ThemeUtils.titleBarGradientColor(), controlButtonsDirection = ControlButtonsDirection.SystemNative) {
+            JewelTitleBar(
+                modifier = Modifier.newFullscreenControls(),
+                gradientStartColor = ThemeUtils.titleBarGradientColor(),
+                controlButtonsDirection = ControlButtonsDirection.SystemNative,
+            ) {
                 // Keep the back button pinned to the start and
                 // center the title (icon + text) regardless of OS/window controls.
                 Box(

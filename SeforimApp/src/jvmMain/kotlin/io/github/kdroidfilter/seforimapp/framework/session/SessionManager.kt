@@ -14,8 +14,6 @@ import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
@@ -104,11 +102,6 @@ object SessionManager {
 
             appGraph.desktopManager.restoreFromDesktopsState(enrichedState)
         } finally {
-            // Give Compose one recomposition cycle to process the restored tabs
-            // and create ViewModels (whose initial state has isLoading=true).
-            // Without this, the flag clears before ViewModels exist, causing
-            // a brief Home page flash.
-            withContext(NonCancellable) { delay(150) }
             _isRestoringSession.value = false
         }
     }

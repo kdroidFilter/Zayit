@@ -26,7 +26,7 @@ fun DecoratedWindowScope.MainTitleBar() {
     JewelTitleBar(
         modifier = Modifier.newFullscreenControls().macOSLargeCornerRadius(),
         gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
-        controlButtonsDirection = ControlButtonsDirection.System,
+        controlButtonsDirection = ControlButtonsDirection.SystemNative,
     ) {
         // Window control buttons (close/maximize/minimize) are Compose-based on Linux and
         // Windows-fallback. Their total width must be subtracted from the available width so

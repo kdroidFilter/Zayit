@@ -23,9 +23,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -74,9 +72,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -85,9 +81,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -96,9 +90,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "createUI",
@@ -113,9 +105,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "createUI",
@@ -133,9 +123,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -144,9 +132,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -155,9 +141,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -166,9 +150,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -177,9 +159,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -188,9 +168,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -199,9 +177,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -210,9 +186,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -237,9 +211,7 @@
             "methods": [
                 {
                     "name": "getRGB",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -394,9 +366,7 @@
             "methods": [
                 {
                     "name": "getButtonDownMasks",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -519,9 +489,7 @@
             "methods": [
                 {
                     "name": "getRGBdefault",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -552,9 +520,7 @@
             "methods": [
                 {
                     "name": "flush",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "write",
@@ -572,9 +538,7 @@
             "methods": [
                 {
                     "name": "booleanValue",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "getBoolean",
@@ -641,9 +605,7 @@
                 },
                 {
                     "name": "getBytes",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "getBytes",
@@ -653,9 +615,7 @@
                 },
                 {
                     "name": "toCharArray",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -683,15 +643,11 @@
             "methods": [
                 {
                     "name": "printStackTrace",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "toString",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -707,9 +663,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "add",
@@ -731,15 +685,11 @@
             "methods": [
                 {
                     "name": "hasNext",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "next",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -769,9 +719,7 @@
             "methods": [
                 {
                     "name": "invoke",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -890,9 +838,7 @@
                 },
                 {
                     "name": "onGetBounds",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -1087,9 +1033,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "<init>",
@@ -1397,9 +1341,7 @@
             "methods": [
                 {
                     "name": "_getFontPtr",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -1429,15 +1371,11 @@
             "methods": [
                 {
                     "name": "beginLine",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "commitLine",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "commitRun",
@@ -1450,9 +1388,7 @@
                 },
                 {
                     "name": "commitRunInfo",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "runInfo",
@@ -1607,9 +1543,7 @@
             "methods": [
                 {
                     "name": "getComponentAccessor",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -1631,15 +1565,11 @@
             "methods": [
                 {
                     "name": "notifyToolkitThreadBusy",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "notifyToolkitThreadFree",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2144,9 +2074,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2156,9 +2084,7 @@
             "methods": [
                 {
                     "name": "drawInMTLContext",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2243,9 +2169,7 @@
             "methods": [
                 {
                     "name": "getPlatformWindow",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2264,9 +2188,7 @@
             "methods": [
                 {
                     "name": "getPointer",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2318,9 +2240,7 @@
                 },
                 {
                     "name": "deliverWindowClosingEvent",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "deliverWindowFocusEvent",
@@ -2331,45 +2251,31 @@
                 },
                 {
                     "name": "isBlocked",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "isVisible",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "windowDidBecomeMain",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "windowDidEnterFullScreen",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "windowDidExitFullScreen",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "windowWillEnterFullScreen",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "windowWillExitFullScreen",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "deliverIconify",
@@ -2379,9 +2285,7 @@
                 },
                 {
                     "name": "windowWillMiniaturize",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2391,15 +2295,11 @@
             "methods": [
                 {
                     "name": "installToolkitThreadInJava",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "systemColorsChanged",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2440,9 +2340,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2451,9 +2349,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2462,9 +2358,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2473,9 +2367,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2495,9 +2387,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2506,9 +2396,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2517,9 +2405,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2528,9 +2414,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2539,9 +2423,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2550,9 +2432,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2561,9 +2441,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2572,9 +2450,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2583,9 +2459,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2594,9 +2468,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2605,9 +2477,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2616,9 +2486,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2627,9 +2495,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2778,9 +2644,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2836,9 +2700,7 @@
             "methods": [
                 {
                     "name": "nativeType",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2861,9 +2723,7 @@
             "methods": [
                 {
                     "name": "dispose",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "fromNative",
@@ -2922,9 +2782,7 @@
             "methods": [
                 {
                     "name": "toNative",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -2968,21 +2826,15 @@
             "methods": [
                 {
                     "name": "autoRead",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "autoWrite",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "getTypeInfo",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "newInstance",
@@ -3070,9 +2922,7 @@
             "methods": [
                 {
                     "name": "getValue",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3127,9 +2977,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3143,9 +2991,7 @@
             "methods": [
                 {
                     "name": "serializer",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3159,9 +3005,7 @@
             "methods": [
                 {
                     "name": "serializer",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3175,9 +3019,7 @@
             "methods": [
                 {
                     "name": "serializer",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3191,9 +3033,7 @@
             "methods": [
                 {
                     "name": "serializer",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3207,9 +3047,7 @@
             "methods": [
                 {
                     "name": "serializer",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3283,9 +3121,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "<init>",
@@ -3340,9 +3176,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "<init>",
@@ -3535,9 +3369,7 @@
             "methods": [
                 {
                     "name": "getComponentType",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3610,9 +3442,7 @@
             "methods": [
                 {
                     "name": "toString",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3677,21 +3507,15 @@
             "methods": [
                 {
                     "name": "getParameterTypes",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "getReturnType",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "isDefault",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3704,9 +3528,7 @@
             "methods": [
                 {
                     "name": "position",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3716,15 +3538,11 @@
             "methods": [
                 {
                     "name": "array",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "arrayOffset",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3734,15 +3552,11 @@
             "methods": [
                 {
                     "name": "array",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "arrayOffset",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3752,15 +3566,11 @@
             "methods": [
                 {
                     "name": "array",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "arrayOffset",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3770,15 +3580,11 @@
             "methods": [
                 {
                     "name": "array",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "arrayOffset",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3788,15 +3594,11 @@
             "methods": [
                 {
                     "name": "array",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "arrayOffset",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3806,15 +3608,11 @@
             "methods": [
                 {
                     "name": "array",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "arrayOffset",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3824,15 +3622,11 @@
             "methods": [
                 {
                     "name": "array",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "arrayOffset",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3868,9 +3662,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3882,9 +3674,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3896,9 +3686,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3907,9 +3695,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3918,9 +3704,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3929,9 +3713,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3940,9 +3722,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3951,9 +3731,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3962,9 +3740,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3973,9 +3749,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3984,9 +3758,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -3995,9 +3767,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4006,9 +3776,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4017,9 +3785,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4028,9 +3794,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4039,9 +3803,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4092,9 +3854,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4112,9 +3872,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4267,9 +4025,7 @@
             "methods": [
                 {
                     "name": "xFunc",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4279,21 +4035,15 @@
             "methods": [
                 {
                     "name": "clone",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "xFinal",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "xStep",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4303,15 +4053,11 @@
             "methods": [
                 {
                     "name": "xInverse",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "xValue",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4324,9 +4070,7 @@
             "methods": [
                 {
                     "name": "progress",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4351,9 +4095,7 @@
                 },
                 {
                     "name": "throwex",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "throwex",
@@ -4499,9 +4241,7 @@
                 },
                 {
                     "name": "getMapper",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "getTableBytes",
@@ -4529,9 +4269,7 @@
             "methods": [
                 {
                     "name": "debugFonts",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4541,9 +4279,7 @@
             "methods": [
                 {
                     "name": "invalidateScaler",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4675,21 +4411,15 @@
                 },
                 {
                     "name": "markedRange",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "selectedRange",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "unmarkText",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4728,9 +4458,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4792,9 +4520,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4803,9 +4529,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4819,9 +4543,7 @@
             "methods": [
                 {
                     "name": "serializer",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -4855,25 +4577,7 @@
     ],
     "resources": [
         {
-            "glob": "META-INF/services/java.awt.im.spi.InputMethodDescriptor"
-        },
-        {
-            "glob": "META-INF/services/java.net.spi.URLStreamHandlerProvider"
-        },
-        {
-            "glob": "META-INF/services/java.nio.channels.spi.SelectorProvider"
-        },
-        {
-            "glob": "META-INF/services/kotlinx.coroutines.internal.MainDispatcherFactory"
-        },
-        {
             "glob": "libskiko-macos-arm64.dylib.sha256"
-        },
-        {
-            "glob": "nucleus/native/darwin-aarch64/libnucleus_darkmode.dylib"
-        },
-        {
-            "glob": "nucleus/native/darwin-aarch64/libnucleus_macos_jni.dylib"
         },
         {
             "module": "java.base",
@@ -4912,58 +4616,16 @@
             "bundle": "sun.awt.resources.awtosx"
         },
         {
-            "glob": "/fonts/inter/Inter-Medium.ttf"
-        },
-        {
-            "glob": "/fonts/inter/Inter-Regular.ttf"
-        },
-        {
             "glob": "META-INF/MANIFEST.MF"
         },
         {
             "glob": "META-INF/maven/org.xerial/sqlite-jdbc/pom.properties"
         },
         {
-            "glob": "META-INF/services/io.ktor.serialization.kotlinx.KotlinxSerializationExtensionProvider"
-        },
-        {
-            "glob": "META-INF/services/java.net.spi.InetAddressResolverProvider"
-        },
-        {
-            "glob": "META-INF/services/java.nio.charset.spi.CharsetProvider"
-        },
-        {
-            "glob": "META-INF/services/java.sql.Driver"
-        },
-        {
-            "glob": "META-INF/services/java.time.zone.ZoneRulesProvider"
-        },
-        {
-            "glob": "META-INF/services/java.util.prefs.PreferencesFactory"
-        },
-        {
-            "glob": "META-INF/services/javax.xml.transform.TransformerFactory"
-        },
-        {
-            "glob": "META-INF/services/org.apache.lucene.codecs.Codec"
-        },
-        {
-            "glob": "META-INF/services/org.apache.lucene.codecs.PostingsFormat"
-        },
-        {
-            "glob": "META-INF/services/org.apache.lucene.codecs.DocValuesFormat"
-        },
-        {
-            "glob": "META-INF/services/org.apache.lucene.index.SortFieldProvider"
-        },
-        {
             "glob": "org/apache/lucene/analysis/*.txt"
         },
         {
             "glob": "org/apache/lucene/analysis/standard/*.txt"
-        },
-        {
-            "glob": "META-INF/services/org.slf4j.spi.SLF4JServiceProvider"
         },
         {
             "glob": "com/sun/jna/darwin-aarch64/libjnidispatch.jnilib"
@@ -4990,211 +4652,10 @@
             "glob": "composeResources/seforimapp.seforimapp.generated.resources/files/CONDITIONS.md"
         },
         {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/TaameyAshkenaz-Bold.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/TaameyAshkenaz-BoldOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/TaameyAshkenaz-Medium.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/TaameyAshkenaz-MediumOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/Tinos-Bold.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/Tinos-BoldItalic.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/Tinos-Italic.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/Tinos-Regular.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/frankruhllibre.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/notoserifhebrew.ttf"
-        },
-        {
             "glob": "composeResources/seforimapp.seforimapp.generated.resources/values/strings.commonMain.cvr"
         },
         {
-            "glob": "expui/general/add.svg"
-        },
-        {
-            "glob": "expui/general/add@2x.svg"
-        },
-        {
-            "glob": "expui/general/add@2x_dark.svg"
-        },
-        {
-            "glob": "expui/general/add_dark.svg"
-        },
-        {
-            "glob": "expui/general/chevronDown.svg"
-        },
-        {
-            "glob": "expui/general/chevronDown@2x.svg"
-        },
-        {
-            "glob": "expui/general/chevronDown@2x_dark.svg"
-        },
-        {
-            "glob": "expui/general/chevronDown_dark.svg"
-        },
-        {
-            "glob": "expui/general/chevronLeft.svg"
-        },
-        {
-            "glob": "expui/general/chevronLeft@2x.svg"
-        },
-        {
-            "glob": "expui/general/chevronLeft@2x_dark.svg"
-        },
-        {
-            "glob": "expui/general/chevronLeft_dark.svg"
-        },
-        {
-            "glob": "expui/general/closeSmall.svg"
-        },
-        {
-            "glob": "expui/general/closeSmall@2x.svg"
-        },
-        {
-            "glob": "expui/general/closeSmall@2x_dark.svg"
-        },
-        {
-            "glob": "expui/general/closeSmallHovered.svg"
-        },
-        {
-            "glob": "expui/general/closeSmallHovered@2x.svg"
-        },
-        {
-            "glob": "expui/general/closeSmall_dark.svg"
-        },
-        {
-            "glob": "expui/general/search.svg"
-        },
-        {
-            "glob": "expui/general/search@2x.svg"
-        },
-        {
-            "glob": "expui/general/search@2x_dark.svg"
-        },
-        {
-            "glob": "expui/general/search_dark.svg"
-        },
-        {
-            "glob": "expui/general/settings.svg"
-        },
-        {
-            "glob": "expui/general/settings@2x.svg"
-        },
-        {
-            "glob": "expui/general/settings@2x_dark.svg"
-        },
-        {
-            "glob": "expui/general/settings_dark.svg"
-        },
-        {
-            "glob": "expui/meetNewUi/darkTheme@2x.svg"
-        },
-        {
-            "glob": "expui/meetNewUi/darkTheme@2x_dark.svg"
-        },
-        {
-            "glob": "expui/meetNewUi/darkTheme_dark.svg"
-        },
-        {
-            "glob": "expui/meetNewUi/lightTheme.svg"
-        },
-        {
-            "glob": "expui/meetNewUi/lightTheme@2x.svg"
-        },
-        {
-            "glob": "expui/meetNewUi/systemTheme.svg"
-        },
-        {
-            "glob": "expui/meetNewUi/systemTheme@2x.svg"
-        },
-        {
-            "glob": "expui/meetNewUi/systemTheme@2x_dark.svg"
-        },
-        {
-            "glob": "expui/meetNewUi/systemTheme_dark.svg"
-        },
-        {
-            "glob": "expui/nodes/folder.svg"
-        },
-        {
-            "glob": "expui/nodes/folder@2x.svg"
-        },
-        {
-            "glob": "expui/nodes/folder@2x_dark.svg"
-        },
-        {
-            "glob": "expui/nodes/folder_dark.svg"
-        },
-        {
-            "glob": "expui/nodes/homeFolder.svg"
-        },
-        {
-            "glob": "expui/nodes/homeFolder@2x.svg"
-        },
-        {
-            "glob": "expui/nodes/homeFolder@2x_dark.svg"
-        },
-        {
-            "glob": "expui/nodes/homeFolder_dark.svg"
-        },
-        {
-            "glob": "expui/status/warning.svg"
-        },
-        {
-            "glob": "expui/status/warning@2x.svg"
-        },
-        {
-            "glob": "expui/windows/close.svg"
-        },
-        {
-            "glob": "expui/windows/close@2x.svg"
-        },
-        {
-            "glob": "fonts/inter/Inter-Bold.ttf"
-        },
-        {
-            "glob": "fonts/inter/Inter-Italic.ttf"
-        },
-        {
-            "glob": "fonts/inter/Inter-Light.ttf"
-        },
-        {
-            "glob": "fonts/inter/Inter-Medium.ttf"
-        },
-        {
-            "glob": "fonts/inter/Inter-Regular.ttf"
-        },
-        {
-            "glob": "fonts/inter/Inter-SemiBold.ttf"
-        },
-        {
-            "glob": "fonts/jetbrains-mono/JetBrainsMono-Bold.ttf"
-        },
-        {
-            "glob": "fonts/jetbrains-mono/JetBrainsMono-Italic.ttf"
-        },
-        {
-            "glob": "fonts/jetbrains-mono/JetBrainsMono-Regular.ttf"
-        },
-        {
             "glob": "hallucination_blacklist.tsv"
-        },
-        {
-            "glob": "nucleus/native/darwin-aarch64/libnucleus_ssl.dylib"
         },
         {
             "glob": "org/sqlite/native/Mac/aarch64/libsqlitejdbc.dylib"
@@ -5204,48 +4665,6 @@
         },
         {
             "glob": "simplelogger.properties"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/checkBox.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/checkBox@2x.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/checkBox@2x_dark.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/checkBoxSelected.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/checkBoxSelected@2x.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/checkBoxSelected@2x_dark.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/checkBoxSelected_dark.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/checkBox_dark.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radio.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radio@2x.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radioSelected.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radioSelected@2x.svg"
-        },
-        {
-            "glob": "vcs/vendors/github.svg"
-        },
-        {
-            "glob": "vcs/vendors/github@2x.svg"
         },
         {
             "module": "java.base",
@@ -5282,391 +4701,7 @@
             "bundle": "sun.util.logging.resources.logging"
         },
         {
-            "glob": "/fonts/inter/Inter-SemiBold.ttf"
-        },
-        {
-            "glob": "com/intellij/ide/ui/laf/icons/intellij/radioHovered.svg"
-        },
-        {
-            "glob": "com/intellij/ide/ui/laf/icons/intellij/radioHovered@2x.svg"
-        },
-        {
             "glob": "composeResources/seforimapp.hebrewcalendar.generated.resources/values/strings.commonMain.cvr"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/AharoniCLM-Bold.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/AharoniCLM-BoldOblique.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/AharoniCLM-Book.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/AharoniCLM-BookOblique.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/BonaNovaSC-Bold.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/BonaNovaSC-Italic.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/BonaNovaSC-Regular.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/Cardo-Bold.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/Cardo-Italic.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/Cardo-Regular.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/DavidCLM-Bold.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/DavidCLM-BoldItalic.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/DavidCLM-Medium.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/DavidCLM-MediumItalic.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/DrugulinCLM-Bold.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/ElliniaCLM-Bold.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/ElliniaCLM-BoldItalic.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/ElliniaCLM-Light.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/ElliniaCLM-LightItalic.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/FrankRuehlCLM-Bold.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/FrankRuehlCLM-BoldOblique.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/FrankRuehlCLM-Medium.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/FrankRuehlCLM-MediumOblique.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/HadasimCLM-Bold.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/HadasimCLM-BoldOblique.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/HadasimCLM-Regular.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/HadasimCLM-RegularOblique.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/KeterAramTsova.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/KeterYG-Bold.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/KeterYG-BoldOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/KeterYG-Medium.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/KeterYG-MediumOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/LibertinusSerif-Bold.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/LibertinusSerif-BoldItalic.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/LibertinusSerif-Italic.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/LibertinusSerif-Regular.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/LibertinusSerif-SemiBold.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/LibertinusSerif-SemiBoldItalic.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/MiriamCLM-Bold.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/MiriamCLM-Book.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/MiriamLibre-VariableFont_wght.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/MiriamMonoCLM-Bold.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/MiriamMonoCLM-BoldOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/MiriamMonoCLM-Book.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/MiriamMonoCLM-BookOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/NachlieliCLM-Bold.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/NachlieliCLM-BoldOblique.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/NachlieliCLM-Light.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/NachlieliCLM-LightOblique.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/RashiAmiti.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/ShofarDemi-Bold.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/ShofarDemi-BoldOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/ShofarRegular.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/ShofarRegularOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/SimpleCLM-Bold.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/SimpleCLM-BoldOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/SimpleCLM-Medium.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/SimpleCLM-MediumOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/StamAshkenazCLM.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/StamSefaradCLM.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/TaameyDavidCLM-Bold.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/TaameyDavidCLM-BoldOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/TaameyDavidCLM-Medium.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/TaameyDavidCLM-MediumOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/TaameyFrankCLM-Bold.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/TaameyFrankCLM-BoldOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/TaameyFrankCLM-Medium.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/TaameyFrankCLM-MediumOblique.ttf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/YehudaCLM-Bold.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/YehudaCLM-Light.otf"
-        },
-        {
-            "glob": "composeResources/seforimapp.seforimapp.generated.resources/font/notorashihebrew.ttf"
-        },
-        {
-            "glob": "expui/general/chevronRight@2x.svg"
-        },
-        {
-            "glob": "expui/general/chevronRight@2x_dark.svg"
-        },
-        {
-            "glob": "expui/general/chevronRight_dark.svg"
-        },
-        {
-            "glob": "expui/general/locate@2x.svg"
-        },
-        {
-            "glob": "expui/general/locate@2x_dark.svg"
-        },
-        {
-            "glob": "expui/general/locate_dark.svg"
-        },
-        {
-            "glob": "expui/general/refresh@2x.svg"
-        },
-        {
-            "glob": "expui/general/refresh@2x_dark.svg"
-        },
-        {
-            "glob": "expui/general/refresh_dark.svg"
-        },
-        {
-            "glob": "expui/meetNewUi/darkTheme.svg"
-        },
-        {
-            "glob": "expui/windows/minimize.svg"
-        },
-        {
-            "glob": "expui/windows/minimize@2x.svg"
-        },
-        {
-            "glob": "expui/windows/minimize@2x_dark.svg"
-        },
-        {
-            "glob": "expui/windows/minimize_dark.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radioFocused.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radioFocused@2x.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radioSelectedFocused.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radioSelectedFocused@2x.svg"
-        },
-        {
-            "glob": "expui/general/copy.svg"
-        },
-        {
-            "glob": "expui/general/copy@2x.svg"
-        },
-        {
-            "glob": "expui/general/copy@2x_dark.svg"
-        },
-        {
-            "glob": "expui/general/copy_dark.svg"
-        },
-        {
-            "glob": "icons/lucide_text_search.svg"
-        },
-        {
-            "glob": "icons/lucide_text_search@2x.svg"
-        },
-        {
-            "glob": "icons/lucide_text_search@2x_dark.svg"
-        },
-        {
-            "glob": "icons/lucide_text_search_dark.svg"
-        },
-        {
-            "glob": "expui/general/edit@2x.svg"
-        },
-        {
-            "glob": "expui/general/edit@2x_dark.svg"
-        },
-        {
-            "glob": "expui/general/edit_dark.svg"
-        },
-        {
-            "glob": "com/intellij/ide/ui/laf/icons/darcula/radioHovered.svg"
-        },
-        {
-            "glob": "com/intellij/ide/ui/laf/icons/darcula/radioHovered@2x.svg"
-        },
-        {
-            "glob": "com/intellij/ide/ui/laf/icons/darcula/radioHovered@2x_dark.svg"
-        },
-        {
-            "glob": "com/intellij/ide/ui/laf/icons/darcula/radioHovered_dark.svg"
-        },
-        {
-            "glob": "expui/actions/checked.svg"
-        },
-        {
-            "glob": "expui/actions/checked@2x.svg"
-        },
-        {
-            "glob": "expui/actions/checked@2x_dark.svg"
-        },
-        {
-            "glob": "expui/actions/checked_dark.svg"
-        },
-        {
-            "glob": "expui/general/edit.svg"
-        },
-        {
-            "glob": "expui/meetNewUi/lightTheme@2x_dark.svg"
-        },
-        {
-            "glob": "expui/meetNewUi/lightTheme_dark.svg"
-        },
-        {
-            "glob": "expui/status/warning@2x_dark.svg"
-        },
-        {
-            "glob": "expui/status/warning_dark.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radio@2x_dark.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radioFocused@2x_dark.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radioFocused_dark.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radioSelected@2x_dark.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radioSelectedFocused@2x_dark.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radioSelectedFocused_dark.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radioSelected_dark.svg"
-        },
-        {
-            "glob": "themes/expUI/icons/dark/radio_dark.svg"
-        },
-        {
-            "glob": "vcs/vendors/github@2x_dark.svg"
-        },
-        {
-            "glob": "vcs/vendors/github_dark.svg"
-        },
-        {
-            "glob": "nucleus/native/darwin-aarch64/libnucleus_energy_manager.dylib"
-        },
-        {
-            "glob": "nucleus/native/darwin-aarch64/libnucleus_systemcolor.dylib"
         }
     ],
     "foreign": {

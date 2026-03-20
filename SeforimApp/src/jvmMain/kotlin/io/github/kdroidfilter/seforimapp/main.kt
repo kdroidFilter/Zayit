@@ -363,14 +363,6 @@ fun main() {
                                 LocalWindowViewModelStoreOwner provides windowViewModelOwner,
                                 LocalViewModelStoreOwner provides windowViewModelOwner,
                             ) {
-                                /**
-                                 * A hack to work around the window flashing its background color when closed
-                                 * (https://youtrack.jetbrains.com/issue/CMP-5651).
-                                 */
-                                val background = JewelTheme.globalColors.panelBackground
-                                LaunchedEffect(window, background) {
-                                    window.background = java.awt.Color(background.toArgb())
-                                }
 
                                 LaunchedEffect(Unit) {
                                     window.minimumSize = Dimension(600, 300)

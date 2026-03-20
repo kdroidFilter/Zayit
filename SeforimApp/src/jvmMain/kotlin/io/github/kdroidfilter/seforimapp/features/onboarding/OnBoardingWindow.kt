@@ -65,7 +65,11 @@ fun ApplicationScope.OnBoardingWindow() {
                     canNavigateBack = navController.previousBackStackEntry != null
                 }
             }
-            JewelTitleBar(modifier = Modifier.newFullscreenControls(), gradientStartColor = ThemeUtils.titleBarGradientColor(), controlButtonsDirection = ControlButtonsDirection.SystemNative) {
+            JewelTitleBar(
+                modifier = Modifier.newFullscreenControls(),
+                gradientStartColor = ThemeUtils.titleBarGradientColor(),
+                controlButtonsDirection = ControlButtonsDirection.SystemNative,
+            ) {
                 // Keep the back button pinned to the start and
                 // center the title (icon + text) regardless of OS/window controls.
                 Box(

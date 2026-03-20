@@ -351,7 +351,6 @@ nucleus.application {
             packageVersion = macSafeVersion(version)
             packageName = "זית"
             appStore = true
-
         }
         buildTypes.release.proguard {
             version.set("7.9.0")

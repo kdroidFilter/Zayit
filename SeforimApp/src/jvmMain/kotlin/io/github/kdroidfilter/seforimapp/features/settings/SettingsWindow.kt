@@ -66,88 +66,88 @@ private fun SettingsWindowView(onClose: () -> Unit) {
             visible = true,
             resizable = true,
         ) {
-                val background = JewelTheme.globalColors.panelBackground
-                LaunchedEffect(window, background) { window.background = java.awt.Color(background.toArgb()) }
+            val background = JewelTheme.globalColors.panelBackground
+            LaunchedEffect(window, background) { window.background = java.awt.Color(background.toArgb()) }
 
-                val windowViewModelOwner = rememberWindowViewModelStoreOwner()
-                CompositionLocalProvider(
-                    LocalWindowViewModelStoreOwner provides windowViewModelOwner,
-                    LocalViewModelStoreOwner provides windowViewModelOwner,
+            val windowViewModelOwner = rememberWindowViewModelStoreOwner()
+            CompositionLocalProvider(
+                LocalWindowViewModelStoreOwner provides windowViewModelOwner,
+                LocalViewModelStoreOwner provides windowViewModelOwner,
+            ) {
+                JewelDialogTitleBar(
+                    modifier = Modifier.newFullscreenControls(),
+                    gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
+                    controlButtonsDirection = ControlButtonsDirection.SystemNative,
                 ) {
-                    JewelDialogTitleBar(
-                        modifier = Modifier.newFullscreenControls(),
-                        gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
-                        controlButtonsDirection = ControlButtonsDirection.SystemNative,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Icon(
-                                AllIconsKeys.General.Settings,
-                                contentDescription = null,
-                                tint = JewelTheme.globalColors.text.normal,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Text(stringResource(Res.string.settings))
-                        }
+                        Icon(
+                            AllIconsKeys.General.Settings,
+                            contentDescription = null,
+                            tint = JewelTheme.globalColors.text.normal,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(stringResource(Res.string.settings))
                     }
-                    // IntelliJ-like layout: sidebar + content with header and bottom action bar
-                    val navController = rememberNavController()
-                    Column(
-                        modifier =
-                            Modifier
-                                .trackActivation()
-                                .fillMaxSize()
-                                .background(JewelTheme.globalColors.panelBackground)
-                                .padding(16.dp),
-                    ) {
-                        Row(modifier = Modifier.weight(1f)) {
-                            SettingsSidebar(
-                                modifier =
-                                    Modifier
-                                        .fillMaxHeight()
-                                        .width(120.dp),
-                                navController = navController,
-                            )
+                }
+                // IntelliJ-like layout: sidebar + content with header and bottom action bar
+                val navController = rememberNavController()
+                Column(
+                    modifier =
+                        Modifier
+                            .trackActivation()
+                            .fillMaxSize()
+                            .background(JewelTheme.globalColors.panelBackground)
+                            .padding(16.dp),
+                ) {
+                    Row(modifier = Modifier.weight(1f)) {
+                        SettingsSidebar(
+                            modifier =
+                                Modifier
+                                    .fillMaxHeight()
+                                    .width(120.dp),
+                            navController = navController,
+                        )
 
-                            // Vertical separator between the menu and content
-                            Divider(
-                                orientation = Orientation.Vertical,
-                                color = JewelTheme.globalColors.borders.disabled,
-                                modifier =
-                                    Modifier
-                                        .fillMaxHeight()
-                                        .padding(horizontal = 8.dp),
-                            )
+                        // Vertical separator between the menu and content
+                        Divider(
+                            orientation = Orientation.Vertical,
+                            color = JewelTheme.globalColors.borders.disabled,
+                            modifier =
+                                Modifier
+                                    .fillMaxHeight()
+                                    .padding(horizontal = 8.dp),
+                        )
 
-                            Column(
-                                modifier =
-                                    Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .padding(start = 16.dp),
-                            ) {
-                                Box(modifier = Modifier.weight(1f)) {
-                                    SettingsNavHost(navController = navController)
-                                }
+                        Column(
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .padding(start = 16.dp),
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                SettingsNavHost(navController = navController)
                             }
                         }
+                    }
 
-                        Spacer(Modifier.height(8.dp))
-                        Divider(orientation = Orientation.Horizontal)
-                        Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Divider(orientation = Orientation.Horizontal)
+                    Spacer(Modifier.height(8.dp))
 
-                        // Bottom action bar aligned to the end
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            DefaultButton(onClick = onClose) { Text(stringResource(Res.string.settings_close)) }
-                        }
+                    // Bottom action bar aligned to the end
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        DefaultButton(onClick = onClose) { Text(stringResource(Res.string.settings_close)) }
                     }
                 }
             }
+        }
     }
 }

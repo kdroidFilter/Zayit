@@ -233,293 +233,291 @@ fun main() {
                 theme = themeDefinition,
                 styling = componentStyling,
             ) {
-                    if (showOnboarding) {
-                        OnBoardingWindow()
-                    } else if (showDatabaseUpdate) {
-                        DatabaseUpdateWindow(
-                            onUpdateComplete = {
-                                // After database update, refresh the version check and show main app
-                                showDatabaseUpdate = false
+                if (showOnboarding) {
+                    OnBoardingWindow()
+                } else if (showDatabaseUpdate) {
+                    DatabaseUpdateWindow(
+                        onUpdateComplete = {
+                            // After database update, refresh the version check and show main app
+                            showDatabaseUpdate = false
+                        },
+                        isDatabaseMissing = isDatabaseMissing,
+                    )
+                } else {
+                    val windowViewModelOwner = rememberWindowViewModelStoreOwner()
+                    val settingsWindowViewModel: SettingsWindowViewModel =
+                        metroViewModel(viewModelStoreOwner = windowViewModelOwner)
+
+                    // Build dynamic window title: "AppName - [DesktopName] - CurrentTab"
+                    val tabsVm = appGraph.tabsViewModel
+                    val desktopMgr = appGraph.desktopManager
+                    val tabsState by tabsVm.state.collectAsState()
+                    val tabs = tabsState.tabs
+                    val selectedIndex = tabsState.selectedTabIndex
+                    val allDesktops by desktopMgr.desktops.collectAsState()
+                    val currentDesktopId by desktopMgr.activeDesktopId.collectAsState()
+                    val currentDesktopName = allDesktops.find { it.id == currentDesktopId }?.name
+                    val nextDesktopName =
+                        stringResource(
+                            Res.string.desktop_default_name,
+                            remember(allDesktops.size) {
+                                (allDesktops.size + 1).toHebrewNumeral(includeGeresh = false) + "׳"
                             },
-                            isDatabaseMissing = isDatabaseMissing,
                         )
-                    } else {
-                        val windowViewModelOwner = rememberWindowViewModelStoreOwner()
-                        val settingsWindowViewModel: SettingsWindowViewModel =
-                            metroViewModel(viewModelStoreOwner = windowViewModelOwner)
-
-                        // Build dynamic window title: "AppName - [DesktopName] - CurrentTab"
-                        val tabsVm = appGraph.tabsViewModel
-                        val desktopMgr = appGraph.desktopManager
-                        val tabsState by tabsVm.state.collectAsState()
-                        val tabs = tabsState.tabs
-                        val selectedIndex = tabsState.selectedTabIndex
-                        val allDesktops by desktopMgr.desktops.collectAsState()
-                        val currentDesktopId by desktopMgr.activeDesktopId.collectAsState()
-                        val currentDesktopName = allDesktops.find { it.id == currentDesktopId }?.name
-                        val nextDesktopName =
-                            stringResource(
-                                Res.string.desktop_default_name,
-                                remember(allDesktops.size) {
-                                    (allDesktops.size + 1).toHebrewNumeral(includeGeresh = false) + "׳"
-                                },
-                            )
-                        val appTitle = stringResource(Res.string.app_name)
-                        val selectedTab = tabs.getOrNull(selectedIndex)
-                        val rawTitle = selectedTab?.title.orEmpty()
-                        val tabType = selectedTab?.tabType
-                        val formattedTabTitle =
-                            when {
-                                rawTitle.isEmpty() -> stringResource(Res.string.home)
-                                tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, rawTitle)
-                                else -> rawTitle
+                    val appTitle = stringResource(Res.string.app_name)
+                    val selectedTab = tabs.getOrNull(selectedIndex)
+                    val rawTitle = selectedTab?.title.orEmpty()
+                    val tabType = selectedTab?.tabType
+                    val formattedTabTitle =
+                        when {
+                            rawTitle.isEmpty() -> stringResource(Res.string.home)
+                            tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, rawTitle)
+                            else -> rawTitle
+                        }
+                    val windowTitle =
+                        buildString {
+                            append(appTitle)
+                            if (allDesktops.size > 1 && currentDesktopName != null) {
+                                append(" - [$currentDesktopName]")
                             }
-                        val windowTitle =
-                            buildString {
-                                append(appTitle)
-                                if (allDesktops.size > 1 && currentDesktopName != null) {
-                                    append(" - [$currentDesktopName]")
-                                }
-                                if (formattedTabTitle.isNotBlank()) {
-                                    append(" - $formattedTabTitle")
-                                }
+                            if (formattedTabTitle.isNotBlank()) {
+                                append(" - $formattedTabTitle")
                             }
+                        }
 
-                        JewelDecoratedWindow(
-                            onCloseRequest = {
-                                // Persist session if enabled, then exit
-                                SessionManager.saveIfEnabled(appGraph)
-                                exitApplication()
-                            },
-                            title = windowTitle,
-                            icon = if (PlatformInfo.isMacOS) null else painterResource(Res.drawable.AppIcon),
-                            state = windowState,
-                            visible = isWindowVisible,
-                            onKeyEvent = { keyEvent ->
-                                if (keyEvent.type == KeyEventType.KeyDown) {
-                                    // Read fresh state to avoid stale captures in cached lambda
-                                    val currentState = tabsVm.state.value
-                                    val currentTabs = currentState.tabs
-                                    val currentIndex = currentState.selectedTabIndex
-                                    val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                                    if (isCtrlOrCmd && keyEvent.key == Key.T) {
-                                        tabsVm.onEvent(TabsEvents.OnAdd)
+                    JewelDecoratedWindow(
+                        onCloseRequest = {
+                            // Persist session if enabled, then exit
+                            SessionManager.saveIfEnabled(appGraph)
+                            exitApplication()
+                        },
+                        title = windowTitle,
+                        icon = if (PlatformInfo.isMacOS) null else painterResource(Res.drawable.AppIcon),
+                        state = windowState,
+                        visible = isWindowVisible,
+                        onKeyEvent = { keyEvent ->
+                            if (keyEvent.type == KeyEventType.KeyDown) {
+                                // Read fresh state to avoid stale captures in cached lambda
+                                val currentState = tabsVm.state.value
+                                val currentTabs = currentState.tabs
+                                val currentIndex = currentState.selectedTabIndex
+                                val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                                if (isCtrlOrCmd && keyEvent.key == Key.T) {
+                                    tabsVm.onEvent(TabsEvents.OnAdd)
+                                    true
+                                } else if (isCtrlOrCmd && keyEvent.key == Key.W) {
+                                    tabsVm.onEvent(TabsEvents.OnClose(currentIndex))
+                                    true
+                                } else if (isCtrlOrCmd && keyEvent.key == Key.Tab) {
+                                    val count = currentTabs.size
+                                    if (count > 0) {
+                                        val direction = if (keyEvent.isShiftPressed) -1 else 1
+                                        val newIndex = (currentIndex + direction + count) % count
+                                        tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
+                                    }
+                                    true
+                                } else if ((keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
+                                    (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H)
+                                ) {
+                                    val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId
+                                    if (currentTabId != null) {
+                                        tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
                                         true
-                                    } else if (isCtrlOrCmd && keyEvent.key == Key.W) {
-                                        tabsVm.onEvent(TabsEvents.OnClose(currentIndex))
-                                        true
-                                    } else if (isCtrlOrCmd && keyEvent.key == Key.Tab) {
-                                        val count = currentTabs.size
-                                        if (count > 0) {
-                                            val direction = if (keyEvent.isShiftPressed) -1 else 1
-                                            val newIndex = (currentIndex + direction + count) % count
-                                            tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
-                                        }
-                                        true
-                                    } else if ((keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
-                                        (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H)
-                                    ) {
-                                        val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId
-                                        if (currentTabId != null) {
-                                            tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
-                                            true
+                                    } else {
+                                        false
+                                    }
+                                } else if (isCtrlOrCmd && keyEvent.key == Key.Comma) {
+                                    settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
+                                    true
+                                } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
+                                    windowState.isMinimized = true
+                                    true
+                                } else if (!PlatformInfo.isMacOS && keyEvent.key == Key.F11) {
+                                    windowState.placement =
+                                        if (windowState.placement == WindowPlacement.Fullscreen) {
+                                            WindowPlacement.Maximized
                                         } else {
-                                            false
+                                            WindowPlacement.Fullscreen
                                         }
-                                    } else if (isCtrlOrCmd && keyEvent.key == Key.Comma) {
-                                        settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
-                                        true
-                                    } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
-                                        windowState.isMinimized = true
-                                        true
-                                    } else if (!PlatformInfo.isMacOS && keyEvent.key == Key.F11) {
-                                        windowState.placement =
-                                            if (windowState.placement == WindowPlacement.Fullscreen) {
-                                                WindowPlacement.Maximized
-                                            } else {
-                                                WindowPlacement.Fullscreen
-                                            }
-                                        true
-                                    } else {
-                                        processKeyShortcuts(
-                                            keyEvent = keyEvent,
-                                            onNavigateTo = { /* no-op: legacy shortcuts not used here */ },
-                                            tabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: "",
-                                        )
-                                    }
+                                    true
                                 } else {
-                                    false
+                                    processKeyShortcuts(
+                                        keyEvent = keyEvent,
+                                        onNavigateTo = { /* no-op: legacy shortcuts not used here */ },
+                                        tabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: "",
+                                    )
                                 }
-                            },
+                            } else {
+                                false
+                            }
+                        },
+                    ) {
+                        CompositionLocalProvider(
+                            LocalLayoutDirection provides LayoutDirection.Rtl,
+                            LocalWindowViewModelStoreOwner provides windowViewModelOwner,
+                            LocalViewModelStoreOwner provides windowViewModelOwner,
                         ) {
-                            CompositionLocalProvider(
-                                LocalLayoutDirection provides LayoutDirection.Rtl,
-                                LocalWindowViewModelStoreOwner provides windowViewModelOwner,
-                                LocalViewModelStoreOwner provides windowViewModelOwner,
-                            ) {
-
-                                LaunchedEffect(Unit) {
-                                    window.minimumSize = Dimension(600, 300)
+                            LaunchedEffect(Unit) {
+                                window.minimumSize = Dimension(600, 300)
+                            }
+                            MainTitleBar()
+                            LaunchedEffect(state.isMinimized) {
+                                if (state.isMinimized) {
+                                    EnergyManager.enableEfficiencyMode()
+                                } else {
+                                    EnergyManager.disableEfficiencyMode()
                                 }
-                                MainTitleBar()
-                                LaunchedEffect(state.isMinimized) {
-                                    if (state.isMinimized) {
-                                        EnergyManager.enableEfficiencyMode()
-                                    } else {
-                                        EnergyManager.disableEfficiencyMode()
-                                    }
-                                }
+                            }
 
-                                // Restore previously saved session once when main window becomes active
-                                var sessionRestored by remember { mutableStateOf(false) }
-                                LaunchedEffect(Unit) {
-                                    if (!sessionRestored) {
-                                        SessionManager.restoreIfEnabled(appGraph)
-                                        sessionRestored = true
-                                    }
+                            // Restore previously saved session once when main window becomes active
+                            var sessionRestored by remember { mutableStateOf(false) }
+                            LaunchedEffect(Unit) {
+                                if (!sessionRestored) {
+                                    SessionManager.restoreIfEnabled(appGraph)
+                                    sessionRestored = true
                                 }
-                                // Check for updates once at startup
-                                val updateNotificationTitle = stringResource(Res.string.update_available_toast)
-                                val updateNotificationMessage = stringResource(Res.string.update_notification_message)
-                                val updateNotificationButton = stringResource(Res.string.update_download_action)
-                                LaunchedEffect(Unit) {
-                                    if (!mainAppState.updateCheckDone.value) {
-                                        when (val result = AppUpdateChecker.checkForUpdate()) {
-                                            is AppUpdateChecker.UpdateCheckResult.UpdateAvailable -> {
-                                                if (true) return@LaunchedEffect
-                                                mainAppState.setUpdateAvailable(result.latestVersion)
+                            }
+                            // Check for updates once at startup
+                            val updateNotificationTitle = stringResource(Res.string.update_available_toast)
+                            val updateNotificationMessage = stringResource(Res.string.update_notification_message)
+                            val updateNotificationButton = stringResource(Res.string.update_download_action)
+                            LaunchedEffect(Unit) {
+                                if (!mainAppState.updateCheckDone.value) {
+                                    when (val result = AppUpdateChecker.checkForUpdate()) {
+                                        is AppUpdateChecker.UpdateCheckResult.UpdateAvailable -> {
+                                            if (true) return@LaunchedEffect
+                                            mainAppState.setUpdateAvailable(result.latestVersion)
 
-                                                if (!ExecutableRuntime.isDev()) {
-                                                    // Send system notification
-                                                    notification(
-                                                        title = updateNotificationTitle,
-                                                        message = updateNotificationMessage,
-                                                        largeIcon = {
-                                                            Image(
-                                                                painter = painterResource(Res.drawable.AppIcon),
-                                                                contentDescription = null,
-                                                                modifier = Modifier.fillMaxSize(),
-                                                            )
-                                                        },
-                                                        onActivated = {
-                                                            Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
-                                                        },
-                                                    ) {
-                                                        button(title = updateNotificationButton) {
-                                                            Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
-                                                        }
-                                                    }.send()
-                                                }
+                                            if (!ExecutableRuntime.isDev()) {
+                                                // Send system notification
+                                                notification(
+                                                    title = updateNotificationTitle,
+                                                    message = updateNotificationMessage,
+                                                    largeIcon = {
+                                                        Image(
+                                                            painter = painterResource(Res.drawable.AppIcon),
+                                                            contentDescription = null,
+                                                            modifier = Modifier.fillMaxSize(),
+                                                        )
+                                                    },
+                                                    onActivated = {
+                                                        Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
+                                                    },
+                                                ) {
+                                                    button(title = updateNotificationButton) {
+                                                        Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
+                                                    }
+                                                }.send()
                                             }
-                                            is AppUpdateChecker.UpdateCheckResult.UpToDate -> {
-                                                mainAppState.markUpdateCheckDone()
-                                            }
-                                            is AppUpdateChecker.UpdateCheckResult.Error -> {
-                                                mainAppState.markUpdateCheckDone()
-                                            }
+                                        }
+                                        is AppUpdateChecker.UpdateCheckResult.UpToDate -> {
+                                            mainAppState.markUpdateCheckDone()
+                                        }
+                                        is AppUpdateChecker.UpdateCheckResult.Error -> {
+                                            mainAppState.markUpdateCheckDone()
                                         }
                                     }
                                 }
-
-                                // Intercept key combos early to avoid focus traversal consuming Tab
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxSize()
-                                            .onPreviewKeyEvent { keyEvent ->
-                                                if (keyEvent.type == KeyEventType.KeyDown) {
-                                                    val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                                                    when {
-                                                        // Ctrl/Cmd + W => close current tab
-                                                        isCtrlOrCmd && keyEvent.key == Key.W -> {
-                                                            tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))
-                                                            true
-                                                        }
-                                                        // Ctrl/Cmd + Shift + Tab => previous tab
-                                                        isCtrlOrCmd && keyEvent.key == Key.Tab && keyEvent.isShiftPressed -> {
-                                                            val count = tabs.size
-                                                            if (count > 0) {
-                                                                val newIndex = (selectedIndex - 1 + count) % count
-                                                                tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
-                                                            }
-                                                            true
-                                                        }
-                                                        // Ctrl/Cmd + Tab => next tab
-                                                        isCtrlOrCmd && keyEvent.key == Key.Tab -> {
-                                                            val count = tabs.size
-                                                            if (count > 0) {
-                                                                val newIndex = (selectedIndex + 1) % count
-                                                                tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
-                                                            }
-                                                            true
-                                                        }
-                                                        // Ctrl/Cmd + T => new tab
-                                                        isCtrlOrCmd && keyEvent.key == Key.T -> {
-                                                            tabsVm.onEvent(TabsEvents.OnAdd)
-                                                            true
-                                                        }
-                                                        // Alt + Home (Windows) or Cmd + Shift + H (macOS) => go Home on current tab
-                                                        (keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
-                                                            (
-                                                                keyEvent.isMetaPressed &&
-                                                                    keyEvent.isShiftPressed &&
-                                                                    keyEvent.key == Key.H
-                                                            ) -> {
-                                                            val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
-                                                            if (currentTabId != null) {
-                                                                tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
-                                                                true
-                                                            } else {
-                                                                false
-                                                            }
-                                                        }
-                                                        // Ctrl/Cmd + Comma => open settings
-                                                        isCtrlOrCmd && keyEvent.key == Key.Comma -> {
-                                                            settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
-                                                            true
-                                                        }
-                                                        // Ctrl/Cmd + Alt + Right => next desktop
-                                                        isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionRight -> {
-                                                            desktopMgr.switchToNext()
-                                                            true
-                                                        }
-                                                        // Ctrl/Cmd + Alt + Left => previous desktop
-                                                        isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionLeft -> {
-                                                            desktopMgr.switchToPrevious()
-                                                            true
-                                                        }
-                                                        // Ctrl/Cmd + Alt + N => new desktop
-                                                        isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.N -> {
-                                                            desktopMgr.createDesktop(nextDesktopName)
-                                                            true
-                                                        }
-                                                        // Cmd + M => minimize window (macOS only)
-                                                        PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
-                                                            windowState.isMinimized = true
-                                                            true
-                                                        }
-                                                        // F11 => toggle fullscreen (Windows/Linux only)
-                                                        !PlatformInfo.isMacOS && keyEvent.key == Key.F11 -> {
-                                                            windowState.placement =
-                                                                if (windowState.placement == WindowPlacement.Fullscreen) {
-                                                                    WindowPlacement.Maximized
-                                                                } else {
-                                                                    WindowPlacement.Fullscreen
-                                                                }
-                                                            true
-                                                        }
-                                                        else -> false
-                                                    }
-                                                } else {
-                                                    false
-                                                }
-                                            },
-                                ) { TabsContent() }
                             }
+
+                            // Intercept key combos early to avoid focus traversal consuming Tab
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .onPreviewKeyEvent { keyEvent ->
+                                            if (keyEvent.type == KeyEventType.KeyDown) {
+                                                val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                                                when {
+                                                    // Ctrl/Cmd + W => close current tab
+                                                    isCtrlOrCmd && keyEvent.key == Key.W -> {
+                                                        tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))
+                                                        true
+                                                    }
+                                                    // Ctrl/Cmd + Shift + Tab => previous tab
+                                                    isCtrlOrCmd && keyEvent.key == Key.Tab && keyEvent.isShiftPressed -> {
+                                                        val count = tabs.size
+                                                        if (count > 0) {
+                                                            val newIndex = (selectedIndex - 1 + count) % count
+                                                            tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
+                                                        }
+                                                        true
+                                                    }
+                                                    // Ctrl/Cmd + Tab => next tab
+                                                    isCtrlOrCmd && keyEvent.key == Key.Tab -> {
+                                                        val count = tabs.size
+                                                        if (count > 0) {
+                                                            val newIndex = (selectedIndex + 1) % count
+                                                            tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
+                                                        }
+                                                        true
+                                                    }
+                                                    // Ctrl/Cmd + T => new tab
+                                                    isCtrlOrCmd && keyEvent.key == Key.T -> {
+                                                        tabsVm.onEvent(TabsEvents.OnAdd)
+                                                        true
+                                                    }
+                                                    // Alt + Home (Windows) or Cmd + Shift + H (macOS) => go Home on current tab
+                                                    (keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
+                                                        (
+                                                            keyEvent.isMetaPressed &&
+                                                                keyEvent.isShiftPressed &&
+                                                                keyEvent.key == Key.H
+                                                        ) -> {
+                                                        val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
+                                                        if (currentTabId != null) {
+                                                            tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
+                                                            true
+                                                        } else {
+                                                            false
+                                                        }
+                                                    }
+                                                    // Ctrl/Cmd + Comma => open settings
+                                                    isCtrlOrCmd && keyEvent.key == Key.Comma -> {
+                                                        settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
+                                                        true
+                                                    }
+                                                    // Ctrl/Cmd + Alt + Right => next desktop
+                                                    isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionRight -> {
+                                                        desktopMgr.switchToNext()
+                                                        true
+                                                    }
+                                                    // Ctrl/Cmd + Alt + Left => previous desktop
+                                                    isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionLeft -> {
+                                                        desktopMgr.switchToPrevious()
+                                                        true
+                                                    }
+                                                    // Ctrl/Cmd + Alt + N => new desktop
+                                                    isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.N -> {
+                                                        desktopMgr.createDesktop(nextDesktopName)
+                                                        true
+                                                    }
+                                                    // Cmd + M => minimize window (macOS only)
+                                                    PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
+                                                        windowState.isMinimized = true
+                                                        true
+                                                    }
+                                                    // F11 => toggle fullscreen (Windows/Linux only)
+                                                    !PlatformInfo.isMacOS && keyEvent.key == Key.F11 -> {
+                                                        windowState.placement =
+                                                            if (windowState.placement == WindowPlacement.Fullscreen) {
+                                                                WindowPlacement.Maximized
+                                                            } else {
+                                                                WindowPlacement.Fullscreen
+                                                            }
+                                                        true
+                                                    }
+                                                    else -> false
+                                                }
+                                            } else {
+                                                false
+                                            }
+                                        },
+                            ) { TabsContent() }
                         }
                     }
                 }
             }
         }
-
+    }
 }

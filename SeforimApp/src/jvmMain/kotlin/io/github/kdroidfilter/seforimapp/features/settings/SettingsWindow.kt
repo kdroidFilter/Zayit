@@ -9,9 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberDialogState
@@ -32,9 +30,15 @@ import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.ui.Orientation
-import org.jetbrains.jewel.ui.component.*
+import org.jetbrains.jewel.ui.component.DefaultButton
+import org.jetbrains.jewel.ui.component.Divider
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import seforimapp.seforimapp.generated.resources.*
+import seforimapp.seforimapp.generated.resources.AppIcon
+import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.settings
+import seforimapp.seforimapp.generated.resources.settings_close
 
 @Composable
 fun SettingsWindow(onClose: () -> Unit) {
@@ -66,7 +70,6 @@ private fun SettingsWindowView(onClose: () -> Unit) {
 
                 val windowViewModelOwner = rememberWindowViewModelStoreOwner()
                 CompositionLocalProvider(
-                    LocalLayoutDirection provides LayoutDirection.Rtl,
                     LocalWindowViewModelStoreOwner provides windowViewModelOwner,
                     LocalViewModelStoreOwner provides windowViewModelOwner,
                 ) {

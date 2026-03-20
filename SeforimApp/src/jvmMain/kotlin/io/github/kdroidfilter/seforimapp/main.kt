@@ -135,6 +135,7 @@ private fun initializeSentry() {
 
 fun main() {
     GraalVmInitializer.initialize()
+    Locale.setDefault(Locale.Builder().setLanguage("he").build())
 
     val loggingEnv = System.getenv("SEFORIMAPP_LOGGING")?.lowercase()
     isDevEnv = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"

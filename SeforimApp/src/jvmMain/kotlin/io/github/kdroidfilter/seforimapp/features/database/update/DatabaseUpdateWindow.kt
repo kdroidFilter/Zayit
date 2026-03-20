@@ -7,8 +7,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -61,7 +59,6 @@ fun ApplicationScope.DatabaseUpdateWindow(
 
         val windowViewModelOwner = rememberWindowViewModelStoreOwner()
         CompositionLocalProvider(
-            LocalLayoutDirection provides LayoutDirection.Rtl,
             LocalWindowViewModelStoreOwner provides windowViewModelOwner,
             LocalViewModelStoreOwner provides windowViewModelOwner,
         ) {

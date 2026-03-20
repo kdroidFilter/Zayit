@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
+import io.github.kdroidfilter.nucleus.window.ControlButtonsDirection
 import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
 import io.github.kdroidfilter.nucleus.window.jewel.JewelTitleBar
 import io.github.kdroidfilter.nucleus.window.newFullscreenControls
@@ -73,7 +74,7 @@ fun ApplicationScope.DatabaseUpdateWindow(
                 }
             }
 
-            JewelTitleBar(modifier = Modifier.newFullscreenControls(), gradientStartColor = ThemeUtils.titleBarGradientColor()) {
+            JewelTitleBar(modifier = Modifier.newFullscreenControls(), gradientStartColor = ThemeUtils.titleBarGradientColor(), controlButtonsDirection = ControlButtonsDirection.SystemNative) {
                 // Keep the back button pinned to the start and
                 // center the title (icon + text) regardless of OS/window controls.
                 Box(

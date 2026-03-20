@@ -332,6 +332,14 @@ fun main() {
                                     } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
                                         windowState.isMinimized = true
                                         true
+                                    } else if (!PlatformInfo.isMacOS && keyEvent.key == Key.F11) {
+                                        windowState.placement =
+                                            if (windowState.placement == WindowPlacement.Fullscreen) {
+                                                WindowPlacement.Maximized
+                                            } else {
+                                                WindowPlacement.Fullscreen
+                                            }
+                                        true
                                     } else {
                                         processKeyShortcuts(
                                             keyEvent = keyEvent,
@@ -488,6 +496,16 @@ fun main() {
                                                         // Cmd + M => minimize window (macOS only)
                                                         PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
                                                             windowState.isMinimized = true
+                                                            true
+                                                        }
+                                                        // F11 => toggle fullscreen (Windows/Linux only)
+                                                        !PlatformInfo.isMacOS && keyEvent.key == Key.F11 -> {
+                                                            windowState.placement =
+                                                                if (windowState.placement == WindowPlacement.Fullscreen) {
+                                                                    WindowPlacement.Maximized
+                                                                } else {
+                                                                    WindowPlacement.Fullscreen
+                                                                }
                                                             true
                                                         }
                                                         else -> false

@@ -15,6 +15,7 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberDialogState
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
+import io.github.kdroidfilter.nucleus.window.ControlButtonsDirection
 import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedDialog
 import io.github.kdroidfilter.nucleus.window.jewel.JewelDialogTitleBar
 import io.github.kdroidfilter.nucleus.window.newFullscreenControls
@@ -76,6 +77,7 @@ private fun SettingsWindowView(onClose: () -> Unit) {
                     JewelDialogTitleBar(
                         modifier = Modifier.newFullscreenControls(),
                         gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
+                        controlButtonsDirection = ControlButtonsDirection.SystemNative,
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,

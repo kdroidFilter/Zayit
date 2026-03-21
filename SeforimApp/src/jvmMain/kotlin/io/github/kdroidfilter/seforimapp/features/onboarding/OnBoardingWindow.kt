@@ -6,7 +6,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -46,11 +45,6 @@ fun ApplicationScope.OnBoardingWindow() {
         visible = true,
         resizable = false,
     ) {
-        val background = JewelTheme.globalColors.panelBackground
-        LaunchedEffect(window, background) {
-            window.background = java.awt.Color(background.toArgb())
-        }
-
         val windowViewModelOwner = rememberWindowViewModelStoreOwner()
         CompositionLocalProvider(
             LocalWindowViewModelStoreOwner provides windowViewModelOwner,

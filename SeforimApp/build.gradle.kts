@@ -229,6 +229,7 @@ nucleus.application {
             "-H:+AddAllCharsets",
             "-Djava.awt.headless=false",
             "-Os",
+            "-H:+UnlockExperimentalVMOptions",
             "-H:-IncludeMethodData",
             // Enable shared arenas for Lucene's memory-mapped I/O (MemorySegmentIndexInput)
             "-H:+SharedArenaSupport",

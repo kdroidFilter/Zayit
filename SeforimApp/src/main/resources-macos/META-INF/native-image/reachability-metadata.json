@@ -10,7 +10,9 @@
             "methods": [
                 {
                     "name": "serializer",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -24,7 +26,9 @@
             "methods": [
                 {
                     "name": "serializer",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -38,7 +42,9 @@
             "methods": [
                 {
                     "name": "serializer",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -52,7 +58,9 @@
             "methods": [
                 {
                     "name": "serializer",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -66,7 +74,9 @@
             "methods": [
                 {
                     "name": "serializer",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -136,7 +146,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -145,7 +157,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -154,7 +168,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -163,7 +179,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -172,7 +190,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -181,7 +201,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -190,7 +212,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -199,7 +223,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -208,7 +234,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -217,7 +245,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -226,7 +256,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -235,7 +267,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -244,7 +278,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -253,7 +289,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -304,7 +342,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -322,7 +362,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -442,7 +484,9 @@
             "methods": [
                 {
                     "name": "xFunc",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -452,15 +496,21 @@
             "methods": [
                 {
                     "name": "clone",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 },
                 {
                     "name": "xFinal",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 },
                 {
                     "name": "xStep",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -470,11 +520,15 @@
             "methods": [
                 {
                     "name": "xInverse",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 },
                 {
                     "name": "xValue",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -487,7 +541,9 @@
             "methods": [
                 {
                     "name": "progress",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -512,7 +568,9 @@
                 },
                 {
                     "name": "throwex",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 },
                 {
                     "name": "throwex",
@@ -580,7 +638,176 @@
             "methods": [
                 {
                     "name": "serializer",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "java.lang.Boolean",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "TYPE"
+                },
+                {
+                    "name": "value"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "boolean"
+                    ]
+                },
+                {
+                    "name": "booleanValue",
+                    "parameterTypes": [
+                        
+                    ]
+                },
+                {
+                    "name": "getBoolean",
+                    "parameterTypes": [
+                        "java.lang.String"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "java.lang.Float",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "TYPE"
+                },
+                {
+                    "name": "value"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "float"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "java.lang.String",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "byte[]"
+                    ]
+                },
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "byte[]",
+                        "java.lang.String"
+                    ]
+                },
+                {
+                    "name": "getBytes",
+                    "parameterTypes": [
+                        
+                    ]
+                },
+                {
+                    "name": "getBytes",
+                    "parameterTypes": [
+                        "java.lang.String"
+                    ]
+                },
+                {
+                    "name": "toCharArray",
+                    "parameterTypes": [
+                        
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "org.slf4j.Logger",
+            "methods": [
+                {
+                    "name": "debug",
+                    "parameterTypes": [
+                        "java.lang.String",
+                        "java.lang.Throwable"
+                    ]
+                },
+                {
+                    "name": "trace",
+                    "parameterTypes": [
+                        "java.lang.String",
+                        "java.lang.Throwable"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.lwawt.macosx.CPlatformView",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "deliverKeyEvent",
+                    "parameterTypes": [
+                        "sun.lwawt.macosx.NSEvent"
+                    ]
+                },
+                {
+                    "name": "deliverMouseEvent",
+                    "parameterTypes": [
+                        "sun.lwawt.macosx.NSEvent"
+                    ]
+                },
+                {
+                    "name": "deliverResize",
+                    "parameterTypes": [
+                        "int",
+                        "int",
+                        "int",
+                        "int"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.lwawt.macosx.NSEvent",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "int",
+                        "int",
+                        "int",
+                        "int",
+                        "int",
+                        "int",
+                        "int",
+                        "int",
+                        "double",
+                        "double",
+                        "int"
+                    ]
+                },
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "int",
+                        "int",
+                        "short",
+                        "java.lang.String",
+                        "java.lang.String"
+                    ]
                 }
             ]
         }
@@ -615,6 +842,10 @@
         },
         {
             "bundle": "sun.util.logging.resources.logging"
+        },
+        {
+            "module": "java.desktop",
+            "glob": "com/apple/laf/resources/aqua_he.properties"
         }
     ],
     "foreign": {

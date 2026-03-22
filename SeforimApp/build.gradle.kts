@@ -267,6 +267,8 @@ nucleus.application {
         )
     }
     nativeDistributions {
+        appName = "זית"
+        packageName = "zayit"
 
         publish {
             github {
@@ -318,7 +320,6 @@ nucleus.application {
         cleanupNativeLibs = true
 
         linux {
-            packageName = "zayit"
             iconFile.set(project.file("desktopAppIcons/LinuxIcon.png"))
             packageVersion = version
             debMaintainer = "elyahou.hadass@gmail.com"
@@ -326,7 +327,6 @@ nucleus.application {
         windows {
             iconFile.set(project.file("desktopAppIcons/WindowsIcon.ico"))
             packageVersion = version
-            packageName = "Zayit"
             dirChooser = false
             shortcut = true
             upgradeUuid = "d9f21975-4359-4818-a623-6e9a3f0a07ca"
@@ -350,8 +350,6 @@ nucleus.application {
             iconFile.set(project.file("desktopAppIcons/MacosIcon.icns"))
             bundleID = "io.github.kdroidfilter.seforimapp.desktopApp"
             packageVersion = macSafeVersion(version)
-            packageName = "זית"
-            appStore = true
         }
         buildTypes.release.proguard {
             version.set("7.9.0")

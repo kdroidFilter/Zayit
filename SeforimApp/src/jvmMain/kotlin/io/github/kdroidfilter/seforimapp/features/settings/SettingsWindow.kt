@@ -4,11 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
@@ -66,9 +64,6 @@ private fun SettingsWindowView(onClose: () -> Unit) {
             visible = true,
             resizable = true,
         ) {
-            val background = JewelTheme.globalColors.panelBackground
-            LaunchedEffect(window, background) { window.background = java.awt.Color(background.toArgb()) }
-
             val windowViewModelOwner = rememberWindowViewModelStoreOwner()
             CompositionLocalProvider(
                 LocalWindowViewModelStoreOwner provides windowViewModelOwner,

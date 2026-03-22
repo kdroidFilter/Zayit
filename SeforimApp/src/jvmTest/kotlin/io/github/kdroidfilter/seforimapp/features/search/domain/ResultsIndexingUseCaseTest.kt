@@ -222,16 +222,17 @@ class ResultsIndexingUseCaseTest {
         }
 
     @Test
-    fun `parallelFilterByBook filters correctly`() {
-        val useCase = ResultsIndexingUseCase()
-        val results = createTestResults()
-        val allowedBooks = setOf(1L, 3L)
+    fun `parallelFilterByBook filters correctly`() =
+        runBlocking {
+            val useCase = ResultsIndexingUseCase()
+            val results = createTestResults()
+            val allowedBooks = setOf(1L, 3L)
 
-        val filtered = useCase.parallelFilterByBook(results, allowedBooks)
+            val filtered = useCase.parallelFilterByBook(results, allowedBooks)
 
-        assertEquals(4, filtered.size)
-        assertTrue(filtered.all { it.bookId in allowedBooks })
-    }
+            assertEquals(4, filtered.size)
+            assertTrue(filtered.all { it.bookId in allowedBooks })
+        }
 
     @Test
     fun `fastFilterByBookSequential filters correctly`() {
@@ -284,23 +285,24 @@ class ResultsIndexingUseCaseTest {
     }
 
     @Test
-    fun `large dataset parallel filtering works`() {
-        val useCase = ResultsIndexingUseCase()
+    fun `large dataset parallel filtering works`() =
+        runBlocking {
+            val useCase = ResultsIndexingUseCase()
 
-        // Create large dataset
-        val results =
-            (0 until 10_000).map { i ->
-                createTestResult(
-                    bookId = (i % 100).toLong(),
-                    lineId = i.toLong(),
-                )
-            }
+            // Create large dataset
+            val results =
+                (0 until 10_000).map { i ->
+                    createTestResult(
+                        bookId = (i % 100).toLong(),
+                        lineId = i.toLong(),
+                    )
+                }
 
-        val allowedBooks = setOf(0L, 1L, 2L, 3L, 4L)
-        val filtered = useCase.parallelFilterByBook(results, allowedBooks)
+            val allowedBooks = setOf(0L, 1L, 2L, 3L, 4L)
+            val filtered = useCase.parallelFilterByBook(results, allowedBooks)
 
-        // Should have 100 results per book * 5 books = 500
-        assertEquals(500, filtered.size)
-        assertTrue(filtered.all { it.bookId in allowedBooks })
-    }
+            // Should have 100 results per book * 5 books = 500
+            assertEquals(500, filtered.size)
+            assertTrue(filtered.all { it.bookId in allowedBooks })
+        }
 }

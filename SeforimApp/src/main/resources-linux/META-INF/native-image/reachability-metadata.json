@@ -659,6 +659,34 @@
             ]
         },
         {
+            "type": "sun.awt.X11InputMethodBase",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "pData"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "dispatchCommittedText",
+                    "parameterTypes": [
+                        "java.lang.String",
+                        "long"
+                    ]
+                },
+                {
+                    "name": "dispatchComposedText",
+                    "parameterTypes": [
+                        "java.lang.String",
+                        "int[]",
+                        "int",
+                        "int",
+                        "long"
+                    ]
+                }
+            ]
+        },
+        {
             "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$Display",
             "fields": [
                 {

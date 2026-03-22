@@ -6,7 +6,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.Arrays
@@ -184,7 +183,7 @@ class ResultsIndexingUseCase {
      * @param allowedBookIds Set of allowed book IDs
      * @return Filtered results containing only matching books
      */
-    fun parallelFilterByBook(
+    suspend fun parallelFilterByBook(
         results: List<SearchResult>,
         allowedBookIds: Set<Long>,
     ): List<SearchResult> {
@@ -196,7 +195,7 @@ class ResultsIndexingUseCase {
         }
 
         val chunk = (total + cores - 1) / cores
-        return runBlocking(Dispatchers.Default) {
+        return coroutineScope {
             val tasks = ArrayList<Deferred<List<SearchResult>>>(cores)
             var start = 0
             while (start < total) {

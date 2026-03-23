@@ -106,6 +106,12 @@ jobs:
       - name: Setup Nucleus
         uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
 
+      - name: Setup GraalVM (Liberica NIK)
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'liberica'
+
       # Build
       - name: Build
         run: ./gradlew ${{ matrix.build_task }} --no-daemon

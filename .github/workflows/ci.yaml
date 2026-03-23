@@ -115,7 +115,7 @@ jobs:
           - os: windows-latest
             jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-windows-x64-b268.52.zip"
             arch: amd64
-            build_task: ":SeforimApp:packageReleaseMsi"
+            build_task: ":SeforimApp:packageGraalvmNsis"
 
           # macOS Apple Silicon (ARM64)
           - os: macos-latest
@@ -204,21 +204,21 @@ jobs:
           # Copy splash image
           Copy-Item "..\SeforimApp\src\jvmMain\assets\common\splash.png" "resources\splash.png"
 
-          # Find and copy MSI
-          $msiFile = Get-ChildItem "..\SeforimApp\build\compose\binaries\main-release\msi\Zayit-*.msi" | Select-Object -First 1
-          if (-not $msiFile) {
-            Write-Error "MSI not found"
+          # Find and copy NSIS installer
+          $nsisFile = Get-ChildItem "..\SeforimApp\build\compose\binaries\main\graalvm-nsis\zayit-*-nsis.exe" | Select-Object -First 1
+          if (-not $nsisFile) {
+            Write-Error "NSIS installer not found"
             exit 1
           }
-          Copy-Item $msiFile.FullName "resources\Zayit.msi"
-          $msiBaseName = $msiFile.BaseName
-          Write-Host "Found MSI: $msiBaseName"
+          Copy-Item $nsisFile.FullName "resources\zayit-nsis.exe"
+          $nsisBaseName = $nsisFile.BaseName
+          Write-Host "Found NSIS: $nsisBaseName"
 
           # Build Rust installer
           cargo build --release --target x86_64-pc-windows-msvc
 
-          # Rename exe to match MSI name
-          $exeName = "$msiBaseName.exe"
+          # Rename exe to match NSIS name
+          $exeName = "$nsisBaseName.exe"
           Move-Item "target\x86_64-pc-windows-msvc\release\zayit-installer.exe" "target\x86_64-pc-windows-msvc\release\$exeName"
           Write-Host "Built installer: $exeName"
 

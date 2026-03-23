@@ -85,16 +85,25 @@ jobs:
           - os: ubuntu-latest
             arch: amd64
             build_task: ":SeforimApp:packageGraalvmDeb"
+            graalvm: true
 
-          # Windows x64
+          # Windows x64 (GraalVM)
           - os: windows-latest
             arch: amd64
             build_task: ":SeforimApp:packageGraalvmNsis"
+            graalvm: true
+
+          # Windows ARM64 (JBR - no Liberica NIK)
+          - os: windows-11-arm
+            arch: arm64
+            build_task: ":SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseNsis"
+            graalvm: false
 
           # macOS Apple Silicon (ARM64)
           - os: macos-latest
             arch: arm64
             build_task: ":SeforimApp:packageGraalvmDmg"
+            graalvm: true
 
     steps:
       - name: Checkout source (with submodules)
@@ -107,6 +116,7 @@ jobs:
         uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
 
       - name: Setup GraalVM (Liberica NIK)
+        if: matrix.graalvm
         uses: graalvm/setup-graalvm@v1
         with:
           java-version: '25'

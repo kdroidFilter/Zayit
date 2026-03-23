@@ -7,7 +7,7 @@ fn main() {
 
     // Rerun if resources change
     println!("cargo:rerun-if-changed=resources/splash.png");
-    println!("cargo:rerun-if-changed=resources/Zayit.msi");
+    println!("cargo:rerun-if-changed=resources/zayit-nsis.exe");
     println!("cargo:rerun-if-changed=resources/app.rc");
     println!("cargo:rerun-if-changed=resources/app.manifest");
 }

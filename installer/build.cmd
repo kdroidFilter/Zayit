@@ -18,24 +18,28 @@ if errorlevel 1 (
 )
 echo OK
 
-:: Copy MSI and get its name
-echo Copying MSI...
-set "MSI_PATH=..\SeforimApp\build\compose\binaries\main-release\msi"
-set "MSI_NAME="
+:: Copy NSIS installer and get its name
+echo Copying NSIS installer...
+set "NSIS_NAME="
 
-:: Find the MSI file (handle version in filename)
-for %%f in ("%MSI_PATH%\Zayit-*_x64.msi") do (
-    set "MSI_NAME=%%~nf"
-    copy /Y "%%f" "resources\Zayit.msi" >nul
-    goto :msi_copied
+:: Try GraalVM path first, then Release path
+for %%p in (
+    "..\SeforimApp\build\compose\binaries\main\graalvm-nsis"
+    "..\SeforimApp\build\compose\binaries\main-release\nsis"
+) do (
+    for %%f in ("%%~p\zayit-*-nsis.exe") do (
+        set "NSIS_NAME=%%~nf"
+        copy /Y "%%f" "resources\zayit-nsis.exe" >nul
+        goto :nsis_copied
+    )
 )
 
-echo ERROR: MSI not found in %MSI_PATH%
-echo Run: gradlew :SeforimApp:packageReleaseMsi
+echo ERROR: NSIS installer not found
+echo Run: gradlew :SeforimApp:packageGraalvmNsis or gradlew :SeforimApp:packageReleaseNsis
 exit /b 1
 
-:msi_copied
-echo OK - Found: %MSI_NAME%.msi
+:nsis_copied
+echo OK - Found: %NSIS_NAME%.exe
 
 :: Build Rust project
 echo.
@@ -46,8 +50,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: Rename exe to match MSI name
-set "EXE_NAME=%MSI_NAME%.exe"
+:: Rename exe to match NSIS name
+set "EXE_NAME=%NSIS_NAME%.exe"
 echo.
 echo Renaming to %EXE_NAME%...
 move /Y "target\release\zayit-installer.exe" "target\release\%EXE_NAME%" >nul

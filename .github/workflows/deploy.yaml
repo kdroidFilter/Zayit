@@ -49,12 +49,12 @@ jobs:
             graalvm: false
 
           # macOS Apple Silicon (ARM64) - GraalVM
-          - os: macos-latest
+          - os: macos-26
             jdk_arch: aarch64
             graalvm: true
 
           # macOS Intel (x64) - GraalVM
-          - os: macos-15-intel
+          - os: macos-26-intel
             jdk_arch: x64
             graalvm: true
 

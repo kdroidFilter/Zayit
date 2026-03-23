@@ -20,18 +20,22 @@ echo OK
 
 :: Copy NSIS installer and get its name
 echo Copying NSIS installer...
-set "NSIS_PATH=..\SeforimApp\build\compose\binaries\main\graalvm-nsis"
 set "NSIS_NAME="
 
-:: Find the NSIS exe file (handle version in filename)
-for %%f in ("%NSIS_PATH%\zayit-*-nsis.exe") do (
-    set "NSIS_NAME=%%~nf"
-    copy /Y "%%f" "resources\zayit-nsis.exe" >nul
-    goto :nsis_copied
+:: Try GraalVM path first, then Release path
+for %%p in (
+    "..\SeforimApp\build\compose\binaries\main\graalvm-nsis"
+    "..\SeforimApp\build\compose\binaries\main-release\nsis"
+) do (
+    for %%f in ("%%~p\zayit-*-nsis.exe") do (
+        set "NSIS_NAME=%%~nf"
+        copy /Y "%%f" "resources\zayit-nsis.exe" >nul
+        goto :nsis_copied
+    )
 )
 
-echo ERROR: NSIS installer not found in %NSIS_PATH%
-echo Run: gradlew :SeforimApp:packageNsis
+echo ERROR: NSIS installer not found
+echo Run: gradlew :SeforimApp:packageGraalvmNsis or gradlew :SeforimApp:packageReleaseNsis
 exit /b 1
 
 :nsis_copied

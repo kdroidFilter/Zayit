@@ -12,43 +12,51 @@ jobs:
     strategy:
       matrix:
         include:
-          # Linux x64 (DEB)
+          # Linux x64 (DEB) - GraalVM
           - os: ubuntu-latest
             arch: amd64
             pkg: deb
+            graalvm: true
 
-          # Linux ARM64 (DEB)
+          # Linux ARM64 (DEB) - GraalVM
           - os: ubuntu-24.04-arm
             arch: arm64
             pkg: deb
+            graalvm: true
 
-          # Linux x64 (RPM)
+          # Linux x64 (RPM) - GraalVM
           - os: ubuntu-latest
             arch: amd64
             pkg: rpm
+            graalvm: true
 
-          # Linux ARM64 (RPM)
+          # Linux ARM64 (RPM) - GraalVM
           - os: ubuntu-24.04-arm
             arch: arm64
             pkg: rpm
+            graalvm: true
 
-          # Windows x64
+          # Windows x64 - GraalVM
           - os: windows-latest
             arch: amd64
             rust_target: x86_64-pc-windows-msvc
+            graalvm: true
 
-          # Windows ARM64
+          # Windows ARM64 - JBR (no Liberica NIK available)
           - os: windows-11-arm
             arch: arm64
             rust_target: aarch64-pc-windows-msvc
+            graalvm: false
 
-          # macOS Apple Silicon (ARM64)
+          # macOS Apple Silicon (ARM64) - GraalVM
           - os: macos-latest
             jdk_arch: aarch64
+            graalvm: true
 
-          # macOS Intel (x64)
+          # macOS Intel (x64) - GraalVM
           - os: macos-15-intel
             jdk_arch: x64
+            graalvm: true
 
     steps:
       - name: Checkout source (with submodules)
@@ -70,24 +78,32 @@ jobs:
         uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
 
       - name: Setup GraalVM (Liberica NIK)
+        if: matrix.graalvm
         uses: graalvm/setup-graalvm@v1
         with:
           java-version: '25'
           distribution: 'liberica'
 
-      # Builds
+      # Linux builds
       - name: Build Linux .deb
-        if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'deb'
+        if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'deb' && matrix.graalvm
         run: ./gradlew :SeforimApp:packageGraalvmDeb
 
       - name: Build Linux .rpm
-        if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'rpm'
+        if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'rpm' && matrix.graalvm
         run: ./gradlew :SeforimApp:packageGraalvmRpm
 
-      - name: Build Windows NSIS installer
-        if: startsWith(matrix.os, 'windows')
+      # Windows GraalVM build (x64)
+      - name: Build Windows NSIS installer (GraalVM)
+        if: startsWith(matrix.os, 'windows') && matrix.graalvm
         shell: pwsh
         run: .\gradlew.bat :SeforimApp:packageGraalvmNsis
+
+      # Windows JBR build (ARM64)
+      - name: Build Windows NSIS installer (JBR)
+        if: startsWith(matrix.os, 'windows') && !matrix.graalvm
+        shell: pwsh
+        run: .\gradlew.bat :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseNsis
 
       # Build Rust installer for Windows
       - name: Install Rust toolchain
@@ -108,8 +124,8 @@ jobs:
           # Copy splash image
           Copy-Item "..\SeforimApp\src\jvmMain\assets\common\splash.png" "resources\splash.png"
 
-          # Find and copy NSIS installer
-          $nsisFile = Get-ChildItem "..\SeforimApp\build\compose\binaries\main\graalvm-nsis\zayit-*-nsis.exe" | Select-Object -First 1
+          # Find NSIS installer (GraalVM or Release path)
+          $nsisFile = Get-ChildItem "..\SeforimApp\build\compose\binaries\main\graalvm-nsis\zayit-*-nsis.exe","..\SeforimApp\build\compose\binaries\main-release\nsis\zayit-*-nsis.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $nsisFile) {
             Write-Error "NSIS installer not found"
             exit 1
@@ -126,6 +142,7 @@ jobs:
           Move-Item "target\${{ matrix.rust_target }}\release\zayit-installer.exe" "target\${{ matrix.rust_target }}\release\$exeName"
           Write-Host "Built installer: $exeName"
 
+      # macOS builds (GraalVM)
       - name: Build macOS .dmg + .zip
         if: startsWith(matrix.os, 'macos')
         shell: bash

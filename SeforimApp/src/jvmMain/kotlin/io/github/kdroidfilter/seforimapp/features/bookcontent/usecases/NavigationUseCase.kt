@@ -10,6 +10,8 @@ import io.github.kdroidfilter.seforimapp.logger.errorln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 
@@ -182,6 +184,7 @@ class NavigationUseCase(
         // Build the path using the data already loaded from the catalog
         val navState = stateManager.state.first().navigation
         while (currentId != null && guard++ < 512) {
+            currentCoroutineContext().ensureActive()
             val cat =
                 navState.run {
                     rootCategories.find { it.id == currentId }

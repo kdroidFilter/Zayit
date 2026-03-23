@@ -3,6 +3,8 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationState
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.SharedFlow
 
 class CategoryDisplaySettingsUseCase(
@@ -70,6 +72,7 @@ class CategoryDisplaySettingsUseCase(
         var currentId: Long? = categoryId
         var guard = 0
         while (currentId != null && guard++ < 512) {
+            currentCoroutineContext().ensureActive()
             val category = repository.getCategory(currentId) ?: return null
             val parentId = category.parentId ?: return category.id
             currentId = parentId

@@ -1,4 +1,4 @@
-name: Build and Release Compose Desktop App (Linux deb/rpm, Windows nsis, macOS dmg with JBR)
+name: Build and Release Compose Desktop App
 
 on:
   push:
@@ -14,48 +14,40 @@ jobs:
         include:
           # Linux x64 (DEB)
           - os: ubuntu-latest
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-linux-x64-b268.52.tar.gz"
             arch: amd64
             pkg: deb
 
           # Linux ARM64 (DEB)
           - os: ubuntu-24.04-arm
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-linux-aarch64-b268.52.tar.gz"
             arch: arm64
             pkg: deb
 
           # Linux x64 (RPM)
           - os: ubuntu-latest
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-linux-x64-b268.52.tar.gz"
             arch: amd64
             pkg: rpm
 
           # Linux ARM64 (RPM)
           - os: ubuntu-24.04-arm
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-linux-aarch64-b268.52.tar.gz"
             arch: arm64
             pkg: rpm
 
           # Windows x64
           - os: windows-latest
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-windows-x64-b268.52.zip"
             arch: amd64
             rust_target: x86_64-pc-windows-msvc
 
           # Windows ARM64
           - os: windows-11-arm
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-windows-aarch64-b268.52.zip"
             arch: arm64
             rust_target: aarch64-pc-windows-msvc
 
           # macOS Apple Silicon (ARM64)
-          - os: macos-latest  # runner Apple Silicon (ARM64)
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-osx-aarch64-b268.52.tar.gz"
+          - os: macos-latest
             jdk_arch: aarch64
 
           # macOS Intel (x64)
-          - os: macos-15-intel      # runner MacIntel (x64)
-            jdk_url: "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-25.0.1-osx-x64-b268.52.tar.gz"
+          - os: macos-15-intel
             jdk_arch: x64
 
     steps:
@@ -74,69 +66,18 @@ jobs:
           echo "Using latest tag for version: $tag"
           echo "GITHUB_REF=refs/tags/$tag" >> "$GITHUB_ENV"
 
-      # Install RPM tools on Ubuntu (for .rpm builds)
-      - name: Install RPM tools
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y rpm rpm2cpio alien
-      # Linux JDK Install (x64 + ARM64)
-      - name: Install JBR on Linux
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -L -o jbr.tar.gz "${{ matrix.jdk_url }}"
-          mkdir -p "$RUNNER_TEMP/jbr"
-          tar -xzf jbr.tar.gz -C "$RUNNER_TEMP/jbr"
-          JBR_DIR=$(find "$RUNNER_TEMP/jbr" -mindepth 1 -maxdepth 1 -type d -name "jbr*" -o -name "jbrsdk*" | head -n 1)
-          echo "JAVA_HOME=$JBR_DIR" >> "$GITHUB_ENV"
-          echo "$JBR_DIR/bin" >> "$GITHUB_PATH"
-      # Windows JDK Install (x64 + ARM64)
-      - name: Install JBR on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $ProgressPreference = 'SilentlyContinue'
-          Invoke-WebRequest -Uri "${{ matrix.jdk_url }}" -OutFile "$env:RUNNER_TEMP\jbr.zip"
-          Expand-Archive -Path "$env:RUNNER_TEMP\jbr.zip" -DestinationPath "$env:RUNNER_TEMP\jbr" -Force
-          $jbrDir = Get-ChildItem "$env:RUNNER_TEMP\jbr" | Where-Object { $_.PSIsContainer } | Select-Object -First 1
-          "$([string]::Format('JAVA_HOME={0}', $jbrDir.FullName))" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "$($jbrDir.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-      # macOS JDK Install via tar.gz
-      - name: Install JBR on macOS
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -L -o jbr.tar.gz "${{ matrix.jdk_url }}"
-          mkdir -p "$RUNNER_TEMP/jbr"
-          tar -xzf jbr.tar.gz -C "$RUNNER_TEMP/jbr"
-          ROOT_DIR=$(find "$RUNNER_TEMP/jbr" -mindepth 1 -maxdepth 1 -type d | head -n 1)
-          JAVA_HOME="$ROOT_DIR/Contents/Home"
-          echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
-          echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
-          echo "Detected JBR at: $JAVA_HOME"
-      
-      
-
-      # Gradle Setup
-      - name: Set up Gradle
-        uses: gradle/gradle-build-action@v3
-        with:
-          gradle-version: '8.14'
+      - name: Setup Nucleus
+        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
 
       # Builds
       - name: Build Linux .deb
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'deb'
-        run: |
-          chmod +x ./gradlew
-          ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseDeb
+        run: ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseDeb
+
       - name: Build Linux .rpm
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'rpm'
-        run: |
-          chmod +x ./gradlew
-          ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseRpm
+        run: ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseRpm
+
       - name: Build Windows NSIS installer
         if: startsWith(matrix.os, 'windows')
         shell: pwsh
@@ -179,12 +120,11 @@ jobs:
           Move-Item "target\${{ matrix.rust_target }}\release\zayit-installer.exe" "target\${{ matrix.rust_target }}\release\$exeName"
           Write-Host "Built installer: $exeName"
 
-      - name: Build macOS .pkg + .dmg + .zip
+      - name: Build macOS .dmg + .zip
         if: startsWith(matrix.os, 'macos')
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x ./gradlew
           ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseDmg
           APP_DIR="SeforimApp/build/compose/binaries/main-release/app"
           APP_BUNDLE=$(find "$APP_DIR" -mindepth 1 -maxdepth 1 -type d -name '*.app' | head -n 1 || true)
@@ -198,6 +138,7 @@ jobs:
           ZIP_NAME="${BASENAME}-mac-${ARCH}.zip"
           echo "Creating ZIP $ZIP_NAME from $(basename "$APP_BUNDLE") in $(dirname "$APP_BUNDLE")"
           (cd "$(dirname "$APP_BUNDLE")" && zip -r "$ZIP_NAME" "$(basename "$APP_BUNDLE")")
+
       # Upload Artifacts
       - name: Upload Linux .deb (amd64/arm64)
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'deb'
@@ -230,6 +171,7 @@ jobs:
           name: macos-dmg-${{ matrix.jdk_arch }}
           path: SeforimApp/build/compose/binaries/main-release/dmg/*.dmg
           if-no-files-found: error
+
       - name: Upload macOS .zip
         if: startsWith(matrix.os, 'macos')
         uses: actions/upload-artifact@v6
@@ -296,6 +238,7 @@ jobs:
         with:
           pattern: macos-dmg-*
           merge-multiple: true
+
       - name: Download macOS zip artifacts
         uses: actions/download-artifact@v7
         with:

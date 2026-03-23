@@ -5,6 +5,8 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 class BuildSearchTreeUseCase(
     private val repository: SeforimRepository,
@@ -33,6 +35,7 @@ class BuildSearchTreeUseCase(
         }
 
         for (res in results) {
+            currentCoroutineContext().ensureActive()
             val book = resolveBook(res.bookId) ?: continue
             booksById[book.id] = book
             bookCounts[book.id] = (bookCounts[book.id] ?: 0) + 1
@@ -65,6 +68,7 @@ class BuildSearchTreeUseCase(
 
         // Load categories from cache or repository
         for (catId in facetCategoryCounts.keys) {
+            currentCoroutineContext().ensureActive()
             val cat =
                 categoryCache[catId]
                     ?: repository.getCategory(catId)?.also { categoryCache[catId] = it }
@@ -75,6 +79,7 @@ class BuildSearchTreeUseCase(
 
         // Load books and ensure their categories are included
         for (bookId in facetBookCounts.keys) {
+            currentCoroutineContext().ensureActive()
             val book =
                 bookCache[bookId]
                     ?: repository.getBookCore(bookId)?.also { bookCache[bookId] = it }
@@ -138,6 +143,7 @@ class BuildSearchTreeUseCase(
         val path = mutableListOf<Category>()
         var currentId: Long? = categoryId
         while (currentId != null) {
+            currentCoroutineContext().ensureActive()
             val cat =
                 categoryCache[currentId]
                     ?: repository.getCategory(currentId)?.also { categoryCache[currentId] = it }

@@ -14,7 +14,6 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.LineSelectionReposit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
-import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * UseCase pour gérer le contenu du livre et la navigation dans les lignes
@@ -129,13 +128,7 @@ class ContentUseCase(
         }
 
         // Update selected TOC entry for highlighting in TOC
-        val tocId =
-            try {
-                repository.getTocEntryIdForLine(line.id)
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                null
-            }
+        val tocId = runSuspendCatching { repository.getTocEntryIdForLine(line.id) }.getOrNull()
         val tocPath = if (tocId != null) buildTocPathToRoot(tocId) else emptyList()
         stateManager.updateToc(save = false) {
             copy(
@@ -219,13 +212,7 @@ class ContentUseCase(
             }
 
             // Update selected TOC entry for highlighting and breadcrumb path
-            val tocId =
-                try {
-                    repository.getTocEntryIdForLine(line.id)
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    null
-                }
+            val tocId = runSuspendCatching { repository.getTocEntryIdForLine(line.id) }.getOrNull()
             val tocPath = if (tocId != null) buildTocPathToRoot(tocId) else emptyList()
             stateManager.updateToc(save = false) {
                 copy(
@@ -257,7 +244,7 @@ class ContentUseCase(
         // Si on est déjà à la première ligne
         if (currentLine.lineIndex <= 0) return null
 
-        return try {
+        return runSuspendCatching {
             val previousLine = repository.getPreviousLine(currentBook.id, currentLine.lineIndex)
 
             if (previousLine != null) {
@@ -266,11 +253,9 @@ class ContentUseCase(
             }
 
             previousLine
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
+        }.onFailure { e ->
             debugln { "[navigateToPreviousLine] Error: ${e.message}" }
-            null
-        }
+        }.getOrNull()
     }
 
     /**
@@ -286,7 +271,7 @@ class ContentUseCase(
         // Vérifier qu'on est dans le bon livre
         if (currentLine.bookId != currentBook.id) return null
 
-        return try {
+        return runSuspendCatching {
             val nextLine = repository.getNextLine(currentBook.id, currentLine.lineIndex)
 
             if (nextLine != null) {
@@ -295,11 +280,9 @@ class ContentUseCase(
             }
 
             nextLine
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
+        }.onFailure { e ->
             debugln { "[navigateToNextLine] Error: ${e.message}" }
-            null
-        }
+        }.getOrNull()
     }
 
     /**

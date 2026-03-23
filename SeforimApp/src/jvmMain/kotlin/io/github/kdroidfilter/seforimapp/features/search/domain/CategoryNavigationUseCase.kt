@@ -3,6 +3,8 @@ package io.github.kdroidfilter.seforimapp.features.search.domain
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /**
  * Use case for category navigation operations.
@@ -40,6 +42,7 @@ class CategoryNavigationUseCase(
         var currentId: Long? = categoryId
 
         while (currentId != null) {
+            currentCoroutineContext().ensureActive()
             val cat =
                 categoryCache[currentId]
                     ?: repository.getCategory(currentId)?.also { categoryCache[currentId] = it }

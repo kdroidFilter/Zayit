@@ -5,6 +5,8 @@ import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import java.util.Arrays
 
 /**
@@ -68,6 +70,7 @@ class SearchTocUseCase(
         val children = mutableMapOf<Long, MutableList<Long>>()
         val parent = mutableMapOf<Long, Long?>()
         for (t in tocEntries) {
+            currentCoroutineContext().ensureActive()
             parent[t.id] = t.parentId
             if (t.parentId != null) {
                 children.getOrPut(t.parentId!!) { mutableListOf() }.add(t.id)

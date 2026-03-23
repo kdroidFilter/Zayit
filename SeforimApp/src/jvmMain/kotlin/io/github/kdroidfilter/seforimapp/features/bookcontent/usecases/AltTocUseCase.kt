@@ -10,6 +10,8 @@ import io.github.kdroidfilter.seforimlibrary.core.models.AltTocStructure
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 
@@ -189,6 +191,7 @@ class AltTocUseCase(
         var currentId: Long? = entryId
         var guard = 0
         while (currentId != null && guard++ < 512) {
+            currentCoroutineContext().ensureActive()
             val cached = stateManager.state.value.altToc.entriesById[currentId]
             val entry =
                 cached ?: withContext(Dispatchers.IO) {
@@ -201,6 +204,7 @@ class AltTocUseCase(
         if (path.isEmpty()) return
         val ordered = path.asReversed()
         for (e in ordered) {
+            currentCoroutineContext().ensureActive()
             val altState = stateManager.state.value.altToc
             if (e.hasChildren && !altState.children.containsKey(e.id)) {
                 runSuspendCatching { loadChildren(e.id) }

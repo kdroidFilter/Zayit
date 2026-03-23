@@ -72,11 +72,11 @@ jobs:
       # Builds
       - name: Build Linux .deb
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'deb'
-        run: ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseDeb
+        run: ./gradlew :SeforimApp:packageGraalvmDeb
 
       - name: Build Linux .rpm
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'rpm'
-        run: ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseRpm
+        run: ./gradlew :SeforimApp:packageGraalvmRpm
 
       - name: Build Windows NSIS installer
         if: startsWith(matrix.os, 'windows')
@@ -125,8 +125,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseDmg
-          APP_DIR="SeforimApp/build/compose/binaries/main-release/app"
+          ./gradlew :SeforimApp:packageGraalvmDmg
+          APP_DIR="SeforimApp/build/compose/binaries/main/graalvm-app"
           APP_BUNDLE=$(find "$APP_DIR" -mindepth 1 -maxdepth 1 -type d -name '*.app' | head -n 1 || true)
           if [ -z "$APP_BUNDLE" ]; then
             echo "No .app bundle found in $APP_DIR"
@@ -145,7 +145,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: linux-deb-${{ matrix.arch }}
-          path: SeforimApp/build/compose/binaries/main-release/deb/*.deb
+          path: SeforimApp/build/compose/binaries/main/graalvm-deb/*.deb
           if-no-files-found: error
 
       - name: Upload Linux .rpm (amd64/arm64)
@@ -153,7 +153,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: linux-rpm-${{ matrix.arch }}
-          path: SeforimApp/build/compose/binaries/main-release/rpm/*.rpm
+          path: SeforimApp/build/compose/binaries/main/graalvm-rpm/*.rpm
           if-no-files-found: error
 
       - name: Upload Windows .exe installer (amd64/arm64)
@@ -169,7 +169,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: macos-dmg-${{ matrix.jdk_arch }}
-          path: SeforimApp/build/compose/binaries/main-release/dmg/*.dmg
+          path: SeforimApp/build/compose/binaries/main/graalvm-dmg/*.dmg
           if-no-files-found: error
 
       - name: Upload macOS .zip
@@ -177,7 +177,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: macos-zip-${{ matrix.jdk_arch }}
-          path: SeforimApp/build/compose/binaries/main-release/app/*.zip
+          path: SeforimApp/build/compose/binaries/main/graalvm-app/*.zip
           if-no-files-found: error
 
   release:

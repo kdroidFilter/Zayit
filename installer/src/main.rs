@@ -2,9 +2,10 @@
 
 use image::GenericImageView;
 use std::ffi::c_void;
-use std::io::{Read as IoRead, Write};
-use std::path::PathBuf;
+use std::io::Write;
 use std::process::Command;
+use winreg::enums::*;
+use winreg::RegKey;
 use std::ptr;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
@@ -20,7 +21,6 @@ use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::HiDpi::{
     SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2,
 };
-use windows::Win32::Globalization::GetUserDefaultUILanguage;
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetSystemMetrics,
     LoadCursorW, PeekMessageW, PostQuitMessage, RegisterClassW, ShowWindow, TranslateMessage, UpdateLayeredWindow,
@@ -30,8 +30,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
 
 // Embed splash image at compile time
 const SPLASH_PNG: &[u8] = include_bytes!("../resources/splash.png");
-// Embed MSI at compile time
-const MSI_DATA: &[u8] = include_bytes!("../resources/Zayit.msi");
+// Embed NSIS installer at compile time
+const NSIS_DATA: &[u8] = include_bytes!("../resources/zayit-nsis.exe");
 
 // Progress bar configuration
 const PROGRESS_BAR_HEIGHT: i32 = 4;
@@ -70,9 +70,9 @@ fn main() {
     let install_complete = Arc::new(AtomicBool::new(false));
     let install_complete_thread = Arc::clone(&install_complete);
 
-    // Start MSI installation in background thread with progress monitoring
+    // Start installation in background thread
     let mut install_thread = Some(thread::spawn(move || {
-        install_msi_with_progress(progress_thread);
+        install_with_progress(progress_thread);
         install_complete_thread.store(true, Ordering::SeqCst);
     }));
 
@@ -135,11 +135,8 @@ fn main() {
                     let _ = handle.join();
                 }
 
-                // Launch the application
+                // Launch the application after NSIS silent install
                 launch_application();
-
-                // Keep splash visible for 2 more seconds after app launch
-                thread::sleep(Duration::from_secs(2));
 
                 PostQuitMessage(0);
                 break;
@@ -177,138 +174,77 @@ fn main() {
     }
 }
 
-fn install_msi_with_progress(progress: Arc<AtomicU32>) {
-    // Write MSI to temp file
+fn install_with_progress(progress: Arc<AtomicU32>) {
+    // Step 1: Check for and uninstall old MSI installation
+    uninstall_old_msi(&progress);
+
+    // Step 2: Extract NSIS installer to temp directory
     let temp_dir = std::env::temp_dir();
-    let msi_path = temp_dir.join("Zayit-installer-temp.msi");
-    let log_path = temp_dir.join("Zayit-install.log");
+    let nsis_path = temp_dir.join("Zayit-installer-temp.exe");
 
     {
-        let mut file = std::fs::File::create(&msi_path).expect("Failed to create temp MSI file");
-        file.write_all(MSI_DATA).expect("Failed to write MSI data");
+        let mut file = std::fs::File::create(&nsis_path).expect("Failed to create temp NSIS file");
+        file.write_all(NSIS_DATA).expect("Failed to write NSIS data");
     }
 
-    // Flag to signal log monitor to stop
-    let monitor_done = Arc::new(AtomicBool::new(false));
-    let monitor_done_clone = Arc::clone(&monitor_done);
+    progress.store(40, Ordering::SeqCst);
 
-    // Start log monitoring thread
-    let log_path_clone = log_path.clone();
-    let progress_clone = Arc::clone(&progress);
-    let log_monitor = thread::spawn(move || {
-        monitor_msi_log(&log_path_clone, progress_clone, monitor_done_clone);
-    });
-
-    // Run msiexec silently with verbose logging
-    // /L*V! forces immediate flush to log file for real-time monitoring
-    let status = Command::new("msiexec")
-        .args([
-            "/i",
-            msi_path.to_str().unwrap(),
-            "/qn",
-            "/norestart",
-            "/L*V!",
-            log_path.to_str().unwrap(),
-        ])
+    // Step 3: Run NSIS installer silently
+    let status = Command::new(&nsis_path)
+        .arg("/S")
         .status();
 
-    // Signal log monitor to stop
-    monitor_done.store(true, Ordering::SeqCst);
-
-    // Signal completion by setting progress to 100
     progress.store(100, Ordering::SeqCst);
 
-    match status {
-        Ok(exit_status) => {
-            if !exit_status.success() {
-                eprintln!(
-                    "MSI installation failed with exit code: {:?}",
-                    exit_status.code()
-                );
-            }
-        }
-        Err(e) => {
-            eprintln!("Failed to run msiexec: {}", e);
-        }
+    if let Err(e) = status {
+        eprintln!("Failed to run NSIS installer: {}", e);
     }
 
-    // Wait for log monitor to finish
-    let _ = log_monitor.join();
-
-    // Clean up temp files
-    let _ = std::fs::remove_file(&msi_path);
-    let _ = std::fs::remove_file(&log_path);
+    // Clean up temp file
+    let _ = std::fs::remove_file(&nsis_path);
 }
 
-fn monitor_msi_log(log_path: &PathBuf, progress: Arc<AtomicU32>, done: Arc<AtomicBool>) {
-    // Wait for log file to be created
-    let start = Instant::now();
-    while !log_path.exists() && start.elapsed() < Duration::from_secs(30) {
-        if done.load(Ordering::SeqCst) {
-            return;
-        }
-        thread::sleep(Duration::from_millis(100));
-    }
+/// Detects and silently uninstalls any old MSI-based Zayit installation.
+fn uninstall_old_msi(progress: &Arc<AtomicU32>) {
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
 
-    if !log_path.exists() {
-        return;
-    }
+    let search_paths: &[(&RegKey, &str)] = &[
+        (&hkcu, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (&hklm, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (&hklm, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+    ];
 
-    // Open log file for continuous reading (tail -f style)
-    let mut file = match std::fs::File::open(log_path) {
-        Ok(f) => f,
-        Err(_) => return,
-    };
+    for (root, path) in search_paths {
+        if let Ok(uninstall_key) = root.open_subkey(path) {
+            for key_name in uninstall_key.enum_keys().filter_map(|k| k.ok()) {
+                if let Ok(subkey) = uninstall_key.open_subkey(&key_name) {
+                    let display_name: Result<String, _> = subkey.get_value("DisplayName");
+                    if let Ok(name) = display_name {
+                        if name != "Zayit" {
+                            continue;
+                        }
+                        // Verify this is an MSI installation (not NSIS) by checking UninstallString
+                        let is_msi = subkey
+                            .get_value::<String, _>("UninstallString")
+                            .map(|s| s.to_lowercase().contains("msiexec"))
+                            .unwrap_or(false);
 
-    let mut buffer = String::new();
-    let mut last_percentage = 0u32;
+                        if !is_msi {
+                            continue;
+                        }
 
-    // Continuously read new content from the log file
-    while !done.load(Ordering::SeqCst) {
-        // Read any new content
-        buffer.clear();
-        if file.read_to_string(&mut buffer).is_ok() && !buffer.is_empty() {
-            let content_lower = buffer.to_lowercase();
-
-            // Check for various installation phases and estimate progress
-            if content_lower.contains("generating script") {
-                last_percentage = last_percentage.max(10);
-            }
-            if content_lower.contains("action start") {
-                last_percentage = last_percentage.max(15);
-            }
-            if content_lower.contains("createfolders") {
-                last_percentage = last_percentage.max(25);
-            }
-            if content_lower.contains("installfiles") {
-                last_percentage = last_percentage.max(40);
-            }
-            if content_lower.contains("writeregistryvalues") {
-                last_percentage = last_percentage.max(55);
-            }
-            if content_lower.contains("registerproduct") {
-                last_percentage = last_percentage.max(70);
-            }
-            if content_lower.contains("publishproduct") {
-                last_percentage = last_percentage.max(80);
-            }
-            if content_lower.contains("installfinalize") {
-                last_percentage = last_percentage.max(90);
-            }
-            if content_lower.contains("installation completed successfully")
-               || content_lower.contains("installation operation completed") {
-                last_percentage = 100;
-            }
-
-            // Update progress atomically
-            let current = progress.load(Ordering::SeqCst);
-            if last_percentage > current {
-                progress.store(last_percentage, Ordering::SeqCst);
+                        progress.store(10, Ordering::SeqCst);
+                        // Silently uninstall the old MSI
+                        let _ = Command::new("msiexec")
+                            .args(["/x", &key_name, "/qn", "/norestart"])
+                            .status();
+                        progress.store(30, Ordering::SeqCst);
+                        return;
+                    }
+                }
             }
         }
-
-        // Small delay before next read
-        thread::sleep(Duration::from_millis(100));
     }
 }
 
@@ -434,66 +370,28 @@ fn update_splash_with_progress(hwnd: HWND, width: i32, height: i32, base_pixels:
     }
 }
 
-/// Returns true if the system UI language is Hebrew
-fn is_hebrew_system() -> bool {
-    unsafe {
-        let lang_id = GetUserDefaultUILanguage();
-        // Hebrew language ID is 0x040D (primary language) or check primary language bits
-        // Primary language is in the low 10 bits, Hebrew = 0x0D
-        (lang_id & 0x3FF) == 0x0D
-    }
-}
-
-fn get_install_path() -> PathBuf {
-    if let Some(local_app_data) = dirs::data_local_dir() {
-        local_app_data.join("Zayit").join("Zayit.exe")
-    } else {
-        PathBuf::from(r"C:\Users")
-            .join(std::env::var("USERNAME").unwrap_or_else(|_| "User".to_string()))
-            .join("AppData")
-            .join("Local")
-            .join("Zayit")
-            .join("Zayit.exe")
-    }
+fn get_install_path() -> std::path::PathBuf {
+    let local_app_data = std::env::var("LOCALAPPDATA")
+        .unwrap_or_else(|_| {
+            let user = std::env::var("USERNAME").unwrap_or_else(|_| "User".to_string());
+            format!(r"C:\Users\{}\AppData\Local", user)
+        });
+    std::path::PathBuf::from(local_app_data).join("Programs").join("zayit").join("zayit.exe")
 }
 
 fn launch_application() {
     let exe_path = get_install_path();
 
-    // Wait a bit for MSI to fully complete
-    thread::sleep(std::time::Duration::from_millis(500));
+    // Wait a bit for NSIS to fully complete file operations
+    thread::sleep(Duration::from_millis(500));
 
-    // Try a few times in case the file system needs to catch up
     for attempt in 0..5 {
         if exe_path.exists() {
             let _ = Command::new(&exe_path).spawn();
             return;
         }
         if attempt < 4 {
-            thread::sleep(std::time::Duration::from_millis(500));
-        }
-    }
-
-    // If still not found, show error message in appropriate language
-    use windows::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK, MB_RTLREADING, MB_RIGHT};
-    unsafe {
-        if is_hebrew_system() {
-            // Hebrew: "לא ניתן למצוא את האפליקציה לאחר ההתקנה."
-            // Title: "שגיאה"
-            MessageBoxW(
-                None,
-                w!("לא ניתן למצוא את האפליקציה לאחר ההתקנה."),
-                w!("שגיאה"),
-                MB_OK | MB_ICONERROR | MB_RTLREADING | MB_RIGHT,
-            );
-        } else {
-            // English (default)
-            MessageBoxW(
-                None,
-                w!("The application could not be found after installation."),
-                w!("Error"),
-                MB_OK | MB_ICONERROR,
-            );
+            thread::sleep(Duration::from_millis(500));
         }
     }
 }

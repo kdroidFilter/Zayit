@@ -92,12 +92,14 @@ jobs:
             arch: amd64
             build_task: ":SeforimApp:packageGraalvmNsis"
             graalvm: true
+            rust_target: x86_64-pc-windows-msvc
 
           # Windows ARM64 (JBR - no Liberica NIK)
           - os: windows-11-arm
             arch: arm64
             build_task: ":SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseNsis"
             graalvm: false
+            rust_target: aarch64-pc-windows-msvc
 
           # macOS Apple Silicon (ARM64)
           - os: macos-latest
@@ -132,7 +134,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-msvc
+          targets: ${{ matrix.rust_target }}
 
       - name: Build Windows installer (.exe)
         if: runner.os == 'Windows'
@@ -146,8 +148,8 @@ jobs:
           # Copy splash image
           Copy-Item "..\SeforimApp\src\jvmMain\assets\common\splash.png" "resources\splash.png"
 
-          # Find and copy NSIS installer
-          $nsisFile = Get-ChildItem "..\SeforimApp\build\compose\binaries\main\graalvm-nsis\zayit-*-nsis.exe" | Select-Object -First 1
+          # Find NSIS installer (GraalVM or Release path)
+          $nsisFile = Get-ChildItem "..\SeforimApp\build\compose\binaries\main\graalvm-nsis\zayit-*-nsis.exe","..\SeforimApp\build\compose\binaries\main-release\nsis\zayit-*-nsis.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $nsisFile) {
             Write-Error "NSIS installer not found"
             exit 1
@@ -157,13 +159,34 @@ jobs:
           Write-Host "Found NSIS: $nsisBaseName"
 
           # Build Rust installer
-          cargo build --release --target x86_64-pc-windows-msvc
+          cargo build --release --target ${{ matrix.rust_target }}
 
           # Rename exe to match NSIS name
           $exeName = "$nsisBaseName.exe"
-          Move-Item "target\x86_64-pc-windows-msvc\release\zayit-installer.exe" "target\x86_64-pc-windows-msvc\release\$exeName"
+          Move-Item "target\${{ matrix.rust_target }}\release\zayit-installer.exe" "target\${{ matrix.rust_target }}\release\$exeName"
           Write-Host "Built installer: $exeName"
 
-      - name: Build summary
-        run: echo "Build completed successfully for ${{ matrix.os }} (${{ matrix.arch }})"
-        shell: bash
+      # Upload Artifacts
+      - name: Upload Linux .deb
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v6
+        with:
+          name: linux-deb-${{ matrix.arch }}
+          path: SeforimApp/build/compose/binaries/main/graalvm-deb/*.deb
+          if-no-files-found: error
+
+      - name: Upload Windows .exe installer
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-exe-${{ matrix.arch }}
+          path: installer/target/${{ matrix.rust_target }}/release/*.exe
+          if-no-files-found: error
+
+      - name: Upload macOS .dmg
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v6
+        with:
+          name: macos-dmg-${{ matrix.arch }}
+          path: SeforimApp/build/compose/binaries/main/graalvm-dmg/*.dmg
+          if-no-files-found: error

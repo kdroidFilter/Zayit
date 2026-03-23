@@ -19,6 +19,8 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -617,6 +619,7 @@ class SearchHomeViewModel(
         val safety = 64
         var guard = 0
         while (currentId != null && guard++ < safety) {
+            currentCoroutineContext().ensureActive()
             val c = repository.getCategory(currentId) ?: break
             path += c.title
             currentId = c.parentId
@@ -663,6 +666,7 @@ class SearchHomeViewModel(
         val safety = 128
         var guard = 0
         while (current != null && guard++ < safety) {
+            currentCoroutineContext().ensureActive()
             tocTitles += current.text
             current = current.parentId?.let { pid -> runSuspendCatching { repository.getTocEntry(pid) }.getOrNull() }
         }

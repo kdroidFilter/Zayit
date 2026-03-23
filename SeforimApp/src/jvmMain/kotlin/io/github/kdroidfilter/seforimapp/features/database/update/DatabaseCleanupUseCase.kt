@@ -68,8 +68,9 @@ class DatabaseCleanupUseCase {
                         runCatching { file.delete() }
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                if (e is CancellationException) throw e
                 // Log error but don't fail the cleanup process
                 debugln { "Warning: Error during database cleanup: ${e.message}" }
             }

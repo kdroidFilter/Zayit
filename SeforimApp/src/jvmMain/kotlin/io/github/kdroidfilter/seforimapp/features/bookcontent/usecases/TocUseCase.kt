@@ -6,6 +6,8 @@ import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 
@@ -179,6 +181,7 @@ class TocUseCase(
 
         // Ensure children for each ancestor are loaded and mark as expanded
         for (e in ordered) {
+            currentCoroutineContext().ensureActive()
             if (e.hasChildren &&
                 !stateManager.state
                     .first()

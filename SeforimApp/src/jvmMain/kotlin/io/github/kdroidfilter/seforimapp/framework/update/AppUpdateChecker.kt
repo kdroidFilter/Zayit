@@ -51,8 +51,9 @@ object AppUpdateChecker {
                 } else {
                     UpdateCheckResult.UpToDate
                 }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
                 UpdateCheckResult.Error
             }
         }

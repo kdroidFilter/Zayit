@@ -15,7 +15,9 @@ import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
@@ -103,12 +105,13 @@ object SessionManager {
             }
 
             appGraph.desktopManager.restoreFromDesktopsState(enrichedState)
-        } finally {
+
             // Give Compose one recomposition cycle to process the restored tabs
             // and create ViewModels (whose initial state has isLoading=true).
             // Without this, the flag clears before ViewModels exist, causing
             // a brief Home page flash.
             withContext(NonCancellable) { delay(150) }
+        } finally {
             _isRestoringSession.value = false
         }
     }
@@ -195,6 +198,7 @@ object SessionManager {
     ): Map<String, Pair<String, TabType>> {
         val titles = mutableMapOf<String, Pair<String, TabType>>()
         for (dest in destinations) {
+            currentCoroutineContext().ensureActive()
             val tabId = dest.tabId
             when (dest) {
                 is TabsDestination.Search -> {

@@ -23,6 +23,8 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentarySummary
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.ConcurrentHashMap
@@ -174,7 +176,7 @@ class CommentariesUseCase(
      */
     suspend fun getAvailableCommentatorsForLines(lineIds: List<Long>): Map<String, Long> {
         if (lineIds.isEmpty()) return emptyMap()
-        return try {
+        return runSuspendCatching {
             val allGroups = lineIds.flatMap { getCommentatorGroups(it) }
             val map = LinkedHashMap<String, Long>()
             allGroups.forEach { group ->
@@ -185,10 +187,7 @@ class CommentariesUseCase(
                 }
             }
             map
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            emptyMap()
-        }
+        }.getOrElse { emptyMap() }
     }
 
     /**
@@ -196,7 +195,7 @@ class CommentariesUseCase(
      */
     suspend fun getCommentatorGroupsForLines(lineIds: List<Long>): List<CommentatorGroup> {
         if (lineIds.isEmpty()) return emptyList()
-        return try {
+        return runSuspendCatching {
             // Aggregate all commentator groups from all lines, deduplicated by book ID
             val seenBookIds = mutableSetOf<Long>()
             val allGroups = mutableListOf<CommentatorGroup>()
@@ -220,10 +219,7 @@ class CommentariesUseCase(
                 }
             }
             allGroups
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            emptyList()
-        }
+        }.getOrElse { emptyList() }
     }
 
     /**
@@ -231,7 +227,7 @@ class CommentariesUseCase(
      */
     suspend fun getAvailableLinksForLines(lineIds: List<Long>): Map<String, Long> {
         if (lineIds.isEmpty()) return emptyMap()
-        return try {
+        return runSuspendCatching {
             val map = LinkedHashMap<String, Long>()
             for (lineId in lineIds) {
                 val links = getAvailableLinks(lineId)
@@ -242,10 +238,7 @@ class CommentariesUseCase(
                 }
             }
             map
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            emptyMap()
-        }
+        }.getOrElse { emptyMap() }
     }
 
     /**
@@ -253,7 +246,7 @@ class CommentariesUseCase(
      */
     suspend fun getAvailableSourcesForLines(lineIds: List<Long>): Map<String, Long> {
         if (lineIds.isEmpty()) return emptyMap()
-        return try {
+        return runSuspendCatching {
             val map = LinkedHashMap<String, Long>()
             for (lineId in lineIds) {
                 val sources = getAvailableSources(lineId)
@@ -264,17 +257,14 @@ class CommentariesUseCase(
                 }
             }
             map
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            emptyMap()
-        }
+        }.getOrElse { emptyMap() }
     }
 
     /**
      * Récupère les commentateurs disponibles pour une ligne
      */
     suspend fun getAvailableCommentators(lineId: Long): Map<String, Long> {
-        return try {
+        return runSuspendCatching {
             val groups = getCommentatorGroups(lineId)
             if (groups.isEmpty()) return emptyMap()
 
@@ -287,26 +277,20 @@ class CommentariesUseCase(
                 }
             }
             map
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            emptyMap()
-        }
+        }.getOrElse { emptyMap() }
     }
 
     /**
      * Regroupe les commentateurs par catégorie (type) et triés par date de publication (plus ancien d'abord).
      */
     suspend fun getCommentatorGroups(lineId: Long): List<CommentatorGroup> {
-        return try {
+        return runSuspendCatching {
             val entries = loadCommentatorEntries(lineId)
             if (entries.isEmpty()) return emptyList()
 
             val categoryCache = mutableMapOf<Long, Category?>()
             groupCommentatorEntries(entries, categoryCache)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            emptyList()
-        }
+        }.getOrElse { emptyList() }
     }
 
     private suspend fun resolveGroupLabel(
@@ -324,6 +308,7 @@ class CommentariesUseCase(
 
         var currentId: Long? = book.categoryId
         while (currentId != null) {
+            currentCoroutineContext().ensureActive()
             val category = loadCategory(currentId) ?: break
             val title = category.title
 
@@ -582,7 +567,7 @@ class CommentariesUseCase(
      * Récupère les sources de liens disponibles pour une ligne
      */
     suspend fun getAvailableLinks(lineId: Long): Map<String, Long> =
-        try {
+        runSuspendCatching {
             val resolution = resolveBaseLineResolution(lineId)
             val defaultTargumId =
                 resolution.headingBookId?.let { bookId ->
@@ -609,13 +594,10 @@ class CommentariesUseCase(
                     .orEmpty()
 
             buildSourceMap(links, currentBookTitle)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            emptyMap()
-        }
+        }.getOrElse { emptyMap() }
 
     suspend fun getAvailableSources(lineId: Long): Map<String, Long> =
-        try {
+        runSuspendCatching {
             val baseIds = resolveBaseLineIds(lineId)
             val links =
                 repository
@@ -631,10 +613,7 @@ class CommentariesUseCase(
                     .orEmpty()
 
             buildSourceMap(links, currentBookTitle)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            emptyMap()
-        }
+        }.getOrElse { emptyMap() }
 
     suspend fun loadLineConnections(lineIds: List<Long>): Map<Long, LineConnectionsSnapshot> {
         if (lineIds.isEmpty()) return emptyMap()
@@ -902,8 +881,9 @@ class CommentariesUseCase(
             if (desired.isNotEmpty()) {
                 updateSelectedCommentatorsForLine(line.id, desired.toSet())
             }
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
         }
     }
 
@@ -939,9 +919,9 @@ class CommentariesUseCase(
             if (intersection.isNotEmpty()) {
                 updateSelectedLinkSources(line.id, intersection)
             }
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            // Ignorer les erreurs silencieusement
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
         }
     }
 
@@ -960,8 +940,9 @@ class CommentariesUseCase(
             if (intersection.isNotEmpty()) {
                 updateSelectedSources(line.id, intersection)
             }
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
         }
     }
 
@@ -995,8 +976,9 @@ class CommentariesUseCase(
             if (desired.isNotEmpty()) {
                 updateSelectedCommentatorsForLine(primaryLineId, desired.toSet())
             }
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
         }
     }
 
@@ -1021,8 +1003,9 @@ class CommentariesUseCase(
             if (intersection.isNotEmpty()) {
                 updateSelectedLinkSources(primaryLineId, intersection)
             }
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
         }
     }
 
@@ -1047,8 +1030,9 @@ class CommentariesUseCase(
             if (intersection.isNotEmpty()) {
                 updateSelectedSources(primaryLineId, intersection)
             }
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
         }
     }
 

@@ -5,6 +5,8 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 class GetBreadcrumbPiecesUseCase(
     private val repository: SeforimRepository,
@@ -64,6 +66,7 @@ class GetBreadcrumbPiecesUseCase(
         val path = mutableListOf<Category>()
         var current: Long? = categoryId
         while (current != null) {
+            currentCoroutineContext().ensureActive()
             val cat = repository.getCategory(current) ?: break
             path += cat
             current = cat.parentId

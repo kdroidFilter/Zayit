@@ -60,7 +60,7 @@ jobs:
 
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: '**/build/reports/tests/'
@@ -68,7 +68,7 @@ jobs:
 
       - name: Upload coverage reports
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-reports
           path: |
@@ -169,7 +169,7 @@ jobs:
       # Upload Artifacts
       - name: Upload Linux .deb
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: linux-deb-${{ matrix.arch }}
           path: SeforimApp/build/compose/binaries/main/graalvm-deb/*.deb
@@ -177,7 +177,7 @@ jobs:
 
       - name: Upload Windows .exe installer
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: windows-exe-${{ matrix.arch }}
           path: installer/target/${{ matrix.rust_target }}/release/*.exe
@@ -185,7 +185,7 @@ jobs:
 
       - name: Upload macOS .dmg
         if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: macos-dmg-${{ matrix.arch }}
           path: SeforimApp/build/compose/binaries/main/graalvm-dmg/*.dmg

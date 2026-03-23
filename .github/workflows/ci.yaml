@@ -84,7 +84,7 @@ jobs:
           # Linux x64 (DEB)
           - os: ubuntu-latest
             arch: amd64
-            build_task: ":SeforimApp:packageReleaseDeb"
+            build_task: ":SeforimApp:packageGraalvmDeb"
 
           # Windows x64
           - os: windows-latest
@@ -94,7 +94,7 @@ jobs:
           # macOS Apple Silicon (ARM64)
           - os: macos-latest
             arch: arm64
-            build_task: ":SeforimApp:packageReleaseDmg"
+            build_task: ":SeforimApp:packageGraalvmDmg"
 
     steps:
       - name: Checkout source (with submodules)
@@ -107,18 +107,9 @@ jobs:
         uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
 
       # Build
-      - name: Build on Linux
-        if: runner.os == 'Linux'
-        run: ./gradlew :SeforimApp:createReleaseDistributable ${{ matrix.build_task }} --no-daemon
-
-      - name: Build on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: .\gradlew.bat ${{ matrix.build_task }} --no-daemon
-
-      - name: Build on macOS
-        if: runner.os == 'macOS'
-        run: ./gradlew :SeforimApp:createReleaseDistributable ${{ matrix.build_task }} --no-daemon
+      - name: Build
+        run: ./gradlew ${{ matrix.build_task }} --no-daemon
+        shell: bash
 
       # Build Rust installer for Windows
       - name: Install Rust toolchain

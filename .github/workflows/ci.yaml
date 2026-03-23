@@ -102,7 +102,7 @@ jobs:
             rust_target: aarch64-pc-windows-msvc
 
           # macOS Apple Silicon (ARM64)
-          - os: macos-latest
+          - os: macos-26
             arch: arm64
             build_task: ":SeforimApp:packageGraalvmDmg"
             graalvm: true

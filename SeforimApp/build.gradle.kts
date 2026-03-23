@@ -308,11 +308,9 @@ nucleus.application {
             "jdk.incubator.vector",
         )
         targetFormats(
-            TargetFormat.Msi,
             TargetFormat.Deb,
             TargetFormat.Rpm,
             TargetFormat.Dmg,
-            TargetFormat.Pkg,
             TargetFormat.Zip,
             TargetFormat.Nsis,
         )

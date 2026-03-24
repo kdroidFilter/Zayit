@@ -1,38 +1,13 @@
 {
     "reflection": [
         {
-            "type": "io.github.kdroidfilter.seforimapp.MainKt",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "main",
-                    "parameterTypes": [
-                        "java.lang.String[]"
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "io.sentry.opentelemetry.OtelContextScopesStorage"
-        },
-        {
-            "type": "io.sentry.opentelemetry.OtelSpanFactory"
-        },
-        {
-            "type": "io.sentry.opentelemetry.agent.AgentMarker"
-        },
-        {
-            "type": "io.sentry.opentelemetry.agent.AgentlessMarker"
-        },
-        {
-            "type": "io.sentry.opentelemetry.agent.AgentlessSpringMarker"
-        },
-        {
             "type": "org.apache.lucene.analysis.tokenattributes.CharTermAttributeImpl",
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -41,7 +16,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -50,7 +27,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -59,7 +38,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -68,7 +49,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -77,7 +60,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -86,7 +71,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -95,7 +82,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -104,7 +93,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -113,7 +104,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -122,7 +115,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -160,14 +155,22 @@
             "type": "org.apache.lucene.internal.hppc.IntObjectHashMap"
         },
         {
+            "type": "org.apache.lucene.internal.hppc.LongArrayList"
+        },
+        {
             "type": "org.apache.lucene.internal.hppc.LongObjectHashMap"
+        },
+        {
+            "type": "org.apache.lucene.search.AutomatonQuery"
         },
         {
             "type": "org.apache.lucene.search.BoostAttributeImpl",
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -185,9 +188,23 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
+        },
+        {
+            "type": "org.apache.lucene.search.MultiTermQuery"
+        },
+        {
+            "type": "org.apache.lucene.search.PointInSetQuery"
+        },
+        {
+            "type": "org.apache.lucene.search.Query"
+        },
+        {
+            "type": "org.apache.lucene.search.TermStatistics[]"
         },
         {
             "type": "org.apache.lucene.store.FilterIndexInput"
@@ -225,6 +242,12 @@
             "type": "org.apache.lucene.util.IntArrayDocIdSet"
         },
         {
+            "type": "org.apache.lucene.util.RoaringDocIdSet"
+        },
+        {
+            "type": "org.apache.lucene.util.RoaringDocIdSet$ShortArrayDocIdSet"
+        },
+        {
             "type": "org.apache.lucene.util.automaton.CompiledAutomaton"
         },
         {
@@ -232,138 +255,6 @@
         },
         {
             "type": "org.apache.lucene.util.automaton.Transition"
-        },
-        {
-            "type": "org.sqlite.BusyHandler",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "callback",
-                    "parameterTypes": [
-                        "int"
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.Collation",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "xCompare",
-                    "parameterTypes": [
-                        "java.lang.String",
-                        "java.lang.String"
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.Function",
-            "jniAccessible": true,
-            "fields": [
-                {
-                    "name": "args"
-                },
-                {
-                    "name": "context"
-                },
-                {
-                    "name": "value"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "xFunc",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.Function$Aggregate",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "clone",
-                    "parameterTypes": []
-                },
-                {
-                    "name": "xFinal",
-                    "parameterTypes": []
-                },
-                {
-                    "name": "xStep",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.Function$Window",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "xInverse",
-                    "parameterTypes": []
-                },
-                {
-                    "name": "xValue",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.ProgressHandler",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "progress",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.core.DB",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "onCommit",
-                    "parameterTypes": [
-                        "boolean"
-                    ]
-                },
-                {
-                    "name": "onUpdate",
-                    "parameterTypes": [
-                        "int",
-                        "java.lang.String",
-                        "java.lang.String",
-                        "long"
-                    ]
-                },
-                {
-                    "name": "throwex",
-                    "parameterTypes": []
-                },
-                {
-                    "name": "throwex",
-                    "parameterTypes": [
-                        "int"
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.core.DB$ProgressObserver",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "progress",
-                    "parameterTypes": [
-                        "int",
-                        "int"
-                    ]
-                }
-            ]
         },
         {
             "type": "org.sqlite.core.NativeDB",
@@ -399,38 +290,27 @@
                     ]
                 }
             ]
-        },
-        {
-            "type": "org.apache.lucene.search.TermStatistics[]"
-        },
-        {
-            "type": "org.apache.lucene.search.PointInSetQuery"
-        },
-        {
-            "type": "org.apache.lucene.search.Query"
-        },
-        {
-            "type": "org.apache.lucene.internal.hppc.LongArrayList"
-        },
-        {
-            "type": "org.apache.lucene.util.RoaringDocIdSet"
-        },
-        {
-            "type": "org.apache.lucene.util.RoaringDocIdSet$ShortArrayDocIdSet"
         }
     ],
-    "resources": [
-        {
-            "glob": "org/apache/lucene/analysis/*.txt"
-        },
-        {
-            "glob": "org/apache/lucene/analysis/standard/*.txt"
-        },
-        {
-            "glob": "org/sqlite/native/Windows/x86_64/sqlitejdbc.dll"
-        },
-        {
-            "glob": "sentry-debug-meta.properties"
-        }
-    ]
+    "foreign": {
+        "downcalls": [
+            {
+                "returnType": "int",
+                "parameterTypes": [
+                    "long",
+                    "long",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "int",
+                "parameterTypes": [
+                    "long",
+                    "long",
+                    "long",
+                    "int"
+                ]
+            }
+        ]
+    }
 }

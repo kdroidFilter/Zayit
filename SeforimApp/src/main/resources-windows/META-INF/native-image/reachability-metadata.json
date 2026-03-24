@@ -13,49 +13,6 @@
             ]
         },
         {
-            "type": "io.ktor.client.HttpClient"
-        },
-        {
-            "type": "io.ktor.client.call.HttpClientCall"
-        },
-        {
-            "type": "io.ktor.client.engine.HttpClientEngineBase"
-        },
-        {
-            "type": "io.ktor.client.engine.cio.Endpoint"
-        },
-        {
-            "type": "io.ktor.network.selector.InterestSuspensionsMap",
-            "allDeclaredFields": true
-        },
-        {
-            "type": "io.ktor.network.selector.LockFreeMPSCQueue"
-        },
-        {
-            "type": "io.ktor.network.selector.LockFreeMPSCQueueCore"
-        },
-        {
-            "type": "io.ktor.network.selector.SelectInterest[]"
-        },
-        {
-            "type": "io.ktor.network.selector.SelectableBase"
-        },
-        {
-            "type": "io.ktor.network.sockets.SocketBase"
-        },
-        {
-            "type": "io.ktor.serialization.kotlinx.json.KotlinxSerializationJsonExtensionProvider"
-        },
-        {
-            "type": "io.ktor.util.collections.CopyOnWriteHashMap"
-        },
-        {
-            "type": "io.ktor.utils.io.ByteChannel"
-        },
-        {
-            "type": "io.ktor.utils.io.pool.DefaultPool"
-        },
-        {
             "type": "io.sentry.opentelemetry.OtelContextScopesStorage"
         },
         {
@@ -305,9 +262,6 @@
         },
         {
             "type": "org.apache.lucene.util.automaton.Transition"
-        },
-        {
-            "type": "org.slf4j.simple.SimpleServiceProvider"
         },
         {
             "type": "org.sqlite.BusyHandler",
@@ -584,9 +538,6 @@
     ],
     "resources": [
         {
-            "glob": "META-INF/MANIFEST.MF"
-        },
-        {
             "glob": "META-INF/maven/org.xerial/sqlite-jdbc/pom.properties"
         },
         {
@@ -606,9 +557,6 @@
         },
         {
             "glob": "simplelogger.properties"
-        },
-        {
-            "bundle": "sun.util.logging.resources.logging"
         }
     ]
 }

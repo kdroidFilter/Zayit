@@ -1,86 +1,6 @@
 {
     "reflection": [
         {
-            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$About",
-            "fields": [
-                {
-                    "name": "INSTANCE"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "serializer",
-                    "parameterTypes": [
-                        
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$Conditions",
-            "fields": [
-                {
-                    "name": "INSTANCE"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "serializer",
-                    "parameterTypes": [
-                        
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$Fonts",
-            "fields": [
-                {
-                    "name": "INSTANCE"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "serializer",
-                    "parameterTypes": [
-                        
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$General",
-            "fields": [
-                {
-                    "name": "INSTANCE"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "serializer",
-                    "parameterTypes": [
-                        
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$Profile",
-            "fields": [
-                {
-                    "name": "INSTANCE"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "serializer",
-                    "parameterTypes": [
-                        
-                    ]
-                }
-            ]
-        },
-        {
             "type": "io.sentry.opentelemetry.OtelContextScopesStorage"
         },
         {
@@ -96,16 +16,11 @@
             "type": "io.sentry.opentelemetry.agent.AgentlessSpringMarker"
         },
         {
-            "type": "io.sentry.spotlight.SpotlightIntegration"
-        },
-        {
             "type": "org.apache.lucene.analysis.tokenattributes.CharTermAttributeImpl",
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -114,9 +29,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -125,9 +38,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -136,9 +47,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -147,9 +56,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -158,9 +65,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -169,9 +74,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -180,9 +83,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -191,42 +92,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "org.apache.lucene.codecs.lucene103.Lucene103Codec",
-            "methods": [
-                {
-                    "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat",
-            "methods": [
-                {
-                    "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat",
-            "methods": [
-                {
-                    "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -235,9 +101,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -246,9 +110,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -299,9 +161,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -319,9 +179,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -333,15 +191,6 @@
         },
         {
             "type": "org.apache.lucene.search.Query"
-        },
-        {
-            "type": "org.apache.lucene.search.SortField$Provider"
-        },
-        {
-            "type": "org.apache.lucene.search.SortedNumericSortField$Provider"
-        },
-        {
-            "type": "org.apache.lucene.search.SortedSetSortField$Provider"
         },
         {
             "type": "org.apache.lucene.search.TermStatistics[]"
@@ -438,9 +287,7 @@
             "methods": [
                 {
                     "name": "xFunc",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -450,21 +297,15 @@
             "methods": [
                 {
                     "name": "clone",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "xFinal",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "xStep",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -474,20 +315,13 @@
             "methods": [
                 {
                     "name": "xInverse",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "xValue",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
-        },
-        {
-            "type": "org.sqlite.JDBC"
         },
         {
             "type": "org.sqlite.ProgressHandler",
@@ -495,9 +329,7 @@
             "methods": [
                 {
                     "name": "progress",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -522,9 +354,7 @@
                 },
                 {
                     "name": "throwex",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 },
                 {
                     "name": "throwex",
@@ -581,28 +411,9 @@
                     ]
                 }
             ]
-        },
-        {
-            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$Display",
-            "fields": [
-                {
-                    "name": "INSTANCE"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "serializer",
-                    "parameterTypes": [
-                        
-                    ]
-                }
-            ]
         }
     ],
     "resources": [
-        {
-            "glob": "META-INF/maven/org.xerial/sqlite-jdbc/pom.properties"
-        },
         {
             "glob": "org/apache/lucene/analysis/*.txt"
         },
@@ -610,16 +421,10 @@
             "glob": "org/apache/lucene/analysis/standard/*.txt"
         },
         {
-            "glob": "hallucination_blacklist.tsv"
-        },
-        {
             "glob": "org/sqlite/native/Linux/x86_64/libsqlitejdbc.so"
         },
         {
             "glob": "sentry-debug-meta.properties"
-        },
-        {
-            "glob": "simplelogger.properties"
         }
     ]
 }

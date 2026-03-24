@@ -28,9 +28,6 @@
             "type": "io.sentry.opentelemetry.agent.AgentlessSpringMarker"
         },
         {
-            "type": "io.sentry.spotlight.SpotlightIntegration"
-        },
-        {
             "type": "org.apache.lucene.analysis.tokenattributes.CharTermAttributeImpl",
             "methods": [
                 {
@@ -104,33 +101,6 @@
         },
         {
             "type": "org.apache.lucene.analysis.tokenattributes.TypeAttributeImpl",
-            "methods": [
-                {
-                    "name": "<init>",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "org.apache.lucene.codecs.lucene103.Lucene103Codec",
-            "methods": [
-                {
-                    "name": "<init>",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat",
-            "methods": [
-                {
-                    "name": "<init>",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat",
             "methods": [
                 {
                     "name": "<init>",
@@ -342,9 +312,6 @@
             ]
         },
         {
-            "type": "org.sqlite.JDBC"
-        },
-        {
             "type": "org.sqlite.ProgressHandler",
             "jniAccessible": true,
             "methods": [
@@ -434,76 +401,6 @@
             ]
         },
         {
-            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$About",
-            "fields": [
-                {
-                    "name": "INSTANCE"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "serializer",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$Conditions",
-            "fields": [
-                {
-                    "name": "INSTANCE"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "serializer",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$Fonts",
-            "fields": [
-                {
-                    "name": "INSTANCE"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "serializer",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$General",
-            "fields": [
-                {
-                    "name": "INSTANCE"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "serializer",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$Profile",
-            "fields": [
-                {
-                    "name": "INSTANCE"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "serializer",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
             "type": "org.apache.lucene.search.TermStatistics[]"
         },
         {
@@ -520,26 +417,9 @@
         },
         {
             "type": "org.apache.lucene.util.RoaringDocIdSet$ShortArrayDocIdSet"
-        },
-        {
-            "type": "io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination$Display",
-            "fields": [
-                {
-                    "name": "INSTANCE"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "serializer",
-                    "parameterTypes": []
-                }
-            ]
         }
     ],
     "resources": [
-        {
-            "glob": "META-INF/maven/org.xerial/sqlite-jdbc/pom.properties"
-        },
         {
             "glob": "org/apache/lucene/analysis/*.txt"
         },
@@ -547,16 +427,10 @@
             "glob": "org/apache/lucene/analysis/standard/*.txt"
         },
         {
-            "glob": "hallucination_blacklist.tsv"
-        },
-        {
             "glob": "org/sqlite/native/Windows/x86_64/sqlitejdbc.dll"
         },
         {
             "glob": "sentry-debug-meta.properties"
-        },
-        {
-            "glob": "simplelogger.properties"
         }
     ]
 }

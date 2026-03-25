@@ -255,41 +255,6 @@
         },
         {
             "type": "org.apache.lucene.util.automaton.Transition"
-        },
-        {
-            "type": "org.sqlite.core.NativeDB",
-            "jniAccessible": true,
-            "fields": [
-                {
-                    "name": "busyHandler"
-                },
-                {
-                    "name": "commitListener"
-                },
-                {
-                    "name": "pointer"
-                },
-                {
-                    "name": "progressHandler"
-                },
-                {
-                    "name": "updateListener"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "stringToUtf8ByteArray",
-                    "parameterTypes": [
-                        "java.lang.String"
-                    ]
-                },
-                {
-                    "name": "throwex",
-                    "parameterTypes": [
-                        "java.lang.String"
-                    ]
-                }
-            ]
         }
     ],
     "foreign": {

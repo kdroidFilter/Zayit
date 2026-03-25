@@ -1,26 +1,13 @@
 {
     "reflection": [
         {
-            "type": "io.sentry.opentelemetry.OtelContextScopesStorage"
-        },
-        {
-            "type": "io.sentry.opentelemetry.OtelSpanFactory"
-        },
-        {
-            "type": "io.sentry.opentelemetry.agent.AgentMarker"
-        },
-        {
-            "type": "io.sentry.opentelemetry.agent.AgentlessMarker"
-        },
-        {
-            "type": "io.sentry.opentelemetry.agent.AgentlessSpringMarker"
-        },
-        {
             "type": "org.apache.lucene.analysis.tokenattributes.CharTermAttributeImpl",
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -29,7 +16,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -38,7 +27,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -47,7 +38,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -56,7 +49,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -65,7 +60,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -74,7 +71,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -83,7 +82,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -92,7 +93,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -101,7 +104,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -110,7 +115,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -161,7 +168,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -179,7 +188,9 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": []
+                    "parameterTypes": [
+                        
+                    ]
                 }
             ]
         },
@@ -244,187 +255,27 @@
         },
         {
             "type": "org.apache.lucene.util.automaton.Transition"
-        },
-        {
-            "type": "org.sqlite.BusyHandler",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "callback",
-                    "parameterTypes": [
-                        "int"
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.Collation",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "xCompare",
-                    "parameterTypes": [
-                        "java.lang.String",
-                        "java.lang.String"
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.Function",
-            "jniAccessible": true,
-            "fields": [
-                {
-                    "name": "args"
-                },
-                {
-                    "name": "context"
-                },
-                {
-                    "name": "value"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "xFunc",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.Function$Aggregate",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "clone",
-                    "parameterTypes": []
-                },
-                {
-                    "name": "xFinal",
-                    "parameterTypes": []
-                },
-                {
-                    "name": "xStep",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.Function$Window",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "xInverse",
-                    "parameterTypes": []
-                },
-                {
-                    "name": "xValue",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.ProgressHandler",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "progress",
-                    "parameterTypes": []
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.core.DB",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "onCommit",
-                    "parameterTypes": [
-                        "boolean"
-                    ]
-                },
-                {
-                    "name": "onUpdate",
-                    "parameterTypes": [
-                        "int",
-                        "java.lang.String",
-                        "java.lang.String",
-                        "long"
-                    ]
-                },
-                {
-                    "name": "throwex",
-                    "parameterTypes": []
-                },
-                {
-                    "name": "throwex",
-                    "parameterTypes": [
-                        "int"
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.core.DB$ProgressObserver",
-            "jniAccessible": true,
-            "methods": [
-                {
-                    "name": "progress",
-                    "parameterTypes": [
-                        "int",
-                        "int"
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "org.sqlite.core.NativeDB",
-            "jniAccessible": true,
-            "fields": [
-                {
-                    "name": "busyHandler"
-                },
-                {
-                    "name": "commitListener"
-                },
-                {
-                    "name": "pointer"
-                },
-                {
-                    "name": "progressHandler"
-                },
-                {
-                    "name": "updateListener"
-                }
-            ],
-            "methods": [
-                {
-                    "name": "stringToUtf8ByteArray",
-                    "parameterTypes": [
-                        "java.lang.String"
-                    ]
-                },
-                {
-                    "name": "throwex",
-                    "parameterTypes": [
-                        "java.lang.String"
-                    ]
-                }
-            ]
         }
     ],
-    "resources": [
-        {
-            "glob": "org/apache/lucene/analysis/*.txt"
-        },
-        {
-            "glob": "org/apache/lucene/analysis/standard/*.txt"
-        },
-        {
-            "glob": "org/sqlite/native/Linux/x86_64/libsqlitejdbc.so"
-        },
-        {
-            "glob": "sentry-debug-meta.properties"
-        }
-    ]
+    "foreign": {
+        "downcalls": [
+            {
+                "returnType": "int",
+                "parameterTypes": [
+                    "long",
+                    "long",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "int",
+                "parameterTypes": [
+                    "long",
+                    "long",
+                    "long",
+                    "int"
+                ]
+            }
+        ]
+    }
 }

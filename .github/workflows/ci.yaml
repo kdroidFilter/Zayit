@@ -124,12 +124,6 @@ jobs:
           java-version: '25'
           distribution: 'liberica'
 
-      # Static metadata analysis (before full build)
-      - name: Analyze static metadata
-        if: matrix.graalvm
-        run: ./gradlew :SeforimApp:analyzeGraalvmStaticMetadata --no-daemon
-        shell: bash
-
       # Build
       - name: Build
         run: ./gradlew ${{ matrix.build_task }} --no-daemon

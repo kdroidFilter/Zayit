@@ -30,7 +30,7 @@ class CategoryDisplaySettingsStore(
             categoryId = categoryId,
             showDiacritics = if (enabled) 1L else 0L,
         )
-        _categoryChanges.tryEmit(categoryId)
+        _categoryChanges.emit(categoryId)
     }
 
     suspend fun toggleShowDiacritics(categoryId: Long): Boolean =

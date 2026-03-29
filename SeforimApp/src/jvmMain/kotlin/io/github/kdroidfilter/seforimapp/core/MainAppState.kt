@@ -39,6 +39,16 @@ class MainAppState {
         AppSettings.setAccentColor(accent)
     }
 
+    private val _useNativeMacTextSelection = MutableStateFlow(
+        AppSettings.getUseNativeMacTextSelection(defaultValue = isMacOs())
+    )
+    val useNativeMacTextSelection: StateFlow<Boolean> = _useNativeMacTextSelection.asStateFlow()
+
+    fun setUseNativeMacTextSelection(value: Boolean) {
+        _useNativeMacTextSelection.value = value
+        AppSettings.setUseNativeMacTextSelection(value)
+    }
+
     private val _showOnboarding = MutableStateFlow<Boolean?>(null)
     val showOnBoarding: StateFlow<Boolean?> = _showOnboarding.asStateFlow()
 
@@ -60,5 +70,9 @@ class MainAppState {
 
     fun markUpdateCheckDone() {
         _updateCheckDone.value = true
+    }
+
+    private fun isMacOs(): Boolean {
+        return System.getProperty("os.name")?.contains("mac", ignoreCase = true) == true
     }
 }

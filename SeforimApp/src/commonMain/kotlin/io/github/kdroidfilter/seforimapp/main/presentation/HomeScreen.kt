@@ -1,0 +1,3 @@
+@@
+-                    text = "Tab",
++                    text = "Tab ←",

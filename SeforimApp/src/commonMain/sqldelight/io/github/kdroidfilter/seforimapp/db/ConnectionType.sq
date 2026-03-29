@@ -1,0 +1,18 @@
+selectAllConnectionType:
+SELECT *
+FROM connection_type
+ORDER BY
+    CASE connection_type.id
+        WHEN 1 THEN 0
+        WHEN 2 THEN 1
+        WHEN 3 THEN 2
+        WHEN 4 THEN 3
+        WHEN 5 THEN 4
+        ELSE 5
+    END,
+    connection_type.id;
+
+selectConnectionTypeById:
+SELECT *
+FROM connection_type
+WHERE id = ?;

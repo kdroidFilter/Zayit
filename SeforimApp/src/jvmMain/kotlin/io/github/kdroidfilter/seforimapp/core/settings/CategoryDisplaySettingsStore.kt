@@ -35,15 +35,18 @@ class CategoryDisplaySettingsStore(
 
     suspend fun toggleShowDiacritics(categoryId: Long): Boolean =
         withContext(Dispatchers.IO) {
-            val current =
-                database.categoryDisplaySettingsQueries
-                    .selectShowDiacritics(categoryId)
-                    .executeAsOneOrNull()
-            val next = (current ?: 1L) == 0L
-            database.categoryDisplaySettingsQueries.upsertShowDiacritics(
-                categoryId = categoryId,
-                showDiacritics = if (next) 1L else 0L,
-            )
+            var next = false
+            database.transaction {
+                val current =
+                    database.categoryDisplaySettingsQueries
+                        .selectShowDiacritics(categoryId)
+                        .executeAsOneOrNull()
+                next = (current ?: 1L) == 0L
+                database.categoryDisplaySettingsQueries.upsertShowDiacritics(
+                    categoryId = categoryId,
+                    showDiacritics = if (next) 1L else 0L,
+                )
+            }
             _categoryChanges.tryEmit(categoryId)
             next
         }

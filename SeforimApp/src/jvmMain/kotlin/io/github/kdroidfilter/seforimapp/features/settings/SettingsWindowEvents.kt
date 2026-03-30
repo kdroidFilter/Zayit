@@ -6,7 +6,9 @@ import io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDe
 sealed class SettingsWindowEvents {
     data object OnOpen : SettingsWindowEvents()
 
-    data class OnOpenTo(val destination: SettingsDestination) : SettingsWindowEvents()
+    data class OnOpenTo(
+        val destination: SettingsDestination,
+    ) : SettingsWindowEvents()
 
     data object OnClose : SettingsWindowEvents()
 }

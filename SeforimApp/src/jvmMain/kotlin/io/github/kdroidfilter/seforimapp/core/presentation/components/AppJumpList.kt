@@ -14,6 +14,7 @@ import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import org.jetbrains.compose.resources.stringResource
@@ -38,7 +39,7 @@ fun AppJumpList(
     pendingDeepLink: StateFlow<String?>,
     onClearDeepLink: () -> Unit,
 ) {
-    if (!WindowsJumpListManager.isAvailable) return
+    if (!PlatformInfo.isWindows || !WindowsJumpListManager.isAvailable) return
 
     val desktops by desktopManager.desktops.collectAsState()
     val activeDesktopId by desktopManager.activeDesktopId.collectAsState()

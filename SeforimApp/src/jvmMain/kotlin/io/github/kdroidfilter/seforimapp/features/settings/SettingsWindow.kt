@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,6 +22,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils.buildThemeDefinition
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination
 import io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsNavHost
 import io.github.kdroidfilter.seforimapp.features.settings.ui.SettingsSidebar
 import org.jetbrains.compose.resources.painterResource
@@ -40,14 +42,21 @@ import seforimapp.seforimapp.generated.resources.settings
 import seforimapp.seforimapp.generated.resources.settings_close
 
 @Composable
-fun SettingsWindow(onClose: () -> Unit) {
+fun SettingsWindow(
+    onClose: () -> Unit,
+    initialDestination: SettingsDestination? = null,
+) {
     SettingsWindowView(
         onClose = onClose,
+        initialDestination = initialDestination,
     )
 }
 
 @Composable
-private fun SettingsWindowView(onClose: () -> Unit) {
+private fun SettingsWindowView(
+    onClose: () -> Unit,
+    initialDestination: SettingsDestination? = null,
+) {
     val themeDefinition = buildThemeDefinition()
 
     IntUiTheme(
@@ -89,6 +98,13 @@ private fun SettingsWindowView(onClose: () -> Unit) {
                 }
                 // IntelliJ-like layout: sidebar + content with header and bottom action bar
                 val navController = rememberNavController()
+                LaunchedEffect(initialDestination) {
+                    if (initialDestination != null) {
+                        navController.navigate(initialDestination) {
+                            popUpTo(SettingsDestination.General) { inclusive = false }
+                        }
+                    }
+                }
                 Column(
                     modifier =
                         Modifier

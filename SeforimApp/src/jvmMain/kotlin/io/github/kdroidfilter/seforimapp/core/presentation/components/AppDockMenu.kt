@@ -9,6 +9,7 @@ import com.kdroid.gematria.converter.toHebrewNumeral
 import io.github.kdroidfilter.nucleus.launcher.macos.DockMenuItem
 import io.github.kdroidfilter.nucleus.launcher.macos.DockMenuListener
 import io.github.kdroidfilter.nucleus.launcher.macos.MacOsDockMenu
+import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
@@ -18,6 +19,7 @@ import seforimapp.seforimapp.generated.resources.desktop_default_name
 import seforimapp.seforimapp.generated.resources.desktop_new
 import seforimapp.seforimapp.generated.resources.desktops_label
 import seforimapp.seforimapp.generated.resources.home
+import seforimapp.seforimapp.generated.resources.search_results_tab_title
 
 private const val DESKTOP_ID_BASE = 1000
 private const val TAB_ID_BASE = 2000
@@ -37,6 +39,7 @@ fun AppDockMenu(
     val desktopsLabel = stringResource(Res.string.desktops_label)
     val homeLabel = stringResource(Res.string.home)
     val newDesktopLabel = stringResource(Res.string.desktop_new)
+    val searchResultsFormat = stringResource(Res.string.search_results_tab_title, "%1\$s")
     val nextHebrewIndex = (desktops.size + 1).toHebrewNumeral(includeGeresh = false) + "׳"
     val nextDesktopName = stringResource(Res.string.desktop_default_name, nextHebrewIndex)
 
@@ -74,7 +77,13 @@ fun AppDockMenu(
         val tabs = tabsState.tabs
         val selectedIndex = tabsState.selectedTabIndex
         tabs.forEachIndexed { index, tab ->
-            val title = tab.title.ifEmpty { homeLabel }
+            val rawTitle = tab.title
+            val title =
+                when {
+                    rawTitle.isEmpty() -> homeLabel
+                    tab.tabType == TabType.SEARCH -> searchResultsFormat.replace("%1\$s", rawTitle)
+                    else -> rawTitle
+                }
             items.add(
                 DockMenuItem(
                     id = TAB_ID_BASE + index,

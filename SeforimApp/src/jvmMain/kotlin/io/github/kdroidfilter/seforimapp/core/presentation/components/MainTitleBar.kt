@@ -39,7 +39,7 @@ fun DecoratedWindowScope.MainTitleBar() {
             }
         BoxWithConstraints(modifier = Modifier.align(Alignment.Start)) {
             val windowWidth = maxWidth
-            val actionButtonCount = 4
+            val actionButtonCount = if (PlatformInfo.isMacOS) 2 else 4
             val iconWidth: Dp = 40.dp
             val desktopSwitcherWidth: Dp = DESKTOP_SWITCHER_WIDTH
             val actionButtonsWidth = iconWidth * actionButtonCount + desktopSwitcherWidth

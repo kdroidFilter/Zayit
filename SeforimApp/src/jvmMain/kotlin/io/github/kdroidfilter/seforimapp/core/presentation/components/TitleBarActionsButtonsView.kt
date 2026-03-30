@@ -122,34 +122,37 @@ fun TitleBarActionsButtonsView() {
         shortcutHint = findShortcutHint,
         enabled = findEnabled,
     )
-    TitleBarActionButton(
-        key =
-            when (theme) {
-                IntUiThemes.Light -> AllIconsKeys.MeetNewUi.LightTheme
-                IntUiThemes.Dark -> AllIconsKeys.MeetNewUi.DarkTheme
-                IntUiThemes.System -> AllIconsKeys.MeetNewUi.SystemTheme
-            },
-        contentDescription = iconDescription,
-        onClick = {
-            mainAppState.setTheme(
+    // On macOS, theme toggle and settings are handled by the native menu bar
+    if (!PlatformInfo.isMacOS) {
+        TitleBarActionButton(
+            key =
                 when (theme) {
-                    IntUiThemes.Light -> IntUiThemes.Dark
-                    IntUiThemes.Dark -> IntUiThemes.System
-                    IntUiThemes.System -> IntUiThemes.Light
+                    IntUiThemes.Light -> AllIconsKeys.MeetNewUi.LightTheme
+                    IntUiThemes.Dark -> AllIconsKeys.MeetNewUi.DarkTheme
+                    IntUiThemes.System -> AllIconsKeys.MeetNewUi.SystemTheme
                 },
-            )
-        },
-        tooltipText = iconToolTipText,
-    )
-    TitleBarActionButton(
-        key = AllIconsKeys.General.Settings,
-        contentDescription = stringResource(Res.string.settings),
-        onClick = {
-            settingsViewModel.onEvent(SettingsWindowEvents.OnOpen)
-        },
-        tooltipText = stringResource(Res.string.settings_tooltip),
-        shortcutHint = settingsShortcutHint,
-    )
+            contentDescription = iconDescription,
+            onClick = {
+                mainAppState.setTheme(
+                    when (theme) {
+                        IntUiThemes.Light -> IntUiThemes.Dark
+                        IntUiThemes.Dark -> IntUiThemes.System
+                        IntUiThemes.System -> IntUiThemes.Light
+                    },
+                )
+            },
+            tooltipText = iconToolTipText,
+        )
+        TitleBarActionButton(
+            key = AllIconsKeys.General.Settings,
+            contentDescription = stringResource(Res.string.settings),
+            onClick = {
+                settingsViewModel.onEvent(SettingsWindowEvents.OnOpen)
+            },
+            tooltipText = stringResource(Res.string.settings_tooltip),
+            shortcutHint = settingsShortcutHint,
+        )
+    }
 
     if (settingsState.isVisible) {
         SettingsWindow(

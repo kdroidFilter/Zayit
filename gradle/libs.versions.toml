@@ -80,6 +80,7 @@ nucleus-energy-manager = { module = "io.github.kdroidfilter:nucleus.energy-manag
 nucleus-system-color = { module = "io.github.kdroidfilter:nucleus.system-color", version.ref = "nucleus" }
 nucleus-native-http-ktor = { module = "io.github.kdroidfilter:nucleus.native-http-ktor", version.ref = "nucleus" }
 nucleus-launcher-macos = { module = "io.github.kdroidfilter:nucleus.launcher-macos", version.ref = "nucleus" }
+nucleus-launcher-windows = { module = "io.github.kdroidfilter:nucleus.launcher-windows", version.ref = "nucleus" }
 nucleus-menu-macos = { module = "io.github.kdroidfilter:nucleus.menu-macos", version.ref = "nucleus" }
 nucleus-sf-symbols = { module = "io.github.kdroidfilter:nucleus.sf-symbols", version.ref = "nucleus" }
 koalaplot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaplotCore" }

@@ -27,6 +27,7 @@ import io.github.kdroidfilter.nucleus.core.runtime.ExecutableRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.SingleInstanceManager
 import io.github.kdroidfilter.nucleus.energymanager.EnergyManager
 import io.github.kdroidfilter.nucleus.graalvm.GraalVmInitializer
+import io.github.kdroidfilter.nucleus.launcher.windows.WindowsJumpListManager
 import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
 import io.github.kdroidfilter.platformtools.getAppVersion
 import io.github.kdroidfilter.seforim.tabs.TabType
@@ -34,6 +35,7 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppDockMenu
+import io.github.kdroidfilter.seforimapp.core.presentation.components.AppJumpList
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppNativeMenuBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
@@ -58,6 +60,7 @@ import io.github.kdroidfilter.seforimapp.logger.isDevEnv
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.Sentry
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -78,8 +81,8 @@ private data class StartupState(
 )
 
 /**
- * Determines the initial routing state synchronously.
- * All operations are fast local I/O (read settings, check file existence, read version file).
+ * Determines the initial routing state synchronously. All operations are fast local I/O (read settings, check file existence, read version
+ * file).
  */
 private fun computeStartupState(): StartupState =
     try {
@@ -121,7 +124,7 @@ private fun initializeSentry() {
     infoln { "Sentry initialized for environment '$sentryEnvironment'." }
 }
 
-fun main() {
+fun main(args: Array<String>) {
     GraalVmInitializer.initialize()
     Locale.setDefault(Locale.Builder().setLanguage("he").build())
 
@@ -165,6 +168,12 @@ fun main() {
     }
 
     val appId = "io.github.kdroidfilter.seforimapp"
+
+    // Must be set before any window creation for jump lists to work on unpackaged Windows apps
+    if (PlatformInfo.isWindows) {
+        WindowsJumpListManager.setProcessAppId(appId)
+    }
+
     SingleInstanceManager.configuration =
         SingleInstanceManager.Configuration(
             lockIdentifier = appId,
@@ -180,13 +189,22 @@ fun main() {
             )
 
         var isWindowVisible by remember { mutableStateOf(true) }
+        val pendingDeepLink = remember { MutableStateFlow<String?>(null) }
 
         val isSingleInstance =
-            SingleInstanceManager.isSingleInstance(onRestoreRequest = {
-                isWindowVisible = true
-                windowState.isMinimized = false
-                Window.getWindows().first().toFront()
-            })
+            SingleInstanceManager.isSingleInstance(
+                onRestoreFileCreated =
+                    args.firstOrNull { it.startsWith("seforim://") }?.let { deepLink ->
+                        { toFile().writeText(deepLink) }
+                    },
+                onRestoreRequest = {
+                    isWindowVisible = true
+                    windowState.isMinimized = false
+                    Window.getWindows().first().toFront()
+                    val content = toFile().readText().trim()
+                    if (content.isNotEmpty()) pendingDeepLink.value = content
+                },
+            )
         if (!isSingleInstance) {
             exitApplication()
             return@application
@@ -250,21 +268,32 @@ fun main() {
                     val settingsWindowViewModel: SettingsWindowViewModel =
                         metroViewModel(viewModelStoreOwner = windowViewModelOwner)
 
-                    // Native macOS menu bar (no-op on other platforms)
-                    AppNativeMenuBar(
-                        mainAppState = mainAppState,
-                        tabsViewModel = appGraph.tabsViewModel,
-                        settingsWindowViewModel = settingsWindowViewModel,
-                        onQuit = {
-                            SessionManager.saveIfEnabled(appGraph)
-                            exitApplication()
-                        },
-                    )
+                    if (PlatformInfo.isMacOS) {
+                        // Native macOS menu bar (no-op on other platforms)
+                        AppNativeMenuBar(
+                            mainAppState = mainAppState,
+                            tabsViewModel = appGraph.tabsViewModel,
+                            settingsWindowViewModel = settingsWindowViewModel,
+                            onQuit = {
+                                SessionManager.saveIfEnabled(appGraph)
+                                exitApplication()
+                            },
+                        )
 
-                    // Native macOS dock menu with desktops and tabs
-                    AppDockMenu(
+                        // Native macOS dock menu with desktops and tabs
+
+                        AppDockMenu(
+                            desktopManager = appGraph.desktopManager,
+                            tabsViewModel = appGraph.tabsViewModel,
+                        )
+                    }
+
+                    // Windows taskbar jump list with tabs and desktops
+                    AppJumpList(
                         desktopManager = appGraph.desktopManager,
                         tabsViewModel = appGraph.tabsViewModel,
+                        pendingDeepLink = pendingDeepLink,
+                        onClearDeepLink = { pendingDeepLink.value = null },
                     )
 
                     // Build dynamic window title: "AppName - [DesktopName] - CurrentTab"
@@ -429,9 +458,11 @@ fun main() {
                                                 }.send()
                                             }
                                         }
+
                                         is AppUpdateChecker.UpdateCheckResult.UpToDate -> {
                                             mainAppState.markUpdateCheckDone()
                                         }
+
                                         is AppUpdateChecker.UpdateCheckResult.Error -> {
                                             mainAppState.markUpdateCheckDone()
                                         }
@@ -526,6 +557,7 @@ fun main() {
                                                             }
                                                         true
                                                     }
+
                                                     else -> false
                                                 }
                                             } else {

@@ -273,6 +273,12 @@
     native <methods>;
 }
 
+# Nucleus launcher-windows JNI (jump list)
+-keep class io.github.kdroidfilter.nucleus.launcher.windows.NativeWindowsJumpListBridge {
+    native <methods>;
+}
+-keep class io.github.kdroidfilter.nucleus.launcher.windows.** { *; }
+
 -keep class io.github.kdroidfilter.nucleus.energymanager.** { *; }
 
 # macOS

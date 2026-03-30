@@ -33,6 +33,7 @@ import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
+import io.github.kdroidfilter.seforimapp.core.presentation.components.AppDockMenu
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppNativeMenuBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
@@ -258,6 +259,12 @@ fun main() {
                             SessionManager.saveIfEnabled(appGraph)
                             exitApplication()
                         },
+                    )
+
+                    // Native macOS dock menu with desktops and tabs
+                    AppDockMenu(
+                        desktopManager = appGraph.desktopManager,
+                        tabsViewModel = appGraph.tabsViewModel,
                     )
 
                     // Build dynamic window title: "AppName - [DesktopName] - CurrentTab"

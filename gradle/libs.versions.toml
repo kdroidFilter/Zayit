@@ -8,7 +8,7 @@ hebrewNumerals = "0.2.6"
 jsoup = "1.22.1"
 jvmToolchain = "25"
 knotify = "0.4.3"
-nucleus = "1.7.1"
+nucleus = "1.8.5"
 koalaplotCore = "0.11.0"
 kotlin = "2.3.10"
 compose = "1.10.2"
@@ -79,6 +79,8 @@ nucleus-native-ssl = { module = "io.github.kdroidfilter:nucleus.native-ssl", ver
 nucleus-energy-manager = { module = "io.github.kdroidfilter:nucleus.energy-manager", version.ref = "nucleus"}
 nucleus-system-color = { module = "io.github.kdroidfilter:nucleus.system-color", version.ref = "nucleus" }
 nucleus-native-http-ktor = { module = "io.github.kdroidfilter:nucleus.native-http-ktor", version.ref = "nucleus" }
+nucleus-menu-macos = { module = "io.github.kdroidfilter:nucleus.menu-macos", version.ref = "nucleus" }
+nucleus-sf-symbols = { module = "io.github.kdroidfilter:nucleus.sf-symbols", version.ref = "nucleus" }
 koalaplot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaplotCore" }
 kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 kotlinx-serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "kotlinx-serialization" }

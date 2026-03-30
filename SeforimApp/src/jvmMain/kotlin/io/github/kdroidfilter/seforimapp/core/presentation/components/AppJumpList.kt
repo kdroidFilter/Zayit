@@ -5,6 +5,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import com.kdroid.gematria.converter.toHebrewNumeral
 import io.github.kdroidfilter.nucleus.launcher.windows.JumpListCategory
 import io.github.kdroidfilter.nucleus.launcher.windows.JumpListItem
@@ -13,7 +14,7 @@ import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import org.jetbrains.compose.resources.stringResource
 import seforimapp.seforimapp.generated.resources.Res
@@ -34,7 +35,8 @@ private const val SCHEME_NEW_DESKTOP = "seforim://new-desktop"
 fun AppJumpList(
     desktopManager: DesktopManager,
     tabsViewModel: TabsViewModel,
-    pendingDeepLink: MutableStateFlow<String?>,
+    pendingDeepLink: StateFlow<String?>,
+    onClearDeepLink: () -> Unit,
 ) {
     if (!WindowsJumpListManager.isAvailable) return
 
@@ -50,6 +52,7 @@ fun AppJumpList(
     val newDesktopLabel = stringResource(Res.string.desktop_new)
     val nextHebrewIndex = (desktops.size + 1).toHebrewNumeral(includeGeresh = false) + "׳"
     val nextDesktopName = stringResource(Res.string.desktop_default_name, nextHebrewIndex)
+    val currentClearDeepLink by rememberUpdatedState(onClearDeepLink)
 
     // Re-register handler when nextDesktopName changes so the captured name stays current
     LaunchedEffect(nextDesktopName) {
@@ -68,7 +71,7 @@ fun AppJumpList(
                 action == SCHEME_NEW_TAB -> tabsViewModel.onEvent(TabsEvents.OnAdd)
                 action == SCHEME_NEW_DESKTOP -> desktopManager.createDesktop(nextDesktopName)
             }
-            pendingDeepLink.value = null
+            currentClearDeepLink()
         }
     }
 
@@ -76,33 +79,38 @@ fun AppJumpList(
     LaunchedEffect(desktops, activeDesktopId, tabsState) {
         val tabs = tabsState.tabs
 
-        val tabItems = tabs.mapIndexed { index, tab ->
-            val rawTitle = tab.title
-            val title = when {
-                rawTitle.isEmpty() -> homeLabel
-                tab.tabType == TabType.SEARCH -> searchResultsFormat.replace("%1\$s", rawTitle)
-                else -> rawTitle
+        val tabItems =
+            tabs.mapIndexed { index, tab ->
+                val rawTitle = tab.title
+                val title =
+                    when {
+                        rawTitle.isEmpty() -> homeLabel
+                        tab.tabType == TabType.SEARCH -> searchResultsFormat.replace("%1\$s", rawTitle)
+                        else -> rawTitle
+                    }
+                JumpListItem(title = title, arguments = "$SCHEME_TAB$index", description = title)
             }
-            JumpListItem(title = title, arguments = "$SCHEME_TAB$index", description = title)
-        }
 
-        val desktopItems = desktops.mapIndexed { index, desktop ->
-            JumpListItem(
-                title = desktop.name,
-                arguments = "$SCHEME_DESKTOP$index",
-                description = desktop.name,
+        val desktopItems =
+            desktops.mapIndexed { index, desktop ->
+                JumpListItem(
+                    title = desktop.name,
+                    arguments = "$SCHEME_DESKTOP$index",
+                    description = desktop.name,
+                )
+            }
+
+        val categories =
+            buildList {
+                if (tabItems.isNotEmpty()) add(JumpListCategory(name = openTabsLabel, items = tabItems))
+                if (desktopItems.isNotEmpty()) add(JumpListCategory(name = desktopsLabel, items = desktopItems))
+            }
+
+        val tasks =
+            listOf(
+                JumpListItem(title = newTabLabel, arguments = SCHEME_NEW_TAB),
+                JumpListItem(title = newDesktopLabel, arguments = SCHEME_NEW_DESKTOP),
             )
-        }
-
-        val categories = buildList {
-            if (tabItems.isNotEmpty()) add(JumpListCategory(name = openTabsLabel, items = tabItems))
-            if (desktopItems.isNotEmpty()) add(JumpListCategory(name = desktopsLabel, items = desktopItems))
-        }
-
-        val tasks = listOf(
-            JumpListItem(title = newTabLabel, arguments = SCHEME_NEW_TAB),
-            JumpListItem(title = newDesktopLabel, arguments = SCHEME_NEW_DESKTOP),
-        )
 
         WindowsJumpListManager.setJumpList(categories = categories, tasks = tasks)
     }

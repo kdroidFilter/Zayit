@@ -25,10 +25,9 @@ import io.github.kdroidfilter.knotify.compose.builder.notification
 import io.github.kdroidfilter.nucleus.aot.runtime.AotRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.ExecutableRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.SingleInstanceManager
-import io.github.kdroidfilter.nucleus.launcher.windows.WindowsJumpListManager
-import kotlinx.coroutines.flow.MutableStateFlow
 import io.github.kdroidfilter.nucleus.energymanager.EnergyManager
 import io.github.kdroidfilter.nucleus.graalvm.GraalVmInitializer
+import io.github.kdroidfilter.nucleus.launcher.windows.WindowsJumpListManager
 import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
 import io.github.kdroidfilter.platformtools.getAppVersion
 import io.github.kdroidfilter.seforim.tabs.TabType
@@ -61,6 +60,7 @@ import io.github.kdroidfilter.seforimapp.logger.isDevEnv
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.Sentry
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -193,9 +193,10 @@ fun main(args: Array<String>) {
 
         val isSingleInstance =
             SingleInstanceManager.isSingleInstance(
-                onRestoreFileCreated = args.firstOrNull { it.startsWith("seforim://") }?.let { deepLink ->
-                    { toFile().writeText(deepLink) }
-                },
+                onRestoreFileCreated =
+                    args.firstOrNull { it.startsWith("seforim://") }?.let { deepLink ->
+                        { toFile().writeText(deepLink) }
+                    },
                 onRestoreRequest = {
                     isWindowVisible = true
                     windowState.isMinimized = false
@@ -292,6 +293,7 @@ fun main(args: Array<String>) {
                         desktopManager = appGraph.desktopManager,
                         tabsViewModel = appGraph.tabsViewModel,
                         pendingDeepLink = pendingDeepLink,
+                        onClearDeepLink = { pendingDeepLink.value = null },
                     )
 
                     // Build dynamic window title: "AppName - [DesktopName] - CurrentTab"
@@ -511,7 +513,7 @@ fun main(args: Array<String>) {
                                                             keyEvent.isMetaPressed &&
                                                                 keyEvent.isShiftPressed &&
                                                                 keyEvent.key == Key.H
-                                                            ) -> {
+                                                        ) -> {
                                                         val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
                                                         if (currentTabId != null) {
                                                             tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))

@@ -59,30 +59,31 @@ fun AppLinuxQuicklist(
 
     // Re-register listener when nextDesktopName changes so the captured name stays current
     LaunchedEffect(nextDesktopName) {
-        quicklist.listener = LinuxQuicklist.Listener { itemId ->
-            when {
-                itemId == NEW_TAB_ID -> {
-                    tabsViewModel.onEvent(TabsEvents.OnAdd)
-                }
-                itemId == NEW_DESKTOP_ID -> {
-                    desktopManager.createDesktop(nextDesktopName)
-                }
-                itemId in DESKTOP_ID_BASE until TAB_ID_BASE -> {
-                    val desktopIndex = itemId - DESKTOP_ID_BASE
-                    val desktop = desktopManager.desktops.value.getOrNull(desktopIndex)
-                    if (desktop != null) {
-                        desktopManager.switchTo(desktop.id)
+        quicklist.listener =
+            LinuxQuicklist.Listener { itemId ->
+                when {
+                    itemId == NEW_TAB_ID -> {
+                        tabsViewModel.onEvent(TabsEvents.OnAdd)
                     }
-                }
-                itemId >= TAB_ID_BASE -> {
-                    val tabIndex = itemId - TAB_ID_BASE
-                    val tabs = tabsViewModel.state.value.tabs
-                    if (tabIndex in tabs.indices) {
-                        tabsViewModel.onEvent(TabsEvents.OnSelect(tabIndex))
+                    itemId == NEW_DESKTOP_ID -> {
+                        desktopManager.createDesktop(nextDesktopName)
+                    }
+                    itemId in DESKTOP_ID_BASE until TAB_ID_BASE -> {
+                        val desktopIndex = itemId - DESKTOP_ID_BASE
+                        val desktop = desktopManager.desktops.value.getOrNull(desktopIndex)
+                        if (desktop != null) {
+                            desktopManager.switchTo(desktop.id)
+                        }
+                    }
+                    itemId >= TAB_ID_BASE -> {
+                        val tabIndex = itemId - TAB_ID_BASE
+                        val tabs = tabsViewModel.state.value.tabs
+                        if (tabIndex in tabs.indices) {
+                            tabsViewModel.onEvent(TabsEvents.OnSelect(tabIndex))
+                        }
                     }
                 }
             }
-        }
     }
 
     // Rebuild quicklist whenever desktops, active desktop, or tabs change
@@ -94,11 +95,12 @@ fun AppLinuxQuicklist(
         val selectedIndex = tabsState.selectedTabIndex
         tabs.forEachIndexed { index, tab ->
             val rawTitle = tab.title
-            val title = when {
-                rawTitle.isEmpty() -> homeLabel
-                tab.tabType == TabType.SEARCH -> searchResultsFormat.replace("%1\$s", rawTitle)
-                else -> rawTitle
-            }
+            val title =
+                when {
+                    rawTitle.isEmpty() -> homeLabel
+                    tab.tabType == TabType.SEARCH -> searchResultsFormat.replace("%1\$s", rawTitle)
+                    else -> rawTitle
+                }
             items.add(
                 DbusmenuItem(
                     id = TAB_ID_BASE + index,
@@ -114,19 +116,20 @@ fun AppLinuxQuicklist(
         // Desktop switcher submenu
         items.add(DbusmenuItem.separator(id = SEPARATOR_ACTIONS_DESKTOPS))
 
-        val desktopChildren = buildList {
-            desktops.forEachIndexed { index, desktop ->
-                add(
-                    DbusmenuItem(
-                        id = DESKTOP_ID_BASE + index,
-                        label = if (desktop.id == activeDesktopId) "✓ ${desktop.name}" else desktop.name,
-                        enabled = desktop.id != activeDesktopId,
-                    ),
-                )
+        val desktopChildren =
+            buildList {
+                desktops.forEachIndexed { index, desktop ->
+                    add(
+                        DbusmenuItem(
+                            id = DESKTOP_ID_BASE + index,
+                            label = if (desktop.id == activeDesktopId) "✓ ${desktop.name}" else desktop.name,
+                            enabled = desktop.id != activeDesktopId,
+                        ),
+                    )
+                }
+                add(DbusmenuItem.separator(id = SEPARATOR_DESKTOP_NEW))
+                add(DbusmenuItem(id = NEW_DESKTOP_ID, label = newDesktopLabel))
             }
-            add(DbusmenuItem.separator(id = SEPARATOR_DESKTOP_NEW))
-            add(DbusmenuItem(id = NEW_DESKTOP_ID, label = newDesktopLabel))
-        }
 
         items.add(
             DbusmenuItem(

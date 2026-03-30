@@ -147,6 +147,7 @@ kotlin {
             implementation(libs.nucleus.energy.manager)
             implementation(libs.nucleus.launcher.macos)
             implementation(libs.nucleus.launcher.windows)
+            implementation(libs.nucleus.launcher.linux)
             implementation(libs.nucleus.menu.macos)
             implementation(libs.nucleus.sf.symbols)
             implementation(compose.desktop.currentOs) {

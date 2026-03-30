@@ -19,12 +19,14 @@ import seforimapp.seforimapp.generated.resources.desktop_default_name
 import seforimapp.seforimapp.generated.resources.desktop_new
 import seforimapp.seforimapp.generated.resources.desktops_label
 import seforimapp.seforimapp.generated.resources.home
+import seforimapp.seforimapp.generated.resources.menu_new_tab
 import seforimapp.seforimapp.generated.resources.search_results_tab_title
 
-private const val DESKTOP_ID_BASE = 1000
-private const val TAB_ID_BASE = 2000
+private const val NEW_TAB_ID = 800
 private const val NEW_DESKTOP_ID = 900
 private const val SEPARATOR_ID = 999
+private const val DESKTOP_ID_BASE = 1000
+private const val TAB_ID_BASE = 2000
 
 @Composable
 fun AppDockMenu(
@@ -38,6 +40,7 @@ fun AppDockMenu(
     val tabsState by tabsViewModel.state.collectAsState()
     val desktopsLabel = stringResource(Res.string.desktops_label)
     val homeLabel = stringResource(Res.string.home)
+    val newTabLabel = stringResource(Res.string.menu_new_tab)
     val newDesktopLabel = stringResource(Res.string.desktop_new)
     val searchResultsFormat = stringResource(Res.string.search_results_tab_title, "%1\$s")
     val nextHebrewIndex = (desktops.size + 1).toHebrewNumeral(includeGeresh = false) + "׳"
@@ -48,6 +51,9 @@ fun AppDockMenu(
         MacOsDockMenu.listener =
             DockMenuListener { itemId ->
                 when {
+                    itemId == NEW_TAB_ID -> {
+                        tabsViewModel.onEvent(TabsEvents.OnAdd)
+                    }
                     itemId == NEW_DESKTOP_ID -> {
                         desktopManager.createDesktop(nextDesktopName)
                     }
@@ -92,8 +98,12 @@ fun AppDockMenu(
             )
         }
 
-        // Desktop switcher submenu
+        // New tab action
         items.add(DockMenuItem.separator(id = SEPARATOR_ID))
+        items.add(DockMenuItem(id = NEW_TAB_ID, title = newTabLabel))
+
+        // Desktop switcher submenu
+        items.add(DockMenuItem.separator(id = SEPARATOR_ID + 2))
 
         val desktopChildren =
             buildList {

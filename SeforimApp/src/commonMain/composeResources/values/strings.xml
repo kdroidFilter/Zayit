@@ -551,5 +551,7 @@
     <string name="menu_zoom_out">הקטן טקסט</string>
     <string name="menu_go_home">עבור לדף הבית</string>
     <string name="menu_preferences">העדפות…</string>
+    <string name="menu_window">חלון</string>
+    <string name="menu_help">עזרה</string>
 
 </resources>

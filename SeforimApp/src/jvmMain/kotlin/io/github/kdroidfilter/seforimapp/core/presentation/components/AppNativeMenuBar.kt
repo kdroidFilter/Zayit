@@ -73,6 +73,8 @@ fun AppNativeMenuBar(
     val accentGold = stringResource(Res.string.accent_color_gold)
     val persistSessionLabel = stringResource(Res.string.settings_persist_session)
     val closeTreeLabel = stringResource(Res.string.close_book_tree_on_new_book)
+    val menuWindow = stringResource(Res.string.menu_window)
+    val menuHelp = stringResource(Res.string.menu_help)
 
     NativeMenuBar {
         // Application menu (first Menu call = app menu with bold app name)
@@ -240,9 +242,9 @@ fun AppNativeMenuBar(
         }
 
         // Window menu (macOS auto-adds window list)
-        Menu("Window") {}
+        MenuWindow(menuWindow) {}
 
         // Help menu (macOS auto-adds search field)
-        Menu("Help") {}
+        MenuHelp(menuHelp) {}
     }
 }

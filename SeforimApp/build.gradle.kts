@@ -160,6 +160,7 @@ kotlin {
             implementation(libs.nucleus.graalvm.runtime)
             implementation(libs.nucleus.updater.runtime)
             implementation(libs.nucleus.energy.manager)
+            implementation(libs.nucleus.launcher.macos)
             implementation(libs.nucleus.menu.macos)
             implementation(libs.nucleus.sf.symbols)
             implementation(compose.desktop.currentOs) {

@@ -62,7 +62,7 @@ fun AppNativeMenuBar(
     val menuZoomIn = stringResource(Res.string.menu_zoom_in)
     val menuZoomOut = stringResource(Res.string.menu_zoom_out)
     val menuGoHome = stringResource(Res.string.menu_go_home)
-    val menuPreferences = stringResource(Res.string.menu_preferences)
+    val menuPreferences = stringResource(Res.string.settings)
     val menuAbout = stringResource(Res.string.settings_category_about)
     val menuConditions = stringResource(Res.string.settings_category_conditions)
     val accentColorLabel = stringResource(Res.string.settings_accent_color_label)

@@ -19,8 +19,9 @@ class SettingsWindowViewModel : ViewModel() {
 
     fun onEvent(events: SettingsWindowEvents) {
         when (events) {
-            is SettingsWindowEvents.OnOpen -> _state.value = _state.value.copy(isVisible = true)
-            is SettingsWindowEvents.OnClose -> _state.value = _state.value.copy(isVisible = false)
+            is SettingsWindowEvents.OnOpen -> _state.value = _state.value.copy(isVisible = true, initialDestination = null)
+            is SettingsWindowEvents.OnOpenTo -> _state.value = _state.value.copy(isVisible = true, initialDestination = events.destination)
+            is SettingsWindowEvents.OnClose -> _state.value = _state.value.copy(isVisible = false, initialDestination = null)
         }
     }
 }

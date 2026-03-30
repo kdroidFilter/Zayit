@@ -33,6 +33,7 @@ import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
+import io.github.kdroidfilter.seforimapp.core.presentation.components.AppNativeMenuBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
@@ -247,6 +248,17 @@ fun main() {
                     val windowViewModelOwner = rememberWindowViewModelStoreOwner()
                     val settingsWindowViewModel: SettingsWindowViewModel =
                         metroViewModel(viewModelStoreOwner = windowViewModelOwner)
+
+                    // Native macOS menu bar (no-op on other platforms)
+                    AppNativeMenuBar(
+                        mainAppState = mainAppState,
+                        tabsViewModel = appGraph.tabsViewModel,
+                        settingsWindowViewModel = settingsWindowViewModel,
+                        onQuit = {
+                            SessionManager.saveIfEnabled(appGraph)
+                            exitApplication()
+                        },
+                    )
 
                     // Build dynamic window title: "AppName - [DesktopName] - CurrentTab"
                     val tabsVm = appGraph.tabsViewModel

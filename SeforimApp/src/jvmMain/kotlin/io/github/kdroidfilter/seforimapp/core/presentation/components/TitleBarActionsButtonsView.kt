@@ -152,6 +152,9 @@ fun TitleBarActionsButtonsView() {
     )
 
     if (settingsState.isVisible) {
-        SettingsWindow(onClose = { settingsViewModel.onEvent(SettingsWindowEvents.OnClose) })
+        SettingsWindow(
+            onClose = { settingsViewModel.onEvent(SettingsWindowEvents.OnClose) },
+            initialDestination = settingsState.initialDestination,
+        )
     }
 }

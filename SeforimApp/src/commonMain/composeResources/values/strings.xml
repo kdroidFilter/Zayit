@@ -534,5 +534,20 @@
     <string name="no_alt_toc_available">אין מבנים חלופיים זמינים</string>
     <string name="select_structure_for_toc">בחרו מבנה חלופי</string>
 
+    <!-- Native macOS Menu Bar -->
+    <string name="menu_file">קובץ</string>
+    <string name="menu_new_tab">לשונית חדשה</string>
+    <string name="menu_close_tab">סגור לשונית</string>
+    <string name="menu_quit">יציאה</string>
+    <string name="menu_edit">עריכה</string>
+    <string name="menu_find_in_page">חפש בעמוד</string>
+    <string name="menu_view">תצוגה</string>
+    <string name="menu_theme">ערכת נושא</string>
+    <string name="menu_theme_style">סגנון</string>
+    <string name="menu_appearance">מראה</string>
+    <string name="menu_zoom_in">הגדל טקסט</string>
+    <string name="menu_zoom_out">הקטן טקסט</string>
+    <string name="menu_go_home">עבור לדף הבית</string>
+    <string name="menu_preferences">העדפות…</string>
 
 </resources>

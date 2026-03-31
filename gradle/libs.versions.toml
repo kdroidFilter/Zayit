@@ -8,7 +8,7 @@ hebrewNumerals = "0.2.6"
 jsoup = "1.22.1"
 jvmToolchain = "25"
 knotify = "0.4.3"
-nucleus = "1.8.7"
+nucleus = "1.8.8"
 koalaplotCore = "0.11.0"
 kotlin = "2.3.10"
 compose = "1.10.2"
@@ -81,6 +81,7 @@ nucleus-system-color = { module = "io.github.kdroidfilter:nucleus.system-color",
 nucleus-native-http-ktor = { module = "io.github.kdroidfilter:nucleus.native-http-ktor", version.ref = "nucleus" }
 nucleus-launcher-macos = { module = "io.github.kdroidfilter:nucleus.launcher-macos", version.ref = "nucleus" }
 nucleus-launcher-windows = { module = "io.github.kdroidfilter:nucleus.launcher-windows", version.ref = "nucleus" }
+nucleus-launcher-linux = { module = "io.github.kdroidfilter:nucleus.launcher-linux", version.ref = "nucleus" }
 nucleus-menu-macos = { module = "io.github.kdroidfilter:nucleus.menu-macos", version.ref = "nucleus" }
 nucleus-sf-symbols = { module = "io.github.kdroidfilter:nucleus.sf-symbols", version.ref = "nucleus" }
 koalaplot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaplotCore" }

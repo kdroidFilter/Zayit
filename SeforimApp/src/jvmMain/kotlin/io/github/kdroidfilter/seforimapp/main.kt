@@ -36,6 +36,7 @@ import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppDockMenu
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppJumpList
+import io.github.kdroidfilter.seforimapp.core.presentation.components.AppLinuxQuicklist
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppNativeMenuBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
@@ -294,6 +295,12 @@ fun main(args: Array<String>) {
                         tabsViewModel = appGraph.tabsViewModel,
                         pendingDeepLink = pendingDeepLink,
                         onClearDeepLink = { pendingDeepLink.value = null },
+                    )
+
+                    // Linux taskbar quicklist with tabs and desktops
+                    AppLinuxQuicklist(
+                        desktopManager = appGraph.desktopManager,
+                        tabsViewModel = appGraph.tabsViewModel,
                     )
 
                     // Build dynamic window title: "AppName - [DesktopName] - CurrentTab"

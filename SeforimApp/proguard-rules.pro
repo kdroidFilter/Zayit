@@ -279,6 +279,9 @@
 }
 -keep class io.github.kdroidfilter.nucleus.launcher.windows.** { *; }
 
+# Nucleus launcher-linux D-Bus (quicklist)
+-keep class io.github.kdroidfilter.nucleus.launcher.linux.** { *; }
+
 -keep class io.github.kdroidfilter.nucleus.energymanager.** { *; }
 
 # macOS

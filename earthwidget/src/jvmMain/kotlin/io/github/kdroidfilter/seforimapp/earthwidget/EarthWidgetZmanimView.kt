@@ -516,6 +516,7 @@ fun EarthWidgetZmanimView(
                     Modifier
                         .align(Alignment.BottomStart)
                         .padding(start = 8.dp, bottom = 8.dp),
+                legendColorRgb = kiddushLevanaColorRgb,
             )
         }
         if (earthRotationOffset != 0f || isDateTimeModified) {
@@ -797,12 +798,16 @@ private fun ResetDateTimeButton(
 }
 
 @Composable
-private fun KiddushLevanaLegend(modifier: Modifier = Modifier) {
+private fun KiddushLevanaLegend(
+    modifier: Modifier = Modifier,
+    legendColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
+) {
     IntUiTheme(isDark = true) {
         val shape = RoundedCornerShape(50)
         val background = JewelTheme.globalColors.panelBackground.copy(alpha = 0.86f)
         val borderColor = JewelTheme.globalColors.borders.disabled
         val textColor = JewelTheme.globalColors.text.normal
+        val legendColor = Color(0xFF000000.toLong() + legendColorRgb)
 
         Row(
             modifier =
@@ -818,7 +823,7 @@ private fun KiddushLevanaLegend(modifier: Modifier = Modifier) {
                 modifier =
                     Modifier
                         .size(10.dp)
-                        .background(KIDDUSH_LEVANA_LEGEND_COLOR, CircleShape)
+                        .background(legendColor, CircleShape)
                         .border(1.dp, borderColor, CircleShape),
             )
             Text(

@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,6 +64,7 @@ import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
 import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -237,6 +239,17 @@ fun HomeCelestialWidgets(
     modifier: Modifier = Modifier,
     userCommunityCode: String? = null,
 ) {
+    val isDark = JewelTheme.isDark
+    val accentColor =
+        LocalAppGraph.current.mainAppState.accentColor
+            .collectAsState()
+            .value
+    val accent = accentColor.resolveColor(isDark)
+    // Convert accent color to 0x00RRGGBB for the pixel-level orbit renderer
+    val accentRgbInt =
+        ((accent.red * 255).toInt() shl 16) or
+            ((accent.green * 255).toInt() shl 8) or
+            (accent.blue * 255).toInt()
     val userPlace = locationState.userPlace
     val userCityLabel = locationState.userCityLabel
     val userCommunity =
@@ -608,6 +621,7 @@ fun HomeCelestialWidgets(
                                 locationOptions = locationOptions,
                                 kiddushLevanaEarliestOpinion = kiddushLevanaEarliestOpinion,
                                 kiddushLevanaLatestOpinion = kiddushLevanaLatestOpinion,
+                                kiddushLevanaColorRgb = accentRgbInt,
                             )
                         }
                     }
@@ -623,9 +637,13 @@ private fun LunarCycleCard(
     modifier: Modifier = Modifier,
 ) {
     val isDark = JewelTheme.isDark
+    val accentColor =
+        LocalAppGraph.current.mainAppState.accentColor
+            .collectAsState()
+            .value
+    val accent = accentColor.resolveColor(isDark)
     val shape = RoundedCornerShape(22.dp)
     val panelBackground = JewelTheme.globalColors.panelBackground
-    val accent = JewelTheme.globalColors.text.info
     val background =
         if (isDark) {
             Brush.verticalGradient(
@@ -768,7 +786,11 @@ private fun MoonIllustration(
     modifier: Modifier = Modifier,
 ) {
     val panelBackground = JewelTheme.globalColors.panelBackground
-    val accent = JewelTheme.globalColors.text.info
+    val accentColor =
+        LocalAppGraph.current.mainAppState.accentColor
+            .collectAsState()
+            .value
+    val accent = accentColor.resolveColor(isDark)
     val glowGradient =
         if (isDark) {
             Brush.radialGradient(
@@ -889,7 +911,11 @@ private fun IlluminationBar(
             JewelTheme.globalColors.borders.normal
                 .copy(alpha = 0.45f)
         }
-    val accent = JewelTheme.globalColors.text.info
+    val accentColor =
+        LocalAppGraph.current.mainAppState.accentColor
+            .collectAsState()
+            .value
+    val accent = accentColor.resolveColor(isDark)
     val fillGradient =
         if (isDark) {
             Brush.horizontalGradient(
@@ -933,6 +959,11 @@ private fun MoonEventCard(
     modifier: Modifier = Modifier,
 ) {
     val isDark = JewelTheme.isDark
+    val accentColor =
+        LocalAppGraph.current.mainAppState.accentColor
+            .collectAsState()
+            .value
+    val accent = accentColor.resolveColor(isDark)
     val shape = RoundedCornerShape(16.dp)
     val panelBackground = JewelTheme.globalColors.panelBackground
     val background =
@@ -947,7 +978,7 @@ private fun MoonEventCard(
             Brush.verticalGradient(
                 listOf(
                     panelBackground.blendTowards(Color.White, 0.10f),
-                    panelBackground.blendTowards(JewelTheme.globalColors.text.info, 0.05f),
+                    panelBackground.blendTowards(accent, 0.05f),
                 ),
             )
         }
@@ -996,7 +1027,11 @@ private fun NextFullMoonBar(
 ) {
     val shape = RoundedCornerShape(14.dp)
     val panelBackground = JewelTheme.globalColors.panelBackground
-    val accent = JewelTheme.globalColors.text.info
+    val accentColor =
+        LocalAppGraph.current.mainAppState.accentColor
+            .collectAsState()
+            .value
+    val accent = accentColor.resolveColor(isDark)
     val background =
         if (isDark) {
             Brush.horizontalGradient(
@@ -1063,7 +1098,11 @@ private fun MoonPhaseIcon(
     modifier: Modifier = Modifier,
 ) {
     val panelBackground = JewelTheme.globalColors.panelBackground
-    val accent = JewelTheme.globalColors.text.info
+    val accentColor =
+        LocalAppGraph.current.mainAppState.accentColor
+            .collectAsState()
+            .value
+    val accent = accentColor.resolveColor(isDark)
     val gradient =
         if (isDark) {
             Brush.radialGradient(
@@ -1269,6 +1308,11 @@ private fun DayMomentCard(
     onClick: (() -> Unit)? = null,
 ) {
     val isDark = JewelTheme.isDark
+    val accentColor =
+        LocalAppGraph.current.mainAppState.accentColor
+            .collectAsState()
+            .value
+    val accent = accentColor.resolveColor(isDark)
     val shape = RoundedCornerShape(18.dp)
     val panelBackground = JewelTheme.globalColors.panelBackground
     val background =
@@ -1283,7 +1327,7 @@ private fun DayMomentCard(
             Brush.verticalGradient(
                 listOf(
                     panelBackground.blendTowards(Color.White, 0.10f),
-                    panelBackground.blendTowards(JewelTheme.globalColors.text.info, 0.05f),
+                    panelBackground.blendTowards(accent, 0.05f),
                 ),
             )
         }
@@ -1532,6 +1576,11 @@ private fun DualTimeCardContent(
     compactMode: Boolean = false,
 ) {
     val isDark = JewelTheme.isDark
+    val accentColor =
+        LocalAppGraph.current.mainAppState.accentColor
+            .collectAsState()
+            .value
+    val accent = accentColor.resolveColor(isDark)
     val shape = RoundedCornerShape(18.dp)
     val panelBackground = JewelTheme.globalColors.panelBackground
     val background =
@@ -1546,7 +1595,7 @@ private fun DualTimeCardContent(
             Brush.verticalGradient(
                 listOf(
                     panelBackground.blendTowards(Color.White, 0.10f),
-                    panelBackground.blendTowards(JewelTheme.globalColors.text.info, 0.05f),
+                    panelBackground.blendTowards(accent, 0.05f),
                 ),
             )
         }
@@ -1559,8 +1608,8 @@ private fun DualTimeCardContent(
     val labelColor =
         JewelTheme.globalColors.text.normal
             .copy(alpha = 0.78f)
-    val accentStart = Color(0xFF9AE7E7)
-    val accentEnd = Color(0xFFC7F5F0)
+    val accentStart = accent.blendTowards(Color.White, 0.35f)
+    val accentEnd = accent.blendTowards(Color.White, 0.55f)
     val resolvedBackground = backgroundOverride ?: background
     val resolvedBorderColor = borderColorOverride ?: borderColor
     val resolvedAccentStart = accentStartOverride ?: accentStart
@@ -1870,29 +1919,34 @@ private fun ShabbatDualTimeCard(
     compactMode: Boolean = false,
 ) {
     val isDark = JewelTheme.isDark
+    val accentColor =
+        LocalAppGraph.current.mainAppState.accentColor
+            .collectAsState()
+            .value
+    val accent = accentColor.resolveColor(isDark)
     val panelBackground = JewelTheme.globalColors.panelBackground
     val premiumStart =
         if (isDark) {
-            panelBackground.blendTowards(Color(0xFF2B1F06), 0.7f)
+            panelBackground.blendTowards(accent.copy(alpha = 0.8f), 0.65f)
         } else {
-            panelBackground.blendTowards(Color(0xFFFFF4D0), 0.92f)
+            panelBackground.blendTowards(Color.White, 0.92f)
         }
     val premiumMid =
         if (isDark) {
-            panelBackground.blendTowards(Color(0xFF4A3309), 0.6f)
+            panelBackground.blendTowards(accent, 0.55f)
         } else {
-            panelBackground.blendTowards(Color(0xFFFFE3A8), 0.86f)
+            panelBackground.blendTowards(Color.White, 0.86f)
         }
     val premiumEnd =
         if (isDark) {
-            panelBackground.blendTowards(Color(0xFF7A5414), 0.5f)
+            panelBackground.blendTowards(accent.copy(alpha = 0.6f), 0.45f)
         } else {
-            panelBackground.blendTowards(Color(0xFFFFD187), 0.8f)
+            panelBackground.blendTowards(Color.White, 0.8f)
         }
     val background = Brush.verticalGradient(listOf(premiumStart, premiumMid, premiumEnd))
-    val borderColor = if (isDark) Color(0xFFB78A2E) else Color(0xFFE0B65C)
-    val accentStart = if (isDark) Color(0xFFF4D37D) else Color(0xFFC58A0E)
-    val accentEnd = if (isDark) Color(0xFFFFE7B0) else Color(0xFFFFD489)
+    val borderColor = accent
+    val accentStart = accent.blendTowards(Color.White, 0.35f)
+    val accentEnd = accent.blendTowards(Color.White, 0.55f)
     val sheen =
         if (isDark) {
             Brush.horizontalGradient(
@@ -1981,9 +2035,13 @@ private fun CelestialWidgetCard(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val isDark = JewelTheme.isDark
+    val accentColor =
+        LocalAppGraph.current.mainAppState.accentColor
+            .collectAsState()
+            .value
+    val accent = accentColor.resolveColor(isDark)
     val shape = RoundedCornerShape(22.dp)
     val panelBackground = JewelTheme.globalColors.panelBackground
-    val accent = JewelTheme.globalColors.text.info
     val background =
         if (backgroundColor == null) {
             if (isDark) {

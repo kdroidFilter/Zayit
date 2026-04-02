@@ -204,6 +204,7 @@ fun EarthWidgetZmanimView(
     kiddushLevanaEarliestOpinion: KiddushLevanaEarliestOpinion = KiddushLevanaEarliestOpinion.DAYS_3,
     kiddushLevanaLatestOpinion: KiddushLevanaLatestOpinion = KiddushLevanaLatestOpinion.BETWEEN_MOLDOS,
     initialShowKiddushLevana: Boolean = true,
+    kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
 ) {
     // Location state (defaults to Jerusalem, overridden by locationOverride)
     var markerLatitudeDegrees by remember { mutableFloatStateOf(DEFAULT_MARKER_LAT.toFloat()) }
@@ -507,6 +508,7 @@ fun EarthWidgetZmanimView(
             earthSizeFraction = earthSizeFraction,
             isDraggingEarth = isDraggingEarth,
             kiddushLevanaData = kiddushLevanaData,
+            kiddushLevanaColorRgb = kiddushLevanaColorRgb,
         )
         if (showKiddushLevanaLegend) {
             KiddushLevanaLegend(
@@ -673,6 +675,7 @@ private fun EarthSceneContent(
     isDraggingEarth: Boolean,
     modifier: Modifier = Modifier,
     kiddushLevanaData: KiddushLevanaData? = null,
+    kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
 ) {
     val density = LocalDensity.current
     val degreesPerPx =
@@ -726,6 +729,7 @@ private fun EarthSceneContent(
             animateEarthRotation = !isDraggingEarth, // Instant rotation during drag
             kiddushLevanaStartDegrees = kiddushLevanaData?.startDegrees,
             kiddushLevanaEndDegrees = kiddushLevanaData?.endDegrees,
+            kiddushLevanaColorRgb = kiddushLevanaColorRgb,
         )
     }
 }

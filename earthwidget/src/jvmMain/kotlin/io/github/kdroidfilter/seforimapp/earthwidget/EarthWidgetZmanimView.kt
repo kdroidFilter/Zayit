@@ -204,6 +204,7 @@ fun EarthWidgetZmanimView(
     kiddushLevanaEarliestOpinion: KiddushLevanaEarliestOpinion = KiddushLevanaEarliestOpinion.DAYS_3,
     kiddushLevanaLatestOpinion: KiddushLevanaLatestOpinion = KiddushLevanaLatestOpinion.BETWEEN_MOLDOS,
     initialShowKiddushLevana: Boolean = true,
+    kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
 ) {
     // Location state (defaults to Jerusalem, overridden by locationOverride)
     var markerLatitudeDegrees by remember { mutableFloatStateOf(DEFAULT_MARKER_LAT.toFloat()) }
@@ -507,6 +508,7 @@ fun EarthWidgetZmanimView(
             earthSizeFraction = earthSizeFraction,
             isDraggingEarth = isDraggingEarth,
             kiddushLevanaData = kiddushLevanaData,
+            kiddushLevanaColorRgb = kiddushLevanaColorRgb,
         )
         if (showKiddushLevanaLegend) {
             KiddushLevanaLegend(
@@ -514,6 +516,7 @@ fun EarthWidgetZmanimView(
                     Modifier
                         .align(Alignment.BottomStart)
                         .padding(start = 8.dp, bottom = 8.dp),
+                legendColorRgb = kiddushLevanaColorRgb,
             )
         }
         if (earthRotationOffset != 0f || isDateTimeModified) {
@@ -673,6 +676,7 @@ private fun EarthSceneContent(
     isDraggingEarth: Boolean,
     modifier: Modifier = Modifier,
     kiddushLevanaData: KiddushLevanaData? = null,
+    kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
 ) {
     val density = LocalDensity.current
     val degreesPerPx =
@@ -726,6 +730,7 @@ private fun EarthSceneContent(
             animateEarthRotation = !isDraggingEarth, // Instant rotation during drag
             kiddushLevanaStartDegrees = kiddushLevanaData?.startDegrees,
             kiddushLevanaEndDegrees = kiddushLevanaData?.endDegrees,
+            kiddushLevanaColorRgb = kiddushLevanaColorRgb,
         )
     }
 }
@@ -793,12 +798,16 @@ private fun ResetDateTimeButton(
 }
 
 @Composable
-private fun KiddushLevanaLegend(modifier: Modifier = Modifier) {
+private fun KiddushLevanaLegend(
+    modifier: Modifier = Modifier,
+    legendColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
+) {
     IntUiTheme(isDark = true) {
         val shape = RoundedCornerShape(50)
         val background = JewelTheme.globalColors.panelBackground.copy(alpha = 0.86f)
         val borderColor = JewelTheme.globalColors.borders.disabled
         val textColor = JewelTheme.globalColors.text.normal
+        val legendColor = Color(0xFF000000.toLong() + legendColorRgb)
 
         Row(
             modifier =
@@ -814,7 +823,7 @@ private fun KiddushLevanaLegend(modifier: Modifier = Modifier) {
                 modifier =
                     Modifier
                         .size(10.dp)
-                        .background(KIDDUSH_LEVANA_LEGEND_COLOR, CircleShape)
+                        .background(legendColor, CircleShape)
                         .border(1.dp, borderColor, CircleShape),
             )
             Text(

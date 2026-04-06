@@ -19,11 +19,9 @@ data class ParsedHtmlElement(
     val isFootnoteContent: Boolean = false,
 )
 
-class HtmlParser {
-    companion object {
-        private val WHITESPACE_REGEX = Regex("\\s+")
-    }
+private val WHITESPACE_REGEX = Regex("\\s+")
 
+class HtmlParser {
     fun parse(html: String): List<ParsedHtmlElement> {
         val doc = Jsoup.parse(html)
         val out = mutableListOf<ParsedHtmlElement>()

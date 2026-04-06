@@ -491,9 +491,9 @@ private fun computePixelLighting(
     val g = (texColor ushr 8) and 0xFF
     val b = texColor and 0xFF
 
-    val rLin = (r / 255f).let { it * it }
-    val gLin = (g / 255f).let { it * it }
-    val bLin = (b / 255f).let { it * it }
+    val rLin = SRGB_TO_LINEAR[r]
+    val gLin = SRGB_TO_LINEAR[g]
+    val bLin = SRGB_TO_LINEAR[b]
 
     // Specular highlights (primarily on water/oceans)
     val spec =
@@ -503,7 +503,7 @@ private fun computePixelLighting(
                     .coerceAtLeast(0f)
             val baseSpec = specularStrength * powInt(dotH, specularExponent) * lightVisibility
             // Ocean detection: blue channel significantly higher than red/green
-            val oceanMask = ((b - max(r, g)).coerceAtLeast(0) / 255f).let { it * it }
+            val oceanMask = SRGB_TO_LINEAR[(b - max(r, g)).coerceAtLeast(0)]
             baseSpec * (0.12f + 0.88f * oceanMask)
         } else {
             0f
@@ -514,10 +514,10 @@ private fun computePixelLighting(
     val shadedGLin = (gLin * shade + spec).coerceIn(0f, 1f)
     val shadedBLin = (bLin * shade + spec).coerceIn(0f, 1f)
 
-    // Gamma encode back to sRGB and add atmosphere
-    val sr = (sqrt(shadedRLin) * 255f).roundToInt().coerceIn(0, 255)
-    val sg = (sqrt(shadedGLin) * 255f).roundToInt().coerceIn(0, 255)
-    val sb = ((sqrt(shadedBLin) * 255f) + (255f * atmosphere)).roundToInt().coerceIn(0, 255)
+    // Gamma encode back to sRGB via LUT and add atmosphere
+    val sr = LINEAR_TO_SRGB[(shadedRLin * 255f).toInt().coerceIn(0, 255)]
+    val sg = LINEAR_TO_SRGB[(shadedGLin * 255f).toInt().coerceIn(0, 255)]
+    val sb = (LINEAR_TO_SRGB[(shadedBLin * 255f).toInt().coerceIn(0, 255)] + (255f * atmosphere).toInt()).coerceIn(0, 255)
 
     // Edge feathering for smooth sphere boundary
     val dist = sqrt(rr)
@@ -1196,20 +1196,18 @@ private fun drawOrbitPath(
             val orbitDegrees = (t * 180f / PI.toFloat()) % 360f
             val isKiddushLevana = hasKiddushLevana && isAngleInRange(orbitDegrees, klStart, klEnd)
 
-            val (alpha, colorRgb, glowIntensity) =
-                if (isKiddushLevana) {
-                    Triple(
-                        if (avgZ >= 0f) KIDDUSH_LEVANA_ALPHA_FRONT else KIDDUSH_LEVANA_ALPHA_BACK,
-                        kiddushLevanaColorRgb,
-                        KIDDUSH_LEVANA_GLOW_INTENSITY,
-                    )
-                } else {
-                    Triple(
-                        if (avgZ >= 0f) ORBIT_ALPHA_FRONT else ORBIT_ALPHA_BACK,
-                        ORBIT_COLOR_RGB,
-                        ORBIT_GLOW_INTENSITY,
-                    )
-                }
+            val alpha: Int
+            val colorRgb: Int
+            val glowIntensity: Float
+            if (isKiddushLevana) {
+                alpha = if (avgZ >= 0f) KIDDUSH_LEVANA_ALPHA_FRONT else KIDDUSH_LEVANA_ALPHA_BACK
+                colorRgb = kiddushLevanaColorRgb
+                glowIntensity = KIDDUSH_LEVANA_GLOW_INTENSITY
+            } else {
+                alpha = if (avgZ >= 0f) ORBIT_ALPHA_FRONT else ORBIT_ALPHA_BACK
+                colorRgb = ORBIT_COLOR_RGB
+                glowIntensity = ORBIT_GLOW_INTENSITY
+            }
             val color = (alpha shl 24) or colorRgb
 
             drawOrbitLineSegment(
@@ -1580,14 +1578,14 @@ private fun lerpColorLinear(
     val g1 = (c1 ushr 8) and 0xFF
     val b1 = c1 and 0xFF
 
-    // Convert to linear space (approximate gamma 2.2 with square)
-    val r0Lin = (r0 / 255f).let { it * it }
-    val g0Lin = (g0 / 255f).let { it * it }
-    val b0Lin = (b0 / 255f).let { it * it }
+    // Convert to linear space via LUT
+    val r0Lin = SRGB_TO_LINEAR[r0]
+    val g0Lin = SRGB_TO_LINEAR[g0]
+    val b0Lin = SRGB_TO_LINEAR[b0]
 
-    val r1Lin = (r1 / 255f).let { it * it }
-    val g1Lin = (g1 / 255f).let { it * it }
-    val b1Lin = (b1 / 255f).let { it * it }
+    val r1Lin = SRGB_TO_LINEAR[r1]
+    val g1Lin = SRGB_TO_LINEAR[g1]
+    val b1Lin = SRGB_TO_LINEAR[b1]
 
     // Interpolate in linear space
     val invT = 1f - t
@@ -1596,13 +1594,13 @@ private fun lerpColorLinear(
     val gLerp = g0Lin * invT + g1Lin * t
     val bLerp = b0Lin * invT + b1Lin * t
 
-    // Convert back to sRGB (gamma encode with sqrt)
-    val a = aLerp.roundToInt().coerceIn(0, 255)
-    val r = (sqrt(rLerp) * 255f).roundToInt().coerceIn(0, 255)
-    val g = (sqrt(gLerp) * 255f).roundToInt().coerceIn(0, 255)
-    val b = (sqrt(bLerp) * 255f).roundToInt().coerceIn(0, 255)
+    // Convert back to sRGB via LUT
+    val a = aLerp.toInt().coerceIn(0, 255)
+    val rIdx = (rLerp * 255f).toInt().coerceIn(0, 255)
+    val gIdx = (gLerp * 255f).toInt().coerceIn(0, 255)
+    val bIdx = (bLerp * 255f).toInt().coerceIn(0, 255)
 
-    return (a shl 24) or (r shl 16) or (g shl 8) or b
+    return (a shl 24) or (LINEAR_TO_SRGB[rIdx] shl 16) or (LINEAR_TO_SRGB[gIdx] shl 8) or LINEAR_TO_SRGB[bIdx]
 }
 
 /**

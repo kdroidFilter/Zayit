@@ -152,6 +152,7 @@ fun EarthWidgetScene(
     moonFromMarkerSunElevationDegrees: Float? = null,
     kiddushLevanaStartDegrees: Float? = null,
     kiddushLevanaEndDegrees: Float? = null,
+    kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
 ) {
     // Earth rotation and light can be instant (during drag) or animated (location change)
     val animatedEarthRotation =
@@ -246,6 +247,7 @@ fun EarthWidgetScene(
             earthSizeFraction = earthSizeFraction,
             kiddushLevanaStartDegrees = kiddushLevanaStartDegrees,
             kiddushLevanaEndDegrees = kiddushLevanaEndDegrees,
+            kiddushLevanaColorRgb = kiddushLevanaColorRgb,
         )
 
     val renderedScene =

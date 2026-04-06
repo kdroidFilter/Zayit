@@ -585,6 +585,7 @@ internal suspend fun renderEarthWithMoonArgb(
     starfieldCache: StarfieldCache? = null,
     kiddushLevanaStartDegrees: Float? = null,
     kiddushLevanaEndDegrees: Float? = null,
+    kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
 ): IntArray {
     val outputSize = outputSizePx * outputSizePx
     val out =
@@ -669,6 +670,7 @@ internal suspend fun renderEarthWithMoonArgb(
                 cameraZ = geometry.cameraZ,
                 kiddushLevanaStartDegrees = kiddushLevanaStartDegrees,
                 kiddushLevanaEndDegrees = kiddushLevanaEndDegrees,
+                kiddushLevanaColorRgb = kiddushLevanaColorRgb,
             )
         }
 
@@ -1153,6 +1155,7 @@ private fun drawOrbitPath(
     cameraZ: Float,
     kiddushLevanaStartDegrees: Float? = null,
     kiddushLevanaEndDegrees: Float? = null,
+    kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
 ) {
     if (orbitRadius <= 0f) return
 
@@ -1197,7 +1200,7 @@ private fun drawOrbitPath(
                 if (isKiddushLevana) {
                     Triple(
                         if (avgZ >= 0f) KIDDUSH_LEVANA_ALPHA_FRONT else KIDDUSH_LEVANA_ALPHA_BACK,
-                        KIDDUSH_LEVANA_COLOR_RGB,
+                        kiddushLevanaColorRgb,
                         KIDDUSH_LEVANA_GLOW_INTENSITY,
                     )
                 } else {

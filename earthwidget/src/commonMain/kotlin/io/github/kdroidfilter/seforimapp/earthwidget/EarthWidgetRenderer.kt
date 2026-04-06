@@ -35,6 +35,7 @@ internal data class EarthRenderState(
     val earthSizeFraction: Float,
     val kiddushLevanaStartDegrees: Float? = null,
     val kiddushLevanaEndDegrees: Float? = null,
+    val kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
 )
 
 /**
@@ -116,6 +117,7 @@ internal class EarthWidgetRenderer(
                         starfieldCache = starfieldCache,
                         kiddushLevanaStartDegrees = state.kiddushLevanaStartDegrees,
                         kiddushLevanaEndDegrees = state.kiddushLevanaEndDegrees,
+                        kiddushLevanaColorRgb = state.kiddushLevanaColorRgb,
                     )
 
                 // Convert to ImageBitmap (copies the data)

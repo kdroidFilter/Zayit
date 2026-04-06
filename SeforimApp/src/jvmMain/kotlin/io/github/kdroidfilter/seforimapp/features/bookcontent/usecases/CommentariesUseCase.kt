@@ -35,17 +35,15 @@ import kotlin.math.min
 /**
  * UseCase pour gérer les commentaires et liens
  */
+private const val MAX_COMMENTATORS = 4
+private val YEAR_REGEX = Regex("""-?\d{3,4}""")
+private const val MAX_BASE_LINES_PER_REQUEST = 128
+
 class CommentariesUseCase(
     private val repository: SeforimRepository,
     private val stateManager: BookContentStateManager,
     private val scope: CoroutineScope,
 ) {
-    private companion object {
-        private const val MAX_COMMENTATORS = 4
-        private val YEAR_REGEX = Regex("""-?\d{3,4}""")
-        private const val MAX_BASE_LINES_PER_REQUEST = 128
-    }
-
     private val commentatorBookCache: MutableMap<Long, Book> = ConcurrentHashMap()
     private val defaultTargumCache: MutableMap<Long, List<Long>> = ConcurrentHashMap()
 

@@ -21,18 +21,19 @@ internal fun stripDiacriticsWithMap(src: String): Pair<String, IntArray> {
             (c == '\u05C7')
     }
     val out = StringBuilder(src.length)
-    val map = ArrayList<Int>(src.length)
+    val map = IntArray(src.length)
+    var count = 0
     var i = 0
     while (i < src.length) {
         val ch = src[i]
         // Drop nikud/ta'amim and also gershayim/geresh for matching
         if (!nikudOrTeamim(ch) && ch != '\u05F4' && ch != '\u05F3') {
             out.append(ch)
-            map.add(i)
+            map[count++] = i
         }
         i++
     }
-    val arr = IntArray(map.size) { map[it] }
+    val arr = if (count == map.size) map else map.copyOf(count)
     return out.toString() to arr
 }
 

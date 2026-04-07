@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
@@ -51,7 +52,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.components.CatalogRow
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
-import io.github.kdroidfilter.seforimapp.icons.*
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -76,6 +76,7 @@ import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.skiko.Cursor
 import seforimapp.seforimapp.generated.resources.*
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 
 // Suggestion models for the scope picker
@@ -141,29 +142,27 @@ fun HomeView(
 ) {
     CatalogRow(onEvent = onEvent)
 
-    val isDark = JewelTheme.isDark
     val panelBackground = JewelTheme.globalColors.panelBackground
     val showWallpaper by AppSettings.showHomeWallpaperFlow.collectAsState()
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        // Pick resolution based on container width in pixels
-        val widthPx = with(LocalDensity.current) { maxWidth.toPx() }.roundToInt()
-        val wallpaper =
-            if (isDark) {
-                when {
-                    widthPx <= 960 -> Res.drawable.homepage_wallpaper_dark_small
-                    widthPx <= 1440 -> Res.drawable.homepage_wallpaper_dark_medium
-                    else -> Res.drawable.homepage_wallpaper_dark_large
-                }
-            } else {
-                when {
-                    widthPx <= 960 -> Res.drawable.homepage_wallpaper_small
-                    widthPx <= 1440 -> Res.drawable.homepage_wallpaper_medium
-                    else -> Res.drawable.homepage_wallpaper_large
-                }
-            }
-
         if (showWallpaper) {
+            val isDark = JewelTheme.isDark
+            val widthPx = with(LocalDensity.current) { maxWidth.toPx() }.roundToInt()
+            val wallpaper =
+                if (isDark) {
+                    when {
+                        widthPx <= 960 -> Res.drawable.homepage_wallpaper_dark_small
+                        widthPx <= 1440 -> Res.drawable.homepage_wallpaper_dark_medium
+                        else -> Res.drawable.homepage_wallpaper_dark_large
+                    }
+                } else {
+                    when {
+                        widthPx <= 960 -> Res.drawable.homepage_wallpaper_small
+                        widthPx <= 1440 -> Res.drawable.homepage_wallpaper_medium
+                        else -> Res.drawable.homepage_wallpaper_large
+                    }
+                }
             // Layer 1: Wallpaper background
             Image(
                 painter = painterResource(wallpaper),
@@ -278,7 +277,7 @@ private fun HomeBody(
                 focusRequester: FocusRequester,
             ) {
                 scope.launch {
-                    delay(ms)
+                    delay(ms.milliseconds)
                     focusRequester.requestFocus()
                 }
             }
@@ -372,7 +371,7 @@ private fun HomeBody(
                                 // When switching modes, always focus the top text field
                                 if (searchUi.selectedFilter == SearchFilter.REFERENCE || searchUi.selectedFilter == SearchFilter.TEXT) {
                                     // small delay to ensure composition is settled
-                                    delay(100)
+                                    delay(100.milliseconds)
                                     mainSearchFocusRequester.requestFocus()
 
                                     // Preserve what the user typed when toggling modes. If the destination
@@ -397,7 +396,7 @@ private fun HomeBody(
                             }
                             LaunchedEffect(searchUi.selectedScopeBook?.id, isReferenceMode) {
                                 if (isReferenceMode && searchUi.selectedScopeBook != null) {
-                                    delay(80)
+                                    delay(80.milliseconds)
                                     mainSearchFocusRequester.requestFocus()
                                 }
                             }
@@ -645,90 +644,6 @@ private fun LogoImage(modifier: Modifier = Modifier) {
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             colorFilter = ColorFilter.tint(logoTint, BlendMode.SrcIn),
-        )
-    }
-}
-
-/**
- * Panel showing the 5 text-search levels as selectable cards synchronized
- * with a slider. Encapsulates its own local selection state.
- */
-@Composable
-/**
- * Displays the five text-search levels as selectable cards synchronized with
- * a slider. The slider and cards mirror the same selection index.
- */
-private fun SearchLevelsPanel(
-    selectedIndex: Int,
-    onSelectedIndexChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val filterCards: List<SearchFilterCard> =
-        listOf(
-            SearchFilterCard(
-                Target,
-                Res.string.search_level_1_value,
-                Res.string.search_level_1_description,
-                Res.string.search_level_1_explanation,
-            ),
-            SearchFilterCard(
-                Link,
-                Res.string.search_level_2_value,
-                Res.string.search_level_2_description,
-                Res.string.search_level_2_explanation,
-            ),
-            SearchFilterCard(
-                Format_letter_spacing,
-                Res.string.search_level_3_value,
-                Res.string.search_level_3_description,
-                Res.string.search_level_3_explanation,
-            ),
-            SearchFilterCard(
-                Article,
-                Res.string.search_level_4_value,
-                Res.string.search_level_4_description,
-                Res.string.search_level_4_explanation,
-            ),
-            SearchFilterCard(
-                Book,
-                Res.string.search_level_5_value,
-                Res.string.search_level_5_description,
-                Res.string.search_level_5_explanation,
-            ),
-        )
-
-    // Synchronize cards with slider position
-    var sliderPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
-    LaunchedEffect(selectedIndex) { sliderPosition = selectedIndex.toFloat() }
-    val maxIndex = (filterCards.size - 1).coerceAtLeast(0)
-    val coercedSelected = sliderPosition.coerceIn(0f, maxIndex.toFloat()).toInt()
-
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            filterCards.forEachIndexed { index, filterCard ->
-                SearchLevelCard(
-                    data = filterCard,
-                    selected = index == coercedSelected,
-                    onClick = {
-                        sliderPosition = index.toFloat()
-                        onSelectedIndexChange(index)
-                    },
-                )
-            }
-        }
-
-        Slider(
-            value = sliderPosition,
-            onValueChange = { newValue ->
-                sliderPosition = newValue
-                onSelectedIndexChange(newValue.coerceIn(0f, maxIndex.toFloat()).toInt())
-            },
-            valueRange = 0f..maxIndex.toFloat(),
-            steps = (filterCards.size - 2).coerceAtLeast(0),
-            modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
         )
     }
 }
@@ -1190,9 +1105,9 @@ private fun SuggestionRow(
                 val dist = hScroll.value // currently at max, distance to start
                 val toStartMs = ((dist / speedPxPerSec) * 1000f).toInt().coerceIn(3000, 24000)
                 hScroll.animateScrollTo(0, animationSpec = tween(durationMillis = toStartMs, easing = LinearEasing))
-                delay(600)
+                delay(600.milliseconds)
                 hScroll.scrollTo(max)
-                delay(600)
+                delay(600.milliseconds)
             }
         } else {
             // Show the end for non-active rows
@@ -1350,7 +1265,7 @@ private fun SearchBar(
     val internalFocusRequester = remember { FocusRequester() }
     val effectiveFocusRequester = focusRequester ?: internalFocusRequester
     LaunchedEffect(Unit) {
-        delay(200)
+        delay(200.milliseconds)
         if (enabled && autoFocus) effectiveFocusRequester.requestFocus()
     }
 
@@ -1888,59 +1803,7 @@ private fun FilterButton(
     )
 }
 
-@Composable
-private fun SearchLevelCard(
-    data: SearchFilterCard,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val shape = RoundedCornerShape(16.dp)
-    val backgroundColor = if (selected) JewelTheme.globalColors.outlines.focused else Color.Transparent
-
-    val borderColor =
-        if (selected) JewelTheme.globalColors.borders.focused else JewelTheme.globalColors.borders.disabled
-
-    Box(
-        modifier =
-            modifier
-                .width(96.dp)
-                .height(110.dp)
-                .clip(shape)
-                .background(backgroundColor)
-                .border(width = if (selected) 2.dp else 1.dp, color = borderColor, shape = shape)
-                .clickable(onClick = onClick)
-                .pointerHoverIcon(PointerIcon.Hand),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            val contentColor = if (selected) Color.White else JewelTheme.contentColor
-            Icon(
-                data.icons,
-                contentDescription = stringResource(data.label),
-                modifier = Modifier.size(40.dp),
-                tint = contentColor,
-            )
-            Text(
-                stringResource(data.label),
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center,
-                color = contentColor,
-            )
-            Text(
-                stringResource(data.desc),
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center,
-                color = contentColor,
-            )
-        }
-    }
-}
-
-@androidx.compose.ui.tooling.preview.Preview
+@Preview
 @Composable
 private fun HomeViewPreview() {
     PreviewContainer {

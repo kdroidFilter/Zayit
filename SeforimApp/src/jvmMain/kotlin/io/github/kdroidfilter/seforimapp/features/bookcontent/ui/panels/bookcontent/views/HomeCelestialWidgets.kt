@@ -1033,19 +1033,9 @@ private fun NextFullMoonBar(
             )
         }
     val labelColor =
-        if (isDark) {
-            JewelTheme.globalColors.text.normal
-                .copy(alpha = 0.8f)
-        } else {
-            JewelTheme.globalColors.text.normal
-                .copy(alpha = 0.8f)
-        }
-    val valueColor =
-        if (isDark) {
-            accent
-        } else {
-            accent
-        }
+        JewelTheme.globalColors.text.normal
+            .copy(alpha = 0.8f)
+    val valueColor = accent
 
     Box(
         modifier =
@@ -1288,25 +1278,8 @@ private fun DayMomentCard(
     onClick: (() -> Unit)? = null,
 ) {
     val isDark = JewelTheme.isDark
-    val accent = rememberAccentColor(isDark)
     val shape = RoundedCornerShape(18.dp)
     val panelBackground = JewelTheme.globalColors.panelBackground
-    val background =
-        if (isDark) {
-            Brush.verticalGradient(
-                listOf(
-                    panelBackground.blendTowards(Color.White, 0.06f),
-                    panelBackground.blendTowards(Color.Black, 0.18f),
-                ),
-            )
-        } else {
-            Brush.verticalGradient(
-                listOf(
-                    panelBackground.blendTowards(Color.White, 0.10f),
-                    panelBackground.blendTowards(accent, 0.05f),
-                ),
-            )
-        }
     val borderColor =
         if (isDark) {
             JewelTheme.globalColors.borders.disabled
@@ -1340,7 +1313,6 @@ private fun DayMomentCard(
             isClickable && isHovered -> hoverBorder
             else -> borderColor
         }
-
     val glassBackground =
         panelBackground.copy(alpha = if (isDark) 0.25f else 0.35f)
 
@@ -1544,22 +1516,6 @@ private fun DualTimeCardContent(
     val accent = rememberAccentColor(isDark)
     val shape = RoundedCornerShape(18.dp)
     val panelBackground = JewelTheme.globalColors.panelBackground
-    val background =
-        if (isDark) {
-            Brush.verticalGradient(
-                listOf(
-                    panelBackground.blendTowards(Color.White, 0.06f),
-                    panelBackground.blendTowards(Color.Black, 0.18f),
-                ),
-            )
-        } else {
-            Brush.verticalGradient(
-                listOf(
-                    panelBackground.blendTowards(Color.White, 0.10f),
-                    panelBackground.blendTowards(accent, 0.05f),
-                ),
-            )
-        }
     val borderColor =
         if (isDark) {
             JewelTheme.globalColors.borders.disabled
@@ -1571,7 +1527,6 @@ private fun DualTimeCardContent(
             .copy(alpha = 0.78f)
     val accentStart = accent.blendTowards(Color.White, 0.35f)
     val accentEnd = accent.blendTowards(Color.White, 0.55f)
-    val resolvedBackground = backgroundOverride ?: background
     val resolvedBorderColor = borderColorOverride ?: borderColor
     val resolvedAccentStart = accentStartOverride ?: accentStart
     val resolvedAccentEnd = accentEndOverride ?: accentEnd
@@ -1611,12 +1566,11 @@ private fun DualTimeCardContent(
         }
     val cardHoverModifier =
         if (isClickable) Modifier.hoverable(hoverSource) else Modifier
-    val hasBackground = backgroundOverride != null
     val glassBackground =
         panelBackground.copy(alpha = if (isDark) 0.25f else 0.35f)
     val bgModifier =
-        if (hasBackground) {
-            Modifier.background(resolvedBackground)
+        if (backgroundOverride != null) {
+            Modifier.background(backgroundOverride)
         } else {
             Modifier.background(glassBackground, shape)
         }
@@ -1987,29 +1941,7 @@ private fun CelestialWidgetCard(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val isDark = JewelTheme.isDark
-    val accent = rememberAccentColor(isDark)
     val shape = RoundedCornerShape(22.dp)
-    val panelBackground = JewelTheme.globalColors.panelBackground
-    val background =
-        if (backgroundColor == null) {
-            if (isDark) {
-                Brush.verticalGradient(
-                    listOf(
-                        panelBackground.blendTowards(Color.White, 0.06f),
-                        panelBackground.blendTowards(Color.Black, 0.18f),
-                    ),
-                )
-            } else {
-                Brush.verticalGradient(
-                    listOf(
-                        panelBackground.blendTowards(Color.White, 0.10f),
-                        panelBackground.blendTowards(accent, 0.05f),
-                    ),
-                )
-            }
-        } else {
-            null
-        }
     val borderColor =
         if (isDark) {
             JewelTheme.globalColors.borders.disabled

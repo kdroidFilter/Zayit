@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.earthwidget
 
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -73,6 +74,7 @@ internal suspend fun renderTexturedSphereArgb(
     atmosphereStrength: Float = DEFAULT_ATMOSPHERE_STRENGTH,
     shadowAlphaStrength: Float = 0f,
     outputBuffer: IntArray? = null,
+    parallelDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ): IntArray {
     val expectedSize = outputSizePx * outputSizePx
     val output =
@@ -108,7 +110,7 @@ internal suspend fun renderTexturedSphereArgb(
 
     // Use parallel rendering for larger images, sequential for smaller ones
     if (outputSizePx >= MIN_SIZE_FOR_PARALLEL) {
-        renderSphereParallel(output, params)
+        renderSphereParallel(output, params, parallelDispatcher)
     } else {
         renderSphereSequential(output, params)
     }
@@ -203,13 +205,14 @@ private class SphereRenderParams(
 private suspend fun renderSphereParallel(
     output: IntArray,
     params: SphereRenderParams,
+    dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     val chunkSize = (params.outputSizePx + PARALLEL_CHUNK_COUNT - 1) / PARALLEL_CHUNK_COUNT
 
     coroutineScope {
         (0 until params.outputSizePx step chunkSize)
             .map { startY ->
-                async(Dispatchers.Default) {
+                async(dispatcher) {
                     val endY = minOf(startY + chunkSize, params.outputSizePx)
                     renderRowRange(output, params, startY, endY)
                 }
@@ -586,6 +589,7 @@ internal suspend fun renderEarthWithMoonArgb(
     kiddushLevanaStartDegrees: Float? = null,
     kiddushLevanaEndDegrees: Float? = null,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
+    parallelDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ): IntArray {
     val outputSize = outputSizePx * outputSizePx
     val out =
@@ -629,6 +633,7 @@ internal suspend fun renderEarthWithMoonArgb(
                 sunElevationDegrees = sunElevationDegrees,
                 viewDirZ = 1f,
                 outputBuffer = earthBuffer,
+                parallelDispatcher = parallelDispatcher,
             )
 
         // Draw marker on Earth
@@ -704,6 +709,7 @@ internal suspend fun renderEarthWithMoonArgb(
                     atmosphereStrength = 0f,
                     shadowAlphaStrength = 0f,
                     outputBuffer = moonBuffer,
+                    parallelDispatcher = parallelDispatcher,
                 )
 
             // Composite Moon with depth sorting
@@ -902,6 +908,7 @@ internal suspend fun renderMoonFromMarkerArgb(
     bufferPool: PixelBufferPool? = null,
     outputBuffer: IntArray? = null,
     starfieldCache: StarfieldCache? = null,
+    parallelDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ): IntArray {
     val outputSize = outputSizePx * outputSizePx
     val out =
@@ -1040,6 +1047,7 @@ internal suspend fun renderMoonFromMarkerArgb(
                 atmosphereStrength = 0f,
                 shadowAlphaStrength = 1f,
                 outputBuffer = moonBuffer,
+                parallelDispatcher = parallelDispatcher,
             )
         drawGhostMoonOutline(argb = moon, sizePx = outputSizePx)
 

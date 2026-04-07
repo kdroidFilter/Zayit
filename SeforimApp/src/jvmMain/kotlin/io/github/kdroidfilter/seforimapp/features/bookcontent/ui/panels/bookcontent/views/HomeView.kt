@@ -183,14 +183,13 @@ fun HomeView(
                                     0.04f to panelBackground.copy(alpha = 0.20f),
                                     0.08f to panelBackground.copy(alpha = 0.35f),
                                     0.13f to panelBackground.copy(alpha = 0.50f),
-                                    0.18f to panelBackground.copy(alpha = 0.65f),
-                                    0.24f to panelBackground.copy(alpha = 0.80f),
-                                    0.32f to panelBackground.copy(alpha = 0.92f),
-                                    0.42f to panelBackground,
-                                    0.58f to panelBackground,
-                                    0.68f to panelBackground.copy(alpha = 0.92f),
-                                    0.76f to panelBackground.copy(alpha = 0.80f),
-                                    0.82f to panelBackground.copy(alpha = 0.65f),
+                                    0.20f to panelBackground.copy(alpha = 0.65f),
+                                    0.28f to panelBackground.copy(alpha = 0.78f),
+                                    0.38f to panelBackground.copy(alpha = 0.85f),
+                                    0.50f to panelBackground.copy(alpha = 0.78f),
+                                    0.62f to panelBackground.copy(alpha = 0.85f),
+                                    0.72f to panelBackground.copy(alpha = 0.78f),
+                                    0.80f to panelBackground.copy(alpha = 0.65f),
                                     0.87f to panelBackground.copy(alpha = 0.50f),
                                     0.92f to panelBackground.copy(alpha = 0.35f),
                                     0.96f to panelBackground.copy(alpha = 0.20f),
@@ -199,9 +198,31 @@ fun HomeView(
                         ),
                     ),
             )
+
+            // Layer 3: Radial gradient — bottom-center opaque, edges visible all around
+            Box(
+                modifier =
+                    Modifier.fillMaxSize().background(
+                        Brush.radialGradient(
+                            colorStops =
+                                arrayOf(
+                                    0.00f to panelBackground,
+                                    0.35f to panelBackground,
+                                    0.55f to panelBackground.copy(alpha = 0.75f),
+                                    0.75f to panelBackground.copy(alpha = 0.40f),
+                                    1.00f to Color.Transparent,
+                                ),
+                            center = androidx.compose.ui.geometry.Offset(
+                                x = constraints.maxWidth / 2f,
+                                y = constraints.maxHeight * 0.65f,
+                            ),
+                            radius = constraints.maxWidth * 0.55f,
+                        ),
+                    ),
+            )
         }
 
-        // Layer 3: Content
+        // Layer 4: Content
         HomeBody(
             searchUi = searchUi,
             searchCallbacks = searchCallbacks,

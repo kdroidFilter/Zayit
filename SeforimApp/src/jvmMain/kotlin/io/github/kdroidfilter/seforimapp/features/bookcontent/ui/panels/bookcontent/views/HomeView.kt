@@ -605,6 +605,23 @@ private fun HomeBody(
                             )
                         }
                     }
+                    item {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            val twoCardsWidth = (ZMANIM_CARD_HEIGHT * 2) + ZMANIM_HORIZONTAL_SPACING
+                            TempleDestructionCountdownCard(
+                                modifier =
+                                    Modifier
+                                        .width(twoCardsWidth)
+                                        .height(ZMANIM_CARD_HEIGHT * 1.5f),
+                            )
+                        }
+                    }
                 }
             }
         }

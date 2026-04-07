@@ -8,6 +8,10 @@ import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
 
+// Must match the indexer constants
+private const val SNIPPET_NEIGHBOR_WINDOW = 4
+private const val SNIPPET_MIN_LENGTH = 280
+
 /**
  * Implementation of [SnippetProvider] that fetches line content from the database
  * and reproduces the exact same snippet source logic as the indexer.
@@ -15,10 +19,6 @@ import org.jsoup.safety.Safelist
  * This allows removing the text_raw field from the Lucene index to reduce index size,
  * while maintaining identical search behavior.
  */
-// Must match the indexer constants
-private const val SNIPPET_NEIGHBOR_WINDOW = 4
-private const val SNIPPET_MIN_LENGTH = 280
-
 class RepositorySnippetSourceProvider(
     private val repository: SeforimRepository,
 ) : SnippetProvider {

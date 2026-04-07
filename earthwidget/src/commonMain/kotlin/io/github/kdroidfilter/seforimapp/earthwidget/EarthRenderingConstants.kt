@@ -207,7 +207,11 @@ internal const val KIDDUSH_LEVANA_GLOW_INTENSITY = 0.55f
 // ============================================================================
 
 /** sRGB [0..255] → linear [0..1] (approximate gamma 2.2 with square). */
-internal val SRGB_TO_LINEAR = FloatArray(256) { i -> val v = i / 255f; v * v }
+internal val SRGB_TO_LINEAR =
+    FloatArray(256) { i ->
+        val v = i / 255f
+        v * v
+    }
 
 /** linear [0..255] → sRGB byte [0..255] (gamma encode with sqrt). */
 internal val LINEAR_TO_SRGB = IntArray(256) { i -> (sqrt(i / 255f) * 255f + 0.5f).toInt().coerceIn(0, 255) }

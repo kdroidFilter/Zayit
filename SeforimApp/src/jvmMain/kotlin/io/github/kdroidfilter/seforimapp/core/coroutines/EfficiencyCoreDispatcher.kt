@@ -19,13 +19,14 @@ import java.util.concurrent.atomic.AtomicInteger
 val EfficiencyCoreDispatcher: CoroutineDispatcher by lazy {
     val threadCount = Runtime.getRuntime().availableProcessors().coerceAtLeast(2)
     val counter = AtomicInteger(0)
-    Executors.newFixedThreadPool(threadCount) { runnable ->
-        Thread({
-            EnergyManager.enableThreadEfficiencyMode()
-            runnable.run()
-        }, "efficiency-core-${counter.getAndIncrement()}").apply {
-            isDaemon = true
-            priority = Thread.MIN_PRIORITY
-        }
-    }.asCoroutineDispatcher()
+    Executors
+        .newFixedThreadPool(threadCount) { runnable ->
+            Thread({
+                EnergyManager.enableThreadEfficiencyMode()
+                runnable.run()
+            }, "efficiency-core-${counter.getAndIncrement()}").apply {
+                isDaemon = true
+                priority = Thread.MIN_PRIORITY
+            }
+        }.asCoroutineDispatcher()
 }

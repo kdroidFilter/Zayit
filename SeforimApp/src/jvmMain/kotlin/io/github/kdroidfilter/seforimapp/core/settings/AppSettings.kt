@@ -75,6 +75,9 @@ object AppSettings {
     // Zmanim widgets visibility
     private const val KEY_SHOW_ZMANIM_WIDGETS = "show_zmanim_widgets"
 
+    // Homepage wallpaper visibility
+    private const val KEY_SHOW_HOME_WALLPAPER = "show_home_wallpaper"
+
     // Rendering backend (Windows only)
     private const val KEY_USE_OPENGL = "use_opengl"
 
@@ -127,6 +130,10 @@ object AppSettings {
     // StateFlow for zmanim widgets visibility
     private val _showZmanimWidgetsFlow = MutableStateFlow(isShowZmanimWidgetsEnabled())
     val showZmanimWidgetsFlow: StateFlow<Boolean> = _showZmanimWidgetsFlow.asStateFlow()
+
+    // StateFlow for homepage wallpaper visibility
+    private val _showHomeWallpaperFlow = MutableStateFlow(isShowHomeWallpaperEnabled())
+    val showHomeWallpaperFlow: StateFlow<Boolean> = _showHomeWallpaperFlow.asStateFlow()
 
     // StateFlow for compact mode
     private val _compactModeFlow = MutableStateFlow(isCompactModeEnabled())
@@ -310,6 +317,14 @@ object AppSettings {
         _showZmanimWidgetsFlow.value = enabled
     }
 
+    // Homepage wallpaper visibility
+    fun isShowHomeWallpaperEnabled(): Boolean = settings[KEY_SHOW_HOME_WALLPAPER, true]
+
+    fun setShowHomeWallpaperEnabled(enabled: Boolean) {
+        settings[KEY_SHOW_HOME_WALLPAPER] = enabled
+        _showHomeWallpaperFlow.value = enabled
+    }
+
     // OpenGL rendering backend (Windows only)
     fun isUseOpenGlEnabled(): Boolean = settings[KEY_USE_OPENGL, false]
 
@@ -491,6 +506,7 @@ object AppSettings {
         _databasePathFlow.value = null
         _persistSessionFlow.value = true
         _showZmanimWidgetsFlow.value = true
+        _showHomeWallpaperFlow.value = true
         _compactModeFlow.value = false
         _bookFontCodeFlow.value = DEFAULT_BOOK_FONT
         _commentaryFontCodeFlow.value = DEFAULT_COMMENTARY_FONT

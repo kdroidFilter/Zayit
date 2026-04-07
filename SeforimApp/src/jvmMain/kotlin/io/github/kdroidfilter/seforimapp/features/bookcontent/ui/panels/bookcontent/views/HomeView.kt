@@ -22,12 +22,14 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
@@ -138,7 +140,67 @@ fun HomeView(
 ) {
     CatalogRow(onEvent = onEvent)
 
-    Box(modifier = modifier.fillMaxSize()) {
+    val isDark = JewelTheme.isDark
+    val panelBackground = JewelTheme.globalColors.panelBackground
+    val showWallpaper by AppSettings.showHomeWallpaperFlow.collectAsState()
+
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        // Pick resolution based on container width in pixels
+        val widthPx = with(LocalDensity.current) { maxWidth.toPx() }.roundToInt()
+        val wallpaper =
+            if (isDark) {
+                when {
+                    widthPx <= 960 -> Res.drawable.homepage_wallpaper_dark_small
+                    widthPx <= 1440 -> Res.drawable.homepage_wallpaper_dark_medium
+                    else -> Res.drawable.homepage_wallpaper_dark_large
+                }
+            } else {
+                when {
+                    widthPx <= 960 -> Res.drawable.homepage_wallpaper_small
+                    widthPx <= 1440 -> Res.drawable.homepage_wallpaper_medium
+                    else -> Res.drawable.homepage_wallpaper_large
+                }
+            }
+
+        if (showWallpaper) {
+            // Layer 1: Wallpaper background
+            Image(
+                painter = painterResource(wallpaper),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+
+            // Layer 2: Smooth horizontal vignette — image blends into background atmosphere
+            Box(
+                modifier =
+                    Modifier.fillMaxSize().background(
+                        Brush.horizontalGradient(
+                            colorStops =
+                                arrayOf(
+                                    0.00f to panelBackground.copy(alpha = 0.10f),
+                                    0.04f to panelBackground.copy(alpha = 0.20f),
+                                    0.08f to panelBackground.copy(alpha = 0.35f),
+                                    0.13f to panelBackground.copy(alpha = 0.50f),
+                                    0.18f to panelBackground.copy(alpha = 0.65f),
+                                    0.24f to panelBackground.copy(alpha = 0.80f),
+                                    0.32f to panelBackground.copy(alpha = 0.92f),
+                                    0.42f to panelBackground,
+                                    0.58f to panelBackground,
+                                    0.68f to panelBackground.copy(alpha = 0.92f),
+                                    0.76f to panelBackground.copy(alpha = 0.80f),
+                                    0.82f to panelBackground.copy(alpha = 0.65f),
+                                    0.87f to panelBackground.copy(alpha = 0.50f),
+                                    0.92f to panelBackground.copy(alpha = 0.35f),
+                                    0.96f to panelBackground.copy(alpha = 0.20f),
+                                    1.00f to panelBackground.copy(alpha = 0.10f),
+                                ),
+                        ),
+                    ),
+            )
+        }
+
+        // Layer 3: Content
         HomeBody(
             searchUi = searchUi,
             searchCallbacks = searchCallbacks,

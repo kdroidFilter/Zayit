@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 @Immutable
 data class DisplaySettingsState(
     val showZmanimWidgets: Boolean = true,
+    val showHomeWallpaper: Boolean = true,
     val compactMode: Boolean = false,
     val useOpenGl: Boolean = false,
 ) {
@@ -12,6 +13,7 @@ data class DisplaySettingsState(
         val preview =
             DisplaySettingsState(
                 showZmanimWidgets = true,
+                showHomeWallpaper = true,
                 compactMode = false,
                 useOpenGl = false,
             )

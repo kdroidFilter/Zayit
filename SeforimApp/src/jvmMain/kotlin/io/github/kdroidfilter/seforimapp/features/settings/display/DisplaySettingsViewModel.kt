@@ -17,13 +17,15 @@ import kotlinx.coroutines.flow.stateIn
 @Inject
 class DisplaySettingsViewModel : ViewModel() {
     private val showZmanim = MutableStateFlow(AppSettings.isShowZmanimWidgetsEnabled())
+    private val showHomeWallpaper = MutableStateFlow(AppSettings.isShowHomeWallpaperEnabled())
     private val compactMode = MutableStateFlow(AppSettings.isCompactModeEnabled())
     private val useOpenGl = MutableStateFlow(AppSettings.isUseOpenGlEnabled())
 
     val state =
-        combine(showZmanim, compactMode, useOpenGl) { z, compact, gl ->
+        combine(showZmanim, showHomeWallpaper, compactMode, useOpenGl) { z, wallpaper, compact, gl ->
             DisplaySettingsState(
                 showZmanimWidgets = z,
+                showHomeWallpaper = wallpaper,
                 compactMode = compact,
                 useOpenGl = gl,
             )
@@ -32,6 +34,7 @@ class DisplaySettingsViewModel : ViewModel() {
             SharingStarted.WhileSubscribed(5_000),
             DisplaySettingsState(
                 showZmanimWidgets = showZmanim.value,
+                showHomeWallpaper = showHomeWallpaper.value,
                 compactMode = compactMode.value,
                 useOpenGl = useOpenGl.value,
             ),
@@ -42,6 +45,10 @@ class DisplaySettingsViewModel : ViewModel() {
             is DisplaySettingsEvents.SetShowZmanimWidgets -> {
                 AppSettings.setShowZmanimWidgetsEnabled(event.value)
                 showZmanim.value = event.value
+            }
+            is DisplaySettingsEvents.SetShowHomeWallpaper -> {
+                AppSettings.setShowHomeWallpaperEnabled(event.value)
+                showHomeWallpaper.value = event.value
             }
             is DisplaySettingsEvents.SetCompactMode -> {
                 AppSettings.setCompactModeEnabled(event.value)

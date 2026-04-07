@@ -21,11 +21,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
@@ -34,19 +38,20 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.components.CatalogRow
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
-import io.github.kdroidfilter.seforimapp.icons.*
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -71,6 +76,7 @@ import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.skiko.Cursor
 import seforimapp.seforimapp.generated.resources.*
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 
 // Suggestion models for the scope picker
@@ -136,7 +142,87 @@ fun HomeView(
 ) {
     CatalogRow(onEvent = onEvent)
 
-    Box(modifier = modifier.fillMaxSize()) {
+    val panelBackground = JewelTheme.globalColors.panelBackground
+    val showWallpaper by AppSettings.showHomeWallpaperFlow.collectAsState()
+
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        if (showWallpaper) {
+            val isDark = JewelTheme.isDark
+            val widthPx = with(LocalDensity.current) { maxWidth.toPx() }.roundToInt()
+            val wallpaper =
+                if (isDark) {
+                    when {
+                        widthPx <= 960 -> Res.drawable.homepage_wallpaper_dark_small
+                        widthPx <= 1440 -> Res.drawable.homepage_wallpaper_dark_medium
+                        else -> Res.drawable.homepage_wallpaper_dark_large
+                    }
+                } else {
+                    when {
+                        widthPx <= 960 -> Res.drawable.homepage_wallpaper_small
+                        widthPx <= 1440 -> Res.drawable.homepage_wallpaper_medium
+                        else -> Res.drawable.homepage_wallpaper_large
+                    }
+                }
+            // Layer 1: Wallpaper background
+            Image(
+                painter = painterResource(wallpaper),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+
+            // Layer 2: Smooth horizontal vignette — image blends into background atmosphere
+            Box(
+                modifier =
+                    Modifier.fillMaxSize().background(
+                        Brush.horizontalGradient(
+                            colorStops =
+                                arrayOf(
+                                    0.00f to panelBackground.copy(alpha = 0.10f),
+                                    0.04f to panelBackground.copy(alpha = 0.20f),
+                                    0.08f to panelBackground.copy(alpha = 0.35f),
+                                    0.13f to panelBackground.copy(alpha = 0.50f),
+                                    0.20f to panelBackground.copy(alpha = 0.65f),
+                                    0.28f to panelBackground.copy(alpha = 0.78f),
+                                    0.38f to panelBackground.copy(alpha = 0.85f),
+                                    0.50f to panelBackground.copy(alpha = 0.78f),
+                                    0.62f to panelBackground.copy(alpha = 0.85f),
+                                    0.72f to panelBackground.copy(alpha = 0.78f),
+                                    0.80f to panelBackground.copy(alpha = 0.65f),
+                                    0.87f to panelBackground.copy(alpha = 0.50f),
+                                    0.92f to panelBackground.copy(alpha = 0.35f),
+                                    0.96f to panelBackground.copy(alpha = 0.20f),
+                                    1.00f to panelBackground.copy(alpha = 0.10f),
+                                ),
+                        ),
+                    ),
+            )
+
+            // Layer 3: Radial gradient — bottom-center opaque, edges visible all around
+            Box(
+                modifier =
+                    Modifier.fillMaxSize().background(
+                        Brush.radialGradient(
+                            colorStops =
+                                arrayOf(
+                                    0.00f to panelBackground,
+                                    0.35f to panelBackground,
+                                    0.55f to panelBackground.copy(alpha = 0.75f),
+                                    0.75f to panelBackground.copy(alpha = 0.40f),
+                                    1.00f to Color.Transparent,
+                                ),
+                            center =
+                                androidx.compose.ui.geometry.Offset(
+                                    x = constraints.maxWidth / 2f,
+                                    y = constraints.maxHeight * 0.65f,
+                                ),
+                            radius = constraints.maxWidth * 0.55f,
+                        ),
+                    ),
+            )
+        }
+
+        // Layer 4: Content
         HomeBody(
             searchUi = searchUi,
             searchCallbacks = searchCallbacks,
@@ -191,7 +277,7 @@ private fun HomeBody(
                 focusRequester: FocusRequester,
             ) {
                 scope.launch {
-                    delay(ms)
+                    delay(ms.milliseconds)
                     focusRequester.requestFocus()
                 }
             }
@@ -266,9 +352,9 @@ private fun HomeBody(
                         Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        // Scale logo proportionally: 220dp at 600dp, grows gently with wider screens
-                        val logoSize = (maxWidth * 0.30f).coerceIn(220.dp, 270.dp)
-                        LogoImage(modifier = Modifier.size(logoSize))
+                        // Scale logo width proportionally; height follows the image aspect ratio
+                        val logoWidth = (maxWidth * 0.50f).coerceIn(320.dp, 450.dp)
+                        LogoImage(modifier = Modifier.width(logoWidth))
                     }
                 }
                 item {
@@ -285,7 +371,7 @@ private fun HomeBody(
                                 // When switching modes, always focus the top text field
                                 if (searchUi.selectedFilter == SearchFilter.REFERENCE || searchUi.selectedFilter == SearchFilter.TEXT) {
                                     // small delay to ensure composition is settled
-                                    delay(100)
+                                    delay(100.milliseconds)
                                     mainSearchFocusRequester.requestFocus()
 
                                     // Preserve what the user typed when toggling modes. If the destination
@@ -310,7 +396,7 @@ private fun HomeBody(
                             }
                             LaunchedEffect(searchUi.selectedScopeBook?.id, isReferenceMode) {
                                 if (isReferenceMode && searchUi.selectedScopeBook != null) {
-                                    delay(80)
+                                    delay(80.milliseconds)
                                     mainSearchFocusRequester.requestFocus()
                                 }
                             }
@@ -525,96 +611,39 @@ private fun HomeBody(
     }
 }
 
-/** App logo shown on the Home screen. */
+/**
+ * App logo shown on the Home screen.
+ * In light mode: always golden tint (text mask + subtle SoftLight on logo).
+ * In dark mode: accent color tint from the current theme.
+ */
 @Composable
 private fun LogoImage(modifier: Modifier = Modifier) {
-    Image(
-        painterResource(Res.drawable.zayit_transparent),
-        contentDescription = null,
-        modifier = modifier,
-    )
-}
+    val isDark = JewelTheme.isDark
+    val accent = JewelTheme.globalColors.outlines.focused
+    val logoTint = if (isDark) accent else AccentColor.Gold.forMode(isDark = false)
+    val tintAlpha = 0.25f
 
-/**
- * Panel showing the 5 text-search levels as selectable cards synchronized
- * with a slider. Encapsulates its own local selection state.
- */
-@Composable
-/**
- * Displays the five text-search levels as selectable cards synchronized with
- * a slider. The slider and cards mirror the same selection index.
- */
-private fun SearchLevelsPanel(
-    selectedIndex: Int,
-    onSelectedIndexChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val filterCards: List<SearchFilterCard> =
-        listOf(
-            SearchFilterCard(
-                Target,
-                Res.string.search_level_1_value,
-                Res.string.search_level_1_description,
-                Res.string.search_level_1_explanation,
-            ),
-            SearchFilterCard(
-                Link,
-                Res.string.search_level_2_value,
-                Res.string.search_level_2_description,
-                Res.string.search_level_2_explanation,
-            ),
-            SearchFilterCard(
-                Format_letter_spacing,
-                Res.string.search_level_3_value,
-                Res.string.search_level_3_description,
-                Res.string.search_level_3_explanation,
-            ),
-            SearchFilterCard(
-                Article,
-                Res.string.search_level_4_value,
-                Res.string.search_level_4_description,
-                Res.string.search_level_4_explanation,
-            ),
-            SearchFilterCard(
-                Book,
-                Res.string.search_level_5_value,
-                Res.string.search_level_5_description,
-                Res.string.search_level_5_explanation,
-            ),
+    Box(modifier) {
+        // Base layer: full logo with original colors
+        Image(
+            painterResource(Res.drawable.zayit_new_logo),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
         )
-
-    // Synchronize cards with slider position
-    var sliderPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
-    LaunchedEffect(selectedIndex) { sliderPosition = selectedIndex.toFloat() }
-    val maxIndex = (filterCards.size - 1).coerceAtLeast(0)
-    val coercedSelected = sliderPosition.coerceIn(0f, maxIndex.toFloat()).toInt()
-
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            filterCards.forEachIndexed { index, filterCard ->
-                SearchLevelCard(
-                    data = filterCard,
-                    selected = index == coercedSelected,
-                    onClick = {
-                        sliderPosition = index.toFloat()
-                        onSelectedIndexChange(index)
-                    },
-                )
-            }
-        }
-
-        Slider(
-            value = sliderPosition,
-            onValueChange = { newValue ->
-                sliderPosition = newValue
-                onSelectedIndexChange(newValue.coerceIn(0f, maxIndex.toFloat()).toInt())
-            },
-            valueRange = 0f..maxIndex.toFloat(),
-            steps = (filterCards.size - 2).coerceAtLeast(0),
-            modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
+        // Subtle tint overlay: SoftLight preserves transparency, tints only colored areas
+        Image(
+            painterResource(Res.drawable.zayit_new_logo),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            alpha = tintAlpha,
+            colorFilter = ColorFilter.tint(logoTint, BlendMode.SrcIn),
+        )
+        // Text overlay: tint color painted through the text alpha mask
+        Image(
+            painterResource(Res.drawable.zayit_new_logo_text),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            colorFilter = ColorFilter.tint(logoTint, BlendMode.SrcIn),
         )
     }
 }
@@ -1076,9 +1105,9 @@ private fun SuggestionRow(
                 val dist = hScroll.value // currently at max, distance to start
                 val toStartMs = ((dist / speedPxPerSec) * 1000f).toInt().coerceIn(3000, 24000)
                 hScroll.animateScrollTo(0, animationSpec = tween(durationMillis = toStartMs, easing = LinearEasing))
-                delay(600)
+                delay(600.milliseconds)
                 hScroll.scrollTo(max)
-                delay(600)
+                delay(600.milliseconds)
             }
         } else {
             // Show the end for non-active rows
@@ -1236,7 +1265,7 @@ private fun SearchBar(
     val internalFocusRequester = remember { FocusRequester() }
     val effectiveFocusRequester = focusRequester ?: internalFocusRequester
     LaunchedEffect(Unit) {
-        delay(200)
+        delay(200.milliseconds)
         if (enabled && autoFocus) effectiveFocusRequester.requestFocus()
     }
 
@@ -1774,59 +1803,7 @@ private fun FilterButton(
     )
 }
 
-@Composable
-private fun SearchLevelCard(
-    data: SearchFilterCard,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val shape = RoundedCornerShape(16.dp)
-    val backgroundColor = if (selected) JewelTheme.globalColors.outlines.focused else Color.Transparent
-
-    val borderColor =
-        if (selected) JewelTheme.globalColors.borders.focused else JewelTheme.globalColors.borders.disabled
-
-    Box(
-        modifier =
-            modifier
-                .width(96.dp)
-                .height(110.dp)
-                .clip(shape)
-                .background(backgroundColor)
-                .border(width = if (selected) 2.dp else 1.dp, color = borderColor, shape = shape)
-                .clickable(onClick = onClick)
-                .pointerHoverIcon(PointerIcon.Hand),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            val contentColor = if (selected) Color.White else JewelTheme.contentColor
-            Icon(
-                data.icons,
-                contentDescription = stringResource(data.label),
-                modifier = Modifier.size(40.dp),
-                tint = contentColor,
-            )
-            Text(
-                stringResource(data.label),
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center,
-                color = contentColor,
-            )
-            Text(
-                stringResource(data.desc),
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center,
-                color = contentColor,
-            )
-        }
-    }
-}
-
-@androidx.compose.ui.tooling.preview.Preview
+@Preview
 @Composable
 private fun HomeViewPreview() {
     PreviewContainer {

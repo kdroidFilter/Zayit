@@ -141,10 +141,11 @@ class TabsViewModel(
             if (fromIndex !in 0..currentTabs.lastIndex || toIndex !in 0..currentTabs.lastIndex) return@update current
             if (fromIndex == toIndex) return@update current
 
-            val newTabs = currentTabs.toMutableList().also {
-                val movedTab = it.removeAt(fromIndex)
-                it.add(toIndex, movedTab)
-            }
+            val newTabs =
+                currentTabs.toMutableList().also {
+                    val movedTab = it.removeAt(fromIndex)
+                    it.add(toIndex, movedTab)
+                }
 
             val selectedTab = currentTabs.getOrNull(current.selectedTabIndex)
             val newSelectedIndex =

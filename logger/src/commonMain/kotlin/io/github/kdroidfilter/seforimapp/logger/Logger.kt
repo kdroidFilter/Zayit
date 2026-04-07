@@ -19,17 +19,25 @@ class LoggingLevel(
 ) {
     companion object {
         @JvmField val VERBOSE = LoggingLevel(0)
+
         @JvmField val DEBUG = LoggingLevel(1)
+
         @JvmField val INFO = LoggingLevel(2)
+
         @JvmField val WARN = LoggingLevel(3)
+
         @JvmField val ERROR = LoggingLevel(4)
     }
 }
 
 @PublishedApi internal const val COLOR_RED = "\u001b[31m"
+
 @PublishedApi internal const val COLOR_AQUA = "\u001b[36m"
+
 @PublishedApi internal const val COLOR_LIGHT_GRAY = "\u001b[37m"
+
 @PublishedApi internal const val COLOR_ORANGE = "\u001b[38;2;255;165;0m"
+
 @PublishedApi internal const val COLOR_RESET = "\u001b[0m"
 
 @PublishedApi internal val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")

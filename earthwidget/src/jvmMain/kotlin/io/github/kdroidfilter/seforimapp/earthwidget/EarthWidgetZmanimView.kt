@@ -1,5 +1,7 @@
 package io.github.kdroidfilter.seforimapp.earthwidget
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -205,6 +207,7 @@ fun EarthWidgetZmanimView(
     kiddushLevanaLatestOpinion: KiddushLevanaLatestOpinion = KiddushLevanaLatestOpinion.BETWEEN_MOLDOS,
     initialShowKiddushLevana: Boolean = true,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
+    renderDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     // Location state (defaults to Jerusalem, overridden by locationOverride)
     var markerLatitudeDegrees by remember { mutableFloatStateOf(DEFAULT_MARKER_LAT.toFloat()) }
@@ -509,6 +512,7 @@ fun EarthWidgetZmanimView(
             isDraggingEarth = isDraggingEarth,
             kiddushLevanaData = kiddushLevanaData,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
+            renderDispatcher = renderDispatcher,
         )
         if (showKiddushLevanaLegend) {
             KiddushLevanaLegend(
@@ -677,6 +681,7 @@ private fun EarthSceneContent(
     modifier: Modifier = Modifier,
     kiddushLevanaData: KiddushLevanaData? = null,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
+    renderDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     val density = LocalDensity.current
     val degreesPerPx =
@@ -731,6 +736,7 @@ private fun EarthSceneContent(
             kiddushLevanaStartDegrees = kiddushLevanaData?.startDegrees,
             kiddushLevanaEndDegrees = kiddushLevanaData?.endDegrees,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
+            renderDispatcher = renderDispatcher,
         )
     }
 }

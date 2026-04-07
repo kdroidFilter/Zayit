@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
 
+import io.github.kdroidfilter.seforimapp.core.coroutines.EfficiencyCoreDispatcher
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -624,6 +625,7 @@ fun HomeCelestialWidgets(
                                 kiddushLevanaEarliestOpinion = kiddushLevanaEarliestOpinion,
                                 kiddushLevanaLatestOpinion = kiddushLevanaLatestOpinion,
                                 kiddushLevanaColorRgb = accentRgbInt,
+                                renderDispatcher = EfficiencyCoreDispatcher,
                             )
                         }
                     }

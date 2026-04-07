@@ -212,10 +212,11 @@ fun HomeView(
                                     0.75f to panelBackground.copy(alpha = 0.40f),
                                     1.00f to Color.Transparent,
                                 ),
-                            center = androidx.compose.ui.geometry.Offset(
-                                x = constraints.maxWidth / 2f,
-                                y = constraints.maxHeight * 0.65f,
-                            ),
+                            center =
+                                androidx.compose.ui.geometry.Offset(
+                                    x = constraints.maxWidth / 2f,
+                                    y = constraints.maxHeight * 0.65f,
+                                ),
                             radius = constraints.maxWidth * 0.55f,
                         ),
                     ),

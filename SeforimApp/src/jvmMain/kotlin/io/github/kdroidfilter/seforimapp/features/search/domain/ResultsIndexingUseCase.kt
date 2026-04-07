@@ -65,22 +65,29 @@ class ResultsIndexingUseCase {
             val cur2 = cachedIndex
             if (cur2 != null && cur2.identity == identity) return cur2
 
-            val bookMap = HashMap<Long, MutableList<Int>>()
             val lineMap = HashMap<Long, Int>(results.size * 2)
 
+            // Pass 1: count results per book (no boxing)
+            val bookCounts = HashMap<Long, Int>()
             for ((i, r) in results.withIndex()) {
-                bookMap.getOrPut(r.bookId) { ArrayList() }.add(i)
+                bookCounts[r.bookId] = (bookCounts[r.bookId] ?: 0) + 1
                 lineMap[r.lineId] = i
             }
 
-            val finalBook = HashMap<Long, IntArray>(bookMap.size)
-            for ((k, v) in bookMap) {
-                val arr = IntArray(v.size)
-                var idx = 0
-                for (n in v) {
-                    arr[idx++] = n
-                }
-                finalBook[k] = arr
+            // Allocate IntArrays and track fill position
+            val finalBook = HashMap<Long, IntArray>(bookCounts.size)
+            val bookOffsets = HashMap<Long, Int>(bookCounts.size)
+            for ((bookId, count) in bookCounts) {
+                finalBook[bookId] = IntArray(count)
+                bookOffsets[bookId] = 0
+            }
+
+            // Pass 2: fill arrays directly (no boxing)
+            for ((i, r) in results.withIndex()) {
+                val arr = finalBook[r.bookId]!!
+                val offset = bookOffsets[r.bookId]!!
+                arr[offset] = i
+                bookOffsets[r.bookId] = offset + 1
             }
 
             val index =

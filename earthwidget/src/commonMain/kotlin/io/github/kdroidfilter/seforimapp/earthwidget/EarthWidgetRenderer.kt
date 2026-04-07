@@ -118,6 +118,7 @@ internal class EarthWidgetRenderer(
                         kiddushLevanaStartDegrees = state.kiddushLevanaStartDegrees,
                         kiddushLevanaEndDegrees = state.kiddushLevanaEndDegrees,
                         kiddushLevanaColorRgb = state.kiddushLevanaColorRgb,
+                        parallelDispatcher = dispatcher,
                     )
 
                 // Convert to ImageBitmap (copies the data)
@@ -168,6 +169,7 @@ internal class EarthWidgetRenderer(
                         bufferPool = bufferPool,
                         outputBuffer = outputBuffer,
                         starfieldCache = starfieldCache,
+                        parallelDispatcher = dispatcher,
                     )
 
                 // Convert to ImageBitmap (copies the data)

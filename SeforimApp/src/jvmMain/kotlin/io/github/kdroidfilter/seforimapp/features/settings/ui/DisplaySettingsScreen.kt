@@ -51,6 +51,8 @@ import seforimapp.seforimapp.generated.resources.accent_color_teal
 import seforimapp.seforimapp.generated.resources.settings_accent_color_label
 import seforimapp.seforimapp.generated.resources.settings_compact_mode
 import seforimapp.seforimapp.generated.resources.settings_compact_mode_description
+import seforimapp.seforimapp.generated.resources.settings_show_home_wallpaper
+import seforimapp.seforimapp.generated.resources.settings_show_home_wallpaper_description
 import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets
 import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets_description
 import seforimapp.seforimapp.generated.resources.settings_theme_style_classic
@@ -106,6 +108,13 @@ private fun DisplaySettingsView(
                 description = Res.string.settings_show_zmanim_widgets_description,
                 checked = state.showZmanimWidgets,
                 onCheckedChange = { onEvent(DisplaySettingsEvents.SetShowZmanimWidgets(it)) },
+            )
+
+            SettingCard(
+                title = Res.string.settings_show_home_wallpaper,
+                description = Res.string.settings_show_home_wallpaper_description,
+                checked = state.showHomeWallpaper,
+                onCheckedChange = { onEvent(DisplaySettingsEvents.SetShowHomeWallpaper(it)) },
             )
 
             SettingCard(

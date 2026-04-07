@@ -1033,19 +1033,9 @@ private fun NextFullMoonBar(
             )
         }
     val labelColor =
-        if (isDark) {
-            JewelTheme.globalColors.text.normal
-                .copy(alpha = 0.8f)
-        } else {
-            JewelTheme.globalColors.text.normal
-                .copy(alpha = 0.8f)
-        }
-    val valueColor =
-        if (isDark) {
-            accent
-        } else {
-            accent
-        }
+        JewelTheme.globalColors.text.normal
+            .copy(alpha = 0.8f)
+    val valueColor = accent
 
     Box(
         modifier =
@@ -1288,25 +1278,8 @@ private fun DayMomentCard(
     onClick: (() -> Unit)? = null,
 ) {
     val isDark = JewelTheme.isDark
-    val accent = rememberAccentColor(isDark)
     val shape = RoundedCornerShape(18.dp)
     val panelBackground = JewelTheme.globalColors.panelBackground
-    val background =
-        if (isDark) {
-            Brush.verticalGradient(
-                listOf(
-                    panelBackground.blendTowards(Color.White, 0.06f),
-                    panelBackground.blendTowards(Color.Black, 0.18f),
-                ),
-            )
-        } else {
-            Brush.verticalGradient(
-                listOf(
-                    panelBackground.blendTowards(Color.White, 0.10f),
-                    panelBackground.blendTowards(accent, 0.05f),
-                ),
-            )
-        }
     val borderColor =
         if (isDark) {
             JewelTheme.globalColors.borders.disabled
@@ -1319,11 +1292,9 @@ private fun DayMomentCard(
     val hoverSource = remember { MutableInteractionSource() }
     val isHovered by hoverSource.collectIsHoveredAsState()
     val isClickable = onClick != null
-    val showHover = isClickable && isHovered
-    val selectionOverlay =
-        JewelTheme.globalColors.text.selected
-            .copy(alpha = if (isDark) 0.2f else 0.12f)
     val selectionBorder = JewelTheme.globalColors.borders.focused
+    val hoverBorder =
+        if (isDark) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.6f)
     val hoverModifier =
         if (isClickable) {
             Modifier.hoverable(hoverSource).pointerHoverIcon(PointerIcon.Hand)
@@ -1336,6 +1307,14 @@ private fun DayMomentCard(
         } else {
             Modifier
         }
+    val effectiveBorder =
+        when {
+            isSelected -> selectionBorder
+            isClickable && isHovered -> hoverBorder
+            else -> borderColor
+        }
+    val glassBackground =
+        panelBackground.copy(alpha = if (isDark) 0.25f else 0.35f)
 
     Box(
         modifier =
@@ -1344,33 +1323,15 @@ private fun DayMomentCard(
                 .clip(shape)
                 .then(hoverModifier)
                 .then(clickModifier)
-                .background(background)
-                .border(1.dp, borderColor, shape),
+                .background(glassBackground, shape)
+                .border(1.5.dp, effectiveBorder, shape),
     ) {
         if (isSelected) {
             Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .background(selectionOverlay),
-            )
-        } else if (showHover) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(
-                            JewelTheme.globalColors.outlines.focused
-                                .copy(alpha = 0.12f),
-                        ),
-            )
-        }
-        if (isSelected) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .border(2.dp, selectionBorder, shape),
+                        .border(2.5.dp, selectionBorder, shape),
             )
         }
         Column(
@@ -1555,22 +1516,6 @@ private fun DualTimeCardContent(
     val accent = rememberAccentColor(isDark)
     val shape = RoundedCornerShape(18.dp)
     val panelBackground = JewelTheme.globalColors.panelBackground
-    val background =
-        if (isDark) {
-            Brush.verticalGradient(
-                listOf(
-                    panelBackground.blendTowards(Color.White, 0.06f),
-                    panelBackground.blendTowards(Color.Black, 0.18f),
-                ),
-            )
-        } else {
-            Brush.verticalGradient(
-                listOf(
-                    panelBackground.blendTowards(Color.White, 0.10f),
-                    panelBackground.blendTowards(accent, 0.05f),
-                ),
-            )
-        }
     val borderColor =
         if (isDark) {
             JewelTheme.globalColors.borders.disabled
@@ -1582,7 +1527,6 @@ private fun DualTimeCardContent(
             .copy(alpha = 0.78f)
     val accentStart = accent.blendTowards(Color.White, 0.35f)
     val accentEnd = accent.blendTowards(Color.White, 0.55f)
-    val resolvedBackground = backgroundOverride ?: background
     val resolvedBorderColor = borderColorOverride ?: borderColor
     val resolvedAccentStart = accentStartOverride ?: accentStart
     val resolvedAccentEnd = accentEndOverride ?: accentEnd
@@ -1591,20 +1535,16 @@ private fun DualTimeCardContent(
     val rightClick = onRightClick
     val leftClickable = leftClick != null && leftTimeAvailable
     val rightClickable = rightClick != null && rightTimeAvailable
-    val leftHoverSource = remember { MutableInteractionSource() }
-    val rightHoverSource = remember { MutableInteractionSource() }
-    val isLeftHovered by leftHoverSource.collectIsHoveredAsState()
-    val isRightHovered by rightHoverSource.collectIsHoveredAsState()
-    val showHover = (leftClickable && isLeftHovered) || (rightClickable && isRightHovered)
+    val isClickable = leftClickable || rightClickable
+    val hoverSource = remember { MutableInteractionSource() }
+    val isHovered by hoverSource.collectIsHoveredAsState()
     val isSelected = leftSelected || rightSelected
-    val selectionOverlay =
-        JewelTheme.globalColors.text.selected
-            .copy(alpha = if (isDark) 0.2f else 0.12f)
     val selectionBorder = JewelTheme.globalColors.borders.focused
+    val hoverBorder =
+        if (isDark) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.6f)
     val leftModifier =
         if (leftClickable) {
             Modifier
-                .hoverable(leftHoverSource)
                 .pointerHoverIcon(PointerIcon.Hand)
                 .clickable(onClick = leftClick)
         } else {
@@ -1613,11 +1553,26 @@ private fun DualTimeCardContent(
     val rightModifier =
         if (rightClickable) {
             Modifier
-                .hoverable(rightHoverSource)
                 .pointerHoverIcon(PointerIcon.Hand)
                 .clickable(onClick = rightClick)
         } else {
             Modifier
+        }
+    val effectiveBorder =
+        when {
+            isSelected -> selectionBorder
+            isClickable && isHovered -> hoverBorder
+            else -> resolvedBorderColor
+        }
+    val cardHoverModifier =
+        if (isClickable) Modifier.hoverable(hoverSource) else Modifier
+    val glassBackground =
+        panelBackground.copy(alpha = if (isDark) 0.25f else 0.35f)
+    val bgModifier =
+        if (backgroundOverride != null) {
+            Modifier.background(backgroundOverride)
+        } else {
+            Modifier.background(glassBackground, shape)
         }
 
     Box(
@@ -1625,8 +1580,9 @@ private fun DualTimeCardContent(
             modifier
                 .height(ZMANIM_CARD_HEIGHT)
                 .clip(shape)
-                .background(resolvedBackground)
-                .border(1.dp, resolvedBorderColor, shape),
+                .then(cardHoverModifier)
+                .then(bgModifier)
+                .border(1.5.dp, effectiveBorder, shape),
     ) {
         if (premiumOverlay != null) {
             Box(
@@ -1641,25 +1597,7 @@ private fun DualTimeCardContent(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .background(selectionOverlay),
-            )
-        } else if (showHover) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(
-                            JewelTheme.globalColors.outlines.focused
-                                .copy(alpha = 0.12f),
-                        ),
-            )
-        }
-        if (isSelected) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .border(2.dp, selectionBorder, shape),
+                        .border(2.5.dp, selectionBorder, shape),
             )
         }
         Column(
@@ -2003,29 +1941,7 @@ private fun CelestialWidgetCard(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val isDark = JewelTheme.isDark
-    val accent = rememberAccentColor(isDark)
     val shape = RoundedCornerShape(22.dp)
-    val panelBackground = JewelTheme.globalColors.panelBackground
-    val background =
-        if (backgroundColor == null) {
-            if (isDark) {
-                Brush.verticalGradient(
-                    listOf(
-                        panelBackground.blendTowards(Color.White, 0.06f),
-                        panelBackground.blendTowards(Color.Black, 0.18f),
-                    ),
-                )
-            } else {
-                Brush.verticalGradient(
-                    listOf(
-                        panelBackground.blendTowards(Color.White, 0.10f),
-                        panelBackground.blendTowards(accent, 0.05f),
-                    ),
-                )
-            }
-        } else {
-            null
-        }
     val borderColor =
         if (isDark) {
             JewelTheme.globalColors.borders.disabled
@@ -2041,7 +1957,7 @@ private fun CelestialWidgetCard(
                     if (backgroundColor != null) {
                         Modifier.background(backgroundColor, shape)
                     } else {
-                        Modifier.background(background!!, shape)
+                        Modifier
                     },
                 ).border(1.dp, borderColor, shape),
         content = content,

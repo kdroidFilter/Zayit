@@ -44,6 +44,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -589,10 +590,18 @@ private fun HomeBody(
     }
 }
 
-/** App logo shown on the Home screen. Text is tinted to match the accent color. */
+/**
+ * App logo shown on the Home screen.
+ * In light mode: always golden tint (text mask + subtle SoftLight on logo).
+ * In dark mode: accent color tint from the current theme.
+ */
 @Composable
 private fun LogoImage(modifier: Modifier = Modifier) {
+    val isDark = JewelTheme.isDark
     val accent = JewelTheme.globalColors.outlines.focused
+    val logoTint = if (isDark) accent else AccentColor.Gold.forMode(isDark = false)
+    val tintAlpha = 0.25f
+
     Box(modifier) {
         // Base layer: full logo with original colors
         Image(
@@ -600,12 +609,20 @@ private fun LogoImage(modifier: Modifier = Modifier) {
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
         )
-        // Text overlay: accent color painted through the text alpha mask
+        // Subtle tint overlay: SoftLight preserves transparency, tints only colored areas
+        Image(
+            painterResource(Res.drawable.zayit_new_logo),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            alpha = tintAlpha,
+            colorFilter = ColorFilter.tint(logoTint, BlendMode.SrcIn),
+        )
+        // Text overlay: tint color painted through the text alpha mask
         Image(
             painterResource(Res.drawable.zayit_new_logo_text),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            colorFilter = ColorFilter.tint(accent, BlendMode.SrcIn),
+            colorFilter = ColorFilter.tint(logoTint, BlendMode.SrcIn),
         )
     }
 }

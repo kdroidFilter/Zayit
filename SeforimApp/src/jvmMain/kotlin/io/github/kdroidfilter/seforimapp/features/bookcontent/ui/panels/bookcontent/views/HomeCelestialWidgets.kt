@@ -53,6 +53,7 @@ import com.kosherjava.zmanim.ComplexZmanimCalendar
 import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
 import com.kosherjava.zmanim.util.GeoLocation
+import io.github.kdroidfilter.seforimapp.core.coroutines.EfficiencyCoreDispatcher
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetMoonSkyView
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
@@ -624,6 +625,7 @@ fun HomeCelestialWidgets(
                                 kiddushLevanaEarliestOpinion = kiddushLevanaEarliestOpinion,
                                 kiddushLevanaLatestOpinion = kiddushLevanaLatestOpinion,
                                 kiddushLevanaColorRgb = accentRgbInt,
+                                renderDispatcher = EfficiencyCoreDispatcher,
                             )
                         }
                     }

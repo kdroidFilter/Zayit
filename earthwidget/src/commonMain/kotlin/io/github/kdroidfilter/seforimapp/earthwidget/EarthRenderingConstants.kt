@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.earthwidget
 
 import kotlin.math.PI
+import kotlin.math.sqrt
 
 // ============================================================================
 // MATHEMATICAL CONSTANTS
@@ -200,3 +201,17 @@ internal const val KIDDUSH_LEVANA_ALPHA_BACK = 0xA0
 
 /** Kiddush Levana glow intensity multiplier. */
 internal const val KIDDUSH_LEVANA_GLOW_INTENSITY = 0.55f
+
+// ============================================================================
+// GAMMA LOOKUP TABLES
+// ============================================================================
+
+/** sRGB [0..255] → linear [0..1] (approximate gamma 2.2 with square). */
+internal val SRGB_TO_LINEAR =
+    FloatArray(256) { i ->
+        val v = i / 255f
+        v * v
+    }
+
+/** linear [0..255] → sRGB byte [0..255] (gamma encode with sqrt). */
+internal val LINEAR_TO_SRGB = IntArray(256) { i -> (sqrt(i / 255f) * 255f + 0.5f).toInt().coerceIn(0, 255) }

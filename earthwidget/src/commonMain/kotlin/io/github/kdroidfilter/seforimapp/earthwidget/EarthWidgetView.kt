@@ -42,6 +42,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import org.jetbrains.compose.resources.imageResource
 import seforimapp.earthwidget.generated.resources.Res
@@ -153,6 +155,7 @@ fun EarthWidgetScene(
     kiddushLevanaStartDegrees: Float? = null,
     kiddushLevanaEndDegrees: Float? = null,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
+    renderDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     // Earth rotation and light can be instant (during drag) or animated (location change)
     val animatedEarthRotation =
@@ -215,7 +218,7 @@ fun EarthWidgetScene(
 
     val earthTexture = rememberEarthTexture()
     val moonTexture = rememberMoonTexture()
-    val renderer = remember { EarthWidgetRenderer() }
+    val renderer = remember(renderDispatcher) { EarthWidgetRenderer(dispatcher = renderDispatcher) }
     val textures =
         remember(earthTexture, moonTexture, showMoonInOrbit) {
             EarthWidgetTextures(earth = earthTexture, moon = if (showMoonInOrbit) moonTexture else null)

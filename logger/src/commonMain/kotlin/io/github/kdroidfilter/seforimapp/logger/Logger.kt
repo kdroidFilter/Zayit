@@ -18,32 +18,40 @@ class LoggingLevel(
     val priority: Int,
 ) {
     companion object {
-        val VERBOSE = LoggingLevel(0)
-        val DEBUG = LoggingLevel(1)
-        val INFO = LoggingLevel(2)
-        val WARN = LoggingLevel(3)
-        val ERROR = LoggingLevel(4)
+        @JvmField val VERBOSE = LoggingLevel(0)
+
+        @JvmField val DEBUG = LoggingLevel(1)
+
+        @JvmField val INFO = LoggingLevel(2)
+
+        @JvmField val WARN = LoggingLevel(3)
+
+        @JvmField val ERROR = LoggingLevel(4)
     }
 }
 
-private const val COLOR_RED = "\u001b[31m"
-private const val COLOR_AQUA = "\u001b[36m"
-private const val COLOR_LIGHT_GRAY = "\u001b[37m"
-private const val COLOR_ORANGE = "\u001b[38;2;255;165;0m"
-private const val COLOR_RESET = "\u001b[0m"
+@PublishedApi internal const val COLOR_RED = "\u001b[31m"
 
-private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+@PublishedApi internal const val COLOR_AQUA = "\u001b[36m"
 
-private fun getCurrentTimestamp(): String = dateFormat.format(Date())
+@PublishedApi internal const val COLOR_LIGHT_GRAY = "\u001b[37m"
 
-private fun shouldLogToConsole(minLevel: LoggingLevel): Boolean = isDevEnv && loggingLevel.priority <= minLevel.priority
+@PublishedApi internal const val COLOR_ORANGE = "\u001b[38;2;255;165;0m"
 
-private fun shouldLogToSentry(minLevel: LoggingLevel): Boolean =
+@PublishedApi internal const val COLOR_RESET = "\u001b[0m"
+
+@PublishedApi internal val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+
+@PublishedApi internal fun getCurrentTimestamp(): String = dateFormat.format(Date())
+
+@PublishedApi internal fun shouldLogToConsole(minLevel: LoggingLevel): Boolean = isDevEnv && loggingLevel.priority <= minLevel.priority
+
+@PublishedApi internal fun shouldLogToSentry(minLevel: LoggingLevel): Boolean =
     SentryConfig.sentryEnabled &&
         Sentry.isEnabled() &&
         minLevel.priority >= SentryConfig.sentryLevel.priority
 
-private fun toSentryLevel(level: LoggingLevel): SentryLevel =
+@PublishedApi internal fun toSentryLevel(level: LoggingLevel): SentryLevel =
     when {
         level.priority <= LoggingLevel.DEBUG.priority -> SentryLevel.DEBUG
         level.priority == LoggingLevel.INFO.priority -> SentryLevel.INFO
@@ -51,7 +59,7 @@ private fun toSentryLevel(level: LoggingLevel): SentryLevel =
         else -> SentryLevel.ERROR
     }
 
-private fun logAt(
+@PublishedApi internal inline fun logAt(
     minLevel: LoggingLevel,
     color: String,
     throwable: Throwable? = null,
@@ -84,34 +92,34 @@ private fun logAt(
     }
 }
 
-fun verboseln(message: () -> String) {
+inline fun verboseln(message: () -> String) {
     logAt(LoggingLevel.VERBOSE, COLOR_LIGHT_GRAY, message = message)
 }
 
-fun debugln(message: () -> String) {
+inline fun debugln(message: () -> String) {
     logAt(LoggingLevel.DEBUG, "", message = message)
 }
 
-fun infoln(message: () -> String) {
+inline fun infoln(message: () -> String) {
     logAt(LoggingLevel.INFO, COLOR_AQUA, message = message)
 }
 
-fun warnln(message: () -> String) {
+inline fun warnln(message: () -> String) {
     logAt(LoggingLevel.WARN, COLOR_ORANGE, message = message)
 }
 
-fun warnln(
+inline fun warnln(
     throwable: Throwable,
     message: () -> String = { throwable.message ?: "Warning" },
 ) {
     logAt(LoggingLevel.WARN, COLOR_ORANGE, throwable, message)
 }
 
-fun errorln(message: () -> String) {
+inline fun errorln(message: () -> String) {
     logAt(LoggingLevel.ERROR, COLOR_RED, message = message)
 }
 
-fun errorln(
+inline fun errorln(
     throwable: Throwable,
     message: () -> String = { throwable.message ?: "Error" },
 ) {

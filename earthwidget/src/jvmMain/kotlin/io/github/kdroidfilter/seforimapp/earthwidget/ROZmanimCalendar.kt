@@ -23,14 +23,12 @@ import java.util.GregorianCalendar
  *
  * Based on: https://github.com/Elyahu41/RabbiOvadiahYosefCalendarApp
  */
+private const val MINUTES_PER_HOUR = 60
+private const val MILLISECONDS_PER_MINUTE = 60_000L
+
 class ROZmanimCalendar(
     geoLocation: GeoLocation,
 ) : ZmanimCalendar(geoLocation) {
-    companion object {
-        private const val MINUTES_PER_HOUR = 60
-        private const val MILLISECONDS_PER_MINUTE = 60_000L
-    }
-
     var isUseAmudehHoraah: Boolean = false
 
     init {

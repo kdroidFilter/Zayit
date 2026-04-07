@@ -104,7 +104,7 @@ class TabsViewModel(
             return
         }
 
-        val newTabs = currentTabs.toMutableList().apply { removeAt(index) }
+        val newTabs = currentTabs.filterIndexed { idx, _ -> idx != index }
         val currentSelectedIndex = currentState.selectedTabIndex
         val newSelectedIndex =
             when {
@@ -119,7 +119,7 @@ class TabsViewModel(
                 else -> currentSelectedIndex
             }
 
-        _state.value = TabsState(tabs = newTabs.toList(), selectedTabIndex = newSelectedIndex)
+        _state.value = TabsState(tabs = newTabs, selectedTabIndex = newSelectedIndex)
     }
 
     private fun selectTab(index: Int) {
@@ -141,9 +141,11 @@ class TabsViewModel(
             if (fromIndex !in 0..currentTabs.lastIndex || toIndex !in 0..currentTabs.lastIndex) return@update current
             if (fromIndex == toIndex) return@update current
 
-            val newTabs = currentTabs.toMutableList()
-            val movedTab = newTabs.removeAt(fromIndex)
-            newTabs.add(toIndex, movedTab)
+            val newTabs =
+                currentTabs.toMutableList().also {
+                    val movedTab = it.removeAt(fromIndex)
+                    it.add(toIndex, movedTab)
+                }
 
             val selectedTab = currentTabs.getOrNull(current.selectedTabIndex)
             val newSelectedIndex =
@@ -153,7 +155,7 @@ class TabsViewModel(
                     current.selectedTabIndex
                 }
 
-            TabsState(tabs = newTabs.toList(), selectedTabIndex = newSelectedIndex)
+            TabsState(tabs = newTabs, selectedTabIndex = newSelectedIndex)
         }
     }
 
@@ -273,8 +275,7 @@ class TabsViewModel(
                 tabs =
                     current.tabs
                         .toMutableList()
-                        .apply { set(index, updated) }
-                        .toList(),
+                        .also { it[index] = updated },
             )
         }
     }
@@ -315,8 +316,7 @@ class TabsViewModel(
                 tabs =
                     current.tabs
                         .toMutableList()
-                        .apply { set(index, updated) }
-                        .toList(),
+                        .also { it[index] = updated },
             )
         }
     }

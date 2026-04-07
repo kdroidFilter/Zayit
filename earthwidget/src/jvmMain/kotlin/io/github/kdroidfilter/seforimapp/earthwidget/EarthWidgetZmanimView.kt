@@ -33,6 +33,8 @@ import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
 import com.kosherjava.zmanim.hebrewcalendar.JewishDate
 import com.kosherjava.zmanim.util.GeoLocation
 import io.github.kdroidfilter.seforimapp.hebrewcalendar.CalendarMode
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -205,6 +207,7 @@ fun EarthWidgetZmanimView(
     kiddushLevanaLatestOpinion: KiddushLevanaLatestOpinion = KiddushLevanaLatestOpinion.BETWEEN_MOLDOS,
     initialShowKiddushLevana: Boolean = true,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
+    renderDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     // Location state (defaults to Jerusalem, overridden by locationOverride)
     var markerLatitudeDegrees by remember { mutableFloatStateOf(DEFAULT_MARKER_LAT.toFloat()) }
@@ -509,6 +512,7 @@ fun EarthWidgetZmanimView(
             isDraggingEarth = isDraggingEarth,
             kiddushLevanaData = kiddushLevanaData,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
+            renderDispatcher = renderDispatcher,
         )
         if (showKiddushLevanaLegend) {
             KiddushLevanaLegend(
@@ -677,6 +681,7 @@ private fun EarthSceneContent(
     modifier: Modifier = Modifier,
     kiddushLevanaData: KiddushLevanaData? = null,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
+    renderDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     val density = LocalDensity.current
     val degreesPerPx =
@@ -731,6 +736,7 @@ private fun EarthSceneContent(
             kiddushLevanaStartDegrees = kiddushLevanaData?.startDegrees,
             kiddushLevanaEndDegrees = kiddushLevanaData?.endDegrees,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
+            renderDispatcher = renderDispatcher,
         )
     }
 }

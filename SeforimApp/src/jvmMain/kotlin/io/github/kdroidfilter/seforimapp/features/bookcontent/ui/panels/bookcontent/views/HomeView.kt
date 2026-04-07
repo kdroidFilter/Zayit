@@ -21,7 +21,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -266,9 +268,9 @@ private fun HomeBody(
                         Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        // Scale logo proportionally: 220dp at 600dp, grows gently with wider screens
-                        val logoSize = (maxWidth * 0.30f).coerceIn(220.dp, 270.dp)
-                        LogoImage(modifier = Modifier.size(logoSize))
+                        // Scale logo width proportionally; height follows the image aspect ratio
+                        val logoWidth = (maxWidth * 0.50f).coerceIn(320.dp, 450.dp)
+                        LogoImage(modifier = Modifier.width(logoWidth))
                     }
                 }
                 item {
@@ -525,14 +527,25 @@ private fun HomeBody(
     }
 }
 
-/** App logo shown on the Home screen. */
+/** App logo shown on the Home screen. Text is tinted to match the accent color. */
 @Composable
 private fun LogoImage(modifier: Modifier = Modifier) {
-    Image(
-        painterResource(Res.drawable.zayit_transparent),
-        contentDescription = null,
-        modifier = modifier,
-    )
+    val accent = JewelTheme.globalColors.outlines.focused
+    Box(modifier) {
+        // Base layer: full logo with original colors
+        Image(
+            painterResource(Res.drawable.zayit_new_logo),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+        )
+        // Text overlay: accent color painted through the text alpha mask
+        Image(
+            painterResource(Res.drawable.zayit_new_logo_text),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            colorFilter = ColorFilter.tint(accent, BlendMode.SrcIn),
+        )
+    }
 }
 
 /**

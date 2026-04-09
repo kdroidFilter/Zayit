@@ -60,24 +60,36 @@ internal data class MoonFromMarkerRenderState(
 )
 
 /**
- * CPU renderer that produces ImageBitmaps from rendering state on a background dispatcher.
- *
- * Uses a buffer pool to reduce memory allocations during repeated renders.
- * Intermediate buffers (Earth, Moon spheres) and output buffers are pooled
- * and reused across frames, significantly reducing GC pressure.
- *
- * Uses a starfield cache to avoid re-rendering the deterministic starfield
- * background on every frame.
- *
- * @param dispatcher Coroutine dispatcher for background rendering.
- * @param bufferPool Optional buffer pool; defaults to global shared pool.
- * @param starfieldCache Optional starfield cache; defaults to global shared cache.
+ * Platform-specific GPU renderer factory. Returns null if GPU shaders are unavailable.
  */
+internal expect fun createGpuRenderer(): GpuSceneRenderer?
+
+/**
+ * Interface for GPU-accelerated scene rendering.
+ */
+internal interface GpuSceneRenderer {
+    fun renderScene(
+        state: EarthRenderState,
+        textures: EarthWidgetTextures,
+    ): ImageBitmap
+
+    fun renderMoonFromMarker(
+        state: MoonFromMarkerRenderState,
+        moonTexture: EarthTexture?,
+    ): ImageBitmap
+}
+
 internal class EarthWidgetRenderer(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val bufferPool: PixelBufferPool = globalPixelBufferPool,
     private val starfieldCache: StarfieldCache = globalStarfieldCache,
 ) {
+    private val gpuRenderer: GpuSceneRenderer? = createGpuRenderer()
+
+    init {
+        println("EarthWidgetRenderer: ${if (gpuRenderer != null) "GPU (SkSL shader)" else "CPU (fallback)"}")
+    }
+
     /**
      * Renders the Earth-Moon composite scene.
      *
@@ -88,8 +100,9 @@ internal class EarthWidgetRenderer(
     suspend fun renderScene(
         state: EarthRenderState,
         textures: EarthWidgetTextures,
-    ): ImageBitmap =
-        withContext(dispatcher) {
+    ): ImageBitmap {
+        gpuRenderer?.let { return it.renderScene(state, textures) }
+        return withContext(dispatcher) {
             val size = state.renderSizePx
             val pixelCount = size * size
 
@@ -129,6 +142,7 @@ internal class EarthWidgetRenderer(
                 bufferPool.release(outputBuffer)
             }
         }
+    }
 
     /**
      * Renders the Moon as seen from the marker position on Earth.
@@ -140,8 +154,9 @@ internal class EarthWidgetRenderer(
     suspend fun renderMoonFromMarker(
         state: MoonFromMarkerRenderState,
         moonTexture: EarthTexture?,
-    ): ImageBitmap =
-        withContext(dispatcher) {
+    ): ImageBitmap {
+        gpuRenderer?.let { return it.renderMoonFromMarker(state, moonTexture) }
+        return withContext(dispatcher) {
             val size = state.renderSizePx
             val pixelCount = size * size
 
@@ -180,4 +195,5 @@ internal class EarthWidgetRenderer(
                 bufferPool.release(outputBuffer)
             }
         }
+    }
 }

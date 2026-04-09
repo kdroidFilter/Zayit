@@ -1556,12 +1556,12 @@ private fun SearchBar(
                         TypewriterPlaceholder(
                             hints = hints,
                             textStyle = typewriterStyle,
-                            typingDelayMs = 70L,
-                            deletingDelayMs = 35L,
+                            typingDelayMs = 120L,
+                            deletingDelayMs = 55L,
                             holdDelayMs = 1600L,
                             preTypePauseMs = 500L,
                             postDeletePauseMs = 450L,
-                            punctuationExtraDelayMs = 120L,
+                            punctuationExtraDelayMs = 180L,
                             enabled = !isUserTyping && windowInfo.isWindowFocused,
                         )
                     }

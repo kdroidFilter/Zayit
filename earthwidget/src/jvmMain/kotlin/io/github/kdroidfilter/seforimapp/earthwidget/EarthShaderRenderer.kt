@@ -29,6 +29,15 @@ import kotlin.math.sqrt
  *
  * Produces [ImageBitmap] with the same API as the CPU renderer for drop-in replacement.
  */
+private val MIN_FRAME_INTERVAL_NS: Long by lazy {
+    val rate =
+        java.awt.GraphicsEnvironment
+            .getLocalGraphicsEnvironment()
+            .defaultScreenDevice.displayMode.refreshRate
+    val fps = if (rate == java.awt.DisplayMode.REFRESH_RATE_UNKNOWN || rate <= 0) 60 else rate
+    1_000_000_000L / fps
+}
+
 internal class EarthShaderRenderer private constructor(
     private val pipeline: EarthShaderPipeline,
 ) {
@@ -59,6 +68,16 @@ internal class EarthShaderRenderer private constructor(
     private val frameBuffer = FloatArray(9)
     private val halfBuffer = FloatArray(3)
 
+    // Reusable Surface — avoids per-frame Bitmap allocation. makeImageSnapshot() is copy-on-write.
+    private var surface: org.jetbrains.skia.Surface? = null
+    private var surfaceSize: Int = 0
+
+    // Frame rate limiter — prevents bitmap accumulation during rapid interaction
+    private var lastSceneResult: ImageBitmap? = null
+    private var lastSceneTimeNs: Long = 0L
+    private var lastMoonResult: ImageBitmap? = null
+    private var lastMoonTimeNs: Long = 0L
+
     // Cached scene geometry — only depends on renderSizePx and earthSizeFraction
     private var cachedGeometry: SceneGeometry? = null
     private var cachedGeometrySize: Int = 0
@@ -72,8 +91,13 @@ internal class EarthShaderRenderer private constructor(
         state: EarthRenderState,
         textures: EarthWidgetTextures,
     ): ImageBitmap {
+        val now = System.nanoTime()
+        lastSceneResult?.let { prev ->
+            if (now - lastSceneTimeNs < MIN_FRAME_INTERVAL_NS) return prev
+        }
+
         val size = state.renderSizePx
-        val (bitmap, canvas) = newCanvas(size)
+        val canvas = getSurfaceCanvas(size)
 
         // Background: starfield or black
         if (state.showBackgroundStars) {
@@ -81,7 +105,7 @@ internal class EarthShaderRenderer private constructor(
         }
 
         if (textures.earth == null) {
-            return bitmap.asComposeImageBitmap()
+            return snapshotToImageBitmap()
         }
 
         val geometry = getCachedGeometry(size, state.earthSizeFraction)
@@ -139,7 +163,10 @@ internal class EarthShaderRenderer private constructor(
             drawMoonSphere(canvas, state, geometry, moonLayout, textures.moon)
         }
 
-        return bitmap.asComposeImageBitmap()
+        return snapshotToImageBitmap().also {
+            lastSceneResult = it
+            lastSceneTimeNs = System.nanoTime()
+        }
     }
 
     /**
@@ -150,15 +177,20 @@ internal class EarthShaderRenderer private constructor(
         state: MoonFromMarkerRenderState,
         moonTexture: EarthTexture?,
     ): ImageBitmap {
+        val now = System.nanoTime()
+        lastMoonResult?.let { prev ->
+            if (now - lastMoonTimeNs < MIN_FRAME_INTERVAL_NS) return prev
+        }
+
         val size = state.renderSizePx
-        val (bitmap, canvas) = newCanvas(size)
+        val canvas = getSurfaceCanvas(size)
 
         if (state.showBackgroundStars) {
             drawStarfieldBackground(canvas, size)
         }
 
         if (moonTexture == null) {
-            return bitmap.asComposeImageBitmap()
+            return snapshotToImageBitmap()
         }
 
         val geometry = getCachedGeometry(size, state.earthSizeFraction)
@@ -295,7 +327,10 @@ internal class EarthShaderRenderer private constructor(
         // Draw ghost outline
         drawGhostOutline(canvas, size)
 
-        return bitmap.asComposeImageBitmap()
+        return snapshotToImageBitmap().also {
+            lastMoonResult = it
+            lastMoonTimeNs = System.nanoTime()
+        }
     }
 
     // =========================================================================
@@ -608,11 +643,25 @@ internal class EarthShaderRenderer private constructor(
         }
     }
 
-    /** Creates a fresh bitmap + canvas per frame (required: asComposeImageBitmap wraps without copying). */
-    private fun newCanvas(size: Int): Pair<Bitmap, Canvas> {
-        val bmp = Bitmap()
-        bmp.allocN32Pixels(size, size, true)
-        return bmp to Canvas(bmp)
+    /** Returns a reusable Canvas backed by a Surface. Call [snapshotToImageBitmap] after drawing. */
+    private fun getSurfaceCanvas(size: Int): Canvas {
+        if (surface == null || surfaceSize != size) {
+            surface?.close()
+            surface =
+                org.jetbrains.skia.Surface
+                    .makeRasterN32Premul(size, size)
+            surfaceSize = size
+        }
+        surface!!.canvas.clear(0)
+        return surface!!.canvas
+    }
+
+    /** Takes a copy-on-write snapshot of the surface and converts to Compose ImageBitmap. */
+    private fun snapshotToImageBitmap(): ImageBitmap {
+        val image = surface!!.makeImageSnapshot()
+        val bmp = Bitmap.makeFromImage(image)
+        image.close()
+        return bmp.asComposeImageBitmap()
     }
 
     // =========================================================================

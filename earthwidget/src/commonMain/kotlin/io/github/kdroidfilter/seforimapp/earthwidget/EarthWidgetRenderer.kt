@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.earthwidget
 
 import androidx.compose.ui.graphics.ImageBitmap
+import io.github.kdroidfilter.seforimapp.logger.debugln
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -87,7 +88,7 @@ internal class EarthWidgetRenderer(
     private val gpuRenderer: GpuSceneRenderer? = createGpuRenderer()
 
     init {
-        println("EarthWidgetRenderer: ${if (gpuRenderer != null) "GPU (SkSL shader)" else "CPU (fallback)"}")
+        debugln { "EarthWidgetRenderer: ${if (gpuRenderer != null) "GPU (SkSL shader)" else "CPU (fallback)"}" }
     }
 
     /**

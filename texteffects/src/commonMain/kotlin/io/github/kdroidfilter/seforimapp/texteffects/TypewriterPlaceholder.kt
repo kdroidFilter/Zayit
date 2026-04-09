@@ -4,85 +4,66 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import kotlinx.coroutines.delay
-
-enum class Phase { PreTypePause, Typing, Holding, Deleting, PostDeletePause }
 
 @Composable
 fun TypewriterPlaceholder(
     hints: List<String>,
     modifier: Modifier = Modifier,
     textStyle: TextStyle = TextStyle.Default,
-    typingDelayPerChar: Long = 75L, // slower typing
-    deletingDelayPerChar: Long = 45L, // slower deleting
-    holdDelayMs: Long = 1600L, // hold full text before deleting
-    preTypePauseMs: Long = 500L, // pause before starting to type
-    postDeletePauseMs: Long = 450L, // pause after deleting all
-    speedMultiplier: Float = 1.0f, // global speed control ( >1 = slower )
-    enabled: Boolean = true, // when false, freezes the animation
+    typingFramesPerChar: Int = 1,
+    deletingFramesPerChar: Int = 1,
+    holdDelayMs: Long = 1600L,
+    preTypePauseMs: Long = 300L,
+    postDeletePauseMs: Long = 250L,
+    punctuationExtraFrames: Int = 4,
+    enabled: Boolean = true,
 ) {
     require(hints.isNotEmpty())
 
-    // States
-    var idx by remember(hints) { mutableIntStateOf(0) }
     var shown by remember(hints) { mutableStateOf("") }
-    var phase by remember(hints) { mutableStateOf(Phase.PreTypePause) }
 
-    val full = hints[idx]
-
-    // Extra hold on punctuation (adds a small "breath" after typing punctuation)
-    fun punctuationHold(c: Char): Long =
-        when (c) {
-            '.', '!', '?', '…' -> 180L
-            ',', ';', ':' -> 120L
-            else -> 0L
-        }
-
-    // Drive the animation
-    LaunchedEffect(full, phase, shown, enabled) {
+    // Restart the entire animation when enabled changes — cancels cleanly via coroutine cancellation
+    LaunchedEffect(hints, enabled) {
         if (!enabled) return@LaunchedEffect
-        when (phase) {
-            Phase.PreTypePause -> {
-                delay((preTypePauseMs * speedMultiplier).toLong())
-                phase = Phase.Typing
-            }
-            Phase.Typing -> {
-                if (shown.length < full.length) {
-                    val nextLen = shown.length + 1
-                    val nextChar = full[nextLen - 1]
-                    shown = full.substring(0, nextLen)
 
-                    val base = typingDelayPerChar + punctuationHold(nextChar)
-                    delay((base * speedMultiplier).toLong())
-                } else {
-                    phase = Phase.Holding
-                }
+        var idx = 0
+        while (true) {
+            val full = hints[idx]
+
+            // Pre-type pause
+            delay(preTypePauseMs)
+
+            // Type characters
+            for (i in 1..full.length) {
+                shown = full.substring(0, i)
+                val frames = typingFramesPerChar + if (full[i - 1].isPunctuation()) punctuationExtraFrames else 0
+                repeat(frames) { withFrameNanos { } }
             }
-            Phase.Holding -> {
-                delay((holdDelayMs * speedMultiplier).toLong())
-                phase = Phase.Deleting
+
+            // Hold
+            delay(holdDelayMs)
+
+            // Delete characters
+            for (i in full.length - 1 downTo 0) {
+                shown = full.substring(0, i)
+                repeat(deletingFramesPerChar) { withFrameNanos { } }
             }
-            Phase.Deleting -> {
-                if (shown.isNotEmpty()) {
-                    shown = shown.dropLast(1)
-                    delay((deletingDelayPerChar * speedMultiplier).toLong())
-                } else {
-                    phase = Phase.PostDeletePause
-                }
-            }
-            Phase.PostDeletePause -> {
-                delay((postDeletePauseMs * speedMultiplier).toLong())
-                idx = (idx + 1) % hints.size
-                phase = Phase.PreTypePause
-            }
+
+            // Post-delete pause
+            delay(postDeletePauseMs)
+
+            idx = (idx + 1) % hints.size
         }
     }
 
     BasicText(text = shown, modifier = modifier, style = textStyle, maxLines = 1)
 }
+
+private fun Char.isPunctuation(): Boolean = this in ".!?…,;:"

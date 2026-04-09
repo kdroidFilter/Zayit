@@ -41,7 +41,7 @@ internal class EarthShaderRenderer private constructor(
     private var cachedMoonShader: Shader? = null
     private var cachedMoonTexId: Int = 0
 
-    // Pre-allocated Skia objects to avoid per-frame allocation
+    // Pre-allocated Skia objects — access is synchronized via @Synchronized on public methods
     private val shaderPaint = Paint()
     private val markerFillPaint =
         Paint().apply {
@@ -56,22 +56,24 @@ internal class EarthShaderRenderer private constructor(
     private val starfieldPaint = Paint()
     private val orbitPath = Path()
     private val klPath = Path()
-
-    // Pre-allocated arrays for camera frame and half vector (avoid per-frame FloatArray allocation)
     private val frameBuffer = FloatArray(9)
     private val halfBuffer = FloatArray(3)
+
+    // Cached scene geometry — only depends on renderSizePx and earthSizeFraction
+    private var cachedGeometry: SceneGeometry? = null
+    private var cachedGeometrySize: Int = 0
+    private var cachedGeometryFraction: Float = 0f
 
     /**
      * Renders the Earth-Moon composite scene on GPU.
      */
+    @Synchronized
     fun renderScene(
         state: EarthRenderState,
         textures: EarthWidgetTextures,
     ): ImageBitmap {
         val size = state.renderSizePx
-        val bitmap = Bitmap()
-        bitmap.allocN32Pixels(size, size, true)
-        val canvas = Canvas(bitmap)
+        val (bitmap, canvas) = newCanvas(size)
 
         // Background: starfield or black
         if (state.showBackgroundStars) {
@@ -82,7 +84,7 @@ internal class EarthShaderRenderer private constructor(
             return bitmap.asComposeImageBitmap()
         }
 
-        val geometry = computeSceneGeometry(size, state.earthSizeFraction)
+        val geometry = getCachedGeometry(size, state.earthSizeFraction)
         val moonLayout = computeMoonScreenLayout(geometry, state.moonOrbitDegrees)
 
         val earthTexShader = getOrCreateEarthShader(textures.earth)
@@ -137,32 +139,29 @@ internal class EarthShaderRenderer private constructor(
             drawMoonSphere(canvas, state, geometry, moonLayout, textures.moon)
         }
 
-        canvas.close()
         return bitmap.asComposeImageBitmap()
     }
 
     /**
      * Renders the Moon as seen from a marker position on Earth.
      */
+    @Synchronized
     fun renderMoonFromMarker(
         state: MoonFromMarkerRenderState,
         moonTexture: EarthTexture?,
     ): ImageBitmap {
         val size = state.renderSizePx
-        val bitmap = Bitmap()
-        bitmap.allocN32Pixels(size, size, true)
-        val canvas = Canvas(bitmap)
+        val (bitmap, canvas) = newCanvas(size)
 
         if (state.showBackgroundStars) {
             drawStarfieldBackground(canvas, size)
         }
 
         if (moonTexture == null) {
-            canvas.close()
             return bitmap.asComposeImageBitmap()
         }
 
-        val geometry = computeSceneGeometry(size, state.earthSizeFraction)
+        val geometry = getCachedGeometry(size, state.earthSizeFraction)
         val moonLayout = computeMoonScreenLayout(geometry, state.moonOrbitDegrees)
 
         // Calculate observer position
@@ -296,7 +295,6 @@ internal class EarthShaderRenderer private constructor(
         // Draw ghost outline
         drawGhostOutline(canvas, size)
 
-        canvas.close()
         return bitmap.asComposeImageBitmap()
     }
 
@@ -594,6 +592,27 @@ internal class EarthShaderRenderer private constructor(
         }
         canvas.drawCircle(center, center, radius, shaderPaint)
         shaderPaint.mode = org.jetbrains.skia.PaintMode.FILL
+    }
+
+    private fun getCachedGeometry(
+        size: Int,
+        fraction: Float,
+    ): SceneGeometry {
+        if (cachedGeometry != null && cachedGeometrySize == size && cachedGeometryFraction == fraction) {
+            return cachedGeometry!!
+        }
+        return computeSceneGeometry(size, fraction).also {
+            cachedGeometry = it
+            cachedGeometrySize = size
+            cachedGeometryFraction = fraction
+        }
+    }
+
+    /** Creates a fresh bitmap + canvas per frame (required: asComposeImageBitmap wraps without copying). */
+    private fun newCanvas(size: Int): Pair<Bitmap, Canvas> {
+        val bmp = Bitmap()
+        bmp.allocN32Pixels(size, size, true)
+        return bmp to Canvas(bmp)
     }
 
     // =========================================================================

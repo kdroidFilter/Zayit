@@ -33,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -1549,17 +1550,18 @@ private fun SearchBar(
                         maxLines = 1,
                     )
                 } else {
+                    val windowInfo = LocalWindowInfo.current
                     key(filterVersion) {
                         TypewriterPlaceholder(
                             hints = hints,
                             textStyle = TextStyle(fontSize = 13.sp, color = Color(0xFF9AA0A6)),
-                            typingDelayPerChar = 155L,
-                            deletingDelayPerChar = 45L,
+                            typingFramesPerChar = 2,
+                            deletingFramesPerChar = 1,
                             holdDelayMs = 1600L,
                             preTypePauseMs = 500L,
                             postDeletePauseMs = 450L,
-                            speedMultiplier = 1.15f, // a tad slower overall
-                            enabled = !isUserTyping,
+                            punctuationExtraFrames = 6,
+                            enabled = !isUserTyping && windowInfo.isWindowFocused,
                         )
                     }
                 }

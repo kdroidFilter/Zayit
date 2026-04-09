@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -62,9 +61,10 @@ fun TypewriterPlaceholder(
     }
 
     // Single substring allocation only on recomposition
-    val text = remember(currentHintIndex, visibleLength) {
-        hints[currentHintIndex].substring(0, visibleLength)
-    }
+    val text =
+        remember(currentHintIndex, visibleLength) {
+            hints[currentHintIndex].substring(0, visibleLength)
+        }
 
     BasicText(text = text, modifier = modifier, style = textStyle, maxLines = 1)
 }

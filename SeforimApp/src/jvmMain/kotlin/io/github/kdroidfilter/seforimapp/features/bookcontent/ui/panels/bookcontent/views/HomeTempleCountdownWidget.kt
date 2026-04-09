@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,7 +24,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,10 +60,14 @@ private fun computeTempleCountdown(): TempleCountdownData {
     var months = currentDate.jewishMonth - destructionDate.jewishMonth
     var daysOfMonth = currentDate.jewishDayOfMonth - destructionDate.jewishDayOfMonth
 
-    val jerusalemLocation = GeoLocation(
-        "Jerusalem", 31.7683, 35.2137, 800.0,
-        TimeZone.getTimeZone("Asia/Jerusalem"),
-    )
+    val jerusalemLocation =
+        GeoLocation(
+            "Jerusalem",
+            31.7683,
+            35.2137,
+            800.0,
+            TimeZone.getTimeZone("Asia/Jerusalem"),
+        )
     val zmanimCalendar = ComplexZmanimCalendar(jerusalemLocation)
     val todaySunset = zmanimCalendar.sunset
     val currentTimeMillis = System.currentTimeMillis()
@@ -106,16 +109,18 @@ fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
 
     val countdownData = remember { computeTempleCountdown() }
 
-    val countdownItems = listOf(
-        countdownData.years to stringResource(Res.string.home_temple_years),
-        countdownData.months to stringResource(Res.string.home_temple_months),
-        countdownData.days to stringResource(Res.string.home_temple_days),
-    )
+    val countdownItems =
+        listOf(
+            countdownData.years to stringResource(Res.string.home_temple_years),
+            countdownData.months to stringResource(Res.string.home_temple_months),
+            countdownData.days to stringResource(Res.string.home_temple_days),
+        )
 
     Box(
-        modifier = modifier
-            .clip(shape)
-            .border(1.5.dp, borderColor, shape),
+        modifier =
+            modifier
+                .clip(shape)
+                .border(1.5.dp, borderColor, shape),
     ) {
         // Background image
         Image(
@@ -127,23 +132,26 @@ fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
 
         // Dark overlay
         Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.25f),
-                            Color.Black.copy(alpha = 0.45f),
+            modifier =
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors =
+                                listOf(
+                                    Color.Black.copy(alpha = 0.25f),
+                                    Color.Black.copy(alpha = 0.45f),
+                                ),
                         ),
                     ),
-                ),
         )
 
         // Content — same layout as DayMomentCard
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.Start,
         ) {
@@ -153,14 +161,14 @@ fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
                 contentAlignment = Alignment.Center,
             ) {
                 Box(
-                    modifier = Modifier
-                        .size(11.dp)
-                        .align(Alignment.CenterStart)
-                        .background(
-                            brush = Brush.radialGradient(listOf(ACCENT_START, ACCENT_END)),
-                            shape = CircleShape,
-                        )
-                        .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
+                    modifier =
+                        Modifier
+                            .size(11.dp)
+                            .align(Alignment.CenterStart)
+                            .background(
+                                brush = Brush.radialGradient(listOf(ACCENT_START, ACCENT_END)),
+                                shape = CircleShape,
+                            ).border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
                 )
                 Text(
                     text = stringResource(Res.string.home_temple_title),
@@ -176,9 +184,10 @@ fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
 
             // Values — aligned to bottom
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                 contentAlignment = Alignment.BottomCenter,
             ) {
                 Row(
@@ -221,11 +230,12 @@ private fun CountdownUnit(
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Box(
-            modifier = Modifier
-                .clip(glassShape)
-                .background(Color.Black.copy(alpha = 0.35f), glassShape)
-                .border(1.dp, Color.White.copy(alpha = 0.15f), glassShape)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier =
+                Modifier
+                    .clip(glassShape)
+                    .background(Color.Black.copy(alpha = 0.35f), glassShape)
+                    .border(1.dp, Color.White.copy(alpha = 0.15f), glassShape)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(

@@ -35,6 +35,32 @@ internal class EarthShaderRenderer private constructor(
     private var cachedStarfield: Image? = null
     private var cachedStarfieldSize: Int = 0
 
+    // Texture shader cache — textures never change, so we cache the GPU shader
+    private var cachedEarthShader: Shader? = null
+    private var cachedEarthTexId: Int = 0
+    private var cachedMoonShader: Shader? = null
+    private var cachedMoonTexId: Int = 0
+
+    // Pre-allocated Skia objects to avoid per-frame allocation
+    private val shaderPaint = Paint()
+    private val markerFillPaint =
+        Paint().apply {
+            isAntiAlias = true
+            color = MARKER_FILL_COLOR
+        }
+    private val markerOutlinePaint =
+        Paint().apply {
+            isAntiAlias = true
+            color = MARKER_OUTLINE_COLOR
+        }
+    private val starfieldPaint = Paint()
+    private val orbitPath = Path()
+    private val klPath = Path()
+
+    // Pre-allocated arrays for camera frame and half vector (avoid per-frame FloatArray allocation)
+    private val frameBuffer = FloatArray(9)
+    private val halfBuffer = FloatArray(3)
+
     /**
      * Renders the Earth-Moon composite scene on GPU.
      */
@@ -59,7 +85,7 @@ internal class EarthShaderRenderer private constructor(
         val geometry = computeSceneGeometry(size, state.earthSizeFraction)
         val moonLayout = computeMoonScreenLayout(geometry, state.moonOrbitDegrees)
 
-        val earthTexShader = createTextureShader(textures.earth)
+        val earthTexShader = getOrCreateEarthShader(textures.earth)
 
         // Draw orbit path behind Earth (zCam < 0)
         if (state.showOrbitPath) {
@@ -223,7 +249,7 @@ internal class EarthShaderRenderer private constructor(
         val fwdY = if (vLen > EPSILON) viewDirY / vLen else 0f
         val fwdZ = if (vLen > EPSILON) viewDirZ / vLen else 1f
 
-        val moonTexShader = createTextureShader(moonTexture)
+        val moonTexShader = getOrCreateMoonShader(moonTexture)
         val frame = buildCameraFrameValues(fwdX, fwdY, fwdZ, upHintX, upHintY, upHintZ)
         val sunDir = sunVectorFromAngles(resolvedLightDeg, resolvedSunElev)
         val half = computeHalfVectorValues(sunDir.x, sunDir.y, sunDir.z, frame)
@@ -264,9 +290,8 @@ internal class EarthShaderRenderer private constructor(
                 texHeight = moonTexture.height.toFloat(),
             )
 
-        val paint = Paint().apply { this.shader = shader }
-        canvas.drawRect(Rect.makeWH(size.toFloat(), size.toFloat()), paint)
-        paint.close()
+        shaderPaint.shader = shader
+        canvas.drawRect(Rect.makeWH(size.toFloat(), size.toFloat()), shaderPaint)
 
         // Draw ghost outline
         drawGhostOutline(canvas, size)
@@ -299,9 +324,7 @@ internal class EarthShaderRenderer private constructor(
             cachedStarfieldSize = size
             starBitmap.close()
         }
-        val paint = Paint()
-        canvas.drawImage(cachedStarfield!!, 0f, 0f, paint)
-        paint.close()
+        canvas.drawImage(cachedStarfield!!, 0f, 0f, starfieldPaint)
     }
 
     private fun drawEarthSphere(
@@ -354,15 +377,14 @@ internal class EarthShaderRenderer private constructor(
                 texHeight = earthTexture.height.toFloat(),
             )
 
-        val paint = Paint().apply { this.shader = shader }
+        shaderPaint.shader = shader
         canvas.save()
         canvas.translate(geometry.earthLeft.toFloat(), geometry.earthTop.toFloat())
         canvas.drawRect(
             Rect.makeWH(geometry.earthSizePx.toFloat(), geometry.earthSizePx.toFloat()),
-            paint,
+            shaderPaint,
         )
         canvas.restore()
-        paint.close()
     }
 
     private fun drawMoonSphere(
@@ -385,7 +407,7 @@ internal class EarthShaderRenderer private constructor(
         val frame = buildCameraFrameValues(fwdX, fwdY, fwdZ, 0f, 0f, 0f)
         val sunDir = sunVectorFromAngles(state.lightDegrees, state.sunElevationDegrees)
         val half = computeHalfVectorValues(sunDir.x, sunDir.y, sunDir.z, frame)
-        val moonTexShader = createTextureShader(moonTexture)
+        val moonTexShader = getOrCreateMoonShader(moonTexture)
 
         val shader =
             pipeline.buildSphereShader(
@@ -422,15 +444,14 @@ internal class EarthShaderRenderer private constructor(
                 texHeight = moonTexture.height.toFloat(),
             )
 
-        val paint = Paint().apply { this.shader = shader }
+        shaderPaint.shader = shader
         canvas.save()
         canvas.translate(moonLayout.moonLeft.toFloat(), moonLayout.moonTop.toFloat())
         canvas.drawRect(
             Rect.makeWH(moonLayout.moonSizePx.toFloat(), moonLayout.moonSizePx.toFloat()),
-            paint,
+            shaderPaint,
         )
         canvas.restore()
-        paint.close()
     }
 
     private fun drawOrbitPathSkia(
@@ -447,8 +468,8 @@ internal class EarthShaderRenderer private constructor(
         val steps = (geometry.orbitRadius * 5.2f).roundToInt().coerceIn(420, 1600)
         val hasKL = kiddushLevanaStartDegrees != null && kiddushLevanaEndDegrees != null
 
-        val orbitPath = Path()
-        val klPath = Path()
+        orbitPath.reset()
+        klPath.reset()
         var orbitStarted = false
         var klStarted = false
 
@@ -500,31 +521,25 @@ internal class EarthShaderRenderer private constructor(
 
         // Draw orbit line
         val alpha = if (behind) ORBIT_ALPHA_BACK else ORBIT_ALPHA_FRONT
-        val orbitPaint =
-            Paint().apply {
-                isAntiAlias = true
-                color = (alpha shl 24) or ORBIT_COLOR_RGB
-                mode = org.jetbrains.skia.PaintMode.STROKE
-                strokeWidth = 1.5f
-            }
-        canvas.drawPath(orbitPath, orbitPaint)
-        orbitPaint.close()
-        orbitPath.close()
+        shaderPaint.apply {
+            shader = null
+            isAntiAlias = true
+            color = (alpha shl 24) or ORBIT_COLOR_RGB
+            mode = org.jetbrains.skia.PaintMode.STROKE
+            strokeWidth = 1.5f
+        }
+        canvas.drawPath(orbitPath, shaderPaint)
 
         // Draw KL arc
         if (hasKL && !klPath.isEmpty) {
             val klAlpha = if (behind) KIDDUSH_LEVANA_ALPHA_BACK else KIDDUSH_LEVANA_ALPHA_FRONT
-            val klPaint =
-                Paint().apply {
-                    isAntiAlias = true
-                    color = (klAlpha shl 24) or kiddushLevanaColorRgb
-                    mode = org.jetbrains.skia.PaintMode.STROKE
-                    strokeWidth = 2.5f
-                }
-            canvas.drawPath(klPath, klPaint)
-            klPaint.close()
+            shaderPaint.apply {
+                color = (klAlpha shl 24) or kiddushLevanaColorRgb
+                strokeWidth = 2.5f
+            }
+            canvas.drawPath(klPath, shaderPaint)
         }
-        klPath.close()
+        shaderPaint.mode = org.jetbrains.skia.PaintMode.FILL
     }
 
     private fun drawMarkerOverlay(
@@ -556,23 +571,8 @@ internal class EarthShaderRenderer private constructor(
         val markerR = max(MIN_MARKER_RADIUS_PX, geometry.earthSizePx * MARKER_RADIUS_FRACTION)
         val outlineR = markerR + MARKER_OUTLINE_EXTRA_PX
 
-        // Outline
-        val outlinePaint =
-            Paint().apply {
-                isAntiAlias = true
-                color = MARKER_OUTLINE_COLOR
-            }
-        canvas.drawCircle(cx, cy, outlineR, outlinePaint)
-        outlinePaint.close()
-
-        // Fill
-        val fillPaint =
-            Paint().apply {
-                isAntiAlias = true
-                color = MARKER_FILL_COLOR
-            }
-        canvas.drawCircle(cx, cy, markerR, fillPaint)
-        fillPaint.close()
+        canvas.drawCircle(cx, cy, outlineR, markerOutlinePaint)
+        canvas.drawCircle(cx, cy, markerR, markerFillPaint)
     }
 
     private fun drawGhostOutline(
@@ -585,22 +585,38 @@ internal class EarthShaderRenderer private constructor(
         val radius = center - thickness - 0.5f
         if (radius <= 0f) return
 
-        val paint =
-            Paint().apply {
-                isAntiAlias = true
-                color = (GHOST_MOON_OUTLINE_ALPHA shl 24) or (GHOST_MOON_OUTLINE_RGB and 0x00FFFFFF)
-                mode = org.jetbrains.skia.PaintMode.STROKE
-                strokeWidth = thickness * 2f
-            }
-        canvas.drawCircle(center, center, radius, paint)
-        paint.close()
+        shaderPaint.apply {
+            shader = null
+            isAntiAlias = true
+            color = (GHOST_MOON_OUTLINE_ALPHA shl 24) or (GHOST_MOON_OUTLINE_RGB and 0x00FFFFFF)
+            mode = org.jetbrains.skia.PaintMode.STROKE
+            strokeWidth = thickness * 2f
+        }
+        canvas.drawCircle(center, center, radius, shaderPaint)
+        shaderPaint.mode = org.jetbrains.skia.PaintMode.FILL
     }
 
     // =========================================================================
     // TEXTURE & MATH HELPERS
     // =========================================================================
 
-    private fun createTextureShader(texture: EarthTexture): Shader {
+    private fun getOrCreateEarthShader(texture: EarthTexture): Shader {
+        val id = System.identityHashCode(texture.argb)
+        if (cachedEarthShader != null && cachedEarthTexId == id) return cachedEarthShader!!
+        cachedEarthShader = buildTextureShader(texture)
+        cachedEarthTexId = id
+        return cachedEarthShader!!
+    }
+
+    private fun getOrCreateMoonShader(texture: EarthTexture): Shader {
+        val id = System.identityHashCode(texture.argb)
+        if (cachedMoonShader != null && cachedMoonTexId == id) return cachedMoonShader!!
+        cachedMoonShader = buildTextureShader(texture)
+        cachedMoonTexId = id
+        return cachedMoonShader!!
+    }
+
+    private fun buildTextureShader(texture: EarthTexture): Shader {
         val bmp = Bitmap()
         bmp.allocN32Pixels(texture.width, texture.height, false)
         bmp.installPixels(
@@ -628,6 +644,7 @@ internal class EarthShaderRenderer private constructor(
         upHintY: Float,
         upHintZ: Float,
     ): FloatArray {
+        val result = frameBuffer
         // Normalize forward
         val fLen = sqrt(viewDirX * viewDirX + viewDirY * viewDirY + viewDirZ * viewDirZ)
         var fx = if (fLen > EPSILON) viewDirX / fLen else 0f
@@ -669,7 +686,16 @@ internal class EarthShaderRenderer private constructor(
         val uy = fz * rx - fx * rz
         val uz = fx * ry - fy * rx
 
-        return floatArrayOf(rx, ry, rz, ux, uy, uz, fx, fy, fz)
+        result[0] = rx
+        result[1] = ry
+        result[2] = rz
+        result[3] = ux
+        result[4] = uy
+        result[5] = uz
+        result[6] = fx
+        result[7] = fy
+        result[8] = fz
+        return result
     }
 
     /**
@@ -693,7 +719,10 @@ internal class EarthShaderRenderer private constructor(
             hy /= hLen
             hz /= hLen
         }
-        return floatArrayOf(hx, hy, hz)
+        halfBuffer[0] = hx
+        halfBuffer[1] = hy
+        halfBuffer[2] = hz
+        return halfBuffer
     }
 
     /**

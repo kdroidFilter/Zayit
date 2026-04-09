@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @ContributesIntoMap(AppScope::class)
-@ViewModelKey(AvailableDiskSpaceViewModel::class)
+@ViewModelKey
 @Inject
 class AvailableDiskSpaceViewModel(
     private val useCase: AvailableDiskSpaceUseCase,

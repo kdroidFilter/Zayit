@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 // Minimal ViewModel to manage Settings window visibility only
 @ContributesIntoMap(AppScope::class)
-@ViewModelKey(SettingsWindowViewModel::class)
+@ViewModelKey
 @Inject
 class SettingsWindowViewModel : ViewModel() {
     private val _state = MutableStateFlow(SettingsWindowState(isVisible = false))

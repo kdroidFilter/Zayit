@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -27,43 +28,45 @@ fun TypewriterPlaceholder(
 ) {
     require(hints.isNotEmpty())
 
-    var shown by remember(hints) { mutableStateOf("") }
+    // Track current hint + visible length to avoid per-character String allocations in the loop
+    var currentHintIndex by remember(hints) { mutableIntStateOf(0) }
+    var visibleLength by remember(hints) { mutableIntStateOf(0) }
 
-    // Restart the entire animation when enabled changes — cancels cleanly via coroutine cancellation
     LaunchedEffect(hints, enabled) {
         if (!enabled) return@LaunchedEffect
 
-        var idx = 0
         while (true) {
-            val full = hints[idx]
+            val full = hints[currentHintIndex]
 
-            // Pre-type pause
             delay(preTypePauseMs)
 
-            // Type characters
-            for (i in 1..full.length) {
-                shown = full.substring(0, i)
-                val frames = typingFramesPerChar + if (full[i - 1].isPunctuation()) punctuationExtraFrames else 0
+            // Type
+            for (len in 1..full.length) {
+                visibleLength = len
+                val frames = typingFramesPerChar + if (full[len - 1].isPunctuation()) punctuationExtraFrames else 0
                 repeat(frames) { withFrameNanos { } }
             }
 
-            // Hold
             delay(holdDelayMs)
 
-            // Delete characters
-            for (i in full.length - 1 downTo 0) {
-                shown = full.substring(0, i)
+            // Delete
+            for (len in full.length - 1 downTo 0) {
+                visibleLength = len
                 repeat(deletingFramesPerChar) { withFrameNanos { } }
             }
 
-            // Post-delete pause
             delay(postDeletePauseMs)
 
-            idx = (idx + 1) % hints.size
+            currentHintIndex = (currentHintIndex + 1) % hints.size
         }
     }
 
-    BasicText(text = shown, modifier = modifier, style = textStyle, maxLines = 1)
+    // Single substring allocation only on recomposition
+    val text = remember(currentHintIndex, visibleLength) {
+        hints[currentHintIndex].substring(0, visibleLength)
+    }
+
+    BasicText(text = text, modifier = modifier, style = textStyle, maxLines = 1)
 }
 
 private fun Char.isPunctuation(): Boolean = this in ".!?…,;:"

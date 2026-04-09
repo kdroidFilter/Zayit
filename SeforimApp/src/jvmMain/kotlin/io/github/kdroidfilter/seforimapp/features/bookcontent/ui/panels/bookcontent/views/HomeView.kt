@@ -1551,10 +1551,11 @@ private fun SearchBar(
                     )
                 } else {
                     val windowInfo = LocalWindowInfo.current
+                    val typewriterStyle = remember { TextStyle(fontSize = 13.sp, color = Color(0xFF9AA0A6)) }
                     key(filterVersion) {
                         TypewriterPlaceholder(
                             hints = hints,
-                            textStyle = TextStyle(fontSize = 13.sp, color = Color(0xFF9AA0A6)),
+                            textStyle = typewriterStyle,
                             typingFramesPerChar = 2,
                             deletingFramesPerChar = 1,
                             holdDelayMs = 1600L,

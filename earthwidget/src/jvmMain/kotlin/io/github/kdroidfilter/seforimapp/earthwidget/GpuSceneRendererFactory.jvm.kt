@@ -2,9 +2,10 @@ package io.github.kdroidfilter.seforimapp.earthwidget
 
 import androidx.compose.ui.graphics.ImageBitmap
 
-internal actual fun createGpuRenderer(): GpuSceneRenderer? {
-    val shaderRenderer = EarthShaderRenderer.create() ?: return null
-    return object : GpuSceneRenderer {
+/** Singleton GPU renderer — shader is compiled once and shared across all widget instances. */
+private val sharedGpuRenderer: GpuSceneRenderer? by lazy {
+    val shaderRenderer = EarthShaderRenderer.create() ?: return@lazy null
+    object : GpuSceneRenderer {
         override fun renderScene(
             state: EarthRenderState,
             textures: EarthWidgetTextures,
@@ -16,3 +17,5 @@ internal actual fun createGpuRenderer(): GpuSceneRenderer? {
         ): ImageBitmap = shaderRenderer.renderMoonFromMarker(state, moonTexture)
     }
 }
+
+internal actual fun createGpuRenderer(): GpuSceneRenderer? = sharedGpuRenderer

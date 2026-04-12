@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 @ContributesIntoMap(AppScope::class)
-@ViewModelKey(DisplaySettingsViewModel::class)
+@ViewModelKey
 @Inject
 class DisplaySettingsViewModel : ViewModel() {
     private val showZmanim = MutableStateFlow(AppSettings.isShowZmanimWidgetsEnabled())

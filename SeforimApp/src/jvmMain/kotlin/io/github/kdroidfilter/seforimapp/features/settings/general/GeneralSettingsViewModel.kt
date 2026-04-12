@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.stateIn
 import java.io.File
 
 @ContributesIntoMap(AppScope::class)
-@ViewModelKey(GeneralSettingsViewModel::class)
+@ViewModelKey
 @Inject
 class GeneralSettingsViewModel : ViewModel() {
     private val dbPath = MutableStateFlow(AppSettings.getDatabasePath())

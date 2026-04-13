@@ -109,8 +109,8 @@ kotlin {
             implementation(libs.androidx.paging.common)
             implementation(libs.androidx.paging.compose)
 
-            // Oshi
-            implementation(libs.oshi.core)
+            // System Info
+            implementation(libs.nucleus.system.info)
 
             implementation(libs.koalaplot.core)
 
@@ -175,8 +175,7 @@ kotlin {
 
             implementation(libs.zmanim)
 
-            implementation(libs.knotify)
-            implementation(libs.knotify.compose)
+            implementation(libs.nucleus.notification.common)
 
             compileOnly(libs.graal.hotspot.library)
             // Sentry crash reporting

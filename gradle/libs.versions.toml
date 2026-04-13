@@ -7,8 +7,7 @@ filekitCore = "0.13.0"
 hebrewNumerals = "0.2.6"
 jsoup = "1.22.1"
 jvmToolchain = "25"
-knotify = "0.4.3"
-nucleus = "1.8.8"
+nucleus = "1.11.0"
 koalaplotCore = "0.11.0"
 kotlin = "2.3.20"
 compose = "1.10.3"
@@ -26,7 +25,6 @@ kotlinx-datetime = "0.7.1"
 buildConfig = "6.0.9"
 materialKolor = "4.1.1"
 jewel = "0.34.0-261.22158.19"
-oshiCore = "6.11.1"
 paging = "3.4.2"
 platformtools = "0.7.5"
 kotlinx-collections-immutable = "0.4.0"
@@ -66,8 +64,6 @@ filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose
 hebrew-numerals = { module = "io.github.kdroidfilter:hebrewnumerals", version.ref = "hebrewNumerals" }
 jdbc-driver = { module = "app.cash.sqldelight:jdbc-driver", version.ref = "sqlDelight" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
-knotify = { module = "io.github.kdroidfilter:knotify", version.ref = "knotify" }
-knotify-compose = { module = "io.github.kdroidfilter:knotify-compose", version.ref = "knotify" }
 nucleus-core-runtime = { module = "io.github.kdroidfilter:nucleus.core-runtime", version.ref = "nucleus" }
 nucleus-aot-runtime = { module = "io.github.kdroidfilter:nucleus.aot-runtime", version.ref = "nucleus" }
 nucleus-darkmode-detector = { module = "io.github.kdroidfilter:nucleus.darkmode-detector", version.ref = "nucleus" }
@@ -117,7 +113,8 @@ intellij-platform-icons = { module = "com.jetbrains.intellij.platform:icons", ve
 jbr-api = { module = "org.jetbrains.runtime:jbr-api", version.ref = "jbrApi" }
 androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "paging" }
 androidx-paging-compose = { module = "androidx.paging:paging-compose", version.ref = "paging" }
-oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshiCore" }
+nucleus-notification-common = { module = "io.github.kdroidfilter:nucleus.notification-common", version.ref = "nucleus" }
+nucleus-system-info = { module = "io.github.kdroidfilter:nucleus.system-info", version.ref = "nucleus" }
 platformtools-appmanager = { module = "io.github.kdroidfilter:platformtools.appmanager", version.ref = "platformtools" }
 platformtools-core = { module = "io.github.kdroidfilter:platformtools.core", version.ref = "platformtools" }
 platformtools-releasefetcher = { module = "io.github.kdroidfilter:platformtools.releasefetcher", version.ref = "platformtools" }

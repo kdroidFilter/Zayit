@@ -4,9 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -52,6 +54,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+
+/**
+ * Whether the current tab is selected/visible. Used to skip animations on background tabs.
+ */
+val LocalTabSelected = compositionLocalOf { true }
 
 /**
  * Simplified tab content renderer without Compose Navigation.
@@ -211,37 +218,39 @@ fun TabsContent() {
                             .graphicsLayer { alpha = if (isSelected) 1f else 0f }
                             .zIndex(if (isSelected) 1f else 0f),
                 ) {
-                    val tabOwner = tabOwners.getOrPut(tabId) { SimpleTabViewModelOwner(tabId) }
+                    CompositionLocalProvider(LocalTabSelected provides isSelected) {
+                        val tabOwner = tabOwners.getOrPut(tabId) { SimpleTabViewModelOwner(tabId) }
 
-                    when (val destination = tabItem.destination) {
-                        is TabsDestination.Home -> {
-                            HomeTabContent(
-                                tabOwner = tabOwner,
-                                tabId = tabId,
-                                isSelected = isSelected,
-                                isRestoringSession = isTransitioning,
-                                searchUi = searchUi,
-                                searchCallbacks = homeSearchCallbacks,
-                            )
-                        }
+                        when (val destination = tabItem.destination) {
+                            is TabsDestination.Home -> {
+                                HomeTabContent(
+                                    tabOwner = tabOwner,
+                                    tabId = tabId,
+                                    isSelected = isSelected,
+                                    isRestoringSession = isTransitioning,
+                                    searchUi = searchUi,
+                                    searchCallbacks = homeSearchCallbacks,
+                                )
+                            }
 
-                        is TabsDestination.Search -> {
-                            SearchTabContent(
-                                tabOwner = tabOwner,
-                                destination = destination,
-                                isSelected = isSelected,
-                            )
-                        }
+                            is TabsDestination.Search -> {
+                                SearchTabContent(
+                                    tabOwner = tabOwner,
+                                    destination = destination,
+                                    isSelected = isSelected,
+                                )
+                            }
 
-                        is TabsDestination.BookContent -> {
-                            BookContentTabContent(
-                                tabOwner = tabOwner,
-                                destination = destination,
-                                isSelected = isSelected,
-                                isRestoringSession = isTransitioning,
-                                searchUi = searchUi,
-                                searchCallbacks = homeSearchCallbacks,
-                            )
+                            is TabsDestination.BookContent -> {
+                                BookContentTabContent(
+                                    tabOwner = tabOwner,
+                                    destination = destination,
+                                    isSelected = isSelected,
+                                    isRestoringSession = isTransitioning,
+                                    searchUi = searchUi,
+                                    searchCallbacks = homeSearchCallbacks,
+                                )
+                            }
                         }
                     }
                 }

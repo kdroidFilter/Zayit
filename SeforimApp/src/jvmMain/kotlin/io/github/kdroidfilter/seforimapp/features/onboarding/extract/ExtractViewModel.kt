@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @ContributesIntoMap(AppScope::class)
-@ViewModelKey(ExtractViewModel::class)
+@ViewModelKey
 @Inject
 class ExtractViewModel(
     private val useCase: ExtractUseCase,

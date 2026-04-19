@@ -28,7 +28,7 @@ data class HomeCelestialWidgetsState(
 private val DEFAULT_PLACE = Place(31.7683, 35.2137, 800.0)
 
 @ContributesIntoMap(AppScope::class)
-@ViewModelKey(HomeCelestialWidgetsViewModel::class)
+@ViewModelKey
 @Inject
 class HomeCelestialWidgetsViewModel : ViewModel() {
     private val _state = MutableStateFlow(resolveState())

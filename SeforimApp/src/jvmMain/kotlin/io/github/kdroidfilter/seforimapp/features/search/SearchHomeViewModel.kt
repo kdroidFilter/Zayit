@@ -30,6 +30,8 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -128,8 +130,11 @@ class SearchHomeViewModel(
     }
 
     private val categoryDepthCache = LruCache<Long, Int>(512)
+    private val categoryDepthMutex = Mutex()
     private val categoryPathCache = LruCache<Long, List<String>>(512)
+    private val categoryPathMutex = Mutex()
     private val tocPathCache = LruCache<Long, List<String>>(2048)
+    private val tocPathMutex = Mutex()
     private val tocCache = mutableMapOf<Long, List<TocSuggestionDto>>()
 
     private fun matchRank(
@@ -144,27 +149,27 @@ class SearchHomeViewModel(
         }
 
     private suspend fun getCategoryDepthCached(catId: Long): Int {
-        synchronized(categoryDepthCache) { categoryDepthCache[catId]?.let { return it } }
+        categoryDepthMutex.withLock { categoryDepthCache[catId]?.let { return it } }
         val depth =
             withContext(Dispatchers.IO) {
                 runSuspendCatching { repository.getCategoryDepth(catId) }.getOrDefault(Int.MAX_VALUE)
             }
-        synchronized(categoryDepthCache) { categoryDepthCache[catId] = depth }
+        categoryDepthMutex.withLock { categoryDepthCache[catId] = depth }
         return depth
     }
 
     private suspend fun buildCategoryPathTitlesCached(catId: Long): List<String> {
-        synchronized(categoryPathCache) { categoryPathCache[catId]?.let { return it } }
+        categoryPathMutex.withLock { categoryPathCache[catId]?.let { return it } }
         val path = withContext(Dispatchers.IO) { runSuspendCatching { buildCategoryPathTitles(catId) }.getOrDefault(emptyList()) }
-        synchronized(categoryPathCache) { categoryPathCache[catId] = path }
+        categoryPathMutex.withLock { categoryPathCache[catId] = path }
         return path
     }
 
     private suspend fun buildTocPathTitlesCached(entry: TocEntry): List<String> {
         val key = entry.id
-        synchronized(tocPathCache) { tocPathCache[key]?.let { return it } }
+        tocPathMutex.withLock { tocPathCache[key]?.let { return it } }
         val path = withContext(Dispatchers.IO) { runSuspendCatching { buildTocPathTitles(entry) }.getOrDefault(emptyList()) }
-        synchronized(tocPathCache) { tocPathCache[key] = path }
+        tocPathMutex.withLock { tocPathCache[key] = path }
         return path
     }
 

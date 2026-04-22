@@ -35,19 +35,33 @@ object SkiaHtmlImageBuilder {
         ColorFilter.colorMatrix(
             ColorMatrix(
                 floatArrayOf(
-                    -1f, 0f, 0f, 0f, 255f,
-                    0f, -1f, 0f, 0f, 255f,
-                    0f, 0f, -1f, 0f, 255f,
-                    0f, 0f, 0f, 1f, 0f,
+                    -1f,
+                    0f,
+                    0f,
+                    0f,
+                    255f,
+                    0f,
+                    -1f,
+                    0f,
+                    0f,
+                    255f,
+                    0f,
+                    0f,
+                    -1f,
+                    0f,
+                    255f,
+                    0f,
+                    0f,
+                    0f,
+                    1f,
+                    0f,
                 ),
             ),
         )
 
     private val bitmapCache = ConcurrentHashMap<ByteArray, ImageBitmap>()
 
-    fun build(
-        imageColorFilter: @Composable () -> ColorFilter? = { null },
-    ): HtmlImageContentBuilder =
+    fun build(imageColorFilter: @Composable () -> ColorFilter? = { null }): HtmlImageContentBuilder =
         builder@{ element, _ ->
             val bytes = element.imageBytes ?: return@builder null
             val bitmap =

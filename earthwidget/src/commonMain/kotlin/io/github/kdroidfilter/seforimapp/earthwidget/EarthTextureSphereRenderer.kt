@@ -1247,7 +1247,7 @@ private fun drawOrbitPath(
 /**
  * Checks if an angle is within a range, handling wrap-around at 360 degrees.
  */
-private fun isAngleInRange(
+internal fun isAngleInRange(
     angle: Float,
     start: Float,
     end: Float,
@@ -1410,7 +1410,7 @@ private fun plotOrbitPixel(
  *
  * Uses a seeded PRNG for deterministic star placement.
  */
-private fun drawStarfield(
+internal fun drawStarfield(
     dst: IntArray,
     dstW: Int,
     dstH: Int,
@@ -1740,7 +1740,7 @@ private fun drawMarkerOnSphere(
  * @param sunElevationDegrees Sun elevation.
  * @return Visibility factor (0-1).
  */
-private fun moonSunVisibility(
+internal fun moonSunVisibility(
     moonCenterX: Float,
     moonCenterY: Float,
     moonCenterZ: Float,

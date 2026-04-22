@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 @ContributesIntoMap(AppScope::class)
-@ViewModelKey(FontsSettingsViewModel::class)
+@ViewModelKey
 @Inject
 class FontsSettingsViewModel : ViewModel() {
     private val bookFont = MutableStateFlow(AppSettings.getBookFontCode())

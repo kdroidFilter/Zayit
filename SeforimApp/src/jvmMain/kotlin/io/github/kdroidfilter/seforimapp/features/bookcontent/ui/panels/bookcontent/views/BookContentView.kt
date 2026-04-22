@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -47,6 +48,7 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOriginal
@@ -111,21 +113,22 @@ fun BookContentView(
 
     // Collect text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val isTabSelected = LocalTabSelected.current
 
-    // Animate text size changes for smoother transitions
+    // Animate text size changes only for the active tab; background tabs snap instantly
     val textSize by animateFloatAsState(
         targetValue = rawTextSize,
-        animationSpec = tween(durationMillis = 300),
+        animationSpec = if (isTabSelected) tween(durationMillis = 300) else snap(),
         label = "textSizeAnimation",
     )
 
     // Collect line height from settings
     val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
 
-    // Animate line height changes for smoother transitions
+    // Animate line height changes only for the active tab
     val lineHeight by animateFloatAsState(
         targetValue = rawLineHeight,
-        animationSpec = tween(durationMillis = 300),
+        animationSpec = if (isTabSelected) tween(durationMillis = 300) else snap(),
         label = "lineHeightAnimation",
     )
 

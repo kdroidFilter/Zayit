@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 @ContributesIntoMap(AppScope::class)
-@ViewModelKey(UserProfileViewModel::class)
+@ViewModelKey
 @Inject
 class UserProfileViewModel(
     private val useCase: UserProfileUseCase,

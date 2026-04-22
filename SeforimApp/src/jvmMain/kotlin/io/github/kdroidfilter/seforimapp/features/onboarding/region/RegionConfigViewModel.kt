@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 @ContributesIntoMap(AppScope::class)
-@ViewModelKey(RegionConfigViewModel::class)
+@ViewModelKey
 @Inject
 class RegionConfigViewModel(
     private val useCase: RegionConfigUseCase,

@@ -275,6 +275,16 @@
     <string name="home_lunar_next_full_moon_label">הזמן הבא לקידוש לבנה</string>
     <string name="home_lunar_next_full_moon_value">בעוד %1$s ימים</string>
 
+    <!-- Temple Destruction Countdown -->
+    <string name="home_temple_title">זמן שחלף מאז חורבן בית המקדש השני</string>
+    <string name="home_temple_subtitle">והראנו בבנינו ושמחנו בתיקונו, והשב שכינתך לתוכו.</string>
+    <string name="home_temple_years">שנים</string>
+    <string name="home_temple_months">חודשים</string>
+    <string name="home_temple_days">ימים</string>
+    <string name="home_temple_hours">שעות</string>
+    <string name="home_temple_minutes">דקות</string>
+    <string name="home_temple_seconds">שניות</string>
+
     <!-- Search Levels - Values -->
     <string name="search_level_1_value">דיוק מושלם</string>
     <string name="search_level_2_value">דיוק גבוה</string>

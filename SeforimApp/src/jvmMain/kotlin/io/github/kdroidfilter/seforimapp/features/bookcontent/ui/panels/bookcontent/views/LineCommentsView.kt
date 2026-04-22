@@ -12,10 +12,12 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -33,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
+import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
@@ -973,7 +976,12 @@ private fun CommentaryItem(
         // Footnote marker color from theme
         val footnoteMarkerColor = JewelTheme.globalColors.outlines.focused
 
-        val annotated =
+        val isDarkTheme = JewelTheme.isDark
+        val imageColorFilter: @Composable () -> ColorFilter? =
+            remember(isDarkTheme) {
+                { if (isDarkTheme) SkiaHtmlImageBuilder.InvertColorFilter else null }
+            }
+        val annotatedWithImages =
             remember(
                 linkId,
                 processedText,
@@ -981,14 +989,22 @@ private fun CommentaryItem(
                 boldScale,
                 showDiacritics,
                 footnoteMarkerColor,
+                imageColorFilter,
             ) {
-                buildAnnotatedFromHtml(
-                    processedText,
-                    textSizes.commentTextSize,
-                    boldScale = if (boldScale < 1f) 1f else boldScale,
-                    footnoteMarkerColor = footnoteMarkerColor,
-                )
+                val inline = mutableMapOf<String, InlineTextContent>()
+                val annotated =
+                    buildAnnotatedFromHtml(
+                        processedText,
+                        textSizes.commentTextSize,
+                        boldScale = if (boldScale < 1f) 1f else boldScale,
+                        footnoteMarkerColor = footnoteMarkerColor,
+                        inlineContent = inline,
+                        imageContentBuilder = SkiaHtmlImageBuilder.build(imageColorFilter),
+                    )
+                annotated to inline.toMap()
             }
+        val annotated = annotatedWithImages.first
+        val inlineImageContent = annotatedWithImages.second
 
         val display: AnnotatedString =
             remember(annotated, highlightQuery) {
@@ -1005,6 +1021,7 @@ private fun CommentaryItem(
                 textAlign = TextAlign.Justify,
                 fontFamily = fontFamily,
                 lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp,
+                inlineContent = inlineImageContent,
             )
         }
     }

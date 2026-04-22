@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
@@ -16,6 +17,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerInput
@@ -30,6 +32,7 @@ import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
@@ -653,15 +656,35 @@ private fun LinkItem(
         // Footnote marker color from theme
         val footnoteMarkerColor = JewelTheme.globalColors.outlines.focused
 
-        val annotated =
-            remember(linkId, processedText, commentTextSize, boldScale, showDiacritics, footnoteMarkerColor) {
-                buildAnnotatedFromHtml(
-                    processedText,
-                    commentTextSize,
-                    boldScale = if (boldScale < 1f) 1f else boldScale,
-                    footnoteMarkerColor = footnoteMarkerColor,
-                )
+        val isDarkTheme = JewelTheme.isDark
+        val imageColorFilter: @Composable () -> ColorFilter? =
+            remember(isDarkTheme) {
+                { if (isDarkTheme) SkiaHtmlImageBuilder.InvertColorFilter else null }
             }
+        val annotatedWithImages =
+            remember(
+                linkId,
+                processedText,
+                commentTextSize,
+                boldScale,
+                showDiacritics,
+                footnoteMarkerColor,
+                imageColorFilter,
+            ) {
+                val inline = mutableMapOf<String, InlineTextContent>()
+                val annotated =
+                    buildAnnotatedFromHtml(
+                        processedText,
+                        commentTextSize,
+                        boldScale = if (boldScale < 1f) 1f else boldScale,
+                        footnoteMarkerColor = footnoteMarkerColor,
+                        inlineContent = inline,
+                        imageContentBuilder = SkiaHtmlImageBuilder.build(imageColorFilter),
+                    )
+                annotated to inline.toMap()
+            }
+        val annotated = annotatedWithImages.first
+        val inlineImageContent = annotatedWithImages.second
 
         // Highlight occurrences using the current tab's find-in-page query
         val display: AnnotatedString =
@@ -675,6 +698,7 @@ private fun LinkItem(
             textAlign = TextAlign.Justify,
             fontFamily = fontFamily,
             lineHeight = (commentTextSize * lineHeight).sp,
+            inlineContent = inlineImageContent,
         )
     }
 }

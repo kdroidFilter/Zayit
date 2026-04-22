@@ -4,6 +4,11 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.Node
 import org.jsoup.nodes.TextNode
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
+
+/** Unicode "object replacement character" used as placeholder text for inline images. */
+const val INLINE_IMAGE_PLACEHOLDER: String = "\uFFFC"
 
 data class ParsedHtmlElement(
     val text: String,
@@ -17,7 +22,13 @@ data class ParsedHtmlElement(
     val isLineBreak: Boolean = false,
     val isFootnoteMarker: Boolean = false,
     val isFootnoteContent: Boolean = false,
-)
+    val imageBytes: ByteArray? = null,
+    val imageMime: String? = null,
+    val imageWidth: Int? = null,
+    val imageHeight: Int? = null,
+) {
+    val isImage: Boolean get() = imageBytes != null
+}
 
 private val WHITESPACE_REGEX = Regex("\\s+")
 
@@ -81,6 +92,11 @@ class HtmlParser {
 
                 if (tag == "br") {
                     appendLineBreak(list)
+                    return
+                }
+
+                if (tag == "img") {
+                    appendImage(list, node)
                     return
                 }
 
@@ -155,7 +171,7 @@ class HtmlParser {
         if (normalizedText.isBlank()) {
             if (textRaw.isNotEmpty() && list.isNotEmpty()) {
                 val last = list.last()
-                if (!last.isLineBreak && !last.text.endsWith(" ")) {
+                if (!last.isLineBreak && !last.isImage && !last.text.endsWith(" ")) {
                     val updated = last.copy(text = last.text + " ")
                     list[list.lastIndex] = updated
                 }
@@ -175,6 +191,7 @@ class HtmlParser {
             val last = list.last()
             val sameStyle =
                 !last.isLineBreak &&
+                    !last.isImage &&
                     last.isBold == isBold &&
                     last.isItalic == isItalic &&
                     last.isSmall == isSmall &&
@@ -239,6 +256,40 @@ class HtmlParser {
                 isFootnoteContent = isFootnoteContent,
             ),
         )
+    }
+
+    // Emits an image element if the `src` is a supported `data:image/...;base64,...` URI.
+    // Non-data URIs are ignored (no network fetch — images must be pre-embedded in the DB).
+    private fun appendImage(
+        list: MutableList<ParsedHtmlElement>,
+        node: Element,
+    ) {
+        val src = node.attr("src").takeIf { it.isNotBlank() } ?: return
+        val decoded = decodeDataUri(src) ?: return
+        list.add(
+            ParsedHtmlElement(
+                text = INLINE_IMAGE_PLACEHOLDER,
+                imageBytes = decoded.second,
+                imageMime = decoded.first,
+                imageWidth = node.attr("width").toIntOrNull(),
+                imageHeight = node.attr("height").toIntOrNull(),
+            ),
+        )
+    }
+
+    @OptIn(ExperimentalEncodingApi::class)
+    private fun decodeDataUri(src: String): Pair<String, ByteArray>? {
+        if (!src.startsWith("data:", ignoreCase = true)) return null
+        val comma = src.indexOf(',')
+        if (comma < 0) return null
+        val header = src.substring("data:".length, comma)
+        // Only base64 payloads are supported; URL-encoded data URIs are rare for images and skipped.
+        val base64Marker = header.indexOf(";base64", ignoreCase = true)
+        if (base64Marker < 0) return null
+        val mime = header.substring(0, base64Marker).ifBlank { "image/png" }
+        val payload = src.substring(comma + 1)
+        val bytes = runCatching { Base64.decode(payload) }.getOrNull() ?: return null
+        return mime to bytes
     }
 
     // Adds a line break element only if necessary

@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
@@ -26,6 +27,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -43,6 +45,7 @@ import androidx.compose.ui.zIndex
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
+import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
@@ -815,16 +818,26 @@ class StableAltHeadings(
 fun Map<Long, List<AltTocEntry>>.asStableAltHeadings(): StableAltHeadings = StableAltHeadings(this)
 
 /**
+ * Paired output of [buildAnnotatedFromHtml]: styled text plus the inline-content map
+ * required to display inline images (base64 data URIs embedded by the Sefaria pipeline).
+ */
+@Stable
+data class LineAnnotation(
+    val annotated: AnnotatedString,
+    val inlineContent: Map<String, InlineTextContent>,
+)
+
+/**
  * Stable wrapper for annotated string cache to avoid unnecessary recompositions.
  */
 @Stable
 class StableAnnotatedCache(
-    val cache: MutableMap<Long, AnnotatedString>,
+    val cache: MutableMap<Long, LineAnnotation>,
 ) {
     fun getOrPut(
         lineId: Long,
-        defaultValue: () -> AnnotatedString,
-    ): AnnotatedString = cache.getOrPut(lineId, defaultValue)
+        defaultValue: () -> LineAnnotation,
+    ): LineAnnotation = cache.getOrPut(lineId, defaultValue)
 }
 
 @Composable
@@ -891,23 +904,33 @@ private fun LineItem(
     // Footnote marker color from theme
     val footnoteMarkerColor = JewelTheme.globalColors.outlines.focused
 
-    // Memoize the annotated string with proper keys
-    val annotated =
-        remember(lineId, processedContent, baseTextSize, boldScale, annotatedCache, showDiacritics, footnoteMarkerColor) {
-            annotatedCache?.getOrPut(lineId) {
-                buildAnnotatedFromHtml(
-                    processedContent,
-                    baseTextSize,
-                    boldScale = if (boldScale < 1f) 1f else boldScale,
-                    footnoteMarkerColor = footnoteMarkerColor,
-                )
-            } ?: buildAnnotatedFromHtml(
-                processedContent,
-                baseTextSize,
-                boldScale = if (boldScale < 1f) 1f else boldScale,
-                footnoteMarkerColor = footnoteMarkerColor,
-            )
+    // Theme-aware color filter for embedded images: invert black-on-white glyphs in dark mode.
+    val isDarkTheme = JewelTheme.isDark
+    val imageColorFilter: @Composable () -> ColorFilter? =
+        remember(isDarkTheme) {
+            { if (isDarkTheme) SkiaHtmlImageBuilder.InvertColorFilter else null }
         }
+
+    // Memoize the annotated string with proper keys
+    val lineAnnotation =
+        remember(lineId, processedContent, baseTextSize, boldScale, annotatedCache, showDiacritics, footnoteMarkerColor) {
+            fun build(): LineAnnotation {
+                val inline = mutableMapOf<String, InlineTextContent>()
+                val annotated =
+                    buildAnnotatedFromHtml(
+                        processedContent,
+                        baseTextSize,
+                        boldScale = if (boldScale < 1f) 1f else boldScale,
+                        footnoteMarkerColor = footnoteMarkerColor,
+                        inlineContent = inline,
+                        imageContentBuilder = SkiaHtmlImageBuilder.build(imageColorFilter),
+                    )
+                return LineAnnotation(annotated, inline)
+            }
+            annotatedCache?.getOrPut(lineId) { build() } ?: build()
+        }
+    val annotated = lineAnnotation.annotated
+    val inlineImageContent = lineAnnotation.inlineContent
 
     // Build highlighted text when a query is active (>= 2 chars)
     val baseHl =
@@ -963,6 +986,7 @@ private fun LineItem(
         fontFamily = fontFamily,
         lineHeight = (baseTextSize * lineHeight).sp,
         modifier = textModifier,
+        inlineContent = inlineImageContent,
     )
 }
 

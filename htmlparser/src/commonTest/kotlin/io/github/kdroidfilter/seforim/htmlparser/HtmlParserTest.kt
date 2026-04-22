@@ -110,4 +110,33 @@ class HtmlParserTest {
         val content = result.find { it.isFootnoteContent }
         assertTrue(content?.text?.startsWith("כיון שאמרו") == true)
     }
+
+    @Test
+    fun parsesInlineBase64Image() {
+        // 1x1 transparent PNG
+        val pngBase64 =
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+        val html = """Before<img src="data:image/png;base64,$pngBase64" width="12" height="12">After"""
+
+        val result = HtmlParser().parse(html)
+
+        val image = result.firstOrNull { it.isImage }
+        assertTrue(image != null, "Parser should emit an image element for data-URI <img>")
+        assertEquals("image/png", image.imageMime)
+        assertEquals(12, image.imageWidth)
+        assertEquals(12, image.imageHeight)
+        assertTrue((image.imageBytes?.size ?: 0) > 0)
+        assertEquals(INLINE_IMAGE_PLACEHOLDER, image.text)
+
+        // Surrounding text must not absorb the placeholder.
+        assertTrue(result.any { it.text == "Before" })
+        assertTrue(result.any { it.text == "After" })
+    }
+
+    @Test
+    fun ignoresImageWithoutDataUri() {
+        val html = """<img src="https://example.com/foo.png">"""
+        val result = HtmlParser().parse(html)
+        assertTrue(result.none { it.isImage }, "Remote <img> src should be dropped")
+    }
 }

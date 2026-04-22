@@ -1,5 +1,7 @@
 package io.github.kdroidfilter.seforim.htmlparser
 
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -8,6 +10,12 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.unit.sp
+
+/**
+ * Builds an [InlineTextContent] for an image element. Platform-specific since decoding raw
+ * image bytes into a Compose `ImageBitmap` requires platform APIs (Skia on JVM, etc.).
+ */
+typealias HtmlImageContentBuilder = (element: ParsedHtmlElement, id: String) -> InlineTextContent?
 
 /**
  * Unified HTML -> AnnotatedString rendering used by BookContentView, LineCommentsView, and LineTargumView.
@@ -35,6 +43,8 @@ fun buildAnnotatedFromHtml(
     showFootnoteContent: Boolean = true,
     footnoteMarkerColor: Color = Color(0xFF1976D2),
     footnoteContentColor: Color = Color.Unspecified,
+    inlineContent: MutableMap<String, InlineTextContent>? = null,
+    imageContentBuilder: HtmlImageContentBuilder? = null,
 ): AnnotatedString {
     val parsedElements = htmlParser.parse(html)
 
@@ -52,11 +62,28 @@ fun buildAnnotatedFromHtml(
     val effectiveBoldScale = if (boldScale < 1f) 1f else boldScale
 
     return buildAnnotatedString {
+        var imageIndex = 0
         parsedElements.forEach { e ->
             if (e.isLineBreak) {
                 append("\n")
                 return@forEach
             }
+
+            if (e.isImage) {
+                val sink = inlineContent
+                val builder = imageContentBuilder
+                if (sink != null && builder != null) {
+                    val id = "img_${imageIndex++}"
+                    val content = builder(e, id)
+                    if (content != null) {
+                        sink[id] = content
+                        appendInlineContent(id, INLINE_IMAGE_PLACEHOLDER)
+                    }
+                }
+                // Without a renderer we silently drop the image (current behaviour preserved for callers not wiring images).
+                return@forEach
+            }
+
             if (e.text.isBlank()) return@forEach
 
             // Skip footnote markers if showFootnoteMarkers is false

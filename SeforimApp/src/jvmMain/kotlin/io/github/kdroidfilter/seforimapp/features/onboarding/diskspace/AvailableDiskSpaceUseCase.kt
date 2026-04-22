@@ -1,29 +1,27 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.diskspace
 
+import io.github.kdroidfilter.nucleus.systeminfo.SystemInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import oshi.SystemInfo
-import oshi.software.os.OSFileStore
 
 class AvailableDiskSpaceUseCase {
     /**
-     * Reads available and total disk space in a single blocking OSHI call.
+     * Reads available and total disk space via Nucleus SystemInfo.
      * Must be called from a coroutine — dispatched to IO internally.
      */
     suspend fun getDiskSpaceInfo(): DiskSpaceInfo =
         withContext(Dispatchers.IO) {
-            val si = SystemInfo()
-            val fileStores: List<OSFileStore> = si.operatingSystem.fileSystem.fileStores
+            val disks = SystemInfo.disks()
 
             val systemDir =
-                fileStores.firstOrNull {
-                    it.mount.contains(System.getProperty("user.home")) ||
-                        it.mount == "/" ||
-                        it.mount.startsWith("C:")
-                } ?: fileStores.first()
+                disks.firstOrNull {
+                    it.mountPoint.contains(System.getProperty("user.home")) ||
+                        it.mountPoint == "/" ||
+                        it.mountPoint.startsWith("C:")
+                } ?: disks.first()
 
             DiskSpaceInfo(
-                availableBytes = systemDir.usableSpace,
+                availableBytes = systemDir.availableSpace,
                 totalBytes = systemDir.totalSpace,
             )
         }

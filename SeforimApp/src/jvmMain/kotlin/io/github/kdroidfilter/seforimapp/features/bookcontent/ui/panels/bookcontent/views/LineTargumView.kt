@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
@@ -31,6 +32,7 @@ import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -83,15 +85,17 @@ private fun SingleLineTargumView(
     emptyRes: StringResource = Res.string.no_links_for_line,
 ) {
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val isTabSelected = LocalTabSelected.current
+    val zoomAnimSpec = if (isTabSelected) tween<Float>(durationMillis = 300) else snap()
     val commentTextSize by animateFloatAsState(
         targetValue = rawTextSize * 0.875f,
-        animationSpec = tween(durationMillis = 300),
+        animationSpec = zoomAnimSpec,
         label = "linkTextSizeAnim",
     )
     val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
     val lineHeight by animateFloatAsState(
         targetValue = rawLineHeight,
-        animationSpec = tween(durationMillis = 300),
+        animationSpec = zoomAnimSpec,
         label = "linkLineHeightAnim",
     )
 
@@ -426,15 +430,17 @@ private fun MultiLineTargumView(
     val currentOnEvent by rememberUpdatedState(onEvent)
 
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val isTabSelected = LocalTabSelected.current
+    val zoomAnimSpec = if (isTabSelected) tween<Float>(durationMillis = 300) else snap()
     val commentTextSize by animateFloatAsState(
         targetValue = rawTextSize * 0.875f,
-        animationSpec = tween(durationMillis = 300),
+        animationSpec = zoomAnimSpec,
         label = "multiLineLinkTextSizeAnim",
     )
     val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
     val lineHeight by animateFloatAsState(
         targetValue = rawLineHeight,
-        animationSpec = tween(durationMillis = 300),
+        animationSpec = zoomAnimSpec,
         label = "multiLineLinkLineHeightAnim",
     )
 

@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.ScrollableState
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
@@ -1070,15 +1072,17 @@ private fun ErrorMessage(error: Throwable) {
 @Composable
 private fun rememberAnimatedTextSettings(): AnimatedTextSizes {
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val isTabSelected = LocalTabSelected.current
+    val zoomAnimSpec = if (isTabSelected) tween<Float>(durationMillis = 200) else snap()
     val commentTextSize by animateFloatAsState(
         targetValue = rawTextSize * 0.875f,
-        animationSpec = tween(durationMillis = 200), // Réduit de 300ms
+        animationSpec = zoomAnimSpec,
         label = "commentTextSizeAnim",
     )
     val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
     val lineHeight by animateFloatAsState(
         targetValue = rawLineHeight,
-        animationSpec = tween(durationMillis = 200), // Réduit de 300ms
+        animationSpec = zoomAnimSpec,
         label = "commentLineHeightAnim",
     )
 

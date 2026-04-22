@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @ContributesIntoMap(AppScope::class)
-@ViewModelKey(DownloadViewModel::class)
+@ViewModelKey
 @Inject
 class DownloadViewModel(
     private val useCase: DownloadUseCase,

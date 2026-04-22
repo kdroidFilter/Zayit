@@ -11,6 +11,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.extractAllBooks
 import io.github.kdroidfilter.seforimlibrary.core.models.extractCategoryChildren
 import io.github.kdroidfilter.seforimlibrary.core.models.extractRootCategories
 import io.github.kdroidfilter.seforimlibrary.dao.CatalogLoader
+import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
@@ -72,6 +73,7 @@ object CatalogCache {
     private var _rootCategories: List<Category>? = null
     private var _categoryChildren: Map<Long, List<Category>>? = null
     private var _allBooks: Set<Book>? = null
+    private var _allBooksWithAltFlags: Set<Book>? = null
 
     /**
      * Gets the cached catalog, loading it if necessary.
@@ -115,6 +117,23 @@ object CatalogCache {
             _allBooks = getCatalog()?.extractAllBooks()
         }
         return _allBooks
+    }
+
+    /**
+     * Gets all books with alt-structure flags merged from the database.
+     * Computed once and cached — avoids a DB query + N copy() calls per tab.
+     */
+    suspend fun getAllBooksWithAltFlags(repository: SeforimRepository): Set<Book>? {
+        _allBooksWithAltFlags?.let { return it }
+        val books = getAllBooks() ?: return null
+        val altFlags = repository.getAllBookAltFlags()
+        val merged =
+            books
+                .map { book ->
+                    altFlags[book.id]?.let { book.copy(hasAltStructures = it) } ?: book
+                }.toSet()
+        _allBooksWithAltFlags = merged
+        return merged
     }
 
     /**

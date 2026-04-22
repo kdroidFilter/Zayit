@@ -8,7 +8,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.Arrays
 
 private const val PARALLEL_FILTER_THRESHOLD = 2_000
 
@@ -145,7 +144,7 @@ class ResultsIndexingUseCase {
         if (count == 0) return IntArray(0)
 
         val arr = if (count == tmp.size) tmp else tmp.copyOf(count)
-        Arrays.parallelSort(arr)
+        arr.sort()
         tocIndicesCache[tocId] = arr
         return arr
     }

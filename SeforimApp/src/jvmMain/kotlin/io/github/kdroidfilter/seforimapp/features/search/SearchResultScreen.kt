@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.search
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent
@@ -329,15 +331,17 @@ private fun SearchResultContentMvi(
     val scope = rememberCoroutineScope()
     // Match BookContent main text font settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val isTabSelected = LocalTabSelected.current
+    val zoomAnimSpec = if (isTabSelected) tween<Float>(durationMillis = 200) else snap()
     val mainTextSize by animateFloatAsState(
         targetValue = rawTextSize,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = zoomAnimSpec,
         label = "searchMainTextSizeAnim",
     )
     val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
     val mainLineHeight by animateFloatAsState(
         targetValue = rawLineHeight,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = zoomAnimSpec,
         label = "searchLineHeightAnim",
     )
     val bookFontCode by AppSettings.bookFontCodeFlow.collectAsState()
@@ -345,7 +349,7 @@ private fun SearchResultContentMvi(
     // Auxiliary size for small labels
     val commentSize by animateFloatAsState(
         targetValue = mainTextSize * 0.875f,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = zoomAnimSpec,
         label = "searchCommentTextSizeAnim",
     )
 

@@ -21,7 +21,7 @@ import com.kdroid.gematria.converter.toHebrewNumeral
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.metroViewModel
-import io.github.kdroidfilter.knotify.compose.builder.notification
+import io.github.kdroidfilter.nucleus.notification.common.notification
 import io.github.kdroidfilter.nucleus.aot.runtime.AotRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.ExecutableRuntime
 import io.github.kdroidfilter.nucleus.core.runtime.SingleInstanceManager
@@ -448,18 +448,11 @@ fun main(args: Array<String>) {
                                                 notification(
                                                     title = updateNotificationTitle,
                                                     message = updateNotificationMessage,
-                                                    largeIcon = {
-                                                        Image(
-                                                            painter = painterResource(Res.drawable.AppIcon),
-                                                            contentDescription = null,
-                                                            modifier = Modifier.fillMaxSize(),
-                                                        )
-                                                    },
                                                     onActivated = {
                                                         Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
                                                     },
                                                 ) {
-                                                    button(title = updateNotificationButton) {
+                                                    button(updateNotificationButton) {
                                                         Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
                                                     }
                                                 }.send()

@@ -30,20 +30,12 @@ class NavigationUseCase(
     suspend fun loadRootCategories() {
         val rootCategories = CatalogCache.getRootCategories()
         val categoryChildren = CatalogCache.getCategoryChildren()
-        val allBooks = CatalogCache.getAllBooks()
+        val booksWithFlags = CatalogCache.getAllBooksWithAltFlags(repository)
 
-        if (rootCategories == null || categoryChildren == null || allBooks == null) {
+        if (rootCategories == null || categoryChildren == null || booksWithFlags == null) {
             errorln { "ERROR: Precomputed catalog not available!" }
             return
         }
-
-        // Merge alt-structure flags from DB to ensure navigation tree knows about them
-        val altFlags = runSuspendCatching { repository.getAllBookAltFlags() }.getOrDefault(emptyMap())
-        val booksWithFlags: Set<Book> =
-            allBooks
-                .map { book ->
-                    altFlags[book.id]?.let { book.copy(hasAltStructures = it) } ?: book
-                }.toSet()
 
         debugln { "✓ Using precomputed catalog for navigation tree" }
         // Catalog data is derived and reloaded every app start; do not persist it.

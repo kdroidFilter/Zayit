@@ -33,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -602,6 +603,23 @@ private fun HomeBody(
                                 modifier = Modifier.fillMaxWidth(),
                                 userCommunityCode = searchUi.userCommunityCode,
                                 locationState = celestialWidgetsState,
+                            )
+                        }
+                    }
+                    item {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            val twoCardsWidth = (ZMANIM_CARD_HEIGHT * 2) + ZMANIM_HORIZONTAL_SPACING
+                            TempleDestructionCountdownCard(
+                                modifier =
+                                    Modifier
+                                        .width(twoCardsWidth)
+                                        .height(ZMANIM_CARD_HEIGHT * 1.5f),
                             )
                         }
                     }
@@ -1532,17 +1550,19 @@ private fun SearchBar(
                         maxLines = 1,
                     )
                 } else {
+                    val windowInfo = LocalWindowInfo.current
+                    val typewriterStyle = remember { TextStyle(fontSize = 13.sp, color = Color(0xFF9AA0A6)) }
                     key(filterVersion) {
                         TypewriterPlaceholder(
                             hints = hints,
-                            textStyle = TextStyle(fontSize = 13.sp, color = Color(0xFF9AA0A6)),
-                            typingDelayPerChar = 155L,
-                            deletingDelayPerChar = 45L,
+                            textStyle = typewriterStyle,
+                            typingDelayMs = 120L,
+                            deletingDelayMs = 55L,
                             holdDelayMs = 1600L,
                             preTypePauseMs = 500L,
                             postDeletePauseMs = 450L,
-                            speedMultiplier = 1.15f, // a tad slower overall
-                            enabled = !isUserTyping,
+                            punctuationExtraDelayMs = 180L,
+                            enabled = !isUserTyping && windowInfo.isWindowFocused,
                         )
                     }
                 }

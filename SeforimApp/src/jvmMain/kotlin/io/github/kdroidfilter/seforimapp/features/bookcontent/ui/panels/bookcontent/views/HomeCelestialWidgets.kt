@@ -121,9 +121,9 @@ import java.util.Date
 import kotlin.math.abs
 
 private const val ZMANIM_LAYOUT_SCALE = 1.5f
-private val ZMANIM_CARD_HEIGHT = 90.dp * ZMANIM_LAYOUT_SCALE
+internal val ZMANIM_CARD_HEIGHT = 90.dp * ZMANIM_LAYOUT_SCALE
 private val ZMANIM_VERTICAL_SPACING = 12.dp * ZMANIM_LAYOUT_SCALE
-private val ZMANIM_HORIZONTAL_SPACING = 12.dp
+internal val ZMANIM_HORIZONTAL_SPACING = 12.dp
 private val MIN_ZMANIM_CARD_WIDTH = 99.dp
 private val MIN_EARTH_WIDGET_WIDTH = 230.dp
 private val MIN_WIDTH_FOR_EXTRA_CARDS = 443.dp

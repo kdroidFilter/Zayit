@@ -12,7 +12,6 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.*
@@ -34,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.PagingData
-import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
@@ -436,8 +434,6 @@ private fun MultiLineCommentatorsGridView(
             },
             config = config,
             restoreScrollKey = lineIds to commentatorId,
-            showLoadingStates = true,
-            wrapInScrollableContainer = true,
         )
     }
 }
@@ -587,8 +583,6 @@ private fun CommentatorsGridView(
             },
             config = config,
             restoreScrollKey = lineId to commentatorId,
-            showLoadingStates = true,
-            wrapInScrollableContainer = true,
         )
     }
 }
@@ -645,8 +639,8 @@ private fun buildCommentatorRows(selected: List<String>): List<List<String>> =
     }
 
 /**
- * Paged list of [CommentaryItem]s for one commentator, wrapped in a [SafeSelectionContainer].
- * Shared by single-line and multi-line views; asymmetric behaviors are gated behind flags.
+ * Paged list of [CommentaryItem]s for one commentator, wrapped in a [SafeSelectionContainer]
+ * and a vertical scrollbar. Shared by single-line and multi-line views.
  */
 @OptIn(FlowPreview::class)
 @Composable
@@ -656,9 +650,7 @@ private fun CommentariesPagedList(
     initialOffset: Int,
     onScroll: (Int, Int) -> Unit,
     config: CommentariesLayoutConfig,
-    restoreScrollKey: Any?,
-    showLoadingStates: Boolean,
-    wrapInScrollableContainer: Boolean,
+    restoreScrollKey: Any,
 ) {
     val currentOnScroll by rememberUpdatedState(onScroll)
     val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
@@ -669,16 +661,14 @@ private fun CommentariesPagedList(
             initialFirstVisibleItemScrollOffset = initialOffset,
         )
 
-    if (restoreScrollKey != null) {
-        var hasRestored by remember(restoreScrollKey) { mutableStateOf(false) }
-        LaunchedEffect(restoreScrollKey, lazyPagingItems.loadState.refresh, initialIndex, initialOffset) {
-            if (!hasRestored && lazyPagingItems.loadState.refresh !is LoadState.Loading) {
-                if (lazyPagingItems.itemCount > 0) {
-                    val safeIndex = initialIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
-                    val safeOffset = initialOffset.coerceAtLeast(0)
-                    listState.scrollToItem(safeIndex, safeOffset)
-                    hasRestored = true
-                }
+    var hasRestored by remember(restoreScrollKey) { mutableStateOf(false) }
+    LaunchedEffect(restoreScrollKey, lazyPagingItems.loadState.refresh, initialIndex, initialOffset) {
+        if (!hasRestored && lazyPagingItems.loadState.refresh !is LoadState.Loading) {
+            if (lazyPagingItems.itemCount > 0) {
+                val safeIndex = initialIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
+                val safeOffset = initialOffset.coerceAtLeast(0)
+                listState.scrollToItem(safeIndex, safeOffset)
+                hasRestored = true
             }
         }
     }
@@ -691,60 +681,34 @@ private fun CommentariesPagedList(
     }
 
     SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
-        if (wrapInScrollableContainer) {
-            VerticallyScrollableContainer(
-                scrollState = listState as ScrollableState,
-                scrollbarModifier = Modifier.fillMaxHeight(),
-            ) {
-                CommentariesLazyColumn(
-                    listState = listState,
-                    lazyPagingItems = lazyPagingItems,
-                    config = config,
-                    showLoadingStates = showLoadingStates,
-                )
-            }
-        } else {
-            CommentariesLazyColumn(
-                listState = listState,
-                lazyPagingItems = lazyPagingItems,
-                config = config,
-                showLoadingStates = showLoadingStates,
-            )
-        }
-    }
-}
+        VerticallyScrollableContainer(
+            scrollState = listState as ScrollableState,
+            scrollbarModifier = Modifier.fillMaxHeight(),
+        ) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                items(
+                    count = lazyPagingItems.itemCount,
+                    key = { index -> lazyPagingItems[index]?.link?.id ?: index },
+                ) { index ->
+                    lazyPagingItems[index]?.let { commentary ->
+                        CommentaryItem(
+                            linkId = commentary.link.id,
+                            targetText = commentary.targetText,
+                            textSizes = config.textSizes,
+                            fontFamily = config.fontFamily,
+                            boldScale = config.boldScale,
+                            highlightQuery = config.highlightQuery,
+                            showDiacritics = config.showDiacritics,
+                            onClick = { config.onCommentClick(commentary) },
+                        )
+                    }
+                }
 
-@Composable
-private fun CommentariesLazyColumn(
-    listState: LazyListState,
-    lazyPagingItems: LazyPagingItems<CommentaryWithText>,
-    config: CommentariesLayoutConfig,
-    showLoadingStates: Boolean,
-) {
-    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-        items(
-            count = lazyPagingItems.itemCount,
-            key = { index -> lazyPagingItems[index]?.link?.id ?: index },
-        ) { index ->
-            lazyPagingItems[index]?.let { commentary ->
-                CommentaryItem(
-                    linkId = commentary.link.id,
-                    targetText = commentary.targetText,
-                    textSizes = config.textSizes,
-                    fontFamily = config.fontFamily,
-                    boldScale = config.boldScale,
-                    highlightQuery = config.highlightQuery,
-                    showDiacritics = config.showDiacritics,
-                    onClick = { config.onCommentClick(commentary) },
-                )
-            }
-        }
-
-        if (showLoadingStates) {
-            when (val loadState = lazyPagingItems.loadState.refresh) {
-                is LoadState.Loading -> item { LoadingIndicator() }
-                is LoadState.Error -> item { ErrorMessage(loadState.error) }
-                else -> {}
+                when (val loadState = lazyPagingItems.loadState.refresh) {
+                    is LoadState.Loading -> item { LoadingIndicator() }
+                    is LoadState.Error -> item { ErrorMessage(loadState.error) }
+                    else -> {}
+                }
             }
         }
     }

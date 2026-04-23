@@ -21,11 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
-import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
@@ -52,6 +50,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnecti
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.consumeShiftPrimaryPress
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
@@ -565,26 +564,30 @@ private fun MultiLineCommentaryListView(
             .collect { (i, o) -> currentOnScroll(i, o) }
     }
 
-    VerticallyScrollableContainer(
-        scrollState = listState as ScrollableState,
-        scrollbarModifier = Modifier.fillMaxHeight(),
-    ) {
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-            items(
-                count = lazyPagingItems.itemCount,
-                key = { index -> lazyPagingItems[index]?.link?.id ?: index },
-            ) { index ->
-                lazyPagingItems[index]?.let { commentary ->
-                    CommentaryItem(
-                        linkId = commentary.link.id,
-                        targetText = commentary.targetText,
-                        textSizes = config.textSizes,
-                        fontFamily = config.fontFamily,
-                        boldScale = config.boldScale,
-                        highlightQuery = highlightQuery,
-                        showDiacritics = config.showDiacritics,
-                        onClick = { config.onCommentClick(commentary) },
-                    )
+    Box(modifier = Modifier.fillMaxSize().consumeShiftPrimaryPress()) {
+        SelectionContainer {
+            VerticallyScrollableContainer(
+                scrollState = listState as ScrollableState,
+                scrollbarModifier = Modifier.fillMaxHeight(),
+            ) {
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                    items(
+                        count = lazyPagingItems.itemCount,
+                        key = { index -> lazyPagingItems[index]?.link?.id ?: index },
+                    ) { index ->
+                        lazyPagingItems[index]?.let { commentary ->
+                            CommentaryItem(
+                                linkId = commentary.link.id,
+                                targetText = commentary.targetText,
+                                textSizes = config.textSizes,
+                                fontFamily = config.fontFamily,
+                                boldScale = config.boldScale,
+                                highlightQuery = highlightQuery,
+                                showDiacritics = config.showDiacritics,
+                                onClick = { config.onCommentClick(commentary) },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -886,52 +889,45 @@ private fun CommentaryListView(
             }
     }
 
-    LazyColumn(
-        state = listState,
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        val event = awaitPointerEvent(PointerEventPass.Initial)
-                        val isShiftPrimaryPress = event.buttons.isPrimaryPressed && event.keyboardModifiers.isShiftPressed
-                        if (isShiftPrimaryPress) {
-                            event.changes.forEach { it.consume() }
+    Box(modifier = Modifier.fillMaxSize().consumeShiftPrimaryPress()) {
+        SelectionContainer {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(
+                    count = lazyPagingItems.itemCount,
+                    key = { index -> lazyPagingItems[index]?.link?.id ?: index }, // Clé stable
+                ) { index ->
+                    lazyPagingItems[index]?.let { commentary ->
+                        CommentaryItem(
+                            linkId = commentary.link.id,
+                            targetText = commentary.targetText,
+                            textSizes = config.textSizes,
+                            fontFamily = config.fontFamily,
+                            boldScale = config.boldScale,
+                            highlightQuery = highlightQuery,
+                            showDiacritics = config.showDiacritics,
+                            onClick = { config.onCommentClick(commentary) },
+                        )
+                    }
+                }
+
+                // Loading states
+                when (val loadState = lazyPagingItems.loadState.refresh) {
+                    is LoadState.Loading -> {
+                        item { LoadingIndicator() }
+                    }
+
+                    is LoadState.Error -> {
+                        item {
+                            ErrorMessage(loadState.error)
                         }
                     }
-                },
-    ) {
-        items(
-            count = lazyPagingItems.itemCount,
-            key = { index -> lazyPagingItems[index]?.link?.id ?: index }, // Clé stable
-        ) { index ->
-            lazyPagingItems[index]?.let { commentary ->
-                CommentaryItem(
-                    linkId = commentary.link.id,
-                    targetText = commentary.targetText,
-                    textSizes = config.textSizes,
-                    fontFamily = config.fontFamily,
-                    boldScale = config.boldScale,
-                    highlightQuery = highlightQuery,
-                    showDiacritics = config.showDiacritics,
-                    onClick = { config.onCommentClick(commentary) },
-                )
-            }
-        }
 
-        // Loading states
-        when (val loadState = lazyPagingItems.loadState.refresh) {
-            is LoadState.Loading -> {
-                item { LoadingIndicator() }
-            }
-
-            is LoadState.Error -> {
-                item {
-                    ErrorMessage(loadState.error)
+                    else -> {}
                 }
             }
-
-            else -> {}
         }
     }
 }
@@ -1017,15 +1013,13 @@ private fun CommentaryItem(
                 }
             }
 
-        SelectionContainer {
-            Text(
-                text = display,
-                textAlign = TextAlign.Justify,
-                fontFamily = fontFamily,
-                lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp,
-                inlineContent = inlineImageContent,
-            )
-        }
+        Text(
+            text = display,
+            textAlign = TextAlign.Justify,
+            fontFamily = fontFamily,
+            lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp,
+            inlineContent = inlineImageContent,
+        )
     }
 }
 

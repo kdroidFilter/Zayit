@@ -47,6 +47,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentS
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorGroup
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorItem
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.Providers
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
@@ -244,7 +245,7 @@ private fun CommentariesContent(
             CommentariesDisplay(
                 selectedCommentators = selectedInDisplayOrder,
                 titleToIdMap = titleToIdMap,
-                selectedLineId = selectedLineId,
+                selection = LineSelection.Single(selectedLineId),
                 uiState = uiState,
                 onEvent = onEvent,
                 textSizes = textSizes,
@@ -349,10 +350,10 @@ private fun MultiLineCommentariesContent(
                 remember(commentatorsInDisplayOrder, selectedCommentators.value) {
                     commentatorsInDisplayOrder.filter { it in selectedCommentators.value }.toImmutableList()
                 }
-            MultiLineCommentariesDisplay(
+            CommentariesDisplay(
                 selectedCommentators = selectedInDisplayOrder,
                 titleToIdMap = titleToIdMap,
-                selectedLineIds = selectedLineIds,
+                selection = LineSelection.Multi(selectedLineIds),
                 uiState = uiState,
                 onEvent = onEvent,
                 textSizes = textSizes,
@@ -361,82 +362,6 @@ private fun MultiLineCommentariesContent(
             )
         },
     )
-}
-
-/**
- * Multi-line version of CommentariesDisplay.
- * Uses the multi-line pager to aggregate commentaries from all selected lines.
- */
-@Composable
-private fun MultiLineCommentariesDisplay(
-    selectedCommentators: ImmutableList<String>,
-    titleToIdMap: Map<String, Long>,
-    selectedLineIds: ImmutableList<Long>,
-    uiState: BookContentState,
-    onEvent: (BookContentEvent) -> Unit,
-    textSizes: AnimatedTextSizes,
-    findQueryText: String,
-    showDiacritics: Boolean,
-) {
-    if (selectedCommentators.isEmpty()) {
-        CenteredMessage(
-            message = stringResource(Res.string.select_at_least_one_commentator),
-            fontSize = textSizes.commentTextSize,
-        )
-        return
-    }
-
-    val layoutConfig =
-        rememberCommentariesLayoutConfig(
-            selectedCommentators = selectedCommentators,
-            titleToIdMap = titleToIdMap,
-            textSizes = textSizes,
-            findQueryText = findQueryText,
-            showDiacritics = showDiacritics,
-            onEvent = onEvent,
-        )
-
-    MultiLineCommentatorsGridView(
-        config = layoutConfig,
-        lineIds = selectedLineIds,
-        uiState = uiState,
-        onEvent = onEvent,
-    )
-}
-
-/**
- * Grid view for multi-line commentaries.
- */
-@Composable
-private fun MultiLineCommentatorsGridView(
-    config: CommentariesLayoutConfig,
-    lineIds: ImmutableList<Long>,
-    uiState: BookContentState,
-    onEvent: (BookContentEvent) -> Unit,
-) {
-    val providers = uiState.providers ?: return
-    CommentatorsGridScaffold(config = config) { commentatorId ->
-        val pagerFlow =
-            remember(lineIds, commentatorId) {
-                providers.buildCommentariesPagerForLines(lineIds, commentatorId)
-            }
-        val initialIndex =
-            uiState.content.commentariesColumnScrollIndexByCommentator[commentatorId]
-                ?: uiState.content.commentariesScrollIndex
-        val initialOffset =
-            uiState.content.commentariesColumnScrollOffsetByCommentator[commentatorId]
-                ?: uiState.content.commentariesScrollOffset
-        CommentariesPagedList(
-            pagerFlow = pagerFlow,
-            initialIndex = initialIndex,
-            initialOffset = initialOffset,
-            onScroll = { i, o ->
-                onEvent(BookContentEvent.CommentaryColumnScrolled(commentatorId, i, o))
-            },
-            config = config,
-            restoreScrollKey = lineIds to commentatorId,
-        )
-    }
 }
 
 @OptIn(FlowPreview::class)
@@ -523,7 +448,7 @@ private fun CommentatorsList(
 private fun CommentariesDisplay(
     selectedCommentators: ImmutableList<String>,
     titleToIdMap: Map<String, Long>,
-    selectedLineId: Long,
+    selection: LineSelection,
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
@@ -548,26 +473,26 @@ private fun CommentariesDisplay(
             onEvent = onEvent,
         )
 
-    CommentatorsGridView(
+    CommentatorsGrid(
         config = layoutConfig,
-        lineId = selectedLineId,
+        selection = selection,
         uiState = uiState,
         onEvent = onEvent,
     )
 }
 
 @Composable
-private fun CommentatorsGridView(
+private fun CommentatorsGrid(
     config: CommentariesLayoutConfig,
-    lineId: Long,
+    selection: LineSelection,
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
 ) {
     val providers = uiState.providers ?: return
     CommentatorsGridScaffold(config = config) { commentatorId ->
         val pagerFlow =
-            remember(lineId, commentatorId) {
-                providers.buildCommentariesPagerFor(lineId, commentatorId)
+            remember(selection, commentatorId) {
+                providers.buildCommentariesPagerFor(selection, commentatorId)
             }
         val initialIndex =
             uiState.content.commentariesColumnScrollIndexByCommentator[commentatorId]
@@ -583,7 +508,6 @@ private fun CommentatorsGridView(
                 onEvent(BookContentEvent.CommentaryColumnScrolled(commentatorId, i, o))
             },
             config = config,
-            restoreScrollKey = lineId to commentatorId,
         )
     }
 }
@@ -643,9 +567,9 @@ private fun buildCommentatorRows(selected: List<String>): List<List<String>> =
  * Paged list of [CommentaryItem]s for one commentator, wrapped in a [SafeSelectionContainer].
  * Shared by single-line and multi-line views.
  *
- * [restoreScrollKey] identifies the pager source — it drives the "restore scroll on first
- * refresh" logic and must have a stable structural equality (e.g. a primitive or a [Pair] of
- * primitives/immutable collections). Do not pass a lambda or an object without `equals`.
+ * The pager identity ([pagerFlow]) itself drives the "restore scroll on first refresh" logic:
+ * callers build it via `remember(lineKey, commentatorId) { ... }`, so a new pager instance
+ * signals a new source of lines and resets the one-shot restore.
  */
 @OptIn(FlowPreview::class)
 @Composable
@@ -655,7 +579,6 @@ private fun CommentariesPagedList(
     initialOffset: Int,
     onScroll: (Int, Int) -> Unit,
     config: CommentariesLayoutConfig,
-    restoreScrollKey: Any,
 ) {
     val currentOnScroll by rememberUpdatedState(onScroll)
     val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
@@ -666,8 +589,8 @@ private fun CommentariesPagedList(
             initialFirstVisibleItemScrollOffset = initialOffset,
         )
 
-    var hasRestored by remember(restoreScrollKey) { mutableStateOf(false) }
-    LaunchedEffect(restoreScrollKey, lazyPagingItems.loadState.refresh, initialIndex, initialOffset) {
+    var hasRestored by remember(pagerFlow) { mutableStateOf(false) }
+    LaunchedEffect(pagerFlow, lazyPagingItems.loadState.refresh, initialIndex, initialOffset) {
         if (!hasRestored && lazyPagingItems.loadState.refresh !is LoadState.Loading) {
             if (lazyPagingItems.itemCount > 0) {
                 val safeIndex = initialIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
@@ -1019,6 +942,29 @@ private data class AnimatedTextSizes(
     val commentTextSize: Float,
     val lineHeight: Float,
 )
+
+/**
+ * Source of lines feeding a commentary view: either a single selected line or a manual
+ * multi-selection. Chooses which provider pager to build in [Providers.buildCommentariesPagerFor].
+ */
+private sealed interface LineSelection {
+    data class Single(
+        val lineId: Long,
+    ) : LineSelection
+
+    data class Multi(
+        val lineIds: ImmutableList<Long>,
+    ) : LineSelection
+}
+
+private fun Providers.buildCommentariesPagerFor(
+    selection: LineSelection,
+    commentatorId: Long,
+): Flow<PagingData<CommentaryWithText>> =
+    when (selection) {
+        is LineSelection.Single -> buildCommentariesPagerFor(selection.lineId, commentatorId)
+        is LineSelection.Multi -> buildCommentariesPagerForLines(selection.lineIds, commentatorId)
+    }
 
 /**
  * UI + callbacks shared between the single-line and multi-line commentary views.

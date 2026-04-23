@@ -103,6 +103,15 @@ sealed interface BookContentEvent {
         val scrollOffset: Int,
     ) : BookContentEvent
 
+    /**
+     * Emitted when the content-aware scrollbar requests jumping to a normalized character
+     * position (0f..1f) within the current book. Resolved server-side via the per-line
+     * cumulative-chars index.
+     */
+    data class ContentScrollByCharRatio(
+        val ratio: Float,
+    ) : BookContentEvent
+
     data object NavigateToPreviousLine : BookContentEvent
 
     data object NavigateToNextLine : BookContentEvent

@@ -127,14 +127,25 @@ object CatalogCache {
 
     /**
      * Walks up parentId from the book's immediate category to the root. Returns null if the
-     * catalog is unavailable or the chain is broken.
+     * catalog is unavailable or the chain is broken. Logs a warning if the safety counter is
+     * hit — that signals either a corrupted catalog (cycle) or a tree deeper than expected,
+     * and the returned category would no longer be a true root.
      */
     fun getRootForBook(book: Book): Category? {
         val byId = getCategoriesById() ?: return null
         var current: Category? = byId[book.categoryId] ?: return null
-        var safety = 32
+        val maxDepth = 32
+        var safety = maxDepth
         while (current?.parentId != null && safety-- > 0) {
             current = byId[current.parentId]
+        }
+        if (current?.parentId != null) {
+            warnln {
+                "[CatalogCache] getRootForBook for book id=${book.id} title='${book.title}' " +
+                    "stopped at depth=$maxDepth without reaching a root (last category id=${current.id}, " +
+                    "parentId=${current.parentId}); catalog may contain a cycle"
+            }
+            return null
         }
         return current
     }

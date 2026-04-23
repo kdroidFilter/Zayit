@@ -286,19 +286,18 @@ fun BookContentScreen(
 
     // Publish the active book + its root category to the SelectionContext so the Ctrl+Alt+C
     // dispatcher and the context-menu action can apply per-tradition formatting. Lifecycle
-    // clears use the bookId-scoped variant so a backgrounded tab cannot wipe the foreground
-    // tab's published book in classic-tabs mode.
-    LaunchedEffect(selectedBook, isSelected, selectionContext) {
+    // clears are tabId-scoped so a backgrounded or disposed tab cannot wipe the foreground
+    // tab's published book — even when both tabs happen to reference the same book.
+    LaunchedEffect(selectedBook, isSelected, tabId, selectionContext) {
         if (isSelected) {
             val rootTitle = selectedBook?.let { CatalogCache.getRootForBook(it)?.title }
-            selectionContext.setActiveBook(selectedBook, rootTitle)
+            selectionContext.setActiveBook(tabId, selectedBook, rootTitle)
         } else {
-            selectionContext.clearActiveBookIf(selectedBook?.id)
+            selectionContext.clearActiveBookIfOwnedBy(tabId)
         }
     }
-    DisposableEffect(selectedBook?.id, selectionContext) {
-        val publishedId = selectedBook?.id
-        onDispose { selectionContext.clearActiveBookIf(publishedId) }
+    DisposableEffect(tabId, selectionContext) {
+        onDispose { selectionContext.clearActiveBookIfOwnedBy(tabId) }
     }
 
     val textContextMenu =
@@ -374,7 +373,7 @@ fun BookContentScreen(
                                                     selectedText,
                                                     bookForCopy,
                                                     selectionContext.activeBook.value?.rootTitle,
-                                                    selectionContext.visibleLines.value,
+                                                    selectionContext.visibleLines.value.lines,
                                                 )
                                             val clipboard = Toolkit.getDefaultToolkit().systemClipboard
                                             clipboard.setContents(StringSelection(payload), null)

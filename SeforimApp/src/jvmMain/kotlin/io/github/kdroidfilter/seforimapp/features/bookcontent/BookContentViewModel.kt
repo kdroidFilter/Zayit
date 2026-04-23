@@ -102,6 +102,14 @@ class BookContentViewModel(
     private val _totalChars = MutableStateFlow(0L)
     val totalChars: StateFlow<Long> = _totalChars.asStateFlow()
 
+    // Per-line `charCount` vector for the current book, ordered by lineIndex. Feeds the
+    // visual-line model of the content-aware scrollbar: each scroll frame turns this
+    // vector into `ceil(charCount / capacity) * capacity` at the measured capacity, so
+    // a short verse still contributes one visual line to the thumb metrics. Null while
+    // the async load is in flight; reset to null on book change.
+    private val _bookCharCounts = MutableStateFlow<IntArray?>(null)
+    val bookCharCounts: StateFlow<IntArray?> = _bookCharCounts.asStateFlow()
+
     // État UI unifié (state is already UI-ready; just inject providers and compute per-line selections)
     val uiState: StateFlow<BookContentState> =
         stateManager.state
@@ -763,6 +771,14 @@ class BookContentViewModel(
                 _totalChars.value = book.totalChars.takeIf { it > 0L }
                     ?: runSuspendCatching { repository.getBook(book.id)?.totalChars ?: 0L }
                         .getOrElse { 0L }
+
+                // Reset the per-line charCount vector — the content-aware scrollbar will hide
+                // until the async load below populates it for the new book.
+                _bookCharCounts.value = null
+                viewModelScope.launch {
+                    runSuspendCatching { repository.getBookCharCounts(book.id) }
+                        .onSuccess { _bookCharCounts.value = it }
+                }
 
                 // Build pager — content can now render
                 _linesPagingData.value = contentUseCase.buildLinesPager(book.id, resolvedInitialLineId)

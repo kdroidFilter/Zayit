@@ -38,56 +38,49 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.paging.compose.LazyPagingItems
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import kotlinx.coroutines.channels.BufferOverflow
+import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.max
-import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.styling.ScrollbarVisibility.AlwaysVisible
 import org.jetbrains.jewel.ui.theme.scrollbarStyle
 
 /**
- * Content-aware vertical scrollbar for the book content pane.
+ * Content-aware vertical scrollbar for a paginated list of [CommentaryWithText].
  *
  * Works in pixel-space, using three exact inputs supplied by the caller:
  *  - [capacity] — chars per visual line, measured once by [androidx.compose.ui.text.TextMeasurer]
  *    against the current text area width, font family and font size. Deterministic: does not
  *    move during scroll, updates naturally on resize / font change.
- *  - [lineHeightPx] — exact line-height in px, derived from the font settings.
- *  - [paddingPerItemPx] — total vertical padding applied to every line's slot.
+ *  - [lineHeightPx] — exact line-height in px, derived from the font settings (`fontSize ×
+ *    lineHeight multiplier`). The per-visual-line pixel cost in Compose's layout.
+ *  - [paddingPerItemPx] — total vertical padding applied to every item by its container
+ *    (e.g. `padding(vertical = 8.dp)` on the Column in each item → 16 dp total).
  *
  * The total content height becomes
  * `totalContentPx = totalVisualLines × lineHeightPx + N × paddingPerItemPx`, which matches
  * what Compose actually lays out. Thumb size = `viewport / totalContentPx`, thumb position
  * = `scrollPx / (totalContentPx − viewport)`. No per-frame sampling, no latch heuristics.
  *
- * [bookCharCounts] is the per-line raw char-count vector for the currently loaded book in
- * `lineIndex` order (the VM prefetches it once per book). The composable prefix-sums the
- * `max(1, ceil(charCount[i] / capacity))` mapping, binary-searches it on drag/jump, and
- * defers to [onScrollToRatio] when the target lies outside the loaded pager window.
- *
- * Visual styling comes from [JewelTheme.scrollbarStyle] so the scrollbar blends in with
- * every other Jewel scrollbar in the app.
+ * Visual styling — colors, thumb corner radius, track thickness, hover expand, fade
+ * durations — is read from [JewelTheme.scrollbarStyle] so the scrollbar stays identical
+ * to every other Jewel scrollbar in the app.
  */
 @Composable
-fun ContentScrollbar(
+fun CommentariesScrollbar(
     listState: LazyListState,
-    lazyPagingItems: LazyPagingItems<Line>,
-    bookCharCounts: IntArray?,
+    lazyPagingItems: LazyPagingItems<CommentaryWithText>,
+    allCharCounts: List<Int>,
     capacity: Int,
     lineHeightPx: Float,
     paddingPerItemPx: Float,
-    onScrollToRatio: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val counts = bookCharCounts
-    if (counts == null || counts.isEmpty() || lazyPagingItems.itemCount == 0) return
+    if (lazyPagingItems.itemCount == 0 || allCharCounts.isEmpty()) return
     if (capacity <= 0 || lineHeightPx <= 0f) return
 
     val style = JewelTheme.scrollbarStyle
@@ -121,7 +114,7 @@ fun ContentScrollbar(
     val animatedThickness by animateDpAsState(
         targetValue = if (isExpanded) visibility.trackThicknessExpanded else visibility.trackThickness,
         animationSpec = tween(visibility.expandAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
-        label = "scrollbar_thickness",
+        label = "commentaries_scrollbar_thickness",
     )
     val targetThumbColor = when {
         isOpaque && isHovered -> style.colors.thumbOpaqueBackgroundHovered
@@ -133,7 +126,7 @@ fun ContentScrollbar(
     val thumbColor by animateColorAsState(
         targetValue = targetThumbColor,
         animationSpec = tween(visibility.thumbColorAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
-        label = "scrollbar_thumb_color",
+        label = "commentaries_scrollbar_thumb_color",
     )
     val targetTrackColor = when {
         isOpaque -> if (isHovered) style.colors.trackOpaqueBackgroundHovered else style.colors.trackOpaqueBackground
@@ -143,33 +136,36 @@ fun ContentScrollbar(
     val trackColor by animateColorAsState(
         targetValue = targetTrackColor,
         animationSpec = tween(visibility.trackColorAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
-        label = "scrollbar_track_color",
+        label = "commentaries_scrollbar_track_color",
     )
 
-    // Total visual-line count over the whole book, used only for the **thumb size** so
-    // long lines visually dominate short ones. Recomputed only on `counts` or `capacity`
-    // changes.
-    val totalVisualLines by remember(counts, capacity) {
+    // Total visual-line count over all items: `Σ ceil(charCount[i] / capacity)`. Used
+    // only for the **thumb size** — position is derived separately from LazyListState's
+    // item geometry, which is boundary-accurate.
+    val totalVisualLines by remember(allCharCounts, capacity) {
         derivedStateOf {
             var acc = 0L
-            for (c in counts) acc += visualLinesForCount(c, capacity)
+            for (c in allCharCounts) acc += visualLinesOf(c, capacity)
             acc
         }
     }
-    val itemCount = counts.size
+    val itemCount = allCharCounts.size
 
-    // Exact total content height Compose would lay out: `Σ (perItem[i] × lineHeightPx) +
-    // N × paddingPerItemPx`. Stable during scroll — inputs are deterministic.
+    // Exact total content height Compose will lay out: `Σ (perItem[i] × lineHeightPx) +
+    // N × paddingPerItemPx`. Stable as long as `capacity`, `lineHeightPx` and
+    // `paddingPerItemPx` are — which they are, since they come from deterministic
+    // inputs (TextMeasurer, font settings, layout constants).
     val totalContentPx = totalVisualLines.toFloat() * lineHeightPx + itemCount * paddingPerItemPx
 
     // Thumb **size** is one-shot latched: sampled once on the first frame where every
-    // input is valid, then frozen for the lifetime of this `counts`. Prevents the
-    // initial jump from `capacity == 0` (all items counted as 1 line) → real capacity.
-    // Also stores the hide/show decision at the same moment — a short book (content
-    // fits) hides the scrollbar, matching every other scrollbar in the UI toolkit.
-    var latchedSize by remember(counts) { mutableFloatStateOf(-1f) }
-    var latchedHidden by remember(counts) { mutableStateOf(false) }
-    LaunchedEffect(counts) {
+    // input (viewport, capacity-measured `totalContentPx`, etc.) is valid, then frozen
+    // for the lifetime of this `allCharCounts`. Prevents the initial jump from
+    // `capacity == 0` (all items counted as 1 line) → real capacity. Also stores the
+    // hide/show decision at the same moment — a short list (content fits) hides the
+    // scrollbar entirely, matching every other scrollbar in the UI toolkit.
+    var latchedSize by remember(allCharCounts) { mutableFloatStateOf(-1f) }
+    var latchedHidden by remember(allCharCounts) { mutableStateOf(false) }
+    LaunchedEffect(allCharCounts) {
         snapshotFlow {
             val viewport = (listState.layoutInfo.viewportEndOffset -
                 listState.layoutInfo.viewportStartOffset).toFloat()
@@ -185,12 +181,13 @@ fun ContentScrollbar(
     if (latchedHidden) return
     val size = latchedSize
 
-    // Thumb **position** uses the book-wide line-index geometry (not the paged-window
-    // line index): `position = (firstLineIdx + firstInnerOffset) / (N − visibleLines)`.
-    // At scroll start `firstLineIdx = 0` → 0. At scroll end `firstLineIdx = N −
-    // visibleLines` → 1. Numerator and denominator scale with the same `avgItemSize`
-    // so the ratio reaches the boundaries exactly, no pinning required, no flicker.
-    val position = computeBookPosition(listState, lazyPagingItems, counts.size).coerceIn(0f, 1f)
+    // Thumb **position** uses Compose's native avg-item scroll geometry, not the
+    // pixel-space estimate. Internally consistent: both `scrollOffsetAvg` and
+    // `contentSizeAvg` scale with the same `avgItemSize`, so `position` reaches 0 at
+    // scroll-start and 1 at scroll-end **exactly** — no boundary pinning required,
+    // no flicker. The avg is recomputed per frame from visible items, so it stays
+    // current as scroll progresses.
+    val position = computeAvgScrollPosition(listState).coerceIn(0f, 1f)
 
     val density = LocalDensity.current
     val minThumbHeightPx = with(density) { style.metrics.minThumbLength.toPx() }
@@ -203,53 +200,28 @@ fun ContentScrollbar(
     val travelPxState = rememberUpdatedState(travelPx)
     val displayPositionState = rememberUpdatedState(displayPosition)
     val listStateRef = rememberUpdatedState(listState)
-    val pagingRef = rememberUpdatedState(lazyPagingItems)
-    val bookLineCountRef = rememberUpdatedState(counts.size)
-    val onScrollToRatioState = rememberUpdatedState(onScrollToRatio)
 
-    // Throttled pager rebuild for out-of-window drag positions.
-    val farDragFlow = remember {
-        MutableSharedFlow<Float>(replay = 0, extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    }
-    LaunchedEffect(farDragFlow) {
-        farDragFlow.collect { bookRatio ->
-            onScrollToRatioState.value(bookRatio.coerceIn(0f, 1f))
-            delay(FAR_DRAG_THROTTLE)
-        }
-    }
-
-    // Convert a thumb ratio → target book line index via the same book-wide geometry
-    // used for `position`. Snap locally when the target line is loaded in the pager;
-    // otherwise defer to the VM-backed callback to rebuild the pager.
+    // Convert a thumb ratio back to a target item index via the same avg-based geometry
+    // used for `position` — so that dragging the thumb is the inverse of reading it.
     val applyTarget = remember {
-        fun(thumbRatio: Float, viaDrag: Boolean) {
+        fun(thumbRatio: Float) {
             val ls = listStateRef.value
             val info = ls.layoutInfo
-            val pagingItemCount = pagingRef.value.itemCount
-            val visible = info.visibleItemsInfo.filter { it.index in 0 until pagingItemCount }
-            val total = bookLineCountRef.value
-            if (total == 0 || visible.isEmpty()) return
+            val total = info.totalItemsCount
+            if (total == 0) return
+            val visible = info.visibleItemsInfo.filter { it.index in 0 until total }
+            if (visible.isEmpty()) return
             val avgItemSize = visible.sumOf { it.size }.toFloat() / visible.size
             if (avgItemSize <= 0f) return
             val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
             val visibleCount = (viewport / avgItemSize).toInt().coerceAtLeast(1)
             val maxIdx = (total - visibleCount).coerceAtLeast(1)
-            val targetLineIndex = (thumbRatio * maxIdx).toInt().coerceIn(0, total - 1)
-            val snapshot = pagingRef.value.itemSnapshotList.items
-            val localIndex = snapshot.indexOfFirst { it.lineIndex == targetLineIndex }
-            if (localIndex >= 0) {
-                ls.requestScrollToItem(localIndex, 0)
-                return
-            }
-            if (viaDrag) {
-                farDragFlow.tryEmit(thumbRatio)
-            } else {
-                onScrollToRatioState.value(thumbRatio)
-            }
+            val targetIdx = (thumbRatio * maxIdx).toInt().coerceIn(0, total - 1)
+            ls.requestScrollToItem(targetIdx, 0)
         }
     }
 
-    // Convergence: unpin the thumb once the live scroll catches up to the target.
+    // Convergence: unpin the thumb once the live scroll catches up to the target ratio.
     LaunchedEffect(dragRatio, isDragging, position) {
         val target = dragRatio ?: return@LaunchedEffect
         if (isDragging) return@LaunchedEffect
@@ -257,7 +229,7 @@ fun ContentScrollbar(
     }
     LaunchedEffect(dragRatio, isDragging) {
         if (isDragging || dragRatio == null) return@LaunchedEffect
-        delay(PENDING_JUMP_TIMEOUT)
+        delay(1500)
         dragRatio = null
     }
 
@@ -273,7 +245,7 @@ fun ContentScrollbar(
                     if (trackHeightPx <= 0) return@detectTapGestures
                     val thumbRatio = (offset.y / trackHeightPx).coerceIn(0f, 1f)
                     dragRatio = thumbRatio
-                    applyTarget(thumbRatio, /* viaDrag = */ false)
+                    applyTarget(thumbRatio)
                 })
             },
     ) {
@@ -292,7 +264,7 @@ fun ContentScrollbar(
                         val current = dragRatio ?: dragStartRatio
                         val newRatio = (current + delta / travel).coerceIn(0f, 1f)
                         dragRatio = newRatio
-                        applyTarget(newRatio, /* viaDrag = */ true)
+                        applyTarget(newRatio)
                     },
                     onDragStarted = {
                         isDragging = true
@@ -306,44 +278,35 @@ fun ContentScrollbar(
     }
 }
 
-private val FAR_DRAG_THROTTLE = 50.milliseconds
-private val PENDING_JUMP_TIMEOUT = 1500.milliseconds
-
-private fun visualLinesForCount(charCount: Int, capacity: Int): Int {
+private fun visualLinesOf(charCount: Int, capacity: Int): Int {
     if (capacity <= 0) return 1
     if (charCount <= 0) return 1
     return max(1, ceil(charCount.toDouble() / capacity).toInt())
 }
 
 /**
- * Book-wide thumb position in `[0, 1]`, using the same avg-item geometry as the standard
- * Compose scrollbar adapter — but indexed on **book line number** rather than paging-
- * window index, so it reflects progress through the whole book, not just the loaded
- * page. Numerator and denominator both scale with `avgItemSize` so the ratio reaches 0
- * and 1 exactly at the book's scroll boundaries. No boundary pinning, no flicker.
+ * Thumb position in `[0, 1]`, computed from `LazyListState` the same way the standard
+ * Compose scrollbar adapter does: `(firstIdx × avgItemSize + firstOffset) / (totalCount
+ * × avgItemSize − viewport)`. Because both numerator and denominator scale with the same
+ * `avgItemSize` (averaged over currently visible items), the ratio **reaches 0 and 1
+ * exactly** at the scroll boundaries — regardless of per-item size variance. No boundary
+ * pinning, no flicker. Only appproximate between boundaries, but that's acceptable for a
+ * progress indicator.
  */
-private fun computeBookPosition(
-    listState: LazyListState,
-    lazyPagingItems: LazyPagingItems<Line>,
-    bookLineCount: Int,
-): Float {
-    if (bookLineCount == 0) return 0f
-    val itemCount = lazyPagingItems.itemCount
-    if (itemCount == 0) return 0f
+private fun computeAvgScrollPosition(listState: LazyListState): Float {
     val info = listState.layoutInfo
+    val total = info.totalItemsCount
+    if (total == 0) return 0f
     // Guard against paging prepends/appends where `visibleItemsInfo` briefly contains
-    // indices beyond the snapshot size — `peek()` would throw `IndexOutOfBoundsException`.
-    val visible = info.visibleItemsInfo.filter { it.index in 0 until itemCount }
+    // indices beyond the paging snapshot size.
+    val visible = info.visibleItemsInfo.filter { it.index in 0 until total }
     if (visible.isEmpty()) return 0f
-    val firstInfo = visible.first()
-    val firstLine = lazyPagingItems.peek(firstInfo.index) ?: return 0f
-    val firstLineIdx = firstLine.lineIndex.coerceAtLeast(0)
-    val firstSize = firstInfo.size.coerceAtLeast(1)
-    val firstInnerOffset = ((-firstInfo.offset).toFloat() / firstSize).coerceIn(0f, 1f)
     val avgItemSize = visible.sumOf { it.size }.toFloat() / visible.size
     if (avgItemSize <= 0f) return 0f
     val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
-    val visibleCount = (viewport / avgItemSize).coerceAtLeast(1f)
-    val maxProgress = (bookLineCount - visibleCount).coerceAtLeast(1f)
-    return ((firstLineIdx + firstInnerOffset) / maxProgress)
+    val contentSize = total * avgItemSize
+    val maxScroll = (contentSize - viewport).coerceAtLeast(1f)
+    val scrollOffset = listState.firstVisibleItemIndex * avgItemSize +
+        listState.firstVisibleItemScrollOffset
+    return scrollOffset / maxScroll
 }

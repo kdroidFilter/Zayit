@@ -581,9 +581,6 @@ fun BookContentView(
                 .focusable(),
     ) {
         Box(modifier = Modifier.fillMaxSize().padding(bottom = 8.dp)) {
-            // Content list. Avoid a single SelectionContainer around the entire
-            // paged list to prevent cross-item selection spanning unloaded pages,
-            // which can crash when paging composes/uncomposes items.
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().padding(end = 16.dp),

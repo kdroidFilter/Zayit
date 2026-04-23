@@ -588,7 +588,7 @@ private fun CommentatorsGridView(
             config = config,
             restoreScrollKey = lineId to commentatorId,
             showLoadingStates = true,
-            wrapInScrollableContainer = false,
+            wrapInScrollableContainer = true,
         )
     }
 }

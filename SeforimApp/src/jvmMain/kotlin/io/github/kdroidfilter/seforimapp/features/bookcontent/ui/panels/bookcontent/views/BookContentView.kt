@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
@@ -35,7 +34,6 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
-import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -56,6 +54,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalo
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.logger.debugln
@@ -572,243 +571,224 @@ fun BookContentView(
         }
     }
 
-    // Workaround for Compose selection crash when extending selection with Shift+Click across
-    // multiple selectables in a virtualized list. We intercept Shift+primary mouse presses at
-    // the container level to avoid the extend-selection path, while preserving normal drag
-    // selection and regular clicks.
-    Box(
+    SafeSelectionContainer(
         modifier =
             modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = contentAlpha } // Hide until positioned to prevent glitch
                 .focusRequester(focusRequester)
                 .onPreviewKeyEvent(previewKeyHandler)
-                .focusable()
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        val event = awaitPointerEvent(PointerEventPass.Initial)
-                        val isShiftPrimaryPress = event.buttons.isPrimaryPressed && event.keyboardModifiers.isShiftPressed
-                        if (isShiftPrimaryPress) {
-                            // Consume to prevent SelectionContainer from handling extend-selection
-                            event.changes.forEach { it.consume() }
-                        }
-                    }
-                },
+                .focusable(),
     ) {
-        SelectionContainer {
-            Box(modifier = Modifier.fillMaxSize().padding(bottom = 8.dp)) {
-                // Content list. Avoid a single SelectionContainer around the entire
-                // paged list to prevent cross-item selection spanning unloaded pages,
-                // which can crash when paging composes/uncomposes items.
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize().padding(end = 16.dp),
-                ) {
-                    items(
-                        count = lazyPagingItems.itemCount,
-                        key = lazyPagingItems.itemKey { it.id },
-                        contentType = { "line" }, // Optimization: specify content type
-                    ) { index ->
-                        val line = lazyPagingItems[index]
+        Box(modifier = Modifier.fillMaxSize().padding(bottom = 8.dp)) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().padding(end = 16.dp),
+            ) {
+                items(
+                    count = lazyPagingItems.itemCount,
+                    key = lazyPagingItems.itemKey { it.id },
+                    contentType = { "line" }, // Optimization: specify content type
+                ) { index ->
+                    val line = lazyPagingItems[index]
 
-                        if (line != null) {
-                            val altHeadings = altHeadingsByLineId[line.id]
-                            val isCurrentSelected = line.id in selectedLineIds
-                            val useThickBar = shouldUseThickBar(line.id, primarySelectedLineId, isTocEntrySelection)
-                            val nextLineId = if (index < lazyPagingItems.itemCount - 1) lazyPagingItems.peek(index + 1)?.id else null
-                            val nextUseThickBar = shouldUseThickBar(nextLineId ?: -1, primarySelectedLineId, isTocEntrySelection)
-                            val isNextSelected =
-                                shouldExtendToNext(isCurrentSelected, nextLineId, selectedLineIds, useThickBar, nextUseThickBar)
+                    if (line != null) {
+                        val altHeadings = altHeadingsByLineId[line.id]
+                        val isCurrentSelected = line.id in selectedLineIds
+                        val useThickBar = shouldUseThickBar(line.id, primarySelectedLineId, isTocEntrySelection)
+                        val nextLineId = if (index < lazyPagingItems.itemCount - 1) lazyPagingItems.peek(index + 1)?.id else null
+                        val nextUseThickBar = shouldUseThickBar(nextLineId ?: -1, primarySelectedLineId, isTocEntrySelection)
+                        val isNextSelected =
+                            shouldExtendToNext(isCurrentSelected, nextLineId, selectedLineIds, useThickBar, nextUseThickBar)
 
-                            val prevLineId =
-                                if (index > 0) lazyPagingItems.peek(index - 1)?.id else null
-                            val isPrevSelected =
-                                prevLineId != null && prevLineId in selectedLineIds
-                            // Alt headings go inside the selection bar only when
-                            // the previous line is also selected (consecutive selection).
-                            val altHeadingsInsideBar =
-                                shouldPlaceAltHeadingsInsideBar(isCurrentSelected, isPrevSelected, altHeadings.isNotEmpty())
+                        val prevLineId =
+                            if (index > 0) lazyPagingItems.peek(index - 1)?.id else null
+                        val isPrevSelected =
+                            prevLineId != null && prevLineId in selectedLineIds
+                        // Alt headings go inside the selection bar only when
+                        // the previous line is also selected (consecutive selection).
+                        val altHeadingsInsideBar =
+                            shouldPlaceAltHeadingsInsideBar(isCurrentSelected, isPrevSelected, altHeadings.isNotEmpty())
 
-                            val borderColor =
-                                if (isCurrentSelected) {
-                                    if (useThickBar) {
-                                        JewelTheme.globalColors.outlines.focused
-                                    } else {
-                                        JewelTheme.globalColors.borders.normal
-                                    }
+                        val borderColor =
+                            if (isCurrentSelected) {
+                                if (useThickBar) {
+                                    JewelTheme.globalColors.outlines.focused
                                 } else {
-                                    Color.Transparent
+                                    JewelTheme.globalColors.borders.normal
                                 }
-
-                            // Alt headings outside the selection bar when line is
-                            // selected alone or is the first in a consecutive selection
-                            if (altHeadings.isNotEmpty() && !altHeadingsInsideBar) {
-                                Column(
-                                    modifier = Modifier.padding(horizontal = 8.dp).padding(start = 12.dp),
-                                ) {
-                                    altHeadings.forEach { entry ->
-                                        AltHeadingItem(
-                                            entryId = entry.id,
-                                            level = entry.level,
-                                            text = entry.text,
-                                            onClick = { onLineSelect(line, false) },
-                                        )
-                                    }
-                                }
+                            } else {
+                                Color.Transparent
                             }
 
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 8.dp)
-                                        .height(IntrinsicSize.Min),
+                        // Alt headings outside the selection bar when line is
+                        // selected alone or is the first in a consecutive selection
+                        if (altHeadings.isNotEmpty() && !altHeadingsInsideBar) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 8.dp).padding(start = 12.dp),
                             ) {
-                                SelectionBar(
-                                    isSelected = isCurrentSelected,
-                                    isNextSelected = isNextSelected,
-                                    color = borderColor,
-                                    isPrimary = useThickBar,
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    if (altHeadingsInsideBar) {
-                                        Column {
-                                            altHeadings.forEach { entry ->
-                                                AltHeadingItem(
-                                                    entryId = entry.id,
-                                                    level = entry.level,
-                                                    text = entry.text,
-                                                    onClick = { onLineSelect(line, false) },
-                                                )
-                                            }
+                                altHeadings.forEach { entry ->
+                                    AltHeadingItem(
+                                        entryId = entry.id,
+                                        level = entry.level,
+                                        text = entry.text,
+                                        onClick = { onLineSelect(line, false) },
+                                    )
+                                }
+                            }
+                        }
+
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp)
+                                    .height(IntrinsicSize.Min),
+                        ) {
+                            SelectionBar(
+                                isSelected = isCurrentSelected,
+                                isNextSelected = isNextSelected,
+                                color = borderColor,
+                                isPrimary = useThickBar,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                if (altHeadingsInsideBar) {
+                                    Column {
+                                        altHeadings.forEach { entry ->
+                                            AltHeadingItem(
+                                                entryId = entry.id,
+                                                level = entry.level,
+                                                text = entry.text,
+                                                onClick = { onLineSelect(line, false) },
+                                            )
                                         }
                                     }
-                                    Box(modifier = Modifier.padding(vertical = 8.dp)) {
-                                        LineItem(
-                                            lineId = line.id,
-                                            lineContent = line.content,
-                                            fontFamily = hebrewFontFamily,
-                                            onClick = { isModifier -> onLineSelect(line, isModifier) },
-                                            isSelected = isCurrentSelected,
-                                            isPrimary = useThickBar,
-                                            baseTextSize = textSize,
-                                            lineHeight = lineHeight,
-                                            boldScale = boldScaleForPlatform,
-                                            highlightQuery =
-                                                findState.text.toString().takeIf { showFind && !smartModeEnabled },
-                                            highlightTerms = smartHighlightTerms.takeIf { showFind && smartModeEnabled },
-                                            currentMatchStart =
-                                                if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
-                                            annotatedCache = stableAnnotatedCache,
-                                            showDiacritics = showDiacritics,
-                                        )
-                                    }
+                                }
+                                Box(modifier = Modifier.padding(vertical = 8.dp)) {
+                                    LineItem(
+                                        lineId = line.id,
+                                        lineContent = line.content,
+                                        fontFamily = hebrewFontFamily,
+                                        onClick = { isModifier -> onLineSelect(line, isModifier) },
+                                        isSelected = isCurrentSelected,
+                                        isPrimary = useThickBar,
+                                        baseTextSize = textSize,
+                                        lineHeight = lineHeight,
+                                        boldScale = boldScaleForPlatform,
+                                        highlightQuery =
+                                            findState.text.toString().takeIf { showFind && !smartModeEnabled },
+                                        highlightTerms = smartHighlightTerms.takeIf { showFind && smartModeEnabled },
+                                        currentMatchStart =
+                                            if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
+                                        annotatedCache = stableAnnotatedCache,
+                                        showDiacritics = showDiacritics,
+                                    )
                                 }
                             }
-                        } else {
-                            // Placeholder while loading
-                            LoadingPlaceholder()
                         }
+                    } else {
+                        // Placeholder while loading
+                        LoadingPlaceholder()
                     }
+                }
 
-                    // Show loading indicators
-                    lazyPagingItems.apply {
-                        when {
-                            // Avoid flicker: only show full loader on refresh if we have no items yet
-                            loadState.refresh is LoadState.Loading && itemCount == 0 -> {
-                                item(contentType = "loading") {
-                                    LoadingIndicator()
-                                }
+                // Show loading indicators
+                lazyPagingItems.apply {
+                    when {
+                        // Avoid flicker: only show full loader on refresh if we have no items yet
+                        loadState.refresh is LoadState.Loading && itemCount == 0 -> {
+                            item(contentType = "loading") {
+                                LoadingIndicator()
                             }
+                        }
 
-                            // Keep small loader for pagination append
-                            loadState.append is LoadState.Loading -> {
-                                item(contentType = "loading") {
-                                    LoadingIndicator(isSmall = true)
-                                }
+                        // Keep small loader for pagination append
+                        loadState.append is LoadState.Loading -> {
+                            item(contentType = "loading") {
+                                LoadingIndicator(isSmall = true)
                             }
+                        }
 
-                            loadState.refresh is LoadState.Error -> {
-                                val error = (loadState.refresh as LoadState.Error).error
-                                item(contentType = "error") {
-                                    ErrorIndicator(message = "Error: ${error.message}")
-                                }
+                        loadState.refresh is LoadState.Error -> {
+                            val error = (loadState.refresh as LoadState.Error).error
+                            item(contentType = "error") {
+                                ErrorIndicator(message = "Error: ${error.message}")
                             }
+                        }
 
-                            loadState.append is LoadState.Error -> {
-                                val error = (loadState.append as LoadState.Error).error
-                                item(contentType = "error") {
-                                    ErrorIndicator(message = "Error loading more: ${error.message}")
-                                }
+                        loadState.append is LoadState.Error -> {
+                            val error = (loadState.append as LoadState.Error).error
+                            item(contentType = "error") {
+                                ErrorIndicator(message = "Error loading more: ${error.message}")
                             }
                         }
                     }
                 }
             }
+        }
 
-            // Find-in-page bar overlay with result count badge (uniform style)
-            if (showFind) {
-                // Compute total matches across currently loaded snapshot (approximate)
-                val queryText = findState.text.toString()
-                val snapshotItems = lazyPagingItems.itemSnapshotList.items
-                val matchCount by produceState(0, queryText, snapshotItems) {
-                    value =
-                        if (queryText.length < 2) {
-                            0
-                        } else {
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                                var total = 0
-                                for (ln in snapshotItems) {
-                                    val text =
-                                        try {
-                                            buildAnnotatedFromHtml(ln.content, textSize).text
-                                        } catch (_: Throwable) {
-                                            ln.content
-                                        }
-                                    total += findAllMatchesOriginal(text, queryText).size
-                                }
-                                total
+        // Find-in-page bar overlay with result count badge (uniform style)
+        if (showFind) {
+            // Compute total matches across currently loaded snapshot (approximate)
+            val queryText = findState.text.toString()
+            val snapshotItems = lazyPagingItems.itemSnapshotList.items
+            val matchCount by produceState(0, queryText, snapshotItems) {
+                value =
+                    if (queryText.length < 2) {
+                        0
+                    } else {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                            var total = 0
+                            for (ln in snapshotItems) {
+                                val text =
+                                    try {
+                                        buildAnnotatedFromHtml(ln.content, textSize).text
+                                    } catch (_: Throwable) {
+                                        ln.content
+                                    }
+                                total += findAllMatchesOriginal(text, queryText).size
                             }
+                            total
                         }
+                    }
+            }
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                        .zIndex(2f),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (queryText.length >= 2) {
+                    // Wrap badge in a small panel background to improve border contrast,
+                    // keeping the badge's own border color (disabled) identical to the tree.
+                    Box(
+                        modifier =
+                            Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(JewelTheme.globalColors.panelBackground)
+                                .padding(2.dp),
+                    ) {
+                        CountBadge(count = matchCount)
+                    }
+                    Spacer(Modifier.width(8.dp))
                 }
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp)
-                            .zIndex(2f),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (queryText.length >= 2) {
-                        // Wrap badge in a small panel background to improve border contrast,
-                        // keeping the badge's own border color (disabled) identical to the tree.
-                        Box(
-                            modifier =
-                                Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(JewelTheme.globalColors.panelBackground)
-                                    .padding(2.dp),
-                        ) {
-                            CountBadge(count = matchCount)
-                        }
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    FindInPageBar(
-                        state = findState,
-                        onEnterNext = { navigateToMatch(true, scope) },
-                        onEnterPrev = { navigateToMatch(false, scope) },
-                        onClose = { AppSettings.closeFindBar(tabId) },
-                        smartModeEnabled = smartModeEnabled,
-                        onToggleSmartMode = { AppSettings.toggleFindSmartMode(tabId) },
-                    )
-                    LaunchedEffect(findState.text, showFind) {
-                        val q = findState.text.toString()
-                        AppSettings.setFindQuery(tabId, if (q.length >= 2) q else "")
-                    }
+                FindInPageBar(
+                    state = findState,
+                    onEnterNext = { navigateToMatch(true, scope) },
+                    onEnterPrev = { navigateToMatch(false, scope) },
+                    onClose = { AppSettings.closeFindBar(tabId) },
+                    smartModeEnabled = smartModeEnabled,
+                    onToggleSmartMode = { AppSettings.toggleFindSmartMode(tabId) },
+                )
+                LaunchedEffect(findState.text, showFind) {
+                    val q = findState.text.toString()
+                    AppSettings.setFindQuery(tabId, if (q.length >= 2) q else "")
                 }
             }
         }

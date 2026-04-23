@@ -33,7 +33,10 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import com.dokar.sonner.ToastType
 import com.dokar.sonner.rememberToasterState
+import io.github.kdroidfilter.seforimapp.core.CurrentBookStore
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
+import io.github.kdroidfilter.seforimapp.core.VisibleLinesStore
+import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppToaster
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -48,6 +51,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.BookTocPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree.CategoryTreePanel
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
+import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
@@ -74,6 +78,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.skiko.hostOs
 import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.context_menu_copy_with_source
 import seforimapp.seforimapp.generated.resources.context_menu_copy_without_nikud
 import seforimapp.seforimapp.generated.resources.context_menu_find_in_page
 import seforimapp.seforimapp.generated.resources.context_menu_search_selected_text
@@ -272,10 +277,25 @@ fun BookContentScreen(
     val searchSelectedLabel = stringResource(Res.string.context_menu_search_selected_text)
     val findInPageLabel = stringResource(Res.string.context_menu_find_in_page)
     val copyWithoutNikudLabel = stringResource(Res.string.context_menu_copy_without_nikud)
+    val copyWithSourceLabel = stringResource(Res.string.context_menu_copy_with_source)
     val baseTextContextMenu = LocalTextContextMenu.current
     val tabId = uiState.tabId
     val selectedBook = uiState.navigation.selectedBook
     val bookHasDiacritics = selectedBook?.hasNekudot == true || selectedBook?.hasTeamim == true
+    // Always read the latest values inside the context-menu actions, without rebuilding the menu.
+    val currentSelectedBook by rememberUpdatedState(selectedBook)
+
+    // Publish the active book + its root category to the global store so the Ctrl+Alt+C
+    // shortcut and context-menu action can apply per-tradition formatting (e.g. Talmud trim).
+    LaunchedEffect(selectedBook, isSelected) {
+        if (isSelected) {
+            val rootTitle = selectedBook?.let { CatalogCache.getRootForBook(it)?.title }
+            CurrentBookStore.update(selectedBook, rootTitle)
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose { CurrentBookStore.clear() }
+    }
 
     val textContextMenu =
         remember(
@@ -285,6 +305,7 @@ fun BookContentScreen(
             searchSelectedLabel,
             findInPageLabel,
             copyWithoutNikudLabel,
+            copyWithSourceLabel,
             showDiacritics,
             bookHasDiacritics,
         ) {
@@ -326,6 +347,32 @@ fun BookContentScreen(
                                             val textWithoutDiacritics = HebrewTextUtils.removeAllDiacritics(selectedText)
                                             val clipboard = Toolkit.getDefaultToolkit().systemClipboard
                                             clipboard.setContents(StringSelection(textWithoutDiacritics), null)
+                                        },
+                                    )
+                                }
+                                // Copy with source: append "(book ref – line ref)" to the selection
+                                val bookForCopy = currentSelectedBook
+                                if (bookForCopy != null && selectedText.isNotBlank()) {
+                                    add(
+                                        ContextMenuItemOptionWithKeybinding(
+                                            icon = AllIconsKeys.Actions.Copy,
+                                            keybinding =
+                                                if (hostOs.isMacOS) {
+                                                    linkedSetOf("⌥", "⌘", "C")
+                                                } else {
+                                                    linkedSetOf("Ctrl", "Alt", "C")
+                                                },
+                                            label = copyWithSourceLabel,
+                                        ) {
+                                            val payload =
+                                                buildCopyWithSourcePayload(
+                                                    selectedText,
+                                                    bookForCopy,
+                                                    CurrentBookStore.activeBook.value?.rootTitle,
+                                                    VisibleLinesStore.visibleLines.value,
+                                                )
+                                            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+                                            clipboard.setContents(StringSelection(payload), null)
                                         },
                                     )
                                 }

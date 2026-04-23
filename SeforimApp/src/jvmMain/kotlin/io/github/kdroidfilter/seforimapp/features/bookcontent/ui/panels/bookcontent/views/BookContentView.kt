@@ -56,6 +56,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalo
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
@@ -161,6 +162,25 @@ fun BookContentView(
     )
 
     // selectedLineId is now passed as a parameter for stability
+
+    // Publish the currently materialized lines to the SelectionContext so context-menu actions
+    // (e.g. "copy with source") and the AWT keyboard dispatcher can map a free-form text
+    // selection back to its source lines. Only the active tab publishes; lifecycle clears are
+    // tabId-scoped so a backgrounded tab cannot wipe a sibling tab's snapshot — even when both
+    // tabs reference the same book.
+    val selectionContext = LocalAppGraph.current.selectionContext
+    LaunchedEffect(lazyPagingItems, isTabSelected, tabId, selectionContext) {
+        if (!isTabSelected) {
+            selectionContext.clearVisibleLinesIfOwnedBy(tabId)
+            return@LaunchedEffect
+        }
+        snapshotFlow { lazyPagingItems.itemSnapshotList.items }
+            .distinctUntilChanged()
+            .collect { items -> selectionContext.setVisibleLines(tabId, items) }
+    }
+    DisposableEffect(tabId, selectionContext) {
+        onDispose { selectionContext.clearVisibleLinesIfOwnedBy(tabId) }
+    }
 
     // Prefetch connection data for visible lines to avoid per-line DB calls
     LaunchedEffect(listState, lazyPagingItems, onPrefetchLineConnections) {

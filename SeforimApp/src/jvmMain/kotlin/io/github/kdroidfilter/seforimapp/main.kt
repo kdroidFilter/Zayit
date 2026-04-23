@@ -32,7 +32,7 @@ import io.github.kdroidfilter.platformtools.getAppVersion
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
-import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
+import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppDockMenu
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppJumpList
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppLinuxQuicklist
@@ -148,25 +148,6 @@ fun main(args: Array<String>) {
         System.setProperty("skiko.renderApi", "OPENGL")
     }
 
-    // Register global AWT key event dispatcher for Cmd+Shift+C (copy without nikud)
-    KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher { event ->
-        if (event.id == KeyEvent.KEY_PRESSED &&
-            event.keyCode == KeyEvent.VK_C &&
-            event.isShiftDown &&
-            (event.isMetaDown || event.isControlDown)
-        ) {
-            val selectedText = TextSelectionStore.selectedText.value
-            if (selectedText.isNotBlank()) {
-                val textWithoutDiacritics = HebrewTextUtils.removeAllDiacritics(selectedText)
-                val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-                clipboard.setContents(StringSelection(textWithoutDiacritics), null)
-            }
-            true // consume the event
-        } else {
-            false
-        }
-    }
-
     val appId = "io.github.kdroidfilter.seforimapp"
 
     // Must be set before any window creation for jump lists to work on unpackaged Windows apps
@@ -214,6 +195,67 @@ fun main(args: Array<String>) {
         val appGraph = remember { createGraph<AppGraph>() }
         // Ensure AppSettings uses the DI-provided Settings immediately
         AppSettings.initialize(appGraph.settings)
+
+        // Register the AWT-level keyboard shortcuts here (instead of in main()) so they can read
+        // from the DI-provided SelectionContext. The DisposableEffect re-runs only if the graph
+        // identity changes (effectively never), and removes the dispatchers on app teardown.
+        val selectionContext = appGraph.selectionContext
+        DisposableEffect(selectionContext) {
+            val km = KeyboardFocusManager.getCurrentKeyboardFocusManager()
+            val copyWithoutNikud =
+                KeyEventDispatcher { event ->
+                    if (event.id == KeyEvent.KEY_PRESSED &&
+                        event.keyCode == KeyEvent.VK_C &&
+                        event.isShiftDown &&
+                        (event.isMetaDown || event.isControlDown)
+                    ) {
+                        val selectedText = selectionContext.selectedText.value
+                        if (selectedText.isNotBlank()) {
+                            val stripped = HebrewTextUtils.removeAllDiacritics(selectedText)
+                            Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(stripped), null)
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                }
+            // Skip when AltGraph is down to avoid clobbering character composition on
+            // Linux/Windows layouts where Ctrl+Alt is interpreted as AltGr.
+            val copyWithSource =
+                KeyEventDispatcher { event ->
+                    if (event.id == KeyEvent.KEY_PRESSED &&
+                        event.keyCode == KeyEvent.VK_C &&
+                        event.isAltDown &&
+                        !event.isAltGraphDown &&
+                        !event.isShiftDown &&
+                        (event.isMetaDown || event.isControlDown)
+                    ) {
+                        val selectedText = selectionContext.selectedText.value
+                        val active = selectionContext.activeBook.value
+                        if (selectedText.isNotBlank() && active != null) {
+                            val payload =
+                                buildCopyWithSourcePayload(
+                                    selectedText,
+                                    active.book,
+                                    active.rootTitle,
+                                    selectionContext.visibleLines.value.lines,
+                                )
+                            Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(payload), null)
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                }
+            km.addKeyEventDispatcher(copyWithoutNikud)
+            km.addKeyEventDispatcher(copyWithSource)
+            onDispose {
+                km.removeKeyEventDispatcher(copyWithoutNikud)
+                km.removeKeyEventDispatcher(copyWithSource)
+            }
+        }
 
         // Get MainAppState from DI graph
         val mainAppState = appGraph.mainAppState

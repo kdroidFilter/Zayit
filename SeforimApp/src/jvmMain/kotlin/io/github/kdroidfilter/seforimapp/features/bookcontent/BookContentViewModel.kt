@@ -489,9 +489,12 @@ class BookContentViewModel(
                     )
 
                 is BookContentEvent.CommentariesPageChanged ->
-                    stateManager.updateContent {
+                    stateManager.updateContent(save = false) {
                         copy(commentariesPageIndex = event.page)
                     }
+
+                BookContentEvent.FlushCommentariesState ->
+                    stateManager.saveAllStates()
 
                 BookContentEvent.ToggleCommentatorsList ->
                     stateManager.updateContent {

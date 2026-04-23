@@ -95,7 +95,6 @@ fun LineCommentsView(
     val activeQuery = if (showFind) findQuery else ""
 
     val paneInteractionSource = remember { MutableInteractionSource() }
-    val showCommentatorsList = contentState.isCommentatorsListVisible
 
     Column(modifier = Modifier.fillMaxSize().hoverable(paneInteractionSource)) {
         // Header
@@ -105,7 +104,7 @@ fun LineCommentsView(
             onHide = { onEvent(BookContentEvent.ToggleCommentaries) },
             actions = {
                 CommentatorsSidebarToggleButton(
-                    isVisible = showCommentatorsList,
+                    isVisible = contentState.isCommentatorsListVisible,
                     onToggle = { onEvent(BookContentEvent.ToggleCommentatorsList) },
                 )
             },
@@ -123,7 +122,7 @@ fun LineCommentsView(
                         onEvent = onEvent,
                         textSizes = textSizes,
                         findQueryText = activeQuery,
-                        isCommentatorsListVisible = showCommentatorsList,
+                        isCommentatorsListVisible = contentState.isCommentatorsListVisible,
                         showDiacritics = showDiacritics,
                     )
                 }
@@ -135,7 +134,7 @@ fun LineCommentsView(
                         onEvent = onEvent,
                         textSizes = textSizes,
                         findQueryText = activeQuery,
-                        isCommentatorsListVisible = showCommentatorsList,
+                        isCommentatorsListVisible = contentState.isCommentatorsListVisible,
                         prefetchedGroups = lineConnections[selectedLine.id]?.commentatorGroups,
                         showDiacritics = showDiacritics,
                     )
@@ -480,6 +479,7 @@ private fun CommentatorsGrid(
         config = config,
         initialPage = uiState.content.commentariesPageIndex,
         onPageChange = { page -> onEvent(BookContentEvent.CommentariesPageChanged(page)) },
+        onFlushPersist = { onEvent(BookContentEvent.FlushCommentariesState) },
     ) { commentatorId ->
         val pagerFlow =
             remember(selection, commentatorId) {

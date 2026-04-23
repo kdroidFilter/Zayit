@@ -17,7 +17,6 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -57,6 +56,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.Enha
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
@@ -554,16 +554,19 @@ private fun CommentariesPagedList(
     // so a short commentary still counts for a full visual line in the thumb metrics.
     val repository = LocalAppGraph.current.repository
     val allCharCounts by produceState(initialValue = emptyList<Int>(), selection, commentatorId, repository) {
-        value = when (selection) {
-            is LineSelection.Single -> repository.getCommentaryCharCountsForLineOrSection(
-                baseLineId = selection.lineId,
-                activeCommentatorIds = setOf(commentatorId),
-            )
-            is LineSelection.Multi -> repository.getCommentaryCharCountsForLines(
-                lineIds = selection.lineIds,
-                activeCommentatorIds = setOf(commentatorId),
-            )
-        }
+        value =
+            when (selection) {
+                is LineSelection.Single ->
+                    repository.getCommentaryCharCountsForLineOrSection(
+                        baseLineId = selection.lineId,
+                        activeCommentatorIds = setOf(commentatorId),
+                    )
+                is LineSelection.Multi ->
+                    repository.getCommentaryCharCountsForLines(
+                        lineIds = selection.lineIds,
+                        activeCommentatorIds = setOf(commentatorId),
+                    )
+            }
     }
 
     // Scrollbar metrics, all exact and deterministic:
@@ -580,9 +583,10 @@ private fun CommentariesPagedList(
     var textLayoutWidthPx by remember(selection, commentatorId) { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
-    val lineHeightPx = with(density) {
-        (config.textSizes.commentTextSize * config.textSizes.lineHeight).sp.toPx()
-    }
+    val lineHeightPx =
+        with(density) {
+            (config.textSizes.commentTextSize * config.textSizes.lineHeight).sp.toPx()
+        }
     val paddingPerItemPx = with(density) { ITEM_VERTICAL_PADDING.toPx() }
     val capacity by remember(textLayoutWidthPx, config.textSizes, config.fontFamily) {
         derivedStateOf {
@@ -590,15 +594,17 @@ private fun CommentariesPagedList(
                 0
             } else {
                 val reference = CAPACITY_REFERENCE
-                val result = textMeasurer.measure(
-                    text = AnnotatedString(reference),
-                    style = TextStyle(
-                        fontSize = config.textSizes.commentTextSize.sp,
-                        fontFamily = config.fontFamily,
-                        lineHeight = (config.textSizes.commentTextSize * config.textSizes.lineHeight).sp,
-                    ),
-                    constraints = Constraints(maxWidth = textLayoutWidthPx),
-                )
+                val result =
+                    textMeasurer.measure(
+                        text = AnnotatedString(reference),
+                        style =
+                            TextStyle(
+                                fontSize = config.textSizes.commentTextSize.sp,
+                                fontFamily = config.fontFamily,
+                                lineHeight = (config.textSizes.commentTextSize * config.textSizes.lineHeight).sp,
+                            ),
+                        constraints = Constraints(maxWidth = textLayoutWidthPx),
+                    )
                 (reference.length / result.lineCount.coerceAtLeast(1)).coerceAtLeast(1)
             }
         }
@@ -649,7 +655,7 @@ private fun CommentariesPagedList(
                             highlightQuery = config.highlightQuery,
                             showDiacritics = config.showDiacritics,
                             onClick = { config.onCommentClick(commentary) },
-                            onLayoutWidthMeasured = { width ->
+                            onLayoutWidthMeasure = { width ->
                                 if (textLayoutWidthPx == 0 && width > 0) {
                                     textLayoutWidthPx = width
                                 }
@@ -685,9 +691,9 @@ private fun CommentaryItem(
     fontFamily: FontFamily,
     highlightQuery: String,
     showDiacritics: Boolean,
-    boldScale: Float = 1.0f,
     onClick: () -> Unit,
-    onLayoutWidthMeasured: (Int) -> Unit = {},
+    boldScale: Float = 1.0f,
+    onLayoutWidthMeasure: (Int) -> Unit = {},
 ) {
     Column(
         modifier =
@@ -767,7 +773,7 @@ private fun CommentaryItem(
             inlineContent = inlineImageContent,
             onTextLayout = { result ->
                 val cw = result.layoutInput.constraints.maxWidth
-                if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasured(cw)
+                if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
             },
         )
     }

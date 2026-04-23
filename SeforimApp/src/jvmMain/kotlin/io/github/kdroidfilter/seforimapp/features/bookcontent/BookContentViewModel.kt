@@ -839,9 +839,10 @@ class BookContentViewModel(
     fun scrollToLineIndex(lineIndex: Int) {
         val book = stateManager.state.value.navigation.selectedBook ?: return
         viewModelScope.launch {
-            val line = runSuspendCatching { repository.getLineByIndex(book.id, lineIndex) }
-                .getOrNull()
-                ?: return@launch
+            val line =
+                runSuspendCatching { repository.getLineByIndex(book.id, lineIndex) }
+                    .getOrNull()
+                    ?: return@launch
             // Set the anchor first so the view scrolls to the line once the new page lands.
             stateManager.updateContent {
                 copy(

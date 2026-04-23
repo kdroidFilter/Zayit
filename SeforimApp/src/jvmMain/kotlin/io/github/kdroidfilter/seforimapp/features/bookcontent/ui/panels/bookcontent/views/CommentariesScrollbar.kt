@@ -42,12 +42,12 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
-import kotlin.math.abs
-import kotlin.math.ceil
-import kotlin.math.max
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.styling.ScrollbarVisibility.AlwaysVisible
 import org.jetbrains.jewel.ui.theme.scrollbarStyle
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.max
 
 /**
  * Content-aware vertical scrollbar for a paginated list of [CommentaryWithText].
@@ -116,23 +116,25 @@ fun CommentariesScrollbar(
         animationSpec = tween(visibility.expandAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
         label = "commentaries_scrollbar_thickness",
     )
-    val targetThumbColor = when {
-        isOpaque && isHovered -> style.colors.thumbOpaqueBackgroundHovered
-        isOpaque -> style.colors.thumbOpaqueBackground
-        showScrollbar && (isHovered || dragRatio != null) -> style.colors.thumbBackgroundActive
-        showScrollbar -> style.colors.thumbBackground
-        else -> style.colors.thumbBackground.copy(alpha = 0f)
-    }
+    val targetThumbColor =
+        when {
+            isOpaque && isHovered -> style.colors.thumbOpaqueBackgroundHovered
+            isOpaque -> style.colors.thumbOpaqueBackground
+            showScrollbar && (isHovered || dragRatio != null) -> style.colors.thumbBackgroundActive
+            showScrollbar -> style.colors.thumbBackground
+            else -> style.colors.thumbBackground.copy(alpha = 0f)
+        }
     val thumbColor by animateColorAsState(
         targetValue = targetThumbColor,
         animationSpec = tween(visibility.thumbColorAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
         label = "commentaries_scrollbar_thumb_color",
     )
-    val targetTrackColor = when {
-        isOpaque -> if (isHovered) style.colors.trackOpaqueBackgroundHovered else style.colors.trackOpaqueBackground
-        isExpanded -> style.colors.trackBackgroundExpanded
-        else -> style.colors.trackBackground
-    }
+    val targetTrackColor =
+        when {
+            isOpaque -> if (isHovered) style.colors.trackOpaqueBackgroundHovered else style.colors.trackOpaqueBackground
+            isExpanded -> style.colors.trackBackgroundExpanded
+            else -> style.colors.trackBackground
+        }
     val trackColor by animateColorAsState(
         targetValue = targetTrackColor,
         animationSpec = tween(visibility.trackColorAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
@@ -167,11 +169,16 @@ fun CommentariesScrollbar(
     var latchedHidden by remember(allCharCounts) { mutableStateOf(false) }
     LaunchedEffect(allCharCounts) {
         snapshotFlow {
-            val viewport = (listState.layoutInfo.viewportEndOffset -
-                listState.layoutInfo.viewportStartOffset).toFloat()
+            val viewport =
+                (
+                    listState.layoutInfo.viewportEndOffset -
+                        listState.layoutInfo.viewportStartOffset
+                ).toFloat()
             if (viewport > 0f && capacity > 0 && lineHeightPx > 0f && totalContentPx > 0f) {
                 viewport to totalContentPx
-            } else null
+            } else {
+                null
+            }
         }.filterNotNull().first().let { (viewport, total) ->
             latchedSize = (viewport / total).coerceIn(0f, 1f)
             latchedHidden = total <= viewport
@@ -203,23 +210,24 @@ fun CommentariesScrollbar(
 
     // Convert a thumb ratio back to a target item index via the same avg-based geometry
     // used for `position` — so that dragging the thumb is the inverse of reading it.
-    val applyTarget = remember {
-        fun(thumbRatio: Float) {
-            val ls = listStateRef.value
-            val info = ls.layoutInfo
-            val total = info.totalItemsCount
-            if (total == 0) return
-            val visible = info.visibleItemsInfo.filter { it.index in 0 until total }
-            if (visible.isEmpty()) return
-            val avgItemSize = visible.sumOf { it.size }.toFloat() / visible.size
-            if (avgItemSize <= 0f) return
-            val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
-            val visibleCount = (viewport / avgItemSize).toInt().coerceAtLeast(1)
-            val maxIdx = (total - visibleCount).coerceAtLeast(1)
-            val targetIdx = (thumbRatio * maxIdx).toInt().coerceIn(0, total - 1)
-            ls.requestScrollToItem(targetIdx, 0)
+    val applyTarget =
+        remember {
+            fun(thumbRatio: Float) {
+                val ls = listStateRef.value
+                val info = ls.layoutInfo
+                val total = info.totalItemsCount
+                if (total == 0) return
+                val visible = info.visibleItemsInfo.filter { it.index in 0 until total }
+                if (visible.isEmpty()) return
+                val avgItemSize = visible.sumOf { it.size }.toFloat() / visible.size
+                if (avgItemSize <= 0f) return
+                val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
+                val visibleCount = (viewport / avgItemSize).toInt().coerceAtLeast(1)
+                val maxIdx = (total - visibleCount).coerceAtLeast(1)
+                val targetIdx = (thumbRatio * maxIdx).toInt().coerceIn(0, total - 1)
+                ls.requestScrollToItem(targetIdx, 0)
+            }
         }
-    }
 
     // Convergence: unpin the thumb once the live scroll catches up to the target ratio.
     LaunchedEffect(dragRatio, isDragging, position) {
@@ -234,51 +242,57 @@ fun CommentariesScrollbar(
     }
 
     Box(
-        modifier = modifier
-            .width(animatedThickness)
-            .fillMaxHeight()
-            .hoverable(interactionSource)
-            .onSizeChanged { trackHeightPx = it.height }
-            .background(trackColor)
-            .pointerInput(trackHeightPx) {
-                detectTapGestures(onTap = { offset ->
-                    if (trackHeightPx <= 0) return@detectTapGestures
-                    val thumbRatio = (offset.y / trackHeightPx).coerceIn(0f, 1f)
-                    dragRatio = thumbRatio
-                    applyTarget(thumbRatio)
-                })
-            },
+        modifier =
+            modifier
+                .width(animatedThickness)
+                .fillMaxHeight()
+                .hoverable(interactionSource)
+                .onSizeChanged { trackHeightPx = it.height }
+                .background(trackColor)
+                .pointerInput(trackHeightPx) {
+                    detectTapGestures(onTap = { offset ->
+                        if (trackHeightPx <= 0) return@detectTapGestures
+                        val thumbRatio = (offset.y / trackHeightPx).coerceIn(0f, 1f)
+                        dragRatio = thumbRatio
+                        applyTarget(thumbRatio)
+                    })
+                },
     ) {
         Box(
-            modifier = Modifier
-                .offset { IntOffset(0, thumbTopPx.toInt()) }
-                .fillMaxWidth()
-                .height(with(density) { thumbHeightPx.toDp() })
-                .clip(RoundedCornerShape(style.metrics.thumbCornerSize))
-                .background(thumbColor)
-                .draggable(
-                    orientation = Orientation.Vertical,
-                    state = rememberDraggableState { delta ->
-                        val travel = travelPxState.value
-                        if (travel <= 0f) return@rememberDraggableState
-                        val current = dragRatio ?: dragStartRatio
-                        val newRatio = (current + delta / travel).coerceIn(0f, 1f)
-                        dragRatio = newRatio
-                        applyTarget(newRatio)
-                    },
-                    onDragStarted = {
-                        isDragging = true
-                        val start = displayPositionState.value
-                        dragStartRatio = start
-                        dragRatio = start
-                    },
-                    onDragStopped = { isDragging = false },
-                ),
+            modifier =
+                Modifier
+                    .offset { IntOffset(0, thumbTopPx.toInt()) }
+                    .fillMaxWidth()
+                    .height(with(density) { thumbHeightPx.toDp() })
+                    .clip(RoundedCornerShape(style.metrics.thumbCornerSize))
+                    .background(thumbColor)
+                    .draggable(
+                        orientation = Orientation.Vertical,
+                        state =
+                            rememberDraggableState { delta ->
+                                val travel = travelPxState.value
+                                if (travel <= 0f) return@rememberDraggableState
+                                val current = dragRatio ?: dragStartRatio
+                                val newRatio = (current + delta / travel).coerceIn(0f, 1f)
+                                dragRatio = newRatio
+                                applyTarget(newRatio)
+                            },
+                        onDragStarted = {
+                            isDragging = true
+                            val start = displayPositionState.value
+                            dragStartRatio = start
+                            dragRatio = start
+                        },
+                        onDragStopped = { isDragging = false },
+                    ),
         )
     }
 }
 
-private fun visualLinesOf(charCount: Int, capacity: Int): Int {
+private fun visualLinesOf(
+    charCount: Int,
+    capacity: Int,
+): Int {
     if (capacity <= 0) return 1
     if (charCount <= 0) return 1
     return max(1, ceil(charCount.toDouble() / capacity).toInt())
@@ -306,7 +320,8 @@ private fun computeAvgScrollPosition(listState: LazyListState): Float {
     val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
     val contentSize = total * avgItemSize
     val maxScroll = (contentSize - viewport).coerceAtLeast(1f)
-    val scrollOffset = listState.firstVisibleItemIndex * avgItemSize +
-        listState.firstVisibleItemScrollOffset
+    val scrollOffset =
+        listState.firstVisibleItemIndex * avgItemSize +
+            listState.firstVisibleItemScrollOffset
     return scrollOffset / maxScroll
 }

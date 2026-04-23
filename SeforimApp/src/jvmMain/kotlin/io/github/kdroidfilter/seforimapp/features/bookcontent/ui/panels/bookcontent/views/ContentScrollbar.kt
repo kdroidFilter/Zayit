@@ -44,13 +44,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.styling.ScrollbarVisibility.AlwaysVisible
+import org.jetbrains.jewel.ui.theme.scrollbarStyle
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
-import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.styling.ScrollbarVisibility.AlwaysVisible
-import org.jetbrains.jewel.ui.theme.scrollbarStyle
 
 /**
  * Content-aware vertical scrollbar for the book content pane.
@@ -123,23 +123,25 @@ fun ContentScrollbar(
         animationSpec = tween(visibility.expandAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
         label = "scrollbar_thickness",
     )
-    val targetThumbColor = when {
-        isOpaque && isHovered -> style.colors.thumbOpaqueBackgroundHovered
-        isOpaque -> style.colors.thumbOpaqueBackground
-        showScrollbar && (isHovered || dragRatio != null) -> style.colors.thumbBackgroundActive
-        showScrollbar -> style.colors.thumbBackground
-        else -> style.colors.thumbBackground.copy(alpha = 0f)
-    }
+    val targetThumbColor =
+        when {
+            isOpaque && isHovered -> style.colors.thumbOpaqueBackgroundHovered
+            isOpaque -> style.colors.thumbOpaqueBackground
+            showScrollbar && (isHovered || dragRatio != null) -> style.colors.thumbBackgroundActive
+            showScrollbar -> style.colors.thumbBackground
+            else -> style.colors.thumbBackground.copy(alpha = 0f)
+        }
     val thumbColor by animateColorAsState(
         targetValue = targetThumbColor,
         animationSpec = tween(visibility.thumbColorAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
         label = "scrollbar_thumb_color",
     )
-    val targetTrackColor = when {
-        isOpaque -> if (isHovered) style.colors.trackOpaqueBackgroundHovered else style.colors.trackOpaqueBackground
-        isExpanded -> style.colors.trackBackgroundExpanded
-        else -> style.colors.trackBackground
-    }
+    val targetTrackColor =
+        when {
+            isOpaque -> if (isHovered) style.colors.trackOpaqueBackgroundHovered else style.colors.trackOpaqueBackground
+            isExpanded -> style.colors.trackBackgroundExpanded
+            else -> style.colors.trackBackground
+        }
     val trackColor by animateColorAsState(
         targetValue = targetTrackColor,
         animationSpec = tween(visibility.trackColorAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
@@ -171,11 +173,16 @@ fun ContentScrollbar(
     var latchedHidden by remember(counts) { mutableStateOf(false) }
     LaunchedEffect(counts) {
         snapshotFlow {
-            val viewport = (listState.layoutInfo.viewportEndOffset -
-                listState.layoutInfo.viewportStartOffset).toFloat()
+            val viewport =
+                (
+                    listState.layoutInfo.viewportEndOffset -
+                        listState.layoutInfo.viewportStartOffset
+                ).toFloat()
             if (viewport > 0f && capacity > 0 && lineHeightPx > 0f && totalContentPx > 0f) {
                 viewport to totalContentPx
-            } else null
+            } else {
+                null
+            }
         }.filterNotNull().first().let { (viewport, total) ->
             latchedSize = (viewport / total).coerceIn(0f, 1f)
             latchedHidden = total <= viewport
@@ -208,9 +215,10 @@ fun ContentScrollbar(
     val onScrollToLineIndexState = rememberUpdatedState(onScrollToLineIndex)
 
     // Throttled pager rebuild for out-of-window drag positions.
-    val farDragFlow = remember {
-        MutableSharedFlow<Int>(replay = 0, extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    }
+    val farDragFlow =
+        remember {
+            MutableSharedFlow<Int>(replay = 0, extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+        }
     LaunchedEffect(farDragFlow) {
         farDragFlow.collect { lineIndex ->
             onScrollToLineIndexState.value(lineIndex)
@@ -221,33 +229,37 @@ fun ContentScrollbar(
     // Convert a thumb ratio → target book line index via the same book-wide geometry
     // used for `position`. Snap locally when the target line is loaded in the pager;
     // otherwise defer to the VM-backed callback to rebuild the pager around the target.
-    val applyTarget = remember {
-        fun(thumbRatio: Float, viaDrag: Boolean) {
-            val ls = listStateRef.value
-            val info = ls.layoutInfo
-            val pagingItemCount = pagingRef.value.itemCount
-            val visible = info.visibleItemsInfo.filter { it.index in 0 until pagingItemCount }
-            val total = bookLineCountRef.value
-            if (total == 0 || visible.isEmpty()) return
-            val avgItemSize = visible.sumOf { it.size }.toFloat() / visible.size
-            if (avgItemSize <= 0f) return
-            val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
-            val visibleCount = (viewport / avgItemSize).toInt().coerceAtLeast(1)
-            val maxIdx = (total - visibleCount).coerceAtLeast(1)
-            val targetLineIndex = (thumbRatio * maxIdx).toInt().coerceIn(0, total - 1)
-            val snapshot = pagingRef.value.itemSnapshotList.items
-            val localIndex = snapshot.indexOfFirst { it.lineIndex == targetLineIndex }
-            if (localIndex >= 0) {
-                ls.requestScrollToItem(localIndex, 0)
-                return
-            }
-            if (viaDrag) {
-                farDragFlow.tryEmit(targetLineIndex)
-            } else {
-                onScrollToLineIndexState.value(targetLineIndex)
+    val applyTarget =
+        remember {
+            fun(
+                thumbRatio: Float,
+                viaDrag: Boolean,
+            ) {
+                val ls = listStateRef.value
+                val info = ls.layoutInfo
+                val pagingItemCount = pagingRef.value.itemCount
+                val visible = info.visibleItemsInfo.filter { it.index in 0 until pagingItemCount }
+                val total = bookLineCountRef.value
+                if (total == 0 || visible.isEmpty()) return
+                val avgItemSize = visible.sumOf { it.size }.toFloat() / visible.size
+                if (avgItemSize <= 0f) return
+                val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
+                val visibleCount = (viewport / avgItemSize).toInt().coerceAtLeast(1)
+                val maxIdx = (total - visibleCount).coerceAtLeast(1)
+                val targetLineIndex = (thumbRatio * maxIdx).toInt().coerceIn(0, total - 1)
+                val snapshot = pagingRef.value.itemSnapshotList.items
+                val localIndex = snapshot.indexOfFirst { it.lineIndex == targetLineIndex }
+                if (localIndex >= 0) {
+                    ls.requestScrollToItem(localIndex, 0)
+                    return
+                }
+                if (viaDrag) {
+                    farDragFlow.tryEmit(targetLineIndex)
+                } else {
+                    onScrollToLineIndexState.value(targetLineIndex)
+                }
             }
         }
-    }
 
     // Convergence: unpin the thumb once the live scroll catches up to the target.
     LaunchedEffect(dragRatio, isDragging, position) {
@@ -262,46 +274,49 @@ fun ContentScrollbar(
     }
 
     Box(
-        modifier = modifier
-            .width(animatedThickness)
-            .fillMaxHeight()
-            .hoverable(interactionSource)
-            .onSizeChanged { trackHeightPx = it.height }
-            .background(trackColor)
-            .pointerInput(trackHeightPx) {
-                detectTapGestures(onTap = { offset ->
-                    if (trackHeightPx <= 0) return@detectTapGestures
-                    val thumbRatio = (offset.y / trackHeightPx).coerceIn(0f, 1f)
-                    dragRatio = thumbRatio
-                    applyTarget(thumbRatio, /* viaDrag = */ false)
-                })
-            },
+        modifier =
+            modifier
+                .width(animatedThickness)
+                .fillMaxHeight()
+                .hoverable(interactionSource)
+                .onSizeChanged { trackHeightPx = it.height }
+                .background(trackColor)
+                .pointerInput(trackHeightPx) {
+                    detectTapGestures(onTap = { offset ->
+                        if (trackHeightPx <= 0) return@detectTapGestures
+                        val thumbRatio = (offset.y / trackHeightPx).coerceIn(0f, 1f)
+                        dragRatio = thumbRatio
+                        applyTarget(thumbRatio, false)
+                    })
+                },
     ) {
         Box(
-            modifier = Modifier
-                .offset { IntOffset(0, thumbTopPx.toInt()) }
-                .fillMaxWidth()
-                .height(with(density) { thumbHeightPx.toDp() })
-                .clip(RoundedCornerShape(style.metrics.thumbCornerSize))
-                .background(thumbColor)
-                .draggable(
-                    orientation = Orientation.Vertical,
-                    state = rememberDraggableState { delta ->
-                        val travel = travelPxState.value
-                        if (travel <= 0f) return@rememberDraggableState
-                        val current = dragRatio ?: dragStartRatio
-                        val newRatio = (current + delta / travel).coerceIn(0f, 1f)
-                        dragRatio = newRatio
-                        applyTarget(newRatio, /* viaDrag = */ true)
-                    },
-                    onDragStarted = {
-                        isDragging = true
-                        val start = displayPositionState.value
-                        dragStartRatio = start
-                        dragRatio = start
-                    },
-                    onDragStopped = { isDragging = false },
-                ),
+            modifier =
+                Modifier
+                    .offset { IntOffset(0, thumbTopPx.toInt()) }
+                    .fillMaxWidth()
+                    .height(with(density) { thumbHeightPx.toDp() })
+                    .clip(RoundedCornerShape(style.metrics.thumbCornerSize))
+                    .background(thumbColor)
+                    .draggable(
+                        orientation = Orientation.Vertical,
+                        state =
+                            rememberDraggableState { delta ->
+                                val travel = travelPxState.value
+                                if (travel <= 0f) return@rememberDraggableState
+                                val current = dragRatio ?: dragStartRatio
+                                val newRatio = (current + delta / travel).coerceIn(0f, 1f)
+                                dragRatio = newRatio
+                                applyTarget(newRatio, true)
+                            },
+                        onDragStarted = {
+                            isDragging = true
+                            val start = displayPositionState.value
+                            dragStartRatio = start
+                            dragRatio = start
+                        },
+                        onDragStopped = { isDragging = false },
+                    ),
         )
     }
 }
@@ -309,7 +324,10 @@ fun ContentScrollbar(
 private val FAR_DRAG_THROTTLE = 50.milliseconds
 private val PENDING_JUMP_TIMEOUT = 1500.milliseconds
 
-private fun visualLinesForCount(charCount: Int, capacity: Int): Int {
+private fun visualLinesForCount(
+    charCount: Int,
+    capacity: Int,
+): Int {
     if (capacity <= 0) return 1
     if (charCount <= 0) return 1
     return max(1, ceil(charCount.toDouble() / capacity).toInt())

@@ -697,7 +697,7 @@ fun BookContentView(
                                             if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
                                         annotatedCache = stableAnnotatedCache,
                                         showDiacritics = showDiacritics,
-                                        onLayoutWidthMeasured = { width ->
+                                        onLayoutWidthMeasure = { width ->
                                             if (textLayoutWidthPx == 0 && width > 0) {
                                                 textLayoutWidthPx = width
                                             }
@@ -764,15 +764,17 @@ fun BookContentView(
                     if (textLayoutWidthPx <= 0) {
                         0
                     } else {
-                        val result = textMeasurer.measure(
-                            text = AnnotatedString(CAPACITY_REFERENCE),
-                            style = TextStyle(
-                                fontSize = textSize.sp,
-                                fontFamily = hebrewFontFamily,
-                                lineHeight = (textSize * lineHeight).sp,
-                            ),
-                            constraints = Constraints(maxWidth = textLayoutWidthPx),
-                        )
+                        val result =
+                            textMeasurer.measure(
+                                text = AnnotatedString(CAPACITY_REFERENCE),
+                                style =
+                                    TextStyle(
+                                        fontSize = textSize.sp,
+                                        fontFamily = hebrewFontFamily,
+                                        lineHeight = (textSize * lineHeight).sp,
+                                    ),
+                                constraints = Constraints(maxWidth = textLayoutWidthPx),
+                            )
                         (CAPACITY_REFERENCE.length / result.lineCount.coerceAtLeast(1))
                             .coerceAtLeast(1)
                     }
@@ -970,7 +972,7 @@ private fun LineItem(
     currentMatchStart: Int? = null,
     annotatedCache: StableAnnotatedCache? = null,
     showDiacritics: Boolean = true,
-    onLayoutWidthMeasured: (Int) -> Unit = {},
+    onLayoutWidthMeasure: (Int) -> Unit = {},
 ) {
     // Process content: remove diacritics if setting is disabled
     val processedContent =
@@ -1070,7 +1072,7 @@ private fun LineItem(
         inlineContent = inlineImageContent,
         onTextLayout = { result ->
             val cw = result.layoutInput.constraints.maxWidth
-            if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasured(cw)
+            if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
         },
     )
 }

@@ -493,6 +493,11 @@ class BookContentViewModel(
                         copy(commentariesPageIndex = event.page)
                     }
 
+                BookContentEvent.ToggleCommentatorsList ->
+                    stateManager.updateContent {
+                        copy(isCommentatorsListVisible = !isCommentatorsListVisible)
+                    }
+
                 is BookContentEvent.SelectedCommentatorsChanged ->
                     commentariesUseCase.updateSelectedCommentators(event.lineId, event.selectedIds)
 

@@ -139,6 +139,8 @@ data class ContentState(
     val commentariesColumnScrollOffsetByCommentator: Map<Long, Int> = emptyMap(),
     // Current page of the commentaries vertical pager (restored on tab re-entry)
     val commentariesPageIndex: Int = 0,
+    // Visibility of the commentators selection sidebar inside the commentaries pane
+    val isCommentatorsListVisible: Boolean = true,
     // Filters selected in UI (for current line)
     val selectedCommentatorIds: Set<Long> = emptySet(),
     val selectedTargumSourceIds: Set<Long> = emptySet(),

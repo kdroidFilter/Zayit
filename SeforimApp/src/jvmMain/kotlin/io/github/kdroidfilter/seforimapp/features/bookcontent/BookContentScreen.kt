@@ -33,9 +33,6 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import com.dokar.sonner.ToastType
 import com.dokar.sonner.rememberToasterState
-import io.github.kdroidfilter.seforimapp.core.CurrentBookStore
-import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
-import io.github.kdroidfilter.seforimapp.core.VisibleLinesStore
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppToaster
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
@@ -52,6 +49,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree.CategoryTreePanel
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
@@ -282,19 +280,25 @@ fun BookContentScreen(
     val tabId = uiState.tabId
     val selectedBook = uiState.navigation.selectedBook
     val bookHasDiacritics = selectedBook?.hasNekudot == true || selectedBook?.hasTeamim == true
+    val selectionContext = LocalAppGraph.current.selectionContext
     // Always read the latest values inside the context-menu actions, without rebuilding the menu.
     val currentSelectedBook by rememberUpdatedState(selectedBook)
 
-    // Publish the active book + its root category to the global store so the Ctrl+Alt+C
-    // shortcut and context-menu action can apply per-tradition formatting (e.g. Talmud trim).
-    LaunchedEffect(selectedBook, isSelected) {
+    // Publish the active book + its root category to the SelectionContext so the Ctrl+Alt+C
+    // dispatcher and the context-menu action can apply per-tradition formatting. Lifecycle
+    // clears use the bookId-scoped variant so a backgrounded tab cannot wipe the foreground
+    // tab's published book in classic-tabs mode.
+    LaunchedEffect(selectedBook, isSelected, selectionContext) {
         if (isSelected) {
             val rootTitle = selectedBook?.let { CatalogCache.getRootForBook(it)?.title }
-            CurrentBookStore.update(selectedBook, rootTitle)
+            selectionContext.setActiveBook(selectedBook, rootTitle)
+        } else {
+            selectionContext.clearActiveBookIf(selectedBook?.id)
         }
     }
-    DisposableEffect(Unit) {
-        onDispose { CurrentBookStore.clear() }
+    DisposableEffect(selectedBook?.id, selectionContext) {
+        val publishedId = selectedBook?.id
+        onDispose { selectionContext.clearActiveBookIf(publishedId) }
     }
 
     val textContextMenu =
@@ -317,9 +321,10 @@ fun BookContentScreen(
                     state: ContextMenuState,
                     content: @Composable () -> Unit,
                 ) {
-                    // Update the global selection store for keyboard shortcuts
+                    // Mirror the current selection into the SelectionContext so the AWT
+                    // keyboard dispatcher can read it without touching Compose state directly.
                     LaunchedEffect(textManager.selectedText.text) {
-                        TextSelectionStore.updateSelection(textManager.selectedText.text)
+                        selectionContext.setSelectedText(textManager.selectedText.text)
                     }
 
                     ContextMenuDataProvider(
@@ -368,8 +373,8 @@ fun BookContentScreen(
                                                 buildCopyWithSourcePayload(
                                                     selectedText,
                                                     bookForCopy,
-                                                    CurrentBookStore.activeBook.value?.rootTitle,
-                                                    VisibleLinesStore.visibleLines.value,
+                                                    selectionContext.activeBook.value?.rootTitle,
+                                                    selectionContext.visibleLines.value,
                                                 )
                                             val clipboard = Toolkit.getDefaultToolkit().systemClipboard
                                             clipboard.setContents(StringSelection(payload), null)

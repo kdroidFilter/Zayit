@@ -72,7 +72,7 @@ import seforimapp.seforimapp.generated.resources.*
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val MAX_COMMENTATORS = 4
-private const val SCROLL_DEBOUNCE_MS = 100L
+private val SCROLL_DEBOUNCE = 100.milliseconds
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -385,7 +385,7 @@ private fun CommentatorsList(
         LaunchedEffect(listState) {
             snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
                 .distinctUntilChanged()
-                .debounce(SCROLL_DEBOUNCE_MS.milliseconds)
+                .debounce(SCROLL_DEBOUNCE)
                 .collect { (i, o) -> currentOnScroll(i, o) }
         }
 
@@ -567,9 +567,11 @@ private fun buildCommentatorRows(selected: List<String>): List<List<String>> =
  * Paged list of [CommentaryItem]s for one commentator, wrapped in a [SafeSelectionContainer].
  * Shared by single-line and multi-line views.
  *
- * The pager identity ([pagerFlow]) itself drives the "restore scroll on first refresh" logic:
- * callers build it via `remember(lineKey, commentatorId) { ... }`, so a new pager instance
- * signals a new source of lines and resets the one-shot restore.
+ * IMPORTANT — [pagerFlow] identity drives the one-shot scroll restore. Callers MUST build it via
+ * `remember(key1, key2, ...) { providers.buildPagerFor(...) }` so that the same logical source
+ * yields the same [Flow] reference across recompositions. Passing a freshly-constructed Flow on
+ * every recomposition (e.g. inline `providers.buildPagerFor(...).map { ... }`) will reset the
+ * one-shot state on each frame and fight the user's scroll position.
  */
 @OptIn(FlowPreview::class)
 @Composable
@@ -604,7 +606,7 @@ private fun CommentariesPagedList(
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
             .distinctUntilChanged()
-            .debounce(SCROLL_DEBOUNCE_MS.milliseconds)
+            .debounce(SCROLL_DEBOUNCE)
             .collect { (i, o) -> currentOnScroll(i, o) }
     }
 

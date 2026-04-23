@@ -106,7 +106,6 @@ fun BookContentView(
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
     isSelected: Boolean = true,
-    bookTotalChars: Long = 0L,
     bookCharCounts: IntArray? = null,
 ) {
     // Don't use the saved scroll position initially if we have an anchor

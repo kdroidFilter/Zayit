@@ -104,12 +104,11 @@ sealed interface BookContentEvent {
     ) : BookContentEvent
 
     /**
-     * Emitted when the content-aware scrollbar requests jumping to a normalized character
-     * position (0f..1f) within the current book. Resolved server-side via the per-line
-     * cumulative-chars index.
+     * Emitted when the content-aware scrollbar drag lands on a line that isn't currently
+     * loaded in the pager window. Triggers a pager rebuild anchored on the target line.
      */
-    data class ContentScrollByCharRatio(
-        val ratio: Float,
+    data class ContentScrollToLineIndex(
+        val lineIndex: Int,
     ) : BookContentEvent
 
     data object NavigateToPreviousLine : BookContentEvent

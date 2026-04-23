@@ -70,7 +70,7 @@ import org.jetbrains.jewel.ui.theme.scrollbarStyle
  * [bookCharCounts] is the per-line raw char-count vector for the currently loaded book in
  * `lineIndex` order (the VM prefetches it once per book). The composable prefix-sums the
  * `max(1, ceil(charCount[i] / capacity))` mapping, binary-searches it on drag/jump, and
- * defers to [onScrollToRatio] when the target lies outside the loaded pager window.
+ * defers to [onScrollToLineIndex] when the target line lies outside the loaded pager window.
  *
  * Visual styling comes from [JewelTheme.scrollbarStyle] so the scrollbar blends in with
  * every other Jewel scrollbar in the app.
@@ -83,7 +83,7 @@ fun ContentScrollbar(
     capacity: Int,
     lineHeightPx: Float,
     paddingPerItemPx: Float,
-    onScrollToRatio: (Float) -> Unit,
+    onScrollToLineIndex: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val counts = bookCharCounts
@@ -205,22 +205,22 @@ fun ContentScrollbar(
     val listStateRef = rememberUpdatedState(listState)
     val pagingRef = rememberUpdatedState(lazyPagingItems)
     val bookLineCountRef = rememberUpdatedState(counts.size)
-    val onScrollToRatioState = rememberUpdatedState(onScrollToRatio)
+    val onScrollToLineIndexState = rememberUpdatedState(onScrollToLineIndex)
 
     // Throttled pager rebuild for out-of-window drag positions.
     val farDragFlow = remember {
-        MutableSharedFlow<Float>(replay = 0, extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+        MutableSharedFlow<Int>(replay = 0, extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     }
     LaunchedEffect(farDragFlow) {
-        farDragFlow.collect { bookRatio ->
-            onScrollToRatioState.value(bookRatio.coerceIn(0f, 1f))
+        farDragFlow.collect { lineIndex ->
+            onScrollToLineIndexState.value(lineIndex)
             delay(FAR_DRAG_THROTTLE)
         }
     }
 
     // Convert a thumb ratio → target book line index via the same book-wide geometry
     // used for `position`. Snap locally when the target line is loaded in the pager;
-    // otherwise defer to the VM-backed callback to rebuild the pager.
+    // otherwise defer to the VM-backed callback to rebuild the pager around the target.
     val applyTarget = remember {
         fun(thumbRatio: Float, viaDrag: Boolean) {
             val ls = listStateRef.value
@@ -242,9 +242,9 @@ fun ContentScrollbar(
                 return
             }
             if (viaDrag) {
-                farDragFlow.tryEmit(thumbRatio)
+                farDragFlow.tryEmit(targetLineIndex)
             } else {
-                onScrollToRatioState.value(thumbRatio)
+                onScrollToLineIndexState.value(targetLineIndex)
             }
         }
     }

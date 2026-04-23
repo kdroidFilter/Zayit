@@ -415,7 +415,7 @@ private fun MultiLineCommentatorsGridView(
     onEvent: (BookContentEvent) -> Unit,
 ) {
     val providers = uiState.providers ?: return
-    CommentatorsGrid(config = config) { commentatorId ->
+    CommentatorsGridScaffold(config = config) { commentatorId ->
         val pagerFlow =
             remember(lineIds, commentatorId) {
                 providers.buildCommentariesPagerForLines(lineIds, commentatorId)
@@ -564,7 +564,7 @@ private fun CommentatorsGridView(
     onEvent: (BookContentEvent) -> Unit,
 ) {
     val providers = uiState.providers ?: return
-    CommentatorsGrid(config = config) { commentatorId ->
+    CommentatorsGridScaffold(config = config) { commentatorId ->
         val pagerFlow =
             remember(lineId, commentatorId) {
                 providers.buildCommentariesPagerFor(lineId, commentatorId)
@@ -593,7 +593,7 @@ private fun CommentatorsGridView(
  * renders one commentator column given its bookId.
  */
 @Composable
-private fun CommentatorsGrid(
+private fun CommentatorsGridScaffold(
     config: CommentariesLayoutConfig,
     column: @Composable (commentatorId: Long) -> Unit,
 ) {
@@ -640,8 +640,12 @@ private fun buildCommentatorRows(selected: List<String>): List<List<String>> =
     }
 
 /**
- * Paged list of [CommentaryItem]s for one commentator, wrapped in a [SafeSelectionContainer]
- * and a vertical scrollbar. Shared by single-line and multi-line views.
+ * Paged list of [CommentaryItem]s for one commentator, wrapped in a [SafeSelectionContainer].
+ * Shared by single-line and multi-line views.
+ *
+ * [restoreScrollKey] identifies the pager source — it drives the "restore scroll on first
+ * refresh" logic and must have a stable structural equality (e.g. a primitive or a [Pair] of
+ * primitives/immutable collections). Do not pass a lambda or an object without `equals`.
  */
 @OptIn(FlowPreview::class)
 @Composable
@@ -1016,6 +1020,13 @@ private data class AnimatedTextSizes(
     val lineHeight: Float,
 )
 
+/**
+ * UI + callbacks shared between the single-line and multi-line commentary views.
+ *
+ * Deliberately does not carry the line id(s) being displayed — the pager is built by the
+ * caller and injected via the [CommentatorsGridScaffold] column slot, so this config stays
+ * agnostic of single vs multi-line mode.
+ */
 @Immutable
 private data class CommentariesLayoutConfig(
     val selectedCommentators: ImmutableList<String>,

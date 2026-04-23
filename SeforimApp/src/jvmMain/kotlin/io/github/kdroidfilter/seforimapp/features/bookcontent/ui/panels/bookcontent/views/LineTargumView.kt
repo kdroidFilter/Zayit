@@ -43,6 +43,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.consumeShiftPrimaryPress
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -224,66 +225,68 @@ private fun SingleLineTargumView(
                                 .collect { (index, offset) -> currentOnScroll(index, offset) }
                         }
 
-                        SelectionContainer {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                state = listState,
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                sourceSections.forEach { section ->
-                                    item(key = "header-${section.bookId}") {
-                                        Text(
-                                            text = section.title,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = (commentTextSize * 1.1f).sp,
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier.fillMaxWidth(),
-                                        )
-                                    }
-
-                                    items(
-                                        count = section.items.itemCount,
-                                        key = { index ->
-                                            section.items
-                                                .peek(index)
-                                                ?.link
-                                                ?.id ?: "source-${section.bookId}-$index"
-                                        },
-                                    ) { index ->
-                                        section.items[index]?.let { item ->
-                                            LinkItem(
-                                                linkId = item.link.id,
-                                                targetText = item.targetText,
-                                                commentTextSize = commentTextSize,
-                                                lineHeight = lineHeight,
-                                                fontFamily = targumFontFamily,
-                                                boldScale = boldScaleForPlatform,
-                                                highlightQuery = highlightQuery,
-                                                onClick = { onLinkClick(item) },
-                                                showDiacritics = showDiacritics,
+                        Box(modifier = Modifier.fillMaxSize().consumeShiftPrimaryPress()) {
+                            SelectionContainer {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    state = listState,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    sourceSections.forEach { section ->
+                                        item(key = "header-${section.bookId}") {
+                                            Text(
+                                                text = section.title,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = (commentTextSize * 1.1f).sp,
+                                                textAlign = TextAlign.Center,
+                                                modifier = Modifier.fillMaxWidth(),
                                             )
                                         }
-                                    }
 
-                                    when (val state = section.items.loadState.append) {
-                                        is LoadState.Error ->
-                                            item(key = "append-error-${section.bookId}") {
-                                                Box(
-                                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                                    contentAlignment = Alignment.Center,
-                                                ) {
-                                                    Text(text = state.error.message ?: "Error loading more")
-                                                }
+                                        items(
+                                            count = section.items.itemCount,
+                                            key = { index ->
+                                                section.items
+                                                    .peek(index)
+                                                    ?.link
+                                                    ?.id ?: "source-${section.bookId}-$index"
+                                            },
+                                        ) { index ->
+                                            section.items[index]?.let { item ->
+                                                LinkItem(
+                                                    linkId = item.link.id,
+                                                    targetText = item.targetText,
+                                                    commentTextSize = commentTextSize,
+                                                    lineHeight = lineHeight,
+                                                    fontFamily = targumFontFamily,
+                                                    boldScale = boldScaleForPlatform,
+                                                    highlightQuery = highlightQuery,
+                                                    onClick = { onLinkClick(item) },
+                                                    showDiacritics = showDiacritics,
+                                                )
                                             }
+                                        }
 
-                                        is LoadState.Loading ->
-                                            item(key = "append-loading-${section.bookId}") {
-                                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                                    CircularProgressIndicator()
+                                        when (val state = section.items.loadState.append) {
+                                            is LoadState.Error ->
+                                                item(key = "append-error-${section.bookId}") {
+                                                    Box(
+                                                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                                        contentAlignment = Alignment.Center,
+                                                    ) {
+                                                        Text(text = state.error.message ?: "Error loading more")
+                                                    }
                                                 }
-                                            }
 
-                                        else -> {}
+                                            is LoadState.Loading ->
+                                                item(key = "append-loading-${section.bookId}") {
+                                                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                                        CircularProgressIndicator()
+                                                    }
+                                                }
+
+                                            else -> {}
+                                        }
                                     }
                                 }
                             }
@@ -543,76 +546,78 @@ private fun MultiLineTargumView(
                         }
                 }
 
-                SelectionContainer {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        state = listState,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        sourceSections.forEach { section ->
-                            item(key = "header-${section.bookId}") {
-                                Text(
-                                    text = section.title,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = (commentTextSize * 1.1f).sp,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-
-                            items(
-                                count = section.items.itemCount,
-                                key = { index ->
-                                    section.items
-                                        .peek(index)
-                                        ?.link
-                                        ?.id ?: "multi-source-${section.bookId}-$index"
-                                },
-                            ) { index ->
-                                section.items[index]?.let { item ->
-                                    LinkItem(
-                                        linkId = item.link.id,
-                                        targetText = item.targetText,
-                                        commentTextSize = commentTextSize,
-                                        lineHeight = lineHeight,
-                                        fontFamily = targumFontFamily,
-                                        boldScale = boldScaleForPlatform,
-                                        highlightQuery = highlightQuery,
-                                        onClick = {
-                                            val mods = windowInfo.keyboardModifiers
-                                            if (mods.isCtrlPressed || mods.isMetaPressed) {
-                                                onEvent(
-                                                    BookContentEvent.OpenCommentaryTarget(
-                                                        bookId = item.link.targetBookId,
-                                                        lineId = item.link.targetLineId,
-                                                    ),
-                                                )
-                                            }
-                                        },
-                                        showDiacritics = showDiacritics,
+                Box(modifier = Modifier.fillMaxSize().consumeShiftPrimaryPress()) {
+                    SelectionContainer {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            state = listState,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            sourceSections.forEach { section ->
+                                item(key = "header-${section.bookId}") {
+                                    Text(
+                                        text = section.title,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = (commentTextSize * 1.1f).sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
-                            }
 
-                            when (val state = section.items.loadState.append) {
-                                is LoadState.Error ->
-                                    item(key = "append-error-${section.bookId}") {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Text(text = state.error.message ?: "Error loading more")
-                                        }
+                                items(
+                                    count = section.items.itemCount,
+                                    key = { index ->
+                                        section.items
+                                            .peek(index)
+                                            ?.link
+                                            ?.id ?: "multi-source-${section.bookId}-$index"
+                                    },
+                                ) { index ->
+                                    section.items[index]?.let { item ->
+                                        LinkItem(
+                                            linkId = item.link.id,
+                                            targetText = item.targetText,
+                                            commentTextSize = commentTextSize,
+                                            lineHeight = lineHeight,
+                                            fontFamily = targumFontFamily,
+                                            boldScale = boldScaleForPlatform,
+                                            highlightQuery = highlightQuery,
+                                            onClick = {
+                                                val mods = windowInfo.keyboardModifiers
+                                                if (mods.isCtrlPressed || mods.isMetaPressed) {
+                                                    onEvent(
+                                                        BookContentEvent.OpenCommentaryTarget(
+                                                            bookId = item.link.targetBookId,
+                                                            lineId = item.link.targetLineId,
+                                                        ),
+                                                    )
+                                                }
+                                            },
+                                            showDiacritics = showDiacritics,
+                                        )
                                     }
+                                }
 
-                                is LoadState.Loading ->
-                                    item(key = "append-loading-${section.bookId}") {
-                                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                            CircularProgressIndicator()
+                                when (val state = section.items.loadState.append) {
+                                    is LoadState.Error ->
+                                        item(key = "append-error-${section.bookId}") {
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Text(text = state.error.message ?: "Error loading more")
+                                            }
                                         }
-                                    }
 
-                                else -> {}
+                                    is LoadState.Loading ->
+                                        item(key = "append-loading-${section.bookId}") {
+                                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                                CircularProgressIndicator()
+                                            }
+                                        }
+
+                                    else -> {}
+                                }
                             }
                         }
                     }

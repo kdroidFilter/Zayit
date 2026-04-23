@@ -679,7 +679,7 @@ fun BookContentView(
                                         }
                                     }
                                 }
-                                Box(modifier = Modifier.padding(vertical = 8.dp)) {
+                                Box(modifier = Modifier.padding(vertical = LineItemVerticalPaddingPerSide)) {
                                     LineItem(
                                         lineId = line.id,
                                         lineContent = line.content,
@@ -758,7 +758,7 @@ fun BookContentView(
             val density = LocalDensity.current
             val textMeasurer = rememberTextMeasurer()
             val lineHeightPx = with(density) { (textSize * lineHeight).sp.toPx() }
-            val paddingPerItemPx = with(density) { LINE_ITEM_VERTICAL_PADDING.toPx() }
+            val paddingPerItemPx = with(density) { (LineItemVerticalPaddingPerSide * 2).toPx() }
             val capacity by remember(textLayoutWidthPx, textSize, lineHeight, hebrewFontFamily) {
                 derivedStateOf {
                     if (textLayoutWidthPx <= 0) {
@@ -860,19 +860,12 @@ fun BookContentView(
     }
 }
 
-// Each line's `LineItem` sits inside a `Box(modifier = Modifier.padding(vertical = 8.dp))`
-// wrapper. That's the only per-item vertical padding wrapping the Text, so Compose lays
-// every line out as `lineCount × lineHeight + LINE_ITEM_VERTICAL_PADDING`.
-private val LINE_ITEM_VERTICAL_PADDING = 16.dp
-
-// Realistic Hebrew prose used by `TextMeasurer` to compute chars-per-visual-line.
-// A continuous `"א"×N` reference would pack char-by-char with no word-boundary waste,
-// which over-estimates capacity versus real book text: Compose word-wraps real content
-// at spaces, leaving a few unused pixels at the end of each line. Using text with
-// natural Hebrew word lengths and spaces yields a capacity that matches what Compose
-// will actually wrap in the rendered items.
-private val CAPACITY_REFERENCE =
-    ("ועל כן ראוי לנו לומר בדבר הזה ולהבין על מה כוונת המחבר בהזכירו דברים אלו ").repeat(200)
+// Per-side vertical padding applied by the `LineItem`'s wrapper Box (see the
+// `Box(modifier = Modifier.padding(vertical = LineItemVerticalPaddingPerSide))`
+// usage above). Exposed so the scrollbar can derive the exact per-item padding
+// contribution as `2 × LineItemVerticalPaddingPerSide`. Single source of truth:
+// changing this value updates both the layout and the scrollbar metrics.
+internal val LineItemVerticalPaddingPerSide = 8.dp
 
 // Data class for anchor information
 private data class AnchorData(

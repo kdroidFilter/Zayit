@@ -1,9 +1,5 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -30,7 +26,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
@@ -42,10 +37,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.styling.ScrollbarVisibility.AlwaysVisible
 import org.jetbrains.jewel.ui.theme.scrollbarStyle
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -91,9 +83,6 @@ fun ContentScrollbar(
     if (capacity <= 0 || lineHeightPx <= 0f) return
 
     val style = JewelTheme.scrollbarStyle
-    val visibility = style.scrollbarVisibility
-    val isOpaque = visibility is AlwaysVisible
-
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
@@ -102,95 +91,45 @@ fun ContentScrollbar(
     var dragStartRatio by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
 
-    val isScrolling by remember(listState) {
-        derivedStateOf { listState.isScrollInProgress || dragRatio != null }
-    }
-    val isExpanded = isHovered || dragRatio != null
-    val isActive = isOpaque || isScrolling || isHovered
+    val visuals =
+        rememberScrollbarVisuals(
+            listState = listState,
+            isHovered = isHovered,
+            dragRatio = dragRatio,
+            label = "scrollbar",
+        )
 
-    var showScrollbar by remember { mutableStateOf(isOpaque) }
-    LaunchedEffect(isActive) {
-        if (isActive) {
-            showScrollbar = true
-        } else {
-            delay(visibility.lingerDuration)
-            showScrollbar = false
-        }
-    }
-
-    val animatedThickness by animateDpAsState(
-        targetValue = if (isExpanded) visibility.trackThicknessExpanded else visibility.trackThickness,
-        animationSpec = tween(visibility.expandAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
-        label = "scrollbar_thickness",
-    )
-    val targetThumbColor =
-        when {
-            isOpaque && isHovered -> style.colors.thumbOpaqueBackgroundHovered
-            isOpaque -> style.colors.thumbOpaqueBackground
-            showScrollbar && (isHovered || dragRatio != null) -> style.colors.thumbBackgroundActive
-            showScrollbar -> style.colors.thumbBackground
-            else -> style.colors.thumbBackground.copy(alpha = 0f)
-        }
-    val thumbColor by animateColorAsState(
-        targetValue = targetThumbColor,
-        animationSpec = tween(visibility.thumbColorAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
-        label = "scrollbar_thumb_color",
-    )
-    val targetTrackColor =
-        when {
-            isOpaque -> if (isHovered) style.colors.trackOpaqueBackgroundHovered else style.colors.trackOpaqueBackground
-            isExpanded -> style.colors.trackBackgroundExpanded
-            else -> style.colors.trackBackground
-        }
-    val trackColor by animateColorAsState(
-        targetValue = targetTrackColor,
-        animationSpec = tween(visibility.trackColorAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
-        label = "scrollbar_track_color",
-    )
-
-    // Total visual-line count over the whole book, used only for the **thumb size** so
-    // long lines visually dominate short ones. Recomputed only on `counts` or `capacity`
-    // changes.
-    val totalVisualLines by remember(counts, capacity) {
+    // Pixel-space prefix sum: `cumPx[i]` is the total content height of lines `[0, i)`,
+    // exact match for what Compose lays out. Used both for the thumb **size** (last
+    // entry = `totalContentPx`) and for converting a thumb ratio → target line index
+    // in O(log N) on drag/jump (see `applyTarget`). Accumulates in Double to avoid
+    // drift over large books, then snapshots to Long.
+    val cumPx by remember(counts, capacity, lineHeightPx, paddingPerItemPx) {
         derivedStateOf {
-            var acc = 0L
-            for (c in counts) acc += visualLinesForCount(c, capacity)
-            acc
+            val n = counts.size
+            val arr = LongArray(n + 1)
+            var acc = 0.0
+            for (i in 0 until n) {
+                arr[i] = acc.toLong()
+                acc += visualLinesForCount(counts[i], capacity) * lineHeightPx.toDouble() + paddingPerItemPx
+            }
+            arr[n] = acc.toLong()
+            arr
         }
     }
     val itemCount = counts.size
+    val totalContentPx = cumPx[itemCount].toFloat()
 
-    // Exact total content height Compose would lay out: `Σ (perItem[i] × lineHeightPx) +
-    // N × paddingPerItemPx`. Stable during scroll — inputs are deterministic.
-    val totalContentPx = totalVisualLines.toFloat() * lineHeightPx + itemCount * paddingPerItemPx
-
-    // Thumb **size** is one-shot latched: sampled once on the first frame where every
-    // input is valid, then frozen for the lifetime of this `counts`. Prevents the
-    // initial jump from `capacity == 0` (all items counted as 1 line) → real capacity.
-    // Also stores the hide/show decision at the same moment — a short book (content
-    // fits) hides the scrollbar, matching every other scrollbar in the UI toolkit.
-    var latchedSize by remember(counts) { mutableFloatStateOf(-1f) }
-    var latchedHidden by remember(counts) { mutableStateOf(false) }
-    LaunchedEffect(counts) {
-        snapshotFlow {
-            val viewport =
-                (
-                    listState.layoutInfo.viewportEndOffset -
-                        listState.layoutInfo.viewportStartOffset
-                ).toFloat()
-            if (viewport > 0f && capacity > 0 && lineHeightPx > 0f && totalContentPx > 0f) {
-                viewport to totalContentPx
-            } else {
-                null
-            }
-        }.filterNotNull().first().let { (viewport, total) ->
-            latchedSize = (viewport / total).coerceIn(0f, 1f)
-            latchedHidden = total <= viewport
-        }
-    }
-    if (latchedSize < 0f) return
-    if (latchedHidden) return
-    val size = latchedSize
+    val latched =
+        rememberLatchedThumbSize(
+            latchKey = counts,
+            capacity = capacity,
+            lineHeightPx = lineHeightPx,
+            totalContentPx = totalContentPx,
+            listState = listState,
+        ) ?: return
+    if (latched.hidden) return
+    val size = latched.size
 
     // Thumb **position** uses the book-wide line-index geometry (not the paged-window
     // line index): `position = (firstLineIdx + firstInnerOffset) / (N − visibleLines)`.
@@ -212,9 +151,19 @@ fun ContentScrollbar(
     val listStateRef = rememberUpdatedState(listState)
     val pagingRef = rememberUpdatedState(lazyPagingItems)
     val bookLineCountRef = rememberUpdatedState(counts.size)
+    val cumPxRef = rememberUpdatedState(cumPx)
+    val totalContentPxRef = rememberUpdatedState(totalContentPx)
     val onScrollToLineIndexState = rememberUpdatedState(onScrollToLineIndex)
 
-    // Throttled pager rebuild for out-of-window drag positions.
+    // Far-drag pager rebuild emissions. During a drag, every delta that lands outside
+    // the loaded pager window emits a target into this flow; the collector throttles
+    // emissions to one rebuild every [FAR_DRAG_THROTTLE], with `DROP_OLDEST` so only
+    // the latest target survives. This keeps the displayed text catching up to fast
+    // drags (~5 Hz) without spamming `buildLinesPager` on every frame. The latest
+    // target is also stashed in [pendingFarDragTarget] so we can flush it once more
+    // on `onDragStopped` — guaranteeing the final landing spot is exact even if the
+    // last throttled emission was dropped.
+    val pendingFarDragTarget = remember { mutableStateOf<Int?>(null) }
     val farDragFlow =
         remember {
             MutableSharedFlow<Int>(replay = 0, extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -226,9 +175,14 @@ fun ContentScrollbar(
         }
     }
 
-    // Convert a thumb ratio → target book line index via the same book-wide geometry
-    // used for `position`. Snap locally when the target line is loaded in the pager;
-    // otherwise defer to the VM-backed callback to rebuild the pager around the target.
+    // Convert a thumb ratio → target book line index via the **pixel-space** prefix
+    // sum: `targetPx = ratio × (totalContentPx − viewport)`, then binary-search
+    // `cumPx` for the line whose top is closest to `targetPx`. This makes the drag
+    // visually consistent with the thumb (50 % of the thumb travel = 50 % of the
+    // book's pixel content), even on books with highly non-uniform line lengths
+    // (e.g. Talmud sugyot followed by short mishnayot). Snap locally when the
+    // target line is loaded in the pager; otherwise route through the throttled
+    // far-drag flow (drag) or call back immediately (tap-jump).
     val applyTarget =
         remember {
             fun(
@@ -236,24 +190,25 @@ fun ContentScrollbar(
                 viaDrag: Boolean,
             ) {
                 val ls = listStateRef.value
-                val info = ls.layoutInfo
-                val pagingItemCount = pagingRef.value.itemCount
-                val visible = info.visibleItemsInfo.filter { it.index in 0 until pagingItemCount }
                 val total = bookLineCountRef.value
-                if (total == 0 || visible.isEmpty()) return
-                val avgItemSize = visible.sumOf { it.size }.toFloat() / visible.size
-                if (avgItemSize <= 0f) return
+                if (total == 0) return
+                val cum = cumPxRef.value
+                if (cum.size < total + 1) return
+                val info = ls.layoutInfo
                 val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
-                val visibleCount = (viewport / avgItemSize).toInt().coerceAtLeast(1)
-                val maxIdx = (total - visibleCount).coerceAtLeast(1)
-                val targetLineIndex = (thumbRatio * maxIdx).toInt().coerceIn(0, total - 1)
+                val totalPx = totalContentPxRef.value
+                val maxScrollPx = (totalPx - viewport).coerceAtLeast(0f).toDouble()
+                val targetPx = (thumbRatio.toDouble() * maxScrollPx).coerceIn(0.0, totalPx.toDouble())
+                val targetLineIndex = findLineIndexForPixel(cum, total, targetPx)
                 val snapshot = pagingRef.value.itemSnapshotList.items
                 val localIndex = snapshot.indexOfFirst { it.lineIndex == targetLineIndex }
                 if (localIndex >= 0) {
                     ls.requestScrollToItem(localIndex, 0)
+                    pendingFarDragTarget.value = null
                     return
                 }
                 if (viaDrag) {
+                    pendingFarDragTarget.value = targetLineIndex
                     farDragFlow.tryEmit(targetLineIndex)
                 } else {
                     onScrollToLineIndexState.value(targetLineIndex)
@@ -276,11 +231,11 @@ fun ContentScrollbar(
     Box(
         modifier =
             modifier
-                .width(animatedThickness)
+                .width(visuals.thickness)
                 .fillMaxHeight()
                 .hoverable(interactionSource)
                 .onSizeChanged { trackHeightPx = it.height }
-                .background(trackColor)
+                .background(visuals.trackColor)
                 .pointerInput(trackHeightPx) {
                     detectTapGestures(onTap = { offset ->
                         if (trackHeightPx <= 0) return@detectTapGestures
@@ -297,7 +252,7 @@ fun ContentScrollbar(
                     .fillMaxWidth()
                     .height(with(density) { thumbHeightPx.toDp() })
                     .clip(RoundedCornerShape(style.metrics.thumbCornerSize))
-                    .background(thumbColor)
+                    .background(visuals.thumbColor)
                     .draggable(
                         orientation = Orientation.Vertical,
                         state =
@@ -314,14 +269,24 @@ fun ContentScrollbar(
                             val start = displayPositionState.value
                             dragStartRatio = start
                             dragRatio = start
+                            pendingFarDragTarget.value = null
                         },
-                        onDragStopped = { isDragging = false },
+                        onDragStopped = {
+                            isDragging = false
+                            pendingFarDragTarget.value?.let { idx ->
+                                pendingFarDragTarget.value = null
+                                onScrollToLineIndexState.value(idx)
+                            }
+                        },
                     ),
         )
     }
 }
 
-private val FAR_DRAG_THROTTLE = 50.milliseconds
+// Minimum gap between two pager-rebuild emissions during a drag. Keeps the visible
+// text catching up to fast drags (~5 Hz) without spamming `buildLinesPager` on every
+// frame. Final exact target is flushed on `onDragStopped` regardless.
+private val FAR_DRAG_THROTTLE = 200.milliseconds
 private val PENDING_JUMP_TIMEOUT = 1500.milliseconds
 
 private fun visualLinesForCount(
@@ -331,6 +296,27 @@ private fun visualLinesForCount(
     if (capacity <= 0) return 1
     if (charCount <= 0) return 1
     return max(1, ceil(charCount.toDouble() / capacity).toInt())
+}
+
+/**
+ * Largest line index `i ∈ [0, total)` such that `cumPx[i] ≤ targetPx`. Pure binary
+ * search, no allocation. `cumPx` is monotonically non-decreasing with `cumPx[0] = 0`
+ * and `cumPx[total]` = total content height.
+ */
+private fun findLineIndexForPixel(
+    cumPx: LongArray,
+    total: Int,
+    targetPx: Double,
+): Int {
+    if (total <= 0) return 0
+    val target = targetPx.toLong()
+    var lo = 0
+    var hi = total - 1
+    while (lo < hi) {
+        val mid = (lo + hi + 1) ushr 1
+        if (cumPx[mid] <= target) lo = mid else hi = mid - 1
+    }
+    return lo
 }
 
 /**

@@ -435,7 +435,7 @@ private fun MultiLineCommentatorsGridView(
                 onEvent(BookContentEvent.CommentaryColumnScrolled(commentatorId, i, o))
             },
             config = config,
-            restoreScrollKey = null,
+            restoreScrollKey = lineIds to commentatorId,
             showLoadingStates = true,
             wrapInScrollableContainer = true,
         )

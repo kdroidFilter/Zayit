@@ -541,12 +541,65 @@ private const val DOWNWARD_AMPLIFIER = 3f
 // wasted.
 private val NARROW_PANE_WIDTH = 420.dp
 
+internal data class CommentariesGridCapacity(
+    val cols: Int,
+    val rows: Int,
+    val perPage: Int,
+)
+
+internal data class CommentariesPageLayout(
+    val rows: Int,
+    val colsPerRow: Int,
+)
+
+/**
+ * Derive the commentaries grid capacity from the pane size and the user's commentary
+ * font size. Pure helper — extracted so it can be unit-tested without Compose.
+ */
+internal fun computeCommentariesGridCapacity(
+    paneWidthDp: Float,
+    paneHeightDp: Float,
+    commentTextSize: Float,
+): CommentariesGridCapacity {
+    val rawScale = commentTextSize / REFERENCE_TEXT_SIZE
+    val textScale =
+        if (rawScale >= 1f) {
+            1f
+        } else {
+            (1f - (1f - rawScale) * DOWNWARD_AMPLIFIER).coerceAtLeast(MIN_TEXT_SCALE)
+        }
+    val minWidth = MIN_CELL_WIDTH_AT_REF.value * textScale
+    val minHeight = MIN_CELL_HEIGHT_AT_REF.value * textScale
+    var cols = maxOf(1, (paneWidthDp / minWidth).toInt())
+    var rows = maxOf(1, (paneHeightDp / minHeight).toInt()).coerceAtMost(MAX_ROWS_PER_PAGE)
+    if (cols * rows < 2 && paneWidthDp >= NARROW_PANE_WIDTH.value) {
+        if (paneWidthDp >= paneHeightDp) cols = 2 else rows = 2
+    }
+    return CommentariesGridCapacity(cols = cols, rows = rows, perPage = cols * rows)
+}
+
+/**
+ * Spread [itemCount] commentators across the minimal number of rows bounded by [cols].
+ * Partial pages are rebalanced so the actual items fill the row width instead of
+ * leaving empty slots (e.g. 4 items in a 5-cap page → 2 rows of 2).
+ */
+internal fun computeCommentariesPageLayout(
+    itemCount: Int,
+    cols: Int,
+): CommentariesPageLayout {
+    if (itemCount <= 0 || cols <= 0) return CommentariesPageLayout(rows = 0, colsPerRow = 0)
+    val rowsNeeded = ((itemCount + cols - 1) / cols).coerceAtLeast(1)
+    val colsPerRow = ((itemCount + rowsNeeded - 1) / rowsNeeded).coerceAtLeast(1)
+    return CommentariesPageLayout(rows = rowsNeeded, colsPerRow = colsPerRow)
+}
+
 /**
  * Shared grid scaffolding for single-line and multi-line commentaries. The [column] slot
  * renders one commentator column given its bookId.
  *
- * The grid capacity (cols × rows) is derived from the available space using [MIN_CELL_WIDTH]
- * and [MIN_CELL_HEIGHT]; any overflow spills into additional vertical pager pages. The anchor
+ * The grid capacity (cols × rows) is derived from the available space using
+ * [MIN_CELL_WIDTH_AT_REF] and [MIN_CELL_HEIGHT_AT_REF]; any overflow spills into additional
+ * vertical pager pages. The anchor
  * commentator (top-left of the current page) is preserved across resizes so the user keeps
  * their reading context when the pager re-paginates.
  */
@@ -561,28 +614,14 @@ private fun CommentatorsGridScaffold(
     if (selected.isEmpty()) return
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        // Shrink the minimum cell footprint when the user's commentary font is smaller
-        // than the reference. Because the underlying commentTextSize moves in a narrow
-        // band (~0.875x at min setting to ~2x at max), we amplify the downward deviation
-        // so a single zoom-out step visibly frees horizontal space. Upward deviations
-        // are capped at 1 — the reference already provides enough room for bigger glyphs.
-        val rawScale = config.textSizes.commentTextSize / REFERENCE_TEXT_SIZE
-        val textScale =
-            if (rawScale >= 1f) {
-                1f
-            } else {
-                (1f - (1f - rawScale) * DOWNWARD_AMPLIFIER).coerceAtLeast(MIN_TEXT_SCALE)
-            }
-        val minWidth = MIN_CELL_WIDTH_AT_REF * textScale
-        val minHeight = MIN_CELL_HEIGHT_AT_REF * textScale
-        var cols = maxOf(1, (maxWidth / minWidth).toInt())
-        var rows = maxOf(1, (maxHeight / minHeight).toInt()).coerceAtMost(MAX_ROWS_PER_PAGE)
-        // Guarantee a minimum of 2 cells per page unless the pane is too narrow to
-        // reasonably split. Pick the axis that best fits the pane's aspect ratio.
-        if (cols * rows < 2 && maxWidth >= NARROW_PANE_WIDTH) {
-            if (maxWidth >= maxHeight) cols = 2 else rows = 2
-        }
-        val perPage = cols * rows
+        val capacity =
+            computeCommentariesGridCapacity(
+                paneWidthDp = maxWidth.value,
+                paneHeightDp = maxHeight.value,
+                commentTextSize = config.textSizes.commentTextSize,
+            )
+        val cols = capacity.cols
+        val perPage = capacity.perPage
         val pages =
             remember(selected, perPage) {
                 selected.chunked(perPage)
@@ -689,9 +728,8 @@ private fun CommentatorPageGrid(
     column: @Composable (commentatorId: Long) -> Unit,
 ) {
     if (names.isEmpty()) return
-    val rowsNeeded = ((names.size + cols - 1) / cols).coerceAtLeast(1)
-    val colsPerRow = ((names.size + rowsNeeded - 1) / rowsNeeded).coerceAtLeast(1)
-    val rowsChunks = names.chunked(colsPerRow)
+    val layout = computeCommentariesPageLayout(itemCount = names.size, cols = cols)
+    val rowsChunks = names.chunked(layout.colsPerRow)
     Column(modifier = Modifier.fillMaxSize()) {
         rowsChunks.forEach { rowNames ->
             Row(

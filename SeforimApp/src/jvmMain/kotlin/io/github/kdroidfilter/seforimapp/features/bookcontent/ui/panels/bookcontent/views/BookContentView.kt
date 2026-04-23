@@ -102,6 +102,7 @@ fun BookContentView(
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
     isSelected: Boolean = true,
+    bookTotalChars: Long = 0L,
 ) {
     // Don't use the saved scroll position initially if we have an anchor
     // The restoration will be handled after pagination loads
@@ -728,6 +729,19 @@ fun BookContentView(
                     }
                 }
             }
+
+            // Content-aware scrollbar overlay. Lives inside the same Box as the LazyColumn
+            // so it floats over the 16dp end gutter reserved by the column padding.
+            ContentScrollbar(
+                listState = listState,
+                lazyPagingItems = lazyPagingItems,
+                totalChars = bookTotalChars,
+                onScrollToRatio = { ratio -> onEvent(BookContentEvent.ContentScrollByCharRatio(ratio)) },
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 4.dp),
+            )
         }
 
         // Find-in-page bar overlay with result count badge (uniform style)

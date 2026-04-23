@@ -21,6 +21,7 @@ import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -132,10 +133,19 @@ internal fun CommentatorsGridScaffold(
     config: CommentariesLayoutConfig,
     initialPage: Int,
     onPageChange: (Int) -> Unit,
+    onFlushPersist: () -> Unit,
     column: @Composable (commentatorId: Long) -> Unit,
 ) {
     val selected = config.selectedCommentators
     if (selected.isEmpty()) return
+
+    // Page-swipe events are coalesced via save = false upstream so rapid navigation
+    // doesn't hammer the disk. The final in-memory state is flushed here when the
+    // scaffold leaves composition (tab close, book change, pane hidden).
+    val currentOnFlushPersist by rememberUpdatedState(onFlushPersist)
+    DisposableEffect(Unit) {
+        onDispose { currentOnFlushPersist() }
+    }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val capacity =
@@ -155,6 +165,17 @@ internal fun CommentatorsGridScaffold(
                 initialPage = initialPage.coerceIn(0, (pages.size - 1).coerceAtLeast(0)),
                 pageCount = { pages.size },
             )
+
+        // Guard against out-of-bounds [currentPage] when the page count shrinks (the user
+        // deselects enough commentators to collapse pages, or the pane widens and packs
+        // the remaining items into fewer pages). Runs before the anchor effect so the
+        // pager is always in a valid state even when the anchor no longer exists.
+        LaunchedEffect(pages.size) {
+            val maxValid = (pages.size - 1).coerceAtLeast(0)
+            if (pagerState.currentPage > maxValid) {
+                pagerState.scrollToPage(maxValid)
+            }
+        }
 
         val currentOnPageChange by rememberUpdatedState(onPageChange)
 

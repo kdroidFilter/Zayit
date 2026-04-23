@@ -155,6 +155,8 @@ class BookContentViewModel(
                             getAvailableLinksForLines = commentariesUseCase::getAvailableLinksForLines,
                             buildSourcesPagerForLines = commentariesUseCase::buildSourcesPagerForLines,
                             getAvailableSourcesForLines = commentariesUseCase::getAvailableSourcesForLines,
+                            getCommentaryCharCountsForLine = commentariesUseCase::getCommentaryCharCountsForLine,
+                            getCommentaryCharCountsForLines = commentariesUseCase::getCommentaryCharCountsForLines,
                         ),
                     content =
                         state.content.copy(
@@ -213,6 +215,8 @@ class BookContentViewModel(
                                 getAvailableLinksForLines = commentariesUseCase::getAvailableLinksForLines,
                                 buildSourcesPagerForLines = commentariesUseCase::buildSourcesPagerForLines,
                                 getAvailableSourcesForLines = commentariesUseCase::getAvailableSourcesForLines,
+                                getCommentaryCharCountsForLine = commentariesUseCase::getCommentaryCharCountsForLine,
+                                getCommentaryCharCountsForLines = commentariesUseCase::getCommentaryCharCountsForLines,
                             ),
                         content =
                             s.content.copy(

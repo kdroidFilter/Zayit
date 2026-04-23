@@ -169,6 +169,37 @@ class CommentariesUseCase(
     }
 
     /**
+     * Ordered char-count vector for the commentary pager built from a single base line
+     * (or its TOC section). Mirrors [buildCommentariesPager]'s ordering, so the scrollbar
+     * can derive accurate visual-line metrics. Returns an empty list on failure.
+     */
+    suspend fun getCommentaryCharCountsForLine(
+        lineId: Long,
+        commentatorId: Long,
+    ): List<Int> =
+        runSuspendCatching {
+            repository.getCommentaryCharCountsForLineOrSection(
+                baseLineId = lineId,
+                activeCommentatorIds = setOf(commentatorId),
+            )
+        }.getOrElse { emptyList() }
+
+    /**
+     * Ordered char-count vector for the multi-line commentary pager. Mirrors
+     * [buildCommentariesPagerForLines]'s ordering. Returns an empty list on failure.
+     */
+    suspend fun getCommentaryCharCountsForLines(
+        lineIds: List<Long>,
+        commentatorId: Long,
+    ): List<Int> =
+        runSuspendCatching {
+            repository.getCommentaryCharCountsForLines(
+                lineIds = lineIds,
+                activeCommentatorIds = setOf(commentatorId),
+            )
+        }.getOrElse { emptyList() }
+
+    /**
      * Récupère les commentateurs disponibles pour plusieurs lignes (union)
      */
     suspend fun getAvailableCommentatorsForLines(lineIds: List<Long>): Map<String, Long> {

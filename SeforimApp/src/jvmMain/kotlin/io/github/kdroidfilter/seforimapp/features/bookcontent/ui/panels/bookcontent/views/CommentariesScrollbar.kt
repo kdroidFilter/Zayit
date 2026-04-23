@@ -1,9 +1,5 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -30,7 +26,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
@@ -40,14 +35,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.paging.compose.LazyPagingItems
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.styling.ScrollbarVisibility.AlwaysVisible
 import org.jetbrains.jewel.ui.theme.scrollbarStyle
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.max
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Content-aware vertical scrollbar for a paginated list of [CommentaryWithText].
@@ -84,9 +77,6 @@ fun CommentariesScrollbar(
     if (capacity <= 0 || lineHeightPx <= 0f) return
 
     val style = JewelTheme.scrollbarStyle
-    val visibility = style.scrollbarVisibility
-    val isOpaque = visibility is AlwaysVisible
-
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
@@ -95,51 +85,13 @@ fun CommentariesScrollbar(
     var dragStartRatio by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
 
-    val isScrolling by remember(listState) {
-        derivedStateOf { listState.isScrollInProgress || dragRatio != null }
-    }
-    val isExpanded = isHovered || dragRatio != null
-    val isActive = isOpaque || isScrolling || isHovered
-
-    var showScrollbar by remember { mutableStateOf(isOpaque) }
-    LaunchedEffect(isActive) {
-        if (isActive) {
-            showScrollbar = true
-        } else {
-            delay(visibility.lingerDuration)
-            showScrollbar = false
-        }
-    }
-
-    val animatedThickness by animateDpAsState(
-        targetValue = if (isExpanded) visibility.trackThicknessExpanded else visibility.trackThickness,
-        animationSpec = tween(visibility.expandAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
-        label = "commentaries_scrollbar_thickness",
-    )
-    val targetThumbColor =
-        when {
-            isOpaque && isHovered -> style.colors.thumbOpaqueBackgroundHovered
-            isOpaque -> style.colors.thumbOpaqueBackground
-            showScrollbar && (isHovered || dragRatio != null) -> style.colors.thumbBackgroundActive
-            showScrollbar -> style.colors.thumbBackground
-            else -> style.colors.thumbBackground.copy(alpha = 0f)
-        }
-    val thumbColor by animateColorAsState(
-        targetValue = targetThumbColor,
-        animationSpec = tween(visibility.thumbColorAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
-        label = "commentaries_scrollbar_thumb_color",
-    )
-    val targetTrackColor =
-        when {
-            isOpaque -> if (isHovered) style.colors.trackOpaqueBackgroundHovered else style.colors.trackOpaqueBackground
-            isExpanded -> style.colors.trackBackgroundExpanded
-            else -> style.colors.trackBackground
-        }
-    val trackColor by animateColorAsState(
-        targetValue = targetTrackColor,
-        animationSpec = tween(visibility.trackColorAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
-        label = "commentaries_scrollbar_track_color",
-    )
+    val visuals =
+        rememberScrollbarVisuals(
+            listState = listState,
+            isHovered = isHovered,
+            dragRatio = dragRatio,
+            label = "commentaries_scrollbar",
+        )
 
     // Total visual-line count over all items: `Σ ceil(charCount[i] / capacity)`. Used
     // only for the **thumb size** — position is derived separately from LazyListState's
@@ -159,34 +111,16 @@ fun CommentariesScrollbar(
     // inputs (TextMeasurer, font settings, layout constants).
     val totalContentPx = totalVisualLines.toFloat() * lineHeightPx + itemCount * paddingPerItemPx
 
-    // Thumb **size** is one-shot latched: sampled once on the first frame where every
-    // input (viewport, capacity-measured `totalContentPx`, etc.) is valid, then frozen
-    // for the lifetime of this `allCharCounts`. Prevents the initial jump from
-    // `capacity == 0` (all items counted as 1 line) → real capacity. Also stores the
-    // hide/show decision at the same moment — a short list (content fits) hides the
-    // scrollbar entirely, matching every other scrollbar in the UI toolkit.
-    var latchedSize by remember(allCharCounts) { mutableFloatStateOf(-1f) }
-    var latchedHidden by remember(allCharCounts) { mutableStateOf(false) }
-    LaunchedEffect(allCharCounts) {
-        snapshotFlow {
-            val viewport =
-                (
-                    listState.layoutInfo.viewportEndOffset -
-                        listState.layoutInfo.viewportStartOffset
-                ).toFloat()
-            if (viewport > 0f && capacity > 0 && lineHeightPx > 0f && totalContentPx > 0f) {
-                viewport to totalContentPx
-            } else {
-                null
-            }
-        }.filterNotNull().first().let { (viewport, total) ->
-            latchedSize = (viewport / total).coerceIn(0f, 1f)
-            latchedHidden = total <= viewport
-        }
-    }
-    if (latchedSize < 0f) return
-    if (latchedHidden) return
-    val size = latchedSize
+    val latched =
+        rememberLatchedThumbSize(
+            latchKey = allCharCounts,
+            capacity = capacity,
+            lineHeightPx = lineHeightPx,
+            totalContentPx = totalContentPx,
+            listState = listState,
+        ) ?: return
+    if (latched.hidden) return
+    val size = latched.size
 
     // Thumb **position** uses Compose's native avg-item scroll geometry, not the
     // pixel-space estimate. Internally consistent: both `scrollOffsetAvg` and
@@ -235,20 +169,24 @@ fun CommentariesScrollbar(
         if (isDragging) return@LaunchedEffect
         if (abs(position - target) <= 0.005f) dragRatio = null
     }
+    // Safety net: if the live `position` never converges to within 0.005 of the
+    // dragged target (e.g. the target is at the very end of the list and rounds
+    // to a different last-visible index, or the list shrinks under us), unpin
+    // the thumb after this timeout so it stops floating.
     LaunchedEffect(dragRatio, isDragging) {
         if (isDragging || dragRatio == null) return@LaunchedEffect
-        delay(1500)
+        delay(PENDING_JUMP_TIMEOUT)
         dragRatio = null
     }
 
     Box(
         modifier =
             modifier
-                .width(animatedThickness)
+                .width(visuals.thickness)
                 .fillMaxHeight()
                 .hoverable(interactionSource)
                 .onSizeChanged { trackHeightPx = it.height }
-                .background(trackColor)
+                .background(visuals.trackColor)
                 .pointerInput(trackHeightPx) {
                     detectTapGestures(onTap = { offset ->
                         if (trackHeightPx <= 0) return@detectTapGestures
@@ -265,7 +203,7 @@ fun CommentariesScrollbar(
                     .fillMaxWidth()
                     .height(with(density) { thumbHeightPx.toDp() })
                     .clip(RoundedCornerShape(style.metrics.thumbCornerSize))
-                    .background(thumbColor)
+                    .background(visuals.thumbColor)
                     .draggable(
                         orientation = Orientation.Vertical,
                         state =
@@ -289,6 +227,8 @@ fun CommentariesScrollbar(
     }
 }
 
+private val PENDING_JUMP_TIMEOUT = 1500.milliseconds
+
 private fun visualLinesOf(
     charCount: Int,
     capacity: Int,
@@ -301,11 +241,11 @@ private fun visualLinesOf(
 /**
  * Thumb position in `[0, 1]`, computed from `LazyListState` the same way the standard
  * Compose scrollbar adapter does: `(firstIdx × avgItemSize + firstOffset) / (totalCount
- * × avgItemSize − viewport)`. Because both numerator and denominator scale with the same
- * `avgItemSize` (averaged over currently visible items), the ratio **reaches 0 and 1
- * exactly** at the scroll boundaries — regardless of per-item size variance. No boundary
- * pinning, no flicker. Only appproximate between boundaries, but that's acceptable for a
- * progress indicator.
+ * × avgItemSize − viewport)`. Reaches 0 exactly at scroll-start (firstIdx and offset
+ * both 0); reaches 1 approximately at scroll-end as long as `avgItemSize` (sampled
+ * over the currently visible items) stays representative of the items at the tail.
+ * Approximate between boundaries — acceptable for a progress indicator. No boundary
+ * pinning, no flicker.
  */
 private fun computeAvgScrollPosition(listState: LazyListState): Float {
     val info = listState.layoutInfo

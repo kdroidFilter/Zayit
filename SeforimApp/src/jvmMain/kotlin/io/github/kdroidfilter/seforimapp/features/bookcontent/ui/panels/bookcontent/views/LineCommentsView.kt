@@ -56,7 +56,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.Enha
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
@@ -78,19 +77,12 @@ import kotlin.time.Duration.Companion.milliseconds
 
 private val SCROLL_DEBOUNCE = 100.milliseconds
 
-// `CommentaryItem`'s Column has `padding(vertical = 8.dp)` → 8 dp top + 8 dp bottom.
-// This is the only vertical padding the LazyColumn's item slot applies, so the total
-// per-item pixel cost is `lineCount × lineHeight + ITEM_VERTICAL_PADDING`.
-private val ITEM_VERTICAL_PADDING = 16.dp
-
-// Realistic Hebrew prose used by `TextMeasurer` to compute chars-per-visual-line.
-// A continuous `"א"×N` reference would pack char-by-char with no word-boundary waste,
-// which over-estimates capacity versus real commentary text: Compose word-wraps real
-// content at spaces, leaving a few unused pixels at the end of each line. Using text
-// with natural Hebrew word lengths and spaces yields a capacity that matches what
-// Compose will actually wrap in the rendered items.
-private val CAPACITY_REFERENCE =
-    ("ועל כן ראוי לנו לומר בדבר הזה ולהבין על מה כוונת המחבר בהזכירו דברים אלו ").repeat(200)
+// Per-side vertical padding applied by the `CommentaryItem`'s Column (see the
+// `padding(horizontal = 16.dp, vertical = CommentaryItemVerticalPaddingPerSide)`
+// usage below). Exposed so the scrollbar can derive the exact per-item padding
+// contribution as `2 × CommentaryItemVerticalPaddingPerSide`. Single source of
+// truth: changing this value updates both the layout and the scrollbar metrics.
+private val CommentaryItemVerticalPaddingPerSide = 8.dp
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -520,6 +512,8 @@ private fun CommentatorsGrid(
             config = config,
             selection = selection,
             commentatorId = commentatorId,
+            getCharCountsForLine = providers.getCommentaryCharCountsForLine,
+            getCharCountsForLines = providers.getCommentaryCharCountsForLines,
         )
     }
 }
@@ -544,28 +538,24 @@ private fun CommentariesPagedList(
     config: CommentariesLayoutConfig,
     selection: LineSelection,
     commentatorId: Long,
+    getCharCountsForLine: suspend (Long, Long) -> List<Int>,
+    getCharCountsForLines: suspend (List<Long>, Long) -> List<Int>,
 ) {
     val currentOnScroll by rememberUpdatedState(onScroll)
     val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
 
-    // Fetch the ordered char-count vector for every commentary matching this selection
-    // × commentator (same filter + order as the pager). The scrollbar converts every
-    // value to `ceil(charCount / capacity) * capacity` to derive visual-line count,
-    // so a short commentary still counts for a full visual line in the thumb metrics.
-    val repository = LocalAppGraph.current.repository
-    val allCharCounts by produceState(initialValue = emptyList<Int>(), selection, commentatorId, repository) {
+    // Ordered char-count vector for every commentary matching this selection ×
+    // commentator (same filter + order as the pager). The scrollbar converts every
+    // value to `ceil(charCount / capacity) * capacity` to derive visual-line count.
+    // Sourced from the VM via `Providers` so failures fold to an empty list (no view
+    // crash) and the data path mirrors `bookCharCounts` for the main book scrollbar.
+    val getCharCountsForLineRef by rememberUpdatedState(getCharCountsForLine)
+    val getCharCountsForLinesRef by rememberUpdatedState(getCharCountsForLines)
+    val allCharCounts by produceState(initialValue = emptyList<Int>(), selection, commentatorId) {
         value =
             when (selection) {
-                is LineSelection.Single ->
-                    repository.getCommentaryCharCountsForLineOrSection(
-                        baseLineId = selection.lineId,
-                        activeCommentatorIds = setOf(commentatorId),
-                    )
-                is LineSelection.Multi ->
-                    repository.getCommentaryCharCountsForLines(
-                        lineIds = selection.lineIds,
-                        activeCommentatorIds = setOf(commentatorId),
-                    )
+                is LineSelection.Single -> getCharCountsForLineRef(selection.lineId, commentatorId)
+                is LineSelection.Multi -> getCharCountsForLinesRef(selection.lineIds, commentatorId)
             }
     }
 
@@ -587,7 +577,7 @@ private fun CommentariesPagedList(
         with(density) {
             (config.textSizes.commentTextSize * config.textSizes.lineHeight).sp.toPx()
         }
-    val paddingPerItemPx = with(density) { ITEM_VERTICAL_PADDING.toPx() }
+    val paddingPerItemPx = with(density) { (CommentaryItemVerticalPaddingPerSide * 2).toPx() }
     val capacity by remember(textLayoutWidthPx, config.textSizes, config.fontFamily) {
         derivedStateOf {
             if (textLayoutWidthPx <= 0) {
@@ -699,7 +689,7 @@ private fun CommentaryItem(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = 16.dp, vertical = CommentaryItemVerticalPaddingPerSide)
                 .pointerInput(onClick) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)

@@ -488,13 +488,13 @@ class BookContentViewModel(
                         event.offset,
                     )
 
+                is BookContentEvent.CommentariesPageChanged ->
+                    stateManager.updateContent {
+                        copy(commentariesPageIndex = event.page)
+                    }
+
                 is BookContentEvent.SelectedCommentatorsChanged ->
                     commentariesUseCase.updateSelectedCommentators(event.lineId, event.selectedIds)
-
-                BookContentEvent.CommentatorsSelectionLimitExceeded ->
-                    stateManager.updateContent(save = false) {
-                        copy(maxCommentatorsLimitSignal = System.currentTimeMillis())
-                    }
 
                 is BookContentEvent.SelectedTargumSourcesChanged ->
                     commentariesUseCase.updateSelectedLinkSources(event.lineId, event.selectedIds)

@@ -35,7 +35,6 @@ import kotlin.math.min
 /**
  * UseCase pour gérer les commentaires et liens
  */
-private const val MAX_COMMENTATORS = 4
 private val YEAR_REGEX = Regex("""-?\d{3,4}""")
 private const val MAX_BASE_LINES_PER_REQUEST = 128
 
@@ -671,11 +670,9 @@ class CommentariesUseCase(
 
         if (defaults.isEmpty()) return
 
-        val limited = defaults.take(MAX_COMMENTATORS).toSet()
-
         stateManager.updateContent {
             val byBook = selectedCommentatorsByBook.toMutableMap()
-            byBook[bookId] = limited
+            byBook[bookId] = defaults.toSet()
             copy(selectedCommentatorsByBook = byBook)
         }
     }
@@ -870,11 +867,7 @@ class CommentariesUseCase(
             val available = getAvailableCommentators(line.id)
             if (available.isEmpty()) return
 
-            val desired = mutableListOf<Long>()
-            for ((_, id) in available) {
-                if (id in sticky) desired.add(id)
-                if (desired.size >= MAX_COMMENTATORS) break
-            }
+            val desired = available.values.filter { it in sticky }
 
             if (desired.isNotEmpty()) {
                 updateSelectedCommentatorsForLine(line.id, desired.toSet())
@@ -965,11 +958,7 @@ class CommentariesUseCase(
             val available = getAvailableCommentatorsForLines(lineIds)
             if (available.isEmpty()) return
 
-            val desired = mutableListOf<Long>()
-            for ((_, id) in available) {
-                if (id in sticky) desired.add(id)
-                if (desired.size >= MAX_COMMENTATORS) break
-            }
+            val desired = available.values.filter { it in sticky }
 
             if (desired.isNotEmpty()) {
                 updateSelectedCommentatorsForLine(primaryLineId, desired.toSet())

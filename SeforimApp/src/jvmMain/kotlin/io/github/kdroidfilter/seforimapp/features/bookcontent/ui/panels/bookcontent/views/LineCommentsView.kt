@@ -109,7 +109,7 @@ fun LineCommentsView(
     val activeQuery = if (showFind) findQuery else ""
 
     val paneInteractionSource = remember { MutableInteractionSource() }
-    var showCommentatorsList by remember { mutableStateOf(true) }
+    val showCommentatorsList = contentState.isCommentatorsListVisible
 
     Column(modifier = Modifier.fillMaxSize().hoverable(paneInteractionSource)) {
         // Header
@@ -120,7 +120,7 @@ fun LineCommentsView(
             actions = {
                 CommentatorsSidebarToggleButton(
                     isVisible = showCommentatorsList,
-                    onToggle = { showCommentatorsList = !showCommentatorsList },
+                    onToggle = { onEvent(BookContentEvent.ToggleCommentatorsList) },
                 )
             },
         )

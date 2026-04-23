@@ -132,6 +132,8 @@ sealed interface BookContentEvent {
         val page: Int,
     ) : BookContentEvent
 
+    data object ToggleCommentatorsList : BookContentEvent
+
     data class OpenCommentaryTarget(
         val bookId: Long,
         val lineId: Long?,

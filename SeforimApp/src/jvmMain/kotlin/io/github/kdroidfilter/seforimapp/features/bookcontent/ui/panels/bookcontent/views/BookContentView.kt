@@ -48,7 +48,6 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
-import io.github.kdroidfilter.seforimapp.core.VisibleLinesStore
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
@@ -57,6 +56,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalo
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
@@ -163,17 +163,22 @@ fun BookContentView(
 
     // selectedLineId is now passed as a parameter for stability
 
-    // Publish the currently materialized lines to a global store so context-menu actions
-    // (e.g. "copy with source") can map a free-form text selection back to its source lines.
-    // Only the active tab publishes; on dispose, the store is cleared if we were the publisher.
-    LaunchedEffect(lazyPagingItems, isTabSelected) {
-        if (!isTabSelected) return@LaunchedEffect
+    // Publish the currently materialized lines to the SelectionContext so context-menu actions
+    // (e.g. "copy with source") and the AWT keyboard dispatcher can map a free-form text
+    // selection back to its source lines. Only the active tab publishes; lifecycle clears use
+    // the bookId-scoped variant so a backgrounded tab does not wipe a sibling tab's snapshot.
+    val selectionContext = LocalAppGraph.current.selectionContext
+    LaunchedEffect(lazyPagingItems, isTabSelected, bookId, selectionContext) {
+        if (!isTabSelected) {
+            selectionContext.clearVisibleLinesIf(bookId)
+            return@LaunchedEffect
+        }
         snapshotFlow { lazyPagingItems.itemSnapshotList.items }
             .distinctUntilChanged()
-            .collect { items -> VisibleLinesStore.update(items) }
+            .collect { items -> selectionContext.setVisibleLines(items) }
     }
-    DisposableEffect(Unit) {
-        onDispose { VisibleLinesStore.clear() }
+    DisposableEffect(bookId, selectionContext) {
+        onDispose { selectionContext.clearVisibleLinesIf(bookId) }
     }
 
     // Prefetch connection data for visible lines to avoid per-line DB calls

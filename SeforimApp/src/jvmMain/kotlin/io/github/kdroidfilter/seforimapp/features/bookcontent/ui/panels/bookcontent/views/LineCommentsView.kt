@@ -68,6 +68,7 @@ import org.jetbrains.compose.splitpane.rememberSplitPaneState
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import seforimapp.seforimapp.generated.resources.*
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val MAX_COMMENTATORS = 4
 private const val SCROLL_DEBOUNCE_MS = 100L
@@ -459,7 +460,7 @@ private fun CommentatorsList(
         LaunchedEffect(listState) {
             snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
                 .distinctUntilChanged()
-                .debounce(SCROLL_DEBOUNCE_MS)
+                .debounce(SCROLL_DEBOUNCE_MS.milliseconds)
                 .collect { (i, o) -> currentOnScroll(i, o) }
         }
 
@@ -676,39 +677,34 @@ private fun CommentariesPagedList(
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
             .distinctUntilChanged()
-            .debounce(SCROLL_DEBOUNCE_MS)
+            .debounce(SCROLL_DEBOUNCE_MS.milliseconds)
             .collect { (i, o) -> currentOnScroll(i, o) }
     }
 
     SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
-        VerticallyScrollableContainer(
-            scrollState = listState as ScrollableState,
-            scrollbarModifier = Modifier.fillMaxHeight(),
-        ) {
-            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                items(
-                    count = lazyPagingItems.itemCount,
-                    key = { index -> lazyPagingItems[index]?.link?.id ?: index },
-                ) { index ->
-                    lazyPagingItems[index]?.let { commentary ->
-                        CommentaryItem(
-                            linkId = commentary.link.id,
-                            targetText = commentary.targetText,
-                            textSizes = config.textSizes,
-                            fontFamily = config.fontFamily,
-                            boldScale = config.boldScale,
-                            highlightQuery = config.highlightQuery,
-                            showDiacritics = config.showDiacritics,
-                            onClick = { config.onCommentClick(commentary) },
-                        )
-                    }
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+            items(
+                count = lazyPagingItems.itemCount,
+                key = { index -> lazyPagingItems[index]?.link?.id ?: index },
+            ) { index ->
+                lazyPagingItems[index]?.let { commentary ->
+                    CommentaryItem(
+                        linkId = commentary.link.id,
+                        targetText = commentary.targetText,
+                        textSizes = config.textSizes,
+                        fontFamily = config.fontFamily,
+                        boldScale = config.boldScale,
+                        highlightQuery = config.highlightQuery,
+                        showDiacritics = config.showDiacritics,
+                        onClick = { config.onCommentClick(commentary) },
+                    )
                 }
+            }
 
-                when (val loadState = lazyPagingItems.loadState.refresh) {
-                    is LoadState.Loading -> item { LoadingIndicator() }
-                    is LoadState.Error -> item { ErrorMessage(loadState.error) }
-                    else -> {}
-                }
+            when (val loadState = lazyPagingItems.loadState.refresh) {
+                is LoadState.Loading -> item { LoadingIndicator() }
+                is LoadState.Error -> item { ErrorMessage(loadState.error) }
+                else -> {}
             }
         }
     }

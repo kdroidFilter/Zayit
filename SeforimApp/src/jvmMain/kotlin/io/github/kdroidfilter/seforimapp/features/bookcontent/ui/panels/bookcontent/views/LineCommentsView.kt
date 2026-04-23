@@ -436,7 +436,7 @@ private fun MultiLineCommentatorsGridView(
             },
             config = config,
             restoreScrollKey = null,
-            showLoadingStates = false,
+            showLoadingStates = true,
             wrapInScrollableContainer = true,
         )
     }

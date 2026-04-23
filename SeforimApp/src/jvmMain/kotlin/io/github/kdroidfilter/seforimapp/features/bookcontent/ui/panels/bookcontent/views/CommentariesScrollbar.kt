@@ -1,46 +1,16 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
 import androidx.paging.compose.LazyPagingItems
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
-import kotlinx.coroutines.delay
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.theme.scrollbarStyle
-import kotlin.math.abs
-import kotlin.math.ceil
-import kotlin.math.max
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Content-aware vertical scrollbar for a paginated list of [CommentaryWithText].
@@ -59,6 +29,10 @@ import kotlin.time.Duration.Companion.milliseconds
  * what Compose actually lays out. Thumb size = `viewport / totalContentPx`, thumb position
  * = `scrollPx / (totalContentPx − viewport)`. No per-frame sampling, no latch heuristics.
  *
+ * Drag is pixel-aware: a thumb ratio is converted to the target item by binary-searching
+ * the `cumPx` prefix sum, so a 50 % drag on a list with one giant commentary and many
+ * short ones lands at the visual midpoint, not the index midpoint.
+ *
  * Visual styling — colors, thumb corner radius, track thickness, hover expand, fade
  * durations — is read from [JewelTheme.scrollbarStyle] so the scrollbar stays identical
  * to every other Jewel scrollbar in the app.
@@ -76,40 +50,11 @@ fun CommentariesScrollbar(
     if (lazyPagingItems.itemCount == 0 || allCharCounts.isEmpty()) return
     if (capacity <= 0 || lineHeightPx <= 0f) return
 
-    val style = JewelTheme.scrollbarStyle
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-
-    var trackHeightPx by remember { mutableIntStateOf(0) }
-    var dragRatio by remember { mutableStateOf<Float?>(null) }
-    var dragStartRatio by remember { mutableFloatStateOf(0f) }
-    var isDragging by remember { mutableStateOf(false) }
-
-    val visuals =
-        rememberScrollbarVisuals(
-            listState = listState,
-            isHovered = isHovered,
-            dragRatio = dragRatio,
-            label = "commentaries_scrollbar",
-        )
-
-    // Total visual-line count over all items: `Σ ceil(charCount[i] / capacity)`. Used
-    // only for the **thumb size** — position is derived separately from LazyListState's
-    // item geometry, which is boundary-accurate.
-    val totalVisualLines by remember(allCharCounts, capacity) {
-        derivedStateOf {
-            var acc = 0L
-            for (c in allCharCounts) acc += visualLinesOf(c, capacity)
-            acc
-        }
+    val cumPx by remember(allCharCounts, capacity, lineHeightPx, paddingPerItemPx) {
+        derivedStateOf { buildCumulativePixels(allCharCounts, capacity, lineHeightPx, paddingPerItemPx) }
     }
     val itemCount = allCharCounts.size
-
-    // Exact total content height Compose will lay out: `Σ (perItem[i] × lineHeightPx) +
-    // N × paddingPerItemPx`. Stable as long as `capacity`, `lineHeightPx` and
-    // `paddingPerItemPx` are — which they are, since they come from deterministic
-    // inputs (TextMeasurer, font settings, layout constants).
-    val totalContentPx = totalVisualLines.toFloat() * lineHeightPx + itemCount * paddingPerItemPx
+    val totalContentPx = cumPx[itemCount].toFloat()
 
     val latched =
         rememberLatchedThumbSize(
@@ -120,122 +65,49 @@ fun CommentariesScrollbar(
             listState = listState,
         ) ?: return
     if (latched.hidden) return
-    val size = latched.size
 
     // Thumb **position** uses Compose's native avg-item scroll geometry, not the
     // pixel-space estimate. Internally consistent: both `scrollOffsetAvg` and
     // `contentSizeAvg` scale with the same `avgItemSize`, so `position` reaches 0 at
-    // scroll-start and 1 at scroll-end **exactly** — no boundary pinning required,
-    // no flicker. The avg is recomputed per frame from visible items, so it stays
-    // current as scroll progresses.
+    // scroll-start and 1 at scroll-end — no boundary pinning required, no flicker.
     val position = computeAvgScrollPosition(listState).coerceIn(0f, 1f)
 
-    val density = LocalDensity.current
-    val minThumbHeightPx = with(density) { style.metrics.minThumbLength.toPx() }
-
-    val displayPosition = dragRatio ?: position
-    val thumbHeightPx = (size * trackHeightPx).coerceAtLeast(minThumbHeightPx)
-    val travelPx = (trackHeightPx - thumbHeightPx).coerceAtLeast(0f)
-    val thumbTopPx = (displayPosition * travelPx).coerceIn(0f, travelPx)
-
-    val travelPxState = rememberUpdatedState(travelPx)
-    val displayPositionState = rememberUpdatedState(displayPosition)
     val listStateRef = rememberUpdatedState(listState)
+    val cumPxRef = rememberUpdatedState(cumPx)
+    val totalContentPxRef = rememberUpdatedState(totalContentPx)
+    val itemCountRef = rememberUpdatedState(itemCount)
 
-    // Convert a thumb ratio back to a target item index via the same avg-based geometry
-    // used for `position` — so that dragging the thumb is the inverse of reading it.
+    // Convert a thumb ratio → target item index via the **pixel-space** prefix sum,
+    // matching the geometry the thumb size is built from. Same shape as the book
+    // scrollbar; no far-drag flow because all commentaries for a line load eagerly.
     val applyTarget =
         remember {
-            fun(thumbRatio: Float) {
+            { thumbRatio: Float, _: Boolean ->
                 val ls = listStateRef.value
+                val total = itemCountRef.value
+                val cum = cumPxRef.value
                 val info = ls.layoutInfo
-                val total = info.totalItemsCount
-                if (total == 0) return
-                val visible = info.visibleItemsInfo.filter { it.index in 0 until total }
-                if (visible.isEmpty()) return
-                val avgItemSize = visible.sumOf { it.size }.toFloat() / visible.size
-                if (avgItemSize <= 0f) return
-                val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
-                val visibleCount = (viewport / avgItemSize).toInt().coerceAtLeast(1)
-                val maxIdx = (total - visibleCount).coerceAtLeast(1)
-                val targetIdx = (thumbRatio * maxIdx).toInt().coerceIn(0, total - 1)
-                ls.requestScrollToItem(targetIdx, 0)
+                val loadedCount = info.totalItemsCount
+                if (total > 0 && loadedCount > 0 && cum.size >= total + 1) {
+                    val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
+                    val totalPx = totalContentPxRef.value
+                    val maxScrollPx = (totalPx - viewport).coerceAtLeast(0f).toDouble()
+                    val targetPx = (thumbRatio.toDouble() * maxScrollPx).coerceIn(0.0, totalPx.toDouble())
+                    val targetIdx = findLineIndexForPixel(cum, total, targetPx).coerceIn(0, loadedCount - 1)
+                    ls.requestScrollToItem(targetIdx, 0)
+                }
+                Unit
             }
         }
 
-    // Convergence: unpin the thumb once the live scroll catches up to the target ratio.
-    LaunchedEffect(dragRatio, isDragging, position) {
-        val target = dragRatio ?: return@LaunchedEffect
-        if (isDragging) return@LaunchedEffect
-        if (abs(position - target) <= 0.005f) dragRatio = null
-    }
-    // Safety net: if the live `position` never converges to within 0.005 of the
-    // dragged target (e.g. the target is at the very end of the list and rounds
-    // to a different last-visible index, or the list shrinks under us), unpin
-    // the thumb after this timeout so it stops floating.
-    LaunchedEffect(dragRatio, isDragging) {
-        if (isDragging || dragRatio == null) return@LaunchedEffect
-        delay(PENDING_JUMP_TIMEOUT)
-        dragRatio = null
-    }
-
-    Box(
-        modifier =
-            modifier
-                .width(visuals.thickness)
-                .fillMaxHeight()
-                .hoverable(interactionSource)
-                .onSizeChanged { trackHeightPx = it.height }
-                .background(visuals.trackColor)
-                .pointerInput(trackHeightPx) {
-                    detectTapGestures(onTap = { offset ->
-                        if (trackHeightPx <= 0) return@detectTapGestures
-                        val thumbRatio = (offset.y / trackHeightPx).coerceIn(0f, 1f)
-                        dragRatio = thumbRatio
-                        applyTarget(thumbRatio)
-                    })
-                },
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .offset { IntOffset(0, thumbTopPx.toInt()) }
-                    .fillMaxWidth()
-                    .height(with(density) { thumbHeightPx.toDp() })
-                    .clip(RoundedCornerShape(style.metrics.thumbCornerSize))
-                    .background(visuals.thumbColor)
-                    .draggable(
-                        orientation = Orientation.Vertical,
-                        state =
-                            rememberDraggableState { delta ->
-                                val travel = travelPxState.value
-                                if (travel <= 0f) return@rememberDraggableState
-                                val current = dragRatio ?: dragStartRatio
-                                val newRatio = (current + delta / travel).coerceIn(0f, 1f)
-                                dragRatio = newRatio
-                                applyTarget(newRatio)
-                            },
-                        onDragStarted = {
-                            isDragging = true
-                            val start = displayPositionState.value
-                            dragStartRatio = start
-                            dragRatio = start
-                        },
-                        onDragStopped = { isDragging = false },
-                    ),
-        )
-    }
-}
-
-private val PENDING_JUMP_TIMEOUT = 1500.milliseconds
-
-private fun visualLinesOf(
-    charCount: Int,
-    capacity: Int,
-): Int {
-    if (capacity <= 0) return 1
-    if (charCount <= 0) return 1
-    return max(1, ceil(charCount.toDouble() / capacity).toInt())
+    ContentAwareScrollbarShell(
+        listState = listState,
+        position = position,
+        thumbSize = latched.size,
+        visualsLabel = "commentaries_scrollbar",
+        onApplyTarget = applyTarget,
+        modifier = modifier,
+    )
 }
 
 /**

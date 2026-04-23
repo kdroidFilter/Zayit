@@ -785,7 +785,7 @@ fun BookContentView(
                 capacity = capacity,
                 lineHeightPx = lineHeightPx,
                 paddingPerItemPx = paddingPerItemPx,
-                onScrollToRatio = { ratio -> onEvent(BookContentEvent.ContentScrollByCharRatio(ratio)) },
+                onScrollToLineIndex = { idx -> onEvent(BookContentEvent.ContentScrollToLineIndex(idx)) },
                 modifier =
                     Modifier
                         .align(Alignment.CenterEnd)

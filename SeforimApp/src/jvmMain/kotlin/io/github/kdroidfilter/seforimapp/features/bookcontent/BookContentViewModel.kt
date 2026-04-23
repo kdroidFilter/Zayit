@@ -97,11 +97,6 @@ class BookContentViewModel(
     val showDiacritics: StateFlow<Boolean> = _showDiacritics.asStateFlow()
     private var currentRootCategoryId: Long? = null
 
-    // Total visible-char count of the currently loaded book. Used by `scrollToCharRatio`
-    // to translate a scrollbar thumb ratio into a cumulative-char target when the drag
-    // lands outside the loaded paging window. Refreshed every time a book is loaded.
-    private val _totalChars = MutableStateFlow(0L)
-
     // Per-line `charCount` vector for the current book, ordered by lineIndex. Feeds the
     // visual-line model of the content-aware scrollbar: each scroll frame turns this
     // vector into `ceil(charCount / capacity) * capacity` at the measured capacity, so
@@ -472,8 +467,8 @@ class BookContentViewModel(
                         event.scrollOffset,
                     )
 
-                is BookContentEvent.ContentScrollByCharRatio ->
-                    scrollToCharRatio(event.ratio)
+                is BookContentEvent.ContentScrollToLineIndex ->
+                    scrollToLineIndex(event.lineIndex)
 
                 is BookContentEvent.ParagraphScrolled ->
                     contentUseCase.updateParagraphScrollPosition(event.position)
@@ -765,13 +760,6 @@ class BookContentViewModel(
 
                 debugln { "Loading book data - initialLineId: $resolvedInitialLineId" }
 
-                // Refresh the scrollbar denominator. `book.totalChars` is already populated at
-                // generation time but we re-read in case the cached Book was loaded from a DB
-                // built before the column existed.
-                _totalChars.value = book.totalChars.takeIf { it > 0L }
-                    ?: runSuspendCatching { repository.getBook(book.id)?.totalChars ?: 0L }
-                        .getOrElse { 0L }
-
                 // Reset the per-line charCount vector — the content-aware scrollbar will hide
                 // until the async load below populates it for the new book.
                 _bookCharCounts.value = null
@@ -843,30 +831,27 @@ class BookContentViewModel(
     }
 
     /**
-     * Jumps the content view to the position corresponding to a normalized character
-     * ratio (0f..1f) in the current book. Resolves the target line via the
-     * cumulative-chars index and rebuilds the pager around it. The actual scroll
-     * snap inside the new window is handled by the view once the page materializes.
+     * Jumps the content view to the given global line index. Called by the content-aware
+     * scrollbar when the user drags the thumb onto a line that isn't currently loaded in
+     * the pager window. The actual scroll snap inside the new window is handled by the
+     * view once the page materializes.
      */
-    fun scrollToCharRatio(ratio: Float) {
-        val total = _totalChars.value
-        if (total <= 0L) return
+    fun scrollToLineIndex(lineIndex: Int) {
         val book = stateManager.state.value.navigation.selectedBook ?: return
-        val target = (ratio.coerceIn(0f, 1f).toDouble() * total).toLong()
         viewModelScope.launch {
-            val hit = runSuspendCatching { repository.findLineByCumulativeChars(book.id, target) }
+            val line = runSuspendCatching { repository.getLineByIndex(book.id, lineIndex) }
                 .getOrNull()
                 ?: return@launch
             // Set the anchor first so the view scrolls to the line once the new page lands.
             stateManager.updateContent {
                 copy(
-                    anchorId = hit.id,
+                    anchorId = line.id,
                     anchorIndex = 0,
                     scrollIndex = 0,
                     scrollOffset = 0,
                 )
             }
-            _linesPagingData.value = contentUseCase.buildLinesPager(book.id, hit.id)
+            _linesPagingData.value = contentUseCase.buildLinesPager(book.id, line.id)
         }
     }
 

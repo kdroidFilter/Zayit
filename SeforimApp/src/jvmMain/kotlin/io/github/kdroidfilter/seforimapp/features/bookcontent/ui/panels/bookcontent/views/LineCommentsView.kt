@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,8 +48,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorI
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.consumeShiftPrimaryPress
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
@@ -564,29 +563,27 @@ private fun MultiLineCommentaryListView(
             .collect { (i, o) -> currentOnScroll(i, o) }
     }
 
-    Box(modifier = Modifier.fillMaxSize().consumeShiftPrimaryPress()) {
-        SelectionContainer {
-            VerticallyScrollableContainer(
-                scrollState = listState as ScrollableState,
-                scrollbarModifier = Modifier.fillMaxHeight(),
-            ) {
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                    items(
-                        count = lazyPagingItems.itemCount,
-                        key = { index -> lazyPagingItems[index]?.link?.id ?: index },
-                    ) { index ->
-                        lazyPagingItems[index]?.let { commentary ->
-                            CommentaryItem(
-                                linkId = commentary.link.id,
-                                targetText = commentary.targetText,
-                                textSizes = config.textSizes,
-                                fontFamily = config.fontFamily,
-                                boldScale = config.boldScale,
-                                highlightQuery = highlightQuery,
-                                showDiacritics = config.showDiacritics,
-                                onClick = { config.onCommentClick(commentary) },
-                            )
-                        }
+    SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
+        VerticallyScrollableContainer(
+            scrollState = listState as ScrollableState,
+            scrollbarModifier = Modifier.fillMaxHeight(),
+        ) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                items(
+                    count = lazyPagingItems.itemCount,
+                    key = { index -> lazyPagingItems[index]?.link?.id ?: index },
+                ) { index ->
+                    lazyPagingItems[index]?.let { commentary ->
+                        CommentaryItem(
+                            linkId = commentary.link.id,
+                            targetText = commentary.targetText,
+                            textSizes = config.textSizes,
+                            fontFamily = config.fontFamily,
+                            boldScale = config.boldScale,
+                            highlightQuery = highlightQuery,
+                            showDiacritics = config.showDiacritics,
+                            onClick = { config.onCommentClick(commentary) },
+                        )
                     }
                 }
             }
@@ -889,44 +886,42 @@ private fun CommentaryListView(
             }
     }
 
-    Box(modifier = Modifier.fillMaxSize().consumeShiftPrimaryPress()) {
-        SelectionContainer {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                items(
-                    count = lazyPagingItems.itemCount,
-                    key = { index -> lazyPagingItems[index]?.link?.id ?: index }, // Clé stable
-                ) { index ->
-                    lazyPagingItems[index]?.let { commentary ->
-                        CommentaryItem(
-                            linkId = commentary.link.id,
-                            targetText = commentary.targetText,
-                            textSizes = config.textSizes,
-                            fontFamily = config.fontFamily,
-                            boldScale = config.boldScale,
-                            highlightQuery = highlightQuery,
-                            showDiacritics = config.showDiacritics,
-                            onClick = { config.onCommentClick(commentary) },
-                        )
+    SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(
+                count = lazyPagingItems.itemCount,
+                key = { index -> lazyPagingItems[index]?.link?.id ?: index }, // Clé stable
+            ) { index ->
+                lazyPagingItems[index]?.let { commentary ->
+                    CommentaryItem(
+                        linkId = commentary.link.id,
+                        targetText = commentary.targetText,
+                        textSizes = config.textSizes,
+                        fontFamily = config.fontFamily,
+                        boldScale = config.boldScale,
+                        highlightQuery = highlightQuery,
+                        showDiacritics = config.showDiacritics,
+                        onClick = { config.onCommentClick(commentary) },
+                    )
+                }
+            }
+
+            // Loading states
+            when (val loadState = lazyPagingItems.loadState.refresh) {
+                is LoadState.Loading -> {
+                    item { LoadingIndicator() }
+                }
+
+                is LoadState.Error -> {
+                    item {
+                        ErrorMessage(loadState.error)
                     }
                 }
 
-                // Loading states
-                when (val loadState = lazyPagingItems.loadState.refresh) {
-                    is LoadState.Loading -> {
-                        item { LoadingIndicator() }
-                    }
-
-                    is LoadState.Error -> {
-                        item {
-                            ErrorMessage(loadState.error)
-                        }
-                    }
-
-                    else -> {}
-                }
+                else -> {}
             }
         }
     }

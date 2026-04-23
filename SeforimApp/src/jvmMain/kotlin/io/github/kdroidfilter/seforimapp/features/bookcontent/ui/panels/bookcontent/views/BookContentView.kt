@@ -48,6 +48,7 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.VisibleLinesStore
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
@@ -161,6 +162,19 @@ fun BookContentView(
     )
 
     // selectedLineId is now passed as a parameter for stability
+
+    // Publish the currently materialized lines to a global store so context-menu actions
+    // (e.g. "copy with source") can map a free-form text selection back to its source lines.
+    // Only the active tab publishes; on dispose, the store is cleared if we were the publisher.
+    LaunchedEffect(lazyPagingItems, isTabSelected) {
+        if (!isTabSelected) return@LaunchedEffect
+        snapshotFlow { lazyPagingItems.itemSnapshotList.items }
+            .distinctUntilChanged()
+            .collect { items -> VisibleLinesStore.update(items) }
+    }
+    DisposableEffect(Unit) {
+        onDispose { VisibleLinesStore.clear() }
+    }
 
     // Prefetch connection data for visible lines to avoid per-line DB calls
     LaunchedEffect(listState, lazyPagingItems, onPrefetchLineConnections) {

@@ -72,6 +72,7 @@ object CatalogCache {
     // Cached extracted data - computed once from the catalog
     private var _rootCategories: List<Category>? = null
     private var _categoryChildren: Map<Long, List<Category>>? = null
+    private var _categoriesById: Map<Long, Category>? = null
     private var _allBooks: Set<Book>? = null
     private var _allBooksWithAltFlags: Set<Book>? = null
 
@@ -106,6 +107,36 @@ object CatalogCache {
             _categoryChildren = getCatalog()?.extractCategoryChildren()
         }
         return _categoryChildren
+    }
+
+    /**
+     * Flat id → Category index built once from roots + children. Used by features that need
+     * O(1) parent walks (e.g. resolving the root category of a book) without hitting the DB.
+     */
+    fun getCategoriesById(): Map<Long, Category>? {
+        if (_categoriesById == null) {
+            val roots = getRootCategories() ?: return null
+            val children = getCategoryChildren() ?: return null
+            val map = HashMap<Long, Category>(roots.size + children.values.sumOf { it.size })
+            roots.forEach { map[it.id] = it }
+            children.values.forEach { list -> list.forEach { map[it.id] = it } }
+            _categoriesById = map
+        }
+        return _categoriesById
+    }
+
+    /**
+     * Walks up parentId from the book's immediate category to the root. Returns null if the
+     * catalog is unavailable or the chain is broken.
+     */
+    fun getRootForBook(book: Book): Category? {
+        val byId = getCategoriesById() ?: return null
+        var current: Category? = byId[book.categoryId] ?: return null
+        var safety = 32
+        while (current?.parentId != null && safety-- > 0) {
+            current = byId[current.parentId]
+        }
+        return current
     }
 
     /**
@@ -164,6 +195,7 @@ object CatalogCache {
         _catalog = loadCatalog()
         _rootCategories = null
         _categoryChildren = null
+        _categoriesById = null
         _allBooks = null
     }
 

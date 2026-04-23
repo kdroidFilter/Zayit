@@ -32,7 +32,10 @@ import io.github.kdroidfilter.platformtools.getAppVersion
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
+import io.github.kdroidfilter.seforimapp.core.CurrentBookStore
 import io.github.kdroidfilter.seforimapp.core.TextSelectionStore
+import io.github.kdroidfilter.seforimapp.core.VisibleLinesStore
+import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppDockMenu
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppJumpList
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppLinuxQuicklist
@@ -162,6 +165,37 @@ fun main(args: Array<String>) {
                 clipboard.setContents(StringSelection(textWithoutDiacritics), null)
             }
             true // consume the event
+        } else {
+            false
+        }
+    }
+
+    // Register global AWT key event dispatcher for Ctrl+Alt+C / Cmd+Alt+C (copy with source).
+    // Skip when AltGraph is down to avoid clobbering character composition on Linux/Windows layouts.
+    KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher { event ->
+        if (event.id == KeyEvent.KEY_PRESSED &&
+            event.keyCode == KeyEvent.VK_C &&
+            event.isAltDown &&
+            !event.isAltGraphDown &&
+            !event.isShiftDown &&
+            (event.isMetaDown || event.isControlDown)
+        ) {
+            val selectedText = TextSelectionStore.selectedText.value
+            val active = CurrentBookStore.activeBook.value
+            if (selectedText.isNotBlank() && active != null) {
+                val payload =
+                    buildCopyWithSourcePayload(
+                        selectedText,
+                        active.book,
+                        active.rootTitle,
+                        VisibleLinesStore.visibleLines.value,
+                    )
+                val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+                clipboard.setContents(StringSelection(payload), null)
+                true
+            } else {
+                false
+            }
         } else {
             false
         }

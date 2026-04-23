@@ -31,10 +31,7 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
-import com.dokar.sonner.ToastType
-import com.dokar.sonner.rememberToasterState
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
-import io.github.kdroidfilter.seforimapp.core.presentation.components.AppToaster
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -80,7 +77,6 @@ import seforimapp.seforimapp.generated.resources.context_menu_copy_with_source
 import seforimapp.seforimapp.generated.resources.context_menu_copy_without_nikud
 import seforimapp.seforimapp.generated.resources.context_menu_find_in_page
 import seforimapp.seforimapp.generated.resources.context_menu_search_selected_text
-import seforimapp.seforimapp.generated.resources.max_commentators_limit
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.awt.event.InputEvent
@@ -269,8 +265,6 @@ fun BookContentScreen(
     isRestoringSession: Boolean = false,
     isSelected: Boolean = true,
 ) {
-    // Toaster for transient messages (e.g., selection limits)
-    val toaster = rememberToasterState()
     val currentOnEvent by rememberUpdatedState(onEvent)
     val searchSelectedLabel = stringResource(Res.string.context_menu_search_selected_text)
     val findInPageLabel = stringResource(Res.string.context_menu_find_in_page)
@@ -555,20 +549,6 @@ fun BookContentScreen(
             if (!isHome) {
                 EndVerticalBar(uiState = uiState, onEvent = onEvent, showDiacritics = showDiacritics)
             }
-        }
-    }
-
-    // Render toaster overlay themed like Jewel (reusable)
-    AppToaster(state = toaster)
-
-    // React to state mutations to show a toast (no callbacks)
-    val maxLimitMsg = stringResource(Res.string.max_commentators_limit)
-    LaunchedEffect(uiState.content.maxCommentatorsLimitSignal) {
-        if (uiState.content.maxCommentatorsLimitSignal > 0L) {
-            toaster.show(
-                message = maxLimitMsg,
-                type = ToastType.Warning,
-            )
         }
     }
 }

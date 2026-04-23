@@ -170,8 +170,6 @@
     <string name="select_at_least_one_commentator">אנא בחר לפחות מפרש אחד מהרשימה</string>
     <string name="select_line_for_sources">בחר שורה כדי לצפות במקורות</string>
     <string name="no_sources_for_line">אין מקורות זמינים לשורה זו</string>
-    <string name="select_between_1_and_4_commentators">אנא בחר בין 1 ל-4 מפרשים</string>
-    <string name="max_commentators_limit">ניתן לבחור עד 4 מפרשים בלבד</string>
     <string name="no_commentators_available">אין מפרשים זמינים</string>
 
     <!-- Line Links View (special links strings) -->

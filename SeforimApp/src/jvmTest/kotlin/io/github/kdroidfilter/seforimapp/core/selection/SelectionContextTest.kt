@@ -40,9 +40,9 @@ class SelectionContextTest {
             heRef = null,
         )
 
-    // ---------------------------------------------------------------------------
+    // -------------------------------------------------------------------------------------------
     // selectedText
-    // ---------------------------------------------------------------------------
+    // -------------------------------------------------------------------------------------------
 
     @Test
     fun `selectedText starts empty and round-trips updates`() {
@@ -60,74 +60,77 @@ class SelectionContextTest {
         assertEquals("", context.selectedText.value)
     }
 
-    // ---------------------------------------------------------------------------
+    // -------------------------------------------------------------------------------------------
     // activeBook
-    // ---------------------------------------------------------------------------
+    // -------------------------------------------------------------------------------------------
 
     @Test
-    fun `setActiveBook with null clears the slot`() {
-        context.setActiveBook(book(1L), "תנ\"ך")
-        assertEquals(
-            1L,
-            context.activeBook.value
-                ?.book
-                ?.id,
-        )
-        context.setActiveBook(null, null)
+    fun `setActiveBook stamps the publishing tabId`() {
+        context.setActiveBook(tabId = "tab-A", book = book(1L), rootTitle = "תנ\"ך")
+        val active = context.activeBook.value
+        assertEquals("tab-A", active?.tabId)
+        assertEquals(1L, active?.book?.id)
+    }
+
+    @Test
+    fun `setActiveBook with null book clears the slot`() {
+        context.setActiveBook("tab-A", book(1L), null)
+        context.setActiveBook("tab-A", null, null)
         assertNull(context.activeBook.value)
     }
 
     @Test
-    fun `clearActiveBookIf only clears when ids match`() {
-        context.setActiveBook(book(42L), "תלמוד")
-        // A different book's dispose handler must not wipe the foreground tab's publish.
-        context.clearActiveBookIf(99L)
-        assertEquals(
-            42L,
-            context.activeBook.value
-                ?.book
-                ?.id,
-        )
-        // Matching id wipes.
-        context.clearActiveBookIf(42L)
+    fun `clearActiveBookIfOwnedBy only clears when tabIds match`() {
+        context.setActiveBook("tab-A", book(42L), "תלמוד")
+        context.clearActiveBookIfOwnedBy("tab-B")
+        assertEquals("tab-A", context.activeBook.value?.tabId, "must not clear when tabId mismatches")
+        context.clearActiveBookIfOwnedBy("tab-A")
         assertNull(context.activeBook.value)
     }
 
     @Test
-    fun `clearActiveBookIf with null only clears a null-published slot`() {
-        context.setActiveBook(book(1L), null)
-        context.clearActiveBookIf(null)
-        assertEquals(
-            1L,
-            context.activeBook.value
-                ?.book
-                ?.id,
-        )
+    fun `same book opened in two tabs does not collide`() {
+        // Tab A and Tab B both reference the same book id (legitimate when the user duplicates a tab).
+        context.setActiveBook("tab-A", book(7L), "תנ\"ך")
+        context.setActiveBook("tab-B", book(7L), "תנ\"ך")
+        // Tab A disposes; the publish belongs to B now and must survive.
+        context.clearActiveBookIfOwnedBy("tab-A")
+        val active = context.activeBook.value
+        assertEquals("tab-B", active?.tabId, "Tab A's dispose should not wipe Tab B's publish for the same book")
     }
 
-    // ---------------------------------------------------------------------------
+    // -------------------------------------------------------------------------------------------
     // visibleLines
-    // ---------------------------------------------------------------------------
+    // -------------------------------------------------------------------------------------------
 
     @Test
-    fun `setVisibleLines round-trips`() {
+    fun `setVisibleLines stamps the publishing tabId`() {
         val lines = listOf(line(1, 0), line(1, 1))
-        context.setVisibleLines(lines)
-        assertEquals(2, context.visibleLines.value.size)
+        context.setVisibleLines("tab-A", lines)
+        val snapshot = context.visibleLines.value
+        assertEquals("tab-A", snapshot.tabId)
+        assertEquals(2, snapshot.lines.size)
     }
 
     @Test
-    fun `clearVisibleLinesIf only clears when bookId matches the snapshot owner`() {
-        context.setVisibleLines(listOf(line(7L, 0), line(7L, 1)))
-        context.clearVisibleLinesIf(99L)
-        assertEquals(2, context.visibleLines.value.size, "must not clear when bookId mismatches")
-        context.clearVisibleLinesIf(7L)
-        assertTrue(context.visibleLines.value.isEmpty())
+    fun `clearVisibleLinesIfOwnedBy only clears when tabIds match`() {
+        context.setVisibleLines("tab-A", listOf(line(7L, 0), line(7L, 1)))
+        context.clearVisibleLinesIfOwnedBy("tab-B")
+        assertEquals("tab-A", context.visibleLines.value.tabId, "must not clear when tabId mismatches")
+        context.clearVisibleLinesIfOwnedBy("tab-A")
+        assertTrue(
+            context.visibleLines.value.lines
+                .isEmpty(),
+        )
+        assertNull(context.visibleLines.value.tabId)
     }
 
     @Test
-    fun `clearVisibleLinesIf is a no-op when snapshot already empty`() {
-        context.clearVisibleLinesIf(123L)
-        assertTrue(context.visibleLines.value.isEmpty())
+    fun `clearVisibleLinesIfOwnedBy is a no-op when snapshot empty`() {
+        context.clearVisibleLinesIfOwnedBy("tab-X")
+        assertTrue(
+            context.visibleLines.value.lines
+                .isEmpty(),
+        )
     }
 }

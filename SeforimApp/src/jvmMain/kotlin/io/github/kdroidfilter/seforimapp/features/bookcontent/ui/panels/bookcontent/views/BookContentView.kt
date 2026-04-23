@@ -165,20 +165,21 @@ fun BookContentView(
 
     // Publish the currently materialized lines to the SelectionContext so context-menu actions
     // (e.g. "copy with source") and the AWT keyboard dispatcher can map a free-form text
-    // selection back to its source lines. Only the active tab publishes; lifecycle clears use
-    // the bookId-scoped variant so a backgrounded tab does not wipe a sibling tab's snapshot.
+    // selection back to its source lines. Only the active tab publishes; lifecycle clears are
+    // tabId-scoped so a backgrounded tab cannot wipe a sibling tab's snapshot — even when both
+    // tabs reference the same book.
     val selectionContext = LocalAppGraph.current.selectionContext
-    LaunchedEffect(lazyPagingItems, isTabSelected, bookId, selectionContext) {
+    LaunchedEffect(lazyPagingItems, isTabSelected, tabId, selectionContext) {
         if (!isTabSelected) {
-            selectionContext.clearVisibleLinesIf(bookId)
+            selectionContext.clearVisibleLinesIfOwnedBy(tabId)
             return@LaunchedEffect
         }
         snapshotFlow { lazyPagingItems.itemSnapshotList.items }
             .distinctUntilChanged()
-            .collect { items -> selectionContext.setVisibleLines(items) }
+            .collect { items -> selectionContext.setVisibleLines(tabId, items) }
     }
-    DisposableEffect(bookId, selectionContext) {
-        onDispose { selectionContext.clearVisibleLinesIf(bookId) }
+    DisposableEffect(tabId, selectionContext) {
+        onDispose { selectionContext.clearVisibleLinesIfOwnedBy(tabId) }
     }
 
     // Prefetch connection data for visible lines to avoid per-line DB calls

@@ -7,11 +7,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * The book currently active in the foreground tab, paired with the title of its root category.
- * The root title lets formatters apply per-tradition rules (e.g. trim the in-page line segment
- * for Talmud) without re-resolving the category chain on every action.
+ * The book currently active in the foreground tab, paired with the title of its root category
+ * and the id of the tab that published it. The tabId is the real ownership key: it lets a
+ * dispose handler clear only its own publish, even when the same book is open in another tab.
  */
 data class ActiveBook(
+    val tabId: String,
     val book: Book,
     val rootTitle: String?,
 )
@@ -20,37 +21,49 @@ data class ActiveBook(
  * App-wide read/write surface that bridges Compose-side state (current selection, active book,
  * paged-line snapshot) to Compose-free consumers (AWT keyboard dispatchers in particular).
  *
- * Provided as a Metro-scoped singleton so that consumers (`BookContentScreen`, `BookContentView`,
+ * Provided as a Metro-scoped singleton so consumers (`BookContentScreen`, `BookContentView`,
  * `main.kt`) reach it through `LocalAppGraph`/`AppGraph` instead of touching object globals.
+ *
+ * Ownership is tracked by `tabId`: setters embed the publishing tab and `clear*If` only
+ * removes a publish whose tabId matches. This prevents one tab's lifecycle (background or
+ * dispose) from wiping a sibling tab's state, even when both tabs reference the same book.
  */
 interface SelectionContext {
     val selectedText: StateFlow<String>
     val activeBook: StateFlow<ActiveBook?>
-    val visibleLines: StateFlow<List<Line>>
+    val visibleLines: StateFlow<VisibleLines>
 
     fun setSelectedText(text: String)
 
     fun clearSelectedText()
 
     fun setActiveBook(
+        tabId: String,
         book: Book?,
         rootTitle: String?,
     )
 
-    /**
-     * Clear the currently published active book only when its id matches [bookId]. Prevents a
-     * background tab's dispose handler from wiping the book that the just-activated tab has
-     * already published.
-     */
-    fun clearActiveBookIf(bookId: Long?)
+    fun clearActiveBookIfOwnedBy(tabId: String)
 
-    fun setVisibleLines(lines: List<Line>)
+    fun setVisibleLines(
+        tabId: String,
+        lines: List<Line>,
+    )
 
-    /**
-     * Clear the visible-lines snapshot only when the currently published list belongs to
-     * [bookId]. Same race-safety rationale as [clearActiveBookIf].
-     */
-    fun clearVisibleLinesIf(bookId: Long?)
+    fun clearVisibleLinesIfOwnedBy(tabId: String)
+}
+
+/**
+ * Snapshot of the currently materialized lines, with the id of the tab that published them.
+ * Empty publisher means no tab currently owns the snapshot.
+ */
+data class VisibleLines(
+    val tabId: String?,
+    val lines: List<Line>,
+) {
+    companion object {
+        val EMPTY = VisibleLines(tabId = null, lines = emptyList())
+    }
 }
 
 class DefaultSelectionContext : SelectionContext {
@@ -60,8 +73,8 @@ class DefaultSelectionContext : SelectionContext {
     private val _activeBook = MutableStateFlow<ActiveBook?>(null)
     override val activeBook: StateFlow<ActiveBook?> = _activeBook.asStateFlow()
 
-    private val _visibleLines = MutableStateFlow<List<Line>>(emptyList())
-    override val visibleLines: StateFlow<List<Line>> = _visibleLines.asStateFlow()
+    private val _visibleLines = MutableStateFlow(VisibleLines.EMPTY)
+    override val visibleLines: StateFlow<VisibleLines> = _visibleLines.asStateFlow()
 
     override fun setSelectedText(text: String) {
         _selectedText.value = text
@@ -72,26 +85,29 @@ class DefaultSelectionContext : SelectionContext {
     }
 
     override fun setActiveBook(
+        tabId: String,
         book: Book?,
         rootTitle: String?,
     ) {
-        _activeBook.value = book?.let { ActiveBook(it, rootTitle) }
+        _activeBook.value = book?.let { ActiveBook(tabId, it, rootTitle) }
     }
 
-    override fun clearActiveBookIf(bookId: Long?) {
-        if (_activeBook.value?.book?.id == bookId) {
+    override fun clearActiveBookIfOwnedBy(tabId: String) {
+        if (_activeBook.value?.tabId == tabId) {
             _activeBook.value = null
         }
     }
 
-    override fun setVisibleLines(lines: List<Line>) {
-        _visibleLines.value = lines
+    override fun setVisibleLines(
+        tabId: String,
+        lines: List<Line>,
+    ) {
+        _visibleLines.value = VisibleLines(tabId, lines)
     }
 
-    override fun clearVisibleLinesIf(bookId: Long?) {
-        val current = _visibleLines.value
-        if (current.isEmpty() || current.first().bookId == bookId) {
-            _visibleLines.value = emptyList()
+    override fun clearVisibleLinesIfOwnedBy(tabId: String) {
+        if (_visibleLines.value.tabId == tabId) {
+            _visibleLines.value = VisibleLines.EMPTY
         }
     }
 }

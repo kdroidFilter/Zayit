@@ -97,10 +97,10 @@ class BookContentViewModel(
     val showDiacritics: StateFlow<Boolean> = _showDiacritics.asStateFlow()
     private var currentRootCategoryId: Long? = null
 
-    // Total visible-char count of the currently loaded book. Feeds the content-aware scrollbar
-    // as the denominator for thumb position/size. Refreshed every time a book is loaded.
+    // Total visible-char count of the currently loaded book. Used by `scrollToCharRatio`
+    // to translate a scrollbar thumb ratio into a cumulative-char target when the drag
+    // lands outside the loaded paging window. Refreshed every time a book is loaded.
     private val _totalChars = MutableStateFlow(0L)
-    val totalChars: StateFlow<Long> = _totalChars.asStateFlow()
 
     // Per-line `charCount` vector for the current book, ordered by lineIndex. Feeds the
     // visual-line model of the content-aware scrollbar: each scroll frame turns this

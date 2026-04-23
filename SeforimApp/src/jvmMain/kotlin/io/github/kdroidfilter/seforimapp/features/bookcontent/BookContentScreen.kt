@@ -264,7 +264,6 @@ fun BookContentScreen(
     searchCallbacks: HomeSearchCallbacks,
     isRestoringSession: Boolean = false,
     isSelected: Boolean = true,
-    bookTotalChars: Long = 0L,
     bookCharCounts: IntArray? = null,
 ) {
     val currentOnEvent by rememberUpdatedState(onEvent)
@@ -540,7 +539,6 @@ fun BookContentScreen(
                                 searchUi = searchUi,
                                 searchCallbacks = searchCallbacks,
                                 isSelected = isSelected,
-                                bookTotalChars = bookTotalChars,
                                 bookCharCounts = bookCharCounts,
                             )
                         },

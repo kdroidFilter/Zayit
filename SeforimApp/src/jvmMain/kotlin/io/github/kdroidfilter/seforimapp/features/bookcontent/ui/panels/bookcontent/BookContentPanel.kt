@@ -56,7 +56,6 @@ fun BookContentPanel(
             onPickToc = {},
         ),
     isSelected: Boolean = true,
-    bookTotalChars: Long = 0L,
     bookCharCounts: IntArray? = null,
 ) {
     val isIslands = ThemeUtils.isIslandsStyle()
@@ -101,7 +100,6 @@ fun BookContentPanel(
                     onEvent = onEvent,
                     showDiacritics = showDiacritics,
                     isSelected = isSelected,
-                    bookTotalChars = bookTotalChars,
                     bookCharCounts = bookCharCounts,
                 )
             }
@@ -116,7 +114,6 @@ private fun BookContentPanelContent(
     onEvent: (BookContentEvent) -> Unit,
     showDiacritics: Boolean,
     isSelected: Boolean,
-    bookTotalChars: Long,
     bookCharCounts: IntArray?,
 ) {
     val providers = uiState.providers ?: return
@@ -228,7 +225,6 @@ private fun BookContentPanelContent(
                             lineConnections = connectionsCache,
                             onPrefetchLineConnections = prefetchConnections,
                             isSelected = isSelected,
-                            bookTotalChars = bookTotalChars,
                             bookCharCounts = bookCharCounts,
                         )
                     },

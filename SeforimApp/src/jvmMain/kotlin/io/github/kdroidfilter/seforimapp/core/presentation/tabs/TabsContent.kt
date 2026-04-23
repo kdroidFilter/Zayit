@@ -272,7 +272,6 @@ private fun HomeTabContent(
     val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
     val uiState by viewModel.uiState.collectAsState()
     val showDiacritics by viewModel.showDiacritics.collectAsState()
-    val bookTotalChars by viewModel.totalChars.collectAsState()
     val bookCharCounts by viewModel.bookCharCounts.collectAsState()
 
     BookContentScreen(
@@ -283,7 +282,6 @@ private fun HomeTabContent(
         searchUi = searchUi,
         searchCallbacks = searchCallbacks,
         isSelected = isSelected,
-        bookTotalChars = bookTotalChars,
         bookCharCounts = bookCharCounts,
     )
 }
@@ -408,7 +406,6 @@ private fun BookContentTabContent(
     val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
     val uiState by viewModel.uiState.collectAsState()
     val showDiacritics by viewModel.showDiacritics.collectAsState()
-    val bookTotalChars by viewModel.totalChars.collectAsState()
     val bookCharCounts by viewModel.bookCharCounts.collectAsState()
 
     // React to destination changes when ViewModel is reused
@@ -431,7 +428,6 @@ private fun BookContentTabContent(
         searchUi = searchUi,
         searchCallbacks = searchCallbacks,
         isSelected = isSelected,
-        bookTotalChars = bookTotalChars,
         bookCharCounts = bookCharCounts,
     )
 }

@@ -71,7 +71,6 @@ import org.jetbrains.jewel.ui.component.*
 import seforimapp.seforimapp.generated.resources.*
 import kotlin.time.Duration.Companion.milliseconds
 
-private const val MAX_COMMENTATORS = 4
 private val SCROLL_DEBOUNCE = 100.milliseconds
 
 @OptIn(ExperimentalSplitPaneApi::class)
@@ -96,7 +95,6 @@ fun LineCommentsView(
     val activeQuery = if (showFind) findQuery else ""
 
     val paneInteractionSource = remember { MutableInteractionSource() }
-    var showCommentatorsList by remember { mutableStateOf(true) }
 
     Column(modifier = Modifier.fillMaxSize().hoverable(paneInteractionSource)) {
         // Header
@@ -106,8 +104,8 @@ fun LineCommentsView(
             onHide = { onEvent(BookContentEvent.ToggleCommentaries) },
             actions = {
                 CommentatorsSidebarToggleButton(
-                    isVisible = showCommentatorsList,
-                    onToggle = { showCommentatorsList = !showCommentatorsList },
+                    isVisible = contentState.isCommentatorsListVisible,
+                    onToggle = { onEvent(BookContentEvent.ToggleCommentatorsList) },
                 )
             },
         )
@@ -123,9 +121,8 @@ fun LineCommentsView(
                         uiState = uiState,
                         onEvent = onEvent,
                         textSizes = textSizes,
-                        onShowMaxLimit = { onEvent(BookContentEvent.CommentatorsSelectionLimitExceeded) },
                         findQueryText = activeQuery,
-                        isCommentatorsListVisible = showCommentatorsList,
+                        isCommentatorsListVisible = contentState.isCommentatorsListVisible,
                         showDiacritics = showDiacritics,
                     )
                 }
@@ -136,9 +133,8 @@ fun LineCommentsView(
                         uiState = uiState,
                         onEvent = onEvent,
                         textSizes = textSizes,
-                        onShowMaxLimit = { onEvent(BookContentEvent.CommentatorsSelectionLimitExceeded) },
                         findQueryText = activeQuery,
-                        isCommentatorsListVisible = showCommentatorsList,
+                        isCommentatorsListVisible = contentState.isCommentatorsListVisible,
                         prefetchedGroups = lineConnections[selectedLine.id]?.commentatorGroups,
                         showDiacritics = showDiacritics,
                     )
@@ -155,7 +151,6 @@ private fun CommentariesContent(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
-    onShowMaxLimit: () -> Unit,
     findQueryText: String,
     isCommentatorsListVisible: Boolean,
     prefetchedGroups: List<CommentatorGroup>?,
@@ -221,16 +216,12 @@ private fun CommentariesContent(
                         onEvent(BookContentEvent.CommentatorsListScrolled(index, offset))
                     },
                     onSelectionChange = { name, checked ->
-                        if (checked && selectedCommentators.value.size >= MAX_COMMENTATORS) {
-                            onShowMaxLimit()
-                        } else {
-                            selectedCommentators.value =
-                                if (checked) {
-                                    selectedCommentators.value + name
-                                } else {
-                                    selectedCommentators.value - name
-                                }
-                        }
+                        selectedCommentators.value =
+                            if (checked) {
+                                selectedCommentators.value + name
+                            } else {
+                                selectedCommentators.value - name
+                            }
                     },
                 )
             }
@@ -267,7 +258,6 @@ private fun MultiLineCommentariesContent(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
-    onShowMaxLimit: () -> Unit,
     findQueryText: String,
     isCommentatorsListVisible: Boolean,
     showDiacritics: Boolean,
@@ -331,16 +321,12 @@ private fun MultiLineCommentariesContent(
                         onEvent(BookContentEvent.CommentatorsListScrolled(index, offset))
                     },
                     onSelectionChange = { name, checked ->
-                        if (checked && selectedCommentators.value.size >= MAX_COMMENTATORS) {
-                            onShowMaxLimit()
-                        } else {
-                            selectedCommentators.value =
-                                if (checked) {
-                                    selectedCommentators.value + name
-                                } else {
-                                    selectedCommentators.value - name
-                                }
-                        }
+                        selectedCommentators.value =
+                            if (checked) {
+                                selectedCommentators.value + name
+                            } else {
+                                selectedCommentators.value - name
+                            }
                     },
                 )
             }
@@ -489,7 +475,12 @@ private fun CommentatorsGrid(
     onEvent: (BookContentEvent) -> Unit,
 ) {
     val providers = uiState.providers ?: return
-    CommentatorsGridScaffold(config = config) { commentatorId ->
+    CommentatorsGridScaffold(
+        config = config,
+        initialPage = uiState.content.commentariesPageIndex,
+        onPageChange = { page -> onEvent(BookContentEvent.CommentariesPageChanged(page)) },
+        onFlushPersist = { onEvent(BookContentEvent.FlushCommentariesState) },
+    ) { commentatorId ->
         val pagerFlow =
             remember(selection, commentatorId) {
                 providers.buildCommentariesPagerFor(selection, commentatorId)
@@ -511,57 +502,6 @@ private fun CommentatorsGrid(
         )
     }
 }
-
-/**
- * Shared grid scaffolding for single-line and multi-line commentaries. The [column] slot
- * renders one commentator column given its bookId.
- */
-@Composable
-private fun CommentatorsGridScaffold(
-    config: CommentariesLayoutConfig,
-    column: @Composable (commentatorId: Long) -> Unit,
-) {
-    val rows =
-        remember(config.selectedCommentators) {
-            buildCommentatorRows(config.selectedCommentators)
-        }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        rows.forEach { rowCommentators ->
-            val rowModifier =
-                remember(rows.size) {
-                    if (rows.size > 1) Modifier.weight(1f) else Modifier.fillMaxHeight()
-                }
-            Row(modifier = rowModifier.fillMaxWidth()) {
-                rowCommentators.forEach { name ->
-                    val id = config.titleToIdMap[name] ?: return@forEach
-                    val singleRowSingleCol = rows.size == 1 && rowCommentators.size == 1
-                    val colModifier =
-                        remember(singleRowSingleCol) {
-                            if (singleRowSingleCol) {
-                                Modifier.fillMaxHeight().weight(1f)
-                            } else {
-                                Modifier.weight(1f).padding(horizontal = 4.dp)
-                            }
-                        }
-                    Column(modifier = colModifier) {
-                        CommentatorHeader(name, config.textSizes.commentTextSize)
-                        column(id)
-                    }
-                }
-            }
-        }
-    }
-}
-
-private fun buildCommentatorRows(selected: List<String>): List<List<String>> =
-    when (selected.size) {
-        0 -> emptyList()
-        1 -> listOf(selected)
-        2 -> listOf(selected)
-        3 -> listOf(selected.subList(0, 2), selected.subList(2, selected.size))
-        else -> listOf(selected.subList(0, 2), selected.subList(2, minOf(4, selected.size)))
-    }
 
 /**
  * Paged list of [CommentaryItem]s for one commentator, wrapped in a [SafeSelectionContainer].
@@ -726,27 +666,6 @@ private fun CommentaryItem(
             fontFamily = fontFamily,
             lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp,
             inlineContent = inlineImageContent,
-        )
-    }
-}
-
-@Composable
-private fun CommentatorHeader(
-    commentator: String,
-    commentTextSize: Float,
-) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = commentator,
-            fontWeight = FontWeight.Bold,
-            fontSize = (commentTextSize * 1.1f).sp,
-            textAlign = TextAlign.Center,
         )
     }
 }
@@ -940,7 +859,7 @@ private fun rememberSelectedCommentators(
 }
 
 @Immutable
-private data class AnimatedTextSizes(
+internal data class AnimatedTextSizes(
     val commentTextSize: Float,
     val lineHeight: Float,
 )
@@ -976,7 +895,7 @@ private fun Providers.buildCommentariesPagerFor(
  * agnostic of single vs multi-line mode.
  */
 @Immutable
-private data class CommentariesLayoutConfig(
+internal data class CommentariesLayoutConfig(
     val selectedCommentators: ImmutableList<String>,
     val titleToIdMap: Map<String, Long>,
     val onCommentClick: (CommentaryWithText) -> Unit,

@@ -86,24 +86,6 @@ class CommentariesUseCaseReapplyTest {
         assertTrue(state.content.selectedCommentatorsByBook[testBookId].isNullOrEmpty())
     }
 
-    @Test
-    fun `MAX_COMMENTATORS limit can be enforced in state`() {
-        // Given: More than 4 commentators
-        val allCommentators = setOf(1L, 2L, 3L, 4L, 5L, 6L)
-        val maxCommentators = 4
-
-        // When: Limiting to MAX_COMMENTATORS
-        val limited = allCommentators.take(maxCommentators).toSet()
-        stateManager.updateContent {
-            copy(selectedCommentatorsByLine = mapOf(10L to limited))
-        }
-
-        // Then: At most 4 commentators are stored
-        val state = stateManager.state.value
-        val lineCommentators = state.content.selectedCommentatorsByLine[10L] ?: emptySet()
-        assertTrue(lineCommentators.size <= maxCommentators)
-    }
-
     // ==================== Link Source Selection State Tests ====================
 
     @Test

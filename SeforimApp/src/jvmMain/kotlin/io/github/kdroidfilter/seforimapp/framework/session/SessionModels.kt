@@ -68,6 +68,8 @@ data class BookContentPersistedState(
     val commentatorsListScrollOffset: Int = 0,
     val commentariesColumnScrollIndexByCommentator: Map<Long, Int> = emptyMap(),
     val commentariesColumnScrollOffsetByCommentator: Map<Long, Int> = emptyMap(),
+    val commentariesPageIndex: Int = 0,
+    val isCommentatorsListVisible: Boolean = true,
     val selectedCommentatorsByLine: Map<Long, Set<Long>> = emptyMap(),
     val selectedCommentatorsByBook: Map<Long, Set<Long>> = emptyMap(),
     val selectedTargumSourcesByLine: Map<Long, Set<Long>> = emptyMap(),

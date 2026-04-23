@@ -128,6 +128,14 @@ sealed interface BookContentEvent {
         val offset: Int,
     ) : BookContentEvent
 
+    data class CommentariesPageChanged(
+        val page: Int,
+    ) : BookContentEvent
+
+    data object FlushCommentariesState : BookContentEvent
+
+    data object ToggleCommentatorsList : BookContentEvent
+
     data class OpenCommentaryTarget(
         val bookId: Long,
         val lineId: Long?,
@@ -137,8 +145,6 @@ sealed interface BookContentEvent {
         val lineId: Long,
         val selectedIds: Set<Long>,
     ) : BookContentEvent
-
-    data object CommentatorsSelectionLimitExceeded : BookContentEvent
 
     // Targum events
     data class SelectedTargumSourcesChanged(

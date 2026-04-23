@@ -35,9 +35,13 @@ import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -103,6 +107,7 @@ fun BookContentView(
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
     isSelected: Boolean = true,
     bookTotalChars: Long = 0L,
+    bookCharCounts: IntArray? = null,
 ) {
     // Don't use the saved scroll position initially if we have an anchor
     // The restoration will be handled after pagination loads
@@ -111,6 +116,13 @@ fun BookContentView(
             initialFirstVisibleItemIndex = if (anchorId != -1L) 0 else scrollIndex,
             initialFirstVisibleItemScrollOffset = if (anchorId != -1L) 0 else scrollOffset,
         )
+
+    // Layout-width of the first rendered line's Text, captured once via `onTextLayout`
+    // from `result.layoutInput.constraints.maxWidth`. Includes all the nested padding
+    // already subtracted by Compose's layout pass, so we don't have to replicate the
+    // padding chain (outer Box .padding(bottom 8.dp) → LazyColumn .padding(end 16.dp) →
+    // Row .padding(horizontal 8.dp) → SelectionBar width + Spacer 8.dp).
+    var textLayoutWidthPx by remember(bookId) { mutableIntStateOf(0) }
 
     // Collect text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -686,6 +698,11 @@ fun BookContentView(
                                             if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
                                         annotatedCache = stableAnnotatedCache,
                                         showDiacritics = showDiacritics,
+                                        onLayoutWidthMeasured = { width ->
+                                            if (textLayoutWidthPx == 0 && width > 0) {
+                                                textLayoutWidthPx = width
+                                            }
+                                        },
                                     )
                                 }
                             }
@@ -732,10 +749,43 @@ fun BookContentView(
 
             // Content-aware scrollbar overlay. Lives inside the same Box as the LazyColumn
             // so it floats over the 16dp end gutter reserved by the column padding.
+            //
+            // All three pixel-space inputs are deterministic and exact: `capacity` is
+            // measured by `TextMeasurer` against the captured text-layout width, the
+            // font settings and font family — so it never drifts during scroll. The
+            // scrollbar itself no longer averages visible items' sizes: that was the
+            // root cause of the thumb resizing, since per-item padding and item-mix
+            // variation broke the `Σ size / Σ lineCount` assumption.
+            val density = LocalDensity.current
+            val textMeasurer = rememberTextMeasurer()
+            val lineHeightPx = with(density) { (textSize * lineHeight).sp.toPx() }
+            val paddingPerItemPx = with(density) { LINE_ITEM_VERTICAL_PADDING.toPx() }
+            val capacity by remember(textLayoutWidthPx, textSize, lineHeight, hebrewFontFamily) {
+                derivedStateOf {
+                    if (textLayoutWidthPx <= 0) {
+                        0
+                    } else {
+                        val result = textMeasurer.measure(
+                            text = AnnotatedString(CAPACITY_REFERENCE),
+                            style = TextStyle(
+                                fontSize = textSize.sp,
+                                fontFamily = hebrewFontFamily,
+                                lineHeight = (textSize * lineHeight).sp,
+                            ),
+                            constraints = Constraints(maxWidth = textLayoutWidthPx),
+                        )
+                        (CAPACITY_REFERENCE.length / result.lineCount.coerceAtLeast(1))
+                            .coerceAtLeast(1)
+                    }
+                }
+            }
             ContentScrollbar(
                 listState = listState,
                 lazyPagingItems = lazyPagingItems,
-                totalChars = bookTotalChars,
+                bookCharCounts = bookCharCounts,
+                capacity = capacity,
+                lineHeightPx = lineHeightPx,
+                paddingPerItemPx = paddingPerItemPx,
                 onScrollToRatio = { ratio -> onEvent(BookContentEvent.ContentScrollByCharRatio(ratio)) },
                 modifier =
                     Modifier
@@ -808,6 +858,20 @@ fun BookContentView(
         }
     }
 }
+
+// Each line's `LineItem` sits inside a `Box(modifier = Modifier.padding(vertical = 8.dp))`
+// wrapper. That's the only per-item vertical padding wrapping the Text, so Compose lays
+// every line out as `lineCount × lineHeight + LINE_ITEM_VERTICAL_PADDING`.
+private val LINE_ITEM_VERTICAL_PADDING = 16.dp
+
+// Realistic Hebrew prose used by `TextMeasurer` to compute chars-per-visual-line.
+// A continuous `"א"×N` reference would pack char-by-char with no word-boundary waste,
+// which over-estimates capacity versus real book text: Compose word-wraps real content
+// at spaces, leaving a few unused pixels at the end of each line. Using text with
+// natural Hebrew word lengths and spaces yields a capacity that matches what Compose
+// will actually wrap in the rendered items.
+private val CAPACITY_REFERENCE =
+    ("ועל כן ראוי לנו לומר בדבר הזה ולהבין על מה כוונת המחבר בהזכירו דברים אלו ").repeat(200)
 
 // Data class for anchor information
 private data class AnchorData(
@@ -907,6 +971,7 @@ private fun LineItem(
     currentMatchStart: Int? = null,
     annotatedCache: StableAnnotatedCache? = null,
     showDiacritics: Boolean = true,
+    onLayoutWidthMeasured: (Int) -> Unit = {},
 ) {
     // Process content: remove diacritics if setting is disabled
     val processedContent =
@@ -1004,6 +1069,10 @@ private fun LineItem(
         lineHeight = (baseTextSize * lineHeight).sp,
         modifier = textModifier,
         inlineContent = inlineImageContent,
+        onTextLayout = { result ->
+            val cw = result.layoutInput.constraints.maxWidth
+            if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasured(cw)
+        },
     )
 }
 

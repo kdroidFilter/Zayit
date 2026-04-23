@@ -273,6 +273,7 @@ private fun HomeTabContent(
     val uiState by viewModel.uiState.collectAsState()
     val showDiacritics by viewModel.showDiacritics.collectAsState()
     val bookTotalChars by viewModel.totalChars.collectAsState()
+    val bookCharCounts by viewModel.bookCharCounts.collectAsState()
 
     BookContentScreen(
         uiState = uiState,
@@ -283,6 +284,7 @@ private fun HomeTabContent(
         searchCallbacks = searchCallbacks,
         isSelected = isSelected,
         bookTotalChars = bookTotalChars,
+        bookCharCounts = bookCharCounts,
     )
 }
 
@@ -407,6 +409,7 @@ private fun BookContentTabContent(
     val uiState by viewModel.uiState.collectAsState()
     val showDiacritics by viewModel.showDiacritics.collectAsState()
     val bookTotalChars by viewModel.totalChars.collectAsState()
+    val bookCharCounts by viewModel.bookCharCounts.collectAsState()
 
     // React to destination changes when ViewModel is reused
     LaunchedEffect(destination.bookId, destination.lineId) {
@@ -429,6 +432,7 @@ private fun BookContentTabContent(
         searchCallbacks = searchCallbacks,
         isSelected = isSelected,
         bookTotalChars = bookTotalChars,
+        bookCharCounts = bookCharCounts,
     )
 }
 

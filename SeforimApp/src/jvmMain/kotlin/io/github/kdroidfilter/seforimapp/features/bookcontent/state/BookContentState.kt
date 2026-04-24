@@ -35,6 +35,10 @@ data class Providers(
     // Mirror the pager ordering above; failures fold to an empty list.
     val getCommentaryCharCountsForLine: suspend (Long, Long) -> List<Int>,
     val getCommentaryCharCountsForLines: suspend (List<Long>, Long) -> List<Int>,
+    // Char-count vectors for sources/targum scrollbar, one section at a time
+    // (filtered by target-book id + connection type). Mirror the pager ordering.
+    val getLinkCharCountsForLine: suspend (Long, Long, ConnectionType) -> List<Int>,
+    val getLinkCharCountsForLines: suspend (List<Long>, Long, ConnectionType) -> List<Int>,
 )
 
 /**

@@ -57,7 +57,15 @@ fun ContentScrollbar(
     if (capacity <= 0 || lineHeightPx <= 0f) return
 
     val cumPx by remember(counts, capacity, lineHeightPx, paddingPerItemPx) {
-        derivedStateOf { buildCumulativePixels(counts, capacity, lineHeightPx, paddingPerItemPx) }
+        derivedStateOf {
+            buildCumulativePixels(
+                size = counts.size,
+                capacity = capacity,
+                lineHeightPx = lineHeightPx,
+                paddingPerItemPx = paddingPerItemPx,
+                charCountAt = { counts[it] },
+            )
+        }
     }
     val itemCount = counts.size
     val totalContentPx = cumPx[itemCount].toFloat()
@@ -123,9 +131,13 @@ fun ContentScrollbar(
                     val totalPx = totalContentPxRef.value
                     val maxScrollPx = (totalPx - viewport).coerceAtLeast(0f).toDouble()
                     val targetPx = (thumbRatio.toDouble() * maxScrollPx).coerceIn(0.0, totalPx.toDouble())
-                    val targetLineIndex = findLineIndexForPixel(cum, total, targetPx)
+                    val targetLineIndex = findItemIndexForPixel(cum, total, targetPx)
+                    // Pager snapshot is sorted ascending by `lineIndex`, so a binary
+                    // search converts paged-window position lookups from O(N) to
+                    // O(log N) on every drag delta.
                     val snapshot = pagingRef.value.itemSnapshotList.items
-                    val localIndex = snapshot.indexOfFirst { it.lineIndex == targetLineIndex }
+                    val hit = snapshot.binarySearchBy(targetLineIndex) { it.lineIndex }
+                    val localIndex = if (hit >= 0) hit else -1
                     when {
                         localIndex >= 0 -> {
                             ls.requestScrollToItem(localIndex, 0)
@@ -146,7 +158,7 @@ fun ContentScrollbar(
         listState = listState,
         position = position,
         thumbSize = latched.size,
-        visualsLabel = "scrollbar",
+        visualsLabel = "book_scrollbar",
         onApplyTarget = applyTarget,
         modifier = modifier,
         onDragStart = { pendingFarDragTarget.value = null },

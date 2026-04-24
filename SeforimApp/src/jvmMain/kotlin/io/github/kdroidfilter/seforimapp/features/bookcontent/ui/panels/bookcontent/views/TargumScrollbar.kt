@@ -63,7 +63,8 @@ fun TargumScrollbar(
         ) ?: return
     if (latched.hidden) return
 
-    val position = computeAvgScrollPosition(listState).coerceIn(0f, 1f)
+    val position =
+        computeScrollPosition(listState, cumPx, itemCount, totalContentPx).coerceIn(0f, 1f)
 
     val listStateRef = rememberUpdatedState(listState)
     val cumPxRef = rememberUpdatedState(cumPx)
@@ -84,7 +85,14 @@ fun TargumScrollbar(
                     val maxScrollPx = (totalPx - viewport).coerceAtLeast(0f).toDouble()
                     val targetPx = (thumbRatio.toDouble() * maxScrollPx).coerceIn(0.0, totalPx.toDouble())
                     val targetIdx = findItemIndexForPixel(cum, total, targetPx).coerceIn(0, loadedCount - 1)
-                    ls.requestScrollToItem(targetIdx, 0)
+                    // Offset **inside** the item so the viewport top lands exactly on
+                    // `targetPx` — without it, `requestScrollToItem(idx, 0)` always
+                    // places the item at the viewport top, which at `thumbRatio = 1.0`
+                    // leaves a `targetPx − cumPx[targetIdx]` gap and the text never
+                    // reaches the real end.
+                    val offsetWithinItemPx =
+                        (targetPx - cum[targetIdx].toDouble()).coerceAtLeast(0.0).toInt()
+                    ls.requestScrollToItem(targetIdx, offsetWithinItemPx)
                 }
                 Unit
             }
@@ -101,22 +109,33 @@ fun TargumScrollbar(
 }
 
 /**
- * Thumb position in `[0, 1]` from [LazyListState] using the same avg-item geometry
- * as the standard Compose scrollbar adapter. Duplicated locally to avoid coupling
- * to [CommentariesScrollbar]'s private helper.
+ * Pixel-space thumb position in `[0, 1]`.
+ *
+ * Formula: `scrolledPx = cumPx[firstIdx] + innerFraction × itemModelHeight`, divided
+ * by `totalContentPx − viewport`. `cumPx[firstIdx]` sums modelled weights of items
+ * before the first visible one. `innerFraction = -offset / size` is the real-pixel
+ * proportion scrolled through the current item; multiplied by `cumPx[firstIdx + 1] −
+ * cumPx[firstIdx]` it reflects the item's modelled weight so a long link moves the
+ * thumb more than a short one while scrolling through it. Duplicated locally to avoid
+ * coupling to [CommentariesScrollbar]'s private helper.
  */
-private fun computeAvgScrollPosition(listState: LazyListState): Float {
+private fun computeScrollPosition(
+    listState: LazyListState,
+    cumPx: LongArray,
+    itemCount: Int,
+    totalContentPx: Float,
+): Float {
+    if (itemCount == 0 || cumPx.size < itemCount + 1) return 0f
     val info = listState.layoutInfo
-    val total = info.totalItemsCount
-    if (total == 0) return 0f
-    val visible = info.visibleItemsInfo.filter { it.index in 0 until total }
+    val visible = info.visibleItemsInfo.filter { it.index in 0 until itemCount }
     if (visible.isEmpty()) return 0f
-    val avgItemSize = visible.sumOf { it.size }.toFloat() / visible.size
-    if (avgItemSize <= 0f) return 0f
+    val firstInfo = visible.first()
+    val firstIdx = firstInfo.index.coerceIn(0, itemCount - 1)
+    val firstSize = firstInfo.size.coerceAtLeast(1)
+    val innerFraction = ((-firstInfo.offset).toFloat() / firstSize).coerceIn(0f, 1f)
+    val itemModelHeight = (cumPx[firstIdx + 1] - cumPx[firstIdx]).toFloat().coerceAtLeast(0f)
+    val scrolledPx = cumPx[firstIdx].toFloat() + innerFraction * itemModelHeight
     val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
-    val contentSize = total * avgItemSize
-    val maxScroll = (contentSize - viewport).coerceAtLeast(1f)
-    val scrollOffset =
-        listState.firstVisibleItemIndex * avgItemSize + listState.firstVisibleItemScrollOffset
-    return scrollOffset / maxScroll
+    val maxScroll = (totalContentPx - viewport).coerceAtLeast(1f)
+    return scrolledPx / maxScroll
 }

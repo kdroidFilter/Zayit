@@ -51,7 +51,15 @@ fun CommentariesScrollbar(
     if (capacity <= 0 || lineHeightPx <= 0f) return
 
     val cumPx by remember(allCharCounts, capacity, lineHeightPx, paddingPerItemPx) {
-        derivedStateOf { buildCumulativePixels(allCharCounts, capacity, lineHeightPx, paddingPerItemPx) }
+        derivedStateOf {
+            buildCumulativePixels(
+                size = allCharCounts.size,
+                capacity = capacity,
+                lineHeightPx = lineHeightPx,
+                paddingPerItemPx = paddingPerItemPx,
+                charCountAt = { allCharCounts[it] },
+            )
+        }
     }
     val itemCount = allCharCounts.size
     val totalContentPx = cumPx[itemCount].toFloat()
@@ -93,7 +101,7 @@ fun CommentariesScrollbar(
                     val totalPx = totalContentPxRef.value
                     val maxScrollPx = (totalPx - viewport).coerceAtLeast(0f).toDouble()
                     val targetPx = (thumbRatio.toDouble() * maxScrollPx).coerceIn(0.0, totalPx.toDouble())
-                    val targetIdx = findLineIndexForPixel(cum, total, targetPx).coerceIn(0, loadedCount - 1)
+                    val targetIdx = findItemIndexForPixel(cum, total, targetPx).coerceIn(0, loadedCount - 1)
                     ls.requestScrollToItem(targetIdx, 0)
                 }
                 Unit

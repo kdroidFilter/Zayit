@@ -51,41 +51,26 @@ internal fun visualLinesOf(
  * Pixel-space prefix sum: `cumPx[i]` is the total content height of items `[0, i)`,
  * an exact match for what Compose lays out. The last entry equals total content height.
  * Used both for thumb **size** and for converting a thumb ratio → target item index in
- * O(log N) on drag/jump (see [findLineIndexForPixel]). Accumulates in Double to avoid
+ * O(log N) on drag/jump (see [findItemIndexForPixel]). Accumulates in Double to avoid
  * drift over large books, then snapshots to Long.
+ *
+ * The [charCountAt] selector lets callers back this with either an `IntArray` (book
+ * scrollbar) or a `List<Int>` (commentaries scrollbar) without an extra copy.
  */
 internal fun buildCumulativePixels(
-    charCounts: IntArray,
+    size: Int,
     capacity: Int,
     lineHeightPx: Float,
     paddingPerItemPx: Float,
+    charCountAt: (Int) -> Int,
 ): LongArray {
-    val n = charCounts.size
-    val arr = LongArray(n + 1)
+    val arr = LongArray(size + 1)
     var acc = 0.0
-    for (i in 0 until n) {
+    for (i in 0 until size) {
         arr[i] = acc.toLong()
-        acc += visualLinesOf(charCounts[i], capacity) * lineHeightPx.toDouble() + paddingPerItemPx
+        acc += visualLinesOf(charCountAt(i), capacity) * lineHeightPx.toDouble() + paddingPerItemPx
     }
-    arr[n] = acc.toLong()
-    return arr
-}
-
-/** [List] overload of [buildCumulativePixels] for callers backed by `List<Int>`. */
-internal fun buildCumulativePixels(
-    charCounts: List<Int>,
-    capacity: Int,
-    lineHeightPx: Float,
-    paddingPerItemPx: Float,
-): LongArray {
-    val n = charCounts.size
-    val arr = LongArray(n + 1)
-    var acc = 0.0
-    for (i in 0 until n) {
-        arr[i] = acc.toLong()
-        acc += visualLinesOf(charCounts[i], capacity) * lineHeightPx.toDouble() + paddingPerItemPx
-    }
-    arr[n] = acc.toLong()
+    arr[size] = acc.toLong()
     return arr
 }
 
@@ -94,7 +79,7 @@ internal fun buildCumulativePixels(
  * search, no allocation. `cumPx` is monotonically non-decreasing with `cumPx[0] = 0`
  * and `cumPx[total]` = total content height.
  */
-internal fun findLineIndexForPixel(
+internal fun findItemIndexForPixel(
     cumPx: LongArray,
     total: Int,
     targetPx: Double,

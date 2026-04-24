@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.firstOrNull
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.styling.ScrollbarVisibility.AlwaysVisible
 import org.jetbrains.jewel.ui.theme.scrollbarStyle
@@ -217,15 +218,21 @@ internal fun ContentAwareScrollbarShell(
 
     val travelPxState = rememberUpdatedState(travelPx)
     val displayPositionState = rememberUpdatedState(displayPosition)
+    val positionState = rememberUpdatedState(position)
     val onApplyTargetState = rememberUpdatedState(onApplyTarget)
     val onDragStartState = rememberUpdatedState(onDragStart)
     val onDragStopState = rememberUpdatedState(onDragStop)
 
-    // Convergence: unpin the thumb once the live scroll catches up to the dragged target.
-    LaunchedEffect(dragRatio, isDragging, position) {
+    // Convergence: while a drag target is pinned, observe `position` via `snapshotFlow`
+    // and unpin the thumb as soon as the live scroll catches up. Keyed only on
+    // `dragRatio` / `isDragging` so the effect doesn't churn on every scroll frame —
+    // `positionState` feeds the collector through Compose's snapshot system instead.
+    LaunchedEffect(dragRatio, isDragging) {
         val target = dragRatio ?: return@LaunchedEffect
         if (isDragging) return@LaunchedEffect
-        if (abs(position - target) <= 0.005f) dragRatio = null
+        snapshotFlow { positionState.value }
+            .firstOrNull { abs(it - target) <= 0.005f }
+            ?.let { dragRatio = null }
     }
     LaunchedEffect(dragRatio, isDragging) {
         if (isDragging || dragRatio == null) return@LaunchedEffect

@@ -97,6 +97,14 @@ class BookContentViewModel(
     val showDiacritics: StateFlow<Boolean> = _showDiacritics.asStateFlow()
     private var currentRootCategoryId: Long? = null
 
+    // Per-line `charCount` vector for the current book, ordered by lineIndex. Feeds the
+    // visual-line model of the content-aware scrollbar: each scroll frame turns this
+    // vector into `ceil(charCount / capacity) * capacity` at the measured capacity, so
+    // a short verse still contributes one visual line to the thumb metrics. Null while
+    // the async load is in flight; reset to null on book change.
+    private val _bookCharCounts = MutableStateFlow<IntArray?>(null)
+    val bookCharCounts: StateFlow<IntArray?> = _bookCharCounts.asStateFlow()
+
     // État UI unifié (state is already UI-ready; just inject providers and compute per-line selections)
     val uiState: StateFlow<BookContentState> =
         stateManager.state
@@ -147,6 +155,8 @@ class BookContentViewModel(
                             getAvailableLinksForLines = commentariesUseCase::getAvailableLinksForLines,
                             buildSourcesPagerForLines = commentariesUseCase::buildSourcesPagerForLines,
                             getAvailableSourcesForLines = commentariesUseCase::getAvailableSourcesForLines,
+                            getCommentaryCharCountsForLine = commentariesUseCase::getCommentaryCharCountsForLine,
+                            getCommentaryCharCountsForLines = commentariesUseCase::getCommentaryCharCountsForLines,
                         ),
                     content =
                         state.content.copy(
@@ -205,6 +215,8 @@ class BookContentViewModel(
                                 getAvailableLinksForLines = commentariesUseCase::getAvailableLinksForLines,
                                 buildSourcesPagerForLines = commentariesUseCase::buildSourcesPagerForLines,
                                 getAvailableSourcesForLines = commentariesUseCase::getAvailableSourcesForLines,
+                                getCommentaryCharCountsForLine = commentariesUseCase::getCommentaryCharCountsForLine,
+                                getCommentaryCharCountsForLines = commentariesUseCase::getCommentaryCharCountsForLines,
                             ),
                         content =
                             s.content.copy(
@@ -458,6 +470,9 @@ class BookContentViewModel(
                         event.scrollIndex,
                         event.scrollOffset,
                     )
+
+                is BookContentEvent.ContentScrollToLineIndex ->
+                    scrollToLineIndex(event.lineIndex)
 
                 is BookContentEvent.ParagraphScrolled ->
                     contentUseCase.updateParagraphScrollPosition(event.position)
@@ -749,6 +764,14 @@ class BookContentViewModel(
 
                 debugln { "Loading book data - initialLineId: $resolvedInitialLineId" }
 
+                // Reset the per-line charCount vector — the content-aware scrollbar will hide
+                // until the async load below populates it for the new book.
+                _bookCharCounts.value = null
+                viewModelScope.launch {
+                    runSuspendCatching { repository.getBookCharCounts(book.id) }
+                        .onSuccess { _bookCharCounts.value = it }
+                }
+
                 // Build pager — content can now render
                 _linesPagingData.value = contentUseCase.buildLinesPager(book.id, resolvedInitialLineId)
 
@@ -809,6 +832,32 @@ class BookContentViewModel(
             stateManager.state.value.navigation.selectedBook
                 ?.id ?: line.bookId
         postSelectLine(line, bookId)
+    }
+
+    /**
+     * Jumps the content view to the given global line index. Called by the content-aware
+     * scrollbar when the user drags the thumb onto a line that isn't currently loaded in
+     * the pager window. The actual scroll snap inside the new window is handled by the
+     * view once the page materializes.
+     */
+    fun scrollToLineIndex(lineIndex: Int) {
+        val book = stateManager.state.value.navigation.selectedBook ?: return
+        viewModelScope.launch {
+            val line =
+                runSuspendCatching { repository.getLineByIndex(book.id, lineIndex) }
+                    .getOrNull()
+                    ?: return@launch
+            // Set the anchor first so the view scrolls to the line once the new page lands.
+            stateManager.updateContent {
+                copy(
+                    anchorId = line.id,
+                    anchorIndex = 0,
+                    scrollIndex = 0,
+                    scrollOffset = 0,
+                )
+            }
+            _linesPagingData.value = contentUseCase.buildLinesPager(book.id, line.id)
+        }
     }
 
     /** Loads and selects a line */

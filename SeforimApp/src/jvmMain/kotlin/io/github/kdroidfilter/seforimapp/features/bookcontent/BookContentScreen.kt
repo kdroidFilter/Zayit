@@ -264,6 +264,7 @@ fun BookContentScreen(
     searchCallbacks: HomeSearchCallbacks,
     isRestoringSession: Boolean = false,
     isSelected: Boolean = true,
+    bookCharCounts: IntArray? = null,
 ) {
     val currentOnEvent by rememberUpdatedState(onEvent)
     val searchSelectedLabel = stringResource(Res.string.context_menu_search_selected_text)
@@ -538,6 +539,7 @@ fun BookContentScreen(
                                 searchUi = searchUi,
                                 searchCallbacks = searchCallbacks,
                                 isSelected = isSelected,
+                                bookCharCounts = bookCharCounts,
                             )
                         },
                         showSplitter = uiState.toc.isVisible,

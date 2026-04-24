@@ -31,6 +31,10 @@ data class Providers(
     val getAvailableLinksForLines: suspend (List<Long>) -> Map<String, Long>,
     val buildSourcesPagerForLines: (List<Long>, Long?) -> Flow<PagingData<CommentaryWithText>>,
     val getAvailableSourcesForLines: suspend (List<Long>) -> Map<String, Long>,
+    // Char-count vectors used by the commentary scrollbar to derive visual-line metrics.
+    // Mirror the pager ordering above; failures fold to an empty list.
+    val getCommentaryCharCountsForLine: suspend (Long, Long) -> List<Int>,
+    val getCommentaryCharCountsForLines: suspend (List<Long>, Long) -> List<Int>,
 )
 
 /**

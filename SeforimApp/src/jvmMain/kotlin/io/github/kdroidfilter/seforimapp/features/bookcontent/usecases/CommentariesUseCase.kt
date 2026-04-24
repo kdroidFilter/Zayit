@@ -200,6 +200,42 @@ class CommentariesUseCase(
         }.getOrElse { emptyList() }
 
     /**
+     * Ordered char-count vector for a single source/targum section attached to a base
+     * line (or its TOC section). Mirrors [buildLinksPager] / [buildSourcesPager] row
+     * ordering (`b.orderIndex, l.targetLineIndex`). Returns an empty list on failure.
+     */
+    suspend fun getLinkCharCountsForLine(
+        lineId: Long,
+        sourceBookId: Long,
+        connectionType: ConnectionType,
+    ): List<Int> =
+        runSuspendCatching {
+            repository.getCommentaryCharCountsForLineOrSection(
+                baseLineId = lineId,
+                activeCommentatorIds = setOf(sourceBookId),
+                connectionTypes = setOf(connectionType),
+            )
+        }.getOrElse { emptyList() }
+
+    /**
+     * Ordered char-count vector for a single source/targum section across multiple
+     * selected lines. Mirrors [buildLinksPagerForLines] / [buildSourcesPagerForLines]
+     * ordering. Returns an empty list on failure.
+     */
+    suspend fun getLinkCharCountsForLines(
+        lineIds: List<Long>,
+        sourceBookId: Long,
+        connectionType: ConnectionType,
+    ): List<Int> =
+        runSuspendCatching {
+            repository.getCommentaryCharCountsForLines(
+                lineIds = lineIds,
+                activeCommentatorIds = setOf(sourceBookId),
+                connectionTypes = setOf(connectionType),
+            )
+        }.getOrElse { emptyList() }
+
+    /**
      * Récupère les commentateurs disponibles pour plusieurs lignes (union)
      */
     suspend fun getAvailableCommentatorsForLines(lineIds: List<Long>): Map<String, Long> {

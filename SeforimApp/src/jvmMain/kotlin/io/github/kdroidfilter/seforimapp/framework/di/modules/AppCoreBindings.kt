@@ -15,6 +15,7 @@ import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
 import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
+import io.github.kdroidfilter.seforimapp.framework.database.PersistentSqliteDriver
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.database.getUserSettingsDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
@@ -66,7 +67,11 @@ object AppCoreBindings {
     @SingleIn(AppScope::class)
     fun provideRepository(): SeforimRepository {
         val dbPath = getDatabasePath()
-        val driver = JdbcSqliteDriver("jdbc:sqlite:$dbPath")
+        // Persistent single-connection driver with prepared-statement cache +
+        // read-tuning PRAGMAs. Replaces `JdbcSqliteDriver` whose ThreadedConnectionManager
+        // closes the SQLite connection after every non-transactional query (confirmed by
+        // JFR 2026-04-23: ~70 `NativeDB.prepare_utf8` + `NativeDB._close()` pairs / 20 s).
+        val driver = PersistentSqliteDriver("jdbc:sqlite:$dbPath")
         return SeforimRepository(dbPath, driver)
     }
 

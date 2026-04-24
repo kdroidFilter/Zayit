@@ -85,7 +85,7 @@ fun ContentScrollbar(
     // At scroll start `firstLineIdx = 0` → 0. At scroll end `firstLineIdx = N −
     // visibleLines` → 1. Numerator and denominator scale with the same `avgItemSize`
     // so the ratio reaches the boundaries exactly, no pinning required, no flicker.
-    val position = computeBookPosition(listState, lazyPagingItems, counts.size).coerceIn(0f, 1f)
+    val position = computeBookPosition(listState, lazyPagingItems, counts.size, cumPx, totalContentPx).coerceIn(0f, 1f)
 
     val listStateRef = rememberUpdatedState(listState)
     val pagingRef = rememberUpdatedState(lazyPagingItems)
@@ -138,9 +138,16 @@ fun ContentScrollbar(
                     val snapshot = pagingRef.value.itemSnapshotList.items
                     val hit = snapshot.binarySearchBy(targetLineIndex) { it.lineIndex }
                     val localIndex = if (hit >= 0) hit else -1
+                    // Offset **inside** the item so the viewport top lands exactly on
+                    // `targetPx`. Without it, `requestScrollToItem(idx, 0)` pins the
+                    // target line to the viewport top and a drag to `thumbRatio = 1.0`
+                    // stops short of the real end by `targetPx − cumPx[targetLineIndex]`
+                    // pixels.
+                    val offsetWithinItemPx =
+                        (targetPx - cum[targetLineIndex].toDouble()).coerceAtLeast(0.0).toInt()
                     when {
                         localIndex >= 0 -> {
-                            ls.requestScrollToItem(localIndex, 0)
+                            ls.requestScrollToItem(localIndex, offsetWithinItemPx)
                             pendingFarDragTarget.value = null
                         }
                         viaDrag -> {
@@ -177,18 +184,26 @@ fun ContentScrollbar(
 private val FAR_DRAG_THROTTLE = 200.milliseconds
 
 /**
- * Book-wide thumb position in `[0, 1]`, using the same avg-item geometry as the standard
- * Compose scrollbar adapter — but indexed on **book line number** rather than paging-
- * window index, so it reflects progress through the whole book, not just the loaded
- * page. Numerator and denominator both scale with `avgItemSize` so the ratio reaches 0
- * and 1 exactly at the book's scroll boundaries. No boundary pinning, no flicker.
+ * Book-wide thumb position in `[0, 1]`, in pixel-space.
+ *
+ * Formula: `scrolledPx = cumPx[firstLineIdx] + innerFraction × itemModelHeight`, divided
+ * by `totalContentPx − viewport`. `cumPx[firstLineIdx]` exactly encodes the modelled
+ * weight of every line before the first visible one. `innerFraction = -offset / size`
+ * is the proportion scrolled **through** the current item, measured on the real
+ * rendered pixels. Multiplying it by `cumPx[firstLineIdx + 1] − cumPx[firstLineIdx]`
+ * converts that proportion back into cumPx units, so the thumb advances proportionally
+ * to the item's modelled weight while scrolling through it — a tall line moves the
+ * thumb more than a short one, matching the reading progress. `.coerceIn(0f, 1f)` at
+ * the caller pins boundaries when the model and actual layout diverge slightly.
  */
 private fun computeBookPosition(
     listState: LazyListState,
     lazyPagingItems: LazyPagingItems<Line>,
     bookLineCount: Int,
+    cumPx: LongArray,
+    totalContentPx: Float,
 ): Float {
-    if (bookLineCount == 0) return 0f
+    if (bookLineCount == 0 || cumPx.size < bookLineCount + 1) return 0f
     val itemCount = lazyPagingItems.itemCount
     if (itemCount == 0) return 0f
     val info = listState.layoutInfo
@@ -198,13 +213,12 @@ private fun computeBookPosition(
     if (visible.isEmpty()) return 0f
     val firstInfo = visible.first()
     val firstLine = lazyPagingItems.peek(firstInfo.index) ?: return 0f
-    val firstLineIdx = firstLine.lineIndex.coerceAtLeast(0)
+    val firstLineIdx = firstLine.lineIndex.coerceIn(0, bookLineCount - 1)
     val firstSize = firstInfo.size.coerceAtLeast(1)
-    val firstInnerOffset = ((-firstInfo.offset).toFloat() / firstSize).coerceIn(0f, 1f)
-    val avgItemSize = visible.sumOf { it.size }.toFloat() / visible.size
-    if (avgItemSize <= 0f) return 0f
+    val innerFraction = ((-firstInfo.offset).toFloat() / firstSize).coerceIn(0f, 1f)
+    val itemModelHeight = (cumPx[firstLineIdx + 1] - cumPx[firstLineIdx]).toFloat().coerceAtLeast(0f)
+    val scrolledPx = cumPx[firstLineIdx].toFloat() + innerFraction * itemModelHeight
     val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
-    val visibleCount = (viewport / avgItemSize).coerceAtLeast(1f)
-    val maxProgress = (bookLineCount - visibleCount).coerceAtLeast(1f)
-    return ((firstLineIdx + firstInnerOffset) / maxProgress)
+    val maxScroll = (totalContentPx - viewport).coerceAtLeast(1f)
+    return scrolledPx / maxScroll
 }

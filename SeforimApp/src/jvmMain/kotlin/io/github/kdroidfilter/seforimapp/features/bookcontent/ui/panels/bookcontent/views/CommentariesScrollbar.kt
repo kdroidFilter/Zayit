@@ -74,11 +74,12 @@ fun CommentariesScrollbar(
         ) ?: return
     if (latched.hidden) return
 
-    // Thumb **position** uses Compose's native avg-item scroll geometry, not the
-    // pixel-space estimate. Internally consistent: both `scrollOffsetAvg` and
-    // `contentSizeAvg` scale with the same `avgItemSize`, so `position` reaches 0 at
-    // scroll-start and 1 at scroll-end — no boundary pinning required, no flicker.
-    val position = computeAvgScrollPosition(listState).coerceIn(0f, 1f)
+    // Thumb **position** in pixel-space: `cumPx[firstIdx] + innerFraction × itemModelHeight`
+    // divided by `totalContentPx − viewport`. Uses cumPx (exact modelled weight of each
+    // preceding item) plus a real-pixel fraction remapped to cumPx units, so the thumb
+    // advances proportionally to the modelled weight of the current item.
+    val position =
+        computeScrollPosition(listState, cumPx, itemCount, totalContentPx).coerceIn(0f, 1f)
 
     val listStateRef = rememberUpdatedState(listState)
     val cumPxRef = rememberUpdatedState(cumPx)
@@ -102,7 +103,13 @@ fun CommentariesScrollbar(
                     val maxScrollPx = (totalPx - viewport).coerceAtLeast(0f).toDouble()
                     val targetPx = (thumbRatio.toDouble() * maxScrollPx).coerceIn(0.0, totalPx.toDouble())
                     val targetIdx = findItemIndexForPixel(cum, total, targetPx).coerceIn(0, loadedCount - 1)
-                    ls.requestScrollToItem(targetIdx, 0)
+                    // Offset **inside** the item so the viewport top lands exactly on
+                    // `targetPx`. Without it, `requestScrollToItem(idx, 0)` pins the
+                    // item to the viewport top and a drag to `thumbRatio = 1.0` stops
+                    // short of the real end by `targetPx − cumPx[targetIdx]` pixels.
+                    val offsetWithinItemPx =
+                        (targetPx - cum[targetIdx].toDouble()).coerceAtLeast(0.0).toInt()
+                    ls.requestScrollToItem(targetIdx, offsetWithinItemPx)
                 }
                 Unit
             }
@@ -119,29 +126,34 @@ fun CommentariesScrollbar(
 }
 
 /**
- * Thumb position in `[0, 1]`, computed from `LazyListState` the same way the standard
- * Compose scrollbar adapter does: `(firstIdx × avgItemSize + firstOffset) / (totalCount
- * × avgItemSize − viewport)`. Reaches 0 exactly at scroll-start (firstIdx and offset
- * both 0); reaches 1 approximately at scroll-end as long as `avgItemSize` (sampled
- * over the currently visible items) stays representative of the items at the tail.
- * Approximate between boundaries — acceptable for a progress indicator. No boundary
- * pinning, no flicker.
+ * Pixel-space thumb position in `[0, 1]`.
+ *
+ * Formula: `scrolledPx = cumPx[firstIdx] + innerFraction × itemModelHeight`, divided
+ * by `totalContentPx − viewport`. `cumPx[firstIdx]` exactly sums the modelled weight
+ * of every item before the first visible one. `innerFraction = -offset / size` is the
+ * proportion scrolled **through** the current item on real rendered pixels; multiplied
+ * by `cumPx[firstIdx + 1] − cumPx[firstIdx]` it converts back into cumPx units so a
+ * tall commentary moves the thumb more than a short one while scrolling through it.
  */
-private fun computeAvgScrollPosition(listState: LazyListState): Float {
+private fun computeScrollPosition(
+    listState: LazyListState,
+    cumPx: LongArray,
+    itemCount: Int,
+    totalContentPx: Float,
+): Float {
+    if (itemCount == 0 || cumPx.size < itemCount + 1) return 0f
     val info = listState.layoutInfo
-    val total = info.totalItemsCount
-    if (total == 0) return 0f
-    // Guard against paging prepends/appends where `visibleItemsInfo` briefly contains
-    // indices beyond the paging snapshot size.
-    val visible = info.visibleItemsInfo.filter { it.index in 0 until total }
+    // Guard against transient states where `visibleItemsInfo` contains indices outside
+    // our domain.
+    val visible = info.visibleItemsInfo.filter { it.index in 0 until itemCount }
     if (visible.isEmpty()) return 0f
-    val avgItemSize = visible.sumOf { it.size }.toFloat() / visible.size
-    if (avgItemSize <= 0f) return 0f
+    val firstInfo = visible.first()
+    val firstIdx = firstInfo.index.coerceIn(0, itemCount - 1)
+    val firstSize = firstInfo.size.coerceAtLeast(1)
+    val innerFraction = ((-firstInfo.offset).toFloat() / firstSize).coerceIn(0f, 1f)
+    val itemModelHeight = (cumPx[firstIdx + 1] - cumPx[firstIdx]).toFloat().coerceAtLeast(0f)
+    val scrolledPx = cumPx[firstIdx].toFloat() + innerFraction * itemModelHeight
     val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
-    val contentSize = total * avgItemSize
-    val maxScroll = (contentSize - viewport).coerceAtLeast(1f)
-    val scrollOffset =
-        listState.firstVisibleItemIndex * avgItemSize +
-            listState.firstVisibleItemScrollOffset
-    return scrollOffset / maxScroll
+    val maxScroll = (totalContentPx - viewport).coerceAtLeast(1f)
+    return scrolledPx / maxScroll
 }

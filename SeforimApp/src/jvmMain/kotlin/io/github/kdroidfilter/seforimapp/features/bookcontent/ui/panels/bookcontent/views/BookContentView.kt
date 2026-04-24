@@ -35,9 +35,13 @@ import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -102,6 +106,7 @@ fun BookContentView(
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
     isSelected: Boolean = true,
+    bookCharCounts: IntArray? = null,
 ) {
     // Don't use the saved scroll position initially if we have an anchor
     // The restoration will be handled after pagination loads
@@ -110,6 +115,13 @@ fun BookContentView(
             initialFirstVisibleItemIndex = if (anchorId != -1L) 0 else scrollIndex,
             initialFirstVisibleItemScrollOffset = if (anchorId != -1L) 0 else scrollOffset,
         )
+
+    // Layout-width of the first rendered line's Text, captured once via `onTextLayout`
+    // from `result.layoutInput.constraints.maxWidth`. Includes all the nested padding
+    // already subtracted by Compose's layout pass, so we don't have to replicate the
+    // padding chain (outer Box .padding(bottom 8.dp) → LazyColumn .padding(end 16.dp) →
+    // Row .padding(horizontal 8.dp) → SelectionBar width + Spacer 8.dp).
+    var textLayoutWidthPx by remember(bookId) { mutableIntStateOf(0) }
 
     // Collect text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -667,7 +679,7 @@ fun BookContentView(
                                         }
                                     }
                                 }
-                                Box(modifier = Modifier.padding(vertical = 8.dp)) {
+                                Box(modifier = Modifier.padding(vertical = LineItemVerticalPaddingPerSide)) {
                                     LineItem(
                                         lineId = line.id,
                                         lineContent = line.content,
@@ -685,6 +697,11 @@ fun BookContentView(
                                             if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
                                         annotatedCache = stableAnnotatedCache,
                                         showDiacritics = showDiacritics,
+                                        onLayoutWidthMeasure = { width ->
+                                            if (textLayoutWidthPx == 0 && width > 0) {
+                                                textLayoutWidthPx = width
+                                            }
+                                        },
                                     )
                                 }
                             }
@@ -728,6 +745,54 @@ fun BookContentView(
                     }
                 }
             }
+
+            // Content-aware scrollbar overlay. Lives inside the same Box as the LazyColumn
+            // so it floats over the 16dp end gutter reserved by the column padding.
+            //
+            // All three pixel-space inputs are deterministic and exact: `capacity` is
+            // measured by `TextMeasurer` against the captured text-layout width, the
+            // font settings and font family — so it never drifts during scroll. The
+            // scrollbar itself no longer averages visible items' sizes: that was the
+            // root cause of the thumb resizing, since per-item padding and item-mix
+            // variation broke the `Σ size / Σ lineCount` assumption.
+            val density = LocalDensity.current
+            val textMeasurer = rememberTextMeasurer()
+            val lineHeightPx = with(density) { (textSize * lineHeight).sp.toPx() }
+            val paddingPerItemPx = with(density) { (LineItemVerticalPaddingPerSide * 2).toPx() }
+            val capacity by remember(textLayoutWidthPx, textSize, lineHeight, hebrewFontFamily) {
+                derivedStateOf {
+                    if (textLayoutWidthPx <= 0) {
+                        0
+                    } else {
+                        val result =
+                            textMeasurer.measure(
+                                text = AnnotatedString(CAPACITY_REFERENCE),
+                                style =
+                                    TextStyle(
+                                        fontSize = textSize.sp,
+                                        fontFamily = hebrewFontFamily,
+                                        lineHeight = (textSize * lineHeight).sp,
+                                    ),
+                                constraints = Constraints(maxWidth = textLayoutWidthPx),
+                            )
+                        (CAPACITY_REFERENCE.length / result.lineCount.coerceAtLeast(1))
+                            .coerceAtLeast(1)
+                    }
+                }
+            }
+            ContentScrollbar(
+                listState = listState,
+                lazyPagingItems = lazyPagingItems,
+                bookCharCounts = bookCharCounts,
+                capacity = capacity,
+                lineHeightPx = lineHeightPx,
+                paddingPerItemPx = paddingPerItemPx,
+                onScrollToLineIndex = { idx -> onEvent(BookContentEvent.ContentScrollToLineIndex(idx)) },
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 4.dp),
+            )
         }
 
         // Find-in-page bar overlay with result count badge (uniform style)
@@ -794,6 +859,13 @@ fun BookContentView(
         }
     }
 }
+
+// Per-side vertical padding applied by the `LineItem`'s wrapper Box (see the
+// `Box(modifier = Modifier.padding(vertical = LineItemVerticalPaddingPerSide))`
+// usage above). Exposed so the scrollbar can derive the exact per-item padding
+// contribution as `2 × LineItemVerticalPaddingPerSide`. Single source of truth:
+// changing this value updates both the layout and the scrollbar metrics.
+internal val LineItemVerticalPaddingPerSide = 8.dp
 
 // Data class for anchor information
 private data class AnchorData(
@@ -893,6 +965,7 @@ private fun LineItem(
     currentMatchStart: Int? = null,
     annotatedCache: StableAnnotatedCache? = null,
     showDiacritics: Boolean = true,
+    onLayoutWidthMeasure: (Int) -> Unit = {},
 ) {
     // Process content: remove diacritics if setting is disabled
     val processedContent =
@@ -990,6 +1063,10 @@ private fun LineItem(
         lineHeight = (baseTextSize * lineHeight).sp,
         modifier = textModifier,
         inlineContent = inlineImageContent,
+        onTextLayout = { result ->
+            val cw = result.layoutInput.constraints.maxWidth
+            if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
+        },
     )
 }
 

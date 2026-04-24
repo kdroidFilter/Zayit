@@ -24,11 +24,15 @@ import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
@@ -72,6 +76,13 @@ import seforimapp.seforimapp.generated.resources.*
 import kotlin.time.Duration.Companion.milliseconds
 
 private val SCROLL_DEBOUNCE = 100.milliseconds
+
+// Per-side vertical padding applied by the `CommentaryItem`'s Column (see the
+// `padding(horizontal = 16.dp, vertical = CommentaryItemVerticalPaddingPerSide)`
+// usage below). Exposed so the scrollbar can derive the exact per-item padding
+// contribution as `2 × CommentaryItemVerticalPaddingPerSide`. Single source of
+// truth: changing this value updates both the layout and the scrollbar metrics.
+private val CommentaryItemVerticalPaddingPerSide = 8.dp
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -499,6 +510,10 @@ private fun CommentatorsGrid(
                 onEvent(BookContentEvent.CommentaryColumnScrolled(commentatorId, i, o))
             },
             config = config,
+            selection = selection,
+            commentatorId = commentatorId,
+            getCharCountsForLine = providers.getCommentaryCharCountsForLine,
+            getCharCountsForLines = providers.getCommentaryCharCountsForLines,
         )
     }
 }
@@ -521,9 +536,69 @@ private fun CommentariesPagedList(
     initialOffset: Int,
     onScroll: (Int, Int) -> Unit,
     config: CommentariesLayoutConfig,
+    selection: LineSelection,
+    commentatorId: Long,
+    getCharCountsForLine: suspend (Long, Long) -> List<Int>,
+    getCharCountsForLines: suspend (List<Long>, Long) -> List<Int>,
 ) {
     val currentOnScroll by rememberUpdatedState(onScroll)
     val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
+
+    // Ordered char-count vector for every commentary matching this selection ×
+    // commentator (same filter + order as the pager). The scrollbar converts every
+    // value to `ceil(charCount / capacity) * capacity` to derive visual-line count.
+    // Sourced from the VM via `Providers` so failures fold to an empty list (no view
+    // crash) and the data path mirrors `bookCharCounts` for the main book scrollbar.
+    val getCharCountsForLineRef by rememberUpdatedState(getCharCountsForLine)
+    val getCharCountsForLinesRef by rememberUpdatedState(getCharCountsForLines)
+    val allCharCounts by produceState(initialValue = emptyList<Int>(), selection, commentatorId) {
+        value =
+            when (selection) {
+                is LineSelection.Single -> getCharCountsForLineRef(selection.lineId, commentatorId)
+                is LineSelection.Multi -> getCharCountsForLinesRef(selection.lineIds, commentatorId)
+            }
+    }
+
+    // Scrollbar metrics, all exact and deterministic:
+    //  - `textLayoutWidthPx` is the constraint Compose used to wrap each item's Text,
+    //    captured once from the first rendered item's `onTextLayout`. Automatically
+    //    reflects nested paddings without us having to know their values.
+    //  - `capacity` is computed by `TextMeasurer` against that width and the exact font
+    //    settings — deterministic, updates naturally on resize / font change, never
+    //    fluctuates during scroll.
+    //  - `lineHeightPx` comes from `fontSize × lineHeight multiplier`, converted via
+    //    density. This is the actual per-visual-line pixel cost Compose applies.
+    //  - `paddingPerItemPx` is the total vertical padding wrapping every `CommentaryItem`
+    //    (see `padding(vertical = 8.dp)` below → 16 dp).
+    var textLayoutWidthPx by remember(selection, commentatorId) { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    val textMeasurer = rememberTextMeasurer()
+    val lineHeightPx =
+        with(density) {
+            (config.textSizes.commentTextSize * config.textSizes.lineHeight).sp.toPx()
+        }
+    val paddingPerItemPx = with(density) { (CommentaryItemVerticalPaddingPerSide * 2).toPx() }
+    val capacity by remember(textLayoutWidthPx, config.textSizes, config.fontFamily) {
+        derivedStateOf {
+            if (textLayoutWidthPx <= 0) {
+                0
+            } else {
+                val reference = CAPACITY_REFERENCE
+                val result =
+                    textMeasurer.measure(
+                        text = AnnotatedString(reference),
+                        style =
+                            TextStyle(
+                                fontSize = config.textSizes.commentTextSize.sp,
+                                fontFamily = config.fontFamily,
+                                lineHeight = (config.textSizes.commentTextSize * config.textSizes.lineHeight).sp,
+                            ),
+                        constraints = Constraints(maxWidth = textLayoutWidthPx),
+                    )
+                (reference.length / result.lineCount.coerceAtLeast(1)).coerceAtLeast(1)
+            }
+        }
+    }
 
     val listState =
         rememberLazyListState(
@@ -551,30 +626,49 @@ private fun CommentariesPagedList(
     }
 
     SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-            items(
-                count = lazyPagingItems.itemCount,
-                key = { index -> lazyPagingItems[index]?.link?.id ?: index },
-            ) { index ->
-                lazyPagingItems[index]?.let { commentary ->
-                    CommentaryItem(
-                        linkId = commentary.link.id,
-                        targetText = commentary.targetText,
-                        textSizes = config.textSizes,
-                        fontFamily = config.fontFamily,
-                        boldScale = config.boldScale,
-                        highlightQuery = config.highlightQuery,
-                        showDiacritics = config.showDiacritics,
-                        onClick = { config.onCommentClick(commentary) },
-                    )
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().padding(end = 12.dp),
+            ) {
+                items(
+                    count = lazyPagingItems.itemCount,
+                    key = { index -> lazyPagingItems[index]?.link?.id ?: index },
+                ) { index ->
+                    lazyPagingItems[index]?.let { commentary ->
+                        CommentaryItem(
+                            linkId = commentary.link.id,
+                            targetText = commentary.targetText,
+                            textSizes = config.textSizes,
+                            fontFamily = config.fontFamily,
+                            boldScale = config.boldScale,
+                            highlightQuery = config.highlightQuery,
+                            showDiacritics = config.showDiacritics,
+                            onClick = { config.onCommentClick(commentary) },
+                            onLayoutWidthMeasure = { width ->
+                                if (textLayoutWidthPx == 0 && width > 0) {
+                                    textLayoutWidthPx = width
+                                }
+                            },
+                        )
+                    }
+                }
+
+                when (val loadState = lazyPagingItems.loadState.refresh) {
+                    is LoadState.Loading -> item { LoadingIndicator() }
+                    is LoadState.Error -> item { ErrorMessage(loadState.error) }
+                    else -> {}
                 }
             }
-
-            when (val loadState = lazyPagingItems.loadState.refresh) {
-                is LoadState.Loading -> item { LoadingIndicator() }
-                is LoadState.Error -> item { ErrorMessage(loadState.error) }
-                else -> {}
-            }
+            CommentariesScrollbar(
+                listState = listState,
+                lazyPagingItems = lazyPagingItems,
+                allCharCounts = allCharCounts,
+                capacity = capacity,
+                lineHeightPx = lineHeightPx,
+                paddingPerItemPx = paddingPerItemPx,
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 2.dp),
+            )
         }
     }
 }
@@ -587,14 +681,15 @@ private fun CommentaryItem(
     fontFamily: FontFamily,
     highlightQuery: String,
     showDiacritics: Boolean,
-    boldScale: Float = 1.0f,
     onClick: () -> Unit,
+    boldScale: Float = 1.0f,
+    onLayoutWidthMeasure: (Int) -> Unit = {},
 ) {
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = 16.dp, vertical = CommentaryItemVerticalPaddingPerSide)
                 .pointerInput(onClick) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
@@ -666,6 +761,10 @@ private fun CommentaryItem(
             fontFamily = fontFamily,
             lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp,
             inlineContent = inlineImageContent,
+            onTextLayout = { result ->
+                val cw = result.layoutInput.constraints.maxWidth
+                if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
+            },
         )
     }
 }

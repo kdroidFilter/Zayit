@@ -103,6 +103,14 @@ sealed interface BookContentEvent {
         val scrollOffset: Int,
     ) : BookContentEvent
 
+    /**
+     * Emitted when the content-aware scrollbar drag lands on a line that isn't currently
+     * loaded in the pager window. Triggers a pager rebuild anchored on the target line.
+     */
+    data class ContentScrollToLineIndex(
+        val lineIndex: Int,
+    ) : BookContentEvent
+
     data object NavigateToPreviousLine : BookContentEvent
 
     data object NavigateToNextLine : BookContentEvent

@@ -115,7 +115,6 @@ kotlin {
             implementation(libs.koalaplot.core)
 
             implementation(libs.confettikit)
-
         }
 
         commonTest.dependencies {

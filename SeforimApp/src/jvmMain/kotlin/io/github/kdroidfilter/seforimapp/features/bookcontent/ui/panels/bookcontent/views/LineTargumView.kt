@@ -21,11 +21,15 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
@@ -48,6 +52,9 @@ import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -65,12 +72,17 @@ import seforimapp.seforimapp.generated.resources.select_line_for_links
 import seforimapp.seforimapp.generated.resources.select_line_for_sources
 import seforimapp.seforimapp.generated.resources.sources
 
+// Per-side vertical padding applied by `LinkItem`'s Column. Exposed so the scrollbar
+// can derive the exact per-item padding contribution as `2 × LinkItemVerticalPaddingPerSide`.
+private val LinkItemVerticalPaddingPerSide = 8.dp
+
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 private fun SingleLineTargumView(
     selectedLine: Line?,
     buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
+    getLinkCharCountsForLine: suspend (Long, Long, ConnectionType) -> List<Int>,
     showDiacritics: Boolean,
     commentariesScrollIndex: Int = 0,
     commentariesScrollOffset: Int = 0,
@@ -224,68 +236,143 @@ private fun SingleLineTargumView(
                                 .collect { (index, offset) -> currentOnScroll(index, offset) }
                         }
 
-                        SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                state = listState,
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                sourceSections.forEach { section ->
-                                    item(key = "header-${section.bookId}") {
-                                        Text(
-                                            text = section.title,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = (commentTextSize * 1.1f).sp,
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier.fillMaxWidth(),
-                                        )
+                        // Build the flat char-count vector for the scrollbar in LazyColumn
+                        // display order: for each section, one zero entry (the bold title
+                        // header) followed by the section's ordered per-link char counts.
+                        // The per-section vector is fetched once per (lineId, bookId, type);
+                        // failures fold to an empty vector for that section.
+                        val sectionBookIds =
+                            remember(sourceSections) { sourceSections.map { it.bookId } }
+                        val getLinkCharCountsRef by rememberUpdatedState(getLinkCharCountsForLine)
+                        val allCharCounts by produceState(
+                            initialValue = emptyList<Int>(),
+                            selectedLine.id,
+                            sectionBookIds,
+                            availabilityType,
+                        ) {
+                            value =
+                                runSuspendCatching {
+                                    coroutineScope {
+                                        sectionBookIds
+                                            .map { bookId ->
+                                                async {
+                                                    getLinkCharCountsRef(
+                                                        selectedLine.id,
+                                                        bookId,
+                                                        availabilityType,
+                                                    )
+                                                }
+                                            }.awaitAll()
                                     }
+                                }.getOrElse { sectionBookIds.map { emptyList() } }
+                                    .flatMap { listOf(0) + it }
+                        }
 
-                                    items(
-                                        count = section.items.itemCount,
-                                        key = { index ->
-                                            section.items
-                                                .peek(index)
-                                                ?.link
-                                                ?.id ?: "source-${section.bookId}-$index"
-                                        },
-                                    ) { index ->
-                                        section.items[index]?.let { item ->
-                                            LinkItem(
-                                                linkId = item.link.id,
-                                                targetText = item.targetText,
-                                                commentTextSize = commentTextSize,
-                                                lineHeight = lineHeight,
-                                                fontFamily = targumFontFamily,
-                                                boldScale = boldScaleForPlatform,
-                                                highlightQuery = highlightQuery,
-                                                onClick = { onLinkClick(item) },
-                                                showDiacritics = showDiacritics,
+                        val density = LocalDensity.current
+                        val textMeasurer = rememberTextMeasurer()
+                        var textLayoutWidthPx by remember(selectedLine.id) { mutableIntStateOf(0) }
+                        val lineHeightPx =
+                            with(density) { (commentTextSize * lineHeight).sp.toPx() }
+                        val paddingPerItemPx =
+                            with(density) { (LinkItemVerticalPaddingPerSide * 2).toPx() }
+                        val capacity by remember(textLayoutWidthPx, commentTextSize, lineHeight, targumFontFamily) {
+                            derivedStateOf {
+                                if (textLayoutWidthPx <= 0) {
+                                    0
+                                } else {
+                                    val result =
+                                        textMeasurer.measure(
+                                            text = AnnotatedString(CAPACITY_REFERENCE),
+                                            style =
+                                                TextStyle(
+                                                    fontSize = commentTextSize.sp,
+                                                    fontFamily = targumFontFamily,
+                                                    lineHeight = (commentTextSize * lineHeight).sp,
+                                                ),
+                                            constraints = Constraints(maxWidth = textLayoutWidthPx),
+                                        )
+                                    (CAPACITY_REFERENCE.length / result.lineCount.coerceAtLeast(1)).coerceAtLeast(1)
+                                }
+                            }
+                        }
+
+                        SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize().padding(end = 12.dp),
+                                    state = listState,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    sourceSections.forEach { section ->
+                                        item(key = "header-${section.bookId}") {
+                                            Text(
+                                                text = section.title,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = (commentTextSize * 1.1f).sp,
+                                                textAlign = TextAlign.Center,
+                                                modifier = Modifier.fillMaxWidth(),
                                             )
                                         }
-                                    }
 
-                                    when (val state = section.items.loadState.append) {
-                                        is LoadState.Error ->
-                                            item(key = "append-error-${section.bookId}") {
-                                                Box(
-                                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                                    contentAlignment = Alignment.Center,
-                                                ) {
-                                                    Text(text = state.error.message ?: "Error loading more")
-                                                }
+                                        items(
+                                            count = section.items.itemCount,
+                                            key = { index ->
+                                                section.items
+                                                    .peek(index)
+                                                    ?.link
+                                                    ?.id ?: "source-${section.bookId}-$index"
+                                            },
+                                        ) { index ->
+                                            section.items[index]?.let { item ->
+                                                LinkItem(
+                                                    linkId = item.link.id,
+                                                    targetText = item.targetText,
+                                                    commentTextSize = commentTextSize,
+                                                    lineHeight = lineHeight,
+                                                    fontFamily = targumFontFamily,
+                                                    boldScale = boldScaleForPlatform,
+                                                    highlightQuery = highlightQuery,
+                                                    onClick = { onLinkClick(item) },
+                                                    showDiacritics = showDiacritics,
+                                                    onLayoutWidthMeasure = { width ->
+                                                        if (textLayoutWidthPx == 0 && width > 0) {
+                                                            textLayoutWidthPx = width
+                                                        }
+                                                    },
+                                                )
                                             }
+                                        }
 
-                                        is LoadState.Loading ->
-                                            item(key = "append-loading-${section.bookId}") {
-                                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                                    CircularProgressIndicator()
+                                        when (val state = section.items.loadState.append) {
+                                            is LoadState.Error ->
+                                                item(key = "append-error-${section.bookId}") {
+                                                    Box(
+                                                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                                        contentAlignment = Alignment.Center,
+                                                    ) {
+                                                        Text(text = state.error.message ?: "Error loading more")
+                                                    }
                                                 }
-                                            }
 
-                                        else -> {}
+                                            is LoadState.Loading ->
+                                                item(key = "append-loading-${section.bookId}") {
+                                                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                                        CircularProgressIndicator()
+                                                    }
+                                                }
+
+                                            else -> {}
+                                        }
                                     }
                                 }
+                                TargumScrollbar(
+                                    listState = listState,
+                                    allCharCounts = allCharCounts,
+                                    capacity = capacity,
+                                    lineHeightPx = lineHeightPx,
+                                    paddingPerItemPx = paddingPerItemPx,
+                                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 2.dp),
+                                )
                             }
                         }
                     }
@@ -394,6 +481,7 @@ fun LineTargumView(
             selectedLine = contentState.primaryLine,
             buildLinksPagerFor = buildPagerFor,
             getAvailableLinksForLine = getAvailableForLine,
+            getLinkCharCountsForLine = providers.getLinkCharCountsForLine,
             commentariesScrollIndex = contentState.commentariesScrollIndex,
             commentariesScrollOffset = contentState.commentariesScrollOffset,
             initiallySelectedSourceIds = initiallySelectedIds,
@@ -543,78 +631,148 @@ private fun MultiLineTargumView(
                         }
                 }
 
-                SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        state = listState,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        sourceSections.forEach { section ->
-                            item(key = "header-${section.bookId}") {
-                                Text(
-                                    text = section.title,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = (commentTextSize * 1.1f).sp,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
+                val sectionBookIds =
+                    remember(sourceSections) { sourceSections.map { it.bookId } }
+                val getLinkCharCountsRef by rememberUpdatedState(providers.getLinkCharCountsForLines)
+                val allCharCounts by produceState(
+                    initialValue = emptyList<Int>(),
+                    selectedLineIds,
+                    sectionBookIds,
+                    availabilityType,
+                ) {
+                    value =
+                        runSuspendCatching {
+                            coroutineScope {
+                                sectionBookIds
+                                    .map { bookId ->
+                                        async {
+                                            getLinkCharCountsRef(
+                                                selectedLineIds,
+                                                bookId,
+                                                availabilityType,
+                                            )
+                                        }
+                                    }.awaitAll()
                             }
+                        }.getOrElse { sectionBookIds.map { emptyList() } }
+                            .flatMap { listOf(0) + it }
+                }
 
-                            items(
-                                count = section.items.itemCount,
-                                key = { index ->
-                                    section.items
-                                        .peek(index)
-                                        ?.link
-                                        ?.id ?: "multi-source-${section.bookId}-$index"
-                                },
-                            ) { index ->
-                                section.items[index]?.let { item ->
-                                    LinkItem(
-                                        linkId = item.link.id,
-                                        targetText = item.targetText,
-                                        commentTextSize = commentTextSize,
-                                        lineHeight = lineHeight,
-                                        fontFamily = targumFontFamily,
-                                        boldScale = boldScaleForPlatform,
-                                        highlightQuery = highlightQuery,
-                                        onClick = {
-                                            val mods = windowInfo.keyboardModifiers
-                                            if (mods.isCtrlPressed || mods.isMetaPressed) {
-                                                onEvent(
-                                                    BookContentEvent.OpenCommentaryTarget(
-                                                        bookId = item.link.targetBookId,
-                                                        lineId = item.link.targetLineId,
-                                                    ),
-                                                )
-                                            }
-                                        },
-                                        showDiacritics = showDiacritics,
+                val density = LocalDensity.current
+                val textMeasurer = rememberTextMeasurer()
+                var textLayoutWidthPx by remember(selectedLineIds) { mutableIntStateOf(0) }
+                val lineHeightPx =
+                    with(density) { (commentTextSize * lineHeight).sp.toPx() }
+                val paddingPerItemPx =
+                    with(density) { (LinkItemVerticalPaddingPerSide * 2).toPx() }
+                val capacity by remember(textLayoutWidthPx, commentTextSize, lineHeight, targumFontFamily) {
+                    derivedStateOf {
+                        if (textLayoutWidthPx <= 0) {
+                            0
+                        } else {
+                            val result =
+                                textMeasurer.measure(
+                                    text = AnnotatedString(CAPACITY_REFERENCE),
+                                    style =
+                                        TextStyle(
+                                            fontSize = commentTextSize.sp,
+                                            fontFamily = targumFontFamily,
+                                            lineHeight = (commentTextSize * lineHeight).sp,
+                                        ),
+                                    constraints = Constraints(maxWidth = textLayoutWidthPx),
+                                )
+                            (CAPACITY_REFERENCE.length / result.lineCount.coerceAtLeast(1)).coerceAtLeast(1)
+                        }
+                    }
+                }
+
+                SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().padding(end = 12.dp),
+                            state = listState,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            sourceSections.forEach { section ->
+                                item(key = "header-${section.bookId}") {
+                                    Text(
+                                        text = section.title,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = (commentTextSize * 1.1f).sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
-                            }
 
-                            when (val state = section.items.loadState.append) {
-                                is LoadState.Error ->
-                                    item(key = "append-error-${section.bookId}") {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Text(text = state.error.message ?: "Error loading more")
-                                        }
+                                items(
+                                    count = section.items.itemCount,
+                                    key = { index ->
+                                        section.items
+                                            .peek(index)
+                                            ?.link
+                                            ?.id ?: "multi-source-${section.bookId}-$index"
+                                    },
+                                ) { index ->
+                                    section.items[index]?.let { item ->
+                                        LinkItem(
+                                            linkId = item.link.id,
+                                            targetText = item.targetText,
+                                            commentTextSize = commentTextSize,
+                                            lineHeight = lineHeight,
+                                            fontFamily = targumFontFamily,
+                                            boldScale = boldScaleForPlatform,
+                                            highlightQuery = highlightQuery,
+                                            onClick = {
+                                                val mods = windowInfo.keyboardModifiers
+                                                if (mods.isCtrlPressed || mods.isMetaPressed) {
+                                                    onEvent(
+                                                        BookContentEvent.OpenCommentaryTarget(
+                                                            bookId = item.link.targetBookId,
+                                                            lineId = item.link.targetLineId,
+                                                        ),
+                                                    )
+                                                }
+                                            },
+                                            showDiacritics = showDiacritics,
+                                            onLayoutWidthMeasure = { width ->
+                                                if (textLayoutWidthPx == 0 && width > 0) {
+                                                    textLayoutWidthPx = width
+                                                }
+                                            },
+                                        )
                                     }
+                                }
 
-                                is LoadState.Loading ->
-                                    item(key = "append-loading-${section.bookId}") {
-                                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                            CircularProgressIndicator()
+                                when (val state = section.items.loadState.append) {
+                                    is LoadState.Error ->
+                                        item(key = "append-error-${section.bookId}") {
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Text(text = state.error.message ?: "Error loading more")
+                                            }
                                         }
-                                    }
 
-                                else -> {}
+                                    is LoadState.Loading ->
+                                        item(key = "append-loading-${section.bookId}") {
+                                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                                CircularProgressIndicator()
+                                            }
+                                        }
+
+                                    else -> {}
+                                }
                             }
                         }
+                        TargumScrollbar(
+                            listState = listState,
+                            allCharCounts = allCharCounts,
+                            capacity = capacity,
+                            lineHeightPx = lineHeightPx,
+                            paddingPerItemPx = paddingPerItemPx,
+                            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 2.dp),
+                        )
                     }
                 }
             }
@@ -644,12 +802,13 @@ private fun LinkItem(
     onClick: () -> Unit,
     showDiacritics: Boolean,
     boldScale: Float = 1.0f,
+    onLayoutWidthMeasure: (Int) -> Unit = {},
 ) {
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp, horizontal = 16.dp)
+                .padding(vertical = LinkItemVerticalPaddingPerSide, horizontal = 16.dp)
                 .pointerInput(linkId) {
                     detectTapGestures(onTap = { onClick() })
                 },
@@ -705,6 +864,10 @@ private fun LinkItem(
             fontFamily = fontFamily,
             lineHeight = (commentTextSize * lineHeight).sp,
             inlineContent = inlineImageContent,
+            onTextLayout = { result ->
+                val cw = result.layoutInput.constraints.maxWidth
+                if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
+            },
         )
     }
 }

@@ -209,9 +209,17 @@ private fun computeBookPosition(
     val info = listState.layoutInfo
     // Guard against paging prepends/appends where `visibleItemsInfo` briefly contains
     // indices beyond the snapshot size — `peek()` would throw `IndexOutOfBoundsException`.
-    val visible = info.visibleItemsInfo.filter { it.index in 0 until itemCount }
-    if (visible.isEmpty()) return 0f
-    val firstInfo = visible.first()
+    // Single-pass scan to avoid allocating a filtered list on every scroll frame (60 Hz).
+    var firstInfo: androidx.compose.foundation.lazy.LazyListItemInfo? = null
+    val visibleList = info.visibleItemsInfo
+    for (i in visibleList.indices) {
+        val item = visibleList[i]
+        if (item.index in 0 until itemCount) {
+            firstInfo = item
+            break
+        }
+    }
+    if (firstInfo == null) return 0f
     val firstLine = lazyPagingItems.peek(firstInfo.index) ?: return 0f
     val firstLineIdx = firstLine.lineIndex.coerceIn(0, bookLineCount - 1)
     val firstSize = firstInfo.size.coerceAtLeast(1)

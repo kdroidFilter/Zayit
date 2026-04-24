@@ -144,10 +144,17 @@ private fun computeScrollPosition(
     if (itemCount == 0 || cumPx.size < itemCount + 1) return 0f
     val info = listState.layoutInfo
     // Guard against transient states where `visibleItemsInfo` contains indices outside
-    // our domain.
-    val visible = info.visibleItemsInfo.filter { it.index in 0 until itemCount }
-    if (visible.isEmpty()) return 0f
-    val firstInfo = visible.first()
+    // our domain. Single-pass scan avoids a List allocation per scroll frame (60 Hz).
+    var firstInfo: androidx.compose.foundation.lazy.LazyListItemInfo? = null
+    val visibleList = info.visibleItemsInfo
+    for (i in visibleList.indices) {
+        val item = visibleList[i]
+        if (item.index in 0 until itemCount) {
+            firstInfo = item
+            break
+        }
+    }
+    if (firstInfo == null) return 0f
     val firstIdx = firstInfo.index.coerceIn(0, itemCount - 1)
     val firstSize = firstInfo.size.coerceAtLeast(1)
     val innerFraction = ((-firstInfo.offset).toFloat() / firstSize).coerceIn(0f, 1f)

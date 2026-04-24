@@ -18,9 +18,6 @@ import kotlinx.coroutines.ensureActive
 class CategoryNavigationUseCase(
     private val repository: SeforimRepository,
 ) {
-    // Cache for category lookups
-    private val categoryCache: MutableMap<Long, Category> = mutableMapOf()
-
     // Cache for category paths
     private val categoryPathCache: MutableMap<Long, List<Category>> = mutableMapOf()
 
@@ -43,10 +40,7 @@ class CategoryNavigationUseCase(
 
         while (currentId != null) {
             currentCoroutineContext().ensureActive()
-            val cat =
-                categoryCache[currentId]
-                    ?: repository.getCategory(currentId)?.also { categoryCache[currentId] = it }
-                    ?: break
+            val cat = repository.getCategory(currentId) ?: break
             path += cat
             currentId = cat.parentId
         }
@@ -78,21 +72,16 @@ class CategoryNavigationUseCase(
     }
 
     /**
-     * Gets a category by ID, using cache.
-     *
-     * @param categoryId The category ID
-     * @return The category, or null if not found
+     * Gets a category by ID. The repository already memoizes category rows, so this
+     * is a thin passthrough kept for call-site ergonomics.
      */
-    suspend fun getCategory(categoryId: Long): Category? {
-        categoryCache[categoryId]?.let { return it }
-        return repository.getCategory(categoryId)?.also { categoryCache[categoryId] = it }
-    }
+    suspend fun getCategory(categoryId: Long): Category? = repository.getCategory(categoryId)
 
     /**
-     * Clears all caches. Call this when category data may have changed.
+     * Clears local path / books caches. Call this when category data may have changed.
+     * (The repository-level category cache is authoritative and cleared independently.)
      */
     fun clearCache() {
-        categoryCache.clear()
         categoryPathCache.clear()
         booksUnderCategoryCache.clear()
     }

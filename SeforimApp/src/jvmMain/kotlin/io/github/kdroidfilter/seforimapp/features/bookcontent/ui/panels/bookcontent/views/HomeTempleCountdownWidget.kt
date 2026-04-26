@@ -17,7 +17,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.kosherjava.zmanim.ComplexZmanimCalendar
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
 import com.kosherjava.zmanim.util.GeoLocation
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -43,6 +45,7 @@ import seforimapp.seforimapp.generated.resources.home_temple_subtitle
 import seforimapp.seforimapp.generated.resources.home_temple_title
 import seforimapp.seforimapp.generated.resources.home_temple_years
 import seforimapp.seforimapp.generated.resources.temple_jerusalem_in_fire_medium
+import java.util.Calendar
 import java.util.TimeZone
 
 @Immutable
@@ -52,50 +55,54 @@ private data class TempleCountdownData(
     val days: Int,
 )
 
+private const val DESTRUCTION_YEAR = 3830
+private const val DESTRUCTION_DAY = 9
+private val DESTRUCTION_MONTH = JewishCalendar.AV
+private const val REFRESH_INTERVAL_MS = 60_000L
+
+private val JERUSALEM =
+    GeoLocation(
+        "Jerusalem",
+        31.7683,
+        35.2137,
+        800.0,
+        TimeZone.getTimeZone("Asia/Jerusalem"),
+    )
+
 private fun computeTempleCountdown(): TempleCountdownData {
-    val currentDate = JewishCalendar()
-    val destructionDate = JewishCalendar(3830, JewishCalendar.AV, 9)
-
-    var years = currentDate.jewishYear - destructionDate.jewishYear
-    var months = currentDate.jewishMonth - destructionDate.jewishMonth
-    var daysOfMonth = currentDate.jewishDayOfMonth - destructionDate.jewishDayOfMonth
-
-    val jerusalemLocation =
-        GeoLocation(
-            "Jerusalem",
-            31.7683,
-            35.2137,
-            800.0,
-            TimeZone.getTimeZone("Asia/Jerusalem"),
-        )
-    val zmanimCalendar = ComplexZmanimCalendar(jerusalemLocation)
-    val todaySunset = zmanimCalendar.sunset
-    val currentTimeMillis = System.currentTimeMillis()
-    val isSunsetPassed = todaySunset != null && todaySunset.time < currentTimeMillis
-
-    if (isSunsetPassed) {
-        val isLastDayOfMonth = currentDate.daysInJewishMonth == currentDate.jewishDayOfMonth
-        if (isLastDayOfMonth) {
-            months += 1
-            daysOfMonth = 1
-        } else {
-            daysOfMonth += 1
-        }
+    // After sunset in Jerusalem the Hebrew day rolls over — advance the Gregorian date by one day
+    // so JewishCalendar resolves to the new Hebrew day instead of yesterday's.
+    val now = Calendar.getInstance()
+    val sunset = ComplexZmanimCalendar(JERUSALEM).sunset
+    if (sunset != null && sunset.time <= now.timeInMillis) {
+        now.add(Calendar.DAY_OF_MONTH, 1)
     }
+    val raw = JewishCalendar(now.time)
+    val today = JewishCalendar(raw.jewishYear, raw.jewishMonth, raw.jewishDayOfMonth)
 
-    if (daysOfMonth < 0) {
-        months -= 1
-        val tempDate = JewishCalendar(currentDate.gregorianCalendar.time)
-        tempDate.jewishMonth -= 1
-        daysOfMonth += tempDate.daysInJewishMonth
-    }
-
-    if (months < 0) {
+    // Most recent Av-9 anniversary that is strictly before today. Using `>=` (rather than `>`)
+    // means the anniversary day itself is reported as "almost a full year" instead of "X years
+    // and 0 days", keeping the display free of 0-day artifacts.
+    var years = today.jewishYear - DESTRUCTION_YEAR
+    var anniversary = JewishCalendar(today.jewishYear, DESTRUCTION_MONTH, DESTRUCTION_DAY)
+    if (anniversary.absDate >= today.absDate) {
         years -= 1
-        months += 12
+        anniversary = JewishCalendar(today.jewishYear - 1, DESTRUCTION_MONTH, DESTRUCTION_DAY)
     }
 
-    return TempleCountdownData(years, months, daysOfMonth)
+    // Walk forward by full Hebrew months. Same `>=` rationale: stop just before reaching today.
+    var months = 0
+    var cursor = anniversary
+    while (true) {
+        val next = cursor.clone() as JewishCalendar
+        next.forward(Calendar.MONTH, 1)
+        if (next.absDate >= today.absDate) break
+        cursor = next
+        months += 1
+    }
+
+    val days = today.absDate - cursor.absDate
+    return TempleCountdownData(years, months, days)
 }
 
 private val ACCENT_START = Color(0xFFFF6B35)
@@ -107,7 +114,12 @@ fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
     // Always use dark border — the image background is always dark
     val borderColor = JewelTheme.globalColors.borders.disabled
 
-    val countdownData = remember { computeTempleCountdown() }
+    val countdownData by produceState(initialValue = computeTempleCountdown()) {
+        while (true) {
+            delay(REFRESH_INTERVAL_MS)
+            value = computeTempleCountdown()
+        }
+    }
 
     val countdownItems =
         listOf(

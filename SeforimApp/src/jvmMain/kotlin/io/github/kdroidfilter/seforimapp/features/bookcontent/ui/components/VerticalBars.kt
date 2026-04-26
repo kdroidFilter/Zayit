@@ -79,6 +79,7 @@ fun EndVerticalBar(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     showDiacritics: Boolean,
+    forceShowZoom: Boolean = false,
 ) {
     // Collect current text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
@@ -90,6 +91,7 @@ fun EndVerticalBar(
 
     val selectedBook = uiState.navigation.selectedBook
     val noBookSelected = selectedBook == null
+    val showZoom = forceShowZoom || !noBookSelected
     val selectedLine = uiState.content.primaryLine
     val providers = uiState.providers
 
@@ -127,8 +129,8 @@ fun EndVerticalBar(
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
         topContent = {
-            // Hide zoom and diacritics buttons on Home (no book selected)
-            if (!noBookSelected) {
+            // Zoom buttons: shown when a book is selected OR when forced (e.g. search screen)
+            if (showZoom) {
                 // Platform-specific shortcut hint for Zoom In
                 SelectableIconButtonWithToolip(
                     toolTipText =
@@ -160,8 +162,10 @@ fun EndVerticalBar(
                     label = stringResource(Res.string.zoom_out),
                     shortcutHint = if (PlatformInfo.isMacOS) "-⌘" else "-Ctrl",
                 )
+            }
 
-                // Diacritics toggle button - only show when book has nekudot or teamim
+            // Diacritics toggle button - only when a book is selected and has nekudot/teamim
+            if (!noBookSelected) {
                 val bookHasDiacritics = selectedBook.hasNekudot || selectedBook.hasTeamim
                 if (bookHasDiacritics) {
                     SelectableIconButtonWithToolip(

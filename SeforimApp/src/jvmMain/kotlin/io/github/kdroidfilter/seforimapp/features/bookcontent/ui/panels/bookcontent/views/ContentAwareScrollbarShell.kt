@@ -128,12 +128,14 @@ internal fun rememberScrollbarVisuals(
     val isActive = isOpaque || isScrolling || isHovered
 
     var showScrollbar by remember { mutableStateOf(isOpaque) }
-    LaunchedEffect(isActive) {
+    LaunchedEffect(isActive, isOpaque) {
         if (isActive) {
             showScrollbar = true
-        } else {
-            delay(visibility.lingerDuration)
-            showScrollbar = false
+        } else if (!isOpaque) {
+            delay(visibility.lingerDuration.inWholeMilliseconds)
+            if (!isActive) {
+                showScrollbar = false
+            }
         }
     }
 
@@ -149,11 +151,17 @@ internal fun rememberScrollbarVisuals(
     // the `WhenScrolling` style ships `thumbBackground` at full transparency.
     val targetThumbColor =
         if (isOpaque) {
-            if (isHovered || dragRatio != null) style.colors.thumbOpaqueBackgroundHovered
-            else style.colors.thumbOpaqueBackground
+            if (isHovered || dragRatio != null) {
+                style.colors.thumbOpaqueBackgroundHovered
+            } else {
+                style.colors.thumbOpaqueBackground
+            }
         } else {
-            if (showScrollbar) style.colors.thumbBackgroundActive
-            else style.colors.thumbBackground
+            if (showScrollbar) {
+                style.colors.thumbBackgroundActive
+            } else {
+                style.colors.thumbBackground
+            }
         }
     val thumbColor by animateColorAsState(
         targetValue = targetThumbColor,

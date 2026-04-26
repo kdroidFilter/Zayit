@@ -998,6 +998,7 @@ internal data class CommentariesLayoutConfig(
     val selectedCommentators: ImmutableList<String>,
     val titleToIdMap: Map<String, Long>,
     val onCommentClick: (CommentaryWithText) -> Unit,
+    val onOpenCommentatorBook: (Long) -> Unit,
     val textSizes: AnimatedTextSizes,
     val fontFamily: FontFamily,
     val boldScale: Float,
@@ -1045,6 +1046,9 @@ private fun rememberCommentariesLayoutConfig(
                         ),
                     )
                 }
+            },
+            onOpenCommentatorBook = { bookId ->
+                onEvent(BookContentEvent.OpenBookByIdInNewTab(bookId))
             },
             textSizes = textSizes,
             fontFamily = commentaryFontFamily,

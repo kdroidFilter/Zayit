@@ -5,6 +5,9 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -32,9 +35,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -285,6 +291,7 @@ private fun CommentatorPageGrid(
                         name = name,
                         commentTextSize = config.textSizes.commentTextSize,
                         isRecentlyAdded = name == recentlyAdded,
+                        onTitleClick = { config.onOpenCommentatorBook(id) },
                         modifier = Modifier.weight(1f).fillMaxHeight().padding(horizontal = 4.dp),
                     ) {
                         column(id)
@@ -300,6 +307,7 @@ private fun CommentatorCell(
     name: String,
     commentTextSize: Float,
     isRecentlyAdded: Boolean,
+    onTitleClick: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -308,6 +316,7 @@ private fun CommentatorCell(
             commentator = name,
             commentTextSize = commentTextSize,
             isRecentlyAdded = isRecentlyAdded,
+            onClick = onTitleClick,
         )
         content()
     }
@@ -361,6 +370,7 @@ private fun CommentatorHeader(
     commentator: String,
     commentTextSize: Float,
     isRecentlyAdded: Boolean = false,
+    onClick: () -> Unit = {},
 ) {
     // Progressive underline: the stroke grows from the reading-side edge (LTR → left to
     // right, RTL → right to left) while fading in, holds briefly, then fades out.
@@ -379,12 +389,20 @@ private fun CommentatorHeader(
     }
     val highlightColor = JewelTheme.globalColors.outlines.focused
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
 
     Box(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
+                .hoverable(interactionSource)
+                .pointerHoverIcon(PointerIcon.Hand)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick,
+                ).padding(vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -392,6 +410,7 @@ private fun CommentatorHeader(
             fontWeight = FontWeight.Bold,
             fontSize = (commentTextSize * 1.1f).sp,
             textAlign = TextAlign.Center,
+            textDecoration = if (isHovered) TextDecoration.Underline else TextDecoration.None,
             modifier =
                 Modifier.drawWithContent {
                     drawContent()

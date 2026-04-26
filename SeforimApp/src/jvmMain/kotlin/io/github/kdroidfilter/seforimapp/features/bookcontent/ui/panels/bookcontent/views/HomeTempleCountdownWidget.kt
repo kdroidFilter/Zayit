@@ -58,7 +58,12 @@ private data class TempleCountdownData(
 private const val DESTRUCTION_YEAR = 3830
 private const val DESTRUCTION_DAY = 9
 private val DESTRUCTION_MONTH = JewishCalendar.AV
-private const val REFRESH_INTERVAL_MS = 60_000L
+
+// Fallback if sunset is null (polar regions) or computation fails — keeps the loop alive.
+private const val FALLBACK_REFRESH_MS = 60L * 60 * 1000
+
+// Small buffer past sunset so JewishCalendar definitely resolves the new Hebrew day.
+private const val POST_SUNSET_BUFFER_MS = 1_000L
 
 private val JERUSALEM =
     GeoLocation(
@@ -105,6 +110,18 @@ private fun computeTempleCountdown(): TempleCountdownData {
     return TempleCountdownData(years, months, days)
 }
 
+// The displayed value only changes at Jerusalem sunset, so wake up exactly then.
+private fun millisUntilNextJerusalemSunset(nowMillis: Long): Long {
+    val cal = ComplexZmanimCalendar(JERUSALEM)
+    var sunset = cal.sunset
+    if (sunset == null || sunset.time <= nowMillis) {
+        cal.calendar.add(Calendar.DAY_OF_MONTH, 1)
+        sunset = cal.sunset
+    }
+    val target = sunset?.time ?: return FALLBACK_REFRESH_MS
+    return (target - nowMillis + POST_SUNSET_BUFFER_MS).coerceAtLeast(POST_SUNSET_BUFFER_MS)
+}
+
 private val ACCENT_START = Color(0xFFFF6B35)
 private val ACCENT_END = Color(0xFFFFAA70)
 
@@ -116,7 +133,7 @@ fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
 
     val countdownData by produceState(initialValue = computeTempleCountdown()) {
         while (true) {
-            delay(REFRESH_INTERVAL_MS)
+            delay(millisUntilNextJerusalemSunset(System.currentTimeMillis()))
             value = computeTempleCountdown()
         }
     }

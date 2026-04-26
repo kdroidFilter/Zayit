@@ -302,12 +302,7 @@ fun SearchResultInBookShellMvi(
             showSplitter = bookUiState.navigation.isVisible,
         )
 
-        EndVerticalBar(
-            uiState = bookUiState,
-            onEvent = onEvent,
-            showDiacritics = showDiacritics,
-            forceShowZoom = true,
-        )
+        EndVerticalBar(uiState = bookUiState, onEvent = onEvent, showDiacritics = showDiacritics)
     }
 }
 

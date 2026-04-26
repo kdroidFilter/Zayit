@@ -216,6 +216,7 @@ private fun CommentariesContent(
         splitPaneState = splitState.asStable(),
         firstMinSize = if (isCommentatorsListVisible) 150f else 0f,
         showSplitter = isCommentatorsListVisible,
+        dividerVisibleInIslands = true,
         firstContent = {
             if (isCommentatorsListVisible) {
                 CommentatorsList(
@@ -321,6 +322,7 @@ private fun MultiLineCommentariesContent(
         splitPaneState = splitState.asStable(),
         firstMinSize = if (isCommentatorsListVisible) 150f else 0f,
         showSplitter = isCommentatorsListVisible,
+        dividerVisibleInIslands = true,
         firstContent = {
             if (isCommentatorsListVisible) {
                 CommentatorsList(
@@ -998,6 +1000,7 @@ internal data class CommentariesLayoutConfig(
     val selectedCommentators: ImmutableList<String>,
     val titleToIdMap: Map<String, Long>,
     val onCommentClick: (CommentaryWithText) -> Unit,
+    val onOpenCommentatorBook: (Long) -> Unit,
     val textSizes: AnimatedTextSizes,
     val fontFamily: FontFamily,
     val boldScale: Float,
@@ -1045,6 +1048,9 @@ private fun rememberCommentariesLayoutConfig(
                         ),
                     )
                 }
+            },
+            onOpenCommentatorBook = { bookId ->
+                onEvent(BookContentEvent.OpenBookByIdInNewTab(bookId))
             },
             textSizes = textSizes,
             fontFamily = commentaryFontFamily,

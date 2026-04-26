@@ -435,6 +435,13 @@ class BookContentViewModel(
                     }
                 }
 
+                is BookContentEvent.OpenBookByIdInNewTab -> {
+                    val book = repository.getBookCore(event.bookId)
+                    if (book != null) {
+                        openBookInNewTab(book)
+                    }
+                }
+
                 BookContentEvent.NavigateToPreviousLine -> {
                     val line = contentUseCase.navigateToPreviousLine()
                     if (line != null) {

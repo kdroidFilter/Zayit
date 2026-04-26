@@ -255,6 +255,32 @@
         },
         {
             "type": "org.apache.lucene.util.automaton.Transition"
+        },
+        {
+            "type": "com.github.luben.zstd.ZstdInputStreamNoFinalizer",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "dstPos",
+                    "jniAccessible": true
+                },
+                {
+                    "name": "srcPos",
+                    "jniAccessible": true
+                }
+            ]
+        },
+        {
+            "type": "org.freedesktop.dbus.connections.impl.DBusConnection",
+            "methods": [
+                {
+                    "name": "addGenericSigHandler",
+                    "parameterTypes": [
+                        "org.freedesktop.dbus.matchrules.DBusMatchRule",
+                        "org.freedesktop.dbus.interfaces.DBusSigHandler"
+                    ]
+                }
+            ]
         }
     ],
     "foreign": {

@@ -27,7 +27,6 @@ fun VerticalDivider() {
 
 /**
  * A horizontal divider that automatically adapts to island mode.
- * In island mode, the divider is shown with a softer appearance (lower alpha).
  * Pass [modifier] to control width — defaults to full width.
  */
 @Composable
@@ -35,15 +34,16 @@ fun HorizontalDivider(
     modifier: Modifier = Modifier.fillMaxWidth(),
     color: Color =
         if (ThemeUtils.isIslandsStyle()) {
+            val alpha = if (JewelTheme.isDark) 0.35f else 1f
             JewelTheme.globalColors.borders.normal
-                .copy(alpha = 0.3f)
+                .copy(alpha = alpha)
         } else {
             JewelTheme.globalColors.borders.disabled
         },
 ) {
     Divider(
         orientation = Orientation.Horizontal,
-        modifier = modifier.width(1.dp).padding(bottom = 4.dp),
+        modifier = modifier.padding(bottom = 4.dp),
         color = color,
     )
 }

@@ -39,8 +39,9 @@ fun EnhancedHorizontalSplitPane(
     firstMinSize: Float = 200f,
     secondMinSize: Float = 200f,
     showSplitter: Boolean = true,
+    dividerVisibleInIslands: Boolean = false,
 ) {
-    val isIslands = ThemeUtils.isIslandsStyle()
+    val isIslands = ThemeUtils.isIslandsStyle() && !dividerVisibleInIslands
     val state = splitPaneState.value
     val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
     val splitterVisible = showSplitter && secondContent != null
@@ -122,8 +123,9 @@ fun EnhancedVerticalSplitPane(
     firstMinSize: Float = 200f,
     secondMinSize: Float = 200f,
     showSplitter: Boolean = true,
+    dividerVisibleInIslands: Boolean = false,
 ) {
-    val isIslands = ThemeUtils.isIslandsStyle()
+    val isIslands = ThemeUtils.isIslandsStyle() && !dividerVisibleInIslands
     val state = splitPaneState.value
     val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
     val splitterVisible = showSplitter && secondContent != null

@@ -442,11 +442,11 @@ object AppSettings {
 
     // Theme style (Classic / Islands)
     fun getThemeStyle(): ThemeStyle {
-        val storedValue: String = settings[KEY_THEME_STYLE, ThemeStyle.Classic.name]
+        val storedValue: String = settings[KEY_THEME_STYLE, ThemeStyle.Islands.name]
         return try {
             ThemeStyle.valueOf(storedValue)
         } catch (_: IllegalArgumentException) {
-            ThemeStyle.Classic
+            ThemeStyle.Islands
         }
     }
 
@@ -456,11 +456,11 @@ object AppSettings {
 
     // Accent color preset
     fun getAccentColor(): AccentColor {
-        val storedValue: String = settings[KEY_ACCENT_COLOR, AccentColor.System.name]
+        val storedValue: String = settings[KEY_ACCENT_COLOR, AccentColor.Gold.name]
         return try {
             AccentColor.valueOf(storedValue)
         } catch (_: IllegalArgumentException) {
-            AccentColor.System
+            AccentColor.Gold
         }
     }
 

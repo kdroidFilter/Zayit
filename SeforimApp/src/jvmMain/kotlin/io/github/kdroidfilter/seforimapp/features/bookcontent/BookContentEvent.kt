@@ -88,6 +88,11 @@ sealed interface BookContentEvent {
         val bookId: Long,
     ) : BookContentEvent
 
+    // Open a book by its id in a new tab (VM resolves Book)
+    data class OpenBookByIdInNewTab(
+        val bookId: Long,
+    ) : BookContentEvent
+
     data object ToggleCommentaries : BookContentEvent
 
     data object ToggleTargum : BookContentEvent

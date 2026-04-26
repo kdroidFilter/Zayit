@@ -179,9 +179,9 @@ fun ContentScrollbar(
 }
 
 // Minimum gap between two pager-rebuild emissions during a drag. Keeps the visible
-// text catching up to fast drags (~5 Hz) without spamming `buildLinesPager` on every
+// text catching up to fast drags (~10 Hz) without spamming `buildLinesPager` on every
 // frame. Final exact target is flushed on `onDragStopped` regardless.
-private val FAR_DRAG_THROTTLE = 200.milliseconds
+private val FAR_DRAG_THROTTLE = 100.milliseconds
 
 /**
  * Book-wide thumb position in `[0, 1]`, in pixel-space.

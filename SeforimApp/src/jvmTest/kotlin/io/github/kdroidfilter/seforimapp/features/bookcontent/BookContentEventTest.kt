@@ -110,6 +110,12 @@ class BookContentEventTest {
     }
 
     @Test
+    fun `OpenBookByIdInNewTab stores bookId`() {
+        val event = BookContentEvent.OpenBookByIdInNewTab(bookId = 42L)
+        assertEquals(42L, event.bookId)
+    }
+
+    @Test
     fun `SelectedCommentatorsChanged stores lineId and selectedIds`() {
         val selectedIds = setOf(1L, 2L, 3L)
         val event =

@@ -127,41 +127,40 @@ fun EndVerticalBar(
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
         topContent = {
-            // Hide zoom and diacritics buttons on Home (no book selected)
-            if (!noBookSelected) {
-                // Platform-specific shortcut hint for Zoom In
-                SelectableIconButtonWithToolip(
-                    toolTipText =
-                        if (canZoomIn) {
-                            stringResource(Res.string.zoom_in_tooltip)
-                        } else {
-                            stringResource(Res.string.zoom_in_tooltip) + " (${AppSettings.MAX_TEXT_SIZE.toInt()}sp max)"
-                        },
-                    onClick = { AppSettings.increaseTextSize() },
-                    isSelected = false,
-                    enabled = canZoomIn,
-                    icon = ZoomIn,
-                    iconDescription = stringResource(Res.string.zoom_in),
-                    label = stringResource(Res.string.zoom_in),
-                    shortcutHint = if (PlatformInfo.isMacOS) "+⌘" else "+Ctrl",
-                )
-                SelectableIconButtonWithToolip(
-                    toolTipText =
-                        if (canZoomOut) {
-                            stringResource(Res.string.zoom_out_tooltip)
-                        } else {
-                            stringResource(Res.string.zoom_out_tooltip) + " (${AppSettings.MIN_TEXT_SIZE.toInt()}sp min)"
-                        },
-                    onClick = { AppSettings.decreaseTextSize() },
-                    isSelected = false,
-                    enabled = canZoomOut,
-                    icon = ZoomOut,
-                    iconDescription = stringResource(Res.string.zoom_out),
-                    label = stringResource(Res.string.zoom_out),
-                    shortcutHint = if (PlatformInfo.isMacOS) "-⌘" else "-Ctrl",
-                )
+            // Platform-specific shortcut hint for Zoom In
+            SelectableIconButtonWithToolip(
+                toolTipText =
+                    if (canZoomIn) {
+                        stringResource(Res.string.zoom_in_tooltip)
+                    } else {
+                        stringResource(Res.string.zoom_in_tooltip) + " (${AppSettings.MAX_TEXT_SIZE.toInt()}sp max)"
+                    },
+                onClick = { AppSettings.increaseTextSize() },
+                isSelected = false,
+                enabled = canZoomIn,
+                icon = ZoomIn,
+                iconDescription = stringResource(Res.string.zoom_in),
+                label = stringResource(Res.string.zoom_in),
+                shortcutHint = if (PlatformInfo.isMacOS) "+⌘" else "+Ctrl",
+            )
+            SelectableIconButtonWithToolip(
+                toolTipText =
+                    if (canZoomOut) {
+                        stringResource(Res.string.zoom_out_tooltip)
+                    } else {
+                        stringResource(Res.string.zoom_out_tooltip) + " (${AppSettings.MIN_TEXT_SIZE.toInt()}sp min)"
+                    },
+                onClick = { AppSettings.decreaseTextSize() },
+                isSelected = false,
+                enabled = canZoomOut,
+                icon = ZoomOut,
+                iconDescription = stringResource(Res.string.zoom_out),
+                label = stringResource(Res.string.zoom_out),
+                shortcutHint = if (PlatformInfo.isMacOS) "-⌘" else "-Ctrl",
+            )
 
-                // Diacritics toggle button - only show when book has nekudot or teamim
+            // Diacritics toggle button - only when a book is selected and has nekudot/teamim
+            if (!noBookSelected) {
                 val bookHasDiacritics = selectedBook.hasNekudot || selectedBook.hasTeamim
                 if (bookHasDiacritics) {
                     SelectableIconButtonWithToolip(

@@ -14,7 +14,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
@@ -31,14 +30,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
@@ -140,13 +142,18 @@ internal fun rememberScrollbarVisuals(
         animationSpec = tween(visibility.expandAnimationDuration.inWholeMilliseconds.toInt(), easing = LinearEasing),
         label = "${label}_thickness",
     )
+    // Match Jewel's native scrollbar logic: in the auto-hide (`WhenScrolling`) path the
+    // thumb is `thumbBackgroundActive` whenever the bar is showing — including pure scroll
+    // events with no hover/drag. The previous split (`Active` only on hover/drag,
+    // `thumbBackground` otherwise) made the thumb invisible during scroll on macOS, since
+    // the `WhenScrolling` style ships `thumbBackground` at full transparency.
     val targetThumbColor =
-        when {
-            isOpaque && isHovered -> style.colors.thumbOpaqueBackgroundHovered
-            isOpaque -> style.colors.thumbOpaqueBackground
-            showScrollbar && (isHovered || dragRatio != null) -> style.colors.thumbBackgroundActive
-            showScrollbar -> style.colors.thumbBackground
-            else -> style.colors.thumbBackground.copy(alpha = 0f)
+        if (isOpaque) {
+            if (isHovered || dragRatio != null) style.colors.thumbOpaqueBackgroundHovered
+            else style.colors.thumbOpaqueBackground
+        } else {
+            if (showScrollbar) style.colors.thumbBackgroundActive
+            else style.colors.thumbBackground
         }
     val thumbColor by animateColorAsState(
         targetValue = targetThumbColor,
@@ -211,6 +218,19 @@ internal fun ContentAwareScrollbarShell(
     val density = LocalDensity.current
     val minThumbHeightPx = with(density) { style.metrics.minThumbLength.toPx() }
 
+    // Inset the thumb width by the visibility's track padding (collapsed vs expanded), so
+    // the thumb is thinner than the track box — matching Jewel's native scrollbar where
+    // `thumbThickness = animatedThickness − trackPadding(start+end)`. Without this the
+    // thumb spanned the full track width, looking visibly chunkier than the TOC scrollbar.
+    val isExpandedThickness = isHovered || dragRatio != null
+    val visibility = style.scrollbarVisibility
+    val trackPadding = if (isExpandedThickness) visibility.trackPaddingExpanded else visibility.trackPadding
+    val layoutDirection = LocalLayoutDirection.current
+    val horizontalPadding =
+        trackPadding.calculateLeftPadding(layoutDirection) +
+            trackPadding.calculateRightPadding(layoutDirection)
+    val thumbWidthDp = (visuals.thickness - horizontalPadding).coerceAtLeast(0.dp)
+
     val displayPosition = dragRatio ?: position
     val thumbHeightPx = (thumbSize * trackHeightPx).coerceAtLeast(minThumbHeightPx)
     val travelPx = (trackHeightPx - thumbHeightPx).coerceAtLeast(0f)
@@ -260,8 +280,9 @@ internal fun ContentAwareScrollbarShell(
         Box(
             modifier =
                 Modifier
+                    .align(Alignment.TopCenter)
                     .offset { IntOffset(0, thumbTopPx.toInt()) }
-                    .fillMaxWidth()
+                    .width(thumbWidthDp)
                     .height(with(density) { thumbHeightPx.toDp() })
                     .clip(RoundedCornerShape(style.metrics.thumbCornerSize))
                     .background(visuals.thumbColor)

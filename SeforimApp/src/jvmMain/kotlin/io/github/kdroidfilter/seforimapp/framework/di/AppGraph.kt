@@ -37,4 +37,7 @@ abstract class AppGraph : ViewModelGraph {
 
     abstract val onboardingProcessRepository: OnboardingProcessRepository
     abstract val databaseCleanupUseCase: DatabaseCleanupUseCase
+
+    /** Seforim.db delta-update facade (recoverIfNeeded + checkAndApply). */
+    abstract val dbDeltaUpdateService: io.github.kdroidfilter.seforimapp.framework.update.DbDeltaUpdateService
 }

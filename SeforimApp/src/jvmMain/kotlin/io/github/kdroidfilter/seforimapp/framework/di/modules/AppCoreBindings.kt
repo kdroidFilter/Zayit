@@ -99,6 +99,34 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
+    fun provideDbDeltaUpdateService(): io.github.kdroidfilter.seforimapp.framework.update.DbDeltaUpdateService {
+        val dbPath = getDatabasePath()
+        val seforimDb = Paths.get(dbPath)
+        val catalogPb = Paths.get(seforimDb.parent.toString(), "catalog.pb")
+        val workDir = Paths.get(seforimDb.parent.toString(), "delta-cache")
+        val releaseMetaUrl = System.getenv("SEFORIMAPP_RELEASE_META_URL")
+            ?: "https://kdroidfilter.github.io/SefariaExport/release_meta.json"
+        return io.github.kdroidfilter.seforimapp.framework.update.DbDeltaUpdateService(
+            seforimDb = seforimDb,
+            catalogPb = catalogPb,
+            workDir = workDir,
+            releaseMetaUrl = releaseMetaUrl,
+            localDbVersionProvider = {
+                // schema_meta.db_version is bumped by the patch; if absent (pre-Phase 2
+                // builds), default to 0 so the very first delta is applied unconditionally.
+                runCatching {
+                    java.sql.DriverManager.getConnection("jdbc:sqlite:$dbPath").use { c ->
+                        c.prepareStatement("SELECT value FROM schema_meta WHERE key='db_version'").use { ps ->
+                            ps.executeQuery().use { rs -> if (rs.next()) rs.getString(1).toIntOrNull() else null }
+                        }
+                    }
+                }.getOrNull() ?: 0
+            },
+        )
+    }
+
+    @Provides
+    @SingleIn(AppScope::class)
     fun provideTabsViewModel(titleUpdateManager: TabTitleUpdateManager): TabsViewModel =
         TabsViewModel(
             titleUpdateManager = titleUpdateManager,

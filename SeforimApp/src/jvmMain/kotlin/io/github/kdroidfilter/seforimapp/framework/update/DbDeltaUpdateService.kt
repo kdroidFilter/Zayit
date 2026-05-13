@@ -29,7 +29,7 @@ import java.nio.file.Path
  * Constructed once at app boot. Thread-safe to call from a background
  * coroutine.
  */
-class DbDeltaUpdateService(
+open class DbDeltaUpdateService(
     private val seforimDb: Path,
     private val catalogPb: Path,
     private val workDir: Path,
@@ -60,7 +60,7 @@ class DbDeltaUpdateService(
      *
      * @return `true` if recovery happened, `false` if no marker was present.
      */
-    fun recoverIfNeeded(): Boolean {
+    open fun recoverIfNeeded(): Boolean {
         val recovered = client.recoverIfNeeded()
         if (recovered) log.warn("Recovered from a half-applied delta update: live DB rolled back to backup.")
         return recovered
@@ -70,7 +70,7 @@ class DbDeltaUpdateService(
      * Polls the release server and applies any available chain. Reports
      * progress via [onProgress] as `current/total: status`.
      */
-    suspend fun checkAndApply(
+    open suspend fun checkAndApply(
         onProgress: (current: Int, total: Int, status: String) -> Unit = { _, _, _ -> },
     ): Outcome {
         return when (val path = client.checkForUpdate()) {

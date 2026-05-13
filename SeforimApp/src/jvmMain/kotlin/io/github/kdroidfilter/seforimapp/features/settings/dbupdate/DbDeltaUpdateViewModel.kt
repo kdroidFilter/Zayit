@@ -7,11 +7,10 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.update.DbDeltaUpdateService
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -32,14 +31,11 @@ import kotlinx.coroutines.withContext
 @Inject
 class DbDeltaUpdateViewModel(
     private val deltaService: DbDeltaUpdateService,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
 
     private val mutableState = MutableStateFlow(DbDeltaUpdateState())
-    val state = mutableState.asStateFlow().stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5_000),
-        DbDeltaUpdateState(),
-    )
+    val state = mutableState.asStateFlow()
 
     fun onEvent(event: DbDeltaUpdateEvents) {
         when (event) {
@@ -59,7 +55,7 @@ class DbDeltaUpdateViewModel(
                 message = "Checking server for new database delta…",
             )
             try {
-                val outcome = withContext(Dispatchers.IO) {
+                val outcome = withContext(ioDispatcher) {
                     deltaService.checkAndApply { _, _, status ->
                         // The orchestrator pumps statuses like
                         // "downloading patch files", "applying sqlite delta",

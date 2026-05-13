@@ -36,7 +36,7 @@ open class DbDeltaUpdateService(
     private val releaseMetaUrl: String,
     private val localDbVersionProvider: () -> Int,
     private val luceneIndexDir: Path? = null,
-    private val luceneSinksProvider: () -> Pair<LuceneUpdater.DeleteSink, LuceneUpdater.UpsertSink> =
+    private val luceneSinksProvider: () -> LuceneUpdater.SinkSession =
         defaultLuceneSinksProvider(luceneIndexDir, seforimDb),
 ) {
 
@@ -118,9 +118,12 @@ open class DbDeltaUpdateService(
         fun defaultLuceneSinksProvider(
             luceneIndexDir: Path?,
             seforimDb: Path?,
-        ): () -> Pair<LuceneUpdater.DeleteSink, LuceneUpdater.UpsertSink> = {
+        ): () -> LuceneUpdater.SinkSession = {
             if (luceneIndexDir == null) {
-                LuceneUpdater.DeleteSink { } to LuceneUpdater.UpsertSink { }
+                LuceneUpdater.SinkSession(
+                    delete = LuceneUpdater.DeleteSink { },
+                    upsert = LuceneUpdater.UpsertSink { },
+                )
             } else {
                 val dir = FSDirectory.open(luceneIndexDir)
                 val writer = IndexWriter(dir, IndexWriterConfig(StandardAnalyzer()))
@@ -151,27 +154,42 @@ open class DbDeltaUpdateService(
                     }.getOrDefault(BookMeta.EMPTY).also { bookMetaCache[bookId] = it }
                 }
 
-                LuceneUpdater.DeleteSink { id ->
-                    writer.deleteDocuments(IntPoint.newExactQuery(FIELD_LINE_ID, id.toInt()))
-                } to LuceneUpdater.UpsertSink { line ->
-                    val meta = lookupBookMeta(line.bookId)
-                    writer.deleteDocuments(IntPoint.newExactQuery(FIELD_LINE_ID, line.id.toInt()))
-                    val doc = Document().apply {
-                        add(Field(FIELD_TYPE, TYPE_LINE, org.apache.lucene.document.StringField.TYPE_STORED))
-                        add(IntPoint(FIELD_BOOK_ID, line.bookId.toInt()))
-                        add(StoredField(FIELD_BOOK_ID, line.bookId))
-                        add(IntPoint(FIELD_CATEGORY_ID, meta.categoryId.toInt()))
-                        add(StoredField(FIELD_CATEGORY_ID, meta.categoryId))
-                        add(IntPoint(FIELD_LINE_ID, line.id.toInt()))
-                        add(StoredField(FIELD_LINE_ID, line.id))
-                        add(StoredField(FIELD_LINE_INDEX, line.lineIndex.toLong()))
-                        add(TextField(FIELD_TEXT, line.content, Field.Store.NO))
-                        add(StoredField(FIELD_BOOK_TITLE, meta.title))
-                        add(StoredField(FIELD_ORDER_INDEX, meta.orderIndex))
-                        add(StoredField(FIELD_IS_BASE_BOOK, meta.isBaseBook.toLong()))
-                    }
-                    writer.addDocument(doc)
-                }
+                LuceneUpdater.SinkSession(
+                    delete = LuceneUpdater.DeleteSink { id ->
+                        writer.deleteDocuments(IntPoint.newExactQuery(FIELD_LINE_ID, id.toInt()))
+                    },
+                    upsert = LuceneUpdater.UpsertSink { line ->
+                        val meta = lookupBookMeta(line.bookId)
+                        writer.deleteDocuments(IntPoint.newExactQuery(FIELD_LINE_ID, line.id.toInt()))
+                        val doc = Document().apply {
+                            add(Field(FIELD_TYPE, TYPE_LINE, org.apache.lucene.document.StringField.TYPE_STORED))
+                            add(IntPoint(FIELD_BOOK_ID, line.bookId.toInt()))
+                            add(StoredField(FIELD_BOOK_ID, line.bookId))
+                            add(IntPoint(FIELD_CATEGORY_ID, meta.categoryId.toInt()))
+                            add(StoredField(FIELD_CATEGORY_ID, meta.categoryId))
+                            add(IntPoint(FIELD_LINE_ID, line.id.toInt()))
+                            add(StoredField(FIELD_LINE_ID, line.id))
+                            add(StoredField(FIELD_LINE_INDEX, line.lineIndex.toLong()))
+                            add(TextField(FIELD_TEXT, line.content, Field.Store.NO))
+                            add(StoredField(FIELD_BOOK_TITLE, meta.title))
+                            add(StoredField(FIELD_ORDER_INDEX, meta.orderIndex))
+                            add(StoredField(FIELD_IS_BASE_BOOK, meta.isBaseBook.toLong()))
+                        }
+                        writer.addDocument(doc)
+                    },
+                    // Commit + close in lock-step: this is what guarantees
+                    // the delta is actually persisted to the index. Skipping
+                    // either of these silently drops every upsert.
+                    onClose = {
+                        try {
+                            writer.commit()
+                        } finally {
+                            runCatching { writer.close() }
+                            runCatching { dir.close() }
+                            runCatching { dbConn?.close() }
+                        }
+                    },
+                )
             }
         }
 

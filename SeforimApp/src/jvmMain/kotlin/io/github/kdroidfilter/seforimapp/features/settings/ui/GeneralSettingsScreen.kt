@@ -115,6 +115,10 @@ private fun GeneralSettingsView(
                 onCheckedChange = { onEvent(GeneralSettingsEvents.SetPersistSession(it)) },
             )
 
+            // Database delta-update panel: checks the release server for
+            // a new seforim.db delta and applies it incrementally.
+            io.github.kdroidfilter.seforimapp.features.settings.dbupdate.DbDeltaUpdateSection()
+
             ResetSection(
                 resetDone = state.resetDone,
                 onReset = { onEvent(GeneralSettingsEvents.ResetApp) },

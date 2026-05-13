@@ -133,6 +133,11 @@ fun main(args: Array<String>) {
 
     initializeSentry()
 
+    // Roll back any half-applied seforim.db delta update from a previous
+    // launch BEFORE the SQLDelight repository opens the DB. Cheap stat()
+    // when nothing is in flight; never throws (failures are logged).
+    io.github.kdroidfilter.seforimapp.framework.update.DbDeltaRecoveryBootstrap.runOnce()
+
     if (AotRuntime.isTraining()) {
         Thread({
             Thread.sleep(AOT_TRAINING_DURATION_MS)

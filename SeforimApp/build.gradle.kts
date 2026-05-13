@@ -166,6 +166,9 @@ kotlin {
             // SeforimLibrary search module
             implementation(libs.seforimlibrary.search)
 
+            // Delta-update client (download + apply patch.db onto local seforim.db)
+            implementation(libs.seforimlibrary.delta.updater)
+
             implementation(libs.commons.compress)
 
             // HTML sanitization for search snippets

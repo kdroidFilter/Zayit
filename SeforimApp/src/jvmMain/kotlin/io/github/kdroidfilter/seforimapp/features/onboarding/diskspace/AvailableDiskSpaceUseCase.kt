@@ -1,6 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.diskspace
 
-import io.github.kdroidfilter.nucleus.systeminfo.SystemInfo
+import dev.nucleusframework.systeminfo.SystemInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

@@ -8,7 +8,6 @@ import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -129,7 +128,7 @@ fun TitleBarActionsButtonsView() {
                 when (theme) {
                     IntUiThemes.Light -> AllIconsKeys.MeetNewUi.LightTheme
                     IntUiThemes.Dark -> AllIconsKeys.MeetNewUi.DarkTheme
-                    IntUiThemes.System -> AllIconsKeys.MeetNewUi.SystemTheme
+                    IntUiThemes.System -> AllIconsKeys.General.Settings
                 },
             contentDescription = iconDescription,
             onClick = {
@@ -154,10 +153,6 @@ fun TitleBarActionsButtonsView() {
         )
     }
 
-    if (settingsState.isVisible) {
-        SettingsWindow(
-            onClose = { settingsViewModel.onEvent(SettingsWindowEvents.OnClose) },
-            initialDestination = settingsState.initialDestination,
-        )
-    }
+    // SettingsWindow is hoisted to main.kt where NucleusApplicationScope is available
+    // (JewelDecoratedDialog is an extension on NucleusApplicationScope in Nucleus 2.0).
 }

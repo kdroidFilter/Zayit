@@ -6,9 +6,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.kdroid.gematria.converter.toHebrewNumeral
-import io.github.kdroidfilter.nucleus.launcher.macos.DockMenuItem
-import io.github.kdroidfilter.nucleus.launcher.macos.DockMenuListener
-import io.github.kdroidfilter.nucleus.launcher.macos.MacOsDockMenu
+import dev.nucleusframework.launcher.macos.DockMenuItem
+import dev.nucleusframework.launcher.macos.DockMenuListener
+import dev.nucleusframework.launcher.macos.MacOsDockMenu
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel

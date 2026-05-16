@@ -1,7 +1,7 @@
 import io.github.kdroidfilter.buildsrc.Versioning
-import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseChannel
-import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseType
-import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
+import dev.nucleusframework.desktop.application.dsl.ReleaseChannel
+import dev.nucleusframework.desktop.application.dsl.ReleaseType
+import dev.nucleusframework.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
 
 plugins {
@@ -82,6 +82,7 @@ kotlin {
             implementation(libs.multiplatformSettings)
             implementation(libs.platformtools.core)
             implementation(libs.nucleus.core.runtime)
+            implementation(libs.nucleus.application)
             implementation(libs.nucleus.aot.runtime)
             implementation(libs.nucleus.darkmode.detector)
             implementation(libs.platformtools.appmanager)
@@ -138,7 +139,8 @@ kotlin {
             api(project(":jewel"))
             implementation(project(":earthwidget"))
             implementation(libs.nucleus.system.color)
-            implementation(libs.nucleus.decorated.window)
+            implementation(libs.nucleus.decorated.window.core)
+            implementation(libs.nucleus.decorated.window.tao)
             implementation(libs.nucleus.decorated.window.jewel)
             implementation(libs.nucleus.graalvm.runtime)
             implementation(libs.nucleus.updater.runtime)

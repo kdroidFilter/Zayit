@@ -74,7 +74,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
-import org.jetbrains.skiko.Cursor
+import java.awt.Cursor
 import seforimapp.seforimapp.generated.resources.*
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds

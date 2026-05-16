@@ -14,10 +14,11 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberDialogState
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
-import io.github.kdroidfilter.nucleus.window.ControlButtonsDirection
-import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedDialog
-import io.github.kdroidfilter.nucleus.window.jewel.JewelDialogTitleBar
-import io.github.kdroidfilter.nucleus.window.newFullscreenControls
+import dev.nucleusframework.application.NucleusApplicationScope
+import dev.nucleusframework.window.ControlButtonsDirection
+import dev.nucleusframework.window.jewel.JewelDecoratedDialog
+import dev.nucleusframework.window.jewel.JewelDialogTitleBar
+import dev.nucleusframework.window.newFullscreenControls
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils.buildThemeDefinition
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
@@ -42,7 +43,7 @@ import seforimapp.seforimapp.generated.resources.settings
 import seforimapp.seforimapp.generated.resources.settings_close
 
 @Composable
-fun SettingsWindow(
+fun NucleusApplicationScope.SettingsWindow(
     onClose: () -> Unit,
     initialDestination: SettingsDestination? = null,
 ) {
@@ -53,7 +54,7 @@ fun SettingsWindow(
 }
 
 @Composable
-private fun SettingsWindowView(
+private fun NucleusApplicationScope.SettingsWindowView(
     onClose: () -> Unit,
     initialDestination: SettingsDestination? = null,
 ) {

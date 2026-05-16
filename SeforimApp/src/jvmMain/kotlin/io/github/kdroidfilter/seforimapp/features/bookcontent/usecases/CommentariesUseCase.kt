@@ -662,20 +662,17 @@ class CommentariesUseCase(
 
     suspend fun getAvailableSources(lineId: Long): Map<String, Long> =
         runSuspendCatching {
+            val selectedBook = stateManager.state.first().navigation.selectedBook
+            // Fast path: book has no inbound oriented links — no need to hit DB.
+            if (selectedBook?.hasSourceConnection != true) return@runSuspendCatching emptyMap<String, Long>()
+
             val baseIds = resolveBaseLineIds(lineId)
             val links =
                 repository
-                    .getCommentarySummariesForLines(baseIds)
+                    .getCommentarySummariesForLines(baseIds, includeSources = true)
                     .filter { it.link.connectionType == ConnectionType.SOURCE }
 
-            val currentBookTitle =
-                stateManager.state
-                    .first()
-                    .navigation.selectedBook
-                    ?.title
-                    ?.trim()
-                    .orEmpty()
-
+            val currentBookTitle = selectedBook.title.trim()
             buildSourceMap(links, currentBookTitle)
         }.getOrElse { emptyMap() }
 
@@ -694,13 +691,19 @@ class CommentariesUseCase(
         val allBaseIds = resolutionCache.values.flatMap { it.baseLineIds }.distinct()
         if (allBaseIds.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
 
-        val allConnections = repository.getCommentarySummariesForLines(allBaseIds)
+        val currentState = stateManager.state.first()
+        val selectedBook = currentState.navigation.selectedBook
+        // Skip the SOURCE-side inverse query when the current book has no
+        // dependant-side links at all (e.g. Tanakh, Mishna). Saves a costly
+        // mirror query on hot navigation paths.
+        val includeSources = selectedBook?.hasSourceConnection == true
+
+        val allConnections = repository.getCommentarySummariesForLines(allBaseIds, includeSources = includeSources)
         if (allConnections.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
 
         val connectionsBySource = allConnections.groupBy { it.link.sourceLineId }
-        val currentState = stateManager.state.first()
         val currentBookTitle =
-            currentState.navigation.selectedBook
+            selectedBook
                 ?.title
                 ?.trim()
                 .orEmpty()

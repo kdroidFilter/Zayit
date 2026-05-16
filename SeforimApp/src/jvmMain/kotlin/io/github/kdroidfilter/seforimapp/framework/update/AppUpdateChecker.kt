@@ -1,6 +1,6 @@
 package io.github.kdroidfilter.seforimapp.framework.update
 
-import io.github.kdroidfilter.nucleus.updater.UpdaterConfig
+import dev.nucleusframework.updater.UpdaterConfig
 import io.github.kdroidfilter.platformtools.releasefetcher.github.GitHubReleaseFetcher
 import io.github.kdroidfilter.seforimapp.network.KtorConfig
 import kotlinx.coroutines.Dispatchers

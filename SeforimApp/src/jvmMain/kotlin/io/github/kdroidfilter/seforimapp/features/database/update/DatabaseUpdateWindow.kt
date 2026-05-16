@@ -7,13 +7,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.ApplicationScope
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
-import io.github.kdroidfilter.nucleus.window.ControlButtonsDirection
-import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
-import io.github.kdroidfilter.nucleus.window.jewel.JewelTitleBar
-import io.github.kdroidfilter.nucleus.window.newFullscreenControls
+import dev.nucleusframework.application.NucleusApplicationScope
+import dev.nucleusframework.window.ControlButtonsDirection
+import dev.nucleusframework.window.jewel.JewelDecoratedWindow
+import dev.nucleusframework.window.jewel.JewelTitleBar
+import dev.nucleusframework.window.newFullscreenControls
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
@@ -35,7 +35,7 @@ import seforimapp.seforimapp.generated.resources.app_name
 import seforimapp.seforimapp.generated.resources.db_update_title_bar
 
 @Composable
-fun ApplicationScope.DatabaseUpdateWindow(
+fun NucleusApplicationScope.DatabaseUpdateWindow(
     onUpdateComplete: () -> Unit = {},
     isDatabaseMissing: Boolean = false,
 ) {

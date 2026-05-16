@@ -7,9 +7,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import com.kdroid.gematria.converter.toHebrewNumeral
-import io.github.kdroidfilter.nucleus.launcher.windows.JumpListCategory
-import io.github.kdroidfilter.nucleus.launcher.windows.JumpListItem
-import io.github.kdroidfilter.nucleus.launcher.windows.WindowsJumpListManager
+import dev.nucleusframework.launcher.windows.JumpListCategory
+import dev.nucleusframework.launcher.windows.JumpListItem
+import dev.nucleusframework.launcher.windows.WindowsJumpListManager
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel

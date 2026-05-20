@@ -306,21 +306,30 @@ class CommentariesUseCase(
     }
 
     /**
-     * Récupère les sources disponibles pour plusieurs lignes (union)
+     * Récupère les sources disponibles pour plusieurs lignes (union).
+     *
+     * Issues a single inverse-direction repository query against the union of
+     * all base lines so the order returned by the underlying SQL
+     * (`l.isDeclaredBase DESC, b.orderIndex, sl.lineIndex`) is respected
+     * globally. Per-lineId iteration would interleave per-source-book entries
+     * by lineId rather than by catalog position.
      */
     suspend fun getAvailableSourcesForLines(lineIds: List<Long>): Map<String, Long> {
         if (lineIds.isEmpty()) return emptyMap()
         return runSuspendCatching {
-            val map = LinkedHashMap<String, Long>()
-            for (lineId in lineIds) {
-                val sources = getAvailableSources(lineId)
-                sources.forEach { (name, id) ->
-                    if (!map.containsKey(name)) {
-                        map[name] = id
-                    }
-                }
-            }
-            map
+            val selectedBook = stateManager.state.first().navigation.selectedBook
+            if (selectedBook?.hasSourceConnection != true) return@runSuspendCatching emptyMap<String, Long>()
+
+            val allBaseIds = lineIds
+                .flatMap { resolveBaseLineIds(it) }
+                .distinct()
+            if (allBaseIds.isEmpty()) return@runSuspendCatching emptyMap<String, Long>()
+
+            val links = repository
+                .getCommentarySummariesForLines(allBaseIds, includeSources = true)
+                .filter { it.link.connectionType == ConnectionType.SOURCE }
+
+            buildSourceMap(links, selectedBook.title.trim())
         }.getOrElse { emptyMap() }
     }
 

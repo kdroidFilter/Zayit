@@ -35,6 +35,10 @@ class MultiLineLinksPagingSource(
                     connectionTypes = connectionTypes,
                     offset = offset,
                     limit = limit,
+                    // Dedup source lines that cite multiple target lines in the
+                    // selection. Otherwise a single sugya referenced by multiple
+                    // halakhot in a TOC heading appears N times in the panel.
+                    distinctByTargetLine = lineIds.size > 1,
                 )
 
             val prevKey = if (page == 0) null else page - 1

@@ -297,16 +297,6 @@ fun main(args: Array<String>) {
                     val settingsWindowViewModel: SettingsWindowViewModel =
                         metroViewModel(viewModelStoreOwner = windowViewModelOwner)
 
-                    // Settings dialog is hosted here so JewelDecoratedDialog can resolve its
-                    // NucleusApplicationScope receiver (Nucleus 2.0 backend-agnostic variant).
-                    val settingsWindowState by settingsWindowViewModel.state.collectAsState()
-                    if (settingsWindowState.isVisible) {
-                        SettingsWindow(
-                            onClose = { settingsWindowViewModel.onEvent(SettingsWindowEvents.OnClose) },
-                            initialDestination = settingsWindowState.initialDestination,
-                        )
-                    }
-
                     if (PlatformInfo.isMacOS) {
                         // Native macOS menu bar (no-op on other platforms)
                         AppNativeMenuBar(
@@ -451,6 +441,16 @@ fun main(args: Array<String>) {
                             LocalWindowViewModelStoreOwner provides windowViewModelOwner,
                             LocalViewModelStoreOwner provides windowViewModelOwner,
                         ) {
+                            // Settings dialog rendered here so it inherits LocalLayoutDirection Rtl
+                            // and the full CompositionLocalContext — including theme and user locals —
+                            // is bridged into the dialog's Tao ComposeScene.
+                            val settingsWindowState by settingsWindowViewModel.state.collectAsState()
+                            if (settingsWindowState.isVisible) {
+                                SettingsWindow(
+                                    onClose = { settingsWindowViewModel.onEvent(SettingsWindowEvents.OnClose) },
+                                    initialDestination = settingsWindowState.initialDestination,
+                                )
+                            }
                             MainTitleBar()
                             LaunchedEffect(state.isMinimized) {
                                 if (state.isMinimized) {

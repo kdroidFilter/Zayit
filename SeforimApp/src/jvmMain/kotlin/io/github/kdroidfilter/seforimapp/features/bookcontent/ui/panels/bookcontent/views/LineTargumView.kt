@@ -187,11 +187,16 @@ private fun SingleLineTargumView(
                             Text(text = stringResource(emptyRes))
                         }
                     } else {
+                        // Preserve insertion order from the provider — the SQL
+                        // ORDER BY (l.isDeclaredBase DESC, b.isBaseBook DESC,
+                        // b.id, sl.lineIndex) ranks Sefaria-declared bases
+                        // first and then by canonical catalog position
+                        // (Tanakh → Mishnah → Bavli → Yerushalmi → Tosefta →
+                        // Halakhah → commentators). Re-sorting by title
+                        // alphabet would override that semantic ordering.
                         val availableSources =
                             remember(titleToIdMap) {
-                                titleToIdMap.entries
-                                    .sortedBy { it.key }
-                                    .map { SourceMeta(it.key, it.value) }
+                                titleToIdMap.entries.map { SourceMeta(it.key, it.value) }
                             }
 
                         val selectedSources =
@@ -584,11 +589,14 @@ private fun MultiLineTargumView(
                     Text(text = stringResource(emptyRes))
                 }
             } else {
+                // Preserve insertion order from the provider — the underlying
+                // SQL ORDER BY (l.isDeclaredBase DESC, b.orderIndex, sl.lineIndex)
+                // already ranks declared bases first and otherwise sorts by the
+                // source book's catalog position. Re-sorting by title alphabet
+                // here would override that semantic ordering.
                 val availableSources =
                     remember(titleToIdMap) {
-                        titleToIdMap.entries
-                            .sortedBy { it.key }
-                            .map { SourceMeta(it.key, it.value) }
+                        titleToIdMap.entries.map { SourceMeta(it.key, it.value) }
                     }
 
                 // Build pagers for each source using multi-line provider

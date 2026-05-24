@@ -8,8 +8,10 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /**
- * Code generator that reads the SQLite DB and emits a Kotlin object with
- * precomputed titles and mappings used by the app UI.
+ * Code generator that reads the SQLite DB and emits compile-time UI presets:
+ * named ID constants (categories/books/TOC texts) and HomeView dropdown specs.
+ * Bulk data (book titles, category titles, books-per-category) is no longer
+ * emitted — the app loads it at runtime from catalog.pb via CatalogAccess.
  *
  * Usage (via Gradle task):
  *   With env var (recommended):
@@ -48,62 +50,25 @@ fun main(args: Array<String>) {
 
     val resolvedIds = runBlocking { resolveCatalogIds(repo) }
 
-    // Only include categories used in the current UI (resolved dynamically from the DB)
-    val categoriesOfInterest: Set<Long> =
-        resolvedIds.categoryIds.values
-            .plus(resolvedIds.mishnehTorahChildren)
-            .toSet()
-    val categoryTitles: MutableMap<Long, String> = mutableMapOf()
-    runBlocking {
-        categoriesOfInterest.forEach { cid ->
-            runCatching { repo.getCategory(cid) }.getOrNull()?.let { categoryTitles[cid] = it.title }
+    // Raw category titles for Ids.Categories kdoc annotations only — not emitted as data.
+    val categoryTitles: Map<Long, String> =
+        runBlocking {
+            resolvedIds.categoryIds.values
+                .plus(resolvedIds.mishnehTorahChildren)
+                .toSet()
+                .mapNotNull { cid -> runCatching { repo.getCategory(cid) }.getOrNull()?.let { cid to it.title } }
+                .toMap()
         }
-        // Preserve legacy display labels for Talmud children (תלמוד בבלי / תלמוד ירושלמי)
-        val bavliId = resolvedIds.categoryIds["BAVLI"]
-        val yerushalmiId = resolvedIds.categoryIds["YERUSHALMI"]
-        if (bavliId != null || yerushalmiId != null) {
-            val bavliParentTitle =
-                bavliId?.let { id ->
-                    runCatching { repo.getCategory(id)?.parentId?.let { pid -> repo.getCategory(pid)?.title } }.getOrNull()
-                }
-            val prefix = bavliParentTitle?.takeIf { it.isNotBlank() } ?: "תלמוד"
-            bavliId?.let { id ->
-                val current = categoryTitles[id] ?: "בבלי"
-                categoryTitles[id] = "$prefix $current"
-            }
-            yerushalmiId?.let { id ->
-                val current = categoryTitles[id] ?: "ירושלמי"
-                categoryTitles[id] = "$prefix $current"
-            }
-        }
-    }
 
-    // Collect books per category and book titles (strip display titles by category label)
-    val bookTitles: MutableMap<Long, String> = mutableMapOf()
-    val categoryBooks: MutableMap<Long, List<Pair<Long, String>>> = mutableMapOf()
-    val mishnehTorahId = resolvedIds.categoryIds.getValue("MISHNE_TORAH")
-    runBlocking {
-        categoryTitles.keys.forEach { cid ->
-            var books = runCatching { repo.getBooksByCategory(cid) }.getOrDefault(emptyList())
-            // For Mishneh Torah (root or its immediate children), exclude books starting with "מפרשים"
-            val parentId = runCatching { repo.getCategory(cid) }.getOrNull()?.parentId
-            val isMishnehTorahContext = (cid == mishnehTorahId) || (parentId == mishnehTorahId)
-            if (isMishnehTorahContext) {
-                books = books.filter { b -> !b.title.trimStart().startsWith("מפרשים") }
-            }
-            // Strip any ancestor labels (category, parent, root, etc.) to avoid repetition like "משנה תורה, ..."
-            val labels = ancestorTitles(repo, cid)
-            val refs =
-                books.map { b ->
-                    bookTitles[b.id] = b.title
-                    val display = stripAnyLabelPrefix(labels, b.title)
-                    b.id to display
-                }
-            categoryBooks[cid] = refs
+    // Raw book titles for Ids.Books kdoc annotations only — not emitted as data.
+    val bookTitles: Map<Long, String> =
+        runBlocking {
+            resolvedIds.bookIds.values
+                .mapNotNull { bid -> runCatching { repo.getBook(bid) }.getOrNull()?.let { bid to it.title } }
+                .toMap()
         }
-    }
 
-    // Collect per-book TOC-textId → (label, tocEntryId, firstLineId) for books we use in UI
+    // Collect per-book TOC-textId → (label, tocEntryId, firstLineId) for books exposed via TocQuickLinksSpec.
     val tocByTocTextId: MutableMap<Long, Map<Long, Triple<String, Long, Long?>>> = mutableMapOf()
     val booksOfInterest = resolvedIds.bookIds.values.toSet()
     val tocTextIdsOfInterest = resolvedIds.tocTextIds.values.toSet()
@@ -129,8 +94,14 @@ fun main(args: Array<String>) {
     val pkg = "io.github.kdroidfilter.seforimapp.catalog"
     val fileSpecBuilder =
         FileSpec
-            .builder(pkg, "PrecomputedCatalog")
-            .addFileComment(
+            .builder(pkg, "CatalogPresets")
+            .addAnnotation(
+                AnnotationSpec
+                    .builder(ClassName("kotlin", "Suppress"))
+                    .useSiteTarget(AnnotationSpec.UseSiteTarget.FILE)
+                    .addMember("%S", "ktlint")
+                    .build(),
+            ).addFileComment(
                 """
                 DO NOT EDIT.
                 This file is auto-generated by the catalog generator.
@@ -199,6 +170,7 @@ fun main(args: Array<String>) {
             ).addProperty(PropertySpec.builder("labelCategoryId", LONG).initializer("labelCategoryId").build())
             .addProperty(PropertySpec.builder("bookCategoryIds", LIST.parameterizedBy(LONG)).initializer("bookCategoryIds").build())
             .build()
+    val tocQuickLinkType = ClassName(pkg, "TocQuickLink")
     val tocQuickLinksSpec =
         TypeSpec
             .classBuilder("TocQuickLinksSpec")
@@ -208,10 +180,10 @@ fun main(args: Array<String>) {
                 FunSpec
                     .constructorBuilder()
                     .addParameter("bookId", LONG)
-                    .addParameter("tocTextIds", LIST.parameterizedBy(LONG))
+                    .addParameter("links", LIST.parameterizedBy(tocQuickLinkType))
                     .build(),
             ).addProperty(PropertySpec.builder("bookId", LONG).initializer("bookId").build())
-            .addProperty(PropertySpec.builder("tocTextIds", LIST.parameterizedBy(LONG)).initializer("tocTextIds").build())
+            .addProperty(PropertySpec.builder("links", LIST.parameterizedBy(tocQuickLinkType)).initializer("links").build())
             .build()
     fileSpecBuilder
         .addType(bookRef)
@@ -228,7 +200,6 @@ fun main(args: Array<String>) {
             pkg,
             bookTitles,
             categoryTitles,
-            categoryBooks,
             tocByTocTextId,
             mishnehTorahChildrenIds,
             resolvedIds,
@@ -242,134 +213,18 @@ fun main(args: Array<String>) {
     fileSpec.writeTo(outputDir)
 }
 
-private fun collectCategoryTitles(
-    repo: SeforimRepository,
-    parentId: Long,
-    out: MutableMap<Long, String>,
-) {
-    runBlocking {
-        val children = runCatching { repo.getCategoryChildren(parentId) }.getOrDefault(emptyList())
-        children.forEach { c ->
-            out[c.id] = c.title
-            collectCategoryTitles(repo, c.id, out)
-        }
-    }
-}
-
-private fun rootCategoryTitle(
-    repo: SeforimRepository,
-    categoryId: Long,
-): String =
-    runBlocking {
-        var cur = runCatching { repo.getCategory(categoryId) }.getOrNull()
-        var lastTitle: String? = cur?.title
-        var guard = 0
-        while (cur?.parentId != null && guard++ < 50) {
-            cur = runCatching { repo.getCategory(cur.parentId!!) }.getOrNull()
-            if (cur?.title != null) lastTitle = cur.title
-        }
-        lastTitle ?: ""
-    }
-
-private fun ancestorTitles(
-    repo: SeforimRepository,
-    categoryId: Long,
-): List<String> =
-    runBlocking {
-        val labels = mutableListOf<String>()
-        var cur = runCatching { repo.getCategory(categoryId) }.getOrNull()
-        if (cur?.title != null) labels += cur.title
-        var guard = 0
-        while (cur?.parentId != null && guard++ < 50) {
-            cur = runCatching { repo.getCategory(cur.parentId!!) }.getOrNull()
-            val t = cur?.title
-            if (!t.isNullOrBlank()) labels += t
-        }
-        labels.distinct()
-    }
-
 private fun buildCatalogType(
     pkg: String,
     bookTitles: Map<Long, String>,
     categoryTitles: Map<Long, String>,
-    categoryBooks: Map<Long, List<Pair<Long, String>>>,
     tocByTocTextId: Map<Long, Map<Long, Triple<String, Long, Long?>>>,
     mishnehTorahChildrenIds: List<Long>,
     resolvedIds: ResolvedCatalogIds,
 ): TypeSpec {
-    val builder = TypeSpec.objectBuilder("PrecomputedCatalog")
+    val builder = TypeSpec.objectBuilder("CatalogPresets")
     val categoryIds = resolvedIds.categoryIds
     val bookIds = resolvedIds.bookIds
     val tocTextIds = resolvedIds.tocTextIds
-
-    // BOOK_TITLES
-    val btCode = CodeBlock.builder().add("mapOf(\n")
-    bookTitles.entries.sortedBy { it.key }.forEach { (id, title) ->
-        btCode.add("  %LL to %S,\n", id, title)
-    }
-    btCode.add(")")
-    builder.addProperty(
-        PropertySpec
-            .builder("BOOK_TITLES", MAP.parameterizedBy(LONG, STRING))
-            .initializer(btCode.build())
-            .build(),
-    )
-
-    // CATEGORY_TITLES
-    val ctCode = CodeBlock.builder().add("mapOf(\n")
-    categoryTitles.entries.sortedBy { it.key }.forEach { (id, title) ->
-        ctCode.add("  %LL to %S,\n", id, title)
-    }
-    ctCode.add(")")
-    builder.addProperty(
-        PropertySpec
-            .builder("CATEGORY_TITLES", MAP.parameterizedBy(LONG, STRING))
-            .initializer(ctCode.build())
-            .build(),
-    )
-
-    // CATEGORY_BOOKS
-    val bookRefType = ClassName(pkg, "BookRef")
-    val listBookRef = LIST.parameterizedBy(bookRefType)
-    val mapCatBooks = MAP.parameterizedBy(LONG, listBookRef)
-    val cbCode = CodeBlock.builder().add("mapOf(\n")
-    categoryBooks.entries.sortedBy { it.key }.forEach { (cid, refs) ->
-        cbCode.add("  %LL to listOf(", cid)
-        refs.forEachIndexed { idx, (bid, btitle) ->
-            if (idx > 0) cbCode.add(", ")
-            cbCode.add("BookRef(%LL, %S)", bid, btitle)
-        }
-        cbCode.add(") ,\n")
-    }
-    cbCode.add(")")
-    builder.addProperty(
-        PropertySpec
-            .builder("CATEGORY_BOOKS", mapCatBooks)
-            .initializer(cbCode.build())
-            .build(),
-    )
-
-    // TOC_BY_TOC_TEXT_ID
-    val tocQLType = ClassName(pkg, "TocQuickLink")
-    val innerMap = MAP.parameterizedBy(LONG, tocQLType)
-    val tocMapType = MAP.parameterizedBy(LONG, innerMap)
-    val tocCode = CodeBlock.builder().add("mapOf(\n")
-    tocByTocTextId.entries.sortedBy { it.key }.forEach { (bookId, inner) ->
-        tocCode.add("  %LL to mapOf(", bookId)
-        inner.entries.forEachIndexed { idx, (tx, triple) ->
-            if (idx > 0) tocCode.add(", ")
-            val (label, tocEntryId, firstLineId) = triple
-            tocCode.add("%LL to TocQuickLink(%S, %LL, %L)", tx, label, tocEntryId, firstLineId)
-        }
-        tocCode.add(") ,\n")
-    }
-    tocCode.add(")")
-    builder.addProperty(
-        PropertySpec
-            .builder("TOC_BY_TOC_TEXT_ID", tocMapType)
-            .initializer(tocCode.build())
-            .build(),
-    )
 
     // Ids: pretty-named constants for UI code (avoid magic numbers)
     val idsObj = TypeSpec.objectBuilder("Ids")
@@ -473,6 +328,24 @@ private fun buildCatalogType(
     val tocYd = tocTextIds.getValue("YOREH_DEAH")
     val tocEh = tocTextIds.getValue("EVEN_HAEZER")
     val tocCm = tocTextIds.getValue("CHOSHEN_MISHPAT")
+    val turLinks: Map<Long, Triple<String, Long, Long?>> =
+        tocByTocTextId[turBookId] ?: error("Missing TOC quick-link data for Tur (bookId=$turBookId)")
+    val turLinkOrder = listOf(tocOc, tocYd, tocEh, tocCm)
+    val turQuickLinksLiteral =
+        CodeBlock
+            .builder()
+            .apply {
+                add("TocQuickLinksSpec(%LL, listOf(", turBookId)
+                turLinkOrder.forEachIndexed { idx, textId ->
+                    val triple =
+                        turLinks[textId]
+                            ?: error("Missing Tur quick-link for textId=$textId")
+                    val (label, tocEntryId, firstLineId) = triple
+                    if (idx > 0) add(", ")
+                    add("TocQuickLink(%S, %LL, %L)", label, tocEntryId, firstLineId)
+                }
+                add("))")
+            }.build()
     val homeDropdowns =
         CodeBlock
             .builder()
@@ -514,14 +387,8 @@ private fun buildCatalogType(
             // Shulchan Aruch
             .add("  CategoryDropdownSpec(%LL),\n", shulchanAruchId)
             // Tur quick links
-            .add(
-                "  TocQuickLinksSpec(%LL, listOf(%LL, %LL, %LL, %LL)),\n",
-                turBookId,
-                tocOc,
-                tocYd,
-                tocEh,
-                tocCm,
-            ).add(")")
+            .add("  %L,\n", turQuickLinksLiteral)
+            .add(")")
             .build()
     dropdownsObj.addProperty(
         PropertySpec
@@ -630,14 +497,8 @@ private fun buildCatalogType(
     dropdownsObj.addProperty(
         PropertySpec
             .builder("TUR_QUICK_LINKS", dropdownSpecClass)
-            .initializer(
-                "TocQuickLinksSpec(%LL, listOf(%LL, %LL, %LL, %LL))",
-                turBookId,
-                tocOc,
-                tocYd,
-                tocEh,
-                tocCm,
-            ).build(),
+            .initializer(turQuickLinksLiteral)
+            .build(),
     )
     builder.addType(dropdownsObj.build())
 
@@ -860,45 +721,3 @@ private fun normalizeTitle(value: String): String = value.filter { it.isLetterOr
 private val STRING = String::class.asClassName()
 private val LONG = Long::class.asClassName()
 private val LIST = ClassName("kotlin.collections", "List")
-private val MAP = ClassName("kotlin.collections", "Map")
-
-private fun stripLabelPrefix(
-    label: String,
-    title: String,
-): String {
-    if (label.isBlank()) return title
-    val prefix = Regex.escape(label)
-    val patterns =
-        listOf(
-            Regex("^$prefix\\s*,\\s*"), // label + comma
-            Regex("^$prefix,\\s*"), // label,comma
-            Regex("^$prefix\\s*[:–—-]\\s*"), // label + colon/en/em dash/hyphen
-            Regex("^$prefix\\s*\\+\\s*"), // label + plus
-            Regex("^$prefix\\s+"), // label + space
-        )
-    for (p in patterns) {
-        val replaced = title.replaceFirst(p, "")
-        if (replaced !== title) return replaced.trimStart()
-    }
-    return title
-}
-
-private fun stripAnyLabelPrefix(
-    labels: List<String>,
-    title: String,
-): String {
-    var result = title
-    for (lbl in labels) {
-        result = stripLabelPrefix(lbl, result)
-    }
-    return result
-}
-
-private inline fun <K, V, R> Iterable<Map.Entry<K, V>>.associateNotNull(transform: (Map.Entry<K, V>) -> R?): Map<K, R> {
-    val dest = LinkedHashMap<K, R>()
-    for (e in this) {
-        val v = transform(e) ?: continue
-        dest[e.key] = v
-    }
-    return dest
-}

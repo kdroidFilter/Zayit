@@ -5,7 +5,6 @@ package io.github.kdroidfilter.seforimapp
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.text.LocalTextContextMenu
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -265,23 +264,10 @@ fun main(args: Array<String>) {
             val themeDefinition = ThemeUtils.buildThemeDefinition()
             val componentStyling = ThemeUtils.buildComponentStyling()
 
-            // Snapshot Compose's default TextContextMenu before IntUiTheme installs Jewel's
-            // override. Jewel 0.37 is compiled against Compose 1.10; under Compose 1.11 its
-            // TextContextMenu.Area() crashes with NoSuchMethodError on
-            // TextManager.getCut() (return type changed Function0<Unit> → TextContextMenu.Action).
-            // Restoring the captured Default below IntUiTheme keeps the rest of Jewel's styling
-            // untouched and only neutralises the broken Selection menu provider.
-            @OptIn(ExperimentalFoundationApi::class)
-            val defaultTextContextMenu = LocalTextContextMenu.current
-
             IntUiTheme(
                 theme = themeDefinition,
                 styling = componentStyling,
             ) {
-                @OptIn(ExperimentalFoundationApi::class)
-                androidx.compose.runtime.CompositionLocalProvider(
-                    LocalTextContextMenu provides defaultTextContextMenu,
-                ) {
                 if (showOnboarding) {
                     OnBoardingWindow()
                 } else if (showDatabaseUpdate) {
@@ -400,7 +386,7 @@ fun main(args: Array<String>) {
                                         tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
                                     }
                                     true
-                                } else if ((keyEvent.isAltPressed && keyEvent.key == Key.MoveHome) ||
+                                } else if ((keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
                                     (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H)
                                 ) {
                                     val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId
@@ -544,7 +530,7 @@ fun main(args: Array<String>) {
                                                         true
                                                     }
                                                     // Alt + Home (Windows) or Cmd + Shift + H (macOS) => go Home on current tab
-                                                    (keyEvent.isAltPressed && keyEvent.key == Key.MoveHome) ||
+                                                    (keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
                                                         (
                                                             keyEvent.isMetaPressed &&
                                                                 keyEvent.isShiftPressed &&
@@ -603,7 +589,6 @@ fun main(args: Array<String>) {
                             ) { TabsContent() }
                         }
                     }
-                }
                 }
             }
         }

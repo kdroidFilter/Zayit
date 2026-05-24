@@ -13,8 +13,14 @@ import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewMod
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.ui.icon.PathIconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.*
+
+// AllIconsKeys.MeetNewUi.SystemTheme was removed in Jewel 0.37 and the SVG
+// dropped from IntelliJ Platform icons 262, so the asset is shipped locally.
+private object SystemThemeIconAnchor
+private val SystemTheme = PathIconKey("icons/system_theme.svg", SystemThemeIconAnchor::class.java)
 
 @Composable
 fun TitleBarActionsButtonsView() {
@@ -128,7 +134,7 @@ fun TitleBarActionsButtonsView() {
                 when (theme) {
                     IntUiThemes.Light -> AllIconsKeys.MeetNewUi.LightTheme
                     IntUiThemes.Dark -> AllIconsKeys.MeetNewUi.DarkTheme
-                    IntUiThemes.System -> AllIconsKeys.General.Settings
+                    IntUiThemes.System -> SystemTheme
                 },
             contentDescription = iconDescription,
             onClick = {

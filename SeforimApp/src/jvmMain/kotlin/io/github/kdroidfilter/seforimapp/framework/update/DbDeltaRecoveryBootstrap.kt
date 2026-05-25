@@ -3,10 +3,10 @@ package io.github.kdroidfilter.seforimapp.framework.update
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.logger.infoln
 import io.github.kdroidfilter.seforimapp.logger.warnln
+import io.github.kdroidfilter.seforimlibrary.deltaupdater.DeltaApplierClient
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
-import io.github.kdroidfilter.seforimlibrary.deltaupdater.DeltaApplierClient
 import java.io.File
 import java.nio.file.Path
 
@@ -25,7 +25,6 @@ import java.nio.file.Path
  * Call this exactly once, from `main()`, before any DB consumer runs.
  */
 object DbDeltaRecoveryBootstrap {
-
     /** Returns `true` if a half-applied delta was rolled back. */
     fun runOnce(): Boolean {
         val dbPath = resolveDbPathOrNull() ?: return false
@@ -52,8 +51,10 @@ object DbDeltaRecoveryBootstrap {
     private fun resolveDbPathOrNull(): String? {
         val env = System.getenv("SEFORIMAPP_DATABASE_PATH")?.takeIf { it.isNotBlank() }
         if (env != null) return env
-        val settings = runCatching { AppSettings.getDatabasePath() }.getOrNull()
-            ?.takeIf { it.isNotBlank() && !it.endsWith("lexical.db", ignoreCase = true) }
+        val settings =
+            runCatching { AppSettings.getDatabasePath() }
+                .getOrNull()
+                ?.takeIf { it.isNotBlank() && !it.endsWith("lexical.db", ignoreCase = true) }
         if (settings != null) return settings
         return runCatching { File(FileKit.databasesDir.path, "seforim.db").absolutePath }
             .getOrNull()

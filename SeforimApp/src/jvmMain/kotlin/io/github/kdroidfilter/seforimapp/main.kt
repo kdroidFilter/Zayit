@@ -18,15 +18,15 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.kdroid.gematria.converter.toHebrewNumeral
-import dev.zacsweers.metro.createGraph
-import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
-import dev.zacsweers.metrox.viewmodel.metroViewModel
 import dev.nucleusframework.application.aotTraining
 import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.core.runtime.ExecutableRuntime
 import dev.nucleusframework.energymanager.EnergyManager
 import dev.nucleusframework.notification.common.notification
 import dev.nucleusframework.window.jewel.JewelDecoratedWindow
+import dev.zacsweers.metro.createGraph
+import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.platformtools.getAppVersion
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
@@ -55,7 +55,6 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateChecker
-import io.github.kdroidfilter.seforimapp.framework.update.DbDeltaRecoveryBootstrap
 import io.github.kdroidfilter.seforimapp.logger.infoln
 import io.github.kdroidfilter.seforimapp.logger.isDevEnv
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils

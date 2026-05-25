@@ -67,6 +67,7 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -75,8 +76,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
+import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(FlowPreview::class)
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 @Suppress(
     "ComposeUnstableCollections",
     "ParamsComparedByRef",
@@ -187,6 +189,7 @@ fun BookContentView(
         }
         snapshotFlow { lazyPagingItems.itemSnapshotList.items }
             .distinctUntilChanged()
+            .catch { e -> debugln { "visible-lines flow failed: $e" } }
             .collect { items -> selectionContext.setVisibleLines(tabId, items) }
     }
     DisposableEffect(tabId, selectionContext) {
@@ -211,7 +214,8 @@ fun BookContentView(
         }.map { ids -> ids.distinct() }
             .filter { it.isNotEmpty() }
             .distinctUntilChanged()
-            .debounce(150)
+            .debounce(150.milliseconds)
+            .catch { e -> debugln { "prefetch-connections flow failed: $e" } }
             .collect { ids -> onPrefetchLineConnections(ids) }
     }
 
@@ -234,7 +238,7 @@ fun BookContentView(
         if (isTopAnchorRequest) return@LaunchedEffect
 
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-            delay(16)
+            delay(16.milliseconds)
         }
 
         val snapshot = lazyPagingItems.itemSnapshotList
@@ -268,7 +272,7 @@ fun BookContentView(
 
         // Wait for any ongoing refresh to complete
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-            delay(16)
+            delay(16.milliseconds)
         }
 
         // Helper to locate the target index in the current snapshot
@@ -280,11 +284,14 @@ fun BookContentView(
         var targetIndex = currentTargetIndex()
         if (targetIndex == null) {
             debugln { "Top-anchor target $topAnchorLineId not yet in snapshot; waiting" }
-            withTimeoutOrNull(1500L) {
+            withTimeoutOrNull(1500L.milliseconds) {
                 snapshotFlow { lazyPagingItems.itemSnapshotList.items }
-                    .map { items -> items.indices.firstOrNull { items[it].id == topAnchorLineId } }
-                    .filterNotNull()
-                    .first()
+                    .mapNotNull { items ->
+                        items.indices.firstOrNull {
+                            items[it].id ==
+                                topAnchorLineId
+                        }
+                    }.first()
                     .also { idx -> targetIndex = idx }
             }
         }
@@ -307,7 +314,7 @@ fun BookContentView(
 
         // Wait for initial page load to complete
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-            delay(16)
+            delay(16.milliseconds)
         }
 
         if (lazyPagingItems.itemCount <= 0) return@LaunchedEffect
@@ -322,11 +329,14 @@ fun BookContentView(
             var idx = currentAnchorIndex()
             if (idx == null) {
                 debugln { "Saved anchor $anchorId not yet in snapshot; waiting" }
-                withTimeoutOrNull(1500L) {
+                withTimeoutOrNull(1500L.milliseconds) {
                     snapshotFlow { lazyPagingItems.itemSnapshotList }
-                        .map { snapshot -> snapshot.indices.firstOrNull { snapshot[it]?.id == anchorId } }
-                        .filterNotNull()
-                        .first()
+                        .mapNotNull { snapshot ->
+                            snapshot.indices.firstOrNull {
+                                snapshot[it]?.id ==
+                                    anchorId
+                            }
+                        }.first()
                         .also { resolved -> idx = resolved }
                 }
             }
@@ -407,10 +417,21 @@ fun BookContentView(
         }
 
         // While scrolling, sample periodically so a close during an active scroll still restores closely.
+        // Gated by isScrollInProgress so the `sample` ticker only runs during an active scroll —
+        // otherwise its fixedPeriodTicker keeps the FlushCoroutineDispatcher waking up at 5 Hz forever
+        // and the Compose scene re-renders every tick even at idle.
         launch {
-            snapshotFlow { scrollData.value }
+            snapshotFlow { listState.isScrollInProgress }
                 .distinctUntilChanged()
-                .sample(200)
+                .flatMapLatest { inProgress ->
+                    if (inProgress) {
+                        snapshotFlow { scrollData.value }
+                            .distinctUntilChanged()
+                            .sample(200.milliseconds)
+                    } else {
+                        emptyFlow()
+                    }
+                }.catch { e -> debugln { "scroll-save flow failed: $e" } }
                 .collect { data -> maybeSave(data) }
         }
 
@@ -419,6 +440,7 @@ fun BookContentView(
             snapshotFlow { listState.isScrollInProgress }
                 .distinctUntilChanged()
                 .filter { inProgress -> !inProgress }
+                .catch { e -> debugln { "scroll-stop flush flow failed: $e" } }
                 .collect {
                     // Wait one frame so layoutInfo/visibleItemsInfo reflect the final settled position.
                     withFrameNanos { }
@@ -440,7 +462,7 @@ fun BookContentView(
     }
 
     // Smart mode: get highlight terms from search engine with dictionary expansion
-    val appGraph = io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph.current
+    val appGraph = LocalAppGraph.current
     val smartHighlightTerms by remember(smartModeEnabled, findState) {
         derivedStateOf {
             if (smartModeEnabled) {

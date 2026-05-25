@@ -25,8 +25,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.zacsweers.metrox.viewmodel.metroViewModel
 import dev.nucleusframework.updater.UpdaterConfig
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsState
@@ -117,7 +117,8 @@ private fun GeneralSettingsView(
 
             // Database delta-update panel: checks the release server for
             // a new seforim.db delta and applies it incrementally.
-            io.github.kdroidfilter.seforimapp.features.settings.dbupdate.DbDeltaUpdateSection()
+            io.github.kdroidfilter.seforimapp.features.settings.dbupdate
+                .DbDeltaUpdateSection()
 
             ResetSection(
                 resetDone = state.resetDone,

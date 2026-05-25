@@ -20,6 +20,7 @@ import seforimapp.seforimapp.generated.resources.*
 // AllIconsKeys.MeetNewUi.SystemTheme was removed in Jewel 0.37 and the SVG
 // dropped from IntelliJ Platform icons 262, so the asset is shipped locally.
 private object SystemThemeIconAnchor
+
 private val SystemTheme = PathIconKey("icons/system_theme.svg", SystemThemeIconAnchor::class.java)
 
 @Composable

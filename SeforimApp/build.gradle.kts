@@ -1,7 +1,7 @@
-import io.github.kdroidfilter.buildsrc.Versioning
 import dev.nucleusframework.desktop.application.dsl.ReleaseChannel
 import dev.nucleusframework.desktop.application.dsl.ReleaseType
 import dev.nucleusframework.desktop.application.dsl.TargetFormat
+import io.github.kdroidfilter.buildsrc.Versioning
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
 
 plugins {

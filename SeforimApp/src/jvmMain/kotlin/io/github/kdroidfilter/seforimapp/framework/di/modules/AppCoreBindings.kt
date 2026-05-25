@@ -110,8 +110,9 @@ object AppCoreBindings {
         val seforimDb = Paths.get(dbPath)
         val catalogPb = Paths.get(seforimDb.parent.toString(), "catalog.pb")
         val workDir = Paths.get(seforimDb.parent.toString(), "delta-cache")
-        val releaseMetaUrl = System.getenv("SEFORIMAPP_RELEASE_META_URL")
-            ?: "https://kdroidfilter.github.io/SefariaExport/release_meta.json"
+        val releaseMetaUrl =
+            System.getenv("SEFORIMAPP_RELEASE_META_URL")
+                ?: "https://kdroidfilter.github.io/SefariaExport/release_meta.json"
         return io.github.kdroidfilter.seforimapp.framework.update.DbDeltaUpdateService(
             seforimDb = seforimDb,
             catalogPb = catalogPb,

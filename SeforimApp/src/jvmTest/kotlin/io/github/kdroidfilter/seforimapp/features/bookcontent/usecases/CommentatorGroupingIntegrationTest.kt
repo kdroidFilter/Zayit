@@ -204,6 +204,38 @@ class CommentatorGroupingIntegrationTest {
         }
 
     @Test
+    fun `Berakhot 2a — cross-corpus commentators excluded`() =
+        runBlocking {
+            skipIfNoDb()
+            val uc = buildUseCase(BERAKHOT_BOOK_ID)
+            val groups = uc.getCommentatorGroupsForLines(listOf(BERAKHOT_2A_LINE_ID))
+            val labels = groups.map { it.label }
+            println("[Berakhot 2a cross-corpus] Labels: $labels")
+            // Tora Temima lives in `תנ״ך` and Beit Yosef lives in `הלכה`.
+            // Their CSV COMMENTARY rows on Berakhot are demoted to RELATED at
+            // generation time so the Talmud commentator panel stays clean.
+            assertTrue(
+                "אחרונים על התנ״ך" !in labels,
+                "Talmud reader must not see Tanakh-anchored Acharonim group. Got: $labels",
+            )
+            assertTrue(
+                labels.none {
+                    it.startsWith("מפרשים על טור") ||
+                        it.startsWith("מפרשים על שולחן ערוך") ||
+                        it.startsWith("מפרשים על משנה תורה")
+                },
+                "Talmud reader must not see Halakha-anchored 'מפרשים על X' groups. Got: $labels",
+            )
+            // Sub-commentaries on Rif/Rosh must roll up to the Talmud Rishonim
+            // bucket (resolveGroupLabel pass 1) — they should NOT keep the
+            // intermediate "מפרשים על רי״ף" / "מפרשים על רא״ש" labels.
+            assertTrue(
+                labels.none { it.startsWith("מפרשים על רי") || it.startsWith("מפרשים על רא") },
+                "Rif/Rosh sub-commentaries must roll up to Talmud Rishonim. Got: $labels",
+            )
+        }
+
+    @Test
     fun `Berakhot 2a — Talmud Rishonim group exists and is non-empty`() =
         runBlocking {
             skipIfNoDb()

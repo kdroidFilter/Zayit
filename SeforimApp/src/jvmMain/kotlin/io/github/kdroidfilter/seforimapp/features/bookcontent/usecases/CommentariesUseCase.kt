@@ -400,12 +400,15 @@ class CommentariesUseCase(
         }
         if (chain.isEmpty()) return ""
 
-        // Walk from leaf to root, applying the most specific bucket first.
-        for ((idx, category) in chain.withIndex()) {
+        // Pass 1: the strongest, most-informative bucket — "X על Y" labels
+        // anchored on a primary corpus (Tanakh / Talmud / Mishna / Shas) win
+        // over everything else, scanned across the whole ancestor chain. This
+        // is important because a sub-commentary on Rif (chain:
+        // `מפרשים < רי״ף < ראשונים על התלמוד`) must surface as
+        // `ראשונים על התלמוד`, NOT as `מפרשים על רי״ף`.
+        for (category in chain) {
             currentCoroutineContext().ensureActive()
             val title = category.title
-
-            // 1. Explicit "X על Y" buckets keep their full label (most informative).
             if (
                 title.contains("על התנ״ך") ||
                 title.contains("על התלמוד") ||
@@ -416,34 +419,83 @@ class CommentariesUseCase(
             ) {
                 return title
             }
+        }
 
-            // 2. Hard-coded multi-book families (chevruta, dictionaries, contemporary authors).
+        // Pass 2: hard-coded multi-book families (chevruta, dictionaries,
+        // contemporary authors).
+        for (category in chain) {
+            currentCoroutineContext().ensureActive()
+            val title = category.title
             if (title == "ביאור חברותא" || title == "הערות על ביאור חברותא") return "חברותא"
             if (title.contains("מילונים")) return title
             if (title == "מחברי זמננו") return title
+        }
 
-            // 3. "מפרשים" → use the parent text to disambiguate ("מפרשים על משנה תורה").
-            if (title == "מפרשים") {
+        // Pass 3: "מפרשים" — only when no higher-level "X על Y" anchor exists
+        //   (e.g. Mishneh Torah's super-commentaries). Check if the parent's
+        //   ancestors include a corpus reference. If so, use that. Otherwise use
+        //   immediate parent.
+        for ((idx, category) in chain.withIndex()) {
+            currentCoroutineContext().ensureActive()
+            if (category.title == "מפרשים") {
+                // Check if "ראשונים" appears further up the chain; if so, use its corpus parent.
+                for (ancestorIdx in (idx + 1) until chain.size) {
+                    val ancestor = chain[ancestorIdx]
+                    if (ancestor.title == "ראשונים") {
+                        // Found "ראשונים" — use its parent corpus
+                        val corpus = chain.getOrNull(ancestorIdx + 1)
+                        if (corpus != null) {
+                            return "ראשונים על ${when (corpus.title) {
+                                "בבלי", "בבל" -> "התלמוד"
+                                "תנ״ך", "תנך" -> "התנ״ך"
+                                "משנה" -> "המשנה"
+                                "ש\"ס", "ש״ס", "שס" -> "הש\"ס"
+                                else -> corpus.title
+                            }}"
+                        }
+                        break
+                    }
+                }
+                // Fallback: use immediate parent
                 val parent = chain.getOrNull(idx + 1)
                 if (parent != null && parent.title.isNotBlank()) {
                     return "מפרשים על ${parent.title}"
                 }
-                return title
+                return "מפרשים"
             }
+        }
 
-            // 4. Bare "ראשונים" / "אחרונים" under a non-canonical parent
-            //    (e.g. "אחרונים < מחשבת ישראל") becomes "אחרונים על מחשבת ישראל".
+        // Pass 4: bare "ראשונים" / "אחרונים" anywhere in the chain. Look for corpus
+        //   references further up; if found, use those. Otherwise use immediate parent.
+        for ((idx, category) in chain.withIndex()) {
+            currentCoroutineContext().ensureActive()
+            val title = category.title
             if (title == "ראשונים" || title == "אחרונים") {
+                // Check ancestors for corpus references (בבלי, תנ״ך, משנה, etc.)
+                for (ancestorIdx in (idx + 1) until chain.size) {
+                    val ancestor = chain[ancestorIdx]
+                    val corpusLabel = when (ancestor.title) {
+                        "בבלי", "בבל" -> "התלמוד"
+                        "תנ״ך", "תנך" -> "התנ״ך"
+                        "משנה" -> "המשנה"
+                        "ש\"ס", "ש״ס", "שס" -> "הש\"ס"
+                        else -> null
+                    }
+                    if (corpusLabel != null) {
+                        return "$title על $corpusLabel"
+                    }
+                }
+                // Fallback: use immediate parent
                 val parent = chain.getOrNull(idx + 1)
-                if (parent != null &&
-                    parent.title.isNotBlank() &&
-                    parent.title != "תנ״ך" &&
-                    parent.title != "תלמוד" &&
-                    parent.title != "משנה" &&
-                    parent.title != "ש\"ס" &&
-                    parent.title != "ש״ס"
-                ) {
-                    return "$title על ${parent.title}"
+                if (parent != null && parent.title.isNotBlank()) {
+                    val parentLabel = when (parent.title) {
+                        "תנ״ך", "תנך" -> "התנ״ך"
+                        "תלמוד" -> "התלמוד"
+                        "משנה" -> "המשנה"
+                        "ש\"ס", "ש״ס", "שס" -> "הש\"ס"
+                        else -> parent.title
+                    }
+                    return "$title על $parentLabel"
                 }
                 return title
             }

@@ -10,10 +10,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
 import dev.nucleusframework.application.NucleusApplicationScope
+import dev.nucleusframework.window.BasicTitleBar
 import dev.nucleusframework.window.ControlButtonsDirection
+import dev.nucleusframework.window.TitleBarLayoutPolicy
 import dev.nucleusframework.window.jewel.JewelDecoratedWindow
-import dev.nucleusframework.window.jewel.JewelTitleBar
 import dev.nucleusframework.window.newFullscreenControls
+import dev.nucleusframework.window.styling.LocalTitleBarStyle
+import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
@@ -53,8 +56,6 @@ fun NucleusApplicationScope.DatabaseUpdateWindow(
             LocalWindowViewModelStoreOwner provides windowViewModelOwner,
             LocalViewModelStoreOwner provides windowViewModelOwner,
         ) {
-            val isMac = PlatformInfo.isMacOS
-            val isWindows = PlatformInfo.isWindows
             val navController = rememberNavController()
             var canNavigateBack by remember { mutableStateOf(false) }
 
@@ -64,24 +65,20 @@ fun NucleusApplicationScope.DatabaseUpdateWindow(
                 }
             }
 
-            JewelTitleBar(
+            val titleBarStyle = LocalTitleBarStyle.current
+            BasicTitleBar(
                 modifier = Modifier.newFullscreenControls(),
                 gradientStartColor = ThemeUtils.titleBarGradientColor(),
+                style = titleBarStyle,
                 controlButtonsDirection = ControlButtonsDirection.SystemNative,
+                layoutPolicy = TitleBarLayoutPolicy.FillCenter,
             ) {
-                // Keep the back button pinned to the start and
-                // center the title (icon + text) regardless of OS/window controls.
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth(if (isMac) 0.9f else 1f)
-                            .padding(start = if (isWindows) 70.dp else 0.dp),
-                ) {
+                CompositionLocalProvider(LocalContentColor provides titleBarStyle.colors.content) {
                     if (canNavigateBack) {
                         IconButton(
                             modifier =
                                 Modifier
-                                    .align(Alignment.CenterStart)
+                                    .align(Alignment.Start)
                                     .padding(start = 8.dp)
                                     .size(24.dp),
                             onClick = { navController.navigateUp() },
@@ -90,15 +87,13 @@ fun NucleusApplicationScope.DatabaseUpdateWindow(
                         }
                     }
 
-                    val centerOffset = 40.dp
-
                     Row(
                         modifier =
                             Modifier
-                                .align(Alignment.Center)
-                                .offset(x = centerOffset),
+                                .align(Alignment.CenterHorizontally)
+                                .fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.Center,
                     ) {
                         Icon(
                             Deployed_code_update,
@@ -106,6 +101,7 @@ fun NucleusApplicationScope.DatabaseUpdateWindow(
                             tint = JewelTheme.globalColors.text.normal,
                             modifier = Modifier.size(16.dp),
                         )
+                        Spacer(Modifier.size(8.dp))
                         Text(stringResource(Res.string.db_update_title_bar))
                     }
                 }

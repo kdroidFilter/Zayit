@@ -259,6 +259,7 @@ fun main(args: Array<String>) {
         CompositionLocalProvider(
             LocalAppGraph provides appGraph,
             LocalMetroViewModelFactory provides appGraph.metroViewModelFactory,
+            LocalLayoutDirection provides LayoutDirection.Rtl,
         ) {
             val themeDefinition = ThemeUtils.buildThemeDefinition()
             val componentStyling = ThemeUtils.buildComponentStyling()
@@ -422,7 +423,6 @@ fun main(args: Array<String>) {
                         },
                     ) {
                         CompositionLocalProvider(
-                            LocalLayoutDirection provides LayoutDirection.Rtl,
                             LocalWindowViewModelStoreOwner provides windowViewModelOwner,
                             LocalViewModelStoreOwner provides windowViewModelOwner,
                         ) {

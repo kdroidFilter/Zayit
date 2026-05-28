@@ -86,6 +86,28 @@ internal fun rememberAsyncHtmlAnnotation(
     return annotation
 }
 
+/**
+ * Builds the cache key for an HTML line annotation. Shared by [LineItem] composition and the
+ * off-screen prefetcher so both produce byte-identical keys (a mismatch would defeat the cache).
+ */
+internal fun htmlAnnotationCacheKey(
+    lineId: Long,
+    processedContent: String,
+    baseTextSize: Float,
+    boldScale: Float,
+    footnoteMarkerColor: Color,
+    invertImages: Boolean,
+): HtmlAnnotationCacheKey =
+    HtmlAnnotationCacheKey(
+        itemId = lineId,
+        contentHash = processedContent.hashCode(),
+        contentLength = processedContent.length,
+        baseTextSize = baseTextSize,
+        boldScale = boldScale,
+        footnoteMarkerColor = footnoteMarkerColor,
+        invertImages = invertImages,
+    )
+
 internal fun htmlAnnotationPlaceholderText(contentLength: Int): String {
     val lineCount =
         ((contentLength + PLACEHOLDER_CHARS_PER_LINE - 1) / PLACEHOLDER_CHARS_PER_LINE)
@@ -98,7 +120,7 @@ internal fun htmlAnnotationPlaceholderText(contentLength: Int): String {
     }
 }
 
-private fun buildLineAnnotation(
+internal fun buildLineAnnotation(
     html: String,
     baseTextSize: Float,
     boldScale: Float,

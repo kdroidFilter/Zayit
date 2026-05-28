@@ -474,13 +474,14 @@ class CommentariesUseCase(
                 // Check ancestors for corpus references (בבלי, תנ״ך, משנה, etc.)
                 for (ancestorIdx in (idx + 1) until chain.size) {
                     val ancestor = chain[ancestorIdx]
-                    val corpusLabel = when (ancestor.title) {
-                        "בבלי", "בבל" -> "התלמוד"
-                        "תנ״ך", "תנך" -> "התנ״ך"
-                        "משנה" -> "המשנה"
-                        "ש\"ס", "ש״ס", "שס" -> "הש\"ס"
-                        else -> null
-                    }
+                    val corpusLabel =
+                        when (ancestor.title) {
+                            "בבלי", "בבל" -> "התלמוד"
+                            "תנ״ך", "תנך" -> "התנ״ך"
+                            "משנה" -> "המשנה"
+                            "ש\"ס", "ש״ס", "שס" -> "הש\"ס"
+                            else -> null
+                        }
                     if (corpusLabel != null) {
                         return "$title על $corpusLabel"
                     }
@@ -488,13 +489,14 @@ class CommentariesUseCase(
                 // Fallback: use immediate parent
                 val parent = chain.getOrNull(idx + 1)
                 if (parent != null && parent.title.isNotBlank()) {
-                    val parentLabel = when (parent.title) {
-                        "תנ״ך", "תנך" -> "התנ״ך"
-                        "תלמוד" -> "התלמוד"
-                        "משנה" -> "המשנה"
-                        "ש\"ס", "ש״ס", "שס" -> "הש\"ס"
-                        else -> parent.title
-                    }
+                    val parentLabel =
+                        when (parent.title) {
+                            "תנ״ך", "תנך" -> "התנ״ך"
+                            "תלמוד" -> "התלמוד"
+                            "משנה" -> "המשנה"
+                            "ש\"ס", "ש״ס", "שס" -> "הש\"ס"
+                            else -> parent.title
+                        }
                     return "$title על $parentLabel"
                 }
                 return title
@@ -996,7 +998,7 @@ class CommentariesUseCase(
         // mirror query on hot navigation paths.
         val includeSources = selectedBook?.hasSourceConnection == true
 
-        val allConnections = repository.getCommentarySummariesForLines(allBaseIds,)
+        val allConnections = repository.getCommentarySummariesForLines(allBaseIds)
         if (allConnections.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
 
         val connectionsBySource = allConnections.groupBy { it.link.sourceLineId }

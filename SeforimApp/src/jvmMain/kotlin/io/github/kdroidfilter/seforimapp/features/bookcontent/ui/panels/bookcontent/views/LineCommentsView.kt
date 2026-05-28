@@ -645,8 +645,7 @@ private fun CommentariesPagedList(
                 listState.firstVisibleItemScrollOffset,
                 listState.isScrollInProgress,
             )
-        }
-            .distinctUntilChanged()
+        }.distinctUntilChanged()
             .drop(1)
             .debounce(SCROLL_DEBOUNCE)
             .collect { (i, o, isScrollInProgress) ->

@@ -70,12 +70,15 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
@@ -621,10 +624,83 @@ fun BookContentView(
     var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
     var currentMatchStart by remember { mutableIntStateOf(-1) }
     val plainTextCache = remember(bookId) { mutableStateMapOf<Long, String>() }
+
+    // Theme-derived inputs to the HTML annotation, hoisted here so the off-screen prefetcher
+    // can build keys/annotations identical to those produced inside LineItem.
+    val isDarkTheme = JewelTheme.isDark
+    val footnoteMarkerColor = JewelTheme.globalColors.outlines.focused
+    val prefetchImageBuilder =
+        remember(isDarkTheme) {
+            SkiaHtmlImageBuilder.build { if (isDarkTheme) SkiaHtmlImageBuilder.InvertColorFilter else null }
+        }
+
+    // Backed by a ConcurrentHashMap: the prefetcher writes from Dispatchers.Default while
+    // LineItem reads during composition on the main thread.
     val stableAnnotatedCache =
         remember(bookId, textSize, boldScaleForPlatform, showDiacritics) {
-            StableAnnotatedCache(mutableStateMapOf())
+            StableAnnotatedCache(java.util.concurrent.ConcurrentHashMap())
         }
+
+    // Warm the annotation cache for lines just outside the viewport so they render straight from
+    // cache (no async placeholder flash, no height reflow) by the time they scroll into view.
+    // conflate() (not collectLatest) keeps the latest viewport range without cancelling an
+    // in-flight build batch — so fast scrolling still makes forward progress on parsing.
+    LaunchedEffect(
+        listState,
+        lazyPagingItems,
+        stableAnnotatedCache,
+        prefetchImageBuilder,
+        textSize,
+        boldScaleForPlatform,
+        showDiacritics,
+        footnoteMarkerColor,
+        isDarkTheme,
+    ) {
+        snapshotFlow {
+            val visible = listState.layoutInfo.visibleItemsInfo
+            if (visible.isEmpty()) {
+                IntRange.EMPTY
+            } else {
+                (visible.first().index - HTML_PREFETCH_BEHIND)..(visible.last().index + HTML_PREFETCH_AHEAD)
+            }
+        }.distinctUntilChanged()
+            .conflate()
+            .catch { e -> debugln { "annotation-prefetch flow failed: $e" } }
+            .collect { range ->
+                if (range.isEmpty()) return@collect
+                val count = lazyPagingItems.itemCount
+                // Snapshot candidate lines on the main thread; peek() never triggers a page load.
+                val lines = range.mapNotNull { i -> if (i in 0 until count) lazyPagingItems.peek(i) else null }
+                if (lines.isEmpty()) return@collect
+                withContext(Dispatchers.Default) {
+                    for (line in lines) {
+                        ensureActive()
+                        val processed =
+                            if (showDiacritics) line.content else HebrewTextUtils.removeAllDiacritics(line.content)
+                        val key =
+                            htmlAnnotationCacheKey(
+                                lineId = line.id,
+                                processedContent = processed,
+                                baseTextSize = textSize,
+                                boldScale = boldScaleForPlatform,
+                                footnoteMarkerColor = footnoteMarkerColor,
+                                invertImages = isDarkTheme,
+                            )
+                        if (stableAnnotatedCache.get(key) != null) continue
+                        stableAnnotatedCache.put(
+                            key,
+                            buildLineAnnotation(
+                                html = processed,
+                                baseTextSize = textSize,
+                                boldScale = boldScaleForPlatform,
+                                footnoteMarkerColor = footnoteMarkerColor,
+                                imageContentBuilder = prefetchImageBuilder,
+                            ),
+                        )
+                    }
+                }
+            }
+    }
 
     // Navigate to next/previous line containing the query (wrap-around)
     val scope = rememberCoroutineScope()
@@ -798,8 +874,7 @@ fun BookContentView(
                             commitPointerZoom()
                         }
                     }
-                }
-                .focusRequester(focusRequester)
+                }.focusRequester(focusRequester)
                 .onPreviewKeyEvent(previewKeyHandler)
                 .focusable(),
     ) {
@@ -1078,6 +1153,11 @@ fun BookContentView(
 // changing this value updates both the layout and the scrollbar metrics.
 internal val LineItemVerticalPaddingPerSide = 8.dp
 
+// How many lines to pre-parse on either side of the viewport. Forward gets a larger buffer
+// since scrolling down is the dominant direction in a reading app.
+private const val HTML_PREFETCH_AHEAD = 16
+private const val HTML_PREFETCH_BEHIND = 8
+
 // Data class for anchor information
 private data class AnchorData(
     val anchorId: Long,
@@ -1218,10 +1298,9 @@ private fun LineItem(
     val annotationCache = annotatedCache ?: localAnnotatedCache
     val annotationCacheKey =
         remember(lineId, processedContent, baseTextSize, boldScale, footnoteMarkerColor, isDarkTheme) {
-            HtmlAnnotationCacheKey(
-                itemId = lineId,
-                contentHash = processedContent.hashCode(),
-                contentLength = processedContent.length,
+            htmlAnnotationCacheKey(
+                lineId = lineId,
+                processedContent = processedContent,
                 baseTextSize = baseTextSize,
                 boldScale = boldScale,
                 footnoteMarkerColor = footnoteMarkerColor,

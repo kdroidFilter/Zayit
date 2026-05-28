@@ -574,8 +574,18 @@ class DesktopManagerIntegrationTest {
             assertEquals("d1", desktopManager.activeDesktopId.value)
             // Active desktop tabs restored
             assertEquals(1, tabsViewModel.state.value.tabs.size)
-            assertEquals("Book A", tabsViewModel.state.value.tabs.first().title)
-            assertEquals(TabType.BOOK, tabsViewModel.state.value.tabs.first().tabType)
+            assertEquals(
+                "Book A",
+                tabsViewModel.state.value.tabs
+                    .first()
+                    .title,
+            )
+            assertEquals(
+                TabType.BOOK,
+                tabsViewModel.state.value.tabs
+                    .first()
+                    .tabType,
+            )
             assertEquals(
                 10L,
                 (
@@ -588,8 +598,18 @@ class DesktopManagerIntegrationTest {
             desktopManager.switchTo("d2")
             desktopManager.clearSwitching()
 
-            assertEquals("Book B", tabsViewModel.state.value.tabs.first().title)
-            assertEquals(TabType.BOOK, tabsViewModel.state.value.tabs.first().tabType)
+            assertEquals(
+                "Book B",
+                tabsViewModel.state.value.tabs
+                    .first()
+                    .title,
+            )
+            assertEquals(
+                TabType.BOOK,
+                tabsViewModel.state.value.tabs
+                    .first()
+                    .tabType,
+            )
         }
 
     @Test

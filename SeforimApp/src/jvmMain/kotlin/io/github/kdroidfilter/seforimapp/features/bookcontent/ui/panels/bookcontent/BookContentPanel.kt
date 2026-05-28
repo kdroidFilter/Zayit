@@ -288,10 +288,10 @@ private fun LoaderPanel(modifier: Modifier = Modifier) {
     Box(
         modifier =
             modifier
-                .fillMaxSize()
-                .wrapContentSize(Alignment.Center),
+                .fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        CircularProgressIndicator()
+        CircularProgressIndicator(modifier = Modifier.size(72.dp))
     }
 }
 

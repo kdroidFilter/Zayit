@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,7 +39,6 @@ import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
-import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
@@ -569,6 +567,7 @@ private fun CommentariesPagedList(
 ) {
     val currentOnScrollSettled by rememberUpdatedState(onScrollSettled)
     val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
+    val annotationCache = remember(selection, commentatorId) { StableAnnotatedCache(mutableStateMapOf()) }
 
     // Ordered char-count vector for every commentary matching this selection ×
     // commentator (same filter + order as the pager). The scrollbar converts every
@@ -676,6 +675,7 @@ private fun CommentariesPagedList(
                             boldScale = config.boldScale,
                             highlightQuery = config.highlightQuery,
                             showDiacritics = config.showDiacritics,
+                            annotationCache = annotationCache,
                             onClick = { config.onCommentClick(commentary) },
                             onLayoutWidthMeasure = { width ->
                                 if (textLayoutWidthPx == 0 && width > 0) {
@@ -713,6 +713,7 @@ private fun CommentaryItem(
     fontFamily: FontFamily,
     highlightQuery: String,
     showDiacritics: Boolean,
+    annotationCache: StableAnnotatedCache,
     onClick: () -> Unit,
     boldScale: Float = 1.0f,
     onLayoutWidthMeasure: (Int) -> Unit = {},
@@ -753,51 +754,67 @@ private fun CommentaryItem(
             remember(isDarkTheme) {
                 { if (isDarkTheme) SkiaHtmlImageBuilder.InvertColorFilter else null }
             }
-        val annotatedWithImages =
-            remember(
-                linkId,
-                processedText,
-                textSizes.commentTextSize,
-                boldScale,
-                showDiacritics,
-                footnoteMarkerColor,
-                imageColorFilter,
-            ) {
-                val inline = mutableMapOf<String, InlineTextContent>()
-                val annotated =
-                    buildAnnotatedFromHtml(
-                        processedText,
-                        textSizes.commentTextSize,
-                        boldScale = if (boldScale < 1f) 1f else boldScale,
-                        footnoteMarkerColor = footnoteMarkerColor,
-                        inlineContent = inline,
-                        imageContentBuilder = SkiaHtmlImageBuilder.build(imageColorFilter),
-                    )
-                annotated to inline.toMap()
-            }
-        val annotated = annotatedWithImages.first
-        val inlineImageContent = annotatedWithImages.second
 
-        val display: AnnotatedString =
-            remember(annotated, highlightQuery) {
-                if (highlightQuery.isBlank()) {
-                    annotated
-                } else {
-                    highlightAnnotated(annotated, highlightQuery)
+        val annotationCacheKey =
+            remember(linkId, processedText, textSizes.commentTextSize, boldScale, footnoteMarkerColor, isDarkTheme) {
+                HtmlAnnotationCacheKey(
+                    itemId = linkId,
+                    contentHash = processedText.hashCode(),
+                    contentLength = processedText.length,
+                    baseTextSize = textSizes.commentTextSize,
+                    boldScale = boldScale,
+                    footnoteMarkerColor = footnoteMarkerColor,
+                    invertImages = isDarkTheme,
+                )
+            }
+        val annotation =
+            rememberAsyncHtmlAnnotation(
+                cacheKey = annotationCacheKey,
+                html = processedText,
+                baseTextSize = textSizes.commentTextSize,
+                boldScale = boldScale,
+                footnoteMarkerColor = footnoteMarkerColor,
+                imageColorFilter = imageColorFilter,
+                annotatedCache = annotationCache,
+            )
+
+        if (annotation == null) {
+            Text(
+                text = htmlAnnotationPlaceholderText(processedText.length),
+                textAlign = TextAlign.Justify,
+                fontSize = textSizes.commentTextSize.sp,
+                fontFamily = fontFamily,
+                lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp,
+                onTextLayout = { result ->
+                    val cw = result.layoutInput.constraints.maxWidth
+                    if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
+                },
+            )
+        } else {
+            val annotated = annotation.annotated
+            val inlineImageContent = annotation.inlineContent
+
+            val display: AnnotatedString =
+                remember(annotated, highlightQuery) {
+                    if (highlightQuery.isBlank()) {
+                        annotated
+                    } else {
+                        highlightAnnotated(annotated, highlightQuery)
+                    }
                 }
-            }
 
-        Text(
-            text = display,
-            textAlign = TextAlign.Justify,
-            fontFamily = fontFamily,
-            lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp,
-            inlineContent = inlineImageContent,
-            onTextLayout = { result ->
-                val cw = result.layoutInput.constraints.maxWidth
-                if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
-            },
-        )
+            Text(
+                text = display,
+                textAlign = TextAlign.Justify,
+                fontFamily = fontFamily,
+                lineHeight = (textSizes.commentTextSize * textSizes.lineHeight).sp,
+                inlineContent = inlineImageContent,
+                onTextLayout = { result ->
+                    val cw = result.layoutInput.constraints.maxWidth
+                    if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
+                },
+            )
+        }
     }
 }
 
@@ -841,7 +858,8 @@ private fun ErrorMessage(error: Throwable) {
 private fun rememberAnimatedTextSettings(): AnimatedTextSizes {
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val isTabSelected = LocalTabSelected.current
-    val zoomAnimSpec = if (isTabSelected) tween<Float>(durationMillis = 200) else snap()
+    val isBookContentZoomInProgress = LocalBookContentZoomInProgress.current
+    val zoomAnimSpec = if (isTabSelected && !isBookContentZoomInProgress) tween<Float>(durationMillis = 200) else snap()
     val commentTextSize by animateFloatAsState(
         targetValue = rawTextSize * 0.875f,
         animationSpec = zoomAnimSpec,

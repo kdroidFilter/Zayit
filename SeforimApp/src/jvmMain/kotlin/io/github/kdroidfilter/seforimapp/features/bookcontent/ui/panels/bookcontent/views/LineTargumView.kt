@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -37,7 +36,6 @@ import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
-import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
@@ -101,7 +99,8 @@ private fun SingleLineTargumView(
 ) {
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val isTabSelected = LocalTabSelected.current
-    val zoomAnimSpec = if (isTabSelected) tween<Float>(durationMillis = 300) else snap()
+    val isBookContentZoomInProgress = LocalBookContentZoomInProgress.current
+    val zoomAnimSpec = if (isTabSelected && !isBookContentZoomInProgress) tween<Float>(durationMillis = 300) else snap()
     val commentTextSize by animateFloatAsState(
         targetValue = rawTextSize * 0.875f,
         animationSpec = zoomAnimSpec,
@@ -223,6 +222,10 @@ private fun SingleLineTargumView(
                                     items = lazyPagingItems,
                                 )
                             }
+                        val annotationCache =
+                            remember(selectedLine.id, availabilityType) {
+                                StableAnnotatedCache(mutableStateMapOf())
+                            }
 
                         val listState =
                             rememberSaveable(
@@ -339,6 +342,7 @@ private fun SingleLineTargumView(
                                                     highlightQuery = highlightQuery,
                                                     onClick = { onLinkClick(item) },
                                                     showDiacritics = showDiacritics,
+                                                    annotationCache = annotationCache,
                                                     onLayoutWidthMeasure = { width ->
                                                         if (textLayoutWidthPx == 0 && width > 0) {
                                                             textLayoutWidthPx = width
@@ -527,7 +531,8 @@ private fun MultiLineTargumView(
 
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val isTabSelected = LocalTabSelected.current
-    val zoomAnimSpec = if (isTabSelected) tween<Float>(durationMillis = 300) else snap()
+    val isBookContentZoomInProgress = LocalBookContentZoomInProgress.current
+    val zoomAnimSpec = if (isTabSelected && !isBookContentZoomInProgress) tween<Float>(durationMillis = 300) else snap()
     val commentTextSize by animateFloatAsState(
         targetValue = rawTextSize * 0.875f,
         animationSpec = zoomAnimSpec,
@@ -618,6 +623,10 @@ private fun MultiLineTargumView(
                             bookId = meta.bookId,
                             items = lazyPagingItems,
                         )
+                    }
+                val annotationCache =
+                    remember(selectedLineIds, availabilityType) {
+                        StableAnnotatedCache(mutableStateMapOf())
                     }
 
                 val listState =
@@ -742,6 +751,7 @@ private fun MultiLineTargumView(
                                                 }
                                             },
                                             showDiacritics = showDiacritics,
+                                            annotationCache = annotationCache,
                                             onLayoutWidthMeasure = { width ->
                                                 if (textLayoutWidthPx == 0 && width > 0) {
                                                     textLayoutWidthPx = width
@@ -809,6 +819,7 @@ private fun LinkItem(
     highlightQuery: String,
     onClick: () -> Unit,
     showDiacritics: Boolean,
+    annotationCache: StableAnnotatedCache,
     boldScale: Float = 1.0f,
     onLayoutWidthMeasure: (Int) -> Unit = {},
 ) {
@@ -834,48 +845,64 @@ private fun LinkItem(
             remember(isDarkTheme) {
                 { if (isDarkTheme) SkiaHtmlImageBuilder.InvertColorFilter else null }
             }
-        val annotatedWithImages =
-            remember(
-                linkId,
-                processedText,
-                commentTextSize,
-                boldScale,
-                showDiacritics,
-                footnoteMarkerColor,
-                imageColorFilter,
-            ) {
-                val inline = mutableMapOf<String, InlineTextContent>()
-                val annotated =
-                    buildAnnotatedFromHtml(
-                        processedText,
-                        commentTextSize,
-                        boldScale = if (boldScale < 1f) 1f else boldScale,
-                        footnoteMarkerColor = footnoteMarkerColor,
-                        inlineContent = inline,
-                        imageContentBuilder = SkiaHtmlImageBuilder.build(imageColorFilter),
-                    )
-                annotated to inline.toMap()
-            }
-        val annotated = annotatedWithImages.first
-        val inlineImageContent = annotatedWithImages.second
 
-        // Highlight occurrences using the current tab's find-in-page query
-        val display: AnnotatedString =
-            remember(annotated, highlightQuery) {
-                io.github.kdroidfilter.seforimapp.core.presentation.text
-                    .highlightAnnotated(annotated, highlightQuery)
+        val annotationCacheKey =
+            remember(linkId, processedText, commentTextSize, boldScale, footnoteMarkerColor, isDarkTheme) {
+                HtmlAnnotationCacheKey(
+                    itemId = linkId,
+                    contentHash = processedText.hashCode(),
+                    contentLength = processedText.length,
+                    baseTextSize = commentTextSize,
+                    boldScale = boldScale,
+                    footnoteMarkerColor = footnoteMarkerColor,
+                    invertImages = isDarkTheme,
+                )
             }
+        val annotation =
+            rememberAsyncHtmlAnnotation(
+                cacheKey = annotationCacheKey,
+                html = processedText,
+                baseTextSize = commentTextSize,
+                boldScale = boldScale,
+                footnoteMarkerColor = footnoteMarkerColor,
+                imageColorFilter = imageColorFilter,
+                annotatedCache = annotationCache,
+            )
 
-        Text(
-            text = display,
-            textAlign = TextAlign.Justify,
-            fontFamily = fontFamily,
-            lineHeight = (commentTextSize * lineHeight).sp,
-            inlineContent = inlineImageContent,
-            onTextLayout = { result ->
-                val cw = result.layoutInput.constraints.maxWidth
-                if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
-            },
-        )
+        if (annotation == null) {
+            Text(
+                text = htmlAnnotationPlaceholderText(processedText.length),
+                textAlign = TextAlign.Justify,
+                fontSize = commentTextSize.sp,
+                fontFamily = fontFamily,
+                lineHeight = (commentTextSize * lineHeight).sp,
+                onTextLayout = { result ->
+                    val cw = result.layoutInput.constraints.maxWidth
+                    if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
+                },
+            )
+        } else {
+            val annotated = annotation.annotated
+            val inlineImageContent = annotation.inlineContent
+
+            // Highlight occurrences using the current tab's find-in-page query
+            val display: AnnotatedString =
+                remember(annotated, highlightQuery) {
+                    io.github.kdroidfilter.seforimapp.core.presentation.text
+                        .highlightAnnotated(annotated, highlightQuery)
+                }
+
+            Text(
+                text = display,
+                textAlign = TextAlign.Justify,
+                fontFamily = fontFamily,
+                lineHeight = (commentTextSize * lineHeight).sp,
+                inlineContent = inlineImageContent,
+                onTextLayout = { result ->
+                    val cw = result.layoutInput.constraints.maxWidth
+                    if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
+                },
+            )
+        }
     }
 }

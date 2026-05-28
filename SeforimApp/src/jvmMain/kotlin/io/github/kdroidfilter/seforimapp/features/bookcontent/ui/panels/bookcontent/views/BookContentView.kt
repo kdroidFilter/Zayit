@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableStateMapOf
@@ -116,6 +115,7 @@ fun BookContentView(
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
     isSelected: Boolean = true,
     bookCharCounts: IntArray? = null,
+    onPointerZoomInProgressChange: (Boolean) -> Unit = {},
 ) {
     // Don't use the saved scroll position initially if we have an anchor
     // The restoration will be handled after pagination loads
@@ -135,43 +135,127 @@ fun BookContentView(
     // Collect text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val isTabSelected = LocalTabSelected.current
+    val currentOnPointerZoomInProgressChange by rememberUpdatedState(onPointerZoomInProgressChange)
     val pointerZoomScope = rememberCoroutineScope()
-    var pointerZoomResetJob by remember { mutableStateOf<Job?>(null) }
+    var pointerZoomRenderJob by remember { mutableStateOf<Job?>(null) }
+    var pointerZoomCommitJob by remember { mutableStateOf<Job?>(null) }
+    var pointerZoomEndJob by remember { mutableStateOf<Job?>(null) }
     var isPointerZooming by remember { mutableStateOf(false) }
+    var pointerZoomRenderedTextSize by remember { mutableFloatStateOf(rawTextSize) }
+    val pointerZoomAccumulator = remember { PointerZoomAccumulator(rawTextSize) }
 
-    fun markPointerZooming() {
-        isPointerZooming = true
-        pointerZoomResetJob?.cancel()
-        pointerZoomResetJob =
+    fun setPointerZooming(value: Boolean) {
+        if (isPointerZooming != value) {
+            isPointerZooming = value
+            currentOnPointerZoomInProgressChange(value)
+        }
+    }
+
+    fun beginPointerZoom() {
+        if (!isPointerZooming) {
+            val currentTextSize = AppSettings.textSizeFlow.value
+            pointerZoomAccumulator.targetTextSize = currentTextSize
+            pointerZoomRenderedTextSize = currentTextSize
+            setPointerZooming(true)
+        }
+        pointerZoomEndJob?.cancel()
+        pointerZoomEndJob = null
+    }
+
+    fun applyPointerZoomTargetToMainContent() {
+        val targetTextSize =
+            pointerZoomAccumulator.targetTextSize.coerceIn(AppSettings.MIN_TEXT_SIZE, AppSettings.MAX_TEXT_SIZE)
+        if (abs(targetTextSize - pointerZoomRenderedTextSize) >= 0.01f) {
+            pointerZoomRenderedTextSize = targetTextSize
+        }
+    }
+
+    fun schedulePointerZoomRenderUpdate() {
+        if (pointerZoomRenderJob?.isActive == true) return
+
+        pointerZoomRenderJob =
             pointerZoomScope.launch {
-                delay(120.milliseconds)
-                isPointerZooming = false
+                withFrameNanos { }
+                applyPointerZoomTargetToMainContent()
+                pointerZoomRenderJob = null
             }
     }
 
-    fun applyZoomFactor(factor: Float) {
+    fun finishPointerZoom() {
+        pointerZoomEndJob?.cancel()
+        pointerZoomEndJob =
+            pointerZoomScope.launch {
+                delay(50.milliseconds)
+                setPointerZooming(false)
+            }
+    }
+
+    fun commitPointerZoom(cancelPendingJob: Boolean = true) {
+        if (!isPointerZooming) return
+        if (cancelPendingJob) {
+            pointerZoomCommitJob?.cancel()
+        }
+        pointerZoomCommitJob = null
+        pointerZoomRenderJob?.cancel()
+        pointerZoomRenderJob = null
+
+        val targetTextSize =
+            pointerZoomAccumulator.targetTextSize.coerceIn(AppSettings.MIN_TEXT_SIZE, AppSettings.MAX_TEXT_SIZE)
+        if (abs(targetTextSize - pointerZoomRenderedTextSize) >= 0.01f) {
+            pointerZoomRenderedTextSize = targetTextSize
+        }
+        if (abs(targetTextSize - AppSettings.textSizeFlow.value) >= 0.01f) {
+            AppSettings.setTextSize(targetTextSize)
+        }
+        pointerZoomAccumulator.targetTextSize = targetTextSize
+        finishPointerZoom()
+    }
+
+    fun schedulePointerZoomCommit() {
+        pointerZoomCommitJob?.cancel()
+        pointerZoomCommitJob =
+            pointerZoomScope.launch {
+                delay(120.milliseconds)
+                commitPointerZoom(cancelPendingJob = false)
+            }
+    }
+
+    fun applyPointerZoomFactor(factor: Float) {
         if (!factor.isFinite() || factor <= 0f) return
 
-        val currentTextSize = AppSettings.textSizeFlow.value
+        beginPointerZoom()
+        val currentTextSize = pointerZoomAccumulator.targetTextSize
         val newTextSize =
             (currentTextSize * factor)
                 .coerceIn(AppSettings.MIN_TEXT_SIZE, AppSettings.MAX_TEXT_SIZE)
 
         if (abs(newTextSize - currentTextSize) >= 0.01f) {
-            markPointerZooming()
-            AppSettings.setTextSize(newTextSize)
+            pointerZoomAccumulator.targetTextSize = newTextSize
+            schedulePointerZoomRenderUpdate()
         }
     }
 
-    val applyZoomFactorState = rememberUpdatedState<(Float) -> Unit> { factor -> applyZoomFactor(factor) }
+    val applyPointerZoomFactorState = rememberUpdatedState<(Float) -> Unit> { factor -> applyPointerZoomFactor(factor) }
+
+    LaunchedEffect(rawTextSize, isPointerZooming) {
+        if (!isPointerZooming) {
+            pointerZoomAccumulator.targetTextSize = rawTextSize
+            pointerZoomRenderedTextSize = rawTextSize
+        }
+    }
 
     DisposableEffect(Unit) {
-        onDispose { pointerZoomResetJob?.cancel() }
+        onDispose {
+            pointerZoomRenderJob?.cancel()
+            pointerZoomCommitJob?.cancel()
+            pointerZoomEndJob?.cancel()
+            currentOnPointerZoomInProgressChange(false)
+        }
     }
 
     // Animate text size changes only for the active tab; background tabs snap instantly
     val textSize by animateFloatAsState(
-        targetValue = rawTextSize,
+        targetValue = if (isPointerZooming) pointerZoomRenderedTextSize else rawTextSize,
         animationSpec = if (isTabSelected && !isPointerZooming) tween(durationMillis = 300) else snap(),
         label = "textSizeAnimation",
     )
@@ -679,7 +763,8 @@ fun BookContentView(
                     if (zoomDelta == 0f) return@onPointerEvent
 
                     val exponent = (-zoomDelta * 0.08f).coerceIn(-0.25f, 0.25f)
-                    applyZoomFactorState.value(exp(exponent.toDouble()).toFloat())
+                    applyPointerZoomFactorState.value(exp(exponent.toDouble()).toFloat())
+                    schedulePointerZoomCommit()
                     event.changes.forEach { it.consume() }
                 }.pointerInput(Unit) {
                     awaitEachGesture {
@@ -695,7 +780,7 @@ fun BookContentView(
                                 if (previousDistance > 0f && distance > 0f) {
                                     val zoomFactor = (distance / previousDistance).coerceIn(0.85f, 1.18f)
                                     if (abs(zoomFactor - 1f) > 0.002f) {
-                                        applyZoomFactorState.value(zoomFactor)
+                                        applyPointerZoomFactorState.value(zoomFactor)
                                         hasZoomed = true
                                     }
                                 }
@@ -708,6 +793,10 @@ fun BookContentView(
                                 previousDistance = 0f
                             }
                         } while (event.changes.any { it.pressed })
+
+                        if (hasZoomed) {
+                            commitPointerZoom()
+                        }
                     }
                 }
                 .focusRequester(focusRequester)
@@ -1013,6 +1102,12 @@ private fun averageDistanceToCentroid(changes: List<PointerInputChange>): Float 
     return totalDistance / changes.size.toFloat()
 }
 
+private class PointerZoomAccumulator(
+    initialTextSize: Float,
+) {
+    var targetTextSize: Float = initialTextSize
+}
+
 /**
  * Stable wrapper for alt headings map to avoid unnecessary recompositions.
  * The map content is considered stable once created.
@@ -1029,29 +1124,6 @@ class StableAltHeadings(
 }
 
 fun Map<Long, List<AltTocEntry>>.asStableAltHeadings(): StableAltHeadings = StableAltHeadings(this)
-
-/**
- * Paired output of [buildAnnotatedFromHtml]: styled text plus the inline-content map
- * required to display inline images (base64 data URIs embedded by the Sefaria pipeline).
- */
-@Stable
-data class LineAnnotation(
-    val annotated: AnnotatedString,
-    val inlineContent: Map<String, InlineTextContent>,
-)
-
-/**
- * Stable wrapper for annotated string cache to avoid unnecessary recompositions.
- */
-@Stable
-class StableAnnotatedCache(
-    val cache: MutableMap<Long, LineAnnotation>,
-) {
-    fun getOrPut(
-        lineId: Long,
-        defaultValue: () -> LineAnnotation,
-    ): LineAnnotation = cache.getOrPut(lineId, defaultValue)
-}
 
 @Composable
 private fun AltHeadingItem(
@@ -1125,24 +1197,65 @@ private fun LineItem(
             { if (isDarkTheme) SkiaHtmlImageBuilder.InvertColorFilter else null }
         }
 
-    // Memoize the annotated string with proper keys
-    val lineAnnotation =
-        remember(lineId, processedContent, baseTextSize, boldScale, annotatedCache, showDiacritics, footnoteMarkerColor) {
-            fun build(): LineAnnotation {
-                val inline = mutableMapOf<String, InlineTextContent>()
-                val annotated =
-                    buildAnnotatedFromHtml(
-                        processedContent,
-                        baseTextSize,
-                        boldScale = if (boldScale < 1f) 1f else boldScale,
-                        footnoteMarkerColor = footnoteMarkerColor,
-                        inlineContent = inline,
-                        imageContentBuilder = SkiaHtmlImageBuilder.build(imageColorFilter),
-                    )
-                return LineAnnotation(annotated, inline)
+    val textModifier =
+        remember(lineId) {
+            Modifier.fillMaxWidth()
+        }.pointerInput(lineId) {
+            awaitEachGesture {
+                // Wait for press and capture keyboard modifiers from the event
+                val downEvent = awaitPointerEvent(PointerEventPass.Main)
+                if (!downEvent.buttons.isPrimaryPressed) return@awaitEachGesture
+                val isModifier = downEvent.keyboardModifiers.isCtrlPressed || downEvent.keyboardModifiers.isMetaPressed
+                // Wait for release
+                val up = waitForUpOrCancellation()
+                if (up != null && !up.isConsumed) {
+                    onClick(isModifier)
+                }
             }
-            annotatedCache?.getOrPut(lineId) { build() } ?: build()
         }
+
+    val localAnnotatedCache = remember { StableAnnotatedCache(mutableStateMapOf()) }
+    val annotationCache = annotatedCache ?: localAnnotatedCache
+    val annotationCacheKey =
+        remember(lineId, processedContent, baseTextSize, boldScale, footnoteMarkerColor, isDarkTheme) {
+            HtmlAnnotationCacheKey(
+                itemId = lineId,
+                contentHash = processedContent.hashCode(),
+                contentLength = processedContent.length,
+                baseTextSize = baseTextSize,
+                boldScale = boldScale,
+                footnoteMarkerColor = footnoteMarkerColor,
+                invertImages = isDarkTheme,
+            )
+        }
+
+    val lineAnnotation =
+        rememberAsyncHtmlAnnotation(
+            cacheKey = annotationCacheKey,
+            html = processedContent,
+            baseTextSize = baseTextSize,
+            boldScale = boldScale,
+            footnoteMarkerColor = footnoteMarkerColor,
+            imageColorFilter = imageColorFilter,
+            annotatedCache = annotationCache,
+        )
+
+    if (lineAnnotation == null) {
+        Text(
+            text = htmlAnnotationPlaceholderText(processedContent.length),
+            textAlign = TextAlign.Justify,
+            fontFamily = fontFamily,
+            fontSize = baseTextSize.sp,
+            lineHeight = (baseTextSize * lineHeight).sp,
+            modifier = textModifier,
+            onTextLayout = { result ->
+                val cw = result.layoutInput.constraints.maxWidth
+                if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
+            },
+        )
+        return
+    }
+
     val annotated = lineAnnotation.annotated
     val inlineImageContent = lineAnnotation.inlineContent
 
@@ -1174,23 +1287,6 @@ private fun LineItem(
                     baseColor = baseHl,
                     currentColor = currentHl,
                 )
-            }
-        }
-
-    val textModifier =
-        remember(lineId) {
-            Modifier.fillMaxWidth()
-        }.pointerInput(lineId) {
-            awaitEachGesture {
-                // Wait for press and capture keyboard modifiers from the event
-                val downEvent = awaitPointerEvent(PointerEventPass.Main)
-                if (!downEvent.buttons.isPrimaryPressed) return@awaitEachGesture
-                val isModifier = downEvent.keyboardModifiers.isCtrlPressed || downEvent.keyboardModifiers.isMetaPressed
-                // Wait for release
-                val up = waitForUpOrCancellation()
-                if (up != null && !up.isConsumed) {
-                    onClick(isModifier)
-                }
             }
         }
 

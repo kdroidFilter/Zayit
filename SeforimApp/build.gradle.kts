@@ -259,7 +259,6 @@ nucleus.application {
 
         // Package-time resources root; include files under OS-specific subfolders (common, macos, windows, linux)
         appResourcesRootDir.set(layout.projectDirectory.dir("src/jvmMain/assets"))
-        splashImage = "splash.png"
         enableAotCache = true
         homepage = "https://zayitapp.com"
         licenseFile.set(File(project.rootDir, "LICENSE"))

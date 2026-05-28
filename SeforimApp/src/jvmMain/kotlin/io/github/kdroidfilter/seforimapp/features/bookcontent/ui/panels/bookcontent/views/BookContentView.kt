@@ -396,26 +396,30 @@ fun BookContentView(
     val savedAnchorIdUpdated by rememberUpdatedState(anchorId)
     val savedAnchorIndexUpdated by rememberUpdatedState(anchorIndex)
 
-    LaunchedEffect(listState, lazyPagingItems) {
-        fun maybeSave(data: AnchorData) {
-            // Guard: on cold-boot restore, don't overwrite the persisted position with an initial transient emission
-            // before the restoration effect has applied the saved anchor/offset.
-            val hasPersistedPosition =
-                savedAnchorIdUpdated > 0 || savedScrollIndexUpdated > 0 || savedScrollOffsetUpdated > 0
-            if (!hasRestoredUpdated && hasPersistedPosition) {
-                return
-            }
-
-            // Avoid wiping a previously known anchor when the list hasn't resolved item keys yet (e.g., while loading).
-            val stableAnchorId = data.anchorId.takeIf { it > 0 } ?: savedAnchorIdUpdated
-            val stableAnchorIndex = if (data.anchorId > 0) data.anchorIndex else savedAnchorIndexUpdated
-
-            debugln {
-                "Saving scroll: anchor=$stableAnchorId, index=${data.scrollIndex}, offset=${data.scrollOffset}"
-            }
-            onScrollUpdated(stableAnchorId, stableAnchorIndex, data.scrollIndex, data.scrollOffset)
+    fun maybeSave(data: AnchorData) {
+        // Guard: on cold-boot restore, don't overwrite the persisted position with an initial transient emission
+        // before the restoration effect has applied the saved anchor/offset.
+        val hasPersistedPosition =
+            savedAnchorIdUpdated > 0 || savedScrollIndexUpdated > 0 || savedScrollOffsetUpdated > 0
+        if (!hasRestoredUpdated && hasPersistedPosition) {
+            return
         }
 
+        // Avoid wiping a previously known anchor when the list hasn't resolved item keys yet (e.g., while loading).
+        val stableAnchorId = data.anchorId.takeIf { it > 0 } ?: savedAnchorIdUpdated
+        val stableAnchorIndex = if (data.anchorId > 0) data.anchorIndex else savedAnchorIndexUpdated
+
+        debugln {
+            "Saving scroll: anchor=$stableAnchorId, index=${data.scrollIndex}, offset=${data.scrollOffset}"
+        }
+        onScrollUpdated(stableAnchorId, stableAnchorIndex, data.scrollIndex, data.scrollOffset)
+    }
+
+    DisposableEffect(listState, lazyPagingItems) {
+        onDispose { maybeSave(scrollData.value) }
+    }
+
+    LaunchedEffect(listState, lazyPagingItems) {
         // While scrolling, sample periodically so a close during an active scroll still restores closely.
         // Gated by isScrollInProgress so the `sample` ticker only runs during an active scroll —
         // otherwise its fixedPeriodTicker keeps the FlushCoroutineDispatcher waking up at 5 Hz forever

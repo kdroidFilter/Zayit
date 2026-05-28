@@ -139,6 +139,7 @@ sealed interface BookContentEvent {
         val commentatorId: Long,
         val index: Int,
         val offset: Int,
+        val persist: Boolean = false,
     ) : BookContentEvent
 
     data class CommentariesPageChanged(

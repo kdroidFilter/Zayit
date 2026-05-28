@@ -508,11 +508,16 @@ class BookContentViewModel(
                     commentariesUseCase.updateCommentatorsListScrollPosition(event.index, event.offset)
 
                 is BookContentEvent.CommentaryColumnScrolled ->
-                    commentariesUseCase.updateCommentaryColumnScrollPosition(
-                        event.commentatorId,
-                        event.index,
-                        event.offset,
-                    )
+                    run {
+                        commentariesUseCase.updateCommentaryColumnScrollPosition(
+                            event.commentatorId,
+                            event.index,
+                            event.offset,
+                        )
+                        if (event.persist) {
+                            stateManager.saveAllStates()
+                        }
+                    }
 
                 is BookContentEvent.CommentariesPageChanged ->
                     stateManager.updateContent(save = false) {

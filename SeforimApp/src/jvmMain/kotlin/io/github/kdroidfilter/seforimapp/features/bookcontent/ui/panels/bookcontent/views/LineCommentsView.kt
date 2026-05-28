@@ -12,6 +12,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.*
@@ -67,6 +68,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.rememberSplitPaneState
@@ -488,6 +490,10 @@ private fun CommentatorsGrid(
     onEvent: (BookContentEvent) -> Unit,
 ) {
     val providers = uiState.providers ?: return
+    val pagerFlowCache = remember(selection) { mutableMapOf<Long, Flow<PagingData<CommentaryWithText>>>() }
+    val listStateCache = remember(selection) { mutableMapOf<Long, LazyListState>() }
+    val restoredCommentatorIds = remember(selection) { mutableStateMapOf<Long, Boolean>() }
+
     CommentatorsGridScaffold(
         config = config,
         initialPage = uiState.content.commentariesPageIndex,
@@ -495,8 +501,10 @@ private fun CommentatorsGrid(
         onFlushPersist = { onEvent(BookContentEvent.FlushCommentariesState) },
     ) { commentatorId ->
         val pagerFlow =
-            remember(selection, commentatorId) {
-                providers.buildCommentariesPagerFor(selection, commentatorId)
+            remember(commentatorId, pagerFlowCache) {
+                pagerFlowCache.getOrPut(commentatorId) {
+                    providers.buildCommentariesPagerFor(selection, commentatorId)
+                }
             }
         val initialIndex =
             uiState.content.commentariesColumnScrollIndexByCommentator[commentatorId]
@@ -504,12 +512,25 @@ private fun CommentatorsGrid(
         val initialOffset =
             uiState.content.commentariesColumnScrollOffsetByCommentator[commentatorId]
                 ?: uiState.content.commentariesScrollOffset
+        val listState =
+            remember(commentatorId, listStateCache) {
+                listStateCache.getOrPut(commentatorId) {
+                    LazyListState(
+                        firstVisibleItemIndex = initialIndex.coerceAtLeast(0),
+                        firstVisibleItemScrollOffset = initialOffset.coerceAtLeast(0),
+                    )
+                }
+            }
+
         CommentariesPagedList(
             pagerFlow = pagerFlow,
+            listState = listState,
             initialIndex = initialIndex,
             initialOffset = initialOffset,
-            onScroll = { i, o ->
-                onEvent(BookContentEvent.CommentaryColumnScrolled(commentatorId, i, o))
+            shouldRestore = restoredCommentatorIds[commentatorId] != true,
+            onRestored = { restoredCommentatorIds[commentatorId] = true },
+            onScrollSettled = { i, o ->
+                onEvent(BookContentEvent.CommentaryColumnScrolled(commentatorId, i, o, persist = true))
             },
             config = config,
             selection = selection,
@@ -534,16 +555,19 @@ private fun CommentatorsGrid(
 @Composable
 private fun CommentariesPagedList(
     pagerFlow: Flow<PagingData<CommentaryWithText>>,
+    listState: LazyListState,
     initialIndex: Int,
     initialOffset: Int,
-    onScroll: (Int, Int) -> Unit,
+    shouldRestore: Boolean,
+    onRestored: () -> Unit,
+    onScrollSettled: (Int, Int) -> Unit,
     config: CommentariesLayoutConfig,
     selection: LineSelection,
     commentatorId: Long,
     getCharCountsForLine: suspend (Long, Long) -> List<Int>,
     getCharCountsForLines: suspend (List<Long>, Long) -> List<Int>,
 ) {
-    val currentOnScroll by rememberUpdatedState(onScroll)
+    val currentOnScrollSettled by rememberUpdatedState(onScrollSettled)
     val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
 
     // Ordered char-count vector for every commentary matching this selection ×
@@ -602,29 +626,35 @@ private fun CommentariesPagedList(
         }
     }
 
-    val listState =
-        rememberLazyListState(
-            initialFirstVisibleItemIndex = initialIndex,
-            initialFirstVisibleItemScrollOffset = initialOffset,
-        )
-
-    var hasRestored by remember(pagerFlow) { mutableStateOf(false) }
-    LaunchedEffect(pagerFlow, lazyPagingItems.loadState.refresh, initialIndex, initialOffset) {
-        if (!hasRestored && lazyPagingItems.loadState.refresh !is LoadState.Loading) {
+    val restoreIndex = remember(pagerFlow) { initialIndex }
+    val restoreOffset = remember(pagerFlow) { initialOffset }
+    LaunchedEffect(pagerFlow, lazyPagingItems.loadState.refresh, shouldRestore) {
+        if (shouldRestore && lazyPagingItems.loadState.refresh !is LoadState.Loading) {
             if (lazyPagingItems.itemCount > 0) {
-                val safeIndex = initialIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
-                val safeOffset = initialOffset.coerceAtLeast(0)
+                val safeIndex = restoreIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
+                val safeOffset = restoreOffset.coerceAtLeast(0)
                 listState.scrollToItem(safeIndex, safeOffset)
-                hasRestored = true
+                onRestored()
             }
         }
     }
 
     LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+        snapshotFlow {
+            Triple(
+                listState.firstVisibleItemIndex,
+                listState.firstVisibleItemScrollOffset,
+                listState.isScrollInProgress,
+            )
+        }
             .distinctUntilChanged()
+            .drop(1)
             .debounce(SCROLL_DEBOUNCE)
-            .collect { (i, o) -> currentOnScroll(i, o) }
+            .collect { (i, o, isScrollInProgress) ->
+                if (!isScrollInProgress) {
+                    currentOnScrollSettled(i, o)
+                }
+            }
     }
 
     SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {

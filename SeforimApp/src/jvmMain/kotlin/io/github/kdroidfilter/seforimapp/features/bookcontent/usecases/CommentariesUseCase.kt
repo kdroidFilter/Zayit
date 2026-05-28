@@ -1440,7 +1440,14 @@ class CommentariesUseCase(
         index: Int,
         offset: Int,
     ) {
-        stateManager.updateContent {
+        stateManager.updateContent(save = false) {
+            if (
+                commentariesColumnScrollIndexByCommentator[commentatorId] == index &&
+                commentariesColumnScrollOffsetByCommentator[commentatorId] == offset
+            ) {
+                return@updateContent this
+            }
+
             val idxMap = commentariesColumnScrollIndexByCommentator.toMutableMap()
             val offMap = commentariesColumnScrollOffsetByCommentator.toMutableMap()
             idxMap[commentatorId] = index

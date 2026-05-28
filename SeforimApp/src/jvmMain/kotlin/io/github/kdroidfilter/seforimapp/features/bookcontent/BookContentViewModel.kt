@@ -744,6 +744,13 @@ class BookContentViewModel(
                 val state = stateManager.state.value
                 // Always prefer an explicit anchor when present (e.g., opening from a commentary link)
                 val shouldUseAnchor = state.content.anchorId != -1L
+                val savedScrollAnchorId =
+                    if (!shouldUseAnchor && state.content.scrollIndex > 0) {
+                        runSuspendCatching { repository.getLineByIndex(book.id, state.content.scrollIndex)?.id }
+                            .getOrNull()
+                    } else {
+                        null
+                    }
 
                 // Resolve initial line anchor if any, otherwise fall back to the first TOC's first line
                 // so that opening a book from the category tree selects the first meaningful section.
@@ -755,6 +762,7 @@ class BookContentViewModel(
                     when {
                         forceAnchorId != null -> forceAnchorId
                         shouldUseAnchor -> state.content.anchorId
+                        savedScrollAnchorId != null -> savedScrollAnchorId
                         currentPrimaryLine != null -> currentPrimaryLine.id
                         else -> {
                             // Compute from TOC: take the first root TOC entry (or its first leaf) and

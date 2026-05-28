@@ -206,8 +206,13 @@ fun BookContentView(
     var isInitialBookOpen by remember(bookId) { mutableStateOf(true) }
 
     // Hide content until initial scroll is complete to prevent visual glitch
-    // Only apply on initial book open, not when changing TOC entries
-    val needsInitialPositioning = isInitialBookOpen && topAnchorLineId != -1L && !hasRestored
+    // Only apply on initial book open, not when changing TOC entries after content is already visible.
+    val hasSavedInitialPosition = anchorId != -1L || scrollIndex > 0 || scrollOffset > 0
+    val hasTopAnchorRequest = topAnchorTimestamp != 0L && topAnchorLineId != -1L
+    val needsInitialPositioning =
+        isInitialBookOpen &&
+            !hasRestored &&
+            (hasTopAnchorRequest || (topAnchorTimestamp == 0L && hasSavedInitialPosition))
     val contentAlpha by animateFloatAsState(
         targetValue = if (needsInitialPositioning) 0f else 1f,
         animationSpec = tween(durationMillis = if (needsInitialPositioning) 0 else 50),
@@ -385,6 +390,7 @@ fun BookContentView(
                 debugln { "Restoring by saved anchor: idx=$resolved, offset=$scrollOffset" }
                 listState.scrollToItem(resolved, scrollOffset.coerceAtLeast(0))
                 hasRestored = true
+                isInitialBookOpen = false
                 restoredAnchorId = anchorId
                 return@LaunchedEffect
             }
@@ -398,7 +404,12 @@ fun BookContentView(
             debugln { "Restoring by index/offset: index=$targetIndex, offset=$targetOffset" }
             listState.scrollToItem(targetIndex, targetOffset)
             hasRestored = true
+            isInitialBookOpen = false
+            return@LaunchedEffect
         }
+
+        hasRestored = true
+        isInitialBookOpen = false
     }
 
     // Save scroll position with anchor information - optimized with derivedStateOf

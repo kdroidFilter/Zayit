@@ -11,10 +11,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.DEFAULT_ARGS_KEY
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
 import androidx.lifecycle.Lifecycle
@@ -58,9 +61,12 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
  */
 val LocalTabSelected = compositionLocalOf { true }
 
+private const val MAX_RETAINED_TAB_COMPOSITIONS = 3
+
 /**
  * Simplified tab content renderer without Compose Navigation.
- * Keeps ViewModel owners per tab, but only composes the selected tab's UI.
+ * Keeps ViewModel owners per tab and retains a small LRU of tab compositions to
+ * reduce switch latency without keeping every open tab actively composed.
  */
 @Composable
 fun TabsContent() {
@@ -155,6 +161,7 @@ fun TabsContent() {
     // ViewModel owners per tab - manages lifecycle and state
     val tabOwners = remember { mutableMapOf<String, SimpleTabViewModelOwner>() }
     val knownTabIds = remember { mutableSetOf<String>() }
+    val retainedTabIds = remember { mutableStateListOf<String>() }
 
     // Cleanup removed tabs
     LaunchedEffect(tabs) {
@@ -164,8 +171,22 @@ fun TabsContent() {
             tabOwners.remove(tabId)?.clear()
             persistedStore.remove(tabId)
         }
+        retainedTabIds.removeAll(removed)
         knownTabIds.clear()
         knownTabIds.addAll(activeTabIds)
+    }
+
+    LaunchedEffect(tabs, selectedTabIndex) {
+        val selectedTabId = tabs.getOrNull(selectedTabIndex)?.destination?.tabId ?: return@LaunchedEffect
+        val activeTabIds = tabs.map { it.destination.tabId }.toSet()
+
+        retainedTabIds.removeAll { it !in activeTabIds }
+        retainedTabIds.remove(selectedTabId)
+        retainedTabIds.add(0, selectedTabId)
+
+        while (retainedTabIds.size > MAX_RETAINED_TAB_COMPOSITIONS) {
+            retainedTabIds.removeAt(retainedTabIds.lastIndex)
+        }
     }
 
     DisposableEffect(Unit) {
@@ -199,43 +220,68 @@ fun TabsContent() {
                 .fillMaxSize()
                 .background(canvasBg),
     ) {
-        val selectedTabItem = tabs.getOrNull(selectedTabIndex)
-        if (selectedTabItem != null) {
-            val tabItem = selectedTabItem
+        val selectedTabId = currentTabId
+        val retainedTabIdsForComposition =
+            buildList {
+                if (selectedTabId != null) {
+                    add(selectedTabId)
+                }
+                retainedTabIds.forEach { retainedTabId ->
+                    if (retainedTabId != selectedTabId) {
+                        add(retainedTabId)
+                    }
+                }
+            }.take(MAX_RETAINED_TAB_COMPOSITIONS)
+
+        val retainedTabs =
+            retainedTabIdsForComposition
+                .mapNotNull { retainedTabId -> tabs.firstOrNull { it.destination.tabId == retainedTabId } }
+                .asReversed()
+
+        retainedTabs.forEach { tabItem ->
+            val tabId = tabItem.destination.tabId
+            val isSelected = tabId == currentTabId
             key(tabItem.id) {
-                val tabId = tabItem.destination.tabId
                 val tabOwner = tabOwners.getOrPut(tabId) { SimpleTabViewModelOwner(tabId) }
 
-                CompositionLocalProvider(LocalTabSelected provides true) {
-                    when (val destination = tabItem.destination) {
-                        is TabsDestination.Home -> {
-                            HomeTabContent(
-                                tabOwner = tabOwner,
-                                tabId = tabId,
-                                isSelected = true,
-                                isRestoringSession = isTransitioning,
-                                searchUi = searchUi,
-                                searchCallbacks = homeSearchCallbacks,
-                            )
-                        }
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .zIndex(if (isSelected) 1f else -1f)
+                            .graphicsLayer { alpha = if (isSelected) 1f else 0f },
+                ) {
+                    CompositionLocalProvider(LocalTabSelected provides isSelected) {
+                        when (val destination = tabItem.destination) {
+                            is TabsDestination.Home -> {
+                                HomeTabContent(
+                                    tabOwner = tabOwner,
+                                    tabId = tabId,
+                                    isSelected = isSelected,
+                                    isRestoringSession = isTransitioning,
+                                    searchUi = searchUi,
+                                    searchCallbacks = homeSearchCallbacks,
+                                )
+                            }
 
-                        is TabsDestination.Search -> {
-                            SearchTabContent(
-                                tabOwner = tabOwner,
-                                destination = destination,
-                                isSelected = true,
-                            )
-                        }
+                            is TabsDestination.Search -> {
+                                SearchTabContent(
+                                    tabOwner = tabOwner,
+                                    destination = destination,
+                                    isSelected = isSelected,
+                                )
+                            }
 
-                        is TabsDestination.BookContent -> {
-                            BookContentTabContent(
-                                tabOwner = tabOwner,
-                                destination = destination,
-                                isSelected = true,
-                                isRestoringSession = isTransitioning,
-                                searchUi = searchUi,
-                                searchCallbacks = homeSearchCallbacks,
-                            )
+                            is TabsDestination.BookContent -> {
+                                BookContentTabContent(
+                                    tabOwner = tabOwner,
+                                    destination = destination,
+                                    isSelected = isSelected,
+                                    isRestoringSession = isTransitioning,
+                                    searchUi = searchUi,
+                                    searchCallbacks = homeSearchCallbacks,
+                                )
+                            }
                         }
                     }
                 }

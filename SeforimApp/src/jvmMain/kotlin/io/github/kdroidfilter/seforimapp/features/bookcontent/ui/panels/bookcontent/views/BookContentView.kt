@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -31,9 +32,12 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -69,6 +73,7 @@ import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -76,9 +81,11 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
+import kotlin.math.abs
+import kotlin.math.exp
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class, ExperimentalComposeUiApi::class)
 @Suppress(
     "ComposeUnstableCollections",
     "ParamsComparedByRef",
@@ -128,11 +135,44 @@ fun BookContentView(
     // Collect text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val isTabSelected = LocalTabSelected.current
+    val pointerZoomScope = rememberCoroutineScope()
+    var pointerZoomResetJob by remember { mutableStateOf<Job?>(null) }
+    var isPointerZooming by remember { mutableStateOf(false) }
+
+    fun markPointerZooming() {
+        isPointerZooming = true
+        pointerZoomResetJob?.cancel()
+        pointerZoomResetJob =
+            pointerZoomScope.launch {
+                delay(120.milliseconds)
+                isPointerZooming = false
+            }
+    }
+
+    fun applyZoomFactor(factor: Float) {
+        if (!factor.isFinite() || factor <= 0f) return
+
+        val currentTextSize = AppSettings.textSizeFlow.value
+        val newTextSize =
+            (currentTextSize * factor)
+                .coerceIn(AppSettings.MIN_TEXT_SIZE, AppSettings.MAX_TEXT_SIZE)
+
+        if (abs(newTextSize - currentTextSize) >= 0.01f) {
+            markPointerZooming()
+            AppSettings.setTextSize(newTextSize)
+        }
+    }
+
+    val applyZoomFactorState = rememberUpdatedState<(Float) -> Unit> { factor -> applyZoomFactor(factor) }
+
+    DisposableEffect(Unit) {
+        onDispose { pointerZoomResetJob?.cancel() }
+    }
 
     // Animate text size changes only for the active tab; background tabs snap instantly
     val textSize by animateFloatAsState(
         targetValue = rawTextSize,
-        animationSpec = if (isTabSelected) tween(durationMillis = 300) else snap(),
+        animationSpec = if (isTabSelected && !isPointerZooming) tween(durationMillis = 300) else snap(),
         label = "textSizeAnimation",
     )
 
@@ -614,6 +654,51 @@ fun BookContentView(
             modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = contentAlpha } // Hide until positioned to prevent glitch
+                .onPointerEvent(PointerEventType.Scroll) { event ->
+                    val isZoomScroll = event.keyboardModifiers.isCtrlPressed || event.keyboardModifiers.isMetaPressed
+                    if (!isZoomScroll) return@onPointerEvent
+
+                    val scrollDelta = event.changes.firstOrNull()?.scrollDelta ?: Offset.Zero
+                    val zoomDelta =
+                        if (abs(scrollDelta.y) >= abs(scrollDelta.x)) {
+                            scrollDelta.y
+                        } else {
+                            scrollDelta.x
+                        }
+                    if (zoomDelta == 0f) return@onPointerEvent
+
+                    val exponent = (-zoomDelta * 0.08f).coerceIn(-0.25f, 0.25f)
+                    applyZoomFactorState.value(exp(exponent.toDouble()).toFloat())
+                    event.changes.forEach { it.consume() }
+                }.pointerInput(Unit) {
+                    awaitEachGesture {
+                        var previousDistance = 0f
+                        var hasZoomed = false
+
+                        do {
+                            val event = awaitPointerEvent(PointerEventPass.Main)
+                            val pressedChanges = event.changes.filter { it.pressed }
+
+                            if (pressedChanges.size >= 2) {
+                                val distance = averageDistanceToCentroid(pressedChanges)
+                                if (previousDistance > 0f && distance > 0f) {
+                                    val zoomFactor = (distance / previousDistance).coerceIn(0.85f, 1.18f)
+                                    if (abs(zoomFactor - 1f) > 0.002f) {
+                                        applyZoomFactorState.value(zoomFactor)
+                                        hasZoomed = true
+                                    }
+                                }
+                                previousDistance = distance
+
+                                if (hasZoomed) {
+                                    event.changes.forEach { it.consume() }
+                                }
+                            } else {
+                                previousDistance = 0f
+                            }
+                        } while (event.changes.any { it.pressed })
+                    }
+                }
                 .focusRequester(focusRequester)
                 .onPreviewKeyEvent(previewKeyHandler)
                 .focusable(),
@@ -900,6 +985,22 @@ private data class AnchorData(
     val scrollIndex: Int,
     val scrollOffset: Int,
 )
+
+private fun averageDistanceToCentroid(changes: List<PointerInputChange>): Float {
+    if (changes.isEmpty()) return 0f
+
+    var centroid = Offset.Zero
+    changes.forEach { change ->
+        centroid += change.position
+    }
+    centroid /= changes.size.toFloat()
+
+    var totalDistance = 0f
+    changes.forEach { change ->
+        totalDistance += (change.position - centroid).getDistance()
+    }
+    return totalDistance / changes.size.toFloat()
+}
 
 /**
  * Stable wrapper for alt headings map to avoid unnecessary recompositions.

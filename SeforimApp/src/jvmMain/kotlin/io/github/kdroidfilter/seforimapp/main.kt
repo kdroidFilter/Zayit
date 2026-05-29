@@ -39,7 +39,9 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.AppNativeM
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalIsTouchMode
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.detectTouchMode
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -491,11 +493,17 @@ fun main(args: Array<String>) {
                                 }
                             }
 
+                            // Track whether the user is interacting by touch so hover-gated
+                            // controls (e.g. pane close buttons) stay reachable; published
+                            // app-wide via LocalIsTouchMode.
+                            var isTouchMode by remember { mutableStateOf(false) }
+
                             // Intercept key combos early to avoid focus traversal consuming Tab
                             Box(
                                 modifier =
                                     Modifier
                                         .fillMaxSize()
+                                        .detectTouchMode { isTouchMode = it }
                                         .onPreviewKeyEvent { keyEvent ->
                                             if (keyEvent.type == KeyEventType.KeyDown) {
                                                 val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
@@ -585,7 +593,11 @@ fun main(args: Array<String>) {
                                                 false
                                             }
                                         },
-                            ) { TabsContent() }
+                            ) {
+                                CompositionLocalProvider(LocalIsTouchMode provides isTouchMode) {
+                                    TabsContent()
+                                }
+                            }
                         }
                     }
                 }

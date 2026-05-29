@@ -33,6 +33,7 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
@@ -1288,9 +1289,12 @@ private fun LineItem(
             Modifier.fillMaxWidth()
         }.pointerInput(lineId) {
             awaitEachGesture {
-                // Wait for press and capture keyboard modifiers from the event
+                // Wait for press and capture keyboard modifiers from the event.
+                // Mouse reports a primary button; touch contacts have an empty
+                // button mask (PointerType.Touch, like iOS), so accept either.
                 val downEvent = awaitPointerEvent(PointerEventPass.Main)
-                if (!downEvent.buttons.isPrimaryPressed) return@awaitEachGesture
+                val isTouchDown = downEvent.changes.any { it.type == PointerType.Touch && it.pressed }
+                if (!downEvent.buttons.isPrimaryPressed && !isTouchDown) return@awaitEachGesture
                 val isModifier = downEvent.keyboardModifiers.isCtrlPressed || downEvent.keyboardModifiers.isMetaPressed
                 // Wait for release
                 val up = waitForUpOrCancellation()

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalIsTouchMode
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -43,6 +44,9 @@ fun PaneHeader(
 ) {
     val headerHoverSource = interactionSource ?: remember { MutableInteractionSource() }
     val isHovered by headerHoverSource.collectIsHoveredAsState()
+    // Touch has no persistent hover, so reveal the actions whenever the user is
+    // interacting by touch (see [LocalIsTouchMode]).
+    val isTouchMode = LocalIsTouchMode.current
     val isIslands = ThemeUtils.isIslandsStyle()
     val headerBackground =
         if (isIslands) {
@@ -76,7 +80,7 @@ fun PaneHeader(
             }
 
             AnimatedVisibility(
-                visible = isHovered,
+                visible = isHovered || isTouchMode,
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {

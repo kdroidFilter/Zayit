@@ -103,6 +103,9 @@ private val TabTooltipWidthThreshold = 140.dp
 private val CompactTabWidthThreshold = 50.dp
 private val HideCloseTabWidthThreshold = 80.dp
 
+/** Hover delay before a tab is preloaded. Near-zero: preload as soon as the pointer enters. */
+private const val PRELOAD_HOVER_DELAY_MS = 0L
+
 /** When true, [SingleLineTabContent] hides the label and shows only the icon. */
 private val LocalCompactIconOnly = compositionLocalOf { false }
 
@@ -482,6 +485,9 @@ private fun RtlAwareTabStripContent(
                                             onCloseOthers = tabEntry.onCloseOthers,
                                             onCloseLeft = tabEntry.onCloseLeft,
                                             onCloseRight = tabEntry.onCloseRight,
+                                            onHover = { hovering ->
+                                                tabsViewModel.preloadTab(if (hovering) tabEntry.key else null)
+                                            },
                                             animateWidth = !isNew,
                                             enterFromSmall = isNew,
                                             enterDurationMs = enterDurationMs,
@@ -564,6 +570,7 @@ private fun RtlAwareTab(
     onCloseOthers: () -> Unit,
     onCloseLeft: () -> Unit,
     onCloseRight: () -> Unit,
+    onHover: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
     animateWidth: Boolean = true,
     enterFromSmall: Boolean = false,
@@ -588,6 +595,18 @@ private fun RtlAwareTab(
                 is HoverInteraction.Enter -> tabState = tabState.copy(hovered = true)
                 is HoverInteraction.Exit -> tabState = tabState.copy(hovered = false)
             }
+        }
+    }
+
+    // Preload the tab on sustained hover so selecting it is instant. Cancelled if the pointer
+    // leaves before the delay elapses, which prevents thrashing while sweeping across the strip.
+    val latestOnHover by rememberUpdatedState(onHover)
+    LaunchedEffect(tabState.isHovered) {
+        if (tabState.isHovered) {
+            delay(PRELOAD_HOVER_DELAY_MS)
+            latestOnHover(true)
+        } else {
+            latestOnHover(false)
         }
     }
 

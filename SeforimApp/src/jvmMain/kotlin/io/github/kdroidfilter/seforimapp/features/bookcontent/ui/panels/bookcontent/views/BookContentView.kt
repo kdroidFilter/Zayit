@@ -363,6 +363,10 @@ fun BookContentView(
     // Only scrolls if the line is outside the visible viewport.
     LaunchedEffect(scrollToLineTimestamp, primarySelectedLineId, topAnchorTimestamp, topAnchorLineId) {
         if (primarySelectedLineId == null) return@LaunchedEffect
+        // Skip while the tab is only preloaded (off-screen): the initial bring-into-view must not
+        // override the anchor restoration. isTabSelected is intentionally NOT a key here, so becoming
+        // selected doesn't re-trigger a jump — real selection events (new timestamp) still run.
+        if (!isTabSelected) return@LaunchedEffect
 
         // Skip minimal bring-into-view when a top-anchoring request is active for this selection
         val isTopAnchorRequest =
@@ -443,6 +447,8 @@ fun BookContentView(
     LaunchedEffect(bookId, topAnchorTimestamp, anchorId, scrollIndex, scrollOffset) {
         if (topAnchorTimestamp != 0L) return@LaunchedEffect
         if (hasRestored) return@LaunchedEffect
+        // Runs during preload too (off-screen): positioning + the contentAlpha reveal settle before
+        // the tab is shown, so selecting a preloaded tab is instant with no fade-in.
 
         // Wait for initial page load to complete
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {

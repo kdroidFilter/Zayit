@@ -78,6 +78,7 @@ fun TabsContent() {
     val tabsState by tabsViewModel.state.collectAsState()
     val tabs = tabsState.tabs
     val selectedTabIndex = tabsState.selectedTabIndex
+    val preloadTabId by tabsViewModel.preloadTabId.collectAsState()
     val isRestoringSession by SessionManager.isRestoringSession.collectAsState()
     val isSwitchingDesktop by appGraph.desktopManager.isSwitching.collectAsState()
     val isTransitioning = isRestoringSession || isSwitchingDesktop
@@ -221,13 +222,18 @@ fun TabsContent() {
                 .background(canvasBg),
     ) {
         val selectedTabId = currentTabId
+        val preloadId = preloadTabId
         val retainedTabIdsForComposition =
             buildList {
                 if (selectedTabId != null) {
                     add(selectedTabId)
                 }
+                // Hovered tab: preloaded right after the selected one so the switch is instant.
+                if (preloadId != null && preloadId != selectedTabId) {
+                    add(preloadId)
+                }
                 retainedTabIds.forEach { retainedTabId ->
-                    if (retainedTabId != selectedTabId) {
+                    if (retainedTabId != selectedTabId && retainedTabId != preloadId) {
                         add(retainedTabId)
                     }
                 }

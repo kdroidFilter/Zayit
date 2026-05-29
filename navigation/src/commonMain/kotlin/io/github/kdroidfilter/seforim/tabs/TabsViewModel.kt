@@ -40,6 +40,17 @@ class TabsViewModel(
         _skipNextAnimation.value = false
     }
 
+    /**
+     * Tab id currently hovered in the tab strip that should be preloaded (composed off-screen)
+     * ahead of selection to make the switch instant. Null when nothing is being preloaded.
+     */
+    private val _preloadTabId = MutableStateFlow<String?>(null)
+    val preloadTabId: StateFlow<String?> = _preloadTabId.asStateFlow()
+
+    fun preloadTab(tabId: String?) {
+        _preloadTabId.value = tabId
+    }
+
     private val _state =
         MutableStateFlow(
             TabsState(
@@ -123,6 +134,7 @@ class TabsViewModel(
     }
 
     private fun selectTab(index: Int) {
+        _preloadTabId.value = null
         _state.update { current ->
             if (index in 0..current.tabs.lastIndex && index != current.selectedTabIndex) {
                 current.copy(selectedTabIndex = index)

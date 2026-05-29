@@ -21,13 +21,13 @@ import com.kdroid.gematria.converter.toHebrewNumeral
 import dev.nucleusframework.application.aotTraining
 import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.core.runtime.ExecutableRuntime
+import dev.nucleusframework.core.runtime.NucleusApp
 import dev.nucleusframework.energymanager.EnergyManager
 import dev.nucleusframework.notification.common.notification
 import dev.nucleusframework.window.jewel.JewelDecoratedWindow
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.metroViewModel
-import io.github.kdroidfilter.platformtools.getAppVersion
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
@@ -121,7 +121,7 @@ private fun initializeSentry() {
     Sentry.init { options ->
         options.dsn = "https://09cbadaf522c567b431dd4384c8f080b@o4510855773093888.ingest.de.sentry.io/4510857007726672"
         options.environment = sentryEnvironment
-        options.release = getAppVersion()
+        options.release = NucleusApp.version
         options.isDebug = isDevEnv
     }
     infoln { "Sentry initialized for environment '$sentryEnvironment'." }

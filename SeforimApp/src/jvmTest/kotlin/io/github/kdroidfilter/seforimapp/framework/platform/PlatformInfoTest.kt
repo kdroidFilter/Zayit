@@ -1,6 +1,6 @@
 package io.github.kdroidfilter.seforimapp.framework.platform
 
-import io.github.kdroidfilter.platformtools.OperatingSystem
+import dev.nucleusframework.core.runtime.Platform
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -9,7 +9,7 @@ class PlatformInfoTest {
     @Test
     fun `currentOS is not null`() {
         val os = PlatformInfo.currentOS
-        assertTrue(os in OperatingSystem.entries)
+        assertTrue(os in Platform.entries)
     }
 
     @Test
@@ -23,7 +23,7 @@ class PlatformInfoTest {
     @Test
     fun `isMacOS matches currentOS`() {
         assertEquals(
-            PlatformInfo.currentOS == OperatingSystem.MACOS,
+            PlatformInfo.currentOS == Platform.MacOS,
             PlatformInfo.isMacOS,
         )
     }
@@ -31,7 +31,7 @@ class PlatformInfoTest {
     @Test
     fun `isWindows matches currentOS`() {
         assertEquals(
-            PlatformInfo.currentOS == OperatingSystem.WINDOWS,
+            PlatformInfo.currentOS == Platform.Windows,
             PlatformInfo.isWindows,
         )
     }
@@ -39,7 +39,7 @@ class PlatformInfoTest {
     @Test
     fun `isLinux matches currentOS`() {
         assertEquals(
-            PlatformInfo.currentOS == OperatingSystem.LINUX,
+            PlatformInfo.currentOS == Platform.Linux,
             PlatformInfo.isLinux,
         )
     }
@@ -47,23 +47,23 @@ class PlatformInfoTest {
     @Test
     fun `platform values are consistent`() {
         when (PlatformInfo.currentOS) {
-            OperatingSystem.MACOS -> {
+            Platform.MacOS -> {
                 assertTrue(PlatformInfo.isMacOS)
                 assertTrue(!PlatformInfo.isWindows)
                 assertTrue(!PlatformInfo.isLinux)
             }
-            OperatingSystem.WINDOWS -> {
+            Platform.Windows -> {
                 assertTrue(!PlatformInfo.isMacOS)
                 assertTrue(PlatformInfo.isWindows)
                 assertTrue(!PlatformInfo.isLinux)
             }
-            OperatingSystem.LINUX -> {
+            Platform.Linux -> {
                 assertTrue(!PlatformInfo.isMacOS)
                 assertTrue(!PlatformInfo.isWindows)
                 assertTrue(PlatformInfo.isLinux)
             }
             else -> {
-                // For ANDROID, IOS, UNKNOWN - all desktop flags should be false
+                // For Unknown - all desktop flags should be false
                 assertTrue(!PlatformInfo.isMacOS)
                 assertTrue(!PlatformInfo.isWindows)
                 assertTrue(!PlatformInfo.isLinux)

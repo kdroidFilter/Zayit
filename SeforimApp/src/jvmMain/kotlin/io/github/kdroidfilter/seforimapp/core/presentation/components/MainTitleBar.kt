@@ -10,13 +10,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.nucleusframework.core.runtime.Platform
 import dev.nucleusframework.window.ControlButtonsDirection
 import dev.nucleusframework.window.DecoratedWindowScope
 import dev.nucleusframework.window.jewel.JewelTitleBar
 import dev.nucleusframework.window.macOSLargeCornerRadius
 import dev.nucleusframework.window.newFullscreenControls
 import dev.nucleusframework.window.styling.LocalTitleBarStyle
-import io.github.kdroidfilter.platformtools.OperatingSystem
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsView
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
@@ -34,7 +34,7 @@ fun DecoratedWindowScope.MainTitleBar() {
         val windowControlButtonWidth = LocalTitleBarStyle.current.metrics.titlePaneButtonSize.width
         val windowControlCount =
             when (PlatformInfo.currentOS) {
-                OperatingSystem.MACOS -> 0 // native traffic lights, not in Compose layout
+                Platform.MacOS -> 0 // native traffic lights, not in Compose layout
                 else -> 3 // close + maximize/restore + minimize
             }
         BoxWithConstraints(modifier = Modifier.align(Alignment.Start)) {
@@ -45,8 +45,8 @@ fun DecoratedWindowScope.MainTitleBar() {
             val actionButtonsWidth = iconWidth * actionButtonCount + desktopSwitcherWidth
             val iconsAreaWidth: Dp =
                 when (PlatformInfo.currentOS) {
-                    OperatingSystem.MACOS -> actionButtonsWidth + iconWidth * 2 // traffic lights space
-                    OperatingSystem.WINDOWS -> actionButtonsWidth + iconWidth * 3.5f // window controls
+                    Platform.MacOS -> actionButtonsWidth + iconWidth * 2 // traffic lights space
+                    Platform.Windows -> actionButtonsWidth + iconWidth * 3.5f // window controls
                     else -> actionButtonsWidth + windowControlButtonWidth * windowControlCount
                 }
             val tabsAreaWidth: Dp = (windowWidth - iconsAreaWidth).coerceAtLeast(0.dp)

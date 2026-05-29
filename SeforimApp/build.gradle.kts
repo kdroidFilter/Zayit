@@ -80,7 +80,6 @@ kotlin {
 
             // Settings & platform utils
             implementation(libs.multiplatformSettings)
-            implementation(libs.platformtools.core)
             implementation(libs.nucleus.core.runtime)
             implementation(libs.nucleus.application)
             implementation(libs.nucleus.aot.runtime)

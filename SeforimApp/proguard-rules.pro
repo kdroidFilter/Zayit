@@ -229,74 +229,74 @@
 # =============================================================================
 
 # Nucleus decorated-window JNI (macOS)
--keep class io.github.kdroidfilter.nucleus.window.utils.macos.NativeMacBridge {
+-keep class dev.nucleusframework.window.utils.macos.NativeMacBridge {
     native <methods>;
 }
--keep class io.github.kdroidfilter.nucleus.window.** { *; }
+-keep class dev.nucleusframework.window.** { *; }
 
 # Nucleus darkmode-detector JNI (macOS)
 # NativeDarkModeBridge is looked up by name from native code (FindClass + GetStaticMethodID)
--keep class io.github.kdroidfilter.nucleus.darkmodedetector.mac.NativeDarkModeBridge {
+-keep class dev.nucleusframework.darkmodedetector.mac.NativeDarkModeBridge {
     native <methods>;
     static void onThemeChanged(boolean);
 }
 
 # Nucleus darkmode-detector JNI (Linux)
 # NativeLinuxBridge is looked up by name from native code (FindClass + GetStaticMethodID)
--keep class io.github.kdroidfilter.nucleus.darkmodedetector.linux.NativeLinuxBridge {
+-keep class dev.nucleusframework.darkmodedetector.linux.NativeLinuxBridge {
     native <methods>;
     static void onThemeChanged(boolean);
 }
 
 # Nucleus darkmode-detector JNI (Windows)
--keep class io.github.kdroidfilter.nucleus.darkmodedetector.windows.NativeWindowsBridge {
+-keep class dev.nucleusframework.darkmodedetector.windows.NativeWindowsBridge {
     native <methods>;
 }
--keep class io.github.kdroidfilter.nucleus.darkmodedetector.** { *; }
+-keep class dev.nucleusframework.darkmodedetector.** { *; }
 
 # Nucleus native-ssl JNI (macOS)
--keep class io.github.kdroidfilter.nucleus.nativessl.mac.NativeSslBridge {
+-keep class dev.nucleusframework.nativessl.mac.NativeSslBridge {
     native <methods>;
 }
 
 # Nucleus native-ssl JNI (Windows)
--keep class io.github.kdroidfilter.nucleus.nativessl.windows.WindowsSslBridge {
+-keep class dev.nucleusframework.nativessl.windows.WindowsSslBridge {
     native <methods>;
 }
 
 # Nucleus launcher-windows JNI (jump list)
--keep class io.github.kdroidfilter.nucleus.launcher.windows.NativeWindowsJumpListBridge {
+-keep class dev.nucleusframework.launcher.windows.NativeWindowsJumpListBridge {
     native <methods>;
 }
--keep class io.github.kdroidfilter.nucleus.launcher.windows.** { *; }
+-keep class dev.nucleusframework.launcher.windows.** { *; }
 
 # Nucleus launcher-linux D-Bus (quicklist)
--keep class io.github.kdroidfilter.nucleus.launcher.linux.** { *; }
+-keep class dev.nucleusframework.launcher.linux.** { *; }
 
--keep class io.github.kdroidfilter.nucleus.energymanager.** { *; }
+-keep class dev.nucleusframework.energymanager.** { *; }
 
 # macOS
--keep class io.github.kdroidfilter.nucleus.systemcolor.mac.NativeMacSystemColorBridge {
+-keep class dev.nucleusframework.systemcolor.mac.NativeMacSystemColorBridge {
     native <methods>;
     static void onAccentColorChanged(float, float, float);
     static void onContrastChanged(boolean);
 }
 
 # Windows
--keep class io.github.kdroidfilter.nucleus.systemcolor.windows.NativeWindowsSystemColorBridge {
+-keep class dev.nucleusframework.systemcolor.windows.NativeWindowsSystemColorBridge {
     native <methods>;
     static void onAccentColorChanged(int, int, int);
     static void onHighContrastChanged(boolean);
 }
 
 # Linux
--keep class io.github.kdroidfilter.nucleus.systemcolor.linux.NativeLinuxSystemColorBridge {
+-keep class dev.nucleusframework.systemcolor.linux.NativeLinuxSystemColorBridge {
     native <methods>;
     static void onAccentColorChanged(float, float, float);
     static void onHighContrastChanged(boolean);
 }
 
--keep class io.github.kdroidfilter.nucleus.systemcolor.** { *; }
+-keep class dev.nucleusframework.systemcolor.** { *; }
 
 # --- Sentry crash reporting SDK ---
 # Sentry uses reflection for serialization and event processing.

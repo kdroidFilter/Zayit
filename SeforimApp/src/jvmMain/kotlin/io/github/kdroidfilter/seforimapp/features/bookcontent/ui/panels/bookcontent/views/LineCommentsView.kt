@@ -526,8 +526,8 @@ private fun CommentatorsGrid(
             initialIndex = initialIndex,
             initialOffset = initialOffset,
             shouldRestore = restoredCommentatorIds[commentatorId] != true,
-            onRestored = { restoredCommentatorIds[commentatorId] = true },
-            onScrollSettled = { i, o ->
+            onRestore = { restoredCommentatorIds[commentatorId] = true },
+            onScrollSettle = { i, o ->
                 onEvent(BookContentEvent.CommentaryColumnScrolled(commentatorId, i, o, persist = true))
             },
             config = config,
@@ -557,15 +557,16 @@ private fun CommentariesPagedList(
     initialIndex: Int,
     initialOffset: Int,
     shouldRestore: Boolean,
-    onRestored: () -> Unit,
-    onScrollSettled: (Int, Int) -> Unit,
+    onRestore: () -> Unit,
+    onScrollSettle: (Int, Int) -> Unit,
     config: CommentariesLayoutConfig,
     selection: LineSelection,
     commentatorId: Long,
     getCharCountsForLine: suspend (Long, Long) -> List<Int>,
     getCharCountsForLines: suspend (List<Long>, Long) -> List<Int>,
 ) {
-    val currentOnScrollSettled by rememberUpdatedState(onScrollSettled)
+    val currentOnRestore by rememberUpdatedState(onRestore)
+    val currentOnScrollSettle by rememberUpdatedState(onScrollSettle)
     val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
     val annotationCache = remember(selection, commentatorId) { StableAnnotatedCache(mutableStateMapOf()) }
 
@@ -633,7 +634,7 @@ private fun CommentariesPagedList(
                 val safeIndex = restoreIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
                 val safeOffset = restoreOffset.coerceAtLeast(0)
                 listState.scrollToItem(safeIndex, safeOffset)
-                onRestored()
+                currentOnRestore()
             }
         }
     }
@@ -650,7 +651,7 @@ private fun CommentariesPagedList(
             .debounce(SCROLL_DEBOUNCE)
             .collect { (i, o, isScrollInProgress) ->
                 if (!isScrollInProgress) {
-                    currentOnScrollSettled(i, o)
+                    currentOnScrollSettle(i, o)
                 }
             }
     }

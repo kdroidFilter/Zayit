@@ -66,7 +66,7 @@ fun NucleusApplicationScope.OnBoardingWindow() {
                 gradientStartColor = ThemeUtils.titleBarGradientColor(),
                 style = titleBarStyle,
                 controlButtonsDirection = ControlButtonsDirection.SystemNative,
-                layoutPolicy = TitleBarLayoutPolicy.FillCenter,
+                layoutPolicy = TitleBarLayoutPolicy.Default,
             ) {
                 CompositionLocalProvider(LocalContentColor provides titleBarStyle.colors.content) {
                     if (canNavigateBack) {
@@ -82,10 +82,7 @@ fun NucleusApplicationScope.OnBoardingWindow() {
                         }
                     }
                     Row(
-                        modifier =
-                            Modifier
-                                .align(Alignment.CenterHorizontally)
-                                .fillMaxWidth(),
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
                     ) {

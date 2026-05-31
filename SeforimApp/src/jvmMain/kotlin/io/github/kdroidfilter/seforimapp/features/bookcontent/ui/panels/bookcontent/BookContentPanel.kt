@@ -321,7 +321,7 @@ private fun LoaderPanel(modifier: Modifier = Modifier) {
                 .fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        CircularProgressIndicator(modifier = Modifier.size(72.dp))
+        CircularProgressIndicator()
     }
 }
 

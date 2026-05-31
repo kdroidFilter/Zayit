@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 @Stable
 class MainAppState {
-    private val _theme = MutableStateFlow(IntUiThemes.System)
+    private val _theme = MutableStateFlow(AppSettings.getThemeMode())
     val theme: StateFlow<IntUiThemes> = _theme.asStateFlow()
 
     fun setTheme(theme: IntUiThemes) {

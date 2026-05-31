@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 
 import androidx.paging.Pager
 import androidx.paging.PagingData
+import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
@@ -46,6 +47,32 @@ class CommentariesUseCase(
     private val commentatorBookCache: MutableMap<Long, Book> = ConcurrentHashMap()
     private val defaultTargumCache: MutableMap<Long, List<Long>> = ConcurrentHashMap()
 
+    // Memoizes the cached pager flows per (kind, line(s), commentator) so the SAME cachedIn flow
+    // is reused across composition teardown/rebuild (e.g. when switching tabs). Without this, each
+    // rebuild builds a fresh cachedIn flow and reloads commentaries from the DB — the cause of the
+    // visible delay before commentaries reappear on tab switch. Bounded (access-order LRU) so
+    // visited-but-stale pagers don't accumulate unbounded heap.
+    private val pagerFlowCache =
+        object : LinkedHashMap<String, Flow<PagingData<CommentaryWithText>>>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Flow<PagingData<CommentaryWithText>>>?): Boolean =
+                size > MAX_CACHED_PAGERS
+        }
+
+    // Read-through cache of commentator GROUPS per base line. Survives tab switches (the use
+    // case lives in viewModelScope), so returning to a tab no longer re-queries the DB for the
+    // groups. Bounded (access-order LRU).
+    private val lineConnectionsCache =
+        object : LinkedHashMap<Long, LineConnectionsSnapshot>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, LineConnectionsSnapshot>?): Boolean =
+                size > MAX_CACHED_LINE_CONNECTIONS
+        }
+
+    @Synchronized
+    private fun cachedPager(
+        key: String,
+        create: () -> Flow<PagingData<CommentaryWithText>>,
+    ): Flow<PagingData<CommentaryWithText>> = pagerFlowCache.getOrPut(key, create)
+
     private data class BaseLineResolution(
         val baseLineIds: List<Long>,
         val headingTocEntryId: Long? = null,
@@ -75,15 +102,41 @@ class CommentariesUseCase(
     fun buildCommentariesPager(
         lineId: Long,
         commentatorId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> {
-        val ids = commentatorId?.let { setOf(it) } ?: emptySet()
+    ): Flow<PagingData<CommentaryWithText>> =
+        cachedPager("com:$lineId:${commentatorId ?: -1L}") {
+            val ids = commentatorId?.let { setOf(it) } ?: emptySet()
+            Pager(
+                config = PagingDefaults.COMMENTS.config(placeholders = false),
+                pagingSourceFactory = {
+                    CommentsForLineOrTocPagingSource(repository, lineId, ids)
+                },
+            ).flow.cachedIn(scope)
+        }
 
-        return Pager(
-            config = PagingDefaults.COMMENTS.config(placeholders = false),
-            pagingSourceFactory = {
-                CommentsForLineOrTocPagingSource(repository, lineId, ids)
-            },
-        ).flow.cachedIn(scope)
+    /**
+     * Warms the first page of each open commentator's column for [lineId] ahead of display
+     * (e.g. while a tab is preloaded on hover). Reuses the exact [CommentsForLineOrTocPagingSource]
+     * the UI builds so the TOC-section resolution and SQL query are identical — the rows land in
+     * SQLite's page cache, making the on-demand pager load instant once the tab is shown.
+     */
+    suspend fun prefetchCommentaries(
+        lineId: Long,
+        commentatorIds: Set<Long>,
+    ) {
+        if (lineId <= 0 || commentatorIds.isEmpty()) return
+        for (commentatorId in commentatorIds) {
+            currentCoroutineContext().ensureActive()
+            runSuspendCatching {
+                CommentsForLineOrTocPagingSource(repository, lineId, setOf(commentatorId))
+                    .load(
+                        PagingSource.LoadParams.Refresh(
+                            key = 0,
+                            loadSize = PagingDefaults.COMMENTS.INITIAL_LOAD_SIZE,
+                            placeholdersEnabled = false,
+                        ),
+                    )
+            }
+        }
     }
 
     /**
@@ -92,30 +145,30 @@ class CommentariesUseCase(
     fun buildLinksPager(
         lineId: Long,
         sourceBookId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> {
-        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
-
-        return Pager(
-            config = PagingDefaults.COMMENTS.config(placeholders = false),
-            pagingSourceFactory = {
-                LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.TARGUM))
-            },
-        ).flow.cachedIn(scope)
-    }
+    ): Flow<PagingData<CommentaryWithText>> =
+        cachedPager("tgm:$lineId:${sourceBookId ?: -1L}") {
+            val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+            Pager(
+                config = PagingDefaults.COMMENTS.config(placeholders = false),
+                pagingSourceFactory = {
+                    LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.TARGUM))
+                },
+            ).flow.cachedIn(scope)
+        }
 
     fun buildSourcesPager(
         lineId: Long,
         sourceBookId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> {
-        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
-
-        return Pager(
-            config = PagingDefaults.COMMENTS.config(placeholders = false),
-            pagingSourceFactory = {
-                LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.SOURCE))
-            },
-        ).flow.cachedIn(scope)
-    }
+    ): Flow<PagingData<CommentaryWithText>> =
+        cachedPager("src:$lineId:${sourceBookId ?: -1L}") {
+            val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+            Pager(
+                config = PagingDefaults.COMMENTS.config(placeholders = false),
+                pagingSourceFactory = {
+                    LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.SOURCE))
+                },
+            ).flow.cachedIn(scope)
+        }
 
     // ========== Multi-line pagers for multi-selection ==========
 
@@ -125,16 +178,16 @@ class CommentariesUseCase(
     fun buildCommentariesPagerForLines(
         lineIds: List<Long>,
         commentatorId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> {
-        val ids = commentatorId?.let { setOf(it) } ?: emptySet()
-
-        return Pager(
-            config = PagingDefaults.COMMENTS.config(placeholders = false),
-            pagingSourceFactory = {
-                MultiLineCommentsPagingSource(repository, lineIds, ids)
-            },
-        ).flow.cachedIn(scope)
-    }
+    ): Flow<PagingData<CommentaryWithText>> =
+        cachedPager("comL:${lineIds.joinToString(",")}:${commentatorId ?: -1L}") {
+            val ids = commentatorId?.let { setOf(it) } ?: emptySet()
+            Pager(
+                config = PagingDefaults.COMMENTS.config(placeholders = false),
+                pagingSourceFactory = {
+                    MultiLineCommentsPagingSource(repository, lineIds, ids)
+                },
+            ).flow.cachedIn(scope)
+        }
 
     /**
      * Construit un Pager pour les liens/targum de plusieurs lignes
@@ -142,16 +195,16 @@ class CommentariesUseCase(
     fun buildLinksPagerForLines(
         lineIds: List<Long>,
         sourceBookId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> {
-        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
-
-        return Pager(
-            config = PagingDefaults.COMMENTS.config(placeholders = false),
-            pagingSourceFactory = {
-                MultiLineLinksPagingSource(repository, lineIds, ids, setOf(ConnectionType.TARGUM))
-            },
-        ).flow.cachedIn(scope)
-    }
+    ): Flow<PagingData<CommentaryWithText>> =
+        cachedPager("tgmL:${lineIds.joinToString(",")}:${sourceBookId ?: -1L}") {
+            val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+            Pager(
+                config = PagingDefaults.COMMENTS.config(placeholders = false),
+                pagingSourceFactory = {
+                    MultiLineLinksPagingSource(repository, lineIds, ids, setOf(ConnectionType.TARGUM))
+                },
+            ).flow.cachedIn(scope)
+        }
 
     /**
      * Construit un Pager pour les sources de plusieurs lignes
@@ -159,16 +212,16 @@ class CommentariesUseCase(
     fun buildSourcesPagerForLines(
         lineIds: List<Long>,
         sourceBookId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> {
-        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
-
-        return Pager(
-            config = PagingDefaults.COMMENTS.config(placeholders = false),
-            pagingSourceFactory = {
-                MultiLineLinksPagingSource(repository, lineIds, ids, setOf(ConnectionType.SOURCE))
-            },
-        ).flow.cachedIn(scope)
-    }
+    ): Flow<PagingData<CommentaryWithText>> =
+        cachedPager("srcL:${lineIds.joinToString(",")}:${sourceBookId ?: -1L}") {
+            val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+            Pager(
+                config = PagingDefaults.COMMENTS.config(placeholders = false),
+                pagingSourceFactory = {
+                    MultiLineLinksPagingSource(repository, lineIds, ids, setOf(ConnectionType.SOURCE))
+                },
+            ).flow.cachedIn(scope)
+        }
 
     /**
      * Ordered char-count vector for the commentary pager built from a single base line
@@ -589,6 +642,15 @@ class CommentariesUseCase(
     private companion object {
         const val GROUP_RANK_DEFAULT = 1_000
 
+        // Upper bound on memoized commentary/link/source pager flows (across all lines and
+        // commentators visited in this book tab). Each retains its loaded pages, so keep it
+        // modest; the least-recently-used pager is evicted past this size.
+        const val MAX_CACHED_PAGERS = 32
+
+        // Upper bound on cached commentator-group snapshots (one per base line). Snapshots are
+        // light (group/commentator metadata, no commentary text), so this can be generous.
+        const val MAX_CACHED_LINE_CONNECTIONS = 512
+
         // Canonical (approximate) author birth years for the dominant Rishonim
         // and Acharonim that ship with the corpus. Keys are normalized to gershayim
         // form (״). Add to this list when new "VIP" commentators surface.
@@ -978,28 +1040,40 @@ class CommentariesUseCase(
 
     suspend fun loadLineConnections(lineIds: List<Long>): Map<Long, LineConnectionsSnapshot> {
         if (lineIds.isEmpty()) return emptyMap()
-
         val distinctIds = lineIds.distinct()
+
+        // Read-through cache: only query the DB for lines we have not resolved yet.
+        val cached = LinkedHashMap<Long, LineConnectionsSnapshot>()
+        val missing = ArrayList<Long>()
+        synchronized(lineConnectionsCache) {
+            distinctIds.forEach { id ->
+                val hit = lineConnectionsCache[id]
+                if (hit != null) cached[id] = hit else missing.add(id)
+            }
+        }
+        if (missing.isEmpty()) return cached
+
+        fun storeAndMerge(loaded: Map<Long, LineConnectionsSnapshot>): Map<Long, LineConnectionsSnapshot> {
+            synchronized(lineConnectionsCache) { loaded.forEach { (id, snap) -> lineConnectionsCache[id] = snap } }
+            return cached + loaded
+        }
+
         val resolutionCache = LinkedHashMap<Long, BaseLineResolution>()
         val tocLinesCache = mutableMapOf<Long, List<Long>>()
         val headingCache = mutableMapOf<Long, TocEntry?>()
 
-        distinctIds.forEach { id ->
+        missing.forEach { id ->
             resolutionCache[id] = resolveBaseLineResolution(id, tocLinesCache, headingCache)
         }
 
         val allBaseIds = resolutionCache.values.flatMap { it.baseLineIds }.distinct()
-        if (allBaseIds.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
+        if (allBaseIds.isEmpty()) return storeAndMerge(missing.associateWith { LineConnectionsSnapshot() })
 
         val currentState = stateManager.state.first()
         val selectedBook = currentState.navigation.selectedBook
-        // Skip the SOURCE-side inverse query when the current book has no
-        // dependant-side links at all (e.g. Tanakh, Mishna). Saves a costly
-        // mirror query on hot navigation paths.
-        val includeSources = selectedBook?.hasSourceConnection == true
 
         val allConnections = repository.getCommentarySummariesForLines(allBaseIds)
-        if (allConnections.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
+        if (allConnections.isEmpty()) return storeAndMerge(missing.associateWith { LineConnectionsSnapshot() })
 
         val connectionsBySource = allConnections.groupBy { it.link.sourceLineId }
         val currentBookTitle =
@@ -1016,12 +1090,14 @@ class CommentariesUseCase(
             defaultTargumByBookId[bookId] = ids.firstOrNull()
         }
 
-        return resolutionCache.mapValues { (_, resolution) ->
-            val aggregated = resolution.baseLineIds.flatMap { baseId -> connectionsBySource[baseId].orEmpty() }
-            val defaultTargumId = resolution.headingBookId?.let { defaultTargumByBookId[it] }
-            val filtered = filterTargumConnections(aggregated, resolution, defaultTargumId)
-            buildLineConnectionsSnapshot(filtered, currentBookTitle, bookCache, categoryCache)
-        }
+        val snapshots =
+            resolutionCache.mapValues { (_, resolution) ->
+                val aggregated = resolution.baseLineIds.flatMap { baseId -> connectionsBySource[baseId].orEmpty() }
+                val defaultTargumId = resolution.headingBookId?.let { defaultTargumByBookId[it] }
+                val filtered = filterTargumConnections(aggregated, resolution, defaultTargumId)
+                buildLineConnectionsSnapshot(filtered, currentBookTitle, bookCache, categoryCache)
+            }
+        return storeAndMerge(snapshots)
     }
 
     /**

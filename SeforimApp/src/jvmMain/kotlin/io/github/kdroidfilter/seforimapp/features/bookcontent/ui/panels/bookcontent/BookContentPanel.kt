@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +31,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asSt
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.*
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
+import io.github.kdroidfilter.seforimapp.logger.warnln
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
@@ -143,25 +145,45 @@ private fun BookContentPanelContent(
         }
     val prefetchScope = rememberCoroutineScope()
 
+    // Line ids whose connections load is currently in flight. The completed-only `connectionsCache`
+    // check is not enough: two requests that arrive before the first load resolves both see the id
+    // as missing and each launch a redundant DB load (the race). Guarding on this set both detects
+    // (logged) and dedups concurrent loads. Mutated only on the composition (Main) thread.
+    val inFlight = remember(selectedBook.id) { mutableSetOf<Long>() }
+
     fun prefetch(
         @StructuredScope scope: CoroutineScope,
         missing: List<Long>,
     ) {
+        inFlight.addAll(missing)
         scope.launch {
             runSuspendCatching { providers.loadLineConnections(missing) }
-                .onSuccess { connectionsCache.putAll(it) }
+                .onSuccess { result -> connectionsCache.putAll(result) }
+                .onFailure { e -> warnln { "connections load failed for=$missing: $e" } }
+            inFlight.removeAll(missing.toSet())
         }
     }
 
     val prefetchConnections =
-        remember(providers, connectionsCache) {
+        remember(providers, connectionsCache, inFlight) {
             { ids: List<Long> ->
                 if (ids.isEmpty()) return@remember
-                val missing = ids.filterNot { connectionsCache.containsKey(it) }.distinct()
+                // Dedup against in-flight loads so concurrent requests don't launch duplicate DB queries.
+                val missing = ids.filterNot { connectionsCache.containsKey(it) || it in inFlight }.distinct()
                 if (missing.isEmpty()) return@remember
                 prefetch(prefetchScope, missing)
             }
         }
+
+    // Warm the text of the commentators that were open for the selected line, so that a tab
+    // preloaded on hover (this composes off-screen too) has its open commentaries ready and the
+    // on-demand pager load is instant once the tab is shown. Gated on the pane actually being open.
+    val openCommentatorIds = uiState.content.selectedCommentatorIds
+    LaunchedEffect(uiState.content.primarySelectedLineId, openCommentatorIds, uiState.content.showCommentaries) {
+        val lineId = uiState.content.primarySelectedLineId ?: return@LaunchedEffect
+        if (!uiState.content.showCommentaries || openCommentatorIds.isEmpty()) return@LaunchedEffect
+        providers.prefetchCommentaries(lineId, openCommentatorIds)
+    }
 
     val isIslands = ThemeUtils.isIslandsStyle()
     val hasBottomPane = uiState.content.showCommentaries || uiState.content.showSources

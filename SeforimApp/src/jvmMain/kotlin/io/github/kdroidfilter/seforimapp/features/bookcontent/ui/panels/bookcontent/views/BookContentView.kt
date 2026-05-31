@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -284,28 +285,27 @@ fun BookContentView(
             if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
         }
 
-    // Track restoration state per book
-    var hasRestored by remember(bookId) { mutableStateOf(false) }
+    // Track restoration state per book. Saveable so it survives the teardown/rebuild on a
+    // tab switch: the scroll position is already preserved by the LazyListState, so the
+    // reveal-fade below must not replay when returning to an already-positioned tab.
+    var hasRestored by rememberSaveable(bookId) { mutableStateOf(false) }
 
     // Track the restored anchor to avoid re-restoration
-    var restoredAnchorId by remember(bookId) { mutableStateOf(-1L) }
+    var restoredAnchorId by rememberSaveable(bookId) { mutableStateOf(-1L) }
 
     // Track if this is the initial book open (vs changing TOC within same book)
-    var isInitialBookOpen by remember(bookId) { mutableStateOf(true) }
+    var isInitialBookOpen by rememberSaveable(bookId) { mutableStateOf(true) }
 
-    // Hide content until initial scroll is complete to prevent visual glitch
-    // Only apply on initial book open, not when changing TOC entries after content is already visible.
+    // Hide content until initial scroll is complete to prevent a visual glitch (showing the top
+    // then jumping to the saved position). The reveal is instant (no fade) so switching tabs has
+    // no animation — only the anti-glitch masking remains.
     val hasSavedInitialPosition = anchorId != -1L || scrollIndex > 0 || scrollOffset > 0
     val hasTopAnchorRequest = topAnchorTimestamp != 0L && topAnchorLineId != -1L
     val needsInitialPositioning =
         isInitialBookOpen &&
             !hasRestored &&
             (hasTopAnchorRequest || (topAnchorTimestamp == 0L && hasSavedInitialPosition))
-    val contentAlpha by animateFloatAsState(
-        targetValue = if (needsInitialPositioning) 0f else 1f,
-        animationSpec = tween(durationMillis = if (needsInitialPositioning) 0 else 50),
-        label = "contentAlpha",
-    )
+    val contentAlpha = if (needsInitialPositioning) 0f else 1f
 
     // selectedLineId is now passed as a parameter for stability
 
@@ -349,13 +349,16 @@ fun BookContentView(
             .distinctUntilChanged()
             .debounce(150.milliseconds)
             .catch { e -> debugln { "prefetch-connections flow failed: $e" } }
-            .collect { ids -> onPrefetchLineConnections(ids) }
+            .collect { ids ->
+                onPrefetchLineConnections(ids)
+            }
     }
 
     // Ensure the selected line is prefetched even if it is not visible yet
     LaunchedEffect(primarySelectedLineId, lineConnections) {
         val id = primarySelectedLineId ?: return@LaunchedEffect
-        if (lineConnections[id] == null) {
+        val alreadyCached = lineConnections[id] != null
+        if (!alreadyCached) {
             onPrefetchLineConnections(listOf(id))
         }
     }
@@ -420,7 +423,6 @@ fun BookContentView(
 
         var targetIndex = currentTargetIndex()
         if (targetIndex == null) {
-            debugln { "Top-anchor target $topAnchorLineId not yet in snapshot; waiting" }
             withTimeoutOrNull(1500L.milliseconds) {
                 snapshotFlow { lazyPagingItems.itemSnapshotList.items }
                     .mapNotNull { items ->
@@ -434,7 +436,6 @@ fun BookContentView(
         }
 
         targetIndex?.let { idx ->
-            debugln { "Top-anchoring to index $idx for line $topAnchorLineId" }
             listState.scrollToItem(idx, 0)
             restoredAnchorId = topAnchorLineId
             hasRestored = true
@@ -448,8 +449,8 @@ fun BookContentView(
     LaunchedEffect(bookId, topAnchorTimestamp, anchorId, scrollIndex, scrollOffset) {
         if (topAnchorTimestamp != 0L) return@LaunchedEffect
         if (hasRestored) return@LaunchedEffect
-        // Runs during preload too (off-screen): positioning + the contentAlpha reveal settle before
-        // the tab is shown, so selecting a preloaded tab is instant with no fade-in.
+        // On a cold open / session restore this positions the list and the contentAlpha reveal
+        // plays once. On a tab switch, hasRestored is restored as true (saveable) so we skip it.
 
         // Wait for initial page load to complete
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
@@ -467,7 +468,6 @@ fun BookContentView(
 
             var idx = currentAnchorIndex()
             if (idx == null) {
-                debugln { "Saved anchor $anchorId not yet in snapshot; waiting" }
                 withTimeoutOrNull(1500L.milliseconds) {
                     snapshotFlow { lazyPagingItems.itemSnapshotList }
                         .mapNotNull { snapshot ->
@@ -481,7 +481,6 @@ fun BookContentView(
             }
 
             idx?.let { resolved ->
-                debugln { "Restoring by saved anchor: idx=$resolved, offset=$scrollOffset" }
                 listState.scrollToItem(resolved, scrollOffset.coerceAtLeast(0))
                 hasRestored = true
                 isInitialBookOpen = false
@@ -495,7 +494,6 @@ fun BookContentView(
             val itemCount = lazyPagingItems.itemCount
             val targetIndex = scrollIndex.coerceIn(0, maxOf(0, itemCount - 1))
             val targetOffset = scrollOffset.coerceAtLeast(0)
-            debugln { "Restoring by index/offset: index=$targetIndex, offset=$targetOffset" }
             listState.scrollToItem(targetIndex, targetOffset)
             hasRestored = true
             isInitialBookOpen = false
@@ -554,9 +552,6 @@ fun BookContentView(
         val stableAnchorId = data.anchorId.takeIf { it > 0 } ?: savedAnchorIdUpdated
         val stableAnchorIndex = if (data.anchorId > 0) data.anchorIndex else savedAnchorIndexUpdated
 
-        debugln {
-            "Saving scroll: anchor=$stableAnchorId, index=${data.scrollIndex}, offset=${data.scrollOffset}"
-        }
         onScrollUpdated(stableAnchorId, stableAnchorIndex, data.scrollIndex, data.scrollOffset)
     }
 

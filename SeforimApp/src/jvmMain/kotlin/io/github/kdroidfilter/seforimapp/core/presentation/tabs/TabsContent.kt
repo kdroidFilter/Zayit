@@ -11,13 +11,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.zIndex
 import androidx.lifecycle.DEFAULT_ARGS_KEY
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
 import androidx.lifecycle.Lifecycle
@@ -61,12 +59,32 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
  */
 val LocalTabSelected = compositionLocalOf { true }
 
-private const val MAX_RETAINED_TAB_COMPOSITIONS = 3
+/**
+ * Stable, rename-safe discriminator for a destination, used to key the per-tab
+ * saveable UI state so it resets when a tab navigates to a different destination type.
+ */
+private fun TabsDestination.typeKey(): String =
+    when (this) {
+        is TabsDestination.Home -> "home"
+        is TabsDestination.Search -> "search"
+        is TabsDestination.BookContent -> "book"
+    }
+
+private fun saveableKeyFor(destination: TabsDestination): String = "${destination.tabId}:${destination.typeKey()}"
+
+private fun saveableKeysFor(tabId: String): List<String> = listOf("$tabId:home", "$tabId:search", "$tabId:book")
 
 /**
  * Simplified tab content renderer without Compose Navigation.
- * Keeps ViewModel owners per tab and retains a small LRU of tab compositions to
- * reduce switch latency without keeping every open tab actively composed.
+ *
+ * Mirrors IntelliJ's editor-tab strategy: keep every open tab's state in memory
+ * (ViewModel owners stay alive) but render only the selected tab — hidden tabs are
+ * not composed at all, so they cost nothing in layout/draw/recomposition. Lightweight
+ * UI state (scroll positions, expanded nodes) survives the teardown/rebuild on switch
+ * via a [rememberSaveableStateHolder]; heavy data stays hot in the alive ViewModel.
+ *
+ * When the "memory saver" setting is enabled, ViewModels of least-recently-selected
+ * tabs are evicted (rebuilt from persisted state on return) to bound memory.
  */
 @Composable
 fun TabsContent() {
@@ -78,7 +96,6 @@ fun TabsContent() {
     val tabsState by tabsViewModel.state.collectAsState()
     val tabs = tabsState.tabs
     val selectedTabIndex = tabsState.selectedTabIndex
-    val preloadTabId by tabsViewModel.preloadTabId.collectAsState()
     val isRestoringSession by SessionManager.isRestoringSession.collectAsState()
     val isSwitchingDesktop by appGraph.desktopManager.isSwitching.collectAsState()
     val isTransitioning = isRestoringSession || isSwitchingDesktop
@@ -159,10 +176,12 @@ fun TabsContent() {
         }
     }
 
-    // ViewModel owners per tab - manages lifecycle and state
+    // ViewModel owners per tab - manages lifecycle and state. Owners survive while the
+    // tab is open so re-selecting a tab needs no DB refetch (data is hot in the ViewModel).
     val tabOwners = remember { mutableMapOf<String, SimpleTabViewModelOwner>() }
     val knownTabIds = remember { mutableSetOf<String>() }
-    val retainedTabIds = remember { mutableStateListOf<String>() }
+    // Holds per-tab saveable UI state across the teardown/rebuild that happens on switch.
+    val saveableStateHolder = rememberSaveableStateHolder()
 
     // Cleanup removed tabs
     LaunchedEffect(tabs) {
@@ -171,23 +190,10 @@ fun TabsContent() {
         removed.forEach { tabId ->
             tabOwners.remove(tabId)?.clear()
             persistedStore.remove(tabId)
+            saveableKeysFor(tabId).forEach(saveableStateHolder::removeState)
         }
-        retainedTabIds.removeAll(removed)
         knownTabIds.clear()
         knownTabIds.addAll(activeTabIds)
-    }
-
-    LaunchedEffect(tabs, selectedTabIndex) {
-        val selectedTabId = tabs.getOrNull(selectedTabIndex)?.destination?.tabId ?: return@LaunchedEffect
-        val activeTabIds = tabs.map { it.destination.tabId }.toSet()
-
-        retainedTabIds.removeAll { it !in activeTabIds }
-        retainedTabIds.remove(selectedTabId)
-        retainedTabIds.add(0, selectedTabId)
-
-        while (retainedTabIds.size > MAX_RETAINED_TAB_COMPOSITIONS) {
-            retainedTabIds.removeAt(retainedTabIds.lastIndex)
-        }
     }
 
     DisposableEffect(Unit) {
@@ -221,72 +227,48 @@ fun TabsContent() {
                 .fillMaxSize()
                 .background(canvasBg),
     ) {
-        val selectedTabId = currentTabId
-        val preloadId = preloadTabId
-        val retainedTabIdsForComposition =
-            buildList {
-                if (selectedTabId != null) {
-                    add(selectedTabId)
-                }
-                // Hovered tab: preloaded right after the selected one so the switch is instant.
-                if (preloadId != null && preloadId != selectedTabId) {
-                    add(preloadId)
-                }
-                retainedTabIds.forEach { retainedTabId ->
-                    if (retainedTabId != selectedTabId && retainedTabId != preloadId) {
-                        add(retainedTabId)
-                    }
-                }
-            }.take(MAX_RETAINED_TAB_COMPOSITIONS)
+        // Render only the selected tab. Hidden tabs are not composed at all (no off-screen
+        // layout/draw), so they cost nothing; their state stays alive in the ViewModel and
+        // the saveable state holder, making the switch fast without hurting the active FPS.
+        val selectedTab = tabs.getOrNull(selectedTabIndex)
+        if (selectedTab != null) {
+            val tabId = selectedTab.destination.tabId
+            val saveableKey = saveableKeyFor(selectedTab.destination)
+            key(saveableKey) {
+                saveableStateHolder.SaveableStateProvider(saveableKey) {
+                    val tabOwner = tabOwners.getOrPut(tabId) { SimpleTabViewModelOwner(tabId) }
+                    CompositionLocalProvider(LocalTabSelected provides true) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            when (val destination = selectedTab.destination) {
+                                is TabsDestination.Home -> {
+                                    HomeTabContent(
+                                        tabOwner = tabOwner,
+                                        tabId = tabId,
+                                        isSelected = true,
+                                        isRestoringSession = isTransitioning,
+                                        searchUi = searchUi,
+                                        searchCallbacks = homeSearchCallbacks,
+                                    )
+                                }
 
-        val retainedTabs =
-            retainedTabIdsForComposition
-                .mapNotNull { retainedTabId -> tabs.firstOrNull { it.destination.tabId == retainedTabId } }
-                .asReversed()
+                                is TabsDestination.Search -> {
+                                    SearchTabContent(
+                                        tabOwner = tabOwner,
+                                        destination = destination,
+                                        isSelected = true,
+                                    )
+                                }
 
-        retainedTabs.forEach { tabItem ->
-            val tabId = tabItem.destination.tabId
-            val isSelected = tabId == currentTabId
-            key(tabItem.id) {
-                val tabOwner = tabOwners.getOrPut(tabId) { SimpleTabViewModelOwner(tabId) }
-
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .zIndex(if (isSelected) 1f else -1f)
-                            .graphicsLayer { alpha = if (isSelected) 1f else 0f },
-                ) {
-                    CompositionLocalProvider(LocalTabSelected provides isSelected) {
-                        when (val destination = tabItem.destination) {
-                            is TabsDestination.Home -> {
-                                HomeTabContent(
-                                    tabOwner = tabOwner,
-                                    tabId = tabId,
-                                    isSelected = isSelected,
-                                    isRestoringSession = isTransitioning,
-                                    searchUi = searchUi,
-                                    searchCallbacks = homeSearchCallbacks,
-                                )
-                            }
-
-                            is TabsDestination.Search -> {
-                                SearchTabContent(
-                                    tabOwner = tabOwner,
-                                    destination = destination,
-                                    isSelected = isSelected,
-                                )
-                            }
-
-                            is TabsDestination.BookContent -> {
-                                BookContentTabContent(
-                                    tabOwner = tabOwner,
-                                    destination = destination,
-                                    isSelected = isSelected,
-                                    isRestoringSession = isTransitioning,
-                                    searchUi = searchUi,
-                                    searchCallbacks = homeSearchCallbacks,
-                                )
+                                is TabsDestination.BookContent -> {
+                                    BookContentTabContent(
+                                        tabOwner = tabOwner,
+                                        destination = destination,
+                                        isSelected = true,
+                                        isRestoringSession = isTransitioning,
+                                        searchUi = searchUi,
+                                        searchCallbacks = homeSearchCallbacks,
+                                    )
+                                }
                             }
                         }
                     }

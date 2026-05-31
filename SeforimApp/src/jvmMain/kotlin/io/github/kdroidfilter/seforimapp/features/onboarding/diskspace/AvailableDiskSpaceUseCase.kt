@@ -42,7 +42,7 @@ class AvailableDiskSpaceUseCase {
         const val TEMPORARY_SPACE_GB = 2.5
 
         /** Final space after installation completes. */
-        const val FINAL_SPACE_GB = 8.5
+        const val FINAL_SPACE_GB = 7.5
 
         val REQUIRED_SPACE_BYTES = REQUIRED_SPACE_GB * 1024 * 1024 * 1024
     }

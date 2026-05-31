@@ -20,7 +20,7 @@ data class Providers(
     val getAvailableCommentatorsForLine: suspend (Long) -> Map<String, Long>,
     val getCommentatorGroupsForLine: suspend (Long) -> List<CommentatorGroup>,
     val loadLineConnections: suspend (List<Long>) -> Map<Long, LineConnectionsSnapshot>,
-    // Warms the first page of the given line's open commentators (used by hover preload).
+    // Warms the first page of the given line's open commentators (used to warm a background tab ahead of display).
     val prefetchCommentaries: suspend (Long, Set<Long>) -> Unit,
     val buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     val getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,

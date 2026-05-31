@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -285,20 +284,22 @@ fun BookContentView(
             if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
         }
 
-    // Track restoration state per book. Saveable so it survives the teardown/rebuild on a
-    // tab switch: the scroll position is already preserved by the LazyListState, so the
-    // reveal-fade below must not replay when returning to an already-positioned tab.
-    var hasRestored by rememberSaveable(bookId) { mutableStateOf(false) }
+    // Track restoration state per book. Plain remember: a tab is kept alive across switches and is
+    // never rebuilt on a switch, so this only resets when the composition is actually torn down
+    // (the tab navigates to a different book/destination, or is closed). In that case we WANT the
+    // masking below to replay, because the paged list reloads from empty and would otherwise show
+    // the top then jump to the saved position.
+    var hasRestored by remember(bookId) { mutableStateOf(false) }
 
     // Track the restored anchor to avoid re-restoration
-    var restoredAnchorId by rememberSaveable(bookId) { mutableStateOf(-1L) }
+    var restoredAnchorId by remember(bookId) { mutableStateOf(-1L) }
 
     // Track if this is the initial book open (vs changing TOC within same book)
-    var isInitialBookOpen by rememberSaveable(bookId) { mutableStateOf(true) }
+    var isInitialBookOpen by remember(bookId) { mutableStateOf(true) }
 
     // Hide content until initial scroll is complete to prevent a visual glitch (showing the top
-    // then jumping to the saved position). The reveal is instant (no fade) so switching tabs has
-    // no animation — only the anti-glitch masking remains.
+    // then jumping to the saved position). The reveal is instant (no fade). It only runs on a cold
+    // open / session restore; a tab switch keeps the list alive and positioned, so nothing masks.
     val hasSavedInitialPosition = anchorId != -1L || scrollIndex > 0 || scrollOffset > 0
     val hasTopAnchorRequest = topAnchorTimestamp != 0L && topAnchorLineId != -1L
     val needsInitialPositioning =
@@ -367,9 +368,10 @@ fun BookContentView(
     // Only scrolls if the line is outside the visible viewport.
     LaunchedEffect(scrollToLineTimestamp, primarySelectedLineId, topAnchorTimestamp, topAnchorLineId) {
         if (primarySelectedLineId == null) return@LaunchedEffect
-        // Skip while the tab is only preloaded (off-screen): the initial bring-into-view must not
-        // override the anchor restoration. isTabSelected is intentionally NOT a key here, so becoming
-        // selected doesn't re-trigger a jump — real selection events (new timestamp) still run.
+        // Skip while this tab isn't the selected one (composed but not displayed): the initial
+        // bring-into-view must not override the anchor restoration. isTabSelected is intentionally
+        // NOT a key here, so becoming selected doesn't re-trigger a jump — real selection events
+        // (new timestamp) still run.
         if (!isTabSelected) return@LaunchedEffect
 
         // Skip minimal bring-into-view when a top-anchoring request is active for this selection
@@ -450,7 +452,8 @@ fun BookContentView(
         if (topAnchorTimestamp != 0L) return@LaunchedEffect
         if (hasRestored) return@LaunchedEffect
         // On a cold open / session restore this positions the list and the contentAlpha reveal
-        // plays once. On a tab switch, hasRestored is restored as true (saveable) so we skip it.
+        // plays once. A tab switch no longer re-runs this — the tab stays composed and the list
+        // keeps its position.
 
         // Wait for initial page load to complete
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {

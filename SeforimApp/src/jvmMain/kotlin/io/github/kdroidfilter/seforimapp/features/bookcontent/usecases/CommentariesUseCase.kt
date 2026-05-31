@@ -48,10 +48,11 @@ class CommentariesUseCase(
     private val defaultTargumCache: MutableMap<Long, List<Long>> = ConcurrentHashMap()
 
     // Memoizes the cached pager flows per (kind, line(s), commentator) so the SAME cachedIn flow
-    // is reused across composition teardown/rebuild (e.g. when switching tabs). Without this, each
-    // rebuild builds a fresh cachedIn flow and reloads commentaries from the DB — the cause of the
-    // visible delay before commentaries reappear on tab switch. Bounded (access-order LRU) so
-    // visited-but-stale pagers don't accumulate unbounded heap.
+    // is reused whenever the same commentator column is requested again (re-selecting a line,
+    // toggling the commentaries pane, or an actual composition teardown). Without this, each
+    // request builds a fresh cachedIn flow and reloads commentaries from the DB — the cause of the
+    // visible delay before commentaries reappear. Bounded (access-order LRU) so visited-but-stale
+    // pagers don't accumulate unbounded heap.
     private val pagerFlowCache =
         object : LinkedHashMap<String, Flow<PagingData<CommentaryWithText>>>(16, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Flow<PagingData<CommentaryWithText>>>?): Boolean =
@@ -115,7 +116,7 @@ class CommentariesUseCase(
 
     /**
      * Warms the first page of each open commentator's column for [lineId] ahead of display
-     * (e.g. while a tab is preloaded on hover). Reuses the exact [CommentsForLineOrTocPagingSource]
+     * (e.g. for a background tab not yet displayed). Reuses the exact [CommentsForLineOrTocPagingSource]
      * the UI builds so the TOC-section resolution and SQL query are identical — the rows land in
      * SQLite's page cache, making the on-demand pager load instant once the tab is shown.
      */

@@ -16,6 +16,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.lifecycle.DEFAULT_ARGS_KEY
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
 import androidx.lifecycle.Lifecycle
@@ -77,14 +78,11 @@ private fun saveableKeysFor(tabId: String): List<String> = listOf("$tabId:home",
 /**
  * Simplified tab content renderer without Compose Navigation.
  *
- * Mirrors IntelliJ's editor-tab strategy: keep every open tab's state in memory
- * (ViewModel owners stay alive) but render only the selected tab — hidden tabs are
- * not composed at all, so they cost nothing in layout/draw/recomposition. Lightweight
- * UI state (scroll positions, expanded nodes) survives the teardown/rebuild on switch
- * via a [rememberSaveableStateHolder]; heavy data stays hot in the alive ViewModel.
- *
- * When the "memory saver" setting is enabled, ViewModels of least-recently-selected
- * tabs are evicted (rebuilt from persisted state on return) to bound memory.
+ * Every open tab is composed and kept alive; switching never tears a tab down. Only the selected
+ * tab is measured and placed, so hidden tabs incur no layout/draw cost while their ViewModel,
+ * paging flow and scroll state stay hot. This is what makes switching instant and glitch-free:
+ * the paged content list is never re-collected from empty, so there is no reload-and-jump and no
+ * need for any alpha/crossfade masking. The cost is RAM proportional to the number of open tabs.
  */
 @Composable
 fun TabsContent() {
@@ -227,24 +225,44 @@ fun TabsContent() {
                 .fillMaxSize()
                 .background(canvasBg),
     ) {
-        // Render only the selected tab. Hidden tabs are not composed at all (no off-screen
-        // layout/draw), so they cost nothing; their state stays alive in the ViewModel and
-        // the saveable state holder, making the switch fast without hurting the active FPS.
-        val selectedTab = tabs.getOrNull(selectedTabIndex)
-        if (selectedTab != null) {
-            val tabId = selectedTab.destination.tabId
-            val saveableKey = saveableKeyFor(selectedTab.destination)
+        // Keep every open tab's composition alive; a tab is never torn down on switch. Each tab is
+        // measured and drawn only while selected — hidden tabs stay composed (their ViewModel,
+        // paging flow and LazyListState all hot) but are not measured or placed, so they cost no
+        // layout/draw. Crucially, because nothing is disposed, the paged content list never reloads
+        // from empty: switching back is instant, with no reload-and-jump and no alpha/crossfade
+        // masking. The trade-off is RAM proportional to the number of open tabs.
+        tabs.forEach { tabItem ->
+            val tabId = tabItem.destination.tabId
+            val isSelected = tabId == currentTabId
+            val saveableKey = saveableKeyFor(tabItem.destination)
             key(saveableKey) {
                 saveableStateHolder.SaveableStateProvider(saveableKey) {
                     val tabOwner = tabOwners.getOrPut(tabId) { SimpleTabViewModelOwner(tabId) }
-                    CompositionLocalProvider(LocalTabSelected provides true) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            when (val destination = selectedTab.destination) {
+                    CompositionLocalProvider(LocalTabSelected provides isSelected) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .layout { measurable, constraints ->
+                                        // Selected: measure + place normally. Hidden: skip both so
+                                        // the subtree stays composed (alive) but incurs no layout
+                                        // or draw cost.
+                                        if (isSelected) {
+                                            val placeable = measurable.measure(constraints)
+                                            layout(placeable.width, placeable.height) {
+                                                placeable.place(0, 0)
+                                            }
+                                        } else {
+                                            layout(0, 0) {}
+                                        }
+                                    },
+                        ) {
+                            when (val destination = tabItem.destination) {
                                 is TabsDestination.Home -> {
                                     HomeTabContent(
                                         tabOwner = tabOwner,
                                         tabId = tabId,
-                                        isSelected = true,
+                                        isSelected = isSelected,
                                         isRestoringSession = isTransitioning,
                                         searchUi = searchUi,
                                         searchCallbacks = homeSearchCallbacks,
@@ -255,7 +273,7 @@ fun TabsContent() {
                                     SearchTabContent(
                                         tabOwner = tabOwner,
                                         destination = destination,
-                                        isSelected = true,
+                                        isSelected = isSelected,
                                     )
                                 }
 
@@ -263,7 +281,7 @@ fun TabsContent() {
                                     BookContentTabContent(
                                         tabOwner = tabOwner,
                                         destination = destination,
-                                        isSelected = true,
+                                        isSelected = isSelected,
                                         isRestoringSession = isTransitioning,
                                         searchUi = searchUi,
                                         searchCallbacks = homeSearchCallbacks,

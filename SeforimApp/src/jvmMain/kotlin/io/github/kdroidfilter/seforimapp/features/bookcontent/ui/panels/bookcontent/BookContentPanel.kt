@@ -175,9 +175,9 @@ private fun BookContentPanelContent(
             }
         }
 
-    // Warm the text of the commentators that were open for the selected line, so that a tab
-    // preloaded on hover (this composes off-screen too) has its open commentaries ready and the
-    // on-demand pager load is instant once the tab is shown. Gated on the pane actually being open.
+    // Warm the text of the commentators that were open for the selected line, so that a background
+    // tab (composed but not displayed) has its open commentaries ready and the on-demand pager load
+    // is instant once the tab is shown. Gated on the pane actually being open.
     val openCommentatorIds = uiState.content.selectedCommentatorIds
     LaunchedEffect(uiState.content.primarySelectedLineId, openCommentatorIds, uiState.content.showCommentaries) {
         val lineId = uiState.content.primarySelectedLineId ?: return@LaunchedEffect

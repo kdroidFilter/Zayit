@@ -17,11 +17,14 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractView
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.santimattius.structured.annotations.StructuredScope
+import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.dialogs.FileKitType
-import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.dialogs.openFilePicker
 import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
@@ -74,30 +77,32 @@ fun OfflineUpdateScreen(
         }
     }
 
-    // File picker for part02 file
-    val pickPart02Launcher =
-        rememberFilePickerLauncher(
-            type = FileKitType.File(extensions = listOf("part02")),
-        ) { file ->
-            val p2 = file?.path
-            val p1 = part01Path
-            if (!p2.isNullOrBlank() && !p1.isNullOrBlank()) {
+    // File selection flow. FileKit's compose launcher dispatches the picker on
+    // Dispatchers.Main; under the Tao backend that is the single GTK event-loop
+    // thread, and the picker's blocking D-Bus (xdg-desktop-portal) work would
+    // freeze/deadlock it. Running the suspend API on Dispatchers.IO keeps the
+    // event loop free; state updates resume on the (Main) scope afterwards.
+    fun pickFiles(
+        @StructuredScope scope: CoroutineScope,
+    ) {
+        scope.launch {
+            val p1 =
+                withContext(Dispatchers.IO) {
+                    FileKit.openFilePicker(type = FileKitType.File(extensions = listOf("part01")))
+                }?.path
+            part01Path = p1
+            if (p1.isNullOrBlank()) return@launch
+
+            // Immediately ask for part02
+            val p2 =
+                withContext(Dispatchers.IO) {
+                    FileKit.openFilePicker(type = FileKitType.File(extensions = listOf("part02")))
+                }?.path
+            if (!p2.isNullOrBlank()) {
                 startUpdate(scope, p1)
             }
         }
-
-    // File picker for part01 file
-    val pickPart01Launcher =
-        rememberFilePickerLauncher(
-            type = FileKitType.File(extensions = listOf("part01")),
-        ) { file ->
-            part01Path = file?.path
-            if (part01Path != null) {
-                // Immediately ask for part02
-                @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
-                pickPart02Launcher.launch()
-            }
-        }
+    }
 
     OnBoardingScaffold(title = stringResource(Res.string.db_update_offline_title)) {
         Column(
@@ -135,10 +140,7 @@ fun OfflineUpdateScreen(
                     }
 
                     DefaultButton(
-                        onClick = {
-                            @Suppress("UNSTRUCTURED_COROUTINE_LAUNCH")
-                            pickPart01Launcher.launch()
-                        },
+                        onClick = { pickFiles(scope) },
                     ) {
                         Text(stringResource(Res.string.db_update_choose_files))
                     }

@@ -36,7 +36,7 @@ class AvailableDiskSpaceUseCase {
 
     companion object {
         /** Total space required during installation (includes temporary files). */
-        const val REQUIRED_SPACE_GB = 11L
+        const val REQUIRED_SPACE_GB = 10L
 
         /** Temporary space needed only during installation (will be freed after). */
         const val TEMPORARY_SPACE_GB = 2.5

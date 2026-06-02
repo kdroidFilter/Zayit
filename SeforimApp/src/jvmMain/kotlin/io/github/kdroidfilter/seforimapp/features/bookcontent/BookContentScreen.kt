@@ -32,7 +32,9 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
+import io.github.kdroidfilter.seforimapp.core.deeplink.bookShareLink
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.core.resolveLineRangeFromSelection
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults
@@ -73,6 +75,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.skiko.hostOs
 import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.context_menu_copy_link
 import seforimapp.seforimapp.generated.resources.context_menu_copy_with_source
 import seforimapp.seforimapp.generated.resources.context_menu_copy_without_nikud
 import seforimapp.seforimapp.generated.resources.context_menu_find_in_page
@@ -271,6 +274,7 @@ fun BookContentScreen(
     val findInPageLabel = stringResource(Res.string.context_menu_find_in_page)
     val copyWithoutNikudLabel = stringResource(Res.string.context_menu_copy_without_nikud)
     val copyWithSourceLabel = stringResource(Res.string.context_menu_copy_with_source)
+    val copyLinkLabel = stringResource(Res.string.context_menu_copy_link)
     val baseTextContextMenu = LocalTextContextMenu.current
     val tabId = uiState.tabId
     val selectedBook = uiState.navigation.selectedBook
@@ -304,6 +308,7 @@ fun BookContentScreen(
             findInPageLabel,
             copyWithoutNikudLabel,
             copyWithSourceLabel,
+            copyLinkLabel,
             showDiacritics,
             bookHasDiacritics,
         ) {
@@ -372,6 +377,30 @@ fun BookContentScreen(
                                                 )
                                             val clipboard = Toolkit.getDefaultToolkit().systemClipboard
                                             clipboard.setContents(StringSelection(payload), null)
+                                        },
+                                    )
+                                }
+                                // Copy a shareable deep link. Available whenever a book is active,
+                                // with or without a text selection: when nothing is selected it falls
+                                // back to the right-clicked line recorded in the SelectionContext.
+                                if (bookForCopy != null) {
+                                    add(
+                                        ContextMenuItemOption(
+                                            icon = AllIconsKeys.Actions.Copy,
+                                            label = copyLinkLabel,
+                                        ) {
+                                            val lineId =
+                                                if (selectedText.isNotBlank()) {
+                                                    resolveLineRangeFromSelection(
+                                                        selectedText,
+                                                        selectionContext.visibleLines.value.lines,
+                                                    )?.first?.id
+                                                } else {
+                                                    selectionContext.currentLineId.value.takeIf { it > 0 }
+                                                }
+                                            val link = bookShareLink(bookForCopy.id, lineId)
+                                            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+                                            clipboard.setContents(StringSelection(link), null)
                                         },
                                     )
                                 }

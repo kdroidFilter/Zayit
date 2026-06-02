@@ -33,9 +33,18 @@ interface SelectionContext {
     val activeBook: StateFlow<ActiveBook?>
     val visibleLines: StateFlow<VisibleLines>
 
+    /**
+     * Id of the line most recently targeted by a right-click. Transient: it is refreshed on every
+     * secondary press, which always precedes the context menu opening, so the menu reads a fresh
+     * value even when no text is selected. 0 means "no line targeted yet".
+     */
+    val currentLineId: StateFlow<Long>
+
     fun setSelectedText(text: String)
 
     fun clearSelectedText()
+
+    fun setCurrentLineId(lineId: Long)
 
     fun setActiveBook(
         tabId: String,
@@ -76,12 +85,19 @@ class DefaultSelectionContext : SelectionContext {
     private val _visibleLines = MutableStateFlow(VisibleLines.EMPTY)
     override val visibleLines: StateFlow<VisibleLines> = _visibleLines.asStateFlow()
 
+    private val _currentLineId = MutableStateFlow(0L)
+    override val currentLineId: StateFlow<Long> = _currentLineId.asStateFlow()
+
     override fun setSelectedText(text: String) {
         _selectedText.value = text
     }
 
     override fun clearSelectedText() {
         _selectedText.value = ""
+    }
+
+    override fun setCurrentLineId(lineId: Long) {
+        _currentLineId.value = lineId
     }
 
     override fun setActiveBook(

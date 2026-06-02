@@ -101,6 +101,7 @@
     <string name="close_tabs_left">סגור את הלשוניות מימין</string>
     <!-- Reworded to "close towards the left" per UX preference -->
     <string name="close_tabs_right">סגור את הלשוניות משמאל</string>
+    <string name="copy_tab_link">העתק קישור</string>
 
     <!-- Book Content Screen - Start Vertical Bar -->
     <string name="navigation">ניווט</string>
@@ -117,6 +118,7 @@
     <string name="context_menu_find_in_page">חפש בעמוד</string>
     <string name="context_menu_copy_without_nikud">העתק ללא ניקוד</string>
     <string name="context_menu_copy_with_source">העתק עם מקור</string>
+    <string name="context_menu_copy_link">העתק קישור לקטע זה</string>
 
     <!-- Book Content Screen - End Vertical Bar -->
     <string name="tools">כלים</string>

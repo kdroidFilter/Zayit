@@ -37,6 +37,7 @@ import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -993,6 +994,7 @@ fun BookContentView(
                                                 textLayoutWidthPx = width
                                             }
                                         },
+                                        onContextClick = { selectionContext.setCurrentLineId(line.id) },
                                     )
                                 }
                             }
@@ -1243,7 +1245,7 @@ private fun AltHeadingItem(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun LineItem(
     lineId: Long,
@@ -1261,6 +1263,7 @@ private fun LineItem(
     annotatedCache: StableAnnotatedCache? = null,
     showDiacritics: Boolean = true,
     onLayoutWidthMeasure: (Int) -> Unit = {},
+    onContextClick: () -> Unit = {},
 ) {
     // Process content: remove diacritics if setting is disabled
     val processedContent =
@@ -1300,6 +1303,10 @@ private fun LineItem(
                     onClick(isModifier)
                 }
             }
+        }.onPointerEvent(PointerEventType.Press) { event ->
+            // Record this line as the right-click target so the context menu can offer a
+            // "copy link to this line" action even when no text is selected.
+            if (event.buttons.isSecondaryPressed) onContextClick()
         }
 
     val localAnnotatedCache = remember { StableAnnotatedCache(mutableStateMapOf()) }

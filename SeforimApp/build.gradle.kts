@@ -292,6 +292,10 @@ nucleus.application {
         vendor = "KDroidFilter"
         cleanupNativeLibs = true
 
+        // Register the custom URL scheme so shareable deep links (zayit://book/...,
+        // zayit://search/...) are routed to the app by the OS on macOS, Windows and Linux.
+        protocol("Zayit", "zayit")
+
         linux {
             iconFile.set(project.file("desktopAppIcons/LinuxIcon.png"))
             packageVersion = version

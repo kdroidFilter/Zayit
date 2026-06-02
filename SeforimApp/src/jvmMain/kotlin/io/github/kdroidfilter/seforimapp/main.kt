@@ -32,6 +32,7 @@ import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
+import io.github.kdroidfilter.seforimapp.core.deeplink.ContentDeepLinkHandler
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppDockMenu
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppJumpList
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppLinuxQuicklist
@@ -309,6 +310,14 @@ fun main(args: Array<String>) {
                     AppJumpList(
                         desktopManager = appGraph.desktopManager,
                         tabsViewModel = appGraph.tabsViewModel,
+                        pendingDeepLink = pendingDeepLink,
+                        onClearDeepLink = { pendingDeepLink.value = null },
+                    )
+
+                    // Resolve shareable zayit:// content deep links (cross-platform)
+                    ContentDeepLinkHandler(
+                        tabsViewModel = appGraph.tabsViewModel,
+                        repository = appGraph.repository,
                         pendingDeepLink = pendingDeepLink,
                         onClearDeepLink = { pendingDeepLink.value = null },
                     )

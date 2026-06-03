@@ -46,11 +46,24 @@ class GeneralSettingsEventsTest {
     }
 
     @Test
+    fun `SetKeepScreenAwakeOnBook stores value`() {
+        val event = GeneralSettingsEvents.SetKeepScreenAwakeOnBook(true)
+        assertEquals(true, event.value)
+    }
+
+    @Test
+    fun `SetKeepScreenAwakeOnBook implements GeneralSettingsEvents`() {
+        val event: GeneralSettingsEvents = GeneralSettingsEvents.SetKeepScreenAwakeOnBook(false)
+        assertIs<GeneralSettingsEvents.SetKeepScreenAwakeOnBook>(event)
+    }
+
+    @Test
     fun `all event types are exhaustive in when expression`() {
         val events: List<GeneralSettingsEvents> =
             listOf(
                 GeneralSettingsEvents.SetCloseTreeOnNewBook(true),
                 GeneralSettingsEvents.SetPersistSession(true),
+                GeneralSettingsEvents.SetKeepScreenAwakeOnBook(true),
                 GeneralSettingsEvents.ResetApp,
             )
 
@@ -58,6 +71,7 @@ class GeneralSettingsEventsTest {
             when (event) {
                 is GeneralSettingsEvents.SetCloseTreeOnNewBook -> assertEquals(true, event.value)
                 is GeneralSettingsEvents.SetPersistSession -> assertEquals(true, event.value)
+                is GeneralSettingsEvents.SetKeepScreenAwakeOnBook -> assertEquals(true, event.value)
                 GeneralSettingsEvents.ResetApp -> { /* ok */ }
             }
         }

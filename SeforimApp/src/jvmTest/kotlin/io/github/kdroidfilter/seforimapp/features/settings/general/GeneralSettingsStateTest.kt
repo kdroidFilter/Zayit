@@ -15,6 +15,7 @@ class GeneralSettingsStateTest {
         assertNull(state.databasePath)
         assertFalse(state.closeTreeOnNewBook)
         assertTrue(state.persistSession)
+        assertTrue(state.keepScreenAwakeOnBook)
         assertFalse(state.resetDone)
     }
 

@@ -58,21 +58,38 @@ fun AppJumpList(
     // Re-register handler when nextDesktopName changes so the captured name stays current
     LaunchedEffect(nextDesktopName) {
         pendingDeepLink.filterNotNull().collect { action ->
-            when {
-                action.startsWith(SCHEME_TAB) -> {
-                    val index = action.removePrefix(SCHEME_TAB).toIntOrNull() ?: return@collect
-                    val tabs = tabsViewModel.state.value.tabs
-                    if (index in tabs.indices) tabsViewModel.onEvent(TabsEvents.OnSelect(index))
+            // Only handle (and clear) seforim:// jump-list actions. Other schemes — notably
+            // shareable zayit:// content links — belong to ContentDeepLinkHandler; clearing them
+            // here would race that collector and swallow the link (StateFlow is conflated).
+            val handled =
+                when {
+                    action.startsWith(SCHEME_TAB) -> {
+                        val index = action.removePrefix(SCHEME_TAB).toIntOrNull()
+                        if (index != null) {
+                            val tabs = tabsViewModel.state.value.tabs
+                            if (index in tabs.indices) tabsViewModel.onEvent(TabsEvents.OnSelect(index))
+                        }
+                        true
+                    }
+                    action.startsWith(SCHEME_DESKTOP) -> {
+                        val index = action.removePrefix(SCHEME_DESKTOP).toIntOrNull()
+                        if (index != null) {
+                            val desktop = desktopManager.desktops.value.getOrNull(index)
+                            if (desktop != null) desktopManager.switchTo(desktop.id)
+                        }
+                        true
+                    }
+                    action == SCHEME_NEW_TAB -> {
+                        tabsViewModel.onEvent(TabsEvents.OnAdd)
+                        true
+                    }
+                    action == SCHEME_NEW_DESKTOP -> {
+                        desktopManager.createDesktop(nextDesktopName)
+                        true
+                    }
+                    else -> false
                 }
-                action.startsWith(SCHEME_DESKTOP) -> {
-                    val index = action.removePrefix(SCHEME_DESKTOP).toIntOrNull() ?: return@collect
-                    val desktop = desktopManager.desktops.value.getOrNull(index)
-                    if (desktop != null) desktopManager.switchTo(desktop.id)
-                }
-                action == SCHEME_NEW_TAB -> tabsViewModel.onEvent(TabsEvents.OnAdd)
-                action == SCHEME_NEW_DESKTOP -> desktopManager.createDesktop(nextDesktopName)
-            }
-            currentClearDeepLink()
+            if (handled) currentClearDeepLink()
         }
     }
 

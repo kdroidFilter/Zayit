@@ -24,14 +24,16 @@ class GeneralSettingsViewModel : ViewModel() {
     private val dbPath = MutableStateFlow(AppSettings.getDatabasePath())
     private val closeTree = MutableStateFlow(AppSettings.getCloseBookTreeOnNewBookSelected())
     private val persist = MutableStateFlow(AppSettings.isPersistSessionEnabled())
+    private val keepAwake = MutableStateFlow(AppSettings.isKeepScreenAwakeOnBookEnabled())
     private val resetDone = MutableStateFlow(false)
 
     val state =
-        combine(dbPath, closeTree, persist, resetDone) { path, c, p, r ->
+        combine(dbPath, closeTree, persist, keepAwake, resetDone) { path, c, p, k, r ->
             GeneralSettingsState(
                 databasePath = path,
                 closeTreeOnNewBook = c,
                 persistSession = p,
+                keepScreenAwakeOnBook = k,
                 resetDone = r,
             )
         }.stateIn(
@@ -41,6 +43,7 @@ class GeneralSettingsViewModel : ViewModel() {
                 databasePath = dbPath.value,
                 closeTreeOnNewBook = closeTree.value,
                 persistSession = persist.value,
+                keepScreenAwakeOnBook = keepAwake.value,
                 resetDone = resetDone.value,
             ),
         )
@@ -54,6 +57,10 @@ class GeneralSettingsViewModel : ViewModel() {
             is GeneralSettingsEvents.SetPersistSession -> {
                 AppSettings.setPersistSessionEnabled(event.value)
                 persist.value = event.value
+            }
+            is GeneralSettingsEvents.SetKeepScreenAwakeOnBook -> {
+                AppSettings.setKeepScreenAwakeOnBookEnabled(event.value)
+                keepAwake.value = event.value
             }
             is GeneralSettingsEvents.ResetApp -> {
                 // Get the databases directory

@@ -456,6 +456,21 @@ fun main(args: Array<String>) {
                                 }
                             }
 
+                            // Keep the screen awake while a book is open in the current tab and the
+                            // window is focused — opt-out via the General settings (enabled by default).
+                            val keepAwakeEnabled by AppSettings.keepScreenAwakeOnBookFlow.collectAsState()
+                            val shouldKeepScreenAwake =
+                                keepAwakeEnabled &&
+                                    state.isActive &&
+                                    selectedTab?.destination is TabsDestination.BookContent
+                            LaunchedEffect(shouldKeepScreenAwake) {
+                                if (shouldKeepScreenAwake) {
+                                    EnergyManager.keepScreenAwake()
+                                } else {
+                                    EnergyManager.releaseScreenAwake()
+                                }
+                            }
+
                             // Restore previously saved session once when main window becomes active
                             var sessionRestored by remember { mutableStateOf(false) }
                             LaunchedEffect(Unit) {

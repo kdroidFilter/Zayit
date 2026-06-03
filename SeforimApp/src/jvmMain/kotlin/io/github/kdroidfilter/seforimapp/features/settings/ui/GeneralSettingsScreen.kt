@@ -55,6 +55,8 @@ import seforimapp.seforimapp.generated.resources.settings_info_created_by
 import seforimapp.seforimapp.generated.resources.settings_info_jdk_version
 import seforimapp.seforimapp.generated.resources.settings_info_license
 import seforimapp.seforimapp.generated.resources.settings_info_license_usage
+import seforimapp.seforimapp.generated.resources.settings_keep_screen_awake
+import seforimapp.seforimapp.generated.resources.settings_keep_screen_awake_description
 import seforimapp.seforimapp.generated.resources.settings_persist_session
 import seforimapp.seforimapp.generated.resources.settings_persist_session_description
 import seforimapp.seforimapp.generated.resources.settings_reset_app
@@ -113,6 +115,13 @@ private fun GeneralSettingsView(
                 description = Res.string.settings_persist_session_description,
                 checked = state.persistSession,
                 onCheckedChange = { onEvent(GeneralSettingsEvents.SetPersistSession(it)) },
+            )
+
+            SettingCard(
+                title = Res.string.settings_keep_screen_awake,
+                description = Res.string.settings_keep_screen_awake_description,
+                checked = state.keepScreenAwakeOnBook,
+                onCheckedChange = { onEvent(GeneralSettingsEvents.SetKeepScreenAwakeOnBook(it)) },
             )
 
             ResetSection(

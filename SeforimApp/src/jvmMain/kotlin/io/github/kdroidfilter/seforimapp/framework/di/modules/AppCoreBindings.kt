@@ -10,6 +10,8 @@ import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
+import io.github.kdroidfilter.seforimapp.core.annotations.HighlightStore
+import io.github.kdroidfilter.seforimapp.core.annotations.LineNoteStore
 import io.github.kdroidfilter.seforimapp.core.catalog.CatalogAccess
 import io.github.kdroidfilter.seforimapp.core.selection.DefaultSelectionContext
 import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
@@ -62,13 +64,27 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideCategoryDisplaySettingsStore(): CategoryDisplaySettingsStore {
-        val dbPath = getUserSettingsDatabasePath()
-        val driver = JdbcSqliteDriver("jdbc:sqlite:$dbPath")
+    fun provideUserSettingsDb(): UserSettingsDb {
+        // Single shared connection to the local user database (separate from the
+        // read-only books DB). All user stores inject this instance instead of
+        // opening their own driver. New tables are added transparently for
+        // existing users via CREATE TABLE IF NOT EXISTS in Schema.create().
+        val driver = JdbcSqliteDriver("jdbc:sqlite:${getUserSettingsDatabasePath()}")
         UserSettingsDb.Schema.create(driver)
-        val database = UserSettingsDb(driver)
-        return CategoryDisplaySettingsStore(database)
+        return UserSettingsDb(driver)
     }
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideCategoryDisplaySettingsStore(database: UserSettingsDb): CategoryDisplaySettingsStore = CategoryDisplaySettingsStore(database)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideHighlightStore(database: UserSettingsDb): HighlightStore = HighlightStore(database)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideLineNoteStore(database: UserSettingsDb): LineNoteStore = LineNoteStore(database)
 
     @Provides
     @SingleIn(AppScope::class)

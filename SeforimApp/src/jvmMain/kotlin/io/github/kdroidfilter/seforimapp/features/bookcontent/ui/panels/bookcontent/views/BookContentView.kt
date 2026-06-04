@@ -55,9 +55,11 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
+import io.github.kdroidfilter.seforimapp.core.presentation.text.applyUserHighlights
 import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOriginal
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -330,6 +332,18 @@ fun BookContentView(
     DisposableEffect(tabId, selectionContext) {
         onDispose { selectionContext.clearVisibleLinesIfOwnedBy(tabId) }
     }
+
+    // Persisted user highlights for this book: loaded once into the store's per-book cache,
+    // then read from memory on the render hot path (no per-line DB access). Grouped by line so
+    // a single highlight change only recomposes the affected line — unhighlighted lines receive
+    // the stable emptyList() singleton and are skipped by strong skipping.
+    val highlightStore = LocalAppGraph.current.highlightStore
+    LaunchedEffect(bookId, highlightStore) { highlightStore.loadBook(bookId) }
+    val highlightsByBook by highlightStore.highlightsByBook.collectAsState()
+    val highlightsByLine =
+        remember(highlightsByBook, bookId) {
+            highlightsByBook[bookId].orEmpty().groupBy { it.lineId }
+        }
 
     // Prefetch connection data for visible lines to avoid per-line DB calls
     LaunchedEffect(listState, lazyPagingItems, onPrefetchLineConnections) {
@@ -972,9 +986,13 @@ fun BookContentView(
                                     }
                                 }
                                 Box(modifier = Modifier.padding(vertical = LineItemVerticalPaddingPerSide)) {
+                                    // Stable per-line list: unhighlighted lines get the emptyList()
+                                    // singleton, so only lines whose highlights changed recompose.
+                                    val lineHighlights = highlightsByLine[line.id] ?: emptyList()
                                     LineItem(
                                         lineId = line.id,
                                         lineContent = line.content,
+                                        userHighlights = lineHighlights,
                                         fontFamily = hebrewFontFamily,
                                         onClick = { isModifier -> onLineSelect(line, isModifier) },
                                         isSelected = isCurrentSelected,
@@ -1262,6 +1280,7 @@ private fun LineItem(
     currentMatchStart: Int? = null,
     annotatedCache: StableAnnotatedCache? = null,
     showDiacritics: Boolean = true,
+    userHighlights: List<UserHighlight> = emptyList(),
     onLayoutWidthMeasure: (Int) -> Unit = {},
     onContextClick: () -> Unit = {},
 ) {
@@ -1353,6 +1372,14 @@ private fun LineItem(
     val annotated = lineAnnotation.annotated
     val inlineImageContent = lineAnnotation.inlineContent
 
+    // Plain text of the line WITH diacritics: user-highlight offsets are stored against this
+    // representation, so it is needed to remap them when diacritics are hidden. The text is
+    // independent of font size, so [lineContent] alone is a safe cache key.
+    val originalPlainText =
+        remember(lineContent) {
+            buildAnnotatedFromHtml(lineContent, baseTextSize, boldScale = 1f).text
+        }
+
     // Build highlighted text when a query is active (>= 2 chars)
     val baseHl =
         JewelTheme.globalColors.outlines.focused
@@ -1361,11 +1388,29 @@ private fun LineItem(
         JewelTheme.globalColors.outlines.focused
             .copy(alpha = 0.42f)
     val displayText: AnnotatedString =
-        remember(annotated, highlightQuery, highlightTerms, currentMatchStart, baseHl, currentHl) {
+        remember(
+            annotated,
+            highlightQuery,
+            highlightTerms,
+            currentMatchStart,
+            baseHl,
+            currentHl,
+            userHighlights,
+            showDiacritics,
+            originalPlainText,
+        ) {
+            // User highlights first, then search highlights on top.
+            val withUserHighlights =
+                applyUserHighlights(
+                    annotated = annotated,
+                    highlights = userHighlights,
+                    originalText = originalPlainText,
+                    showDiacritics = showDiacritics,
+                )
             if (!highlightTerms.isNullOrEmpty()) {
                 // Smart mode: highlight multiple terms from dictionary expansion
                 io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithTerms(
-                    annotated = annotated,
+                    annotated = withUserHighlights,
                     terms = highlightTerms,
                     currentStart = currentMatchStart?.takeIf { it >= 0 },
                     baseColor = baseHl,
@@ -1374,7 +1419,7 @@ private fun LineItem(
             } else {
                 // Normal mode: highlight single query
                 io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
-                    annotated = annotated,
+                    annotated = withUserHighlights,
                     query = highlightQuery,
                     currentStart = currentMatchStart?.takeIf { it >= 0 },
                     currentLength = highlightQuery?.length,

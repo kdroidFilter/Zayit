@@ -6,17 +6,24 @@ import androidx.compose.foundation.ContextMenuState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalContextMenuRepresentation
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.LocalTextContextMenu
 import androidx.compose.foundation.text.TextContextMenu
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.InputModeManager
 import androidx.compose.ui.input.key.Key
@@ -30,7 +37,13 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.annotations.HighlightColors
+import io.github.kdroidfilter.seforimapp.core.annotations.HighlightStore
+import io.github.kdroidfilter.seforimapp.core.annotations.resolveHighlightRangesForSelection
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.deeplink.bookShareLink
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
@@ -49,12 +62,16 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.category
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.icons.Ink_pen
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.SplitPaneState
@@ -62,6 +79,7 @@ import org.jetbrains.jewel.foundation.InternalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.ContextMenuItemOption
 import org.jetbrains.jewel.ui.component.DefaultMenuController
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.LocalMenuController
 import org.jetbrains.jewel.ui.component.MenuContent
 import org.jetbrains.jewel.ui.component.MenuController
@@ -79,6 +97,7 @@ import seforimapp.seforimapp.generated.resources.context_menu_copy_link
 import seforimapp.seforimapp.generated.resources.context_menu_copy_with_source
 import seforimapp.seforimapp.generated.resources.context_menu_copy_without_nikud
 import seforimapp.seforimapp.generated.resources.context_menu_find_in_page
+import seforimapp.seforimapp.generated.resources.context_menu_highlight
 import seforimapp.seforimapp.generated.resources.context_menu_search_selected_text
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
@@ -96,6 +115,13 @@ private class ContextMenuItemOptionWithKeybinding(
     label: String,
     action: () -> Unit,
 ) : ContextMenuItem(label, action)
+
+/** Context-menu entry rendering a row of highlight color swatches (last item, plus a "clear"). */
+private class ContextMenuHighlightColorPicker(
+    val colors: List<Color>,
+    val onColorSelected: (Color) -> Unit,
+    val onDismiss: () -> Unit,
+) : ContextMenuItem("highlight", {})
 
 @OptIn(InternalJewelApi::class)
 private object BookContentContextMenuRepresentationWithKeybindings : ComposeContextMenuRepresentation {
@@ -170,6 +196,19 @@ private fun MenuScope.contextItems(items: List<ContextMenuItem>) {
         when (item) {
             is org.jetbrains.jewel.ui.component.ContextMenuDivider -> separator()
             is org.jetbrains.jewel.ui.component.ContextSubmenu -> submenu(submenu = { contextItems(item.submenu()) }) { Text(item.label) }
+            is ContextMenuHighlightColorPicker -> {
+                separator()
+                passiveItem {
+                    HighlightColorPickerRow(
+                        colors = item.colors,
+                        onSelect = { color ->
+                            item.onColorSelected(color)
+                            item.onDismiss()
+                        },
+                    )
+                }
+            }
+
             is ContextMenuItemOptionWithKeybinding ->
                 selectableItem(
                     selected = false,
@@ -193,6 +232,90 @@ private fun MenuScope.contextItems(items: List<ContextMenuItem>) {
                 }
 
             else -> selectableItem(selected = false, onClick = item.onClick) { Text(item.label) }
+        }
+    }
+}
+
+/** A row of color swatches (plus a "clear" cross) for highlighting the current selection. */
+@Composable
+private fun HighlightColorPickerRow(
+    colors: List<Color>,
+    onSelect: (Color) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val highlightLabel = stringResource(Res.string.context_menu_highlight)
+    // passiveItem does not provide LocalContentColor, so read the menu item color explicitly.
+    val contentColor = JewelTheme.menuStyle.colors.itemColors.content
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(imageVector = Ink_pen, contentDescription = null, tint = contentColor, modifier = Modifier.size(16.dp))
+        Text(text = highlightLabel, color = contentColor, modifier = Modifier.padding(horizontal = 8.dp))
+        colors.forEach { color ->
+            HighlightColorSwatch(color = color, onClick = { onSelect(color) })
+        }
+    }
+}
+
+/** A single hover-aware swatch; [Color.Transparent] renders a "clear" cross. */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun HighlightColorSwatch(
+    color: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isHovered by remember { mutableStateOf(false) }
+    val hoverBackground = JewelTheme.menuStyle.colors.itemColors.backgroundHovered
+    Box(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(if (isHovered) hoverBackground else Color.Transparent)
+                .onPointerEvent(PointerEventType.Enter) { isHovered = true }
+                .onPointerEvent(PointerEventType.Exit) { isHovered = false }
+                .clickable { onClick() }
+                .padding(6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (color == Color.Transparent) {
+            Icon(key = AllIconsKeys.Windows.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+        } else {
+            Box(modifier = Modifier.size(18.dp).clip(RoundedCornerShape(4.dp)).background(color))
+        }
+    }
+}
+
+/**
+ * Resolves the selected text to a (line, offset range) and persists/clears a highlight.
+ * Offsets are computed against the line's plain text with diacritics so they stay valid
+ * regardless of the current diacritics setting. No-op if the selection cannot be located.
+ */
+private fun applyHighlightFromSelection(
+    selectedText: String,
+    lines: List<io.github.kdroidfilter.seforimlibrary.core.models.Line>,
+    bookId: Long,
+    color: Color,
+    showDiacritics: Boolean,
+    store: HighlightStore,
+    @StructuredScope scope: CoroutineScope,
+) {
+    // All materialized lines (ordered, plain text WITH diacritics so offsets match what the
+    // renderer applies). The resolver splits the selection per line and anchors it here.
+    val sortedVisible =
+        lines
+            .sortedBy { it.lineIndex }
+            .map { it.id to buildAnnotatedFromHtml(it.content, baseTextSize = 16f, boldScale = 1f).text }
+    val ranges = resolveHighlightRangesForSelection(sortedVisible, selectedText, showDiacritics)
+    if (ranges.isEmpty()) return
+    scope.launch {
+        ranges.forEach { (lineId, range) ->
+            if (color == Color.Transparent) {
+                store.removeOverlapping(bookId, lineId, range.first, range.last + 1)
+            } else {
+                store.addHighlight(bookId, lineId, range.first, range.last + 1, color, System.currentTimeMillis())
+            }
         }
     }
 }
@@ -283,6 +406,11 @@ fun BookContentScreen(
     // Always read the latest values inside the context-menu actions, without rebuilding the menu.
     val currentSelectedBook by rememberUpdatedState(selectedBook)
 
+    // User-highlight persistence (separate local user DB).
+    val highlightStore = LocalAppGraph.current.highlightStore
+    val highlightScope = rememberCoroutineScope()
+    val bookId = selectedBook?.id ?: 0L
+
     // Publish the active book + its root category to the SelectionContext so the Ctrl+Alt+C
     // dispatcher and the context-menu action can apply per-tradition formatting. Lifecycle
     // clears are tabId-scoped so a backgrounded or disposed tab cannot wipe the foreground
@@ -311,6 +439,7 @@ fun BookContentScreen(
             copyLinkLabel,
             showDiacritics,
             bookHasDiacritics,
+            bookId,
         ) {
             object : TextContextMenu {
                 @OptIn(ExperimentalFoundationApi::class)
@@ -431,6 +560,27 @@ fun BookContentScreen(
                                         AppSettings.openFindBar(tabId)
                                     },
                                 )
+                                // Highlight color picker (last item): persists a position-based
+                                // highlight for the selected text on its resolved line.
+                                if (selectedText.isNotBlank() && bookId > 0) {
+                                    add(
+                                        ContextMenuHighlightColorPicker(
+                                            colors = HighlightColors.allWithClear,
+                                            onColorSelected = { color ->
+                                                applyHighlightFromSelection(
+                                                    selectedText = selectedText,
+                                                    lines = selectionContext.visibleLines.value.lines,
+                                                    bookId = bookId,
+                                                    color = color,
+                                                    showDiacritics = showDiacritics,
+                                                    store = highlightStore,
+                                                    scope = highlightScope,
+                                                )
+                                            },
+                                            onDismiss = { state.status = ContextMenuState.Status.Closed },
+                                        ),
+                                    )
+                                }
                             }
                         },
                     ) {

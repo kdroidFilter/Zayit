@@ -6,6 +6,8 @@ import dev.zacsweers.metrox.viewmodel.ViewModelGraph
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
+import io.github.kdroidfilter.seforimapp.core.annotations.HighlightStore
+import io.github.kdroidfilter.seforimapp.core.annotations.LineNoteStore
 import io.github.kdroidfilter.seforimapp.core.catalog.CatalogAccess
 import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
 import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
@@ -32,6 +34,8 @@ abstract class AppGraph : ViewModelGraph {
     abstract val tabTitleUpdateManager: TabTitleUpdateManager
     abstract val settings: Settings
     abstract val categoryDisplaySettingsStore: CategoryDisplaySettingsStore
+    abstract val highlightStore: HighlightStore
+    abstract val lineNoteStore: LineNoteStore
     abstract val repository: SeforimRepository
     abstract val searchEngine: SearchEngine
     abstract val tabsViewModel: TabsViewModel

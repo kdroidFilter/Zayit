@@ -119,6 +119,7 @@
     <string name="context_menu_copy_without_nikud">העתק ללא ניקוד</string>
     <string name="context_menu_copy_with_source">העתק עם מקור</string>
     <string name="context_menu_copy_link">העתק קישור לקטע זה</string>
+    <string name="context_menu_highlight">סמן</string>
 
     <!-- Book Content Screen - End Vertical Bar -->
     <string name="tools">כלים</string>

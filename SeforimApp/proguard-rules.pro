@@ -298,6 +298,17 @@
 
 -keep class dev.nucleusframework.systemcolor.** { *; }
 
+# --- Fix: panel resize cursor (PointerIcon backed by AWT Cursor) not applied in release ---
+# ComposeSceneMediator.setPointerIcon checks `pointerIcon instanceof AwtCursor` and then
+# calls getCursor(). ProGuard optimization (class merging/inlining of this thin wrapper)
+# breaks that check, so custom cursors built via PointerIcon(java.awt.Cursor) — e.g. the
+# E_RESIZE/N_RESIZE handles in SplitPanes — silently fall back to the default arrow.
+# Keep the desktop PointerIcon/AwtCursor classes intact so the instanceof + getCursor path works.
+-keep class androidx.compose.ui.input.pointer.AwtCursor { *; }
+-keep class androidx.compose.ui.input.pointer.PointerIcon_desktopKt { *; }
+-keep class androidx.compose.ui.input.pointer.PointerIcon { *; }
+-keep class androidx.compose.ui.input.pointer.PointerIcon$Companion { *; }
+
 # --- Sentry crash reporting SDK ---
 # Sentry uses reflection for serialization and event processing.
 -keep class io.sentry.** { *; }

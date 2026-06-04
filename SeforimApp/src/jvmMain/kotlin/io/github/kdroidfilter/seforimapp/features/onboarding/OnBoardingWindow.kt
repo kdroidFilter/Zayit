@@ -1,111 +1,20 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.Composable
 import dev.nucleusframework.application.NucleusApplicationScope
-import dev.nucleusframework.window.BasicTitleBar
-import dev.nucleusframework.window.ControlButtonsDirection
-import dev.nucleusframework.window.TitleBarLayoutPolicy
-import dev.nucleusframework.window.jewel.JewelDecoratedWindow
-import dev.nucleusframework.window.newFullscreenControls
-import dev.nucleusframework.window.styling.LocalTitleBarStyle
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.core.presentation.components.InstallerWindow
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingNavHost
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.Install_desktop
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import org.jetbrains.jewel.foundation.modifier.trackActivation
-import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.foundation.theme.LocalContentColor
-import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.IconButton
-import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.app_name
 import seforimapp.seforimapp.generated.resources.onboarding_title_bar
 
 @Composable
 fun NucleusApplicationScope.OnBoardingWindow() {
-    val onboardingWindowState = remember { getCenteredWindowState(720, 420) }
-    JewelDecoratedWindow(
-        onCloseRequest = { exitApplication() },
-        title = stringResource(Res.string.app_name),
-        icon = if (PlatformInfo.isMacOS) null else painterResource(Res.drawable.AppIcon),
-        state = onboardingWindowState,
-        visible = true,
-        resizable = false,
-    ) {
-        val windowViewModelOwner = rememberWindowViewModelStoreOwner()
-        CompositionLocalProvider(
-            LocalWindowViewModelStoreOwner provides windowViewModelOwner,
-            LocalViewModelStoreOwner provides windowViewModelOwner,
-        ) {
-            val navController = rememberNavController()
-            var canNavigateBack by remember { mutableStateOf(false) }
-            LaunchedEffect(navController) {
-                navController.currentBackStackEntryFlow.collect {
-                    canNavigateBack = navController.previousBackStackEntry != null
-                }
-            }
-            val titleBarStyle = LocalTitleBarStyle.current
-            BasicTitleBar(
-                modifier = Modifier.newFullscreenControls(),
-                gradientStartColor = ThemeUtils.titleBarGradientColor(),
-                style = titleBarStyle,
-                controlButtonsDirection = ControlButtonsDirection.SystemNative,
-                layoutPolicy = TitleBarLayoutPolicy.Default,
-            ) {
-                CompositionLocalProvider(LocalContentColor provides titleBarStyle.colors.content) {
-                    if (canNavigateBack) {
-                        IconButton(
-                            modifier =
-                                Modifier
-                                    .align(Alignment.Start)
-                                    .padding(start = 8.dp)
-                                    .size(24.dp),
-                            onClick = { navController.navigateUp() },
-                        ) {
-                            Icon(AllIconsKeys.Actions.Back, null, modifier = Modifier.rotate(180f))
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
-                        Icon(
-                            Install_desktop,
-                            contentDescription = null,
-                            tint = JewelTheme.globalColors.text.normal,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(Modifier.size(8.dp))
-                        Text(stringResource(Res.string.onboarding_title_bar))
-                    }
-                }
-            }
-            Column(
-                modifier =
-                    Modifier
-                        .trackActivation()
-                        .fillMaxSize()
-                        .background(JewelTheme.globalColors.panelBackground),
-            ) {
-                OnBoardingNavHost(navController = navController)
-            }
-        }
+    InstallerWindow(
+        titleBarIcon = Install_desktop,
+        titleBarText = stringResource(Res.string.onboarding_title_bar),
+    ) { navController ->
+        OnBoardingNavHost(navController = navController)
     }
 }

@@ -16,13 +16,17 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -39,11 +43,15 @@ import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
+import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
+import io.github.kdroidfilter.seforimapp.core.presentation.text.applyUserHighlights
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
+import io.github.kdroidfilter.seforimapp.core.selection.CommentaryLineRef
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -55,6 +63,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.Enha
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
@@ -610,6 +619,25 @@ private fun CommentariesPagedList(
     val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
     val annotationCache = remember(selection, commentatorId) { StableAnnotatedCache(mutableStateMapOf()) }
 
+    // User highlights for the commentary books currently shown. Commentary lines belong to
+    // their own target book, so highlights are keyed by (targetBookId, targetLineId) — the same
+    // key used when that commentary is opened as a main book, so they stay in sync.
+    val highlightStore = LocalAppGraph.current.highlightStore
+    val selectionContext = LocalAppGraph.current.selectionContext
+    val highlightsByBook by highlightStore.highlightsByBook.collectAsState()
+    LaunchedEffect(lazyPagingItems, highlightStore) {
+        snapshotFlow {
+            lazyPagingItems.itemSnapshotList.items
+                .map { it.link.targetBookId }
+                .toSet()
+        }.distinctUntilChanged()
+            .collect { bookIds -> bookIds.forEach { highlightStore.loadBook(it) } }
+    }
+    val highlightsByBookLine =
+        remember(highlightsByBook) {
+            highlightsByBook.mapValues { (_, lines) -> lines.groupBy { it.lineId } }
+        }
+
     // Ordered char-count vector for every commentary matching this selection ×
     // commentator (same filter + order as the pager). The scrollbar converts every
     // value to `ceil(charCount / capacity) * capacity` to derive visual-line count.
@@ -707,6 +735,10 @@ private fun CommentariesPagedList(
                     key = { index -> lazyPagingItems[index]?.link?.id ?: index },
                 ) { index ->
                     lazyPagingItems[index]?.let { commentary ->
+                        // Stable per-line list; non-highlighted lines get the emptyList() singleton.
+                        val lineHighlights =
+                            highlightsByBookLine[commentary.link.targetBookId]
+                                ?.get(commentary.link.targetLineId) ?: emptyList()
                         CommentaryItem(
                             linkId = commentary.link.id,
                             targetText = commentary.targetText,
@@ -716,6 +748,20 @@ private fun CommentariesPagedList(
                             highlightQuery = config.highlightQuery,
                             showDiacritics = config.showDiacritics,
                             annotationCache = annotationCache,
+                            userHighlights = lineHighlights,
+                            onSecondaryClick = {
+                                // Publish the whole column (ordered) so a multi-line selection
+                                // can be resolved across consecutive commentary entries.
+                                selectionContext.setActiveCommentaryColumn(
+                                    lazyPagingItems.itemSnapshotList.items.map {
+                                        CommentaryLineRef(
+                                            bookId = it.link.targetBookId,
+                                            lineId = it.link.targetLineId,
+                                            content = it.targetText,
+                                        )
+                                    },
+                                )
+                            },
                             onClick = { config.onCommentClick(commentary) },
                             onLayoutWidthMeasure = { width ->
                                 if (textLayoutWidthPx == 0 && width > 0) {
@@ -745,6 +791,7 @@ private fun CommentariesPagedList(
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun CommentaryItem(
     linkId: Long,
@@ -756,6 +803,8 @@ private fun CommentaryItem(
     annotationCache: StableAnnotatedCache,
     onClick: () -> Unit,
     boldScale: Float = 1.0f,
+    userHighlights: List<UserHighlight> = emptyList(),
+    onSecondaryClick: () -> Unit = {},
     onLayoutWidthMeasure: (Int) -> Unit = {},
 ) {
     Column(
@@ -763,7 +812,11 @@ private fun CommentaryItem(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = CommentaryItemVerticalPaddingPerSide)
-                .pointerInput(onClick) {
+                .onPointerEvent(PointerEventType.Press) { event ->
+                    // Record this commentary line as the highlight target (analogous to the main
+                    // pane's onContextClick) so the shared context menu can anchor here.
+                    if (event.buttons.isSecondaryPressed) onSecondaryClick()
+                }.pointerInput(onClick) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         val modifiers = currentEvent.keyboardModifiers
@@ -834,12 +887,26 @@ private fun CommentaryItem(
             val annotated = annotation.annotated
             val inlineImageContent = annotation.inlineContent
 
+            // Plain text WITH diacritics for offset remapping (see LineItem in BookContentView).
+            val originalPlainText =
+                remember(targetText) {
+                    buildAnnotatedFromHtml(targetText, textSizes.commentTextSize, boldScale = 1f).text
+                }
+
             val display: AnnotatedString =
-                remember(annotated, highlightQuery) {
+                remember(annotated, highlightQuery, userHighlights, showDiacritics, originalPlainText) {
+                    // User highlights first, then search highlight on top.
+                    val withUserHighlights =
+                        applyUserHighlights(
+                            annotated = annotated,
+                            highlights = userHighlights,
+                            originalText = originalPlainText,
+                            showDiacritics = showDiacritics,
+                        )
                     if (highlightQuery.isBlank()) {
-                        annotated
+                        withUserHighlights
                     } else {
-                        highlightAnnotated(annotated, highlightQuery)
+                        highlightAnnotated(withUserHighlights, highlightQuery)
                     }
                 }
 

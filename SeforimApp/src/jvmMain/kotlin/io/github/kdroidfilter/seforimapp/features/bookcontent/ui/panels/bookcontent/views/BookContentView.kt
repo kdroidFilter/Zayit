@@ -1012,7 +1012,12 @@ fun BookContentView(
                                                 textLayoutWidthPx = width
                                             }
                                         },
-                                        onContextClick = { selectionContext.setCurrentLineId(line.id) },
+                                        onContextClick = {
+                                            selectionContext.setCurrentLineId(line.id)
+                                            // Drop any stale comments-pane anchor so a main-pane
+                                            // highlight never lands on a commentary line.
+                                            selectionContext.setActiveCommentaryColumn(emptyList())
+                                        },
                                     )
                                 }
                             }

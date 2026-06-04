@@ -386,7 +386,7 @@ fun BookContentScreen(
                                 if (bookForCopy != null) {
                                     add(
                                         ContextMenuItemOption(
-                                            icon = AllIconsKeys.Actions.Copy,
+                                            icon = AllIconsKeys.ToolbarDecorator.AddLink,
                                             label = copyLinkLabel,
                                         ) {
                                             val lineId =

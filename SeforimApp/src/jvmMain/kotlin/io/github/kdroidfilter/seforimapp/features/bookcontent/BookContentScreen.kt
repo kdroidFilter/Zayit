@@ -288,26 +288,53 @@ private fun HighlightColorSwatch(
 }
 
 /**
- * Resolves the selected text to a (line, offset range) and persists/clears a highlight.
- * Offsets are computed against the line's plain text with diacritics so they stay valid
- * regardless of the current diacritics setting. No-op if the selection cannot be located.
+ * Resolves the selected text to (line, offset range) pairs and persists/clears highlights.
+ * Offsets are computed against plain text WITH diacritics so they stay valid regardless of the
+ * current diacritics setting.
+ *
+ * [commentaryColumn] is the discriminator: it holds the visible commentary lines of the column
+ * under the last right-click (set in the comments pane, cleared on a main-pane right-click), so a
+ * non-empty value means the selection is in the comments pane. Comments-pane highlights are
+ * stored against the commentary's own book, so they also show when that commentary is opened as a
+ * main book. The selection may span several consecutive commentary entries. No-op if unresolved.
  */
 private fun applyHighlightFromSelection(
     selectedText: String,
     lines: List<io.github.kdroidfilter.seforimlibrary.core.models.Line>,
     bookId: Long,
+    commentaryColumn: List<io.github.kdroidfilter.seforimapp.core.selection.CommentaryLineRef>,
     color: Color,
     showDiacritics: Boolean,
     store: HighlightStore,
     @StructuredScope scope: CoroutineScope,
 ) {
-    // All materialized lines (ordered, plain text WITH diacritics so offsets match what the
-    // renderer applies). The resolver splits the selection per line and anchors it here.
-    val sortedVisible =
+    // Comments pane: resolve over the column's visible lines (in display order). A column is a
+    // single commentator, so all its lines share one target book.
+    if (commentaryColumn.isNotEmpty()) {
+        val commentaryBookId = commentaryColumn.first().bookId
+        val sorted = commentaryColumn.map { it.lineId to buildAnnotatedFromHtml(it.content, baseTextSize = 16f, boldScale = 1f).text }
+        val ranges = resolveHighlightRangesForSelection(sorted, selectedText, showDiacritics)
+        persistHighlights(commentaryBookId, ranges, color, store, scope)
+        return
+    }
+
+    // Main book: all materialized lines (ordered, plain text WITH diacritics so offsets match
+    // what the renderer applies). The resolver splits the selection per line and anchors it.
+    val mainSorted =
         lines
             .sortedBy { it.lineIndex }
             .map { it.id to buildAnnotatedFromHtml(it.content, baseTextSize = 16f, boldScale = 1f).text }
-    val ranges = resolveHighlightRangesForSelection(sortedVisible, selectedText, showDiacritics)
+    val mainRanges = resolveHighlightRangesForSelection(mainSorted, selectedText, showDiacritics)
+    persistHighlights(bookId, mainRanges, color, store, scope)
+}
+
+private fun persistHighlights(
+    bookId: Long,
+    ranges: List<io.github.kdroidfilter.seforimapp.core.annotations.LineHighlightRange>,
+    color: Color,
+    store: HighlightStore,
+    @StructuredScope scope: CoroutineScope,
+) {
     if (ranges.isEmpty()) return
     scope.launch {
         ranges.forEach { (lineId, range) ->
@@ -571,6 +598,7 @@ fun BookContentScreen(
                                                     selectedText = selectedText,
                                                     lines = selectionContext.visibleLines.value.lines,
                                                     bookId = bookId,
+                                                    commentaryColumn = selectionContext.activeCommentaryColumn.value,
                                                     color = color,
                                                     showDiacritics = showDiacritics,
                                                     store = highlightStore,

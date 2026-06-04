@@ -26,6 +26,7 @@ import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
+import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.LuceneSearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
@@ -131,6 +132,10 @@ object AppCoreBindings {
             },
         )
     }
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideAppUpdateService(): AppUpdateService = AppUpdateService.create()
 
     @Provides
     @SingleIn(AppScope::class)

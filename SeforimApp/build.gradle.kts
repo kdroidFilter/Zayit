@@ -143,6 +143,7 @@ kotlin {
             implementation(libs.nucleus.decorated.window.jewel)
             implementation(libs.nucleus.graalvm.runtime)
             implementation(libs.nucleus.updater.runtime)
+            implementation(libs.nucleus.native.http)
             implementation(libs.nucleus.energy.manager)
             implementation(libs.nucleus.launcher.macos)
             implementation(libs.nucleus.launcher.windows)

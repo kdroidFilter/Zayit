@@ -479,16 +479,23 @@
 
     <!-- Settings > App Info (General Settings Header) -->
     <string name="settings_info_app_version">גרסה: %1$s</string>
-    <string name="settings_info_jdk_version">JDK: %1$s %2$s — %3$s (%4$s)</string>
-    <string name="settings_info_created_by">נוצר על ידי Elie Gambache - KdroidFilter</string>
+    <string name="settings_info_created_by">נוצר על ידי אליהו גמבש</string>
     <string name="settings_info_license">יישום זה הוא קוד פתוח תחת רישיון AGPL-3.0</string>
     <string name="settings_info_license_usage">ניתן להשתמש ולהפיץ בהתאם לתנאי הרישיון.</string>
 
     <!-- App Update -->
-    <string name="update_available_toast">גרסה חדשה זמינה</string>
-    <string name="update_notification_message">גרסה חדשה של זית זמינה להורדה. לחץ כדי לעדכן.</string>
     <string name="update_available_banner">גרסה %1$s זמינה להורדה</string>
     <string name="update_download_action">הורד עכשיו</string>
+    <string name="update_titlebar_tooltip">עדכון זמין</string>
+    <string name="update_dialog_title">עדכון זמין</string>
+    <string name="update_dialog_message">גרסה %1$s של זית זמינה.</string>
+    <string name="update_dialog_db_warning">ייתכן שלאחר עדכון זה יהיה צורך לעדכן את מסד הנתונים (כ‑3.5 ג״ב).</string>
+    <string name="update_downloading">מוריד…</string>
+    <string name="update_install_restart">התקן והפעל מחדש</string>
+    <string name="update_later">מאוחר יותר</string>
+    <string name="update_up_to_date">האפליקציה מעודכנת לגרסה האחרונה</string>
+    <string name="update_checking">בודק עדכונים…</string>
+    <string name="update_check_failed">לא ניתן לבדוק עדכונים — ודא שקיים חיבור לאינטרנט</string>
 
     <!-- Filtering (search panels) accessibility labels -->
     <string name="filter_select_category">בחר קטגוריה לסינון</string>

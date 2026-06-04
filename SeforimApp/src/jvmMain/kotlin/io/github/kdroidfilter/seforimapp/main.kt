@@ -20,10 +20,8 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.kdroid.gematria.converter.toHebrewNumeral
 import dev.nucleusframework.application.aotTraining
 import dev.nucleusframework.application.nucleusApplication
-import dev.nucleusframework.core.runtime.ExecutableRuntime
 import dev.nucleusframework.core.runtime.NucleusApp
 import dev.nucleusframework.energymanager.EnergyManager
-import dev.nucleusframework.notification.common.notification
 import dev.nucleusframework.window.jewel.JewelDecoratedWindow
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
@@ -51,13 +49,13 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
+import io.github.kdroidfilter.seforimapp.features.update.UpdateDialog
 import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
-import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateChecker
 import io.github.kdroidfilter.seforimapp.logger.infoln
 import io.github.kdroidfilter.seforimapp.logger.isDevEnv
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
@@ -71,7 +69,6 @@ import seforimapp.seforimapp.generated.resources.*
 import java.awt.*
 import java.awt.datatransfer.StringSelection
 import java.awt.event.KeyEvent
-import java.net.URI
 import java.util.*
 import kotlin.time.Duration.Companion.seconds
 
@@ -294,6 +291,7 @@ fun main(args: Array<String>) {
                             settingsWindowViewModel = settingsWindowViewModel,
                             onQuit = {
                                 SessionManager.saveIfEnabled(appGraph)
+                                appGraph.appUpdateService.installPendingOnClose()
                                 exitApplication()
                             },
                         )
@@ -367,8 +365,11 @@ fun main(args: Array<String>) {
 
                     JewelDecoratedWindow(
                         onCloseRequest = {
-                            // Persist session if enabled, then exit
+                            // Persist session if enabled, apply any pending silent update, then exit.
+                            // installPendingOnClose() launches the installer and exits the process
+                            // itself when a silent (Win/Mac PATCH) update is ready.
                             SessionManager.saveIfEnabled(appGraph)
+                            appGraph.appUpdateService.installPendingOnClose()
                             exitApplication()
                         },
                         title = windowTitle,
@@ -447,6 +448,15 @@ fun main(args: Array<String>) {
                                     initialDestination = settingsWindowState.initialDestination,
                                 )
                             }
+                            // App update dialog, hoisted here so it inherits the full
+                            // CompositionLocalContext (theme, Rtl) like SettingsWindow.
+                            val updateDialogVisible by appGraph.appUpdateService.dialogVisible.collectAsState()
+                            if (updateDialogVisible) {
+                                UpdateDialog(
+                                    service = appGraph.appUpdateService,
+                                    onClose = { appGraph.appUpdateService.closeDialog() },
+                                )
+                            }
                             MainTitleBar()
                             LaunchedEffect(state.isMinimized) {
                                 if (state.isMinimized) {
@@ -479,42 +489,10 @@ fun main(args: Array<String>) {
                                     sessionRestored = true
                                 }
                             }
-                            // Check for updates once at startup
-                            val updateNotificationTitle = stringResource(Res.string.update_available_toast)
-                            val updateNotificationMessage = stringResource(Res.string.update_notification_message)
-                            val updateNotificationButton = stringResource(Res.string.update_download_action)
+                            // Check for updates once at startup. PATCH updates are pre-downloaded
+                            // here; MINOR/MAJOR surface the title-bar icon + UpdateDialog.
                             LaunchedEffect(Unit) {
-                                if (!mainAppState.updateCheckDone.value) {
-                                    when (val result = AppUpdateChecker.checkForUpdate()) {
-                                        is AppUpdateChecker.UpdateCheckResult.UpdateAvailable -> {
-                                            if (true) return@LaunchedEffect
-                                            mainAppState.setUpdateAvailable(result.latestVersion)
-
-                                            if (!ExecutableRuntime.isDev()) {
-                                                // Send system notification
-                                                notification(
-                                                    title = updateNotificationTitle,
-                                                    message = updateNotificationMessage,
-                                                    onActivated = {
-                                                        Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
-                                                    },
-                                                ) {
-                                                    button(updateNotificationButton) {
-                                                        Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
-                                                    }
-                                                }.send()
-                                            }
-                                        }
-
-                                        is AppUpdateChecker.UpdateCheckResult.UpToDate -> {
-                                            mainAppState.markUpdateCheckDone()
-                                        }
-
-                                        is AppUpdateChecker.UpdateCheckResult.Error -> {
-                                            mainAppState.markUpdateCheckDone()
-                                        }
-                                    }
-                                }
+                                appGraph.appUpdateService.checkOnStartup()
                             }
 
                             // Track whether the user is interacting by touch so hover-gated

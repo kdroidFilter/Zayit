@@ -12,6 +12,7 @@ import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
+import io.github.kdroidfilter.seforimapp.framework.update.showTitleBarIcon
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icon.PathIconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
@@ -28,6 +29,13 @@ fun TitleBarActionsButtonsView() {
     val appGraph = LocalAppGraph.current
     val mainAppState = appGraph.mainAppState
     val theme = mainAppState.theme.collectAsState().value
+
+    // Update badge: shown only for PROMPT updates (MINOR/MAJOR any OS, or Linux PATCH).
+    // Silent Win/Mac PATCH updates apply on close and never surface here.
+    val updateState =
+        appGraph.appUpdateService.state
+            .collectAsState()
+            .value
 
     // Use ViewModel-driven settings window visibility to respect MVVM conventions
     val settingsViewModel: SettingsWindowViewModel =
@@ -85,6 +93,15 @@ fun TitleBarActionsButtonsView() {
         } else {
             stringResource(Res.string.shortcut_settings_windows)
         }
+
+    if (updateState.showTitleBarIcon) {
+        TitleBarActionButton(
+            key = AllIconsKeys.Ide.Notification.IdeUpdate,
+            contentDescription = stringResource(Res.string.update_titlebar_tooltip),
+            onClick = { appGraph.appUpdateService.openDialog() },
+            tooltipText = stringResource(Res.string.update_titlebar_tooltip),
+        )
+    }
 
     TitleBarActionButton(
         key = AllIconsKeys.Nodes.HomeFolder,

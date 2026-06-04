@@ -14,6 +14,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProc
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
+import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 
@@ -42,4 +43,7 @@ abstract class AppGraph : ViewModelGraph {
 
     /** Seforim.db delta-update facade (recoverIfNeeded + checkAndApply). */
     abstract val dbDeltaUpdateService: io.github.kdroidfilter.seforimapp.framework.update.DbDeltaUpdateService
+
+    /** App self-update facade (Nucleus updater + native SSL). */
+    abstract val appUpdateService: AppUpdateService
 }

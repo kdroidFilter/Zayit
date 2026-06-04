@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,7 +20,9 @@ import dev.nucleusframework.window.newFullscreenControls
 import dev.nucleusframework.window.styling.LocalTitleBarStyle
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsView
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
+import io.github.kdroidfilter.seforimapp.framework.update.showTitleBarIcon
 
 @Composable
 fun DecoratedWindowScope.MainTitleBar() {
@@ -37,9 +40,15 @@ fun DecoratedWindowScope.MainTitleBar() {
                 Platform.MacOS -> 0 // native traffic lights, not in Compose layout
                 else -> 3 // close + maximize/restore + minimize
             }
+        // The update badge is an extra action button shown only for PROMPT updates; it must be
+        // counted so the reserved icons-area width (and thus tabsAreaWidth) stays correct.
+        val updateIconVisible =
+            LocalAppGraph.current.appUpdateService.state
+                .collectAsState()
+                .value.showTitleBarIcon
         BoxWithConstraints(modifier = Modifier.align(Alignment.Start)) {
             val windowWidth = maxWidth
-            val actionButtonCount = if (PlatformInfo.isMacOS) 2 else 4
+            val actionButtonCount = (if (PlatformInfo.isMacOS) 2 else 4) + if (updateIconVisible) 1 else 0
             val iconWidth: Dp = 40.dp
             val desktopSwitcherWidth: Dp = DESKTOP_SWITCHER_WIDTH
             val actionButtonsWidth = iconWidth * actionButtonCount + desktopSwitcherWidth

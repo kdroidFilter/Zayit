@@ -74,6 +74,7 @@ nucleus-decorated-window-jewel = { module = "dev.nucleusframework:nucleus.decora
 nucleus-graalvm-runtime = { module = "dev.nucleusframework:nucleus.graalvm-runtime", version.ref = "nucleus" }
 nucleus-updater-runtime = { module = "dev.nucleusframework:nucleus.updater-runtime", version.ref = "nucleus" }
 nucleus-native-ssl = { module = "dev.nucleusframework:nucleus.native-ssl", version.ref = "nucleus" }
+nucleus-native-http = { module = "dev.nucleusframework:nucleus.native-http", version.ref = "nucleus" }
 nucleus-energy-manager = { module = "dev.nucleusframework:nucleus.energy-manager", version.ref = "nucleus"}
 nucleus-system-color = { module = "dev.nucleusframework:nucleus.system-color", version.ref = "nucleus" }
 nucleus-native-http-ktor = { module = "dev.nucleusframework:nucleus.native-http-ktor", version.ref = "nucleus" }

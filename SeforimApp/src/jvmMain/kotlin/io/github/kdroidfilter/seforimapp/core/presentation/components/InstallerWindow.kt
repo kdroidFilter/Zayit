@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +26,8 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import dev.nucleusframework.application.NucleusApplicationScope
+import dev.nucleusframework.taskbarprogress.tao.hideTaskbarProgress
+import dev.nucleusframework.taskbarprogress.tao.showTaskbarProgress
 import dev.nucleusframework.window.BasicTitleBar
 import dev.nucleusframework.window.ControlButtonsDirection
 import dev.nucleusframework.window.TitleBarLayoutPolicy
@@ -35,6 +39,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowView
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.getCenteredWindowState
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
+import kotlinx.coroutines.flow.StateFlow
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.trackActivation
@@ -53,14 +58,19 @@ import seforimapp.seforimapp.generated.resources.app_name
  * Provides the window-scoped [androidx.lifecycle.ViewModelStoreOwner], a title bar with
  * a contextual icon/label and an automatic back button, and a NavHost-ready content area.
  *
+ * The OS taskbar/dock progress indicator is kept in sync with [progress]: it mirrors
+ * the value while in `(0f, 1f]` and is cleared at 0 and on window disposal.
+ *
  * @param titleBarIcon icon shown next to the title bar label
  * @param titleBarText title bar label
+ * @param progress installation progress in `[0f, 1f]`, mirrored to the taskbar
  * @param content receives the [NavHostController] backing the window's navigation graph
  */
 @Composable
 fun NucleusApplicationScope.InstallerWindow(
     titleBarIcon: ImageVector,
     titleBarText: String,
+    progress: StateFlow<Float>,
     content: @Composable (navController: NavHostController) -> Unit,
 ) {
     val windowState = remember { getCenteredWindowState(720, 420) }
@@ -72,6 +82,20 @@ fun NucleusApplicationScope.InstallerWindow(
         visible = true,
         resizable = false,
     ) {
+        // Mirror the in-app progress bar onto the OS taskbar/dock indicator.
+        val taskbarWindow = nucleusWindow
+        val taskbarProgress by progress.collectAsState()
+        LaunchedEffect(taskbarWindow, taskbarProgress) {
+            if (taskbarProgress > 0f) {
+                taskbarWindow.showTaskbarProgress(taskbarProgress.toDouble())
+            } else {
+                taskbarWindow.hideTaskbarProgress()
+            }
+        }
+        DisposableEffect(taskbarWindow) {
+            onDispose { taskbarWindow.hideTaskbarProgress() }
+        }
+
         val windowViewModelOwner = rememberWindowViewModelStoreOwner()
         CompositionLocalProvider(
             LocalWindowViewModelStoreOwner provides windowViewModelOwner,

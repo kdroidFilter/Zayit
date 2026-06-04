@@ -7,8 +7,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AnnotationStoresTest {
@@ -77,31 +75,53 @@ class AnnotationStoresTest {
         }
 
     @Test
-    fun note_upsert_get_and_blank_deletes() =
+    fun notes_are_ranged_and_multiple_per_line() =
         runTest {
-            val store = LineNoteStore(db)
-            store.loadBook(BOOK)
-            store.setNote(BOOK, lineId = 42, note = "first", timestamp = 1)
-            assertEquals("first", store.getNote(BOOK, 42))
-            assertTrue(store.hasNote(BOOK, 42))
+            val store = NoteStore(db)
+            store.addNote(BOOK, lineId = 42, startOffset = 0, endOffset = 4, note = "on a word", timestamp = 1)
+            store.addNote(BOOK, lineId = 42, startOffset = 10, endOffset = 25, note = "on a phrase", timestamp = 2)
 
-            store.setNote(BOOK, 42, note = "updated", timestamp = 2)
-            assertEquals("updated", store.getNote(BOOK, 42))
-
-            store.setNote(BOOK, 42, note = "   ", timestamp = 3)
-            assertNull(store.getNote(BOOK, 42))
-            assertFalse(store.hasNote(BOOK, 42))
+            val line = store.notesForLine(BOOK, 42)
+            assertEquals(2, line.size)
+            assertEquals(setOf(0 to 4, 10 to 25), line.map { it.startOffset to it.endOffset }.toSet())
         }
 
     @Test
-    fun note_lineIds_cache_loads_from_db() =
+    fun note_update_and_remove() =
         runTest {
-            LineNoteStore(db).setNote(BOOK, 42, "note", timestamp = 1)
+            val store = NoteStore(db)
+            store.addNote(BOOK, 42, 0, 4, "first", timestamp = 1)
+            val note = store.notesForLine(BOOK, 42).single()
 
-            val reloaded = LineNoteStore(db)
+            store.updateNote(BOOK, note.id, "edited", timestamp = 2)
+            assertEquals("edited", store.notesForLine(BOOK, 42).single().note)
+
+            store.removeNote(BOOK, note.id)
+            assertTrue(store.notesForLine(BOOK, 42).isEmpty())
+        }
+
+    @Test
+    fun blank_note_is_rejected_and_blank_update_deletes() =
+        runTest {
+            val store = NoteStore(db)
+            store.addNote(BOOK, 42, 0, 4, note = "   ", timestamp = 1)
+            assertTrue(store.notesForLine(BOOK, 42).isEmpty())
+
+            store.addNote(BOOK, 42, 0, 4, note = "real", timestamp = 2)
+            val note = store.notesForLine(BOOK, 42).single()
+            store.updateNote(BOOK, note.id, note = "  ", timestamp = 3)
+            assertTrue(store.notesForLine(BOOK, 42).isEmpty())
+        }
+
+    @Test
+    fun notes_load_from_db_and_are_isolated_per_book() =
+        runTest {
+            NoteStore(db).addNote(BOOK, 42, 0, 4, "note", timestamp = 1)
+
+            val reloaded = NoteStore(db)
             reloaded.loadBook(BOOK)
-            assertTrue(reloaded.hasNote(BOOK, 42))
-            assertFalse(reloaded.hasNote(BOOK, 99))
+            assertEquals(1, reloaded.notesForLine(BOOK, 42).size)
+            assertTrue(reloaded.notesForLine(OTHER_BOOK, 42).isEmpty())
         }
 
     private companion object {

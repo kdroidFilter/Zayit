@@ -1,0 +1,36 @@
+-- Position-based user notes: several notes per line, each anchored to a character range
+-- (a single word or a whole phrase), keyed by (bookId, lineId, offsets) — same scheme as
+-- user_highlights, so notes survive books-DB delta updates and stay valid across diacritics
+-- display changes.
+CREATE TABLE IF NOT EXISTS user_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bookId INTEGER NOT NULL,
+    lineId INTEGER NOT NULL,
+    startOffset INTEGER NOT NULL,
+    endOffset INTEGER NOT NULL,
+    note TEXT NOT NULL,
+    createdAt INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_notes_book ON user_notes(bookId);
+CREATE INDEX IF NOT EXISTS idx_user_notes_line ON user_notes(bookId, lineId);
+
+selectAllForBook:
+SELECT * FROM user_notes WHERE bookId = ?;
+
+selectForLine:
+SELECT * FROM user_notes WHERE bookId = ? AND lineId = ?;
+
+insert:
+INSERT INTO user_notes(bookId, lineId, startOffset, endOffset, note, createdAt, updatedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+updateNote:
+UPDATE user_notes SET note = ?, updatedAt = ? WHERE id = ?;
+
+deleteById:
+DELETE FROM user_notes WHERE id = ?;
+
+deleteForBook:
+DELETE FROM user_notes WHERE bookId = ?;

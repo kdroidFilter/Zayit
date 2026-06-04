@@ -11,7 +11,7 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.annotations.HighlightStore
-import io.github.kdroidfilter.seforimapp.core.annotations.LineNoteStore
+import io.github.kdroidfilter.seforimapp.core.annotations.NoteStore
 import io.github.kdroidfilter.seforimapp.core.catalog.CatalogAccess
 import io.github.kdroidfilter.seforimapp.core.selection.DefaultSelectionContext
 import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
@@ -84,7 +84,7 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideLineNoteStore(database: UserSettingsDb): LineNoteStore = LineNoteStore(database)
+    fun provideNoteStore(database: UserSettingsDb): NoteStore = NoteStore(database)
 
     @Provides
     @SingleIn(AppScope::class)

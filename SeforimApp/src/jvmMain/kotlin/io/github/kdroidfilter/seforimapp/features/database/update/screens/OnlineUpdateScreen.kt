@@ -9,21 +9,16 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytesPerSec
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatEta
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadEvents
+import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadProgressDetails
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
-import io.github.kdroidfilter.seforimapp.icons.FileArrowDown
-import io.github.kdroidfilter.seforimapp.icons.Speed
-import io.github.kdroidfilter.seforimapp.icons.Timer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
@@ -111,74 +106,11 @@ fun OnlineUpdateScreen(
                         textAlign = TextAlign.Center,
                     )
 
-                    val downloadedText = formatBytes(downloadState.downloadedBytes)
-                    val totalBytes = downloadState.totalBytes
-                    val totalText = totalBytes?.let { formatBytes(it) }
-                    val speedBps = downloadState.speedBytesPerSec
-                    val speedText = formatBytesPerSec(speedBps)
-
-                    totalText?.let {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        ) {
-                            Icon(
-                                FileArrowDown,
-                                contentDescription = null,
-                                tint = JewelTheme.globalColors.text.normal,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Text(
-                                text = stringResource(Res.string.onboarding_download_progress, downloadedText, it),
-                                modifier = Modifier.width(175.dp),
-                                textAlign = TextAlign.End,
-                            )
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        ) {
-                            Icon(
-                                Speed,
-                                contentDescription = null,
-                                tint = JewelTheme.globalColors.text.normal,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Text(
-                                text = speedText,
-                                modifier = Modifier.width(175.dp),
-                                textAlign = TextAlign.End,
-                            )
-                        }
-
-                        val etaSeconds =
-                            if (speedBps > 0L) {
-                                val remaining = (totalBytes - downloadState.downloadedBytes).coerceAtLeast(0)
-                                ((remaining + speedBps - 1) / speedBps)
-                            } else {
-                                null
-                            }
-
-                        etaSeconds?.let { secs ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            ) {
-                                Icon(
-                                    Timer,
-                                    contentDescription = null,
-                                    tint = JewelTheme.globalColors.text.normal,
-                                    modifier = Modifier.size(15.dp),
-                                )
-                                Text(
-                                    text = formatEta(secs),
-                                    modifier = Modifier.width(175.dp),
-                                    textAlign = TextAlign.End,
-                                )
-                            }
-                        }
-                    }
+                    DownloadProgressDetails(
+                        downloadedBytes = downloadState.downloadedBytes,
+                        totalBytes = downloadState.totalBytes,
+                        speedBytesPerSec = downloadState.speedBytesPerSec,
+                    )
                 }
                 // Download completed: show extraction state
                 downloadState.completed && extractState.errorMessage == null && !extractState.completed -> {

@@ -17,19 +17,12 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.Progress
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.santimattius.structured.annotations.StructuredScope
-import io.github.vinceglb.filekit.FileKit
-import io.github.vinceglb.filekit.dialogs.FileKitType
-import io.github.vinceglb.filekit.dialogs.openFilePicker
-import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import seforimapp.seforimapp.generated.resources.*
-import java.io.File
 
 @Composable
 fun OfflineFileSelectionScreen(
@@ -74,39 +67,12 @@ fun OfflineFileSelectionScreen(
         }
     }
 
-    // File selection flow. FileKit's compose launcher dispatches the picker on
-    // Dispatchers.Main; under the Tao backend that is the single GTK event-loop
-    // thread, and the picker's blocking D-Bus (xdg-desktop-portal) work would
-    // freeze/deadlock it. Running the suspend API on Dispatchers.IO keeps the
-    // event loop free; state updates resume on the (Main) scope afterwards.
     fun pickFiles(
         @StructuredScope scope: CoroutineScope,
     ) {
         scope.launch {
-            val p1 =
-                withContext(Dispatchers.IO) {
-                    FileKit.openFilePicker(type = FileKitType.File(extensions = listOf("part01")))
-                }?.path
-            part01Path = p1
-            if (p1.isNullOrBlank()) return@launch
-
-            // Check if part02 exists in the same directory
-            val part01File = File(p1)
-            val part02File = File(part01File.parent, part01File.name.replace(".part01", ".part02"))
-
-            if (part02File.exists()) {
-                // Part02 found automatically, start extraction
-                startExtraction(scope, p1)
-            } else {
-                // Part02 not found, ask user to select it
-                val p2 =
-                    withContext(Dispatchers.IO) {
-                        FileKit.openFilePicker(type = FileKitType.File(extensions = listOf("part02")))
-                    }?.path
-                if (!p2.isNullOrBlank()) {
-                    startExtraction(scope, p1)
-                }
-            }
+            val p1 = pickDatabaseParts { part01Path = it }
+            if (p1 != null) startExtraction(scope, p1)
         }
     }
 

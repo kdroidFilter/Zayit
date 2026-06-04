@@ -1,30 +1,14 @@
 package io.github.kdroidfilter.seforimapp.features.database.update.navigation
 
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import io.github.kdroidfilter.seforimapp.core.presentation.components.ProgressBarController
 
-object DatabaseUpdateProgressBarState {
-    private var _progress = MutableStateFlow(0f)
-    val progress = _progress.asStateFlow()
-
+object DatabaseUpdateProgressBarState : ProgressBarController() {
     // Progress steps for database update
     private const val VERSION_CHECK_STEP = 0.1f // 10% - Version check completed
     private const val OPTIONS_SELECTED_STEP = 0.2f // 20% - Update option selected
     private const val DOWNLOAD_START_STEP = 0.3f // 30% - Download/file selection started
     private const val DOWNLOAD_COMPLETE_STEP = 0.8f // 80% - Download/extraction completed
     private const val UPDATE_COMPLETE_STEP = 1.0f // 100% - Update finished
-
-    fun setProgress(progress: Float) {
-        _progress.value = progress.coerceIn(0f, 1f)
-    }
-
-    fun resetProgress() {
-        _progress.value = 0f
-    }
-
-    fun improveBy(value: Float) {
-        _progress.value = (_progress.value + value).coerceIn(0f, 1f)
-    }
 
     // Helper methods for specific steps
     fun setVersionCheckComplete() {

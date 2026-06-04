@@ -14,17 +14,12 @@ import io.github.kdroidfilter.seforimapp.features.database.update.navigation.Dat
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.offline.pickDatabaseParts
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.santimattius.structured.annotations.StructuredScope
-import io.github.vinceglb.filekit.FileKit
-import io.github.vinceglb.filekit.dialogs.FileKitType
-import io.github.vinceglb.filekit.dialogs.openFilePicker
-import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
@@ -77,30 +72,12 @@ fun OfflineUpdateScreen(
         }
     }
 
-    // File selection flow. FileKit's compose launcher dispatches the picker on
-    // Dispatchers.Main; under the Tao backend that is the single GTK event-loop
-    // thread, and the picker's blocking D-Bus (xdg-desktop-portal) work would
-    // freeze/deadlock it. Running the suspend API on Dispatchers.IO keeps the
-    // event loop free; state updates resume on the (Main) scope afterwards.
     fun pickFiles(
         @StructuredScope scope: CoroutineScope,
     ) {
         scope.launch {
-            val p1 =
-                withContext(Dispatchers.IO) {
-                    FileKit.openFilePicker(type = FileKitType.File(extensions = listOf("part01")))
-                }?.path
-            part01Path = p1
-            if (p1.isNullOrBlank()) return@launch
-
-            // Immediately ask for part02
-            val p2 =
-                withContext(Dispatchers.IO) {
-                    FileKit.openFilePicker(type = FileKitType.File(extensions = listOf("part02")))
-                }?.path
-            if (!p2.isNullOrBlank()) {
-                startUpdate(scope, p1)
-            }
+            val p1 = pickDatabaseParts { part01Path = it }
+            if (p1 != null) startUpdate(scope, p1)
         }
     }
 

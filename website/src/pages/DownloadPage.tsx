@@ -151,7 +151,8 @@ function filterAssetsByPlatform(assets: Asset[], platform: Platform): Asset[] {
 
   if (platform.os === 'windows') {
     return assets
-      .filter((a) => /\.(msi|exe)$/i.test(a.name))
+      // The -nsis.exe is the silent installer used by the auto-updater only; users get the Rust wrapper.
+      .filter((a) => /\.(msi|exe)$/i.test(a.name) && !/-nsis\.exe$/i.test(a.name))
       .sort((a, b) => {
         if (a.name.toLowerCase().endsWith('.exe') && !b.name.toLowerCase().endsWith('.exe')) return -1;
         if (!a.name.toLowerCase().endsWith('.exe') && b.name.toLowerCase().endsWith('.exe')) return 1;

@@ -364,6 +364,16 @@ class AppUpdateService(
         ): AppUpdateService =
             AppUpdateService(
                 updaterProvider = {
+                    // Releases ship several assets per platform; force the auto-update format so the
+                    // feed picks the silent installer (NSIS on Windows, .zip on macOS) and not the
+                    // user-facing Rust wrapper exe / .dmg. The env override still wins when set.
+                    val resolvedExecutableType =
+                        config.executableType
+                            ?: when (os) {
+                                Platform.Windows -> "nsis"
+                                Platform.MacOS -> "zip"
+                                else -> null
+                            }
                     val updater =
                         NucleusUpdater {
                             provider =
@@ -373,7 +383,7 @@ class AppUpdateService(
                             httpClient = NativeHttpClient.create()
                             channel = "latest"
                             config.forceVersion?.let { currentVersion = it }
-                            config.executableType?.let { executableType = it }
+                            resolvedExecutableType?.let { executableType = it }
                         }
                     NucleusUpdaterAdapter(updater, dryRun = config.dryRun)
                 },

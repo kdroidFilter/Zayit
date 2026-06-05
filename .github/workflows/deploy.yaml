@@ -192,9 +192,13 @@ jobs:
           [ -n "$DMG" ] || { echo "::error::No .dmg produced"; exit 1; }
           cp "$DMG" "staging/Zayit-${VERSION}-mac-${{ matrix.jdk_arch }}.dmg"
 
-          APP_DIR="SeforimApp/build/compose/binaries/main/graalvm-app"
-          APP_BUNDLE="$(find "$APP_DIR" -mindepth 1 -maxdepth 1 -type d -name '*.app' | head -n1)"
-          [ -n "$APP_BUNDLE" ] || { echo "::error::No .app bundle found in $APP_DIR"; exit 1; }
+          # Canonical standalone bundle dir is binaries/main/app; fall back to a
+          # broad search in case the Nucleus plugin relocates it.
+          SEARCH_ROOT="SeforimApp/build/compose/binaries/main"
+          APP_BUNDLE="$(find "$SEARCH_ROOT/app" -maxdepth 1 -type d -name '*.app' 2>/dev/null | head -n1)"
+          [ -n "$APP_BUNDLE" ] || APP_BUNDLE="$(find "$SEARCH_ROOT" -type d -name '*.app' | head -n1)"
+          [ -n "$APP_BUNDLE" ] || { echo "::error::No .app bundle found under $SEARCH_ROOT"; exit 1; }
+          APP_DIR="$(dirname "$APP_BUNDLE")"
           # Version-less name, kept in sync with website/public/download/launch.mac.
           (cd "$APP_DIR" && zip -r -q "${GITHUB_WORKSPACE}/staging/Zayit-mac-${{ matrix.jdk_arch }}.zip" "$(basename "$APP_BUNDLE")")
 

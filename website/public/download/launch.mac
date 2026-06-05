@@ -44,10 +44,7 @@ tmpfile="$tmpdir/app.zip"
 
 cleanup() {
   cd "$HOME" || true
-  if [ -e "$tmpfile" ]; then
-    rm -f "$tmpfile"
-  fi
-  rmdir "$tmpdir" 2>/dev/null || true
+  rm -rf "$tmpdir" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -72,24 +69,37 @@ for name in "$app_name" "${legacy_app_names[@]}"; do
 done
 
 if [ -w /Applications ]; then
-  cd /Applications
+  install_dir="/Applications"
 else
-  if [ ! -d "$HOME/Applications" ]; then
-    mkdir "$HOME/Applications"
-  fi
-  cd "$HOME/Applications"
+  mkdir -p "$HOME/Applications"
+  install_dir="$HOME/Applications"
 fi
 
-echo "Extracting to $PWD ..."
-ditto -x -k "$tmpfile" .
+# The .zip wraps the bundle under the GraalVM image name (zayit.app), while the
+# .dmg ships it as זית.app. Extract to a temp dir, then install under the
+# canonical Hebrew name so both install paths produce the same bundle.
+extract_dir="$tmpdir/extract"
+mkdir -p "$extract_dir"
+echo "Extracting ..."
+ditto -x -k "$tmpfile" "$extract_dir"
+
+src_app="$(find "$extract_dir" -maxdepth 1 -name '*.app' -type d | head -n 1)"
+if [ -z "$src_app" ]; then
+  echo "No .app bundle found in the downloaded archive."
+  exit 1
+fi
+
+dest_app="${install_dir}/${app_name}.app"
+echo "Installing to $dest_app ..."
+rm -rf "$dest_app"
+mv "$src_app" "$dest_app"
 
 # Quarantine bits are not set by curl in current macOS versions,
 # but this may change in the future.
 if command -v xattr >/dev/null 2>&1; then
-  xattr -r -d com.apple.quarantine "${app_name}.app" 2>/dev/null || true
+  xattr -r -d com.apple.quarantine "$dest_app" 2>/dev/null || true
 fi
 
-open "${app_name}.app"
+open "$dest_app"
 
-cleanup
 exit 0

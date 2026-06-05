@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
  * @property startOffset Inclusive start offset in the line's plain text.
  * @property endOffset Exclusive end offset in the line's plain text.
  * @property note Free-text note body.
+ * @property quote The anchored passage (selected text) shown in the notes pane.
  */
 @Stable
 data class UserNote(
@@ -26,6 +27,7 @@ data class UserNote(
     val startOffset: Int,
     val endOffset: Int,
     val note: String,
+    val quote: String = "",
 )
 
 /**
@@ -65,6 +67,7 @@ class NoteStore(
         endOffset: Int,
         note: String,
         timestamp: Long,
+        quote: String = "",
     ): Unit =
         withContext(Dispatchers.IO) {
             if (startOffset >= endOffset || note.isBlank()) return@withContext
@@ -74,6 +77,7 @@ class NoteStore(
                 startOffset = startOffset.toLong(),
                 endOffset = endOffset.toLong(),
                 note = note,
+                quote = quote,
                 createdAt = timestamp,
                 updatedAt = timestamp,
             )
@@ -116,6 +120,7 @@ class NoteStore(
                     startOffset = row.startOffset.toInt(),
                     endOffset = row.endOffset.toInt(),
                     note = row.note,
+                    quote = row.quote,
                 )
             }
         _notesByBook.update { it + (bookId to list) }

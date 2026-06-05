@@ -46,30 +46,16 @@ fun StartVerticalBar(
             }
         },
         bottomContent = {
-//            SelectableIconButtonWithToolip(
-//                toolTipText = stringResource(Res.string.my_bookmarks),
-//                onClick = { },
-//                isSelected = false,
-//                icon = JournalBookmark,
-//                iconDescription = stringResource(Res.string.bookmarks),
-//                label = stringResource(Res.string.bookmarks)
-//            )
-//            SelectableIconButtonWithToolip(
-//                toolTipText = stringResource(Res.string.my_commentaries),
-//                onClick = { },
-//                isSelected = false,
-//                icon = JournalText,
-//                iconDescription = stringResource(Res.string.my_commentaries_label),
-//                label = stringResource(Res.string.my_commentaries_label)
-//            )
-//            SelectableIconButtonWithToolip(
-//                toolTipText = stringResource(Res.string.write_note_tooltip),
-//                onClick = { },
-//                isSelected = false,
-//                icon = NotebookPen,
-//                iconDescription = stringResource(Res.string.write_note),
-//                label = stringResource(Res.string.write_note)
-//            )
+            if (uiState.navigation.selectedBook != null) {
+                SelectableIconButtonWithToolip(
+                    toolTipText = stringResource(Res.string.notes_pane_tooltip),
+                    onClick = { onEvent(BookContentEvent.ToggleNotes) },
+                    isSelected = uiState.notes.isVisible,
+                    icon = NotebookPen,
+                    iconDescription = stringResource(Res.string.notes_pane),
+                    label = stringResource(Res.string.notes_pane),
+                )
+            }
         },
     )
 }

@@ -59,6 +59,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.BookTocPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree.CategoryTreePanel
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NotesPanel
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -93,6 +95,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.skiko.hostOs
 import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.context_menu_add_note
 import seforimapp.seforimapp.generated.resources.context_menu_copy_link
 import seforimapp.seforimapp.generated.resources.context_menu_copy_with_source
 import seforimapp.seforimapp.generated.resources.context_menu_copy_without_nikud
@@ -347,6 +350,41 @@ private fun persistHighlights(
     }
 }
 
+/**
+ * Resolves the selected text to a single note anchor on a main-pane line. Notes are only created
+ * from the main book pane (not the comments pane), so the resolved line id matches the book the
+ * notes pane is keyed to. Returns null when the selection cannot be located.
+ */
+private fun resolveNoteDraft(
+    selectedText: String,
+    lines: List<io.github.kdroidfilter.seforimlibrary.core.models.Line>,
+    showDiacritics: Boolean,
+): NoteDraftAnchor? {
+    val sorted =
+        lines
+            .sortedBy { it.lineIndex }
+            .map { it.id to buildAnnotatedFromHtml(it.content, baseTextSize = 16f, boldScale = 1f).text }
+    val range = resolveHighlightRangesForSelection(sorted, selectedText, showDiacritics).firstOrNull() ?: return null
+    return NoteDraftAnchor(
+        lineId = range.lineId,
+        startOffset = range.range.first,
+        endOffset = range.range.last + 1,
+        quote = selectedText.trim().substringBefore('\n').trim(),
+    )
+}
+
+/** Builds a note anchor covering the whole right-clicked line (used when no text is selected). */
+private fun resolveWholeLineNoteDraft(
+    lineId: Long,
+    lines: List<io.github.kdroidfilter.seforimlibrary.core.models.Line>,
+): NoteDraftAnchor? {
+    if (lineId <= 0) return null
+    val line = lines.firstOrNull { it.id == lineId } ?: return null
+    val plain = buildAnnotatedFromHtml(line.content, baseTextSize = 16f, boldScale = 1f).text
+    if (plain.isEmpty()) return null
+    return NoteDraftAnchor(lineId = lineId, startOffset = 0, endOffset = plain.length, quote = plain.trim())
+}
+
 private fun handlePopupMenuOnKeyEvent(
     keyEvent: KeyEvent,
     focusManager: FocusManager,
@@ -425,6 +463,7 @@ fun BookContentScreen(
     val copyWithoutNikudLabel = stringResource(Res.string.context_menu_copy_without_nikud)
     val copyWithSourceLabel = stringResource(Res.string.context_menu_copy_with_source)
     val copyLinkLabel = stringResource(Res.string.context_menu_copy_link)
+    val addNoteLabel = stringResource(Res.string.context_menu_add_note)
     val baseTextContextMenu = LocalTextContextMenu.current
     val tabId = uiState.tabId
     val selectedBook = uiState.navigation.selectedBook
@@ -432,11 +471,17 @@ fun BookContentScreen(
     val selectionContext = LocalAppGraph.current.selectionContext
     // Always read the latest values inside the context-menu actions, without rebuilding the menu.
     val currentSelectedBook by rememberUpdatedState(selectedBook)
+    val currentNotesVisible by rememberUpdatedState(uiState.notes.isVisible)
 
     // User-highlight persistence (separate local user DB).
     val highlightStore = LocalAppGraph.current.highlightStore
     val highlightScope = rememberCoroutineScope()
     val bookId = selectedBook?.id ?: 0L
+
+    // User notes: a pending draft (anchored, not yet saved) opened from the context menu and
+    // edited inline in the notes pane (Google-Docs style).
+    val noteStore = LocalAppGraph.current.noteStore
+    var noteDraft by remember { mutableStateOf<NoteDraftAnchor?>(null) }
 
     // Publish the active book + its root category to the SelectionContext so the Ctrl+Alt+C
     // dispatcher and the context-menu action can apply per-tradition formatting. Lifecycle
@@ -587,6 +632,32 @@ fun BookContentScreen(
                                         AppSettings.openFindBar(tabId)
                                     },
                                 )
+                                // Add note (main pane only): anchors a note to the selected text,
+                                // or to the whole right-clicked line when nothing is selected.
+                                if (bookId > 0 &&
+                                    selectionContext.activeCommentaryColumn.value
+                                        .isEmpty() &&
+                                    (selectedText.isNotBlank() || selectionContext.currentLineId.value > 0)
+                                ) {
+                                    add(
+                                        ContextMenuItemOptionWithKeybinding(
+                                            icon = AllIconsKeys.Actions.Annotate,
+                                            label = addNoteLabel,
+                                        ) {
+                                            val lines = selectionContext.visibleLines.value.lines
+                                            val draft =
+                                                if (selectedText.isNotBlank()) {
+                                                    resolveNoteDraft(selectedText, lines, showDiacritics)
+                                                } else {
+                                                    resolveWholeLineNoteDraft(selectionContext.currentLineId.value, lines)
+                                                }
+                                            if (draft != null) {
+                                                noteDraft = draft
+                                                if (!currentNotesVisible) onEvent(BookContentEvent.ToggleNotes)
+                                            }
+                                        },
+                                    )
+                                }
                                 // Highlight color picker (last item): persists a position-based
                                 // highlight for the selected text on its resolved line.
                                 if (selectedText.isNotBlank() && bookId > 0) {
@@ -633,6 +704,11 @@ fun BookContentScreen(
             SplitPaneConfig(
                 splitState = uiState.layout.tocSplitState,
                 isVisible = uiState.toc.isVisible,
+                positionFilter = { it > 0 },
+            ),
+            SplitPaneConfig(
+                splitState = uiState.layout.notesSplitState,
+                isVisible = uiState.notes.isVisible,
                 positionFilter = { it > 0 },
             ),
             SplitPaneConfig(
@@ -738,15 +814,38 @@ fun BookContentScreen(
                             }
                         },
                         secondContent = {
-                            BookContentPanel(
-                                uiState = uiState,
-                                onEvent = onEvent,
-                                showDiacritics = showDiacritics,
-                                isRestoringSession = isRestoringSession,
-                                searchUi = searchUi,
-                                searchCallbacks = searchCallbacks,
-                                isSelected = isSelected,
-                                bookCharCounts = bookCharCounts,
+                            EnhancedHorizontalSplitPane(
+                                splitPaneState = uiState.layout.notesSplitState.asStable(),
+                                firstMinSize = if (uiState.notes.isVisible) SplitDefaults.MIN_NOTES else 0f,
+                                firstContent = {
+                                    if (uiState.notes.isVisible) {
+                                        NotesPanel(
+                                            uiState = uiState,
+                                            onEvent = onEvent,
+                                            bookId = bookId,
+                                            noteStore = noteStore,
+                                            selectedLineIds = uiState.content.selectedLineIds,
+                                            primarySelectedLine = uiState.content.primaryLine,
+                                            draft = noteDraft,
+                                            onConsumeDraft = { noteDraft = null },
+                                            modifier = panelCardModifier,
+                                        )
+                                    }
+                                },
+                                secondContent = {
+                                    BookContentPanel(
+                                        uiState = uiState,
+                                        onEvent = onEvent,
+                                        showDiacritics = showDiacritics,
+                                        isRestoringSession = isRestoringSession,
+                                        searchUi = searchUi,
+                                        searchCallbacks = searchCallbacks,
+                                        isSelected = isSelected,
+                                        bookCharCounts = bookCharCounts,
+                                        noteDraft = noteDraft,
+                                    )
+                                },
+                                showSplitter = uiState.notes.isVisible,
                             )
                         },
                         showSplitter = uiState.toc.isVisible,

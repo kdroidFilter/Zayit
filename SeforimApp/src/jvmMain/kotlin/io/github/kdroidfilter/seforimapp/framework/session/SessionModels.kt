@@ -46,6 +46,10 @@ data class BookContentPersistedState(
     val selectedTocEntryId: Long = -1L,
     val tocScrollIndex: Int = 0,
     val tocScrollOffset: Int = 0,
+    // Notes pane
+    val isNotesVisible: Boolean = false,
+    val notesScrollIndex: Int = 0,
+    val notesScrollOffset: Int = 0,
     // Content
     val selectedLineIds: Set<Long> = emptySet(),
     val primarySelectedLineId: Long = -1L,
@@ -79,10 +83,12 @@ data class BookContentPersistedState(
     // Layout
     val mainSplitPosition: Float = SplitDefaults.MAIN,
     val tocSplitPosition: Float = SplitDefaults.TOC,
+    val notesSplitPosition: Float = SplitDefaults.NOTES,
     val contentSplitPosition: Float = SplitDefaults.CONTENT,
     val targumSplitPosition: Float = 0.8f,
     val previousMainSplitPosition: Float = SplitDefaults.MAIN,
     val previousTocSplitPosition: Float = SplitDefaults.TOC,
+    val previousNotesSplitPosition: Float = SplitDefaults.NOTES,
     val previousContentSplitPosition: Float = SplitDefaults.CONTENT,
     val previousSourcesSplitPosition: Float = SplitDefaults.SOURCES,
     val previousTargumSplitPosition: Float = 0.8f,

@@ -30,6 +30,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.Enha
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.*
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.logger.warnln
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
@@ -63,6 +64,7 @@ fun BookContentPanel(
         ),
     isSelected: Boolean = true,
     bookCharCounts: IntArray? = null,
+    noteDraft: NoteDraftAnchor? = null,
 ) {
     val isIslands = ThemeUtils.isIslandsStyle()
     val homeCardModifier =
@@ -107,6 +109,7 @@ fun BookContentPanel(
                     showDiacritics = showDiacritics,
                     isSelected = isSelected,
                     bookCharCounts = bookCharCounts,
+                    noteDraft = noteDraft,
                 )
             }
         }
@@ -121,6 +124,7 @@ private fun BookContentPanelContent(
     showDiacritics: Boolean,
     isSelected: Boolean,
     bookCharCounts: IntArray?,
+    noteDraft: NoteDraftAnchor? = null,
 ) {
     val providers = uiState.providers ?: return
     val selectedBook = uiState.navigation.selectedBook ?: return
@@ -230,6 +234,7 @@ private fun BookContentPanelContent(
                                 onEvent = onEvent,
                                 tabId = uiState.tabId,
                                 showDiacritics = showDiacritics,
+                                draftNote = noteDraft,
                                 modifier = topPaneCardModifier,
                                 preservedListState = bookListState,
                                 scrollIndex = uiState.content.scrollIndex,

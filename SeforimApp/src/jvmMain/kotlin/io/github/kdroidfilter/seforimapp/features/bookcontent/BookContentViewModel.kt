@@ -79,6 +79,7 @@ class BookContentViewModel(
     private val navigationUseCase = useCaseFactory.createNavigationUseCase(stateManager)
     private val contentUseCase = useCaseFactory.createContentUseCase(stateManager)
     private val tocUseCase = useCaseFactory.createTocUseCase(stateManager)
+    private val notesUseCase = useCaseFactory.createNotesUseCase(stateManager)
     private val altTocUseCase = useCaseFactory.createAltTocUseCase(stateManager)
     private val commentariesUseCase = useCaseFactory.createCommentariesUseCase(stateManager, viewModelScope)
     private val categoryDisplaySettingsUseCase = useCaseFactory.createCategoryDisplaySettingsUseCase()
@@ -387,6 +388,12 @@ class BookContentViewModel(
 
                 is BookContentEvent.TocScrolled ->
                     tocUseCase.updateTocScrollPosition(event.index, event.offset)
+
+                BookContentEvent.ToggleNotes ->
+                    notesUseCase.toggleNotes()
+
+                is BookContentEvent.NotesScrolled ->
+                    notesUseCase.updateNotesScrollPosition(event.index, event.offset)
 
                 is BookContentEvent.AltTocEntryExpanded ->
                     altTocUseCase.toggleAltTocEntry(event.entry)

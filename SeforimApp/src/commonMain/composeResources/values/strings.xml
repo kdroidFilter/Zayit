@@ -120,6 +120,16 @@
     <string name="context_menu_copy_with_source">העתק עם מקור</string>
     <string name="context_menu_copy_link">העתק קישור לקטע זה</string>
     <string name="context_menu_highlight">סמן</string>
+    <string name="context_menu_add_note">הוסף הערה</string>
+
+    <!-- Notes pane -->
+    <string name="notes_pane">הערות</string>
+    <string name="notes_pane_tooltip">ההערות שלי על הספר</string>
+    <string name="note_body_placeholder">כתוב הערה...</string>
+    <string name="no_notes_saved">אין הערות שמורות על קטע זה</string>
+    <string name="no_notes_for_selection">אין הערות על השורות שנבחרו. בחר טקסט ולחץ "הוסף הערה".</string>
+    <string name="notes_info_word_level">אין צורך לכתוב הערה על השורה כולה: ניתן לסמן מילים מסוימות, ללחוץ לחיצה ימנית ולבחור "הוסף הערה" כדי לכתוב הערה על קטע מדויק בלבד.</string>
+    <string name="delete_note">מחק הערה</string>
 
     <!-- Book Content Screen - End Vertical Bar -->
     <string name="tools">כלים</string>

@@ -31,6 +31,7 @@ class BookContentStateManager(
         // Derive visibility flags so split pane positions match from the first frame
         val navVisible = persisted.isBookTreeVisible
         val tocVisible = persisted.isTocVisible
+        val notesVisible = persisted.isNotesVisible
         val bottomPaneVisible = persisted.showCommentaries || persisted.showSources
         val targumVisible = persisted.showTargum
 
@@ -56,6 +57,12 @@ class BookContentStateManager(
                     isVisible = tocVisible,
                     scrollIndex = persisted.tocScrollIndex,
                     scrollOffset = persisted.tocScrollOffset,
+                ),
+            notes =
+                NotesState(
+                    isVisible = notesVisible,
+                    scrollIndex = persisted.notesScrollIndex,
+                    scrollOffset = persisted.notesScrollOffset,
                 ),
             altToc = AltTocState(),
             content =
@@ -101,6 +108,11 @@ class BookContentStateManager(
                             initialPositionPercentage = if (tocVisible) persisted.tocSplitPosition else 0f,
                             moveEnabled = tocVisible,
                         ),
+                    notesSplitState =
+                        SplitPaneState(
+                            initialPositionPercentage = if (notesVisible) persisted.notesSplitPosition else 0f,
+                            moveEnabled = notesVisible,
+                        ),
                     contentSplitState =
                         SplitPaneState(
                             initialPositionPercentage = if (bottomPaneVisible) persisted.contentSplitPosition else 1f,
@@ -115,6 +127,7 @@ class BookContentStateManager(
                         PreviousPositions(
                             main = persisted.previousMainSplitPosition,
                             toc = persisted.previousTocSplitPosition,
+                            notes = persisted.previousNotesSplitPosition,
                             content = persisted.previousContentSplitPosition,
                             sources = persisted.previousSourcesSplitPosition,
                             links = persisted.previousTargumSplitPosition,
@@ -154,6 +167,16 @@ class BookContentStateManager(
         transform: TocState.() -> TocState,
     ) {
         update(save) { copy(toc = toc.transform()) }
+    }
+
+    /**
+     * Met à jour uniquement le pane des notes
+     */
+    fun updateNotes(
+        save: Boolean = true,
+        transform: NotesState.() -> NotesState,
+    ) {
+        update(save) { copy(notes = notes.transform()) }
     }
 
     /**
@@ -238,6 +261,9 @@ class BookContentStateManager(
                 selectedTocEntryId = currentState.toc.selectedEntryId ?: -1L,
                 tocScrollIndex = currentState.toc.scrollIndex,
                 tocScrollOffset = currentState.toc.scrollOffset,
+                isNotesVisible = currentState.notes.isVisible,
+                notesScrollIndex = currentState.notes.scrollIndex,
+                notesScrollOffset = currentState.notes.scrollOffset,
                 selectedLineIds = currentState.content.selectedLineIds,
                 primarySelectedLineId = currentState.content.primarySelectedLineId ?: -1L,
                 isTocEntrySelection = currentState.content.isTocEntrySelection,
@@ -268,10 +294,12 @@ class BookContentStateManager(
                 selectedSourcesByBook = currentState.content.selectedSourcesByBook,
                 mainSplitPosition = currentState.layout.mainSplitState.positionPercentage,
                 tocSplitPosition = currentState.layout.tocSplitState.positionPercentage,
+                notesSplitPosition = currentState.layout.notesSplitState.positionPercentage,
                 contentSplitPosition = currentState.layout.contentSplitState.positionPercentage,
                 targumSplitPosition = currentState.layout.targumSplitState.positionPercentage,
                 previousMainSplitPosition = currentState.layout.previousPositions.main,
                 previousTocSplitPosition = currentState.layout.previousPositions.toc,
+                previousNotesSplitPosition = currentState.layout.previousPositions.notes,
                 previousContentSplitPosition = currentState.layout.previousPositions.content,
                 previousSourcesSplitPosition = currentState.layout.previousPositions.sources,
                 previousTargumSplitPosition = currentState.layout.previousPositions.links,

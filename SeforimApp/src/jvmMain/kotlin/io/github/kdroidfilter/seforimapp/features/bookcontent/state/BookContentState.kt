@@ -79,6 +79,7 @@ data class BookContentState
         val tabId: String = "",
         val navigation: NavigationState = NavigationState(),
         val toc: TocState = TocState(),
+        val notes: NotesState = NotesState(),
         val altToc: AltTocState = AltTocState(),
         val content: ContentState = ContentState(),
         val layout: LayoutState = LayoutState(),
@@ -111,6 +112,14 @@ data class TocState(
     val selectedEntryId: Long? = null,
     val breadcrumbPath: List<TocEntry> = emptyList(),
     // UI
+    val isVisible: Boolean = false,
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0,
+)
+
+@Immutable
+data class NotesState(
+    // UI only: the notes themselves live in NoteStore's per-book cache.
     val isVisible: Boolean = false,
     val scrollIndex: Int = 0,
     val scrollOffset: Int = 0,
@@ -189,6 +198,7 @@ data class LayoutState
     constructor(
         val mainSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = SplitDefaults.MAIN, moveEnabled = true),
         val tocSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = SplitDefaults.TOC, moveEnabled = true),
+        val notesSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = SplitDefaults.NOTES, moveEnabled = true),
         val contentSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = SplitDefaults.CONTENT, moveEnabled = true),
         val targumSplitState: SplitPaneState = SplitPaneState(initialPositionPercentage = 0.8f, moveEnabled = true),
         val previousPositions: PreviousPositions = PreviousPositions(),
@@ -198,6 +208,7 @@ data class LayoutState
 data class PreviousPositions(
     val main: Float = SplitDefaults.MAIN,
     val toc: Float = SplitDefaults.TOC,
+    val notes: Float = SplitDefaults.NOTES,
     val content: Float = SplitDefaults.CONTENT,
     val sources: Float = SplitDefaults.SOURCES,
     val links: Float = 0.8f,

@@ -2,6 +2,8 @@
 -- (a single word or a whole phrase), keyed by (bookId, lineId, offsets) — same scheme as
 -- user_highlights, so notes survive books-DB delta updates and stay valid across diacritics
 -- display changes.
+-- [quote] stores the anchored passage (the selected text) so the notes pane keeps showing it,
+-- including after the note is saved. Defaulted so the column can be added to pre-existing DBs.
 CREATE TABLE IF NOT EXISTS user_notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     bookId INTEGER NOT NULL,
@@ -9,6 +11,7 @@ CREATE TABLE IF NOT EXISTS user_notes (
     startOffset INTEGER NOT NULL,
     endOffset INTEGER NOT NULL,
     note TEXT NOT NULL,
+    quote TEXT NOT NULL DEFAULT '',
     createdAt INTEGER NOT NULL,
     updatedAt INTEGER NOT NULL
 );
@@ -23,8 +26,8 @@ selectForLine:
 SELECT * FROM user_notes WHERE bookId = ? AND lineId = ?;
 
 insert:
-INSERT INTO user_notes(bookId, lineId, startOffset, endOffset, note, createdAt, updatedAt)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO user_notes(bookId, lineId, startOffset, endOffset, note, quote, createdAt, updatedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 updateNote:
 UPDATE user_notes SET note = ?, updatedAt = ? WHERE id = ?;

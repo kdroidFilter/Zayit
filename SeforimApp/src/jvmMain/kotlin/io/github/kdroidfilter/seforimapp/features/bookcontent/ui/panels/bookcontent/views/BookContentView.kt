@@ -42,6 +42,7 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -56,16 +57,20 @@ import androidx.paging.compose.itemKey
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
+import io.github.kdroidfilter.seforimapp.core.annotations.UserNote
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.text.applyUserHighlights
+import io.github.kdroidfilter.seforimapp.core.presentation.text.drawNoteUnderlines
 import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOriginal
+import io.github.kdroidfilter.seforimapp.core.presentation.text.noteDisplayRanges
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.logger.debugln
@@ -107,6 +112,7 @@ fun BookContentView(
     tabId: String,
     showDiacritics: Boolean,
     modifier: Modifier = Modifier,
+    draftNote: NoteDraftAnchor? = null,
     isTocEntrySelection: Boolean = false,
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
@@ -343,6 +349,20 @@ fun BookContentView(
     val highlightsByLine =
         remember(highlightsByBook, bookId) {
             highlightsByBook[bookId].orEmpty().groupBy { it.lineId }
+        }
+
+    // Persisted user notes for this book: same per-book cache + group-by-line strategy as
+    // highlights. Noted ranges are underlined on the line; the notes pane shows the bodies.
+    val noteStore = LocalAppGraph.current.noteStore
+    LaunchedEffect(bookId, noteStore) { noteStore.loadBook(bookId) }
+    val notesByBook by noteStore.notesByBook.collectAsState()
+    val notesByLine =
+        remember(notesByBook, bookId, draftNote) {
+            val persisted = notesByBook[bookId].orEmpty().groupBy { it.lineId }
+            // Underline the pending draft range immediately, before it is saved.
+            val d = draftNote ?: return@remember persisted
+            val transient = UserNote(id = -1L, lineId = d.lineId, startOffset = d.startOffset, endOffset = d.endOffset, note = "")
+            persisted + (d.lineId to (persisted[d.lineId].orEmpty() + transient))
         }
 
     // Prefetch connection data for visible lines to avoid per-line DB calls
@@ -989,10 +1009,12 @@ fun BookContentView(
                                     // Stable per-line list: unhighlighted lines get the emptyList()
                                     // singleton, so only lines whose highlights changed recompose.
                                     val lineHighlights = highlightsByLine[line.id] ?: emptyList()
+                                    val lineNotes = notesByLine[line.id] ?: emptyList()
                                     LineItem(
                                         lineId = line.id,
                                         lineContent = line.content,
                                         userHighlights = lineHighlights,
+                                        userNotes = lineNotes,
                                         fontFamily = hebrewFontFamily,
                                         onClick = { isModifier -> onLineSelect(line, isModifier) },
                                         isSelected = isCurrentSelected,
@@ -1286,6 +1308,7 @@ private fun LineItem(
     annotatedCache: StableAnnotatedCache? = null,
     showDiacritics: Boolean = true,
     userHighlights: List<UserHighlight> = emptyList(),
+    userNotes: List<UserNote> = emptyList(),
     onLayoutWidthMeasure: (Int) -> Unit = {},
     onContextClick: () -> Unit = {},
 ) {
@@ -1404,7 +1427,8 @@ private fun LineItem(
             showDiacritics,
             originalPlainText,
         ) {
-            // User highlights first, then search highlights on top.
+            // User highlights first, then search highlights on top. Note markers are drawn
+            // separately (dotted underline) in drawBehind, not baked into the AnnotatedString.
             val withUserHighlights =
                 applyUserHighlights(
                     annotated = annotated,
@@ -1434,14 +1458,27 @@ private fun LineItem(
             }
         }
 
+    // Dotted grey underline marking the noted ranges (drawn from the text layout so it supports
+    // wrapping and RTL). Offsets are remapped to the displayed text when diacritics are hidden.
+    val noteRanges =
+        remember(userNotes, originalPlainText, showDiacritics, displayText) {
+            noteDisplayRanges(userNotes, originalPlainText, showDiacritics, displayText.length)
+        }
+    val noteUnderlineColor = JewelTheme.globalColors.text.info
+    var noteLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+
     Text(
         text = displayText,
         textAlign = TextAlign.Justify,
         fontFamily = fontFamily,
         lineHeight = (baseTextSize * lineHeight).sp,
-        modifier = textModifier,
+        modifier =
+            textModifier.drawBehind {
+                noteLayout?.let { drawNoteUnderlines(it, noteRanges, noteUnderlineColor) }
+            },
         inlineContent = inlineImageContent,
         onTextLayout = { result ->
+            noteLayout = result
             val cw = result.layoutInput.constraints.maxWidth
             if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
         },

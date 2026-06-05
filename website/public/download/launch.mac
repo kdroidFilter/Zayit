@@ -4,7 +4,10 @@ set -e
 
 mac_amd64_zip_url="https://github.com/kdroidFilter/Zayit/releases/latest/download/Zayit-mac-x64.zip"
 mac_aarch64_zip_url="https://github.com/kdroidFilter/Zayit/releases/latest/download/Zayit-mac-aarch64.zip"
-app_name="Zayit"
+# The released app bundle is named with the Hebrew app name.
+app_name="זית"
+# Previous releases shipped under this name; still removed on upgrade.
+legacy_app_names=("Zayit")
 
 arch=$( arch )
 if [[ "$arch" == "i386" ]]; then
@@ -31,17 +34,21 @@ trap cleanup EXIT
 echo "Downloading $app_name ..."
 curl -L --output "$tmpfile" --progress-bar "$mac_zip_url"
 
-# Quit the running app (if any) before replacing it.
-echo "Quitting any running instance of $app_name ..."
-osascript -e "quit app \"${app_name}\"" 2>/dev/null || true
-pkill -x "${app_name}" 2>/dev/null || true
+# Quit any running instance (current and legacy names) before replacing it.
+echo "Quitting any running instance ..."
+for name in "$app_name" "${legacy_app_names[@]}"; do
+  osascript -e "quit app \"${name}\"" 2>/dev/null || true
+  pkill -x "${name}" 2>/dev/null || true
+done
 
-# Remove any previous installation from both standard locations.
-for prev in "/Applications/${app_name}.app" "$HOME/Applications/${app_name}.app"; do
-  if [ -d "$prev" ]; then
-    echo "Removing previous version: $prev"
-    rm -rf "$prev"
-  fi
+# Remove any previous installation (current and legacy names) from both standard locations.
+for name in "$app_name" "${legacy_app_names[@]}"; do
+  for prev in "/Applications/${name}.app" "$HOME/Applications/${name}.app"; do
+    if [ -d "$prev" ]; then
+      echo "Removing previous version: $prev"
+      rm -rf "$prev"
+    fi
+  done
 done
 
 if [ -w /Applications ]; then

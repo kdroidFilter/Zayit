@@ -92,6 +92,10 @@
     <string name="settings_category_fonts">גופנים</string>
     <string name="settings_category_about">אודות</string>
     <string name="settings_category_conditions">תנאים</string>
+    <string name="settings_category_data">ניהול נתונים</string>
+    <string name="data_settings_title">ייצוא וייבוא נתונים</string>
+    <string name="data_export_button">ייצוא הנתונים שלי</string>
+    <string name="data_import_button">ייבוא נתונים</string>
     <string name="add_tab">הוסף לשונית</string>
     <string name="home">דף הבית</string>
     <string name="close_tab">סגור לשונית</string>

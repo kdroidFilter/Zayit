@@ -26,6 +26,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination
 import io.github.kdroidfilter.seforimapp.icons.BootstrapPersonLines
+import io.github.kdroidfilter.seforimapp.icons.FileArrowDown
 import io.github.kdroidfilter.seforimapp.icons.LucideInspectionPanel
 import io.github.kdroidfilter.seforimapp.icons.MaterialIconsDisplay_settings
 import io.github.kdroidfilter.seforimapp.icons.RadixFontRoman
@@ -38,6 +39,7 @@ import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.settings_category_about
 import seforimapp.seforimapp.generated.resources.settings_category_conditions
+import seforimapp.seforimapp.generated.resources.settings_category_data
 import seforimapp.seforimapp.generated.resources.settings_category_display
 import seforimapp.seforimapp.generated.resources.settings_category_fonts
 import seforimapp.seforimapp.generated.resources.settings_category_general
@@ -84,6 +86,11 @@ fun SettingsSidebar(
                 icon = RadixFontRoman,
             ),
             SettingsItem(
+                label = stringResource(Res.string.settings_category_data),
+                destination = SettingsDestination.Data,
+                icon = FileArrowDown,
+            ),
+            SettingsItem(
                 label = stringResource(Res.string.settings_category_about),
                 destination = SettingsDestination.About,
                 icon = TablerInfoSquare,
@@ -109,6 +116,7 @@ fun SettingsSidebar(
                         is SettingsDestination.Fonts -> currentRoute.contains("Fonts")
                         is SettingsDestination.About -> currentRoute.contains("About")
                         is SettingsDestination.Conditions -> currentRoute.contains("Conditions")
+                        is SettingsDestination.Data -> currentRoute.contains("Data")
                     }
                 SidebarItem(
                     label = item.label,

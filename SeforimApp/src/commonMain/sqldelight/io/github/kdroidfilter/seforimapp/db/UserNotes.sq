@@ -29,6 +29,9 @@ insert:
 INSERT INTO user_notes(bookId, lineId, startOffset, endOffset, note, quote, createdAt, updatedAt)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
+lastInsertRowId:
+SELECT last_insert_rowid();
+
 updateNote:
 UPDATE user_notes SET note = ?, updatedAt = ? WHERE id = ?;
 

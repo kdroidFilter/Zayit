@@ -170,7 +170,7 @@ class BookContentStateManager(
     }
 
     /**
-     * Met à jour uniquement le pane des notes
+     * Updates the notes pane state only.
      */
     fun updateNotes(
         save: Boolean = true,

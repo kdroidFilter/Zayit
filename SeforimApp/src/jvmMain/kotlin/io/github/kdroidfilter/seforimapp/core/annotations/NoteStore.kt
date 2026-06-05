@@ -59,7 +59,10 @@ class NoteStore(
         lineId: Long,
     ): List<UserNote> = _notesByBook.value[bookId].orEmpty().filter { it.lineId == lineId }
 
-    /** Adds a note anchored to [startOffset, endOffset). No-op for an empty/inverted range. */
+    /**
+     * Adds a note anchored to [startOffset, endOffset) and returns its new row id, or `null` for an
+     * empty/inverted range or a blank body (the insert is then skipped).
+     */
     suspend fun addNote(
         bookId: Long,
         lineId: Long,
@@ -68,20 +71,25 @@ class NoteStore(
         note: String,
         timestamp: Long,
         quote: String = "",
-    ): Unit =
+    ): Long? =
         withContext(Dispatchers.IO) {
-            if (startOffset >= endOffset || note.isBlank()) return@withContext
-            queries.insert(
-                bookId = bookId,
-                lineId = lineId,
-                startOffset = startOffset.toLong(),
-                endOffset = endOffset.toLong(),
-                note = note,
-                quote = quote,
-                createdAt = timestamp,
-                updatedAt = timestamp,
-            )
+            if (startOffset >= endOffset || note.isBlank()) return@withContext null
+            val id =
+                queries.transactionWithResult {
+                    queries.insert(
+                        bookId = bookId,
+                        lineId = lineId,
+                        startOffset = startOffset.toLong(),
+                        endOffset = endOffset.toLong(),
+                        note = note,
+                        quote = quote,
+                        createdAt = timestamp,
+                        updatedAt = timestamp,
+                    )
+                    queries.lastInsertRowId().executeAsOne()
+                }
             refreshBook(bookId)
+            id
         }
 
     /** Updates a note's text; a blank text deletes it instead. */

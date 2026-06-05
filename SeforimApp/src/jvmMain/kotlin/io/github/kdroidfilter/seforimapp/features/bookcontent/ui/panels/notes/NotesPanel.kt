@@ -111,6 +111,9 @@ fun NotesPanel(
     val currentOnEvent by rememberUpdatedState(onEvent)
     val focusManager = LocalFocusManager.current
 
+    // Idempotent: keeps the pane self-contained instead of relying on BookContentView's load.
+    LaunchedEffect(bookId, noteStore) { noteStore.loadBook(bookId) }
+
     val notesByBook by noteStore.notesByBook.collectAsState()
     val allNotes =
         remember(notesByBook, bookId, selectedLineIds) {
@@ -203,23 +206,16 @@ fun NotesPanel(
                                                     draftCreatedId = null
                                                 }
                                                 text.isNotBlank() && id == null -> {
-                                                    noteStore.addNote(
-                                                        bookId = bookId,
-                                                        lineId = effectiveDraft.lineId,
-                                                        startOffset = effectiveDraft.startOffset,
-                                                        endOffset = effectiveDraft.endOffset,
-                                                        note = text,
-                                                        timestamp = now,
-                                                        quote = effectiveDraft.quote,
-                                                    )
                                                     draftCreatedId =
-                                                        noteStore
-                                                            .notesForLine(bookId, effectiveDraft.lineId)
-                                                            .filter {
-                                                                it.startOffset == effectiveDraft.startOffset &&
-                                                                    it.endOffset == effectiveDraft.endOffset
-                                                            }.maxByOrNull { it.id }
-                                                            ?.id
+                                                        noteStore.addNote(
+                                                            bookId = bookId,
+                                                            lineId = effectiveDraft.lineId,
+                                                            startOffset = effectiveDraft.startOffset,
+                                                            endOffset = effectiveDraft.endOffset,
+                                                            note = text,
+                                                            timestamp = now,
+                                                            quote = effectiveDraft.quote,
+                                                        )
                                                 }
                                                 text.isNotBlank() && id != null -> {
                                                     noteStore.updateNote(bookId, id, text, now)
@@ -258,8 +254,10 @@ fun NotesPanel(
             }
         }
 
-        // Message + hint shown only while the line carries no saved note.
-        if (allNotes.isEmpty()) {
+        // Hint shown while drafting the first note of a line. Skipped when no line is selected
+        // (effectiveDraft == null) — the centered "no selection" message already covers that, so
+        // the two empty-state messages never stack.
+        if (allNotes.isEmpty() && effectiveDraft != null) {
             Text(
                 text = stringResource(Res.string.no_notes_saved),
                 textAlign = TextAlign.Center,

@@ -16,8 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,18 +40,15 @@ import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.InlineInformationBanner
 import org.jetbrains.jewel.ui.component.InlineSuccessBanner
 import org.jetbrains.jewel.ui.component.InlineWarningBanner
 import org.jetbrains.jewel.ui.component.Link
-import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.theme.inlineBannerStyle
 import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
@@ -66,12 +61,6 @@ import seforimapp.seforimapp.generated.resources.settings_keep_screen_awake
 import seforimapp.seforimapp.generated.resources.settings_keep_screen_awake_description
 import seforimapp.seforimapp.generated.resources.settings_persist_session
 import seforimapp.seforimapp.generated.resources.settings_persist_session_description
-import seforimapp.seforimapp.generated.resources.settings_reset_app
-import seforimapp.seforimapp.generated.resources.settings_reset_confirm
-import seforimapp.seforimapp.generated.resources.settings_reset_confirm_no
-import seforimapp.seforimapp.generated.resources.settings_reset_confirm_yes
-import seforimapp.seforimapp.generated.resources.settings_reset_done
-import seforimapp.seforimapp.generated.resources.settings_reset_warning
 import seforimapp.seforimapp.generated.resources.update_available_banner
 import seforimapp.seforimapp.generated.resources.update_check_failed
 import seforimapp.seforimapp.generated.resources.update_checking
@@ -130,11 +119,6 @@ private fun GeneralSettingsView(
                 description = Res.string.settings_keep_screen_awake_description,
                 checked = state.keepScreenAwakeOnBook,
                 onCheckedChange = { onEvent(GeneralSettingsEvents.SetKeepScreenAwakeOnBook(it)) },
-            )
-
-            ResetSection(
-                resetDone = state.resetDone,
-                onReset = { onEvent(GeneralSettingsEvents.ResetApp) },
             )
         }
     }
@@ -250,63 +234,6 @@ private fun UpdateStatusBanner(updateState: UpdateUiState) {
 
         UpdateUiState.Idle, UpdateUiState.Checking ->
             InlineInformationBanner(text = stringResource(Res.string.update_checking))
-    }
-}
-
-@Composable
-private fun ResetSection(
-    resetDone: Boolean,
-    onReset: () -> Unit,
-) {
-    val shape = RoundedCornerShape(8.dp)
-    var showConfirmation by remember { mutableStateOf(false) }
-
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(shape)
-                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-                .background(JewelTheme.globalColors.panelBackground)
-                .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        if (showConfirmation) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(Res.string.settings_reset_confirm),
-                    color = JewelTheme.globalColors.text.warning,
-                )
-                DefaultButton(onClick = {
-                    showConfirmation = false
-                    onReset()
-                }) {
-                    Text(text = stringResource(Res.string.settings_reset_confirm_yes))
-                }
-                OutlinedButton(onClick = { showConfirmation = false }) {
-                    Text(text = stringResource(Res.string.settings_reset_confirm_no))
-                }
-            }
-        } else {
-            DefaultButton(onClick = { showConfirmation = true }) {
-                Text(text = stringResource(Res.string.settings_reset_app))
-            }
-        }
-
-        if (resetDone) {
-            InlineWarningBanner(
-                style = JewelTheme.inlineBannerStyle.warning,
-                text = stringResource(Res.string.settings_reset_done),
-            )
-        } else {
-            InlineWarningBanner(
-                style = JewelTheme.inlineBannerStyle.warning,
-                text = stringResource(Res.string.settings_reset_warning),
-            )
-        }
     }
 }
 

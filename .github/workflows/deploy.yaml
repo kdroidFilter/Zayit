@@ -185,22 +185,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew :SeforimApp:packageGraalvmDmg
+          # .dmg = manual download, .zip (+ .blockmap) = auto-update feed. Both are
+          # built by Gradle and shipped under electron-builder's own versioned names
+          # (no renaming): latest-mac.yml is regenerated from them downstream, and
+          # launch.mac / the website resolve the assets via the GitHub API, so no
+          # fixed filename is needed. The .blockmap powers differential auto-updates.
+          ./gradlew :SeforimApp:packageGraalvmDmg :SeforimApp:packageGraalvmZip
           mkdir -p staging
 
           SEARCH_ROOT="SeforimApp/build/compose/binaries/main"
-          # `|| true` so a non-matching/SIGPIPE find never aborts the step under set -e.
-          DMG="$(find "$SEARCH_ROOT/graalvm-dmg" -name '*.dmg' | head -n1 || true)"
-          [ -n "$DMG" ] || { echo "::error::No .dmg produced"; exit 1; }
-          cp "$DMG" "staging/Zayit-${VERSION}-mac-${{ matrix.jdk_arch }}.dmg"
+          find "$SEARCH_ROOT/graalvm-dmg" -name '*.dmg' -exec cp {} staging/ \;
+          find "$SEARCH_ROOT/graalvm-zip" \( -name '*.zip' -o -name '*.zip.blockmap' \) -exec cp {} staging/ \;
 
-          # Locate the codesigned .app wherever the Nucleus plugin emits it
-          # (binaries/main/app locally, graalvm-dmg/.app-image on CI runners).
-          APP_BUNDLE="$(find "$SEARCH_ROOT" -type d -name '*.app' | head -n1 || true)"
-          [ -n "$APP_BUNDLE" ] || { echo "::error::No .app bundle found under $SEARCH_ROOT"; exit 1; }
-          APP_DIR="$(dirname "$APP_BUNDLE")"
-          # Version-less name, kept in sync with website/public/download/launch.mac.
-          (cd "$APP_DIR" && zip -r -q "${GITHUB_WORKSPACE}/staging/Zayit-mac-${{ matrix.jdk_arch }}.zip" "$(basename "$APP_BUNDLE")")
+          ls staging/*.dmg >/dev/null 2>&1 || { echo "::error::No .dmg produced"; exit 1; }
+          ls staging/*.zip >/dev/null 2>&1 || { echo "::error::No .zip produced"; exit 1; }
 
       - name: Upload release assets
         uses: actions/upload-artifact@v6

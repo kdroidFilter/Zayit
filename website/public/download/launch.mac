@@ -1,21 +1,41 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
-mac_amd64_zip_url="https://github.com/kdroidFilter/Zayit/releases/latest/download/Zayit-mac-x64.zip"
-mac_aarch64_zip_url="https://github.com/kdroidFilter/Zayit/releases/latest/download/Zayit-mac-aarch64.zip"
+REPO="kdroidFilter/Zayit"
+API_URL="https://api.github.com/repos/${REPO}/releases/latest"
+
 # The released app bundle is named with the Hebrew app name.
 app_name="זית"
 # Previous releases shipped under this name; still removed on upgrade.
 legacy_app_names=("Zayit")
 
-arch=$( arch )
-if [[ "$arch" == "i386" ]]; then
-  mac_zip_url="$mac_amd64_zip_url"
-elif [[ "$arch" == "arm64" ]]; then
-  mac_zip_url="$mac_aarch64_zip_url"
-else
-  echo "Unsupported CPU architecture: $arch"
+# Map the host architecture to electron-builder's asset suffix (arm64 / x64).
+arch="$(uname -m)"
+case "$arch" in
+  arm64)  mac_arch="arm64" ;;
+  x86_64) mac_arch="x64" ;;
+  *)
+    echo "Unsupported CPU architecture: $arch"
+    exit 1
+    ;;
+esac
+
+# Resolve the versioned .zip asset (e.g. zayit-1.2.3-mac-arm64.zip) from the latest
+# release. Assets are shipped under electron-builder's own names, so we discover the
+# URL via the API instead of relying on a fixed filename. The trailing `$` keeps us
+# from matching the companion `.zip.blockmap`.
+echo "Querying latest release metadata from GitHub..."
+release_json="$(curl -fsSL "${API_URL}")"
+
+echo "Looking for macOS .zip asset for architecture: ${mac_arch}..."
+mac_zip_url="$(printf '%s\n' "${release_json}" \
+  | grep -Eo "https://github\.com/${REPO}/releases/download/[^\"]+" \
+  | grep -E -- "-mac-${mac_arch}\.zip$" \
+  | head -n 1 || true)"
+
+if [ -z "${mac_zip_url}" ]; then
+  echo "Could not find a macOS .zip asset for ${mac_arch} in the latest release."
   exit 1
 fi
 
@@ -32,7 +52,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Downloading $app_name ..."
-curl -L --output "$tmpfile" --progress-bar "$mac_zip_url"
+curl -fL --output "$tmpfile" --progress-bar "$mac_zip_url"
 
 # Quit any running instance (current and legacy names) before replacing it.
 echo "Quitting any running instance ..."

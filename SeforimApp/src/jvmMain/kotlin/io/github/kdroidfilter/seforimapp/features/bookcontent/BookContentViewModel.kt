@@ -700,6 +700,16 @@ class BookContentViewModel(
         val resolvedBook = repository.getBookCore(book.id) ?: book
         val previousBook = stateManager.state.value.navigation.selectedBook
 
+        // On a book change, flip to loading BEFORE selecting the new book. selectBook() triggers a
+        // recomposition that tears down the previous book's LazyColumn, which emits one last scroll
+        // update; with isLoading already true, updateContentScrollPosition() drops that stale write
+        // (otherwise it would overwrite the reset anchor with a line from the previous book and stall
+        // the restore on a ~1.5s missing-anchor lookup). It also shows the loader, which remounts the
+        // content fresh once the new pager is ready.
+        if (previousBook?.id != resolvedBook.id) {
+            stateManager.setLoading(true)
+        }
+
         navigationUseCase.selectBook(resolvedBook)
         // Expand navigation tree up to the selected book's category
         viewModelScope.launch { runSuspendCatching { navigationUseCase.expandPathToBook(resolvedBook) } }

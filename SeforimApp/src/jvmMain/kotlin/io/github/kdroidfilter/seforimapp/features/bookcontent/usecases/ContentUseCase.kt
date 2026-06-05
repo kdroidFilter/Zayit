@@ -294,6 +294,14 @@ class ContentUseCase(
         scrollIndex: Int,
         scrollOffset: Int,
     ) {
+        // Ignore scroll saves while a (re)load is in progress. During a same-tab book switch the
+        // outgoing book's LazyColumn emits a final scroll update; without this guard it overwrites
+        // the freshly-reset anchor with a line from the previous book, so the new book opens at the
+        // wrong position and stalls ~1.5s on the missing-anchor lookup in the restore effect.
+        if (stateManager.state.value.isLoading) {
+            return
+        }
+
         debugln { "Updating scroll: anchor=$anchorId, anchorIndex=$anchorIndex, scrollIndex=$scrollIndex, offset=$scrollOffset" }
 
         stateManager.updateContent {

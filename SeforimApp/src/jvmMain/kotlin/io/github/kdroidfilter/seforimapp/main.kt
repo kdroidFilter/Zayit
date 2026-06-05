@@ -10,29 +10,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.kdroid.gematria.converter.toHebrewNumeral
+import dev.nucleusframework.application.aotTraining
+import dev.nucleusframework.application.nucleusApplication
+import dev.nucleusframework.core.runtime.NucleusApp
+import dev.nucleusframework.energymanager.EnergyManager
+import dev.nucleusframework.window.jewel.JewelDecoratedWindow
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.metroViewModel
-import io.github.kdroidfilter.nucleus.aot.runtime.AotRuntime
-import io.github.kdroidfilter.nucleus.core.runtime.ExecutableRuntime
-import io.github.kdroidfilter.nucleus.core.runtime.SingleInstanceManager
-import io.github.kdroidfilter.nucleus.energymanager.EnergyManager
-import io.github.kdroidfilter.nucleus.graalvm.GraalVmInitializer
-import io.github.kdroidfilter.nucleus.launcher.windows.WindowsJumpListManager
-import io.github.kdroidfilter.nucleus.notification.common.notification
-import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
-import io.github.kdroidfilter.platformtools.getAppVersion
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
+import io.github.kdroidfilter.seforimapp.core.deeplink.ContentDeepLinkHandler
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppDockMenu
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppJumpList
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppLinuxQuicklist
@@ -40,21 +38,24 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.AppNativeM
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalIsTouchMode
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.detectTouchMode
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseUpdateWindow
 import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
+import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
+import io.github.kdroidfilter.seforimapp.features.update.UpdateDialog
 import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
-import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateChecker
 import io.github.kdroidfilter.seforimapp.logger.infoln
 import io.github.kdroidfilter.seforimapp.logger.isDevEnv
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
@@ -68,11 +69,11 @@ import seforimapp.seforimapp.generated.resources.*
 import java.awt.*
 import java.awt.datatransfer.StringSelection
 import java.awt.event.KeyEvent
-import java.net.URI
 import java.util.*
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalFoundationApi::class)
-private const val AOT_TRAINING_DURATION_MS = 45_000L
+private val AOT_TRAINING_DURATION = 45.seconds
 
 private data class StartupState(
     val showOnboarding: Boolean,
@@ -118,14 +119,13 @@ private fun initializeSentry() {
     Sentry.init { options ->
         options.dsn = "https://09cbadaf522c567b431dd4384c8f080b@o4510855773093888.ingest.de.sentry.io/4510857007726672"
         options.environment = sentryEnvironment
-        options.release = getAppVersion()
+        options.release = NucleusApp.version
         options.isDebug = isDevEnv
     }
     infoln { "Sentry initialized for environment '$sentryEnvironment'." }
 }
 
 fun main(args: Array<String>) {
-    GraalVmInitializer.initialize()
     Locale.setDefault(Locale.Builder().setLanguage("he").build())
 
     val loggingEnv = System.getenv("SEFORIMAPP_LOGGING")?.lowercase()
@@ -136,17 +136,7 @@ fun main(args: Array<String>) {
     // Roll back any half-applied seforim.db delta update from a previous
     // launch BEFORE the SQLDelight repository opens the DB. Cheap stat()
     // when nothing is in flight; never throws (failures are logged).
-    io.github.kdroidfilter.seforimapp.framework.update.DbDeltaRecoveryBootstrap.runOnce()
-
-    if (AotRuntime.isTraining()) {
-        Thread({
-            Thread.sleep(AOT_TRAINING_DURATION_MS)
-            kotlin.system.exitProcess(0)
-        }, "aot-timer").apply {
-            isDaemon = false
-            start()
-        }
-    }
+//    DbDeltaRecoveryBootstrap.runOnce()
 
     // Force OpenGL rendering backend on Windows if enabled (must be set before Skia initialization)
     if (PlatformInfo.isWindows && AppSettings.isUseOpenGlEnabled()) {
@@ -155,17 +145,9 @@ fun main(args: Array<String>) {
 
     val appId = "io.github.kdroidfilter.seforimapp"
 
-    // Must be set before any window creation for jump lists to work on unpackaged Windows apps
-    if (PlatformInfo.isWindows) {
-        WindowsJumpListManager.setProcessAppId(appId)
-    }
+    nucleusApplication(args) {
+        aotTraining(duration = AOT_TRAINING_DURATION)
 
-    SingleInstanceManager.configuration =
-        SingleInstanceManager.Configuration(
-            lockIdentifier = appId,
-        )
-
-    application {
         FileKit.init(appId)
 
         val windowState =
@@ -174,27 +156,12 @@ fun main(args: Array<String>) {
                 placement = WindowPlacement.Maximized,
             )
 
-        var isWindowVisible by remember { mutableStateOf(true) }
+        val isWindowVisible by remember { mutableStateOf(true) }
         val pendingDeepLink = remember { MutableStateFlow<String?>(null) }
 
-        val isSingleInstance =
-            SingleInstanceManager.isSingleInstance(
-                onRestoreFileCreated =
-                    args.firstOrNull { it.startsWith("seforim://") }?.let { deepLink ->
-                        { toFile().writeText(deepLink) }
-                    },
-                onRestoreRequest = {
-                    isWindowVisible = true
-                    windowState.isMinimized = false
-                    Window.getWindows().first().toFront()
-                    val content = toFile().readText().trim()
-                    if (content.isNotEmpty()) pendingDeepLink.value = content
-                },
-            )
-        if (!isSingleInstance) {
-            exitApplication()
-            return@application
-        }
+        // Pick up the deep link CLI arg (cold-start) and any URI relayed by a second instance
+        // through the automatic single-instance bridge.
+        onDeepLink { uri -> pendingDeepLink.value = uri.toString() }
 
         // Create the application graph via Metro and expose via CompositionLocal
         val appGraph = remember { createGraph<AppGraph>() }
@@ -292,6 +259,7 @@ fun main(args: Array<String>) {
         CompositionLocalProvider(
             LocalAppGraph provides appGraph,
             LocalMetroViewModelFactory provides appGraph.metroViewModelFactory,
+            LocalLayoutDirection provides LayoutDirection.Rtl,
         ) {
             val themeDefinition = ThemeUtils.buildThemeDefinition()
             val componentStyling = ThemeUtils.buildComponentStyling()
@@ -323,6 +291,7 @@ fun main(args: Array<String>) {
                             settingsWindowViewModel = settingsWindowViewModel,
                             onQuit = {
                                 SessionManager.saveIfEnabled(appGraph)
+                                appGraph.appUpdateService.installPendingOnClose()
                                 exitApplication()
                             },
                         )
@@ -339,6 +308,14 @@ fun main(args: Array<String>) {
                     AppJumpList(
                         desktopManager = appGraph.desktopManager,
                         tabsViewModel = appGraph.tabsViewModel,
+                        pendingDeepLink = pendingDeepLink,
+                        onClearDeepLink = { pendingDeepLink.value = null },
+                    )
+
+                    // Resolve shareable zayit:// content deep links (cross-platform)
+                    ContentDeepLinkHandler(
+                        tabsViewModel = appGraph.tabsViewModel,
+                        repository = appGraph.repository,
                         pendingDeepLink = pendingDeepLink,
                         onClearDeepLink = { pendingDeepLink.value = null },
                     )
@@ -388,14 +365,18 @@ fun main(args: Array<String>) {
 
                     JewelDecoratedWindow(
                         onCloseRequest = {
-                            // Persist session if enabled, then exit
+                            // Persist session if enabled, apply any pending silent update, then exit.
+                            // installPendingOnClose() launches the installer and exits the process
+                            // itself when a silent (Win/Mac PATCH) update is ready.
                             SessionManager.saveIfEnabled(appGraph)
+                            appGraph.appUpdateService.installPendingOnClose()
                             exitApplication()
                         },
                         title = windowTitle,
                         icon = if (PlatformInfo.isMacOS) null else painterResource(Res.drawable.AppIcon),
                         state = windowState,
                         visible = isWindowVisible,
+                        minimumSize = DpSize(600.dp, 300.dp),
                         onKeyEvent = { keyEvent ->
                             if (keyEvent.type == KeyEventType.KeyDown) {
                                 // Read fresh state to avoid stale captures in cached lambda
@@ -454,12 +435,27 @@ fun main(args: Array<String>) {
                         },
                     ) {
                         CompositionLocalProvider(
-                            LocalLayoutDirection provides LayoutDirection.Rtl,
                             LocalWindowViewModelStoreOwner provides windowViewModelOwner,
                             LocalViewModelStoreOwner provides windowViewModelOwner,
                         ) {
-                            LaunchedEffect(Unit) {
-                                window.minimumSize = Dimension(600, 300)
+                            // Settings dialog rendered here so it inherits LocalLayoutDirection Rtl
+                            // and the full CompositionLocalContext — including theme and user locals —
+                            // is bridged into the dialog's Tao ComposeScene.
+                            val settingsWindowState by settingsWindowViewModel.state.collectAsState()
+                            if (settingsWindowState.isVisible) {
+                                SettingsWindow(
+                                    onClose = { settingsWindowViewModel.onEvent(SettingsWindowEvents.OnClose) },
+                                    initialDestination = settingsWindowState.initialDestination,
+                                )
+                            }
+                            // App update dialog, hoisted here so it inherits the full
+                            // CompositionLocalContext (theme, Rtl) like SettingsWindow.
+                            val updateDialogVisible by appGraph.appUpdateService.dialogVisible.collectAsState()
+                            if (updateDialogVisible) {
+                                UpdateDialog(
+                                    service = appGraph.appUpdateService,
+                                    onClose = { appGraph.appUpdateService.closeDialog() },
+                                )
                             }
                             MainTitleBar()
                             LaunchedEffect(state.isMinimized) {
@@ -467,6 +463,21 @@ fun main(args: Array<String>) {
                                     EnergyManager.enableEfficiencyMode()
                                 } else {
                                     EnergyManager.disableEfficiencyMode()
+                                }
+                            }
+
+                            // Keep the screen awake while a book is open in the current tab and the
+                            // window is focused — opt-out via the General settings (enabled by default).
+                            val keepAwakeEnabled by AppSettings.keepScreenAwakeOnBookFlow.collectAsState()
+                            val shouldKeepScreenAwake =
+                                keepAwakeEnabled &&
+                                    state.isActive &&
+                                    selectedTab?.destination is TabsDestination.BookContent
+                            LaunchedEffect(shouldKeepScreenAwake) {
+                                if (shouldKeepScreenAwake) {
+                                    EnergyManager.keepScreenAwake()
+                                } else {
+                                    EnergyManager.releaseScreenAwake()
                                 }
                             }
 
@@ -478,49 +489,23 @@ fun main(args: Array<String>) {
                                     sessionRestored = true
                                 }
                             }
-                            // Check for updates once at startup
-                            val updateNotificationTitle = stringResource(Res.string.update_available_toast)
-                            val updateNotificationMessage = stringResource(Res.string.update_notification_message)
-                            val updateNotificationButton = stringResource(Res.string.update_download_action)
+                            // Check for updates once at startup. PATCH updates are pre-downloaded
+                            // here; MINOR/MAJOR surface the title-bar icon + UpdateDialog.
                             LaunchedEffect(Unit) {
-                                if (!mainAppState.updateCheckDone.value) {
-                                    when (val result = AppUpdateChecker.checkForUpdate()) {
-                                        is AppUpdateChecker.UpdateCheckResult.UpdateAvailable -> {
-                                            if (true) return@LaunchedEffect
-                                            mainAppState.setUpdateAvailable(result.latestVersion)
-
-                                            if (!ExecutableRuntime.isDev()) {
-                                                // Send system notification
-                                                notification(
-                                                    title = updateNotificationTitle,
-                                                    message = updateNotificationMessage,
-                                                    onActivated = {
-                                                        Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
-                                                    },
-                                                ) {
-                                                    button(updateNotificationButton) {
-                                                        Desktop.getDesktop().browse(URI(AppUpdateChecker.DOWNLOAD_URL))
-                                                    }
-                                                }.send()
-                                            }
-                                        }
-
-                                        is AppUpdateChecker.UpdateCheckResult.UpToDate -> {
-                                            mainAppState.markUpdateCheckDone()
-                                        }
-
-                                        is AppUpdateChecker.UpdateCheckResult.Error -> {
-                                            mainAppState.markUpdateCheckDone()
-                                        }
-                                    }
-                                }
+                                appGraph.appUpdateService.checkOnStartup()
                             }
+
+                            // Track whether the user is interacting by touch so hover-gated
+                            // controls (e.g. pane close buttons) stay reachable; published
+                            // app-wide via LocalIsTouchMode.
+                            var isTouchMode by remember { mutableStateOf(false) }
 
                             // Intercept key combos early to avoid focus traversal consuming Tab
                             Box(
                                 modifier =
                                     Modifier
                                         .fillMaxSize()
+                                        .detectTouchMode { isTouchMode = it }
                                         .onPreviewKeyEvent { keyEvent ->
                                             if (keyEvent.type == KeyEventType.KeyDown) {
                                                 val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
@@ -610,7 +595,11 @@ fun main(args: Array<String>) {
                                                 false
                                             }
                                         },
-                            ) { TabsContent() }
+                            ) {
+                                CompositionLocalProvider(LocalIsTouchMode provides isTouchMode) {
+                                    TabsContent()
+                                }
+                            }
                         }
                     }
                 }

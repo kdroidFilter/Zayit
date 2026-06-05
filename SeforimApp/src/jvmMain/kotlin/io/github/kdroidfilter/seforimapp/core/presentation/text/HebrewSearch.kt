@@ -7,19 +7,21 @@ package io.github.kdroidfilter.seforimapp.core.presentation.text
  * so we can highlight the right character ranges.
  */
 
+/** True for nikud (vowel points) and ta'amim (cantillation) characters. */
+private fun isNikudOrTeamim(c: Char): Boolean =
+    (c.code in 0x0591..0x05AF) ||
+        // teamim
+        (c.code in 0x05B0..0x05BD) ||
+        // nikud + meteg
+        (c == '\u05C1') ||
+        (c == '\u05C2') ||
+        (c == '\u05C7')
+
 /**
  * Returns the string without nikud+teamim and an index map from plain index -> original index.
  */
-internal fun stripDiacriticsWithMap(src: String): Pair<String, IntArray> {
-    val nikudOrTeamim: (Char) -> Boolean = { c ->
-        (c.code in 0x0591..0x05AF) ||
-            // teamim
-            (c.code in 0x05B0..0x05BD) ||
-            // nikud + meteg
-            (c == '\u05C1') ||
-            (c == '\u05C2') ||
-            (c == '\u05C7')
-    }
+fun stripDiacriticsWithMap(src: String): Pair<String, IntArray> {
+    val nikudOrTeamim: (Char) -> Boolean = { c -> isNikudOrTeamim(c) }
     val out = StringBuilder(src.length)
     val map = IntArray(src.length)
     var count = 0
@@ -32,6 +34,30 @@ internal fun stripDiacriticsWithMap(src: String): Pair<String, IntArray> {
             map[count++] = i
         }
         i++
+    }
+    val arr = if (count == map.size) map else map.copyOf(count)
+    return out.toString() to arr
+}
+
+/**
+ * Strips ONLY nikud+teamim (keeping geresh/gershayim ׳ ״), mirroring
+ * [io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils.removeAllDiacritics] — the
+ * function that produces the text actually rendered when diacritics are hidden. Returns the
+ * stripped string plus an index map from stripped index -> original index.
+ *
+ * Use this (not [stripDiacriticsWithMap], which also drops ׳ ״ for search matching) whenever
+ * offsets must line up with the displayed, diacritics-hidden text.
+ */
+fun stripNikudTeamimWithMap(src: String): Pair<String, IntArray> {
+    val out = StringBuilder(src.length)
+    val map = IntArray(src.length)
+    var count = 0
+    for (i in src.indices) {
+        val ch = src[i]
+        if (!isNikudOrTeamim(ch)) {
+            out.append(ch)
+            map[count++] = i
+        }
     }
     val arr = if (count == map.size) map else map.copyOf(count)
     return out.toString() to arr
@@ -69,6 +95,43 @@ internal fun mapToOrigIndex(
     if (mapToOrig.isEmpty()) return plainIndex
     val idx = plainIndex.coerceIn(0, mapToOrig.size - 1)
     return mapToOrig[idx]
+}
+
+/**
+ * Maps original index -> stripped index for the diacritics-hidden display text. Strips ONLY
+ * nikud+teamim (keeps ׳ ״), matching `HebrewTextUtils.removeAllDiacritics` so offsets line up
+ * with what is rendered. `result[origIndex]` is the stripped index, or -1 if that character
+ * was stripped.
+ */
+fun createOriginalToStrippedMap(src: String): IntArray {
+    val result = IntArray(src.length) { -1 }
+    var strippedIndex = 0
+    for (i in src.indices) {
+        if (!isNikudOrTeamim(src[i])) {
+            result[i] = strippedIndex
+            strippedIndex++
+        }
+    }
+    return result
+}
+
+/**
+ * Maps an [originalOffset] (with diacritics) to the stripped text. If it points to a
+ * stripped character, returns the next valid stripped position.
+ */
+fun mapOriginalToStripped(
+    originalOffset: Int,
+    originalToStrippedMap: IntArray,
+): Int {
+    if (originalToStrippedMap.isEmpty()) return originalOffset
+    val strippedLength = originalToStrippedMap.count { it >= 0 }
+    if (originalOffset >= originalToStrippedMap.size) return strippedLength
+    val safeOffset = originalOffset.coerceAtLeast(0)
+    if (originalToStrippedMap[safeOffset] >= 0) return originalToStrippedMap[safeOffset]
+    for (i in safeOffset until originalToStrippedMap.size) {
+        if (originalToStrippedMap[i] >= 0) return originalToStrippedMap[i]
+    }
+    return strippedLength
 }
 
 /**

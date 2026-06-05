@@ -21,14 +21,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
+import io.github.kdroidfilter.seforimapp.catalog.TocQuickLink as PresetTocQuickLink
 
 /** Quick TOC jump menu for a specific book. */
 data class TocQuickLink(
@@ -114,58 +115,27 @@ fun TocJumpDropdown(
 }
 
 @Composable
-fun TocJumpDropdownByIds(
-    title: String,
+fun TocJumpDropdownForBook(
     bookId: Long,
-    tocTextIds: ImmutableList<Long>,
+    links: ImmutableList<PresetTocQuickLink>,
     onEvent: (BookContentEvent) -> Unit,
     modifier: Modifier = Modifier,
     popupWidthMultiplier: Float = 1.5f,
     minPopupHeight: Dp = Dp.Unspecified,
     maxPopupHeight: Dp = 360.dp,
 ) {
-    val loader: suspend () -> List<TocQuickLink> = {
-        val bookMap = PrecomputedCatalog.TOC_BY_TOC_TEXT_ID[bookId].orEmpty()
-        tocTextIds.mapNotNull { tx ->
-            val ql = bookMap[tx] ?: return@mapNotNull null
-            TocQuickLink(ql.label, ql.tocEntryId, ql.firstLineId)
-        }
-    }
+    val catalogAccess = LocalAppGraph.current.catalogAccess
+    val title = catalogAccess.bookTitle(bookId) ?: return
+    val items = links.map { TocQuickLink(it.label, it.tocEntryId, it.firstLineId) }.toImmutableList()
 
     TocJumpDropdown(
         title = title,
         bookId = bookId,
         onEvent = onEvent,
         modifier = modifier,
-        items = persistentListOf(),
+        items = items,
         popupWidthMultiplier = popupWidthMultiplier,
         minPopupHeight = minPopupHeight,
         maxPopupHeight = maxPopupHeight,
-        prepareItems = loader,
     )
-}
-
-@Composable
-fun TocJumpDropdownByIds(
-    bookId: Long,
-    tocTextIds: ImmutableList<Long>,
-    onEvent: (BookContentEvent) -> Unit,
-    modifier: Modifier = Modifier,
-    popupWidthMultiplier: Float = 1.5f,
-    minPopupHeight: Dp = Dp.Unspecified,
-    maxPopupHeight: Dp = 360.dp,
-) {
-    val t = PrecomputedCatalog.BOOK_TITLES[bookId]
-    if (t != null) {
-        TocJumpDropdownByIds(
-            title = t,
-            bookId = bookId,
-            tocTextIds = tocTextIds,
-            onEvent = onEvent,
-            modifier = modifier,
-            popupWidthMultiplier = popupWidthMultiplier,
-            minPopupHeight = minPopupHeight,
-            maxPopupHeight = maxPopupHeight,
-        )
-    }
 }

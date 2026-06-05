@@ -33,7 +33,6 @@ class DbDeltaUpdateViewModel(
     private val deltaService: DbDeltaUpdateService,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
-
     private val mutableState = MutableStateFlow(DbDeltaUpdateState())
     val state = mutableState.asStateFlow()
 
@@ -50,46 +49,55 @@ class DbDeltaUpdateViewModel(
         if (current.phase != null) return // already running
 
         viewModelScope.launch {
-            mutableState.value = DbDeltaUpdateState(
-                phase = DbDeltaUpdateState.Phase.CheckingForUpdates,
-                message = "Checking server for new database delta…",
-            )
-            try {
-                val outcome = withContext(ioDispatcher) {
-                    deltaService.checkAndApply { _, _, status ->
-                        // The orchestrator pumps statuses like
-                        // "downloading patch files", "applying sqlite delta",
-                        // "updating lucene", "updating catalog", "done".
-                        val phase = when {
-                            "download" in status -> DbDeltaUpdateState.Phase.Downloading
-                            "sqlite" in status -> DbDeltaUpdateState.Phase.Applying
-                            "lucene" in status || "catalog" in status ->
-                                DbDeltaUpdateState.Phase.UpdatingIndex
-                            else -> mutableState.value.phase
-                        }
-                        mutableState.value = mutableState.value.copy(
-                            phase = phase,
-                            message = status,
-                        )
-                    }
-                }
-                mutableState.value = when (outcome) {
-                    DbDeltaUpdateService.Outcome.UpToDate -> DbDeltaUpdateState(
-                        message = "Database is up to date.",
-                    )
-                    is DbDeltaUpdateService.Outcome.Applied -> DbDeltaUpdateState(
-                        message = "Applied ${outcome.deltaCount} delta(s).",
-                        lastAppliedCount = outcome.deltaCount,
-                    )
-                    DbDeltaUpdateService.Outcome.NeedsFullBundle -> DbDeltaUpdateState(
-                        message = "Your local database is too old for an incremental update — please download the full bundle.",
-                        needsFullBundle = true,
-                    )
-                }
-            } catch (t: Throwable) {
-                mutableState.value = DbDeltaUpdateState(
-                    errorMessage = "Update failed: ${t.message ?: t.javaClass.simpleName}",
+            mutableState.value =
+                DbDeltaUpdateState(
+                    phase = DbDeltaUpdateState.Phase.CheckingForUpdates,
+                    message = "Checking server for new database delta…",
                 )
+            try {
+                val outcome =
+                    withContext(ioDispatcher) {
+                        deltaService.checkAndApply { _, _, status ->
+                            // The orchestrator pumps statuses like
+                            // "downloading patch files", "applying sqlite delta",
+                            // "updating lucene", "updating catalog", "done".
+                            val phase =
+                                when {
+                                    "download" in status -> DbDeltaUpdateState.Phase.Downloading
+                                    "sqlite" in status -> DbDeltaUpdateState.Phase.Applying
+                                    "lucene" in status || "catalog" in status ->
+                                        DbDeltaUpdateState.Phase.UpdatingIndex
+                                    else -> mutableState.value.phase
+                                }
+                            mutableState.value =
+                                mutableState.value.copy(
+                                    phase = phase,
+                                    message = status,
+                                )
+                        }
+                    }
+                mutableState.value =
+                    when (outcome) {
+                        DbDeltaUpdateService.Outcome.UpToDate ->
+                            DbDeltaUpdateState(
+                                message = "Database is up to date.",
+                            )
+                        is DbDeltaUpdateService.Outcome.Applied ->
+                            DbDeltaUpdateState(
+                                message = "Applied ${outcome.deltaCount} delta(s).",
+                                lastAppliedCount = outcome.deltaCount,
+                            )
+                        DbDeltaUpdateService.Outcome.NeedsFullBundle ->
+                            DbDeltaUpdateState(
+                                message = "Your local database is too old for an incremental update — please download the full bundle.",
+                                needsFullBundle = true,
+                            )
+                    }
+            } catch (t: Throwable) {
+                mutableState.value =
+                    DbDeltaUpdateState(
+                        errorMessage = "Update failed: ${t.message ?: t.javaClass.simpleName}",
+                    )
             }
         }
     }

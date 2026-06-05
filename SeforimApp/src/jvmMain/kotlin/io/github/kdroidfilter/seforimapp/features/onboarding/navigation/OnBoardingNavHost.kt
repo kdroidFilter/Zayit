@@ -9,13 +9,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import io.github.kdroidfilter.seforim.navigation.NavigationAnimations
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AnimatedHorizontalProgressBar
+import io.github.kdroidfilter.seforimapp.core.presentation.navigation.noAnimatedComposable
 import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadScreen
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractScreen
@@ -73,18 +70,5 @@ fun OnBoardingNavHost(navController: NavHostController) {
                 RegionConfigScreen(navController)
             }
         }
-    }
-}
-
-inline fun <reified T : OnBoardingDestination> NavGraphBuilder.noAnimatedComposable(
-    noinline content: @Composable (NavBackStackEntry) -> Unit,
-) {
-    composable<T>(
-        enterTransition = { NavigationAnimations.enterTransition(this) },
-        exitTransition = { NavigationAnimations.exitTransition(this) },
-        popEnterTransition = { NavigationAnimations.popEnterTransition(this) },
-        popExitTransition = { NavigationAnimations.popExitTransition(this) },
-    ) {
-        content(it)
     }
 }

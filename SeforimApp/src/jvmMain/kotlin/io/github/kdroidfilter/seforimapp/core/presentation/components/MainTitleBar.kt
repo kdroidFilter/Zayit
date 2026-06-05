@@ -5,21 +5,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.github.kdroidfilter.nucleus.window.ControlButtonsDirection
-import io.github.kdroidfilter.nucleus.window.DecoratedWindowScope
-import io.github.kdroidfilter.nucleus.window.jewel.JewelTitleBar
-import io.github.kdroidfilter.nucleus.window.macOSLargeCornerRadius
-import io.github.kdroidfilter.nucleus.window.newFullscreenControls
-import io.github.kdroidfilter.nucleus.window.styling.LocalTitleBarStyle
-import io.github.kdroidfilter.platformtools.OperatingSystem
+import dev.nucleusframework.core.runtime.Platform
+import dev.nucleusframework.window.ControlButtonsDirection
+import dev.nucleusframework.window.DecoratedWindowScope
+import dev.nucleusframework.window.jewel.JewelTitleBar
+import dev.nucleusframework.window.macOSLargeCornerRadius
+import dev.nucleusframework.window.newFullscreenControls
+import dev.nucleusframework.window.styling.LocalTitleBarStyle
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsView
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
+import io.github.kdroidfilter.seforimapp.framework.update.showTitleBarIcon
 
 @Composable
 fun DecoratedWindowScope.MainTitleBar() {
@@ -34,19 +37,25 @@ fun DecoratedWindowScope.MainTitleBar() {
         val windowControlButtonWidth = LocalTitleBarStyle.current.metrics.titlePaneButtonSize.width
         val windowControlCount =
             when (PlatformInfo.currentOS) {
-                OperatingSystem.MACOS -> 0 // native traffic lights, not in Compose layout
+                Platform.MacOS -> 0 // native traffic lights, not in Compose layout
                 else -> 3 // close + maximize/restore + minimize
             }
+        // The update badge is an extra action button shown only for PROMPT updates; it must be
+        // counted so the reserved icons-area width (and thus tabsAreaWidth) stays correct.
+        val updateIconVisible =
+            LocalAppGraph.current.appUpdateService.state
+                .collectAsState()
+                .value.showTitleBarIcon
         BoxWithConstraints(modifier = Modifier.align(Alignment.Start)) {
             val windowWidth = maxWidth
-            val actionButtonCount = if (PlatformInfo.isMacOS) 2 else 4
+            val actionButtonCount = (if (PlatformInfo.isMacOS) 2 else 4) + if (updateIconVisible) 1 else 0
             val iconWidth: Dp = 40.dp
             val desktopSwitcherWidth: Dp = DESKTOP_SWITCHER_WIDTH
             val actionButtonsWidth = iconWidth * actionButtonCount + desktopSwitcherWidth
             val iconsAreaWidth: Dp =
                 when (PlatformInfo.currentOS) {
-                    OperatingSystem.MACOS -> actionButtonsWidth + iconWidth * 2 // traffic lights space
-                    OperatingSystem.WINDOWS -> actionButtonsWidth + iconWidth * 3.5f // window controls
+                    Platform.MacOS -> actionButtonsWidth + iconWidth * 2 // traffic lights space
+                    Platform.Windows -> actionButtonsWidth + iconWidth * 3.5f // window controls
                     else -> actionButtonsWidth + windowControlButtonWidth * windowControlCount
                 }
             val tabsAreaWidth: Dp = (windowWidth - iconsAreaWidth).coerceAtLeast(0.dp)

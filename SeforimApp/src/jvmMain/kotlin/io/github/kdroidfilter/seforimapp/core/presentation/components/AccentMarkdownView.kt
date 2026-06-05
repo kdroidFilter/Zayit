@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.UrlOpener
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.code.highlighting.NoOpCodeHighlighter
@@ -45,8 +46,6 @@ import org.jetbrains.jewel.ui.component.scrollbarContentSafePadding
 import org.jetbrains.jewel.ui.typography
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.notoserifhebrew
-import java.awt.Desktop.getDesktop
-import java.net.URI.create
 
 /**
  * Renders a markdown resource file with accent-colored links and the app's Hebrew font.
@@ -157,7 +156,7 @@ fun AccentMarkdownView(
                     blockRenderer.RenderBlock(
                         block = block,
                         enabled = true,
-                        onUrlClick = { url: String -> getDesktop().browse(create(url)) },
+                        onUrlClick = { url: String -> UrlOpener.open(url) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

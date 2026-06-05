@@ -13,6 +13,7 @@ import androidx.navigation.compose.composable
 import io.github.kdroidfilter.seforim.navigation.NavigationAnimations
 import io.github.kdroidfilter.seforimapp.features.settings.ui.AboutSettingsScreen
 import io.github.kdroidfilter.seforimapp.features.settings.ui.ConditionsSettingsScreen
+import io.github.kdroidfilter.seforimapp.features.settings.ui.DataSettingsScreen
 import io.github.kdroidfilter.seforimapp.features.settings.ui.DisplaySettingsScreen
 import io.github.kdroidfilter.seforimapp.features.settings.ui.FontsSettingsScreen
 import io.github.kdroidfilter.seforimapp.features.settings.ui.GeneralSettingsScreen
@@ -42,6 +43,9 @@ fun SettingsNavHost(navController: NavHostController) {
         }
         noAnimatedComposable<SettingsDestination.Conditions> {
             ConditionsSettingsScreen()
+        }
+        noAnimatedComposable<SettingsDestination.Data> {
+            DataSettingsScreen()
         }
     }
 }

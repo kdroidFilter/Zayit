@@ -15,7 +15,7 @@ class GeneralSettingsStateTest {
         assertNull(state.databasePath)
         assertFalse(state.closeTreeOnNewBook)
         assertTrue(state.persistSession)
-        assertFalse(state.resetDone)
+        assertTrue(state.keepScreenAwakeOnBook)
     }
 
     @Test
@@ -25,13 +25,11 @@ class GeneralSettingsStateTest {
                 databasePath = "/custom/path/db.sqlite",
                 closeTreeOnNewBook = true,
                 persistSession = false,
-                resetDone = true,
             )
 
         assertEquals("/custom/path/db.sqlite", state.databasePath)
         assertTrue(state.closeTreeOnNewBook)
         assertFalse(state.persistSession)
-        assertTrue(state.resetDone)
     }
 
     @Test
@@ -56,7 +54,6 @@ class GeneralSettingsStateTest {
         assertEquals("/Users/you/.zayit/seforim.db", preview.databasePath)
         assertTrue(preview.closeTreeOnNewBook)
         assertTrue(preview.persistSession)
-        assertFalse(preview.resetDone)
     }
 
     @Test

@@ -5,7 +5,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import io.github.kdroidfilter.nucleus.darkmodedetector.isSystemInDarkMode
+import dev.nucleusframework.darkmodedetector.isSystemInDarkMode
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.jewel.foundation.BorderColors

@@ -7,10 +7,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import com.kdroid.gematria.converter.toHebrewNumeral
-import io.github.kdroidfilter.nucleus.launcher.linux.DbusmenuItem
-import io.github.kdroidfilter.nucleus.launcher.linux.LauncherProperties
-import io.github.kdroidfilter.nucleus.launcher.linux.LinuxLauncherEntry
-import io.github.kdroidfilter.nucleus.launcher.linux.LinuxQuicklist
+import dev.nucleusframework.launcher.linux.DbusmenuItem
+import dev.nucleusframework.launcher.linux.LauncherProperties
+import dev.nucleusframework.launcher.linux.LinuxLauncherEntry
+import dev.nucleusframework.launcher.linux.LinuxQuicklist
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel

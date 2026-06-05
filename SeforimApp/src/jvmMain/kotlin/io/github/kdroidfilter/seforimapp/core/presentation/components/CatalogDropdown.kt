@@ -20,10 +20,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforimapp.catalog.CatalogPresets
 import io.github.kdroidfilter.seforimapp.catalog.CategoryDropdownSpec
 import io.github.kdroidfilter.seforimapp.catalog.DropdownSpec
 import io.github.kdroidfilter.seforimapp.catalog.MultiCategoryDropdownSpec
-import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
 import io.github.kdroidfilter.seforimapp.catalog.TocQuickLinksSpec
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -48,6 +48,7 @@ fun CatalogDropdown(
     maxPopupHeight: Dp? = null,
 ) {
     val repo = LocalAppGraph.current.repository
+    val catalogAccess = LocalAppGraph.current.catalogAccess
     val scope = rememberCoroutineScope()
 
     fun selectBook(
@@ -63,22 +64,26 @@ fun CatalogDropdown(
     when (spec) {
         is CategoryDropdownSpec -> {
             val categoryId = spec.categoryId
-            val categoryTitle = remember(categoryId) { PrecomputedCatalog.CATEGORY_TITLES[categoryId] }
-            val precomputedBooks = remember(categoryId) { PrecomputedCatalog.CATEGORY_BOOKS[categoryId] }
+            val categoryTitle = remember(categoryId, catalogAccess) { catalogAccess.categoryTitle(categoryId) }
+            val precomputedBooks = remember(categoryId, catalogAccess) { catalogAccess.booksFor(categoryId) }
 
-            if (categoryTitle != null && !precomputedBooks.isNullOrEmpty()) {
+            if (categoryTitle != null && precomputedBooks.isNotEmpty()) {
                 val baseMax: Dp = 360.dp
                 val minHeight: Dp =
                     minPopupHeight ?: when (categoryId) {
-                        PrecomputedCatalog.Ids.Categories.TORAH -> 160.dp
-                        PrecomputedCatalog.Ids.Categories.SHULCHAN_ARUCH -> 120.dp
+                        CatalogPresets.Ids.Categories.TORAH -> 160.dp
                         else -> Dp.Unspecified
                     }
                 val desiredMax: Dp = maxPopupHeight ?: baseMax
                 val effectiveMax: Dp = if (minHeight != Dp.Unspecified && minHeight > desiredMax) minHeight else desiredMax
+                val popupWidth =
+                    popupWidthMultiplier ?: when (categoryId) {
+                        CatalogPresets.Ids.Categories.SHULCHAN_ARUCH -> 1.1f
+                        else -> 1.5f
+                    }
                 DropdownButton(
-                    modifier = modifier.widthIn(max = 280.dp),
-                    popupWidthMultiplier = popupWidthMultiplier ?: 1.5f,
+                    modifier = modifier,
+                    popupWidthMultiplier = popupWidth,
                     maxPopupHeight = effectiveMax,
                     minPopupHeight = minHeight,
                     content = { Text(text = categoryTitle) },
@@ -124,20 +129,23 @@ fun CatalogDropdown(
             }
         }
         is MultiCategoryDropdownSpec -> {
-            val labelTitle = remember(spec.labelCategoryId) { PrecomputedCatalog.CATEGORY_TITLES[spec.labelCategoryId] }
+            val labelTitle =
+                remember(spec.labelCategoryId, catalogAccess) {
+                    catalogAccess.categoryTitle(spec.labelCategoryId)
+                }
             val sections =
-                remember(spec.bookCategoryIds) {
+                remember(spec.bookCategoryIds, catalogAccess) {
                     spec.bookCategoryIds.mapNotNull { cid ->
-                        val t = PrecomputedCatalog.CATEGORY_TITLES[cid]
-                        val list = PrecomputedCatalog.CATEGORY_BOOKS[cid]
-                        if (t != null && !list.isNullOrEmpty()) t to list else null
+                        val t = catalogAccess.categoryTitle(cid) ?: return@mapNotNull null
+                        val list = catalogAccess.booksFor(cid)
+                        if (list.isNotEmpty()) t to list else null
                     }
                 }
             if (labelTitle != null && sections.any { it.second.isNotEmpty() }) {
                 val popupWidth =
                     popupWidthMultiplier ?: when (spec.labelCategoryId) {
-                        PrecomputedCatalog.Ids.Categories.BAVLI,
-                        PrecomputedCatalog.Ids.Categories.YERUSHALMI,
+                        CatalogPresets.Ids.Categories.BAVLI,
+                        CatalogPresets.Ids.Categories.YERUSHALMI,
                         -> 1.1f
                         else -> 1.5f
                     }
@@ -146,7 +154,7 @@ fun CatalogDropdown(
                 val desiredMax: Dp = maxPopupHeight ?: baseMax
                 val effectiveMax: Dp = if (minHeight != Dp.Unspecified && minHeight > desiredMax) minHeight else desiredMax
                 DropdownButton(
-                    modifier = modifier.widthIn(max = 280.dp),
+                    modifier = modifier,
                     popupWidthMultiplier = popupWidth,
                     maxPopupHeight = effectiveMax,
                     minPopupHeight = minHeight,
@@ -209,9 +217,9 @@ fun CatalogDropdown(
             }
         }
         is TocQuickLinksSpec -> {
-            TocJumpDropdownByIds(
+            TocJumpDropdownForBook(
                 bookId = spec.bookId,
-                tocTextIds = spec.tocTextIds.toImmutableList(),
+                links = spec.links.toImmutableList(),
                 onEvent = onEvent,
                 modifier = modifier,
                 popupWidthMultiplier = popupWidthMultiplier ?: 1.5f,

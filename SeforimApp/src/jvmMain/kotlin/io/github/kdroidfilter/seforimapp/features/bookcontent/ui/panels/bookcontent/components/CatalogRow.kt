@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import io.github.kdroidfilter.seforimapp.catalog.PrecomputedCatalog
+import io.github.kdroidfilter.seforimapp.catalog.CatalogPresets
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CatalogDropdown
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -43,46 +43,45 @@ fun CatalogRow(
             val buttonModifier = Modifier.widthIn(max = 130.dp)
 
             CatalogDropdown(
-                spec = PrecomputedCatalog.Dropdowns.TANAKH,
+                spec = CatalogPresets.Dropdowns.TANAKH,
                 onEvent = onEvent,
                 modifier = buttonModifier,
                 popupWidthMultiplier = 1.50f,
             )
             CatalogDropdown(
-                spec = PrecomputedCatalog.Dropdowns.MISHNA,
+                spec = CatalogPresets.Dropdowns.MISHNA,
                 onEvent = onEvent,
                 modifier = buttonModifier,
             )
             CatalogDropdown(
-                spec = PrecomputedCatalog.Dropdowns.BAVLI,
-                onEvent = onEvent,
-                modifier = buttonModifier,
-                popupWidthMultiplier = 1.1f,
-            )
-            CatalogDropdown(
-                spec = PrecomputedCatalog.Dropdowns.YERUSHALMI,
+                spec = CatalogPresets.Dropdowns.BAVLI,
                 onEvent = onEvent,
                 modifier = buttonModifier,
                 popupWidthMultiplier = 1.1f,
             )
             CatalogDropdown(
-                spec = PrecomputedCatalog.Dropdowns.MISHNE_TORAH,
+                spec = CatalogPresets.Dropdowns.YERUSHALMI,
+                onEvent = onEvent,
+                modifier = buttonModifier,
+                popupWidthMultiplier = 1.1f,
+            )
+            CatalogDropdown(
+                spec = CatalogPresets.Dropdowns.MISHNE_TORAH,
                 onEvent = onEvent,
                 modifier = buttonModifier,
                 popupWidthMultiplier = 1.5f,
             )
             CatalogDropdown(
-                spec = PrecomputedCatalog.Dropdowns.TUR_QUICK_LINKS,
+                spec = CatalogPresets.Dropdowns.TUR_QUICK_LINKS,
                 onEvent = onEvent,
                 modifier = buttonModifier,
                 maxPopupHeight = 130.dp,
             )
             CatalogDropdown(
-                spec = PrecomputedCatalog.Dropdowns.SHULCHAN_ARUCH,
+                spec = CatalogPresets.Dropdowns.SHULCHAN_ARUCH,
                 onEvent = onEvent,
                 modifier = buttonModifier,
-                maxPopupHeight = 160.dp,
-                popupWidthMultiplier = 1.1f,
+                maxPopupHeight = 130.dp,
             )
         }
     }

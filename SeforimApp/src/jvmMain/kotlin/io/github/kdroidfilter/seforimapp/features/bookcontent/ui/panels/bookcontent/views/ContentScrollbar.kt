@@ -98,7 +98,7 @@ fun ContentScrollbar(
     // the loaded pager window emits a target into this flow; the collector throttles
     // emissions to one rebuild every [FAR_DRAG_THROTTLE], with `DROP_OLDEST` so only
     // the latest target survives. This keeps the displayed text catching up to fast
-    // drags (~5 Hz) without spamming `buildLinesPager` on every frame. The latest
+    // drags (~60 Hz) without spamming `buildLinesPager` on every frame. The latest
     // target is also stashed in [pendingFarDragTarget] so we can flush it once more
     // on `onDragStopped` — guaranteeing the final landing spot is exact even if the
     // last throttled emission was dropped.
@@ -179,9 +179,9 @@ fun ContentScrollbar(
 }
 
 // Minimum gap between two pager-rebuild emissions during a drag. Keeps the visible
-// text catching up to fast drags (~10 Hz) without spamming `buildLinesPager` on every
+// text catching up to fast drags (~60 Hz) without spamming `buildLinesPager` on every
 // frame. Final exact target is flushed on `onDragStopped` regardless.
-private val FAR_DRAG_THROTTLE = 100.milliseconds
+private val FAR_DRAG_THROTTLE = 16.milliseconds
 
 /**
  * Book-wide thumb position in `[0, 1]`, in pixel-space.

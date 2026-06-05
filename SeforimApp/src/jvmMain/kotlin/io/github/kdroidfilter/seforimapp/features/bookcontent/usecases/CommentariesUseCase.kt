@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 
 import androidx.paging.Pager
 import androidx.paging.PagingData
+import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
@@ -46,6 +47,33 @@ class CommentariesUseCase(
     private val commentatorBookCache: MutableMap<Long, Book> = ConcurrentHashMap()
     private val defaultTargumCache: MutableMap<Long, List<Long>> = ConcurrentHashMap()
 
+    // Memoizes the cached pager flows per (kind, line(s), commentator) so the SAME cachedIn flow
+    // is reused whenever the same commentator column is requested again (re-selecting a line,
+    // toggling the commentaries pane, or an actual composition teardown). Without this, each
+    // request builds a fresh cachedIn flow and reloads commentaries from the DB — the cause of the
+    // visible delay before commentaries reappear. Bounded (access-order LRU) so visited-but-stale
+    // pagers don't accumulate unbounded heap.
+    private val pagerFlowCache =
+        object : LinkedHashMap<String, Flow<PagingData<CommentaryWithText>>>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Flow<PagingData<CommentaryWithText>>>?): Boolean =
+                size > MAX_CACHED_PAGERS
+        }
+
+    // Read-through cache of commentator GROUPS per base line. Survives tab switches (the use
+    // case lives in viewModelScope), so returning to a tab no longer re-queries the DB for the
+    // groups. Bounded (access-order LRU).
+    private val lineConnectionsCache =
+        object : LinkedHashMap<Long, LineConnectionsSnapshot>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, LineConnectionsSnapshot>?): Boolean =
+                size > MAX_CACHED_LINE_CONNECTIONS
+        }
+
+    @Synchronized
+    private fun cachedPager(
+        key: String,
+        create: () -> Flow<PagingData<CommentaryWithText>>,
+    ): Flow<PagingData<CommentaryWithText>> = pagerFlowCache.getOrPut(key, create)
+
     private data class BaseLineResolution(
         val baseLineIds: List<Long>,
         val headingTocEntryId: Long? = null,
@@ -61,7 +89,9 @@ class CommentariesUseCase(
             localCache[bookId] = cached
             return cached
         }
-        val loaded = runSuspendCatching { repository.getBookWithPubDates(bookId) }.getOrNull() ?: return null
+        // Load authors + pubDates so commentator ordering can use canonical author ranks
+        // before falling back to publication-date heuristics.
+        val loaded = runSuspendCatching { repository.getBook(bookId) }.getOrNull() ?: return null
         commentatorBookCache[bookId] = loaded
         localCache[bookId] = loaded
         return loaded
@@ -73,15 +103,41 @@ class CommentariesUseCase(
     fun buildCommentariesPager(
         lineId: Long,
         commentatorId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> {
-        val ids = commentatorId?.let { setOf(it) } ?: emptySet()
+    ): Flow<PagingData<CommentaryWithText>> =
+        cachedPager("com:$lineId:${commentatorId ?: -1L}") {
+            val ids = commentatorId?.let { setOf(it) } ?: emptySet()
+            Pager(
+                config = PagingDefaults.COMMENTS.config(placeholders = false),
+                pagingSourceFactory = {
+                    CommentsForLineOrTocPagingSource(repository, lineId, ids)
+                },
+            ).flow.cachedIn(scope)
+        }
 
-        return Pager(
-            config = PagingDefaults.COMMENTS.config(placeholders = false),
-            pagingSourceFactory = {
-                CommentsForLineOrTocPagingSource(repository, lineId, ids)
-            },
-        ).flow.cachedIn(scope)
+    /**
+     * Warms the first page of each open commentator's column for [lineId] ahead of display
+     * (e.g. for a background tab not yet displayed). Reuses the exact [CommentsForLineOrTocPagingSource]
+     * the UI builds so the TOC-section resolution and SQL query are identical — the rows land in
+     * SQLite's page cache, making the on-demand pager load instant once the tab is shown.
+     */
+    suspend fun prefetchCommentaries(
+        lineId: Long,
+        commentatorIds: Set<Long>,
+    ) {
+        if (lineId <= 0 || commentatorIds.isEmpty()) return
+        for (commentatorId in commentatorIds) {
+            currentCoroutineContext().ensureActive()
+            runSuspendCatching {
+                CommentsForLineOrTocPagingSource(repository, lineId, setOf(commentatorId))
+                    .load(
+                        PagingSource.LoadParams.Refresh(
+                            key = 0,
+                            loadSize = PagingDefaults.COMMENTS.INITIAL_LOAD_SIZE,
+                            placeholdersEnabled = false,
+                        ),
+                    )
+            }
+        }
     }
 
     /**
@@ -90,30 +146,30 @@ class CommentariesUseCase(
     fun buildLinksPager(
         lineId: Long,
         sourceBookId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> {
-        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
-
-        return Pager(
-            config = PagingDefaults.COMMENTS.config(placeholders = false),
-            pagingSourceFactory = {
-                LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.TARGUM))
-            },
-        ).flow.cachedIn(scope)
-    }
+    ): Flow<PagingData<CommentaryWithText>> =
+        cachedPager("tgm:$lineId:${sourceBookId ?: -1L}") {
+            val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+            Pager(
+                config = PagingDefaults.COMMENTS.config(placeholders = false),
+                pagingSourceFactory = {
+                    LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.TARGUM))
+                },
+            ).flow.cachedIn(scope)
+        }
 
     fun buildSourcesPager(
         lineId: Long,
         sourceBookId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> {
-        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
-
-        return Pager(
-            config = PagingDefaults.COMMENTS.config(placeholders = false),
-            pagingSourceFactory = {
-                LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.SOURCE))
-            },
-        ).flow.cachedIn(scope)
-    }
+    ): Flow<PagingData<CommentaryWithText>> =
+        cachedPager("src:$lineId:${sourceBookId ?: -1L}") {
+            val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+            Pager(
+                config = PagingDefaults.COMMENTS.config(placeholders = false),
+                pagingSourceFactory = {
+                    LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.SOURCE))
+                },
+            ).flow.cachedIn(scope)
+        }
 
     // ========== Multi-line pagers for multi-selection ==========
 
@@ -123,16 +179,16 @@ class CommentariesUseCase(
     fun buildCommentariesPagerForLines(
         lineIds: List<Long>,
         commentatorId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> {
-        val ids = commentatorId?.let { setOf(it) } ?: emptySet()
-
-        return Pager(
-            config = PagingDefaults.COMMENTS.config(placeholders = false),
-            pagingSourceFactory = {
-                MultiLineCommentsPagingSource(repository, lineIds, ids)
-            },
-        ).flow.cachedIn(scope)
-    }
+    ): Flow<PagingData<CommentaryWithText>> =
+        cachedPager("comL:${lineIds.joinToString(",")}:${commentatorId ?: -1L}") {
+            val ids = commentatorId?.let { setOf(it) } ?: emptySet()
+            Pager(
+                config = PagingDefaults.COMMENTS.config(placeholders = false),
+                pagingSourceFactory = {
+                    MultiLineCommentsPagingSource(repository, lineIds, ids)
+                },
+            ).flow.cachedIn(scope)
+        }
 
     /**
      * Construit un Pager pour les liens/targum de plusieurs lignes
@@ -140,16 +196,16 @@ class CommentariesUseCase(
     fun buildLinksPagerForLines(
         lineIds: List<Long>,
         sourceBookId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> {
-        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
-
-        return Pager(
-            config = PagingDefaults.COMMENTS.config(placeholders = false),
-            pagingSourceFactory = {
-                MultiLineLinksPagingSource(repository, lineIds, ids, setOf(ConnectionType.TARGUM))
-            },
-        ).flow.cachedIn(scope)
-    }
+    ): Flow<PagingData<CommentaryWithText>> =
+        cachedPager("tgmL:${lineIds.joinToString(",")}:${sourceBookId ?: -1L}") {
+            val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+            Pager(
+                config = PagingDefaults.COMMENTS.config(placeholders = false),
+                pagingSourceFactory = {
+                    MultiLineLinksPagingSource(repository, lineIds, ids, setOf(ConnectionType.TARGUM))
+                },
+            ).flow.cachedIn(scope)
+        }
 
     /**
      * Construit un Pager pour les sources de plusieurs lignes
@@ -157,16 +213,16 @@ class CommentariesUseCase(
     fun buildSourcesPagerForLines(
         lineIds: List<Long>,
         sourceBookId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> {
-        val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
-
-        return Pager(
-            config = PagingDefaults.COMMENTS.config(placeholders = false),
-            pagingSourceFactory = {
-                MultiLineLinksPagingSource(repository, lineIds, ids, setOf(ConnectionType.SOURCE))
-            },
-        ).flow.cachedIn(scope)
-    }
+    ): Flow<PagingData<CommentaryWithText>> =
+        cachedPager("srcL:${lineIds.joinToString(",")}:${sourceBookId ?: -1L}") {
+            val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
+            Pager(
+                config = PagingDefaults.COMMENTS.config(placeholders = false),
+                pagingSourceFactory = {
+                    MultiLineLinksPagingSource(repository, lineIds, ids, setOf(ConnectionType.SOURCE))
+                },
+            ).flow.cachedIn(scope)
+        }
 
     /**
      * Ordered char-count vector for the commentary pager built from a single base line
@@ -306,21 +362,35 @@ class CommentariesUseCase(
     }
 
     /**
-     * Récupère les sources disponibles pour plusieurs lignes (union)
+     * Récupère les sources disponibles pour plusieurs lignes (union).
+     *
+     * Issues a single inverse-direction repository query against the union of
+     * all base lines so the order returned by the underlying SQL
+     * (`l.isDeclaredBase DESC, b.orderIndex, sl.lineIndex`) is respected
+     * globally. Per-lineId iteration would interleave per-source-book entries
+     * by lineId rather than by catalog position.
      */
     suspend fun getAvailableSourcesForLines(lineIds: List<Long>): Map<String, Long> {
         if (lineIds.isEmpty()) return emptyMap()
         return runSuspendCatching {
-            val map = LinkedHashMap<String, Long>()
-            for (lineId in lineIds) {
-                val sources = getAvailableSources(lineId)
-                sources.forEach { (name, id) ->
-                    if (!map.containsKey(name)) {
-                        map[name] = id
-                    }
-                }
-            }
-            map
+            val selectedBook =
+                stateManager.state
+                    .first()
+                    .navigation.selectedBook
+            if (selectedBook?.hasSourceConnection != true) return@runSuspendCatching emptyMap<String, Long>()
+
+            val allBaseIds =
+                lineIds
+                    .flatMap { resolveBaseLineIds(it) }
+                    .distinct()
+            if (allBaseIds.isEmpty()) return@runSuspendCatching emptyMap<String, Long>()
+
+            val links =
+                repository
+                    .getCommentarySummariesForLines(allBaseIds, includeSources = true)
+                    .filter { it.link.connectionType == ConnectionType.SOURCE }
+
+            buildSourceMap(links, selectedBook.title.trim())
         }.getOrElse { emptyMap() }
     }
 
@@ -370,13 +440,29 @@ class CommentariesUseCase(
             return loaded
         }
 
+        // Collect the full ancestor chain (book.categoryId → root). Cap depth as
+        // a safety net against accidental cycles in the closure table.
+        val chain = mutableListOf<Category>()
         var currentId: Long? = book.categoryId
-        while (currentId != null) {
+        var depth = 0
+        while (currentId != null && depth < 32) {
             currentCoroutineContext().ensureActive()
-            val category = loadCategory(currentId) ?: break
-            val title = category.title
+            val cat = loadCategory(currentId) ?: break
+            chain.add(cat)
+            currentId = cat.parentId
+            depth++
+        }
+        if (chain.isEmpty()) return ""
 
-            // Prefer high-level "commentaries on ..." buckets
+        // Pass 1: the strongest, most-informative bucket — "X על Y" labels
+        // anchored on a primary corpus (Tanakh / Talmud / Mishna / Shas) win
+        // over everything else, scanned across the whole ancestor chain. This
+        // is important because a sub-commentary on Rif (chain:
+        // `מפרשים < רי״ף < ראשונים על התלמוד`) must surface as
+        // `ראשונים על התלמוד`, NOT as `מפרשים על רי״ף`.
+        for (category in chain) {
+            currentCoroutineContext().ensureActive()
+            val title = category.title
             if (
                 title.contains("על התנ״ך") ||
                 title.contains("על התלמוד") ||
@@ -387,41 +473,302 @@ class CommentariesUseCase(
             ) {
                 return title
             }
+        }
 
-            // Broad families (e.g., חסידות, מילונים, מחברי זמננו)
-            if (title == "חסידות" || title.contains("חסידות")) {
-                return title
-            }
-            if (title.contains("מילונים")) {
-                return title
-            }
-            if (title == "ראשונים") {
-                return title
-            }
-            if (title == "מחברי זמננו") {
-                return title
-            }
-            if (title == "ביאור חברותא" || title == "הערות על ביאור חברותא") {
-                return "חברותא"
-            }
+        // Pass 2: hard-coded multi-book families (chevruta, dictionaries,
+        // contemporary authors).
+        for (category in chain) {
+            currentCoroutineContext().ensureActive()
+            val title = category.title
+            if (title == "ביאור חברותא" || title == "הערות על ביאור חברותא") return "חברותא"
+            if (title.contains("מילונים")) return title
+            if (title == "מחברי זמננו") return title
+        }
 
-            // Generic "מפרשים" bucket (e.g., for משנה תורה)
-            if (title == "מפרשים") {
-                val parent =
-                    category.parentId?.let { parentId ->
-                        loadCategory(parentId)
+        // Pass 3: "מפרשים" — only when no higher-level "X על Y" anchor exists
+        //   (e.g. Mishneh Torah's super-commentaries). Check if the parent's
+        //   ancestors include a corpus reference. If so, use that. Otherwise use
+        //   immediate parent.
+        for ((idx, category) in chain.withIndex()) {
+            currentCoroutineContext().ensureActive()
+            if (category.title == "מפרשים") {
+                // Check if "ראשונים" appears further up the chain; if so, use its corpus parent.
+                for (ancestorIdx in (idx + 1) until chain.size) {
+                    val ancestor = chain[ancestorIdx]
+                    if (ancestor.title == "ראשונים") {
+                        // Found "ראשונים" — use its parent corpus
+                        val corpus = chain.getOrNull(ancestorIdx + 1)
+                        if (corpus != null) {
+                            return "ראשונים על ${when (corpus.title) {
+                                "בבלי", "בבל" -> "התלמוד"
+                                "תנ״ך", "תנך" -> "התנ״ך"
+                                "משנה" -> "המשנה"
+                                "ש\"ס", "ש״ס", "שס" -> "הש\"ס"
+                                else -> corpus.title
+                            }}"
+                        }
+                        break
                     }
+                }
+                // Fallback: use immediate parent
+                val parent = chain.getOrNull(idx + 1)
                 if (parent != null && parent.title.isNotBlank()) {
                     return "מפרשים על ${parent.title}"
                 }
-                return title
+                return "מפרשים"
             }
-
-            currentId = category.parentId
         }
 
-        val baseCategory = loadCategory(book.categoryId)
-        return baseCategory?.title ?: ""
+        // Pass 4: bare "ראשונים" / "אחרונים" anywhere in the chain. Look for corpus
+        //   references further up; if found, use those. Otherwise use immediate parent.
+        for ((idx, category) in chain.withIndex()) {
+            currentCoroutineContext().ensureActive()
+            val title = category.title
+            if (title == "ראשונים" || title == "אחרונים") {
+                // Check ancestors for corpus references (בבלי, תנ״ך, משנה, etc.)
+                for (ancestorIdx in (idx + 1) until chain.size) {
+                    val ancestor = chain[ancestorIdx]
+                    val corpusLabel =
+                        when (ancestor.title) {
+                            "בבלי", "בבל" -> "התלמוד"
+                            "תנ״ך", "תנך" -> "התנ״ך"
+                            "משנה" -> "המשנה"
+                            "ש\"ס", "ש״ס", "שס" -> "הש\"ס"
+                            else -> null
+                        }
+                    if (corpusLabel != null) {
+                        return "$title על $corpusLabel"
+                    }
+                }
+                // Fallback: use immediate parent
+                val parent = chain.getOrNull(idx + 1)
+                if (parent != null && parent.title.isNotBlank()) {
+                    val parentLabel =
+                        when (parent.title) {
+                            "תנ״ך", "תנך" -> "התנ״ך"
+                            "תלמוד" -> "התלמוד"
+                            "משנה" -> "המשנה"
+                            "ש\"ס", "ש״ס", "שס" -> "הש\"ס"
+                            else -> parent.title
+                        }
+                    return "$title על $parentLabel"
+                }
+                return title
+            }
+        }
+
+        // Second pass: collapse fragmented sub-trees (Targumim, Midrash, Kabbalah, Chasidut)
+        // into a single top-level bucket so multi-volume editorial families don't
+        // create one group per book.
+        for (category in chain) {
+            currentCoroutineContext().ensureActive()
+            val title = category.title
+            // Targums: "תורה < תרגום אונקלוס < תרגומים < תנ״ך"; also bare "תרגום ירושלמי" etc.
+            if (title == "תרגומים" || title.startsWith("תרגום ") || title.startsWith("תפסיר ")) {
+                return "תרגומים"
+            }
+            // Midrash: "מדרש לקח טוב < אגדה < מדרש", "מדרש רבה < אגדה < מדרש".
+            if (title == "מדרש") return "מדרש"
+            // Kabbalah: "ספרי קבלה נוספים < קבלה", "זהר < קבלה".
+            if (title == "קבלה") return "קבלה"
+            // Chasidut sub-tree.
+            if (title == "חסידות" || title.contains("חסידות")) return "חסידות"
+        }
+
+        // Fallback: use the deepest reasonable bucket from the root side
+        // (avoid single-author categories like חזקוני/מהר״ל that produce singleton groups).
+        val rootLevel = chain.lastOrNull()?.title
+        return rootLevel ?: chain.first().title
+    }
+
+    /**
+     * Canonical editorial rank for top-level commentator groups. Lower wins.
+     * Anything not listed falls into [GROUP_RANK_DEFAULT] and is sorted by
+     * pub-date / alphabet within that bucket.
+     */
+    private fun groupRank(label: String): Int {
+        // Tanach buckets
+        if (label == "תרגומים") return 10
+        if (label.startsWith("ראשונים על המשנה")) return 20
+        if (label.startsWith("ראשונים על התלמוד") || label.startsWith("ראשונים על הש")) return 25
+        if (label.startsWith("ראשונים על התנ״ך")) return 30
+        if (label.startsWith("אחרונים על המשנה")) return 40
+        if (label.startsWith("אחרונים על התלמוד") || label.startsWith("אחרונים על הש")) return 45
+        if (label.startsWith("אחרונים על התנ״ך")) return 50
+        if (label.startsWith("מפרשים על")) return 55
+        if (label == "ראשונים") return 60
+        if (label == "אחרונים") return 65
+        if (label.startsWith("ראשונים על ")) return 67
+        if (label.startsWith("אחרונים על ")) return 68
+        if (label == "מדרש") return 70
+        if (label == "חסידות") return 80
+        if (label == "קבלה") return 90
+        if (label == "חברותא") return 100
+        if (label.contains("מילונים")) return 110
+        if (label == "מחברי זמננו") return 120
+        return GROUP_RANK_DEFAULT
+    }
+
+    /**
+     * Approximate canonical year (birth) for major Rishonim/Acharonim. Used as the
+     * primary intra-group sort key — the printed first-edition dates stored in
+     * `pub_date` are too noisy (Rashi at 1476, Hadar Zekenim at 1840) to give a
+     * stable chronological order on their own.
+     *
+     * Match against [Book.authors] first, then against [Book.title] / displayName.
+     */
+    private fun canonicalRank(
+        book: Book?,
+        displayName: String,
+    ): Int? {
+        if (book == null) return null
+
+        fun normalize(s: String): String = s.replace('"', '״').replace('\'', '׳').trim()
+
+        val authorNames = book.authors.map { normalize(it.name) }
+        for (author in authorNames) {
+            CANONICAL_AUTHOR_YEAR[author]?.let { return it }
+        }
+        val title = normalize(book.title)
+        for ((pattern, year) in CANONICAL_TITLE_YEAR) {
+            if (title.contains(pattern)) return year
+        }
+        val display = normalize(displayName)
+        for ((pattern, year) in CANONICAL_TITLE_YEAR) {
+            if (display.contains(pattern)) return year
+        }
+        return null
+    }
+
+    private companion object {
+        const val GROUP_RANK_DEFAULT = 1_000
+
+        // Upper bound on memoized commentary/link/source pager flows (across all lines and
+        // commentators visited in this book tab). Each retains its loaded pages, so keep it
+        // modest; the least-recently-used pager is evicted past this size.
+        const val MAX_CACHED_PAGERS = 32
+
+        // Upper bound on cached commentator-group snapshots (one per base line). Snapshots are
+        // light (group/commentator metadata, no commentary text), so this can be generous.
+        const val MAX_CACHED_LINE_CONNECTIONS = 512
+
+        // Canonical (approximate) author birth years for the dominant Rishonim
+        // and Acharonim that ship with the corpus. Keys are normalized to gershayim
+        // form (״). Add to this list when new "VIP" commentators surface.
+        val CANONICAL_AUTHOR_YEAR: Map<String, Int> =
+            mapOf(
+                // Geonim
+                "ר' סעדיה גאון" to 882,
+                "סעדיה גאון" to 882,
+                "רב סעדיה גאון" to 882,
+                // Rishonim – Ashkenaz / Tsarfat
+                "רש״י" to 1040,
+                "רשב״ם" to 1085,
+                "ר' יוסף קרא" to 1065,
+                "יוסף בכור שור" to 1140,
+                "אבן עזרא" to 1089,
+                "ר' אברהם אבן עזרא" to 1089,
+                "רד״ק" to 1160,
+                "רמב״ן" to 1194,
+                "חזקוני" to 1240,
+                "רא״ש" to 1250,
+                "רבנו בחיי" to 1255,
+                "בחיי בן אשר" to 1255,
+                "יעקב בן אשר" to 1269,
+                "רלב״ג" to 1288,
+                "מנחם ריקנטי" to 1290,
+                "אברבנאל" to 1437,
+                "עובדיה מברטנורא" to 1445,
+                "אליהו בן אברהם מזרחי" to 1455,
+                "ספורנו" to 1475,
+                // Acharonim
+                "אלשיך" to 1508,
+                "מהר״ל" to 1520,
+                "שלמה אפרים מלונטשיץ" to 1550,
+                "ש״ך" to 1622,
+                "חיים בן עטר" to 1696,
+                "אליהו בן שלמה זלמן מווילנה" to 1720,
+                "משה סופר" to 1762,
+                "נתן נטע שפירא" to 1585,
+                "יעקב צבי מקלנבורג" to 1785,
+                "מלבי״ם" to 1809,
+                "נפתלי צבי יהודה ברלין" to 1816,
+                "יוסף חיים" to 1834,
+                "מאיר שמחה הכהן" to 1843,
+                "רב יוסף דוב הלוי סולובייצ'ק" to 1903,
+            )
+
+        // Title fragments (normalized to gershayim) → canonical year. Acts as a
+        // fallback when the author table is sparse for older works.
+        val CANONICAL_TITLE_YEAR: List<Pair<String, Int>> =
+            listOf(
+                "רס״ג" to 882,
+                "ר' סעדיה גאון" to 882,
+                "רש״י" to 1040,
+                "רשב״ם" to 1085,
+                "אבן עזרא" to 1089,
+                "אב״ע" to 1089,
+                "ראב״ע" to 1089,
+                "בכור שור" to 1140,
+                "רד״ק" to 1160,
+                "רמב״ן" to 1194,
+                "חזקוני" to 1240,
+                "רא״ש" to 1250,
+                "רבנו בחיי" to 1255,
+                "רבינו בחיי" to 1255,
+                "בעל הטורים" to 1269,
+                "הטור הארוך" to 1269,
+                "רלב״ג" to 1288,
+                "פענח רזא" to 1295,
+                "ריקנטי" to 1290,
+                "רקנאטי" to 1290,
+                "דעת זקנים" to 1290,
+                "הדר זקנים" to 1290,
+                "אברבנאל" to 1437,
+                "ברטנורא" to 1445,
+                "מזרחי" to 1455,
+                "ספורנו" to 1475,
+                "צרור המור" to 1440,
+                "תולדות יצחק" to 1458,
+                "אלשיך" to 1508,
+                "מהר״ל" to 1520,
+                "גור אריה" to 1520,
+                "כלי יקר" to 1550,
+                "שפתי כהן" to 1622,
+                "אור החיים" to 1696,
+                "מנחת שי" to 1565,
+                "שפתי חכמים" to 1641,
+                "אבי עזר" to 1750,
+                "אדרת אליהו" to 1720,
+                "הגר״א" to 1720,
+                "חתם סופר" to 1762,
+                "הכתב והקבלה" to 1785,
+                "תפארת יהונתן" to 1690,
+                "אהבת יהונתן" to 1690,
+                "מלבי״ם" to 1809,
+                "העמק דבר" to 1816,
+                "נצי״ב" to 1816,
+                "רש״ר הירש" to 1808,
+                "בן איש חי" to 1834,
+                "תורה תמימה" to 1860,
+                "פרדס יוסף" to 1880,
+                "משך חכמה" to 1843,
+                "בית הלוי" to 1820,
+                "נתינה לגר" to 1875,
+                "תרגום אונקלוס" to -100,
+                "תרגום יונתן" to 100,
+                "תרגום ירושלמי" to 200,
+                "תפסיר רס״ג" to 882,
+                "מדרש" to 500,
+                "בראשית רבה" to 400,
+                "שמות רבה" to 400,
+                "ויקרא רבה" to 400,
+                "מדרש תנחומא" to 500,
+                "תנחומא בובר" to 500,
+                "פסיקתא" to 600,
+                "מכילתא" to 200,
+                "ספרי" to 200,
+            )
     }
 
     private fun sanitizeCommentatorName(
@@ -502,30 +849,40 @@ class CommentariesUseCase(
 
         data class TempGroup(
             val label: String,
+            val rank: Int,
             val entries: List<CommentatorEntry>,
             val earliestYear: Int,
         )
+
+        // Resolve a chronological year per entry, falling back through:
+        //  1. canonicalRank() — hand-curated author/title → birth year table.
+        //  2. earliest pub_date year — first known printing.
+        //  3. Int.MAX_VALUE  — pushes undated entries to the tail.
+        fun entryYear(entry: CommentatorEntry): Int {
+            canonicalRank(entry.book, entry.displayName)?.let { return it }
+            entry.book
+                ?.pubDates
+                ?.let { extractEarliestYear(it) }
+                ?.let { return it }
+            return Int.MAX_VALUE
+        }
 
         val tempGroups =
             groupsByLabel.map { (label, groupEntries) ->
                 val sortedEntries =
                     groupEntries.sortedWith(
                         compareBy(
+                            // "הערות על X" companion notes always trail their parent book.
                             { if (categoryCache[it.book?.categoryId]?.title?.startsWith("הערות על") == true) 1 else 0 },
-                            { it.book?.pubDates?.let { d -> extractEarliestYear(d) } ?: Int.MAX_VALUE },
+                            { entryYear(it) },
                             { it.displayName },
                         ),
                     )
-                val groupEarliestYear =
-                    sortedEntries
-                        .firstOrNull()
-                        ?.book
-                        ?.pubDates
-                        ?.let { extractEarliestYear(it) }
-                        ?: Int.MAX_VALUE
+                val groupEarliestYear = sortedEntries.minOfOrNull { entryYear(it) } ?: Int.MAX_VALUE
 
                 TempGroup(
                     label = label,
+                    rank = groupRank(label),
                     entries = sortedEntries,
                     earliestYear = groupEarliestYear,
                 )
@@ -533,7 +890,10 @@ class CommentariesUseCase(
 
         return tempGroups
             .sortedWith(
-                compareBy<TempGroup> { it.earliestYear }
+                // Editorial rank dominates (Targums → Rishonim → Acharonim → Midrash → …);
+                // within the same rank, earliest year then label keep results deterministic.
+                compareBy<TempGroup> { it.rank }
+                    .thenBy { it.earliestYear }
                     .thenBy { it.label },
             ).map { group ->
                 CommentatorGroup(
@@ -662,45 +1022,63 @@ class CommentariesUseCase(
 
     suspend fun getAvailableSources(lineId: Long): Map<String, Long> =
         runSuspendCatching {
+            val selectedBook =
+                stateManager.state
+                    .first()
+                    .navigation.selectedBook
+            // Fast path: book has no inbound oriented links — no need to hit DB.
+            if (selectedBook?.hasSourceConnection != true) return@runSuspendCatching emptyMap<String, Long>()
+
             val baseIds = resolveBaseLineIds(lineId)
             val links =
                 repository
                     .getCommentarySummariesForLines(baseIds)
                     .filter { it.link.connectionType == ConnectionType.SOURCE }
 
-            val currentBookTitle =
-                stateManager.state
-                    .first()
-                    .navigation.selectedBook
-                    ?.title
-                    ?.trim()
-                    .orEmpty()
-
+            val currentBookTitle = selectedBook.title.trim()
             buildSourceMap(links, currentBookTitle)
         }.getOrElse { emptyMap() }
 
     suspend fun loadLineConnections(lineIds: List<Long>): Map<Long, LineConnectionsSnapshot> {
         if (lineIds.isEmpty()) return emptyMap()
-
         val distinctIds = lineIds.distinct()
+
+        // Read-through cache: only query the DB for lines we have not resolved yet.
+        val cached = LinkedHashMap<Long, LineConnectionsSnapshot>()
+        val missing = ArrayList<Long>()
+        synchronized(lineConnectionsCache) {
+            distinctIds.forEach { id ->
+                val hit = lineConnectionsCache[id]
+                if (hit != null) cached[id] = hit else missing.add(id)
+            }
+        }
+        if (missing.isEmpty()) return cached
+
+        fun storeAndMerge(loaded: Map<Long, LineConnectionsSnapshot>): Map<Long, LineConnectionsSnapshot> {
+            synchronized(lineConnectionsCache) { loaded.forEach { (id, snap) -> lineConnectionsCache[id] = snap } }
+            return cached + loaded
+        }
+
         val resolutionCache = LinkedHashMap<Long, BaseLineResolution>()
         val tocLinesCache = mutableMapOf<Long, List<Long>>()
         val headingCache = mutableMapOf<Long, TocEntry?>()
 
-        distinctIds.forEach { id ->
+        missing.forEach { id ->
             resolutionCache[id] = resolveBaseLineResolution(id, tocLinesCache, headingCache)
         }
 
         val allBaseIds = resolutionCache.values.flatMap { it.baseLineIds }.distinct()
-        if (allBaseIds.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
+        if (allBaseIds.isEmpty()) return storeAndMerge(missing.associateWith { LineConnectionsSnapshot() })
+
+        val currentState = stateManager.state.first()
+        val selectedBook = currentState.navigation.selectedBook
 
         val allConnections = repository.getCommentarySummariesForLines(allBaseIds)
-        if (allConnections.isEmpty()) return distinctIds.associateWith { LineConnectionsSnapshot() }
+        if (allConnections.isEmpty()) return storeAndMerge(missing.associateWith { LineConnectionsSnapshot() })
 
         val connectionsBySource = allConnections.groupBy { it.link.sourceLineId }
-        val currentState = stateManager.state.first()
         val currentBookTitle =
-            currentState.navigation.selectedBook
+            selectedBook
                 ?.title
                 ?.trim()
                 .orEmpty()
@@ -713,12 +1091,14 @@ class CommentariesUseCase(
             defaultTargumByBookId[bookId] = ids.firstOrNull()
         }
 
-        return resolutionCache.mapValues { (_, resolution) ->
-            val aggregated = resolution.baseLineIds.flatMap { baseId -> connectionsBySource[baseId].orEmpty() }
-            val defaultTargumId = resolution.headingBookId?.let { defaultTargumByBookId[it] }
-            val filtered = filterTargumConnections(aggregated, resolution, defaultTargumId)
-            buildLineConnectionsSnapshot(filtered, currentBookTitle, bookCache, categoryCache)
-        }
+        val snapshots =
+            resolutionCache.mapValues { (_, resolution) ->
+                val aggregated = resolution.baseLineIds.flatMap { baseId -> connectionsBySource[baseId].orEmpty() }
+                val defaultTargumId = resolution.headingBookId?.let { defaultTargumByBookId[it] }
+                val filtered = filterTargumConnections(aggregated, resolution, defaultTargumId)
+                buildLineConnectionsSnapshot(filtered, currentBookTitle, bookCache, categoryCache)
+            }
+        return storeAndMerge(snapshots)
     }
 
     /**
@@ -1139,7 +1519,14 @@ class CommentariesUseCase(
         index: Int,
         offset: Int,
     ) {
-        stateManager.updateContent {
+        stateManager.updateContent(save = false) {
+            if (
+                commentariesColumnScrollIndexByCommentator[commentatorId] == index &&
+                commentariesColumnScrollOffsetByCommentator[commentatorId] == offset
+            ) {
+                return@updateContent this
+            }
+
             val idxMap = commentariesColumnScrollIndexByCommentator.toMutableMap()
             val offMap = commentariesColumnScrollOffsetByCommentator.toMutableMap()
             idxMap[commentatorId] = index

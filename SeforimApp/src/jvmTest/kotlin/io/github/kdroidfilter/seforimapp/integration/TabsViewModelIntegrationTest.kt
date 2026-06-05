@@ -422,6 +422,29 @@ class TabsViewModelIntegrationTest {
             assertEquals(1, viewModel.state.value.selectedTabIndex) // Clamped to last valid index
         }
 
+    @Test
+    fun `restoreTabs uses persisted titles without loading tab content`() =
+        runTest {
+            val destinations =
+                listOf(
+                    TabsDestination.BookContent(bookId = -1, tabId = "tab1"),
+                    TabsDestination.Search(searchQuery = "", tabId = "tab2"),
+                )
+            val titles =
+                mapOf(
+                    "tab1" to ("Book A" to TabType.BOOK),
+                    "tab2" to ("query" to TabType.SEARCH),
+                )
+
+            viewModel.restoreTabs(destinations, selectedIndex = 0, titles = titles)
+
+            val tabs = viewModel.state.value.tabs
+            assertEquals("Book A", tabs[0].title)
+            assertEquals(TabType.BOOK, tabs[0].tabType)
+            assertEquals("query", tabs[1].title)
+            assertEquals(TabType.SEARCH, tabs[1].tabType)
+        }
+
     // ==================== Title Update Tests ====================
 
     @Test

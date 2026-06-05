@@ -1,7 +1,6 @@
 package io.github.kdroidfilter.seforimapp.framework.platform
 
-import io.github.kdroidfilter.platformtools.OperatingSystem
-import io.github.kdroidfilter.platformtools.getOperatingSystem
+import dev.nucleusframework.core.runtime.Platform
 
 /**
  * Cached platform information.
@@ -11,20 +10,20 @@ object PlatformInfo {
     /**
      * The current operating system, cached at startup.
      */
-    val currentOS: OperatingSystem = getOperatingSystem()
+    val currentOS: Platform = Platform.Current
 
     /**
      * True if running on macOS.
      */
-    val isMacOS: Boolean = currentOS == OperatingSystem.MACOS
+    val isMacOS: Boolean = currentOS == Platform.MacOS
 
     /**
      * True if running on Windows.
      */
-    val isWindows: Boolean = currentOS == OperatingSystem.WINDOWS
+    val isWindows: Boolean = currentOS == Platform.Windows
 
     /**
      * True if running on Linux.
      */
-    val isLinux: Boolean = currentOS == OperatingSystem.LINUX
+    val isLinux: Boolean = currentOS == Platform.Linux
 }

@@ -3,7 +3,6 @@ package io.github.kdroidfilter.seforimapp.features.settings.general
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertSame
 
 class GeneralSettingsEventsTest {
     @Test
@@ -33,16 +32,15 @@ class GeneralSettingsEventsTest {
     }
 
     @Test
-    fun `ResetApp is singleton`() {
-        val event1 = GeneralSettingsEvents.ResetApp
-        val event2 = GeneralSettingsEvents.ResetApp
-        assertSame(event1, event2)
+    fun `SetKeepScreenAwakeOnBook stores value`() {
+        val event = GeneralSettingsEvents.SetKeepScreenAwakeOnBook(true)
+        assertEquals(true, event.value)
     }
 
     @Test
-    fun `ResetApp implements GeneralSettingsEvents`() {
-        val event: GeneralSettingsEvents = GeneralSettingsEvents.ResetApp
-        assertIs<GeneralSettingsEvents.ResetApp>(event)
+    fun `SetKeepScreenAwakeOnBook implements GeneralSettingsEvents`() {
+        val event: GeneralSettingsEvents = GeneralSettingsEvents.SetKeepScreenAwakeOnBook(false)
+        assertIs<GeneralSettingsEvents.SetKeepScreenAwakeOnBook>(event)
     }
 
     @Test
@@ -51,14 +49,14 @@ class GeneralSettingsEventsTest {
             listOf(
                 GeneralSettingsEvents.SetCloseTreeOnNewBook(true),
                 GeneralSettingsEvents.SetPersistSession(true),
-                GeneralSettingsEvents.ResetApp,
+                GeneralSettingsEvents.SetKeepScreenAwakeOnBook(true),
             )
 
         events.forEach { event ->
             when (event) {
                 is GeneralSettingsEvents.SetCloseTreeOnNewBook -> assertEquals(true, event.value)
                 is GeneralSettingsEvents.SetPersistSession -> assertEquals(true, event.value)
-                GeneralSettingsEvents.ResetApp -> { /* ok */ }
+                is GeneralSettingsEvents.SetKeepScreenAwakeOnBook -> assertEquals(true, event.value)
             }
         }
     }

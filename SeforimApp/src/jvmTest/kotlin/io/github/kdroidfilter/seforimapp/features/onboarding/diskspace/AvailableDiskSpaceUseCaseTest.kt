@@ -8,14 +8,14 @@ import kotlin.test.assertTrue
 class AvailableDiskSpaceUseCaseTest {
     @Test
     fun `required space constants are correctly defined`() {
-        assertEquals(11L, AvailableDiskSpaceUseCase.REQUIRED_SPACE_GB)
+        assertEquals(10L, AvailableDiskSpaceUseCase.REQUIRED_SPACE_GB)
         assertEquals(2.5, AvailableDiskSpaceUseCase.TEMPORARY_SPACE_GB)
-        assertEquals(8.5, AvailableDiskSpaceUseCase.FINAL_SPACE_GB)
+        assertEquals(7.5, AvailableDiskSpaceUseCase.FINAL_SPACE_GB)
     }
 
     @Test
     fun `required space bytes is calculated correctly`() {
-        val expectedBytes = 11L * 1024 * 1024 * 1024
+        val expectedBytes = 10L * 1024 * 1024 * 1024
         assertEquals(expectedBytes, AvailableDiskSpaceUseCase.REQUIRED_SPACE_BYTES)
     }
 

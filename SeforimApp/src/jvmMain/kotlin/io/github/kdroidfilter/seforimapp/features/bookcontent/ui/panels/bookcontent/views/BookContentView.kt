@@ -14,11 +14,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -31,12 +31,18 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -50,15 +56,21 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
+import io.github.kdroidfilter.seforimapp.core.annotations.UserNote
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
+import io.github.kdroidfilter.seforimapp.core.presentation.text.applyUserHighlights
+import io.github.kdroidfilter.seforimapp.core.presentation.text.drawNoteUnderlines
 import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOriginal
+import io.github.kdroidfilter.seforimapp.core.presentation.text.noteDisplayRanges
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.logger.debugln
@@ -67,16 +79,24 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
+import kotlin.math.abs
+import kotlin.math.exp
+import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(FlowPreview::class)
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class, ExperimentalComposeUiApi::class)
 @Suppress(
     "ComposeUnstableCollections",
     "ParamsComparedByRef",
@@ -92,6 +112,7 @@ fun BookContentView(
     tabId: String,
     showDiacritics: Boolean,
     modifier: Modifier = Modifier,
+    draftNote: NoteDraftAnchor? = null,
     isTocEntrySelection: Boolean = false,
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
@@ -107,6 +128,7 @@ fun BookContentView(
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
     isSelected: Boolean = true,
     bookCharCounts: IntArray? = null,
+    onPointerZoomInProgressChange: (Boolean) -> Unit = {},
 ) {
     // Don't use the saved scroll position initially if we have an anchor
     // The restoration will be handled after pagination loads
@@ -126,11 +148,128 @@ fun BookContentView(
     // Collect text size from settings
     val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val isTabSelected = LocalTabSelected.current
+    val currentOnPointerZoomInProgressChange by rememberUpdatedState(onPointerZoomInProgressChange)
+    val pointerZoomScope = rememberCoroutineScope()
+    var pointerZoomRenderJob by remember { mutableStateOf<Job?>(null) }
+    var pointerZoomCommitJob by remember { mutableStateOf<Job?>(null) }
+    var pointerZoomEndJob by remember { mutableStateOf<Job?>(null) }
+    var isPointerZooming by remember { mutableStateOf(false) }
+    var pointerZoomRenderedTextSize by remember { mutableFloatStateOf(rawTextSize) }
+    val pointerZoomAccumulator = remember { PointerZoomAccumulator(rawTextSize) }
+
+    fun setPointerZooming(value: Boolean) {
+        if (isPointerZooming != value) {
+            isPointerZooming = value
+            currentOnPointerZoomInProgressChange(value)
+        }
+    }
+
+    fun beginPointerZoom() {
+        if (!isPointerZooming) {
+            val currentTextSize = AppSettings.textSizeFlow.value
+            pointerZoomAccumulator.targetTextSize = currentTextSize
+            pointerZoomRenderedTextSize = currentTextSize
+            setPointerZooming(true)
+        }
+        pointerZoomEndJob?.cancel()
+        pointerZoomEndJob = null
+    }
+
+    fun applyPointerZoomTargetToMainContent() {
+        val targetTextSize =
+            pointerZoomAccumulator.targetTextSize.coerceIn(AppSettings.MIN_TEXT_SIZE, AppSettings.MAX_TEXT_SIZE)
+        if (abs(targetTextSize - pointerZoomRenderedTextSize) >= 0.01f) {
+            pointerZoomRenderedTextSize = targetTextSize
+        }
+    }
+
+    fun schedulePointerZoomRenderUpdate() {
+        if (pointerZoomRenderJob?.isActive == true) return
+
+        pointerZoomRenderJob =
+            pointerZoomScope.launch {
+                withFrameNanos { }
+                applyPointerZoomTargetToMainContent()
+                pointerZoomRenderJob = null
+            }
+    }
+
+    fun finishPointerZoom() {
+        pointerZoomEndJob?.cancel()
+        pointerZoomEndJob =
+            pointerZoomScope.launch {
+                delay(50.milliseconds)
+                setPointerZooming(false)
+            }
+    }
+
+    fun commitPointerZoom(cancelPendingJob: Boolean = true) {
+        if (!isPointerZooming) return
+        if (cancelPendingJob) {
+            pointerZoomCommitJob?.cancel()
+        }
+        pointerZoomCommitJob = null
+        pointerZoomRenderJob?.cancel()
+        pointerZoomRenderJob = null
+
+        val targetTextSize =
+            pointerZoomAccumulator.targetTextSize.coerceIn(AppSettings.MIN_TEXT_SIZE, AppSettings.MAX_TEXT_SIZE)
+        if (abs(targetTextSize - pointerZoomRenderedTextSize) >= 0.01f) {
+            pointerZoomRenderedTextSize = targetTextSize
+        }
+        if (abs(targetTextSize - AppSettings.textSizeFlow.value) >= 0.01f) {
+            AppSettings.setTextSize(targetTextSize)
+        }
+        pointerZoomAccumulator.targetTextSize = targetTextSize
+        finishPointerZoom()
+    }
+
+    fun schedulePointerZoomCommit() {
+        pointerZoomCommitJob?.cancel()
+        pointerZoomCommitJob =
+            pointerZoomScope.launch {
+                delay(120.milliseconds)
+                commitPointerZoom(cancelPendingJob = false)
+            }
+    }
+
+    fun applyPointerZoomFactor(factor: Float) {
+        if (!factor.isFinite() || factor <= 0f) return
+
+        beginPointerZoom()
+        val currentTextSize = pointerZoomAccumulator.targetTextSize
+        val newTextSize =
+            (currentTextSize * factor)
+                .coerceIn(AppSettings.MIN_TEXT_SIZE, AppSettings.MAX_TEXT_SIZE)
+
+        if (abs(newTextSize - currentTextSize) >= 0.01f) {
+            pointerZoomAccumulator.targetTextSize = newTextSize
+            schedulePointerZoomRenderUpdate()
+        }
+    }
+
+    val applyPointerZoomFactorState = rememberUpdatedState<(Float) -> Unit> { factor -> applyPointerZoomFactor(factor) }
+
+    LaunchedEffect(rawTextSize, isPointerZooming) {
+        if (!isPointerZooming) {
+            pointerZoomAccumulator.targetTextSize = rawTextSize
+            pointerZoomRenderedTextSize = rawTextSize
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            pointerZoomRenderJob?.cancel()
+            pointerZoomCommitJob?.cancel()
+            pointerZoomEndJob?.cancel()
+            currentOnPointerZoomInProgressChange(false)
+        }
+    }
 
     // Animate text size changes only for the active tab; background tabs snap instantly
     val textSize by animateFloatAsState(
-        targetValue = rawTextSize,
-        animationSpec = if (isTabSelected) tween(durationMillis = 300) else snap(),
+        targetValue = if (isPointerZooming) pointerZoomRenderedTextSize else rawTextSize,
+        animationSpec = if (isTabSelected && !isPointerZooming) tween(durationMillis = 300) else snap(),
         label = "textSizeAnimation",
     )
 
@@ -154,7 +293,11 @@ fun BookContentView(
             if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
         }
 
-    // Track restoration state per book
+    // Track restoration state per book. Plain remember: a tab is kept alive across switches and is
+    // never rebuilt on a switch, so this only resets when the composition is actually torn down
+    // (the tab navigates to a different book/destination, or is closed). In that case we WANT the
+    // masking below to replay, because the paged list reloads from empty and would otherwise show
+    // the top then jump to the saved position.
     var hasRestored by remember(bookId) { mutableStateOf(false) }
 
     // Track the restored anchor to avoid re-restoration
@@ -163,14 +306,16 @@ fun BookContentView(
     // Track if this is the initial book open (vs changing TOC within same book)
     var isInitialBookOpen by remember(bookId) { mutableStateOf(true) }
 
-    // Hide content until initial scroll is complete to prevent visual glitch
-    // Only apply on initial book open, not when changing TOC entries
-    val needsInitialPositioning = isInitialBookOpen && topAnchorLineId != -1L && !hasRestored
-    val contentAlpha by animateFloatAsState(
-        targetValue = if (needsInitialPositioning) 0f else 1f,
-        animationSpec = tween(durationMillis = if (needsInitialPositioning) 0 else 50),
-        label = "contentAlpha",
-    )
+    // Hide content until initial scroll is complete to prevent a visual glitch (showing the top
+    // then jumping to the saved position). The reveal is instant (no fade). It only runs on a cold
+    // open / session restore; a tab switch keeps the list alive and positioned, so nothing masks.
+    val hasSavedInitialPosition = anchorId != -1L || scrollIndex > 0 || scrollOffset > 0
+    val hasTopAnchorRequest = topAnchorTimestamp != 0L && topAnchorLineId != -1L
+    val needsInitialPositioning =
+        isInitialBookOpen &&
+            !hasRestored &&
+            (hasTopAnchorRequest || (topAnchorTimestamp == 0L && hasSavedInitialPosition))
+    val contentAlpha = if (needsInitialPositioning) 0f else 1f
 
     // selectedLineId is now passed as a parameter for stability
 
@@ -187,11 +332,38 @@ fun BookContentView(
         }
         snapshotFlow { lazyPagingItems.itemSnapshotList.items }
             .distinctUntilChanged()
+            .catch { e -> debugln { "visible-lines flow failed: $e" } }
             .collect { items -> selectionContext.setVisibleLines(tabId, items) }
     }
     DisposableEffect(tabId, selectionContext) {
         onDispose { selectionContext.clearVisibleLinesIfOwnedBy(tabId) }
     }
+
+    // Persisted user highlights for this book: loaded once into the store's per-book cache,
+    // then read from memory on the render hot path (no per-line DB access). Grouped by line so
+    // a single highlight change only recomposes the affected line — unhighlighted lines receive
+    // the stable emptyList() singleton and are skipped by strong skipping.
+    val highlightStore = LocalAppGraph.current.highlightStore
+    LaunchedEffect(bookId, highlightStore) { highlightStore.loadBook(bookId) }
+    val highlightsByBook by highlightStore.highlightsByBook.collectAsState()
+    val highlightsByLine =
+        remember(highlightsByBook, bookId) {
+            highlightsByBook[bookId].orEmpty().groupBy { it.lineId }
+        }
+
+    // Persisted user notes for this book: same per-book cache + group-by-line strategy as
+    // highlights. Noted ranges are underlined on the line; the notes pane shows the bodies.
+    val noteStore = LocalAppGraph.current.noteStore
+    LaunchedEffect(bookId, noteStore) { noteStore.loadBook(bookId) }
+    val notesByBook by noteStore.notesByBook.collectAsState()
+    val notesByLine =
+        remember(notesByBook, bookId, draftNote) {
+            val persisted = notesByBook[bookId].orEmpty().groupBy { it.lineId }
+            // Underline the pending draft range immediately, before it is saved.
+            val d = draftNote ?: return@remember persisted
+            val transient = UserNote(id = -1L, lineId = d.lineId, startOffset = d.startOffset, endOffset = d.endOffset, note = "")
+            persisted + (d.lineId to (persisted[d.lineId].orEmpty() + transient))
+        }
 
     // Prefetch connection data for visible lines to avoid per-line DB calls
     LaunchedEffect(listState, lazyPagingItems, onPrefetchLineConnections) {
@@ -211,14 +383,18 @@ fun BookContentView(
         }.map { ids -> ids.distinct() }
             .filter { it.isNotEmpty() }
             .distinctUntilChanged()
-            .debounce(150)
-            .collect { ids -> onPrefetchLineConnections(ids) }
+            .debounce(150.milliseconds)
+            .catch { e -> debugln { "prefetch-connections flow failed: $e" } }
+            .collect { ids ->
+                onPrefetchLineConnections(ids)
+            }
     }
 
     // Ensure the selected line is prefetched even if it is not visible yet
     LaunchedEffect(primarySelectedLineId, lineConnections) {
         val id = primarySelectedLineId ?: return@LaunchedEffect
-        if (lineConnections[id] == null) {
+        val alreadyCached = lineConnections[id] != null
+        if (!alreadyCached) {
             onPrefetchLineConnections(listOf(id))
         }
     }
@@ -227,6 +403,11 @@ fun BookContentView(
     // Only scrolls if the line is outside the visible viewport.
     LaunchedEffect(scrollToLineTimestamp, primarySelectedLineId, topAnchorTimestamp, topAnchorLineId) {
         if (primarySelectedLineId == null) return@LaunchedEffect
+        // Skip while this tab isn't the selected one (composed but not displayed): the initial
+        // bring-into-view must not override the anchor restoration. isTabSelected is intentionally
+        // NOT a key here, so becoming selected doesn't re-trigger a jump — real selection events
+        // (new timestamp) still run.
+        if (!isTabSelected) return@LaunchedEffect
 
         // Skip minimal bring-into-view when a top-anchoring request is active for this selection
         val isTopAnchorRequest =
@@ -234,7 +415,7 @@ fun BookContentView(
         if (isTopAnchorRequest) return@LaunchedEffect
 
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-            delay(16)
+            delay(16.milliseconds)
         }
 
         val snapshot = lazyPagingItems.itemSnapshotList
@@ -268,7 +449,7 @@ fun BookContentView(
 
         // Wait for any ongoing refresh to complete
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-            delay(16)
+            delay(16.milliseconds)
         }
 
         // Helper to locate the target index in the current snapshot
@@ -279,18 +460,19 @@ fun BookContentView(
 
         var targetIndex = currentTargetIndex()
         if (targetIndex == null) {
-            debugln { "Top-anchor target $topAnchorLineId not yet in snapshot; waiting" }
-            withTimeoutOrNull(1500L) {
+            withTimeoutOrNull(1500L.milliseconds) {
                 snapshotFlow { lazyPagingItems.itemSnapshotList.items }
-                    .map { items -> items.indices.firstOrNull { items[it].id == topAnchorLineId } }
-                    .filterNotNull()
-                    .first()
+                    .mapNotNull { items ->
+                        items.indices.firstOrNull {
+                            items[it].id ==
+                                topAnchorLineId
+                        }
+                    }.first()
                     .also { idx -> targetIndex = idx }
             }
         }
 
         targetIndex?.let { idx ->
-            debugln { "Top-anchoring to index $idx for line $topAnchorLineId" }
             listState.scrollToItem(idx, 0)
             restoredAnchorId = topAnchorLineId
             hasRestored = true
@@ -304,10 +486,13 @@ fun BookContentView(
     LaunchedEffect(bookId, topAnchorTimestamp, anchorId, scrollIndex, scrollOffset) {
         if (topAnchorTimestamp != 0L) return@LaunchedEffect
         if (hasRestored) return@LaunchedEffect
+        // On a cold open / session restore this positions the list and the contentAlpha reveal
+        // plays once. A tab switch no longer re-runs this — the tab stays composed and the list
+        // keeps its position.
 
         // Wait for initial page load to complete
         while (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-            delay(16)
+            delay(16.milliseconds)
         }
 
         if (lazyPagingItems.itemCount <= 0) return@LaunchedEffect
@@ -321,20 +506,22 @@ fun BookContentView(
 
             var idx = currentAnchorIndex()
             if (idx == null) {
-                debugln { "Saved anchor $anchorId not yet in snapshot; waiting" }
-                withTimeoutOrNull(1500L) {
+                withTimeoutOrNull(1500L.milliseconds) {
                     snapshotFlow { lazyPagingItems.itemSnapshotList }
-                        .map { snapshot -> snapshot.indices.firstOrNull { snapshot[it]?.id == anchorId } }
-                        .filterNotNull()
-                        .first()
+                        .mapNotNull { snapshot ->
+                            snapshot.indices.firstOrNull {
+                                snapshot[it]?.id ==
+                                    anchorId
+                            }
+                        }.first()
                         .also { resolved -> idx = resolved }
                 }
             }
 
             idx?.let { resolved ->
-                debugln { "Restoring by saved anchor: idx=$resolved, offset=$scrollOffset" }
                 listState.scrollToItem(resolved, scrollOffset.coerceAtLeast(0))
                 hasRestored = true
+                isInitialBookOpen = false
                 restoredAnchorId = anchorId
                 return@LaunchedEffect
             }
@@ -345,10 +532,14 @@ fun BookContentView(
             val itemCount = lazyPagingItems.itemCount
             val targetIndex = scrollIndex.coerceIn(0, maxOf(0, itemCount - 1))
             val targetOffset = scrollOffset.coerceAtLeast(0)
-            debugln { "Restoring by index/offset: index=$targetIndex, offset=$targetOffset" }
             listState.scrollToItem(targetIndex, targetOffset)
             hasRestored = true
+            isInitialBookOpen = false
+            return@LaunchedEffect
         }
+
+        hasRestored = true
+        isInitialBookOpen = false
     }
 
     // Save scroll position with anchor information - optimized with derivedStateOf
@@ -386,31 +577,43 @@ fun BookContentView(
     val savedAnchorIdUpdated by rememberUpdatedState(anchorId)
     val savedAnchorIndexUpdated by rememberUpdatedState(anchorIndex)
 
-    LaunchedEffect(listState, lazyPagingItems) {
-        fun maybeSave(data: AnchorData) {
-            // Guard: on cold-boot restore, don't overwrite the persisted position with an initial transient emission
-            // before the restoration effect has applied the saved anchor/offset.
-            val hasPersistedPosition =
-                savedAnchorIdUpdated > 0 || savedScrollIndexUpdated > 0 || savedScrollOffsetUpdated > 0
-            if (!hasRestoredUpdated && hasPersistedPosition) {
-                return
-            }
-
-            // Avoid wiping a previously known anchor when the list hasn't resolved item keys yet (e.g., while loading).
-            val stableAnchorId = data.anchorId.takeIf { it > 0 } ?: savedAnchorIdUpdated
-            val stableAnchorIndex = if (data.anchorId > 0) data.anchorIndex else savedAnchorIndexUpdated
-
-            debugln {
-                "Saving scroll: anchor=$stableAnchorId, index=${data.scrollIndex}, offset=${data.scrollOffset}"
-            }
-            onScrollUpdated(stableAnchorId, stableAnchorIndex, data.scrollIndex, data.scrollOffset)
+    fun maybeSave(data: AnchorData) {
+        // Guard: on cold-boot restore, don't overwrite the persisted position with an initial transient emission
+        // before the restoration effect has applied the saved anchor/offset.
+        val hasPersistedPosition =
+            savedAnchorIdUpdated > 0 || savedScrollIndexUpdated > 0 || savedScrollOffsetUpdated > 0
+        if (!hasRestoredUpdated && hasPersistedPosition) {
+            return
         }
 
+        // Avoid wiping a previously known anchor when the list hasn't resolved item keys yet (e.g., while loading).
+        val stableAnchorId = data.anchorId.takeIf { it > 0 } ?: savedAnchorIdUpdated
+        val stableAnchorIndex = if (data.anchorId > 0) data.anchorIndex else savedAnchorIndexUpdated
+
+        onScrollUpdated(stableAnchorId, stableAnchorIndex, data.scrollIndex, data.scrollOffset)
+    }
+
+    DisposableEffect(listState, lazyPagingItems) {
+        onDispose { maybeSave(scrollData.value) }
+    }
+
+    LaunchedEffect(listState, lazyPagingItems) {
         // While scrolling, sample periodically so a close during an active scroll still restores closely.
+        // Gated by isScrollInProgress so the `sample` ticker only runs during an active scroll —
+        // otherwise its fixedPeriodTicker keeps the FlushCoroutineDispatcher waking up at 5 Hz forever
+        // and the Compose scene re-renders every tick even at idle.
         launch {
-            snapshotFlow { scrollData.value }
+            snapshotFlow { listState.isScrollInProgress }
                 .distinctUntilChanged()
-                .sample(200)
+                .flatMapLatest { inProgress ->
+                    if (inProgress) {
+                        snapshotFlow { scrollData.value }
+                            .distinctUntilChanged()
+                            .sample(200.milliseconds)
+                    } else {
+                        emptyFlow()
+                    }
+                }.catch { e -> debugln { "scroll-save flow failed: $e" } }
                 .collect { data -> maybeSave(data) }
         }
 
@@ -419,6 +622,7 @@ fun BookContentView(
             snapshotFlow { listState.isScrollInProgress }
                 .distinctUntilChanged()
                 .filter { inProgress -> !inProgress }
+                .catch { e -> debugln { "scroll-stop flush flow failed: $e" } }
                 .collect {
                     // Wait one frame so layoutInfo/visibleItemsInfo reflect the final settled position.
                     withFrameNanos { }
@@ -440,7 +644,7 @@ fun BookContentView(
     }
 
     // Smart mode: get highlight terms from search engine with dictionary expansion
-    val appGraph = io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph.current
+    val appGraph = LocalAppGraph.current
     val smartHighlightTerms by remember(smartModeEnabled, findState) {
         derivedStateOf {
             if (smartModeEnabled) {
@@ -460,10 +664,83 @@ fun BookContentView(
     var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
     var currentMatchStart by remember { mutableIntStateOf(-1) }
     val plainTextCache = remember(bookId) { mutableStateMapOf<Long, String>() }
+
+    // Theme-derived inputs to the HTML annotation, hoisted here so the off-screen prefetcher
+    // can build keys/annotations identical to those produced inside LineItem.
+    val isDarkTheme = JewelTheme.isDark
+    val footnoteMarkerColor = JewelTheme.globalColors.outlines.focused
+    val prefetchImageBuilder =
+        remember(isDarkTheme) {
+            SkiaHtmlImageBuilder.build { if (isDarkTheme) SkiaHtmlImageBuilder.InvertColorFilter else null }
+        }
+
+    // Backed by a ConcurrentHashMap: the prefetcher writes from Dispatchers.Default while
+    // LineItem reads during composition on the main thread.
     val stableAnnotatedCache =
         remember(bookId, textSize, boldScaleForPlatform, showDiacritics) {
-            StableAnnotatedCache(mutableStateMapOf())
+            StableAnnotatedCache(java.util.concurrent.ConcurrentHashMap())
         }
+
+    // Warm the annotation cache for lines just outside the viewport so they render straight from
+    // cache (no async placeholder flash, no height reflow) by the time they scroll into view.
+    // conflate() (not collectLatest) keeps the latest viewport range without cancelling an
+    // in-flight build batch — so fast scrolling still makes forward progress on parsing.
+    LaunchedEffect(
+        listState,
+        lazyPagingItems,
+        stableAnnotatedCache,
+        prefetchImageBuilder,
+        textSize,
+        boldScaleForPlatform,
+        showDiacritics,
+        footnoteMarkerColor,
+        isDarkTheme,
+    ) {
+        snapshotFlow {
+            val visible = listState.layoutInfo.visibleItemsInfo
+            if (visible.isEmpty()) {
+                IntRange.EMPTY
+            } else {
+                (visible.first().index - HTML_PREFETCH_BEHIND)..(visible.last().index + HTML_PREFETCH_AHEAD)
+            }
+        }.distinctUntilChanged()
+            .conflate()
+            .catch { e -> debugln { "annotation-prefetch flow failed: $e" } }
+            .collect { range ->
+                if (range.isEmpty()) return@collect
+                val count = lazyPagingItems.itemCount
+                // Snapshot candidate lines on the main thread; peek() never triggers a page load.
+                val lines = range.mapNotNull { i -> if (i in 0 until count) lazyPagingItems.peek(i) else null }
+                if (lines.isEmpty()) return@collect
+                withContext(Dispatchers.Default) {
+                    for (line in lines) {
+                        ensureActive()
+                        val processed =
+                            if (showDiacritics) line.content else HebrewTextUtils.removeAllDiacritics(line.content)
+                        val key =
+                            htmlAnnotationCacheKey(
+                                lineId = line.id,
+                                processedContent = processed,
+                                baseTextSize = textSize,
+                                boldScale = boldScaleForPlatform,
+                                footnoteMarkerColor = footnoteMarkerColor,
+                                invertImages = isDarkTheme,
+                            )
+                        if (stableAnnotatedCache.get(key) != null) continue
+                        stableAnnotatedCache.put(
+                            key,
+                            buildLineAnnotation(
+                                html = processed,
+                                baseTextSize = textSize,
+                                boldScale = boldScaleForPlatform,
+                                footnoteMarkerColor = footnoteMarkerColor,
+                                imageContentBuilder = prefetchImageBuilder,
+                            ),
+                        )
+                    }
+                }
+            }
+    }
 
     // Navigate to next/previous line containing the query (wrap-around)
     val scope = rememberCoroutineScope()
@@ -588,7 +865,56 @@ fun BookContentView(
             modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = contentAlpha } // Hide until positioned to prevent glitch
-                .focusRequester(focusRequester)
+                .onPointerEvent(PointerEventType.Scroll) { event ->
+                    val isZoomScroll = event.keyboardModifiers.isCtrlPressed || event.keyboardModifiers.isMetaPressed
+                    if (!isZoomScroll) return@onPointerEvent
+
+                    val scrollDelta = event.changes.firstOrNull()?.scrollDelta ?: Offset.Zero
+                    val zoomDelta =
+                        if (abs(scrollDelta.y) >= abs(scrollDelta.x)) {
+                            scrollDelta.y
+                        } else {
+                            scrollDelta.x
+                        }
+                    if (zoomDelta == 0f) return@onPointerEvent
+
+                    val exponent = (-zoomDelta * 0.08f).coerceIn(-0.25f, 0.25f)
+                    applyPointerZoomFactorState.value(exp(exponent.toDouble()).toFloat())
+                    schedulePointerZoomCommit()
+                    event.changes.forEach { it.consume() }
+                }.pointerInput(Unit) {
+                    awaitEachGesture {
+                        var previousDistance = 0f
+                        var hasZoomed = false
+
+                        do {
+                            val event = awaitPointerEvent(PointerEventPass.Main)
+                            val pressedChanges = event.changes.filter { it.pressed }
+
+                            if (pressedChanges.size >= 2) {
+                                val distance = averageDistanceToCentroid(pressedChanges)
+                                if (previousDistance > 0f && distance > 0f) {
+                                    val zoomFactor = (distance / previousDistance).coerceIn(0.85f, 1.18f)
+                                    if (abs(zoomFactor - 1f) > 0.002f) {
+                                        applyPointerZoomFactorState.value(zoomFactor)
+                                        hasZoomed = true
+                                    }
+                                }
+                                previousDistance = distance
+
+                                if (hasZoomed) {
+                                    event.changes.forEach { it.consume() }
+                                }
+                            } else {
+                                previousDistance = 0f
+                            }
+                        } while (event.changes.any { it.pressed })
+
+                        if (hasZoomed) {
+                            commitPointerZoom()
+                        }
+                    }
+                }.focusRequester(focusRequester)
                 .onPreviewKeyEvent(previewKeyHandler)
                 .focusable(),
     ) {
@@ -680,9 +1006,15 @@ fun BookContentView(
                                     }
                                 }
                                 Box(modifier = Modifier.padding(vertical = LineItemVerticalPaddingPerSide)) {
+                                    // Stable per-line list: unhighlighted lines get the emptyList()
+                                    // singleton, so only lines whose highlights changed recompose.
+                                    val lineHighlights = highlightsByLine[line.id] ?: emptyList()
+                                    val lineNotes = notesByLine[line.id] ?: emptyList()
                                     LineItem(
                                         lineId = line.id,
                                         lineContent = line.content,
+                                        userHighlights = lineHighlights,
+                                        userNotes = lineNotes,
                                         fontFamily = hebrewFontFamily,
                                         onClick = { isModifier -> onLineSelect(line, isModifier) },
                                         isSelected = isCurrentSelected,
@@ -701,6 +1033,12 @@ fun BookContentView(
                                             if (textLayoutWidthPx == 0 && width > 0) {
                                                 textLayoutWidthPx = width
                                             }
+                                        },
+                                        onContextClick = {
+                                            selectionContext.setCurrentLineId(line.id)
+                                            // Drop any stale comments-pane anchor so a main-pane
+                                            // highlight never lands on a commentary line.
+                                            selectionContext.setActiveCommentaryColumn(emptyList())
                                         },
                                     )
                                 }
@@ -867,6 +1205,11 @@ fun BookContentView(
 // changing this value updates both the layout and the scrollbar metrics.
 internal val LineItemVerticalPaddingPerSide = 8.dp
 
+// How many lines to pre-parse on either side of the viewport. Forward gets a larger buffer
+// since scrolling down is the dominant direction in a reading app.
+private const val HTML_PREFETCH_AHEAD = 16
+private const val HTML_PREFETCH_BEHIND = 8
+
 // Data class for anchor information
 private data class AnchorData(
     val anchorId: Long,
@@ -874,6 +1217,28 @@ private data class AnchorData(
     val scrollIndex: Int,
     val scrollOffset: Int,
 )
+
+private fun averageDistanceToCentroid(changes: List<PointerInputChange>): Float {
+    if (changes.isEmpty()) return 0f
+
+    var centroid = Offset.Zero
+    changes.forEach { change ->
+        centroid += change.position
+    }
+    centroid /= changes.size.toFloat()
+
+    var totalDistance = 0f
+    changes.forEach { change ->
+        totalDistance += (change.position - centroid).getDistance()
+    }
+    return totalDistance / changes.size.toFloat()
+}
+
+private class PointerZoomAccumulator(
+    initialTextSize: Float,
+) {
+    var targetTextSize: Float = initialTextSize
+}
 
 /**
  * Stable wrapper for alt headings map to avoid unnecessary recompositions.
@@ -891,29 +1256,6 @@ class StableAltHeadings(
 }
 
 fun Map<Long, List<AltTocEntry>>.asStableAltHeadings(): StableAltHeadings = StableAltHeadings(this)
-
-/**
- * Paired output of [buildAnnotatedFromHtml]: styled text plus the inline-content map
- * required to display inline images (base64 data URIs embedded by the Sefaria pipeline).
- */
-@Stable
-data class LineAnnotation(
-    val annotated: AnnotatedString,
-    val inlineContent: Map<String, InlineTextContent>,
-)
-
-/**
- * Stable wrapper for annotated string cache to avoid unnecessary recompositions.
- */
-@Stable
-class StableAnnotatedCache(
-    val cache: MutableMap<Long, LineAnnotation>,
-) {
-    fun getOrPut(
-        lineId: Long,
-        defaultValue: () -> LineAnnotation,
-    ): LineAnnotation = cache.getOrPut(lineId, defaultValue)
-}
 
 @Composable
 private fun AltHeadingItem(
@@ -948,7 +1290,7 @@ private fun AltHeadingItem(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun LineItem(
     lineId: Long,
@@ -965,7 +1307,10 @@ private fun LineItem(
     currentMatchStart: Int? = null,
     annotatedCache: StableAnnotatedCache? = null,
     showDiacritics: Boolean = true,
+    userHighlights: List<UserHighlight> = emptyList(),
+    userNotes: List<UserNote> = emptyList(),
     onLayoutWidthMeasure: (Int) -> Unit = {},
+    onContextClick: () -> Unit = {},
 ) {
     // Process content: remove diacritics if setting is disabled
     val processedContent =
@@ -987,26 +1332,81 @@ private fun LineItem(
             { if (isDarkTheme) SkiaHtmlImageBuilder.InvertColorFilter else null }
         }
 
-    // Memoize the annotated string with proper keys
-    val lineAnnotation =
-        remember(lineId, processedContent, baseTextSize, boldScale, annotatedCache, showDiacritics, footnoteMarkerColor) {
-            fun build(): LineAnnotation {
-                val inline = mutableMapOf<String, InlineTextContent>()
-                val annotated =
-                    buildAnnotatedFromHtml(
-                        processedContent,
-                        baseTextSize,
-                        boldScale = if (boldScale < 1f) 1f else boldScale,
-                        footnoteMarkerColor = footnoteMarkerColor,
-                        inlineContent = inline,
-                        imageContentBuilder = SkiaHtmlImageBuilder.build(imageColorFilter),
-                    )
-                return LineAnnotation(annotated, inline)
+    val textModifier =
+        remember(lineId) {
+            Modifier.fillMaxWidth()
+        }.pointerInput(lineId) {
+            awaitEachGesture {
+                // Wait for press and capture keyboard modifiers from the event.
+                // Mouse reports a primary button; touch contacts have an empty
+                // button mask (PointerType.Touch, like iOS), so accept either.
+                val downEvent = awaitPointerEvent(PointerEventPass.Main)
+                val isTouchDown = downEvent.changes.any { it.type == PointerType.Touch && it.pressed }
+                if (!downEvent.buttons.isPrimaryPressed && !isTouchDown) return@awaitEachGesture
+                val isModifier = downEvent.keyboardModifiers.isCtrlPressed || downEvent.keyboardModifiers.isMetaPressed
+                // Wait for release
+                val up = waitForUpOrCancellation()
+                if (up != null && !up.isConsumed) {
+                    onClick(isModifier)
+                }
             }
-            annotatedCache?.getOrPut(lineId) { build() } ?: build()
+        }.onPointerEvent(PointerEventType.Press) { event ->
+            // Record this line as the right-click target so the context menu can offer a
+            // "copy link to this line" action even when no text is selected.
+            if (event.buttons.isSecondaryPressed) onContextClick()
         }
+
+    val localAnnotatedCache = remember { StableAnnotatedCache(mutableStateMapOf()) }
+    val annotationCache = annotatedCache ?: localAnnotatedCache
+    val annotationCacheKey =
+        remember(lineId, processedContent, baseTextSize, boldScale, footnoteMarkerColor, isDarkTheme) {
+            htmlAnnotationCacheKey(
+                lineId = lineId,
+                processedContent = processedContent,
+                baseTextSize = baseTextSize,
+                boldScale = boldScale,
+                footnoteMarkerColor = footnoteMarkerColor,
+                invertImages = isDarkTheme,
+            )
+        }
+
+    val lineAnnotation =
+        rememberAsyncHtmlAnnotation(
+            cacheKey = annotationCacheKey,
+            html = processedContent,
+            baseTextSize = baseTextSize,
+            boldScale = boldScale,
+            footnoteMarkerColor = footnoteMarkerColor,
+            imageColorFilter = imageColorFilter,
+            annotatedCache = annotationCache,
+        )
+
+    if (lineAnnotation == null) {
+        Text(
+            text = htmlAnnotationPlaceholderText(processedContent.length),
+            textAlign = TextAlign.Justify,
+            fontFamily = fontFamily,
+            fontSize = baseTextSize.sp,
+            lineHeight = (baseTextSize * lineHeight).sp,
+            modifier = textModifier,
+            onTextLayout = { result ->
+                val cw = result.layoutInput.constraints.maxWidth
+                if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
+            },
+        )
+        return
+    }
+
     val annotated = lineAnnotation.annotated
     val inlineImageContent = lineAnnotation.inlineContent
+
+    // Plain text of the line WITH diacritics: user-highlight offsets are stored against this
+    // representation, so it is needed to remap them when diacritics are hidden. The text is
+    // independent of font size, so [lineContent] alone is a safe cache key.
+    val originalPlainText =
+        remember(lineContent) {
+            buildAnnotatedFromHtml(lineContent, baseTextSize, boldScale = 1f).text
+        }
 
     // Build highlighted text when a query is active (>= 2 chars)
     val baseHl =
@@ -1016,11 +1416,30 @@ private fun LineItem(
         JewelTheme.globalColors.outlines.focused
             .copy(alpha = 0.42f)
     val displayText: AnnotatedString =
-        remember(annotated, highlightQuery, highlightTerms, currentMatchStart, baseHl, currentHl) {
+        remember(
+            annotated,
+            highlightQuery,
+            highlightTerms,
+            currentMatchStart,
+            baseHl,
+            currentHl,
+            userHighlights,
+            showDiacritics,
+            originalPlainText,
+        ) {
+            // User highlights first, then search highlights on top. Note markers are drawn
+            // separately (dotted underline) in drawBehind, not baked into the AnnotatedString.
+            val withUserHighlights =
+                applyUserHighlights(
+                    annotated = annotated,
+                    highlights = userHighlights,
+                    originalText = originalPlainText,
+                    showDiacritics = showDiacritics,
+                )
             if (!highlightTerms.isNullOrEmpty()) {
                 // Smart mode: highlight multiple terms from dictionary expansion
                 io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithTerms(
-                    annotated = annotated,
+                    annotated = withUserHighlights,
                     terms = highlightTerms,
                     currentStart = currentMatchStart?.takeIf { it >= 0 },
                     baseColor = baseHl,
@@ -1029,7 +1448,7 @@ private fun LineItem(
             } else {
                 // Normal mode: highlight single query
                 io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
-                    annotated = annotated,
+                    annotated = withUserHighlights,
                     query = highlightQuery,
                     currentStart = currentMatchStart?.takeIf { it >= 0 },
                     currentLength = highlightQuery?.length,
@@ -1039,31 +1458,27 @@ private fun LineItem(
             }
         }
 
-    val textModifier =
-        remember(lineId) {
-            Modifier.fillMaxWidth()
-        }.pointerInput(lineId) {
-            awaitEachGesture {
-                // Wait for press and capture keyboard modifiers from the event
-                val downEvent = awaitPointerEvent(PointerEventPass.Main)
-                if (!downEvent.buttons.isPrimaryPressed) return@awaitEachGesture
-                val isModifier = downEvent.keyboardModifiers.isCtrlPressed || downEvent.keyboardModifiers.isMetaPressed
-                // Wait for release
-                val up = waitForUpOrCancellation()
-                if (up != null && !up.isConsumed) {
-                    onClick(isModifier)
-                }
-            }
+    // Dotted grey underline marking the noted ranges (drawn from the text layout so it supports
+    // wrapping and RTL). Offsets are remapped to the displayed text when diacritics are hidden.
+    val noteRanges =
+        remember(userNotes, originalPlainText, showDiacritics, displayText) {
+            noteDisplayRanges(userNotes, originalPlainText, showDiacritics, displayText.length)
         }
+    val noteUnderlineColor = JewelTheme.globalColors.text.info
+    var noteLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
 
     Text(
         text = displayText,
         textAlign = TextAlign.Justify,
         fontFamily = fontFamily,
         lineHeight = (baseTextSize * lineHeight).sp,
-        modifier = textModifier,
+        modifier =
+            textModifier.drawBehind {
+                noteLayout?.let { drawNoteUnderlines(it, noteRanges, noteUnderlineColor) }
+            },
         inlineContent = inlineImageContent,
         onTextLayout = { result ->
+            noteLayout = result
             val cw = result.layoutInput.constraints.maxWidth
             if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
         },

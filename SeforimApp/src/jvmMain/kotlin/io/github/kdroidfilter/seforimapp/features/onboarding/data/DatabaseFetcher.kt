@@ -1,7 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.data
 
-import io.github.kdroidfilter.platformtools.releasefetcher.github.GitHubReleaseFetcher
 import io.github.kdroidfilter.seforimapp.network.KtorConfig
+import io.github.kdroidfilter.seforimapp.releasefetcher.github.GitHubReleaseFetcher
 
 val databaseFetcher =
     GitHubReleaseFetcher(

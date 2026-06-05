@@ -39,7 +39,6 @@ open class DbDeltaUpdateService(
     private val luceneSinksProvider: () -> LuceneUpdater.SinkSession =
         defaultLuceneSinksProvider(luceneIndexDir, seforimDb),
 ) {
-
     private val log = LoggerFactory.getLogger(DbDeltaUpdateService::class.java)
 
     private val client by lazy {
@@ -70,10 +69,8 @@ open class DbDeltaUpdateService(
      * Polls the release server and applies any available chain. Reports
      * progress via [onProgress] as `current/total: status`.
      */
-    open suspend fun checkAndApply(
-        onProgress: (current: Int, total: Int, status: String) -> Unit = { _, _, _ -> },
-    ): Outcome {
-        return when (val path = client.checkForUpdate()) {
+    open suspend fun checkAndApply(onProgress: (current: Int, total: Int, status: String) -> Unit = { _, _, _ -> }): Outcome =
+        when (val path = client.checkForUpdate()) {
             UpdatePath.UpToDate -> Outcome.UpToDate
             is UpdatePath.FullBundle -> Outcome.NeedsFullBundle
             is UpdatePath.Chain -> {
@@ -81,11 +78,14 @@ open class DbDeltaUpdateService(
                 Outcome.Applied(path.deltas.size)
             }
         }
-    }
 
     sealed interface Outcome {
         data object UpToDate : Outcome
-        data class Applied(val deltaCount: Int) : Outcome
+
+        data class Applied(
+            val deltaCount: Int,
+        ) : Outcome
+
         data object NeedsFullBundle : Outcome
     }
 
@@ -118,80 +118,88 @@ open class DbDeltaUpdateService(
         fun defaultLuceneSinksProvider(
             luceneIndexDir: Path?,
             seforimDb: Path?,
-        ): () -> LuceneUpdater.SinkSession = {
-            if (luceneIndexDir == null) {
-                LuceneUpdater.SinkSession(
-                    delete = LuceneUpdater.DeleteSink { },
-                    upsert = LuceneUpdater.UpsertSink { },
-                )
-            } else {
-                val dir = FSDirectory.open(luceneIndexDir)
-                val writer = IndexWriter(dir, IndexWriterConfig(StandardAnalyzer()))
-                val bookMetaCache = HashMap<Long, BookMeta>()
-                val dbConn = seforimDb?.let {
-                    java.sql.DriverManager.getConnection("jdbc:sqlite:${it.toAbsolutePath()}")
-                }
+        ): () -> LuceneUpdater.SinkSession =
+            {
+                if (luceneIndexDir == null) {
+                    LuceneUpdater.SinkSession(
+                        delete = LuceneUpdater.DeleteSink { },
+                        upsert = LuceneUpdater.UpsertSink { },
+                    )
+                } else {
+                    val dir = FSDirectory.open(luceneIndexDir)
+                    val writer = IndexWriter(dir, IndexWriterConfig(StandardAnalyzer()))
+                    val bookMetaCache = HashMap<Long, BookMeta>()
+                    val dbConn =
+                        seforimDb?.let {
+                            java.sql.DriverManager.getConnection("jdbc:sqlite:${it.toAbsolutePath()}")
+                        }
 
-                fun lookupBookMeta(bookId: Long): BookMeta {
-                    bookMetaCache[bookId]?.let { return it }
-                    if (dbConn == null) return BookMeta.EMPTY.also { bookMetaCache[bookId] = it }
-                    return runCatching {
-                        dbConn.prepareStatement(
-                            "SELECT title, categoryId, orderIndex, isBaseBook FROM book WHERE id = ?"
-                        ).use { ps ->
-                            ps.setLong(1, bookId)
-                            ps.executeQuery().use { rs ->
-                                if (rs.next()) {
-                                    BookMeta(
-                                        title = rs.getString(1) ?: "",
-                                        categoryId = rs.getLong(2),
-                                        orderIndex = rs.getLong(3),
-                                        isBaseBook = rs.getInt(4),
-                                    )
-                                } else BookMeta.EMPTY
+                    fun lookupBookMeta(bookId: Long): BookMeta {
+                        bookMetaCache[bookId]?.let { return it }
+                        if (dbConn == null) return BookMeta.EMPTY.also { bookMetaCache[bookId] = it }
+                        return runCatching {
+                            dbConn
+                                .prepareStatement(
+                                    "SELECT title, categoryId, orderIndex, isBaseBook FROM book WHERE id = ?",
+                                ).use { ps ->
+                                    ps.setLong(1, bookId)
+                                    ps.executeQuery().use { rs ->
+                                        if (rs.next()) {
+                                            BookMeta(
+                                                title = rs.getString(1) ?: "",
+                                                categoryId = rs.getLong(2),
+                                                orderIndex = rs.getLong(3),
+                                                isBaseBook = rs.getInt(4),
+                                            )
+                                        } else {
+                                            BookMeta.EMPTY
+                                        }
+                                    }
+                                }
+                        }.getOrDefault(BookMeta.EMPTY).also { bookMetaCache[bookId] = it }
+                    }
+
+                    LuceneUpdater.SinkSession(
+                        delete =
+                            LuceneUpdater.DeleteSink { id ->
+                                writer.deleteDocuments(IntPoint.newExactQuery(FIELD_LINE_ID, id.toInt()))
+                            },
+                        upsert =
+                            LuceneUpdater.UpsertSink { line ->
+                                val meta = lookupBookMeta(line.bookId)
+                                writer.deleteDocuments(IntPoint.newExactQuery(FIELD_LINE_ID, line.id.toInt()))
+                                val doc =
+                                    Document().apply {
+                                        add(Field(FIELD_TYPE, TYPE_LINE, org.apache.lucene.document.StringField.TYPE_STORED))
+                                        add(IntPoint(FIELD_BOOK_ID, line.bookId.toInt()))
+                                        add(StoredField(FIELD_BOOK_ID, line.bookId))
+                                        add(IntPoint(FIELD_CATEGORY_ID, meta.categoryId.toInt()))
+                                        add(StoredField(FIELD_CATEGORY_ID, meta.categoryId))
+                                        add(IntPoint(FIELD_LINE_ID, line.id.toInt()))
+                                        add(StoredField(FIELD_LINE_ID, line.id))
+                                        add(StoredField(FIELD_LINE_INDEX, line.lineIndex.toLong()))
+                                        add(TextField(FIELD_TEXT, line.content, Field.Store.NO))
+                                        add(StoredField(FIELD_BOOK_TITLE, meta.title))
+                                        add(StoredField(FIELD_ORDER_INDEX, meta.orderIndex))
+                                        add(StoredField(FIELD_IS_BASE_BOOK, meta.isBaseBook.toLong()))
+                                    }
+                                writer.addDocument(doc)
+                            },
+                        // Commit + close in lock-step: this is what guarantees
+                        // the delta is actually persisted to the index. Skipping
+                        // either of these silently drops every upsert.
+                        onClose = {
+                            try {
+                                writer.commit()
+                            } finally {
+                                runCatching { writer.close() }
+                                runCatching { dir.close() }
+                                runCatching { dbConn?.close() }
                             }
-                        }
-                    }.getOrDefault(BookMeta.EMPTY).also { bookMetaCache[bookId] = it }
+                        },
+                    )
                 }
-
-                LuceneUpdater.SinkSession(
-                    delete = LuceneUpdater.DeleteSink { id ->
-                        writer.deleteDocuments(IntPoint.newExactQuery(FIELD_LINE_ID, id.toInt()))
-                    },
-                    upsert = LuceneUpdater.UpsertSink { line ->
-                        val meta = lookupBookMeta(line.bookId)
-                        writer.deleteDocuments(IntPoint.newExactQuery(FIELD_LINE_ID, line.id.toInt()))
-                        val doc = Document().apply {
-                            add(Field(FIELD_TYPE, TYPE_LINE, org.apache.lucene.document.StringField.TYPE_STORED))
-                            add(IntPoint(FIELD_BOOK_ID, line.bookId.toInt()))
-                            add(StoredField(FIELD_BOOK_ID, line.bookId))
-                            add(IntPoint(FIELD_CATEGORY_ID, meta.categoryId.toInt()))
-                            add(StoredField(FIELD_CATEGORY_ID, meta.categoryId))
-                            add(IntPoint(FIELD_LINE_ID, line.id.toInt()))
-                            add(StoredField(FIELD_LINE_ID, line.id))
-                            add(StoredField(FIELD_LINE_INDEX, line.lineIndex.toLong()))
-                            add(TextField(FIELD_TEXT, line.content, Field.Store.NO))
-                            add(StoredField(FIELD_BOOK_TITLE, meta.title))
-                            add(StoredField(FIELD_ORDER_INDEX, meta.orderIndex))
-                            add(StoredField(FIELD_IS_BASE_BOOK, meta.isBaseBook.toLong()))
-                        }
-                        writer.addDocument(doc)
-                    },
-                    // Commit + close in lock-step: this is what guarantees
-                    // the delta is actually persisted to the index. Skipping
-                    // either of these silently drops every upsert.
-                    onClose = {
-                        try {
-                            writer.commit()
-                        } finally {
-                            runCatching { writer.close() }
-                            runCatching { dir.close() }
-                            runCatching { dbConn?.close() }
-                        }
-                    },
-                )
             }
-        }
 
         private data class BookMeta(
             val title: String,

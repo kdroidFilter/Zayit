@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION", "DEPRECATION_ERROR")
+
 package io.github.kdroidfilter.seforimapp.earthwidget
 
 import androidx.compose.ui.graphics.ImageBitmap

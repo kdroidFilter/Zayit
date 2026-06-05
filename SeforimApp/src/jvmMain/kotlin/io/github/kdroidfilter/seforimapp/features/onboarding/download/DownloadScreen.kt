@@ -2,10 +2,8 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.download
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -15,31 +13,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytesPerSec
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatEta
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
-import io.github.kdroidfilter.seforimapp.icons.FileArrowDown
-import io.github.kdroidfilter.seforimapp.icons.Speed
-import io.github.kdroidfilter.seforimapp.icons.Timer
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultErrorBanner
 import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.theme.defaultBannerStyle
 import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.onboarding_download_progress
 import seforimapp.seforimapp.generated.resources.onboarding_downloading_message
 import seforimapp.seforimapp.generated.resources.onboarding_error_occurred
 import seforimapp.seforimapp.generated.resources.onboarding_error_with_detail
@@ -129,61 +118,11 @@ fun DownloadView(
                 tint = JewelTheme.globalColors.text.normal,
             )
 
-            val downloadedText = formatBytes(state.downloadedBytes)
-            val totalBytes = state.totalBytes
-            val totalText = totalBytes?.let { formatBytes(it) }
-            val speedBps = state.speedBytesPerSec
-            val speedText = formatBytesPerSec(speedBps)
-
-            totalText?.let {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Icon(
-                        FileArrowDown,
-                        null,
-                        tint = JewelTheme.globalColors.text.normal,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(
-                        stringResource(Res.string.onboarding_download_progress, downloadedText, it),
-                        modifier = Modifier.width(175.dp),
-                        textAlign = TextAlign.End,
-                    )
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Icon(Speed, null, tint = JewelTheme.globalColors.text.normal, modifier = Modifier.size(16.dp))
-                    Text(
-                        speedText,
-                        modifier = Modifier.width(175.dp),
-                        textAlign = TextAlign.End,
-                    )
-                }
-                val etaSeconds =
-                    if (speedBps > 0L) {
-                        val remaining = (totalBytes - state.downloadedBytes).coerceAtLeast(0)
-                        ((remaining + speedBps - 1) / speedBps)
-                    } else {
-                        null
-                    }
-                etaSeconds?.let { secs ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        Icon(Timer, null, tint = JewelTheme.globalColors.text.normal, modifier = Modifier.size(15.dp))
-                        Text(
-                            formatEta(secs),
-                            modifier = Modifier.width(175.dp),
-                            textAlign = TextAlign.End,
-                        )
-                    }
-                }
-            }
+            DownloadProgressDetails(
+                downloadedBytes = state.downloadedBytes,
+                totalBytes = state.totalBytes,
+                speedBytesPerSec = state.speedBytesPerSec,
+            )
         }
     }
 }

@@ -6,6 +6,9 @@ import dev.zacsweers.metrox.viewmodel.ViewModelGraph
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
+import io.github.kdroidfilter.seforimapp.core.annotations.HighlightStore
+import io.github.kdroidfilter.seforimapp.core.annotations.NoteStore
+import io.github.kdroidfilter.seforimapp.core.catalog.CatalogAccess
 import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
 import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase
@@ -13,6 +16,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProc
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
+import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 
@@ -24,11 +28,14 @@ import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 abstract class AppGraph : ViewModelGraph {
     // Expose strongly-typed graph entries as abstract vals for generated implementation
     abstract val mainAppState: MainAppState
+    abstract val catalogAccess: CatalogAccess
     abstract val selectionContext: SelectionContext
     abstract val tabPersistedStateStore: TabPersistedStateStore
     abstract val tabTitleUpdateManager: TabTitleUpdateManager
     abstract val settings: Settings
     abstract val categoryDisplaySettingsStore: CategoryDisplaySettingsStore
+    abstract val highlightStore: HighlightStore
+    abstract val noteStore: NoteStore
     abstract val repository: SeforimRepository
     abstract val searchEngine: SearchEngine
     abstract val tabsViewModel: TabsViewModel
@@ -40,4 +47,7 @@ abstract class AppGraph : ViewModelGraph {
 
     /** Seforim.db delta-update facade (recoverIfNeeded + checkAndApply). */
     abstract val dbDeltaUpdateService: io.github.kdroidfilter.seforimapp.framework.update.DbDeltaUpdateService
+
+    /** App self-update facade (Nucleus updater + native SSL). */
+    abstract val appUpdateService: AppUpdateService
 }

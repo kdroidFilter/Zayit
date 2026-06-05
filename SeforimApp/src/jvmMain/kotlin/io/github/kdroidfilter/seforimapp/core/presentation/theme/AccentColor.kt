@@ -2,7 +2,7 @@ package io.github.kdroidfilter.seforimapp.core.presentation.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import io.github.kdroidfilter.nucleus.systemcolor.systemAccentColor
+import dev.nucleusframework.systemcolor.systemAccentColor
 import org.jetbrains.jewel.intui.core.theme.IntUiDarkTheme
 import org.jetbrains.jewel.intui.core.theme.IntUiLightTheme
 

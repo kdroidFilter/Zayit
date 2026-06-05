@@ -58,6 +58,7 @@ import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
 import io.github.kdroidfilter.seforimapp.core.annotations.UserNote
+import io.github.kdroidfilter.seforimapp.core.coroutines.EfficiencyCoreDispatcher
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
@@ -674,7 +675,7 @@ fun BookContentView(
             SkiaHtmlImageBuilder.build { if (isDarkTheme) SkiaHtmlImageBuilder.InvertColorFilter else null }
         }
 
-    // Backed by a ConcurrentHashMap: the prefetcher writes from Dispatchers.Default while
+    // Backed by a ConcurrentHashMap: the prefetcher writes from EfficiencyCoreDispatcher while
     // LineItem reads during composition on the main thread.
     val stableAnnotatedCache =
         remember(bookId, textSize, boldScaleForPlatform, showDiacritics) {
@@ -712,7 +713,9 @@ fun BookContentView(
                 // Snapshot candidate lines on the main thread; peek() never triggers a page load.
                 val lines = range.mapNotNull { i -> if (i in 0 until count) lazyPagingItems.peek(i) else null }
                 if (lines.isEmpty()) return@collect
-                withContext(Dispatchers.Default) {
+                // Off-screen warm-up: run on efficiency cores so it never competes with the UI
+                // or scroll on performance cores. The user isn't waiting on this work.
+                withContext(EfficiencyCoreDispatcher) {
                     for (line in lines) {
                         ensureActive()
                         val processed =

@@ -26,6 +26,7 @@ buildConfig = "6.0.9"
 materialKolor = "4.1.1"
 jewel = "0.37.0-262.4852.74"
 paging = "3.5.0"
+platformtools = "0.7.5"
 kotlinx-collections-immutable = "0.4.0"
 kotlinx-coroutines = "1.11.0"
 reorderable = "3.1.0"
@@ -118,6 +119,7 @@ androidx-paging-compose = { module = "androidx.paging:paging-compose", version.r
 nucleus-notification-common = { module = "dev.nucleusframework:nucleus.notification-common", version.ref = "nucleus" }
 nucleus-system-info = { module = "dev.nucleusframework:nucleus.system-info", version.ref = "nucleus" }
 nucleus-taskbar-progress-tao = { module = "dev.nucleusframework:nucleus.taskbar-progress-tao", version.ref = "nucleus" }
+platformtools-appmanager = { module = "io.github.kdroidfilter:platformtools.appmanager", version.ref = "platformtools" }
 kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }

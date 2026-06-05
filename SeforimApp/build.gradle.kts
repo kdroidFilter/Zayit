@@ -84,6 +84,7 @@ kotlin {
             implementation(libs.nucleus.application)
             implementation(libs.nucleus.aot.runtime)
             implementation(libs.nucleus.darkmode.detector)
+            implementation(libs.platformtools.appmanager)
             implementation(project(":releasefetcher"))
 
             // FileKit

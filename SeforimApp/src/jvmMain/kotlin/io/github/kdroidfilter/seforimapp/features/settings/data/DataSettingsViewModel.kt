@@ -2,10 +2,10 @@ package io.github.kdroidfilter.seforimapp.features.settings.data
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.nucleusframework.core.runtime.AppRestarter
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
+import io.github.kdroidfilter.platformtools.appmanager.restartApplication
 import io.github.kdroidfilter.seforimapp.framework.database.getUserSettingsDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import kotlinx.coroutines.Dispatchers
@@ -82,7 +82,7 @@ class DataSettingsViewModel : ViewModel() {
 
                 // The running app holds an open connection to the old DB; restart to load the imported one.
                 _state.update { it.copy(isImporting = false, importSucceeded = true) }
-                AppRestarter.restartApp()
+                restartApplication()
             } catch (e: Exception) {
                 _state.update { it.copy(isImporting = false, importFailed = true) }
             }

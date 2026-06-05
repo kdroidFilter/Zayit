@@ -2,10 +2,10 @@ package io.github.kdroidfilter.seforimapp.features.settings.general
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.nucleusframework.core.runtime.AppRestarter
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
+import io.github.kdroidfilter.platformtools.appmanager.restartApplication
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.vinceglb.filekit.FileKit
@@ -114,7 +114,7 @@ class GeneralSettingsViewModel : ViewModel() {
                     }
                 }
 
-                AppRestarter.restartApp()
+                restartApplication()
                 resetDone.value = true
             }
         }

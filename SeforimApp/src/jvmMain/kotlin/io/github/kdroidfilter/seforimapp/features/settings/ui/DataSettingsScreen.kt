@@ -84,8 +84,11 @@ fun DataSettingsScreen() {
                 enabled = !state.isExporting && !state.isImporting,
                 onClick = {
                     scope.launch {
+                        // Run the picker off the GTK event-loop thread: under the Tao backend
+                        // Dispatchers.Main is that single thread, and the picker's blocking D-Bus
+                        // (xdg-desktop-portal) work would freeze it. See pickDatabaseParts.
                         val directory =
-                            withContext(Dispatchers.Main) { FileKit.openDirectoryPicker() }
+                            withContext(Dispatchers.IO) { FileKit.openDirectoryPicker() }
                         directory?.let { viewModel.exportToFile(File(it.path)) }
                     }
                 },
@@ -98,8 +101,9 @@ fun DataSettingsScreen() {
                 enabled = !state.isExporting && !state.isImporting,
                 onClick = {
                     scope.launch {
+                        // Same rationale as the export picker: keep the Tao GTK event loop free.
                         val file =
-                            withContext(Dispatchers.Main) {
+                            withContext(Dispatchers.IO) {
                                 FileKit.openFilePicker(type = FileKitType.File(extensions = listOf("db")))
                             }
                         file?.let { viewModel.importFromFile(File(it.path)) }

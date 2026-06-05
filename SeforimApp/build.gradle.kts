@@ -302,6 +302,7 @@ nucleus.application {
             iconFile.set(project.file("desktopAppIcons/LinuxIcon.png"))
             packageVersion = version
             debMaintainer = "elyahou.hadass@gmail.com"
+            menuGroup = "Education"
         }
         windows {
             iconFile.set(project.file("desktopAppIcons/WindowsIcon.ico"))

@@ -34,12 +34,11 @@ import org.jetbrains.jewel.ui.component.Text
  * Jewel + Material3 LinearProgressIndicator.
  */
 @Composable
-fun DbDeltaUpdateSection(
-    modifier: Modifier = Modifier,
-) {
-    val viewModel = metroViewModel<DbDeltaUpdateViewModel>(
-        viewModelStoreOwner = LocalWindowViewModelStoreOwner.current,
-    )
+fun DbDeltaUpdateSection(modifier: Modifier = Modifier) {
+    val viewModel =
+        metroViewModel<DbDeltaUpdateViewModel>(
+            viewModelStoreOwner = LocalWindowViewModelStoreOwner.current,
+        )
     val state by viewModel.state.collectAsState()
     val isBusy = state.phase != null
     val hasMessage = state.message.isNotEmpty() || state.errorMessage != null

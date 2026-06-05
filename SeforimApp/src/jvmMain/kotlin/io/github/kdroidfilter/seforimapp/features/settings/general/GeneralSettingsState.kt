@@ -7,7 +7,7 @@ data class GeneralSettingsState(
     val databasePath: String? = null,
     val closeTreeOnNewBook: Boolean = false,
     val persistSession: Boolean = true,
-    val resetDone: Boolean = false,
+    val keepScreenAwakeOnBook: Boolean = true,
 ) {
     companion object {
         val preview =
@@ -15,7 +15,7 @@ data class GeneralSettingsState(
                 databasePath = "/Users/you/.zayit/seforim.db",
                 closeTreeOnNewBook = true,
                 persistSession = true,
-                resetDone = false,
+                keepScreenAwakeOnBook = true,
             )
     }
 }

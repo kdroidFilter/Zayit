@@ -1,0 +1,38 @@
+-- Position-based user highlights.
+-- Keyed by (bookId, lineId, offsets): Line ids are stable across DB rebuilds,
+-- so highlights survive books-DB delta updates.
+CREATE TABLE IF NOT EXISTS user_highlights (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bookId INTEGER NOT NULL,
+    lineId INTEGER NOT NULL,
+    startOffset INTEGER NOT NULL,
+    endOffset INTEGER NOT NULL,
+    colorArgb INTEGER NOT NULL,
+    createdAt INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_highlights_book ON user_highlights(bookId);
+CREATE INDEX IF NOT EXISTS idx_highlights_line ON user_highlights(bookId, lineId);
+
+selectAllForBook:
+SELECT * FROM user_highlights WHERE bookId = ?;
+
+selectForLine:
+SELECT * FROM user_highlights WHERE bookId = ? AND lineId = ?;
+
+insert:
+INSERT INTO user_highlights(bookId, lineId, startOffset, endOffset, colorArgb, createdAt)
+VALUES (?, ?, ?, ?, ?, ?);
+
+lastInsertedId:
+SELECT last_insert_rowid();
+
+deleteOverlapping:
+DELETE FROM user_highlights
+WHERE bookId = ? AND lineId = ? AND startOffset < :endOffset AND endOffset > :startOffset;
+
+deleteById:
+DELETE FROM user_highlights WHERE id = ?;
+
+deleteForBook:
+DELETE FROM user_highlights WHERE bookId = ?;

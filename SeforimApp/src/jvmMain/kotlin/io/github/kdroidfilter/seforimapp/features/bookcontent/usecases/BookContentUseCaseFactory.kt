@@ -27,6 +27,11 @@ class BookContentUseCaseFactory(
     fun createTocUseCase(stateManager: BookContentStateManager): TocUseCase = TocUseCase(repository, stateManager)
 
     /**
+     * Creates a [NotesUseCase] for managing the Notes side pane layout.
+     */
+    fun createNotesUseCase(stateManager: BookContentStateManager): NotesUseCase = NotesUseCase(stateManager)
+
+    /**
      * Creates a [ContentUseCase] for managing book content and line navigation.
      */
     fun createContentUseCase(stateManager: BookContentStateManager): ContentUseCase = ContentUseCase(repository, stateManager)

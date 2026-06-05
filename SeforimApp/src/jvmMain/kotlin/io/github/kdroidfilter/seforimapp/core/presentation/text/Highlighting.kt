@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.core.presentation.text
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
 
 /**
  * Returns a copy of [annotated] with background highlight applied to all
@@ -104,6 +105,48 @@ fun highlightAnnotatedWithTerms(
         val end = (r.last + 1).coerceAtMost(annotated.length)
         val color = if (currentStart != null && start == currentStart) currentColor else baseColor
         if (end > start) builder.addStyle(SpanStyle(background = color), start, end)
+    }
+    return builder.toAnnotatedString()
+}
+
+/**
+ * Applies persisted user [highlights] (belonging to a single line) to [annotated].
+ *
+ * Highlight offsets are stored relative to the original text (with diacritics). When
+ * diacritics are hidden, [originalText] is used to remap offsets onto the stripped
+ * text that is actually displayed.
+ */
+fun applyUserHighlights(
+    annotated: AnnotatedString,
+    highlights: List<UserHighlight>,
+    originalText: String? = null,
+    showDiacritics: Boolean = true,
+    highlightAlpha: Float = 0.4f,
+): AnnotatedString {
+    if (highlights.isEmpty()) return annotated
+
+    val originalToStrippedMap =
+        if (!showDiacritics && originalText != null) createOriginalToStrippedMap(originalText) else null
+
+    val builder = AnnotatedString.Builder()
+    builder.append(annotated)
+    for (highlight in highlights) {
+        val (start, end) =
+            if (originalToStrippedMap != null) {
+                mapOriginalToStripped(highlight.startOffset, originalToStrippedMap) to
+                    mapOriginalToStripped(highlight.endOffset, originalToStrippedMap)
+            } else {
+                highlight.startOffset to highlight.endOffset
+            }
+        val clampedStart = start.coerceIn(0, annotated.length)
+        val clampedEnd = end.coerceAtMost(annotated.length)
+        if (clampedEnd > clampedStart) {
+            builder.addStyle(
+                SpanStyle(background = highlight.color.copy(alpha = highlightAlpha)),
+                clampedStart,
+                clampedEnd,
+            )
+        }
     }
     return builder.toAnnotatedString()
 }

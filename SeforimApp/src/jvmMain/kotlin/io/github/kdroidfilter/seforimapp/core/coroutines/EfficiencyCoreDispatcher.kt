@@ -1,6 +1,6 @@
 package io.github.kdroidfilter.seforimapp.core.coroutines
 
-import io.github.kdroidfilter.nucleus.energymanager.EnergyManager
+import dev.nucleusframework.energymanager.EnergyManager
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
 import java.util.concurrent.Executors

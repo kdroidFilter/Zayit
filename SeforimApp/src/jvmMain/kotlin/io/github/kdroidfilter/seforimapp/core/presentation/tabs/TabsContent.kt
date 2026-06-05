@@ -9,14 +9,14 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.zIndex
+import androidx.compose.ui.layout.layout
 import androidx.lifecycle.DEFAULT_ARGS_KEY
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
 import androidx.lifecycle.Lifecycle
@@ -61,8 +61,28 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 val LocalTabSelected = compositionLocalOf { true }
 
 /**
+ * Stable, rename-safe discriminator for a destination, used to key the per-tab
+ * saveable UI state so it resets when a tab navigates to a different destination type.
+ */
+private fun TabsDestination.typeKey(): String =
+    when (this) {
+        is TabsDestination.Home -> "home"
+        is TabsDestination.Search -> "search"
+        is TabsDestination.BookContent -> "book"
+    }
+
+private fun saveableKeyFor(destination: TabsDestination): String = "${destination.tabId}:${destination.typeKey()}"
+
+private fun saveableKeysFor(tabId: String): List<String> = listOf("$tabId:home", "$tabId:search", "$tabId:book")
+
+/**
  * Simplified tab content renderer without Compose Navigation.
- * Each tab renders its content directly based on destination type.
+ *
+ * Every open tab is composed and kept alive; switching never tears a tab down. Only the selected
+ * tab is measured and placed, so hidden tabs incur no layout/draw cost while their ViewModel,
+ * paging flow and scroll state stay hot. This is what makes switching instant and glitch-free:
+ * the paged content list is never re-collected from empty, so there is no reload-and-jump and no
+ * need for any alpha/crossfade masking. The cost is RAM proportional to the number of open tabs.
  */
 @Composable
 fun TabsContent() {
@@ -81,15 +101,8 @@ fun TabsContent() {
     val searchUi by remember(searchHomeViewModel) { searchHomeViewModel.uiState }.collectAsState()
     val scope = rememberCoroutineScope()
 
-    // Helper to get current tab ID
-    val currentTabId by remember {
-        derivedStateOf {
-            tabsState.tabs
-                .getOrNull(tabsState.selectedTabIndex)
-                ?.destination
-                ?.tabId
-        }
-    }
+    val currentTabId = tabs.getOrNull(selectedTabIndex)?.destination?.tabId
+    val latestCurrentTabId by rememberUpdatedState(currentTabId)
 
     fun launchSubmitSearch(
         @StructuredScope scope: CoroutineScope,
@@ -114,11 +127,11 @@ fun TabsContent() {
                 onFilterChange = searchHomeViewModel::onFilterChange,
                 onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
                 onSubmitTextSearch = { query ->
-                    val tabId = currentTabId ?: return@HomeSearchCallbacks
+                    val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks
                     launchSubmitSearch(scope, query, tabId)
                 },
                 onOpenReference = {
-                    val tabId = currentTabId ?: return@HomeSearchCallbacks
+                    val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks
                     launchOpenReference(scope, tabId)
                 },
                 onPickCategory = searchHomeViewModel::onPickCategory,
@@ -161,17 +174,24 @@ fun TabsContent() {
         }
     }
 
-    // ViewModel owners per tab - manages lifecycle and state
+    // ViewModel owners per tab - manages lifecycle and state. Owners survive while the
+    // tab is open so re-selecting a tab needs no DB refetch (data is hot in the ViewModel).
     val tabOwners = remember { mutableMapOf<String, SimpleTabViewModelOwner>() }
+    val knownTabIds = remember { mutableSetOf<String>() }
+    // Holds per-tab saveable UI state across the teardown/rebuild that happens on switch.
+    val saveableStateHolder = rememberSaveableStateHolder()
 
     // Cleanup removed tabs
     LaunchedEffect(tabs) {
         val activeTabIds = tabs.map { it.destination.tabId }.toSet()
-        val removed = tabOwners.keys.toSet() - activeTabIds
+        val removed = (knownTabIds + tabOwners.keys) - activeTabIds
         removed.forEach { tabId ->
             tabOwners.remove(tabId)?.clear()
             persistedStore.remove(tabId)
+            saveableKeysFor(tabId).forEach(saveableStateHolder::removeState)
         }
+        knownTabIds.clear()
+        knownTabIds.addAll(activeTabIds)
     }
 
     DisposableEffect(Unit) {
@@ -190,7 +210,6 @@ fun TabsContent() {
         }
     }
 
-    // Render all tabs with visibility control
     val isIslands = ThemeUtils.isIslandsStyle()
     val canvasBg =
         if (isIslands) {
@@ -206,50 +225,68 @@ fun TabsContent() {
                 .fillMaxSize()
                 .background(canvasBg),
     ) {
-        tabs.forEachIndexed { index, tabItem ->
-            key(tabItem.id) {
-                val isSelected = index == selectedTabIndex
-                val tabId = tabItem.destination.tabId
-
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .graphicsLayer { alpha = if (isSelected) 1f else 0f }
-                            .zIndex(if (isSelected) 1f else 0f),
-                ) {
+        // Keep every open tab's composition alive; a tab is never torn down on switch. Each tab is
+        // measured and drawn only while selected — hidden tabs stay composed (their ViewModel,
+        // paging flow and LazyListState all hot) but are not measured or placed, so they cost no
+        // layout/draw. Crucially, because nothing is disposed, the paged content list never reloads
+        // from empty: switching back is instant, with no reload-and-jump and no alpha/crossfade
+        // masking. The trade-off is RAM proportional to the number of open tabs.
+        tabs.forEach { tabItem ->
+            val tabId = tabItem.destination.tabId
+            val isSelected = tabId == currentTabId
+            val saveableKey = saveableKeyFor(tabItem.destination)
+            key(saveableKey) {
+                saveableStateHolder.SaveableStateProvider(saveableKey) {
+                    val tabOwner = tabOwners.getOrPut(tabId) { SimpleTabViewModelOwner(tabId) }
                     CompositionLocalProvider(LocalTabSelected provides isSelected) {
-                        val tabOwner = tabOwners.getOrPut(tabId) { SimpleTabViewModelOwner(tabId) }
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .layout { measurable, constraints ->
+                                        // Selected: measure + place normally. Hidden: skip both so
+                                        // the subtree stays composed (alive) but incurs no layout
+                                        // or draw cost.
+                                        if (isSelected) {
+                                            val placeable = measurable.measure(constraints)
+                                            layout(placeable.width, placeable.height) {
+                                                placeable.place(0, 0)
+                                            }
+                                        } else {
+                                            layout(0, 0) {}
+                                        }
+                                    },
+                        ) {
+                            when (val destination = tabItem.destination) {
+                                is TabsDestination.Home -> {
+                                    HomeTabContent(
+                                        tabOwner = tabOwner,
+                                        tabId = tabId,
+                                        isSelected = isSelected,
+                                        isRestoringSession = isTransitioning,
+                                        searchUi = searchUi,
+                                        searchCallbacks = homeSearchCallbacks,
+                                    )
+                                }
 
-                        when (val destination = tabItem.destination) {
-                            is TabsDestination.Home -> {
-                                HomeTabContent(
-                                    tabOwner = tabOwner,
-                                    tabId = tabId,
-                                    isSelected = isSelected,
-                                    isRestoringSession = isTransitioning,
-                                    searchUi = searchUi,
-                                    searchCallbacks = homeSearchCallbacks,
-                                )
-                            }
+                                is TabsDestination.Search -> {
+                                    SearchTabContent(
+                                        tabOwner = tabOwner,
+                                        destination = destination,
+                                        isSelected = isSelected,
+                                    )
+                                }
 
-                            is TabsDestination.Search -> {
-                                SearchTabContent(
-                                    tabOwner = tabOwner,
-                                    destination = destination,
-                                    isSelected = isSelected,
-                                )
-                            }
-
-                            is TabsDestination.BookContent -> {
-                                BookContentTabContent(
-                                    tabOwner = tabOwner,
-                                    destination = destination,
-                                    isSelected = isSelected,
-                                    isRestoringSession = isTransitioning,
-                                    searchUi = searchUi,
-                                    searchCallbacks = homeSearchCallbacks,
-                                )
+                                is TabsDestination.BookContent -> {
+                                    BookContentTabContent(
+                                        tabOwner = tabOwner,
+                                        destination = destination,
+                                        isSelected = isSelected,
+                                        isRestoringSession = isTransitioning,
+                                        searchUi = searchUi,
+                                        searchCallbacks = homeSearchCallbacks,
+                                    )
+                                }
                             }
                         }
                     }

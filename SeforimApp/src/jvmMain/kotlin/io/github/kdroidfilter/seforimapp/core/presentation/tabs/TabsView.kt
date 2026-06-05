@@ -48,12 +48,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import io.github.kdroidfilter.seforim.tabs.*
+import io.github.kdroidfilter.seforimapp.core.deeplink.toShareLink
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.CloseAll
+import io.github.kdroidfilter.seforimapp.icons.Link
 import io.github.kdroidfilter.seforimapp.icons.Tab_close
 import io.github.kdroidfilter.seforimapp.icons.Tab_close_right
 import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
@@ -81,6 +83,8 @@ import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 import seforimapp.seforimapp.generated.resources.*
 import sh.calvin.reorderable.ReorderableRow
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 import kotlin.math.roundToInt
 import kotlin.ranges.coerceAtLeast
 import kotlin.ranges.coerceAtMost
@@ -97,6 +101,8 @@ private data class TabEntry(
     val onCloseOthers: () -> Unit,
     val onCloseLeft: () -> Unit,
     val onCloseRight: () -> Unit,
+    // null when the destination has nothing shareable (e.g. Home, or a book still loading)
+    val onCopyLink: (() -> Unit)?,
 )
 
 private val TabTooltipWidthThreshold = 140.dp
@@ -200,6 +206,7 @@ private fun DefaultTabShowcase(
                             // RTL: visual "left" corresponds to higher indices (right of actual index)
                             onCloseLeft = { onEvents(TabsEvents.CloseRight(actualIndex)) },
                             onCloseRight = { onEvents(TabsEvents.CloseLeft(actualIndex)) },
+                            onCopyLink = tabItem.destination.toShareLink()?.let { link -> { copyToClipboard(link) } },
                         )
                     }.toImmutableList()
             } else {
@@ -268,6 +275,7 @@ private fun DefaultTabShowcase(
                             onCloseOthers = { onEvents(TabsEvents.CloseOthers(index)) },
                             onCloseLeft = { onEvents(TabsEvents.CloseLeft(index)) },
                             onCloseRight = { onEvents(TabsEvents.CloseRight(index)) },
+                            onCopyLink = tabItem.destination.toShareLink()?.let { link -> { copyToClipboard(link) } },
                         )
                     }.toImmutableList()
             }
@@ -482,6 +490,7 @@ private fun RtlAwareTabStripContent(
                                             onCloseOthers = tabEntry.onCloseOthers,
                                             onCloseLeft = tabEntry.onCloseLeft,
                                             onCloseRight = tabEntry.onCloseRight,
+                                            onCopyLink = tabEntry.onCopyLink,
                                             animateWidth = !isNew,
                                             enterFromSmall = isNew,
                                             enterDurationMs = enterDurationMs,
@@ -565,6 +574,7 @@ private fun RtlAwareTab(
     onCloseLeft: () -> Unit,
     onCloseRight: () -> Unit,
     modifier: Modifier = Modifier,
+    onCopyLink: (() -> Unit)? = null,
     animateWidth: Boolean = true,
     enterFromSmall: Boolean = false,
     enterDurationMs: Int = 200,
@@ -827,12 +837,23 @@ private fun RtlAwareTab(
             val closeOthersLabel = stringResource(Res.string.close_other_tabs)
             val closeLeftLabel = stringResource(Res.string.close_tabs_left)
             val closeRightLabel = stringResource(Res.string.close_tabs_right)
+            val copyLinkLabel = stringResource(Res.string.copy_tab_link)
 
             TabContextMenu(
                 anchorOffset = anchorOffset,
                 contextClickOffset = contextClickOffset,
                 onDismissRequest = { contextMenuOpen = false },
             ) {
+                if (onCopyLink != null) {
+                    tabContextMenuItem(
+                        label = copyLinkLabel,
+                        icon = Link,
+                        onClick = {
+                            contextMenuOpen = false
+                            onCopyLink()
+                        },
+                    )
+                }
                 tabContextMenuItem(
                     label = closeAllLabel,
                     icon = CloseAll,
@@ -974,6 +995,10 @@ private fun TabContextMenu(
             MenuContent(content = content)
         }
     }
+}
+
+private fun copyToClipboard(text: String) {
+    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
 }
 
 private fun MenuScope.tabContextMenuItem(

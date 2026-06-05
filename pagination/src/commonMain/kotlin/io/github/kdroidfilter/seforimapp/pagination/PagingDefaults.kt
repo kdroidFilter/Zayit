@@ -24,9 +24,13 @@ object PagingDefaults {
     }
 
     object COMMENTS {
-        const val PAGE_SIZE: Int = 10
-        const val PREFETCH_DISTANCE: Int = 5
-        const val INITIAL_LOAD_SIZE: Int = 10
+        // A commentator column loads its whole content eagerly (the scrollbar relies on the full
+        // char-count vector). Use large pages so that load happens in ~1 query instead of many
+        // 10-item pages — each page previously grew `itemCount` and recomposed the column,
+        // producing a recomposition storm on first open. One big page → one itemCount jump.
+        const val PAGE_SIZE: Int = 64
+        const val PREFETCH_DISTANCE: Int = 64
+        const val INITIAL_LOAD_SIZE: Int = 256
 
         fun config(placeholders: Boolean = false): PagingConfig =
             PagingConfig(

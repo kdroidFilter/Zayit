@@ -18,6 +18,17 @@ data class ActiveBook(
 )
 
 /**
+ * A commentary line, identified by its own target book/line so a highlight created from a
+ * commentary selection is stored against that book (and therefore shows up when the commentary
+ * is opened as a main book). [content] is the raw HTML used to resolve selection offsets.
+ */
+data class CommentaryLineRef(
+    val bookId: Long,
+    val lineId: Long,
+    val content: String,
+)
+
+/**
  * App-wide read/write surface that bridges Compose-side state (current selection, active book,
  * paged-line snapshot) to Compose-free consumers (AWT keyboard dispatchers in particular).
  *
@@ -33,9 +44,27 @@ interface SelectionContext {
     val activeBook: StateFlow<ActiveBook?>
     val visibleLines: StateFlow<VisibleLines>
 
+    /**
+     * Visible commentary lines (ordered) of the column under the last right-click. Empty means
+     * the last right-click was not in the comments pane. Used to anchor (possibly multi-line)
+     * highlights in the comments pane.
+     */
+    val activeCommentaryColumn: StateFlow<List<CommentaryLineRef>>
+
+    /**
+     * Id of the line most recently targeted by a right-click. Transient: it is refreshed on every
+     * secondary press, which always precedes the context menu opening, so the menu reads a fresh
+     * value even when no text is selected. 0 means "no line targeted yet".
+     */
+    val currentLineId: StateFlow<Long>
+
     fun setSelectedText(text: String)
 
     fun clearSelectedText()
+
+    fun setCurrentLineId(lineId: Long)
+
+    fun setActiveCommentaryColumn(lines: List<CommentaryLineRef>)
 
     fun setActiveBook(
         tabId: String,
@@ -76,12 +105,26 @@ class DefaultSelectionContext : SelectionContext {
     private val _visibleLines = MutableStateFlow(VisibleLines.EMPTY)
     override val visibleLines: StateFlow<VisibleLines> = _visibleLines.asStateFlow()
 
+    private val _currentLineId = MutableStateFlow(0L)
+    override val currentLineId: StateFlow<Long> = _currentLineId.asStateFlow()
+
+    private val _activeCommentaryColumn = MutableStateFlow<List<CommentaryLineRef>>(emptyList())
+    override val activeCommentaryColumn: StateFlow<List<CommentaryLineRef>> = _activeCommentaryColumn.asStateFlow()
+
     override fun setSelectedText(text: String) {
         _selectedText.value = text
     }
 
+    override fun setActiveCommentaryColumn(lines: List<CommentaryLineRef>) {
+        _activeCommentaryColumn.value = lines
+    }
+
     override fun clearSelectedText() {
         _selectedText.value = ""
+    }
+
+    override fun setCurrentLineId(lineId: Long) {
+        _currentLineId.value = lineId
     }
 
     override fun setActiveBook(

@@ -16,8 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,48 +23,49 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.nucleusframework.updater.UpdateLevel
+import dev.nucleusframework.updater.UpdaterConfig
 import dev.zacsweers.metrox.viewmodel.metroViewModel
-import io.github.kdroidfilter.nucleus.updater.UpdaterConfig
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.UrlOpener
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
+import io.github.kdroidfilter.seforimapp.framework.update.UpdateMode
+import io.github.kdroidfilter.seforimapp.framework.update.UpdateUiState
+import io.github.kdroidfilter.seforimapp.framework.update.availableVersion
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.InlineInformationBanner
+import org.jetbrains.jewel.ui.component.InlineSuccessBanner
 import org.jetbrains.jewel.ui.component.InlineWarningBanner
-import org.jetbrains.jewel.ui.component.OutlinedButton
+import org.jetbrains.jewel.ui.component.Link
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.theme.inlineBannerStyle
 import seforimapp.seforimapp.generated.resources.AppIcon
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book
 import seforimapp.seforimapp.generated.resources.close_book_tree_on_new_book_description
 import seforimapp.seforimapp.generated.resources.settings_info_app_version
 import seforimapp.seforimapp.generated.resources.settings_info_created_by
-import seforimapp.seforimapp.generated.resources.settings_info_jdk_version
 import seforimapp.seforimapp.generated.resources.settings_info_license
 import seforimapp.seforimapp.generated.resources.settings_info_license_usage
+import seforimapp.seforimapp.generated.resources.settings_keep_screen_awake
+import seforimapp.seforimapp.generated.resources.settings_keep_screen_awake_description
 import seforimapp.seforimapp.generated.resources.settings_persist_session
 import seforimapp.seforimapp.generated.resources.settings_persist_session_description
-import seforimapp.seforimapp.generated.resources.settings_reset_app
-import seforimapp.seforimapp.generated.resources.settings_reset_confirm
-import seforimapp.seforimapp.generated.resources.settings_reset_confirm_no
-import seforimapp.seforimapp.generated.resources.settings_reset_confirm_yes
-import seforimapp.seforimapp.generated.resources.settings_reset_done
-import seforimapp.seforimapp.generated.resources.settings_reset_warning
 import seforimapp.seforimapp.generated.resources.update_available_banner
+import seforimapp.seforimapp.generated.resources.update_check_failed
+import seforimapp.seforimapp.generated.resources.update_checking
 import seforimapp.seforimapp.generated.resources.update_download_action
-import java.awt.Desktop
-import java.net.URI
+import seforimapp.seforimapp.generated.resources.update_up_to_date
 
 @Composable
 fun GeneralSettingsScreen() {
@@ -74,12 +73,12 @@ fun GeneralSettingsScreen() {
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
     val version = UpdaterConfig().currentVersion
-    val mainAppState = LocalAppGraph.current.mainAppState
-    val updateVersion by mainAppState.updateAvailable.collectAsState()
+    val updateState by LocalAppGraph.current.appUpdateService.state
+        .collectAsState()
     GeneralSettingsView(
         state = state,
         version = version,
-        updateVersion = updateVersion,
+        updateState = updateState,
         onEvent = viewModel::onEvent,
     )
 }
@@ -88,7 +87,7 @@ fun GeneralSettingsScreen() {
 private fun GeneralSettingsView(
     state: GeneralSettingsState,
     version: String,
-    updateVersion: String?,
+    updateState: UpdateUiState,
     onEvent: (GeneralSettingsEvents) -> Unit,
 ) {
     VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
@@ -99,7 +98,7 @@ private fun GeneralSettingsView(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            AppHeader(version = version, updateVersion = updateVersion)
+            AppHeader(version = version, updateState = updateState)
 
             SettingCard(
                 title = Res.string.close_book_tree_on_new_book,
@@ -115,13 +114,11 @@ private fun GeneralSettingsView(
                 onCheckedChange = { onEvent(GeneralSettingsEvents.SetPersistSession(it)) },
             )
 
-            // Database delta-update panel: checks the release server for
-            // a new seforim.db delta and applies it incrementally.
-            io.github.kdroidfilter.seforimapp.features.settings.dbupdate.DbDeltaUpdateSection()
-
-            ResetSection(
-                resetDone = state.resetDone,
-                onReset = { onEvent(GeneralSettingsEvents.ResetApp) },
+            SettingCard(
+                title = Res.string.settings_keep_screen_awake,
+                description = Res.string.settings_keep_screen_awake_description,
+                checked = state.keepScreenAwakeOnBook,
+                onCheckedChange = { onEvent(GeneralSettingsEvents.SetKeepScreenAwakeOnBook(it)) },
             )
         }
     }
@@ -130,7 +127,7 @@ private fun GeneralSettingsView(
 @Composable
 private fun AppHeader(
     version: String,
-    updateVersion: String? = null,
+    updateState: UpdateUiState,
 ) {
     val shape = RoundedCornerShape(8.dp)
 
@@ -144,24 +141,8 @@ private fun AppHeader(
                 .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Update available banner
-        if (updateVersion != null) {
-            val downloadLabel = stringResource(Res.string.update_download_action)
-            InlineInformationBanner(
-                style = JewelTheme.inlineBannerStyle.information,
-                text = stringResource(Res.string.update_available_banner, updateVersion),
-                linkActions = {
-                    action(
-                        downloadLabel,
-                        onClick = {
-                            Desktop.getDesktop().browse(
-                                URI(io.github.kdroidfilter.seforimapp.framework.update.AppUpdateChecker.DOWNLOAD_URL),
-                            )
-                        },
-                    )
-                },
-            )
-        }
+        // Update status banner, reflecting the full check/download state.
+        UpdateStatusBanner(updateState)
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -189,22 +170,9 @@ private fun AppHeader(
                     fontSize = 13.sp,
                     color = JewelTheme.globalColors.text.info,
                 )
-                Text(
-                    text =
-                        stringResource(
-                            Res.string.settings_info_jdk_version,
-                            System.getProperty("java.runtime.name", "Unknown"),
-                            System.getProperty("java.version", "?"),
-                            System.getProperty("java.vendor", "Unknown"),
-                            System.getProperty("os.arch", "?"),
-                        ),
-                    fontSize = 13.sp,
-                    color = JewelTheme.globalColors.text.info,
-                )
-                Text(
+                Link(
                     text = stringResource(Res.string.settings_info_created_by),
-                    fontSize = 12.sp,
-                    color = JewelTheme.globalColors.text.info,
+                    onClick = { UrlOpener.open("https://eliegambache.kdroidfilter.com/") },
                 )
             }
         }
@@ -231,7 +199,7 @@ private fun AppHeader(
             }
             IconButton(
                 onClick = {
-                    Desktop.getDesktop().browse(URI("https://github.com/kdroidFilter/Zayit"))
+                    UrlOpener.open("https://github.com/kdroidFilter/Zayit")
                 },
                 modifier = Modifier.size(32.dp),
             ) {
@@ -246,59 +214,26 @@ private fun AppHeader(
 }
 
 @Composable
-private fun ResetSection(
-    resetDone: Boolean,
-    onReset: () -> Unit,
-) {
-    val shape = RoundedCornerShape(8.dp)
-    var showConfirmation by remember { mutableStateOf(false) }
-
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(shape)
-                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-                .background(JewelTheme.globalColors.panelBackground)
-                .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        if (showConfirmation) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(Res.string.settings_reset_confirm),
-                    color = JewelTheme.globalColors.text.warning,
-                )
-                DefaultButton(onClick = {
-                    showConfirmation = false
-                    onReset()
-                }) {
-                    Text(text = stringResource(Res.string.settings_reset_confirm_yes))
-                }
-                OutlinedButton(onClick = { showConfirmation = false }) {
-                    Text(text = stringResource(Res.string.settings_reset_confirm_no))
-                }
-            }
-        } else {
-            DefaultButton(onClick = { showConfirmation = true }) {
-                Text(text = stringResource(Res.string.settings_reset_app))
-            }
-        }
-
-        if (resetDone) {
-            InlineWarningBanner(
-                style = JewelTheme.inlineBannerStyle.warning,
-                text = stringResource(Res.string.settings_reset_done),
-            )
-        } else {
-            InlineWarningBanner(
-                style = JewelTheme.inlineBannerStyle.warning,
-                text = stringResource(Res.string.settings_reset_warning),
+private fun UpdateStatusBanner(updateState: UpdateUiState) {
+    when (updateState) {
+        is UpdateUiState.Available, is UpdateUiState.Downloading, is UpdateUiState.ReadyToInstall -> {
+            val downloadLabel = stringResource(Res.string.update_download_action)
+            InlineInformationBanner(
+                text = stringResource(Res.string.update_available_banner, updateState.availableVersion.orEmpty()),
+                linkActions = {
+                    action(downloadLabel, onClick = { UrlOpener.open(AppUpdateService.DOWNLOAD_URL) })
+                },
             )
         }
+
+        UpdateUiState.UpToDate ->
+            InlineSuccessBanner(text = stringResource(Res.string.update_up_to_date))
+
+        is UpdateUiState.Error ->
+            InlineWarningBanner(text = stringResource(Res.string.update_check_failed))
+
+        UpdateUiState.Idle, UpdateUiState.Checking ->
+            InlineInformationBanner(text = stringResource(Res.string.update_checking))
     }
 }
 
@@ -309,7 +244,7 @@ private fun GeneralSettingsView_Preview() {
         GeneralSettingsView(
             state = GeneralSettingsState.preview,
             version = "0.3.0",
-            updateVersion = "0.4.0",
+            updateState = UpdateUiState.Available("0.4.0", UpdateLevel.MINOR, UpdateMode.PROMPT, needsDbWarning = true),
             onEvent = {},
         )
     }

@@ -89,14 +89,6 @@ class SettingsEventsTest {
     }
 
     @Test
-    fun `GeneralSettingsEvents ResetApp is singleton`() {
-        val event1 = GeneralSettingsEvents.ResetApp
-        val event2 = GeneralSettingsEvents.ResetApp
-        assertEquals(event1, event2)
-        assertIs<GeneralSettingsEvents>(event1)
-    }
-
-    @Test
     fun `GeneralSettingsEvents SetCloseTreeOnNewBook equals works`() {
         val event1 = GeneralSettingsEvents.SetCloseTreeOnNewBook(true)
         val event2 = GeneralSettingsEvents.SetCloseTreeOnNewBook(true)

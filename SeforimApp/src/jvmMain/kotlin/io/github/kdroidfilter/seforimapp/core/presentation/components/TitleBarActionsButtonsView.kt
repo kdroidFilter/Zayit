@@ -8,20 +8,34 @@ import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
+import io.github.kdroidfilter.seforimapp.framework.update.showTitleBarIcon
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.ui.icon.PathIconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.*
+
+// AllIconsKeys.MeetNewUi.SystemTheme was removed in Jewel 0.37 and the SVG
+// dropped from IntelliJ Platform icons 262, so the asset is shipped locally.
+private object SystemThemeIconAnchor
+
+private val SystemTheme = PathIconKey("icons/system_theme.svg", SystemThemeIconAnchor::class.java)
 
 @Composable
 fun TitleBarActionsButtonsView() {
     val appGraph = LocalAppGraph.current
     val mainAppState = appGraph.mainAppState
     val theme = mainAppState.theme.collectAsState().value
+
+    // Update badge: shown only for PROMPT updates (MINOR/MAJOR any OS, or Linux PATCH).
+    // Silent Win/Mac PATCH updates apply on close and never surface here.
+    val updateState =
+        appGraph.appUpdateService.state
+            .collectAsState()
+            .value
 
     // Use ViewModel-driven settings window visibility to respect MVVM conventions
     val settingsViewModel: SettingsWindowViewModel =
@@ -80,6 +94,15 @@ fun TitleBarActionsButtonsView() {
             stringResource(Res.string.shortcut_settings_windows)
         }
 
+    if (updateState.showTitleBarIcon) {
+        TitleBarActionButton(
+            key = AllIconsKeys.Ide.Notification.IdeUpdate,
+            contentDescription = stringResource(Res.string.update_titlebar_tooltip),
+            onClick = { appGraph.appUpdateService.openDialog() },
+            tooltipText = stringResource(Res.string.update_titlebar_tooltip),
+        )
+    }
+
     TitleBarActionButton(
         key = AllIconsKeys.Nodes.HomeFolder,
         contentDescription = stringResource(Res.string.home),
@@ -129,7 +152,7 @@ fun TitleBarActionsButtonsView() {
                 when (theme) {
                     IntUiThemes.Light -> AllIconsKeys.MeetNewUi.LightTheme
                     IntUiThemes.Dark -> AllIconsKeys.MeetNewUi.DarkTheme
-                    IntUiThemes.System -> AllIconsKeys.MeetNewUi.SystemTheme
+                    IntUiThemes.System -> SystemTheme
                 },
             contentDescription = iconDescription,
             onClick = {
@@ -154,10 +177,6 @@ fun TitleBarActionsButtonsView() {
         )
     }
 
-    if (settingsState.isVisible) {
-        SettingsWindow(
-            onClose = { settingsViewModel.onEvent(SettingsWindowEvents.OnClose) },
-            initialDestination = settingsState.initialDestination,
-        )
-    }
+    // SettingsWindow is hoisted to main.kt where NucleusApplicationScope is available
+    // (JewelDecoratedDialog is an extension on NucleusApplicationScope in Nucleus 2.0).
 }

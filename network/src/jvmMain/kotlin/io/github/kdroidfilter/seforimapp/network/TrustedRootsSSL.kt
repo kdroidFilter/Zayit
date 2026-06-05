@@ -1,6 +1,6 @@
 package io.github.kdroidfilter.seforimapp.network
 
-import io.github.kdroidfilter.nucleus.nativessl.NativeTrustManager
+import dev.nucleusframework.nativessl.NativeTrustManager
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.X509TrustManager
 

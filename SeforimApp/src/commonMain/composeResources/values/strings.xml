@@ -92,6 +92,20 @@
     <string name="settings_category_fonts">גופנים</string>
     <string name="settings_category_about">אודות</string>
     <string name="settings_category_conditions">תנאים</string>
+    <string name="settings_category_data">ניהול נתונים</string>
+    <string name="data_export_title">ייצוא הנתונים שלי</string>
+    <string name="data_export_description">שמירת גיבוי של ההערות, ההדגשות וההגדרות.</string>
+    <string name="data_export_action">ייצוא</string>
+    <string name="data_exporting">מייצא…</string>
+    <string name="data_import_title">ייבוא נתונים</string>
+    <string name="data_import_description">שחזור הנתונים מקובץ גיבוי קיים.</string>
+    <string name="data_import_action">ייבוא</string>
+    <string name="data_importing">מייבא…</string>
+    <string name="data_export_success">הגיבוי נשמר בהצלחה: %1$s</string>
+    <string name="data_import_success">הנתונים יובאו בהצלחה. האפליקציה מופעלת מחדש…</string>
+    <string name="data_export_error">ייצוא הנתונים נכשל</string>
+    <string name="data_import_error">ייבוא הנתונים נכשל</string>
+    <string name="data_reset_description">איפוס מלא של האפליקציה למצב ההתחלתי. פעולה זו תמחק את כל הנתונים שלך.</string>
     <string name="add_tab">הוסף לשונית</string>
     <string name="home">דף הבית</string>
     <string name="close_tab">סגור לשונית</string>
@@ -101,6 +115,7 @@
     <string name="close_tabs_left">סגור את הלשוניות מימין</string>
     <!-- Reworded to "close towards the left" per UX preference -->
     <string name="close_tabs_right">סגור את הלשוניות משמאל</string>
+    <string name="copy_tab_link">העתק קישור</string>
 
     <!-- Book Content Screen - Start Vertical Bar -->
     <string name="navigation">ניווט</string>
@@ -117,6 +132,18 @@
     <string name="context_menu_find_in_page">חפש בעמוד</string>
     <string name="context_menu_copy_without_nikud">העתק ללא ניקוד</string>
     <string name="context_menu_copy_with_source">העתק עם מקור</string>
+    <string name="context_menu_copy_link">העתק קישור לקטע זה</string>
+    <string name="context_menu_highlight">סמן</string>
+    <string name="context_menu_add_note">הוסף הערה</string>
+
+    <!-- Notes pane -->
+    <string name="notes_pane">הערות</string>
+    <string name="notes_pane_tooltip">ההערות שלי על הספר</string>
+    <string name="note_body_placeholder">כתוב הערה...</string>
+    <string name="no_notes_saved">אין הערות שמורות על קטע זה</string>
+    <string name="no_notes_for_selection">אין הערות על השורות שנבחרו. בחר טקסט ולחץ "הוסף הערה".</string>
+    <string name="notes_info_word_level">אין צורך לכתוב הערה על השורה כולה: ניתן לסמן מילים מסוימות, ללחוץ לחיצה ימנית ולבחור "הוסף הערה" כדי לכתוב הערה על קטע מדויק בלבד.</string>
+    <string name="delete_note">מחק הערה</string>
 
     <!-- Book Content Screen - End Vertical Bar -->
     <string name="tools">כלים</string>
@@ -313,6 +340,8 @@
     <string name="close_book_tree_on_new_book">סגור אוטומטית את עץ הספרים בעת בחירת ספר חדש</string>
     <string name="close_book_tree_on_new_book_description">כאשר אפשרות זו מופעלת, עץ הניווט בצד ימין ייסגר אוטומטית לאחר בחירת ספר חדש, מה שמאפשר יותר מקום לקריאה.</string>
     <string name="settings_persist_session_description">כאשר אפשרות זו מופעלת, האפליקציה תשמור את הלשוניות הפתוחות ומיקום הקריאה שלך, ותשחזר אותם בהפעלה הבאה.</string>
+    <string name="settings_keep_screen_awake">מנע כיבוי מסך בזמן קריאה</string>
+    <string name="settings_keep_screen_awake_description">כאשר אפשרות זו מופעלת, המסך לא ייכבה ולא ייכנס למצב שינה כל עוד ספר פתוח בלשונית הנוכחית והחלון פעיל.</string>
     <string name="settings_show_zmanim_widgets">הצג זמנים הלכתיים בדף הבית</string>
     <string name="settings_show_zmanim_widgets_description">כאשר אפשרות זו מופעלת, יוצגו בדף הבית וידג'טים עם זמני היום ההלכתיים (נץ החמה, שקיעה, זמני תפילה וכו').</string>
     <string name="settings_show_home_wallpaper">הצג תמונת רקע בדף הבית</string>
@@ -475,16 +504,23 @@
 
     <!-- Settings > App Info (General Settings Header) -->
     <string name="settings_info_app_version">גרסה: %1$s</string>
-    <string name="settings_info_jdk_version">JDK: %1$s %2$s — %3$s (%4$s)</string>
-    <string name="settings_info_created_by">נוצר על ידי Elie Gambache - KdroidFilter</string>
+    <string name="settings_info_created_by">נוצר על ידי אליהו גמבש</string>
     <string name="settings_info_license">יישום זה הוא קוד פתוח תחת רישיון AGPL-3.0</string>
     <string name="settings_info_license_usage">ניתן להשתמש ולהפיץ בהתאם לתנאי הרישיון.</string>
 
     <!-- App Update -->
-    <string name="update_available_toast">גרסה חדשה זמינה</string>
-    <string name="update_notification_message">גרסה חדשה של זית זמינה להורדה. לחץ כדי לעדכן.</string>
     <string name="update_available_banner">גרסה %1$s זמינה להורדה</string>
     <string name="update_download_action">הורד עכשיו</string>
+    <string name="update_titlebar_tooltip">עדכון זמין</string>
+    <string name="update_dialog_title">עדכון זמין</string>
+    <string name="update_dialog_message">גרסה %1$s של זית זמינה.</string>
+    <string name="update_dialog_db_warning">ייתכן שלאחר עדכון זה יהיה צורך לעדכן את מסד הנתונים (כ‑3.5 ג״ב).</string>
+    <string name="update_downloading">מוריד…</string>
+    <string name="update_install_restart">התקן והפעל מחדש</string>
+    <string name="update_later">מאוחר יותר</string>
+    <string name="update_up_to_date">האפליקציה מעודכנת לגרסה האחרונה</string>
+    <string name="update_checking">בודק עדכונים…</string>
+    <string name="update_check_failed">לא ניתן לבדוק עדכונים — ודא שקיים חיבור לאינטרנט</string>
 
     <!-- Filtering (search panels) accessibility labels -->
     <string name="filter_select_category">בחר קטגוריה לסינון</string>

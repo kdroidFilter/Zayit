@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -242,7 +243,7 @@ internal fun CommentatorsGridScaffold(
             VerticalPager(
                 state = pagerState,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
-                beyondViewportPageCount = 0,
+                beyondViewportPageCount = 1,
                 // Navigation is driven solely by indicator clicks to avoid swallowing the
                 // LazyColumn scrolls rendered inside each commentator cell.
                 userScrollEnabled = false,
@@ -287,14 +288,16 @@ private fun CommentatorPageGrid(
             ) {
                 rowNames.forEach { name ->
                     val id = config.titleToIdMap[name] ?: return@forEach
-                    CommentatorCell(
-                        name = name,
-                        commentTextSize = config.textSizes.commentTextSize,
-                        isRecentlyAdded = name == recentlyAdded,
-                        onTitleClick = { config.onOpenCommentatorBook(id) },
-                        modifier = Modifier.weight(1f).fillMaxHeight().padding(horizontal = 4.dp),
-                    ) {
-                        column(id)
+                    key(id) {
+                        CommentatorCell(
+                            name = name,
+                            commentTextSize = config.textSizes.commentTextSize,
+                            isRecentlyAdded = name == recentlyAdded,
+                            onTitleClick = { config.onOpenCommentatorBook(id) },
+                            modifier = Modifier.weight(1f).fillMaxHeight().padding(horizontal = 4.dp),
+                        ) {
+                            column(id)
+                        }
                     }
                 }
             }

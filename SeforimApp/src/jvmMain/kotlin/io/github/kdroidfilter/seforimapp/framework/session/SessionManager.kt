@@ -82,20 +82,7 @@ object SessionManager {
             val desktopsState = loadDesktopsState() ?: return
             if (desktopsState.desktops.isEmpty()) return
 
-            // Compute titles for the active desktop snapshot
-            val activeSnapshot = desktopsState.snapshots[desktopsState.activeDesktopId]
-            val enrichedSnapshots = desktopsState.snapshots.toMutableMap()
-
-            if (activeSnapshot != null) {
-                val computedTitles = computeTabTitles(activeSnapshot.destinations, activeSnapshot.tabStates, appGraph)
-                val mergedTitles = activeSnapshot.titles.toMutableMap()
-                computedTitles.forEach { (tabId, pair) ->
-                    mergedTitles[tabId] = SerializableTabTitle(title = pair.first, tabType = pair.second)
-                }
-                enrichedSnapshots[desktopsState.activeDesktopId] = activeSnapshot.copy(titles = mergedTitles)
-            }
-
-            val enrichedState = desktopsState.copy(snapshots = enrichedSnapshots)
+            val enrichedState = enrichMissingTabTitles(desktopsState, appGraph)
 
             debugln {
                 buildString {
@@ -224,5 +211,35 @@ object SessionManager {
             }
         }
         return titles
+    }
+
+    private suspend fun enrichMissingTabTitles(
+        state: DesktopsState,
+        appGraph: AppGraph,
+    ): DesktopsState {
+        val enrichedSnapshots =
+            state.snapshots.mapValues { (_, snapshot) ->
+                val destinationsMissingTitles =
+                    snapshot.destinations.filter { destination ->
+                        destination !is TabsDestination.Home &&
+                            snapshot.titles[destination.tabId]?.title.isNullOrBlank()
+                    }
+                if (destinationsMissingTitles.isEmpty()) {
+                    snapshot
+                } else {
+                    val computedTitles = computeTabTitles(destinationsMissingTitles, snapshot.tabStates, appGraph)
+                    if (computedTitles.isEmpty()) {
+                        snapshot
+                    } else {
+                        val mergedTitles = snapshot.titles.toMutableMap()
+                        computedTitles.forEach { (tabId, pair) ->
+                            mergedTitles[tabId] = SerializableTabTitle(title = pair.first, tabType = pair.second)
+                        }
+                        snapshot.copy(titles = mergedTitles)
+                    }
+                }
+            }
+
+        return state.copy(snapshots = enrichedSnapshots)
     }
 }

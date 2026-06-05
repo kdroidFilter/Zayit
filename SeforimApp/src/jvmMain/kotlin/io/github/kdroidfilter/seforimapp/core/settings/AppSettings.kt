@@ -46,6 +46,7 @@ object AppSettings {
     private const val KEY_CLOSE_TREE_ON_NEW_BOOK = "close_tree_on_new_book"
     private const val KEY_DATABASE_PATH = "database_path"
     private const val KEY_PERSIST_SESSION = "persist_session"
+    private const val KEY_KEEP_SCREEN_AWAKE_ON_BOOK = "keep_screen_awake_on_book"
     private const val KEY_FONT_BOOK = "font_book"
     private const val KEY_FONT_COMMENTARY = "font_commentary"
     private const val KEY_FONT_TARGUM = "font_targum"
@@ -97,6 +98,7 @@ object AppSettings {
         _closeTreeOnNewBookFlow.value = getCloseBookTreeOnNewBookSelected()
         _databasePathFlow.value = getDatabasePath()
         _persistSessionFlow.value = isPersistSessionEnabled()
+        _keepScreenAwakeOnBookFlow.value = isKeepScreenAwakeOnBookEnabled()
         _bookFontCodeFlow.value = getBookFontCode()
         _commentaryFontCodeFlow.value = getCommentaryFontCode()
         _targumFontCodeFlow.value = getTargumFontCode()
@@ -126,6 +128,10 @@ object AppSettings {
     // StateFlow for session persistence setting
     private val _persistSessionFlow = MutableStateFlow(isPersistSessionEnabled())
     val persistSessionFlow: StateFlow<Boolean> = _persistSessionFlow.asStateFlow()
+
+    // StateFlow for keep-screen-awake-while-reading setting
+    private val _keepScreenAwakeOnBookFlow = MutableStateFlow(isKeepScreenAwakeOnBookEnabled())
+    val keepScreenAwakeOnBookFlow: StateFlow<Boolean> = _keepScreenAwakeOnBookFlow.asStateFlow()
 
     // StateFlow for zmanim widgets visibility
     private val _showZmanimWidgetsFlow = MutableStateFlow(isShowZmanimWidgetsEnabled())
@@ -307,6 +313,14 @@ object AppSettings {
             // Clear any previously saved session when disabling persistence
             setSavedSessionJson(null)
         }
+    }
+
+    // Keep the screen awake while a book is open and the window is focused (enabled by default)
+    fun isKeepScreenAwakeOnBookEnabled(): Boolean = settings[KEY_KEEP_SCREEN_AWAKE_ON_BOOK, true]
+
+    fun setKeepScreenAwakeOnBookEnabled(enabled: Boolean) {
+        settings[KEY_KEEP_SCREEN_AWAKE_ON_BOOK] = enabled
+        _keepScreenAwakeOnBookFlow.value = enabled
     }
 
     // Zmanim widgets visibility

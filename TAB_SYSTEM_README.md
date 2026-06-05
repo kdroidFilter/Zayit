@@ -1,39 +1,43 @@
-# Classic Tabs with State Restore
+# Tabs with State Restore
 
-This app now uses a classic tab system: each open tab owns its own `NavHostController`
-and navigation graph and stays alive while the tab exists. This greatly simplifies
-behavior and maintenance compared to the previous RAM‑optimized approach, while still
-restoring the full user session on cold boot.
+This app uses a custom tab system rendered by `TabsContent` **without Compose
+Navigation**. Each open tab owns a `SimpleTabViewModelOwner` (its own
+`ViewModelStoreOwner` + `SavedStateRegistryOwner`) that stays alive while the tab
+exists. To bound memory, only a small LRU of tab compositions is kept actively
+composed; the rest are torn down and rebuilt from saved state when re‑selected.
+The full user session is still restored on cold boot.
 
 ## System Architecture
 
 The tab system consists of several key components working together:
 
-1. **TabsViewModel** – Manages tab list (create/select/close/replace) and titles
-2. **TabsNavHost** – Renders one `NavHost` per tab (kept alive); only the selected
-   tab is visible, others are stacked underneath
+1. **TabsViewModel** – Manages tab list (create/select/close/replace), titles, and
+   the hover `preloadTabId`
+2. **TabsContent** – Renders tab content (no `NavHost`). Keeps a per‑tab
+   `SimpleTabViewModelOwner` in a `tabOwners` map and retains an LRU of up to
+   `MAX_RETAINED_TAB_COMPOSITIONS` (3) tab compositions. The selected tab is visible
+   (`zIndex` 1, `alpha` 1); retained/preloaded tabs are stacked underneath at `alpha` 0
 3. **TabStateManager** – Persists lightweight, per‑tab state in memory and
    coordinates with SessionManager for cold‑boot restoration
 4. **SessionManager** – Handles disk persistence of tabs and state across app restarts
 5. **TabsDestination** – Strongly‑typed routes for Home, Search, and BookContent
-6. **TabsView** – Displays the tabs strip and emit user events (select/close/add)
+6. **TabsView** – Displays the tabs strip and emits user events (select/close/add),
+   and triggers hover‑preload of the pointed tab
 
-## Behavior: Simpler, Predictable Tabs
+## Behavior: Bounded, Predictable Tabs
 
-- Each tab has its own `NavHostController`, so ViewModels and UI state remain alive
-  when switching between tabs. **State is automatically preserved** because ViewModels
-  are kept in memory using `tabId` as the stable remember key.
+- ViewModels are keyed by `tabId` via the tab's `SimpleTabViewModelOwner`, so UI state
+  is preserved **as long as the tab stays within the retained‑composition LRU**. When a
+  tab falls out of the LRU its composition is torn down; on re‑selection it is rebuilt
+  from `TabStateManager` (and, for Search, `SearchTabCache`).
 - On cold boot, the app restores open tabs, the selected tab, and per‑tab saved
   state via `SessionManager` + `TabStateManager`.
-- **Key improvement**: ViewModels now use `tabId` as the remember key instead of
-  `destination`, preventing unnecessary recreation when navigating within the same tab.
-- This approach is intentionally simpler and more maintainable than the previous
-  RAM‑optimized system. It may keep more UI in memory if many tabs are open.
-
-Tip: you can enable a RAM saver mode in settings (`AppSettings.setRamSaverEnabled(true)`),
-which switches to a single‑NavHost strategy like the old system: only the selected
-tab is kept active, and switching tabs navigates the single controller. This saves
-memory at the cost of re‑creating UI when switching.
+- **Memory is bounded by design**: at most the selected tab plus
+  `MAX_RETAINED_TAB_COMPOSITIONS` (3) compositions are active at once, regardless of how
+  many tabs are open. There is no separate "RAM saver" toggle.
+- **Hover preload**: hovering a tab in the strip publishes `TabsViewModel.preloadTabId`;
+  `TabsContent` composes that tab off‑screen (still within the LRU cap) so selecting it
+  is instant. Selecting a tab clears the preload.
 
 ## How to Use It
 
@@ -82,59 +86,47 @@ class MyScreenViewModel(
 }
 ```
 
-### 3. Configure the NavHost
+### 3. Render Tab Content
 
-Use `TabsNavHost` in your main composable. The NavHost automatically uses `tabId`
-as the remember key to ensure ViewModels remain stable across destination changes:
+Use `TabsContent` in your main composable. It manages the per‑tab
+`SimpleTabViewModelOwner` lifecycle, the retained‑composition LRU, and hover preload —
+no `NavHost` involved:
 
 ```kotlin
 @Composable
 fun MyApplication() {
     Column {
-        // Display tabs
+        // Display the tabs strip
         TabsView()
 
-        // Tab content - handles ViewModel stability automatically
-        TabsNavHost()
+        // Tab content - handles ViewModel lifecycle and the retained-composition LRU
+        TabsContent()
     }
 }
 ```
 
-### 4. Navigation Graph per Tab
+### 4. Dispatch by Destination
 
-`TabsNavHost` creates a `NavHost` per tab and builds the same routes in each.
-Home reuses the BookContent shell. When no book is selected in state, the shell
-renders `HomeView`. When navigating directly to a book (e.g., opening a tab on a
-specific book or line), the navigation targets `TabsDestination.BookContent` and the
-screen shows a minimal loader until the book is ready, avoiding a Home→Book flash.
+`TabsContent` resolves each retained tab to its `TabsDestination` and renders the
+matching screen with a `tabId`‑scoped `ViewModel`. ViewModels are obtained against the
+tab's `SimpleTabViewModelOwner` (e.g. via `assistedMetroViewModel(viewModelStoreOwner = tabOwner)`),
+so they stay stable while the tab's composition is retained.
+
+Home reuses the BookContent shell: when no book is selected in state, the shell renders
+`HomeView`. When opening a tab directly on a book or line, the destination is
+`TabsDestination.BookContent` and the screen shows a minimal loader until the book is
+ready, avoiding a Home→Book flash. To add a new destination, extend the `when (destination)`
+block in `TabsContent`:
 
 ```kotlin
-NavHost(
-    navController = navController,
-    startDestination = tabItem.destination,
-    modifier = Modifier
-) {
-    // Home – BookContent shell without a selected book shows HomeView
-    nonAnimatedComposable<TabsDestination.Home> { backStackEntry ->
-        val destination = backStackEntry.toRoute<TabsDestination.Home>()
-        backStackEntry.savedStateHandle["tabId"] = destination.tabId
-
-        val viewModel = remember(appGraph, destination) {
-            appGraph.bookContentViewModel(backStackEntry.savedStateHandle)
-        }
-        BookContentScreen(viewModel)
-    }
-
-    nonAnimatedComposable<TabsDestination.MyCustomScreen> { backStackEntry ->
-        val destination = backStackEntry.toRoute<TabsDestination.MyCustomScreen>()
-        // Pass the tabId and any other parameters
-        backStackEntry.savedStateHandle["tabId"] = destination.tabId
-        backStackEntry.savedStateHandle["parameter"] = destination.parameter
-
-        // IMPORTANT: Use tabId as remember key to keep ViewModel stable
-        val viewModel = remember(appGraph, destination.tabId) {
-            appGraph.myCustomScreenViewModel(backStackEntry.savedStateHandle)
-        }
+when (val destination = tabItem.destination) {
+    is TabsDestination.Home -> HomeTabContent(tabOwner, tabId, isSelected, /* ... */)
+    is TabsDestination.Search -> SearchTabContent(tabOwner, destination, isSelected)
+    is TabsDestination.BookContent -> BookContentTabContent(tabOwner, destination, isSelected, /* ... */)
+    // Add your own:
+    is TabsDestination.MyCustomScreen -> {
+        tabOwner.setDefaultArgs(savedState { putString(StateKeys.TAB_ID, destination.tabId) })
+        val viewModel: MyCustomViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
         MyCustomScreen(viewModel)
     }
 }
@@ -206,10 +198,11 @@ saveState("selectedItem", selectedItemId)  // Good: saves just an ID
 saveState("allItems", completeListOfItems)  // Bad: saves entire list
 ```
 
-5. **Handle tab lifecycle properly** – With classic tabs, ViewModels remain
-   alive when switching tabs because `remember` uses `tabId` as the key.
-   State is automatically preserved in memory. Use `TabStateManager` for
-   state you want to restore after a cold boot.
+5. **Handle tab lifecycle properly** – ViewModels are scoped to each tab's
+   `SimpleTabViewModelOwner` and stay alive while the tab's composition is retained
+   in the LRU. Once a tab falls out of the LRU it is rebuilt from saved state on
+   re‑selection, so always persist anything you need via `TabStateManager` (and
+   `SearchTabCache` for Search results) rather than relying on in‑memory ViewModel state.
 
 6. **Localize Home titles in the UI** - The `TabsViewModel` may return an empty
    string for the Home tab title so the UI can localize the label via
@@ -311,5 +304,5 @@ Lifecycle integration:
 - When a tab is closed, the cache entry for that `tabId` is cleared as part of tab cleanup.
 
 This approach keeps `TabStateManager` payloads small (no large lists serialized)
-while still delivering full UX restoration for Search. Since each tab has its
-own `NavHost`, switching between tabs is instantaneous.
+while still delivering full UX restoration for Search. Combined with the
+retained‑composition LRU and hover preload, switching between tabs is near‑instant.

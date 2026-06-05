@@ -10,12 +10,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Application-level state holder for theme, onboarding, and update status.
+ * Application-level state holder for theme and onboarding.
  * Injected as a singleton via Metro DI.
  */
 @Stable
 class MainAppState {
-    private val _theme = MutableStateFlow(IntUiThemes.System)
+    private val _theme = MutableStateFlow(AppSettings.getThemeMode())
     val theme: StateFlow<IntUiThemes> = _theme.asStateFlow()
 
     fun setTheme(theme: IntUiThemes) {
@@ -44,21 +44,5 @@ class MainAppState {
 
     fun setShowOnBoarding(value: Boolean?) {
         _showOnboarding.value = value
-    }
-
-    // App update state
-    private val _updateAvailable = MutableStateFlow<String?>(null)
-    val updateAvailable: StateFlow<String?> = _updateAvailable.asStateFlow()
-
-    private val _updateCheckDone = MutableStateFlow(false)
-    val updateCheckDone: StateFlow<Boolean> = _updateCheckDone.asStateFlow()
-
-    fun setUpdateAvailable(version: String?) {
-        _updateAvailable.value = version
-        _updateCheckDone.value = true
-    }
-
-    fun markUpdateCheckDone() {
-        _updateCheckDone.value = true
     }
 }

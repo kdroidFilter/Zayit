@@ -10,11 +10,15 @@ import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
+import io.github.kdroidfilter.seforimapp.core.annotations.HighlightStore
+import io.github.kdroidfilter.seforimapp.core.annotations.NoteStore
+import io.github.kdroidfilter.seforimapp.core.catalog.CatalogAccess
 import io.github.kdroidfilter.seforimapp.core.selection.DefaultSelectionContext
 import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
 import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
+import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.framework.database.PersistentSqliteDriver
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.database.getUserSettingsDatabasePath
@@ -24,6 +28,7 @@ import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
+import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.LuceneSearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
@@ -36,6 +41,10 @@ object AppCoreBindings {
     @Provides
     @SingleIn(AppScope::class)
     fun provideMainAppState(): MainAppState = MainAppState()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideCatalogAccess(): CatalogAccess = CatalogAccess { CatalogCache.getCatalog() }
 
     @Provides
     @SingleIn(AppScope::class)
@@ -55,13 +64,27 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideCategoryDisplaySettingsStore(): CategoryDisplaySettingsStore {
-        val dbPath = getUserSettingsDatabasePath()
-        val driver = JdbcSqliteDriver("jdbc:sqlite:$dbPath")
+    fun provideUserSettingsDb(): UserSettingsDb {
+        // Single shared connection to the local user database (separate from the
+        // read-only books DB). All user stores inject this instance instead of
+        // opening their own driver. New tables are added transparently for
+        // existing users via CREATE TABLE IF NOT EXISTS in Schema.create().
+        val driver = JdbcSqliteDriver("jdbc:sqlite:${getUserSettingsDatabasePath()}")
         UserSettingsDb.Schema.create(driver)
-        val database = UserSettingsDb(driver)
-        return CategoryDisplaySettingsStore(database)
+        return UserSettingsDb(driver)
     }
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideCategoryDisplaySettingsStore(database: UserSettingsDb): CategoryDisplaySettingsStore = CategoryDisplaySettingsStore(database)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideHighlightStore(database: UserSettingsDb): HighlightStore = HighlightStore(database)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideNoteStore(database: UserSettingsDb): NoteStore = NoteStore(database)
 
     @Provides
     @SingleIn(AppScope::class)
@@ -104,8 +127,9 @@ object AppCoreBindings {
         val seforimDb = Paths.get(dbPath)
         val catalogPb = Paths.get(seforimDb.parent.toString(), "catalog.pb")
         val workDir = Paths.get(seforimDb.parent.toString(), "delta-cache")
-        val releaseMetaUrl = System.getenv("SEFORIMAPP_RELEASE_META_URL")
-            ?: "https://kdroidfilter.github.io/SefariaExport/release_meta.json"
+        val releaseMetaUrl =
+            System.getenv("SEFORIMAPP_RELEASE_META_URL")
+                ?: "https://kdroidfilter.github.io/SefariaExport/release_meta.json"
         return io.github.kdroidfilter.seforimapp.framework.update.DbDeltaUpdateService(
             seforimDb = seforimDb,
             catalogPb = catalogPb,
@@ -124,6 +148,10 @@ object AppCoreBindings {
             },
         )
     }
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideAppUpdateService(): AppUpdateService = AppUpdateService.create()
 
     @Provides
     @SingleIn(AppScope::class)

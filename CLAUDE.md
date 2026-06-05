@@ -71,7 +71,7 @@ Configuration files:
 This is a **Kotlin Multiplatform desktop application** built with:
 - **UI**: Compose Multiplatform + Jewel themes for native desktop look
 - **DI**: Metro dependency injection with `AppGraph` accessible via `LocalAppGraph`
-- **Navigation**: Custom RAM-efficient tab system (`TabsNavHost`)
+- **Navigation**: Custom RAM-efficient tab system (`TabsContent`)
 - **Data**: SeforimLibrary composite build (core domain + dao persistence + generator tools)
 - **Platform**: JVM desktop with macOS/Windows/Linux native packaging
 
@@ -99,11 +99,11 @@ The `SeforimLibrary` composite build provides the core functionality for Jewish 
 
 ### Memory-Efficient Tab System
 See `TAB_SYSTEM_README.md` for complete details. Key points:
-- Each tab owns its own `NavHostController` and stays alive while tab exists
+- Each tab owns its own `SimpleTabViewModelOwner` (ViewModel lifecycle), which stays alive while the tab exists
 - `TabStateManager` persists lightweight state for cold-boot restoration
 - `TabsViewModel` manages tab lifecycle (create/select/close/replace)
 - Use `TabAwareViewModel` base class for screens needing state persistence
-- Classic tabs mode keeps all tabs in memory; RAM saver mode (configurable) uses single NavHost
+- `TabsContent` renders without Compose Navigation and keeps an LRU of up to `MAX_RETAINED_TAB_COMPOSITIONS` (3) tab compositions; others are torn down and rebuilt from saved state on switch
 
 ### Dependency Injection (Metro)
 - App-wide graph: `AppGraph` created with `createGraph<AppGraph>()`
@@ -170,7 +170,7 @@ See `TAB_SYSTEM_README.md` for complete details. Key points:
 ### State Management
 - **Tab State**: Use `TabAwareViewModel` + `saveState()`/`getState()` for restoration
 - **Global State**: Avoid; prefer dependency injection and proper component lifecycle
-- **RAM Optimization**: Enable via `AppSettings.setRamSaverEnabled(true)` if needed
+- **RAM Optimization**: Built-in; only the selected tab plus an LRU of `MAX_RETAINED_TAB_COMPOSITIONS` (3) compositions are kept active (`TabsContent`)
 
 ### Security & Configuration
 - **Secrets**: Never commit to repository; use `local.properties` for machine-specific settings
@@ -219,7 +219,7 @@ class MyViewModel(
 
 ### Performance
 - **Hot Reload**: Use `hotRunJvm` + `reload` for fast iteration
-- **Memory**: Monitor tab count; use RAM saver mode for many tabs
+- **Memory**: Bounded by design — at most the selected tab + 3 retained compositions stay active regardless of open tab count
 - **Large Datasets**: Leverage Paging 3 for efficient data loading
 
 ## File Locations Reference

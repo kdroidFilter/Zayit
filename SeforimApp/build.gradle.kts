@@ -1,7 +1,7 @@
+import dev.nucleusframework.desktop.application.dsl.ReleaseChannel
+import dev.nucleusframework.desktop.application.dsl.ReleaseType
+import dev.nucleusframework.desktop.application.dsl.TargetFormat
 import io.github.kdroidfilter.buildsrc.Versioning
-import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseChannel
-import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseType
-import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
 
 plugins {
@@ -80,12 +80,12 @@ kotlin {
 
             // Settings & platform utils
             implementation(libs.multiplatformSettings)
-            implementation(libs.platformtools.core)
             implementation(libs.nucleus.core.runtime)
+            implementation(libs.nucleus.application)
             implementation(libs.nucleus.aot.runtime)
             implementation(libs.nucleus.darkmode.detector)
             implementation(libs.platformtools.appmanager)
-            implementation(libs.platformtools.releasefetcher)
+            implementation(project(":releasefetcher"))
 
             // FileKit
             implementation(libs.filekit.core)
@@ -138,16 +138,19 @@ kotlin {
             api(project(":jewel"))
             implementation(project(":earthwidget"))
             implementation(libs.nucleus.system.color)
-            implementation(libs.nucleus.decorated.window)
+            implementation(libs.nucleus.decorated.window.core)
+            implementation(libs.nucleus.decorated.window.tao)
             implementation(libs.nucleus.decorated.window.jewel)
             implementation(libs.nucleus.graalvm.runtime)
             implementation(libs.nucleus.updater.runtime)
+            implementation(libs.nucleus.native.http)
             implementation(libs.nucleus.energy.manager)
             implementation(libs.nucleus.launcher.macos)
             implementation(libs.nucleus.launcher.windows)
             implementation(libs.nucleus.launcher.linux)
             implementation(libs.nucleus.menu.macos)
             implementation(libs.nucleus.sf.symbols)
+            implementation(libs.nucleus.taskbar.progress.tao)
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
             }
@@ -257,7 +260,6 @@ nucleus.application {
 
         // Package-time resources root; include files under OS-specific subfolders (common, macos, windows, linux)
         appResourcesRootDir.set(layout.projectDirectory.dir("src/jvmMain/assets"))
-        splashImage = "splash.png"
         enableAotCache = true
         homepage = "https://zayitapp.com"
         licenseFile.set(File(project.rootDir, "LICENSE"))
@@ -291,6 +293,10 @@ nucleus.application {
         )
         vendor = "KDroidFilter"
         cleanupNativeLibs = true
+
+        // Register the custom URL scheme so shareable deep links (zayit://book/...,
+        // zayit://search/...) are routed to the app by the OS on macOS, Windows and Linux.
+        protocol("Zayit", "zayit")
 
         linux {
             iconFile.set(project.file("desktopAppIcons/LinuxIcon.png"))

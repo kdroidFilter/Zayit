@@ -6,10 +6,10 @@ import androidx.compose.runtime.Immutable
 data class DataSettingsState(
     val isExporting: Boolean = false,
     val isImporting: Boolean = false,
-    val lastExportPath: String? = null,
-    val lastImportPath: String? = null,
-    val exportError: String? = null,
-    val importError: String? = null,
-    val successMessage: String? = null,
+    // Holds the backup file name on a successful export; null otherwise.
+    val exportedFileName: String? = null,
+    val importSucceeded: Boolean = false,
+    val exportFailed: Boolean = false,
+    val importFailed: Boolean = false,
     val resetDone: Boolean = false,
 )

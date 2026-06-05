@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.settings.data
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.nucleusframework.core.runtime.AppRestarter
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
@@ -27,68 +28,22 @@ class DataSettingsViewModel : ViewModel() {
     private val _state = MutableStateFlow(DataSettingsState())
     val state: StateFlow<DataSettingsState> = _state.asStateFlow()
 
-    fun onEvent(event: DataSettingsEvents) {
-        when (event) {
-            is DataSettingsEvents.StartExport -> exportData()
-            is DataSettingsEvents.StartImport -> {} // Will be called with file path from UI
-            is DataSettingsEvents.ClearMessages -> clearMessages()
-            else -> {}
-        }
-    }
-
-    fun importFromFile(importFile: File) {
-        if (!importFile.exists()) {
-            _state.update { it.copy(importError = "File not found") }
+    fun exportToFile(exportDir: File) {
+        if (!exportDir.isDirectory) {
+            _state.update { it.copy(exportFailed = true, exportedFileName = null) }
             return
         }
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                _state.update { it.copy(isImporting = true, importError = null) }
-                val dbPath = getUserSettingsDatabasePath()
-                val dbFile = File(dbPath)
-
-                // Copy imported file to replace current DB
-                Files.copy(
-                    importFile.toPath(),
-                    dbFile.toPath(),
-                    StandardCopyOption.REPLACE_EXISTING,
-                )
-
-                _state.update {
-                    it.copy(
-                        isImporting = false,
-                        lastImportPath = importFile.absolutePath,
-                        successMessage = "Data imported successfully. Please restart the app.",
-                    )
-                }
-            } catch (e: Exception) {
-                _state.update { it.copy(isImporting = false, importError = e.message ?: "Import failed") }
-            }
-        }
-    }
-
-    private fun exportData() {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                _state.update { it.copy(isExporting = true, exportError = null) }
-                val dbPath = getUserSettingsDatabasePath()
-                val dbFile = File(dbPath)
+                _state.update { it.copy(isExporting = true, exportFailed = false, exportedFileName = null) }
+                val dbFile = File(getUserSettingsDatabasePath())
 
                 if (!dbFile.exists()) {
-                    _state.update { it.copy(isExporting = false, exportError = "Database not found") }
+                    _state.update { it.copy(isExporting = false, exportFailed = true) }
                     return@launch
                 }
 
-                // Create export directory in user's Downloads
-                val exportDir =
-                    File(
-                        System.getProperty("user.home"),
-                        "Downloads/Zayit",
-                    )
-                exportDir.mkdirs()
-
-                // Create timestamped backup file
                 val timestamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(Date())
                 val exportFile = File(exportDir, "zayit_backup_$timestamp.db")
 
@@ -99,19 +54,38 @@ class DataSettingsViewModel : ViewModel() {
                 )
 
                 _state.update {
-                    it.copy(
-                        isExporting = false,
-                        lastExportPath = exportFile.absolutePath,
-                        successMessage = "Data exported to: ${exportFile.name}",
-                    )
+                    it.copy(isExporting = false, exportedFileName = exportFile.name)
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isExporting = false, exportError = e.message ?: "Export failed") }
+                _state.update { it.copy(isExporting = false, exportFailed = true) }
             }
         }
     }
 
-    private fun clearMessages() {
-        _state.update { it.copy(exportError = null, importError = null, successMessage = null) }
+    fun importFromFile(importFile: File) {
+        if (!importFile.exists()) {
+            _state.update { it.copy(importFailed = true, importSucceeded = false) }
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                _state.update { it.copy(isImporting = true, importFailed = false, importSucceeded = false) }
+                val dbFile = File(getUserSettingsDatabasePath())
+
+                // Copy imported file to replace current DB
+                Files.copy(
+                    importFile.toPath(),
+                    dbFile.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING,
+                )
+
+                // The running app holds an open connection to the old DB; restart to load the imported one.
+                _state.update { it.copy(isImporting = false, importSucceeded = true) }
+                AppRestarter.restartApp()
+            } catch (e: Exception) {
+                _state.update { it.copy(isImporting = false, importFailed = true) }
+            }
+        }
     }
 }

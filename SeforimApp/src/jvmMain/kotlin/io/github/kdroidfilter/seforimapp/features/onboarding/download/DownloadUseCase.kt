@@ -1,7 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.download
 
-import io.github.kdroidfilter.seforimapp.releasefetcher.github.GitHubReleaseFetcher
 import io.github.kdroidfilter.seforimapp.network.HttpsConnectionFactory
+import io.github.kdroidfilter.seforimapp.releasefetcher.github.GitHubReleaseFetcher
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path

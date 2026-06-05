@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -359,6 +360,8 @@ private fun NoteEditor(
                         },
             )
         }
+        // Hide the trash while the body is empty, but keep it laid out so the field never resizes.
+        val canDelete = state.text.isNotBlank()
         IconActionButton(
             key = AllIconsKeys.General.Delete,
             onClick = {
@@ -366,6 +369,9 @@ private fun NoteEditor(
                 onDelete()
             },
             contentDescription = stringResource(Res.string.delete_note),
+            enabled = canDelete,
+            focusable = canDelete,
+            modifier = Modifier.alpha(if (canDelete) 1f else 0f),
         )
     }
 }

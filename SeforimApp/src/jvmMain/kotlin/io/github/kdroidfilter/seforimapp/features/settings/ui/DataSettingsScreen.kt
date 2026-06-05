@@ -138,7 +138,7 @@ fun DataSettingsScreen() {
 
             ResetCard(
                 resetDone = state.resetDone,
-                onReset = { /* Will be integrated with viewModel later */ },
+                onReset = { viewModel.resetApp() },
             )
         }
     }

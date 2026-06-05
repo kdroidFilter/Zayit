@@ -24,7 +24,6 @@ class SettingsAndDownloadStateIntegrationTest {
         assertNull(state.databasePath)
         assertFalse(state.closeTreeOnNewBook)
         assertTrue(state.persistSession)
-        assertFalse(state.resetDone)
     }
 
     @Test
@@ -34,13 +33,11 @@ class SettingsAndDownloadStateIntegrationTest {
                 databasePath = "/custom/path/db.sqlite",
                 closeTreeOnNewBook = true,
                 persistSession = false,
-                resetDone = true,
             )
 
         assertEquals("/custom/path/db.sqlite", state.databasePath)
         assertTrue(state.closeTreeOnNewBook)
         assertFalse(state.persistSession)
-        assertTrue(state.resetDone)
     }
 
     @Test
@@ -50,7 +47,6 @@ class SettingsAndDownloadStateIntegrationTest {
                 databasePath = "/path/db.sqlite",
                 closeTreeOnNewBook = true,
                 persistSession = true,
-                resetDone = false,
             )
 
         val modified = original.copy(closeTreeOnNewBook = false)
@@ -105,14 +101,6 @@ class SettingsAndDownloadStateIntegrationTest {
 
         assertTrue(eventTrue.value)
         assertFalse(eventFalse.value)
-    }
-
-    @Test
-    fun `ResetApp is a singleton event`() {
-        val event1 = GeneralSettingsEvents.ResetApp
-        val event2 = GeneralSettingsEvents.ResetApp
-
-        assertEquals(event1, event2)
     }
 
     // ==================== DownloadState Tests ====================

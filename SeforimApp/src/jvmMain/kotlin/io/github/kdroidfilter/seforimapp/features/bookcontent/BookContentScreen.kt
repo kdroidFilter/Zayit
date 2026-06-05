@@ -472,6 +472,7 @@ fun BookContentScreen(
     // Always read the latest values inside the context-menu actions, without rebuilding the menu.
     val currentSelectedBook by rememberUpdatedState(selectedBook)
     val currentNotesVisible by rememberUpdatedState(uiState.notes.isVisible)
+    val currentPrimaryLineId by rememberUpdatedState(uiState.content.primaryLine?.id)
 
     // User-highlight persistence (separate local user DB).
     val highlightStore = LocalAppGraph.current.highlightStore
@@ -482,6 +483,14 @@ fun BookContentScreen(
     // edited inline in the notes pane (Google-Docs style).
     val noteStore = LocalAppGraph.current.noteStore
     var noteDraft by remember { mutableStateOf<NoteDraftAnchor?>(null) }
+    // Primary line captured when the draft was opened. Selecting a different line drops the unsaved
+    // explicit draft so the editor reflects the newly selected line instead of the stale anchor.
+    var noteDraftBaselineLine by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(uiState.content.primaryLine?.id) {
+        if (noteDraft != null && uiState.content.primaryLine?.id != noteDraftBaselineLine) {
+            noteDraft = null
+        }
+    }
 
     // Publish the active book + its root category to the SelectionContext so the Ctrl+Alt+C
     // dispatcher and the context-menu action can apply per-tradition formatting. Lifecycle
@@ -653,6 +662,7 @@ fun BookContentScreen(
                                                 }
                                             if (draft != null) {
                                                 noteDraft = draft
+                                                noteDraftBaselineLine = currentPrimaryLineId
                                                 if (!currentNotesVisible) onEvent(BookContentEvent.ToggleNotes)
                                             }
                                         },

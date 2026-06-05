@@ -188,15 +188,15 @@ jobs:
           ./gradlew :SeforimApp:packageGraalvmDmg
           mkdir -p staging
 
-          DMG="$(find SeforimApp/build/compose/binaries/main/graalvm-dmg -name '*.dmg' | head -n1)"
+          SEARCH_ROOT="SeforimApp/build/compose/binaries/main"
+          # `|| true` so a non-matching/SIGPIPE find never aborts the step under set -e.
+          DMG="$(find "$SEARCH_ROOT/graalvm-dmg" -name '*.dmg' | head -n1 || true)"
           [ -n "$DMG" ] || { echo "::error::No .dmg produced"; exit 1; }
           cp "$DMG" "staging/Zayit-${VERSION}-mac-${{ matrix.jdk_arch }}.dmg"
 
-          # Canonical standalone bundle dir is binaries/main/app; fall back to a
-          # broad search in case the Nucleus plugin relocates it.
-          SEARCH_ROOT="SeforimApp/build/compose/binaries/main"
-          APP_BUNDLE="$(find "$SEARCH_ROOT/app" -maxdepth 1 -type d -name '*.app' 2>/dev/null | head -n1)"
-          [ -n "$APP_BUNDLE" ] || APP_BUNDLE="$(find "$SEARCH_ROOT" -type d -name '*.app' | head -n1)"
+          # Locate the codesigned .app wherever the Nucleus plugin emits it
+          # (binaries/main/app locally, graalvm-dmg/.app-image on CI runners).
+          APP_BUNDLE="$(find "$SEARCH_ROOT" -type d -name '*.app' | head -n1 || true)"
           [ -n "$APP_BUNDLE" ] || { echo "::error::No .app bundle found under $SEARCH_ROOT"; exit 1; }
           APP_DIR="$(dirname "$APP_BUNDLE")"
           # Version-less name, kept in sync with website/public/download/launch.mac.

@@ -84,6 +84,29 @@ trap cleanup EXIT
 echo "Downloading: ${asset_url}"
 curl -fL --progress-bar -o "${tmpfile}" "${asset_url}"
 
+PKG_NAME="zayit"
+
+# Remove any previously installed version before installing the new one.
+if [ "${pkg_type}" = "deb" ]; then
+  if dpkg -s "${PKG_NAME}" >/dev/null 2>&1; then
+    echo "Removing previous version of ${PKG_NAME}..."
+    sudo dpkg -r "${PKG_NAME}" || true
+  fi
+else
+  if rpm -q "${PKG_NAME}" >/dev/null 2>&1; then
+    echo "Removing previous version of ${PKG_NAME}..."
+    if command -v dnf >/dev/null 2>&1; then
+      sudo dnf remove -y "${PKG_NAME}" || true
+    elif command -v yum >/dev/null 2>&1; then
+      sudo yum remove -y "${PKG_NAME}" || true
+    elif command -v zypper >/dev/null 2>&1; then
+      sudo zypper remove --no-confirm "${PKG_NAME}" || true
+    else
+      sudo rpm -e "${PKG_NAME}" || true
+    fi
+  fi
+fi
+
 if [ "${pkg_type}" = "deb" ]; then
   echo "Installing .deb package (sudo dpkg -i)..."
   sudo dpkg -i "${tmpfile}" || {
@@ -107,3 +130,22 @@ else
 fi
 
 echo "Installation complete."
+
+# Launch the app, detached from this terminal.
+echo "Launching ${PKG_NAME}..."
+launch_cmd=""
+if [ -x "/opt/${PKG_NAME}/bin/${PKG_NAME}" ]; then
+  launch_cmd="/opt/${PKG_NAME}/bin/${PKG_NAME}"
+elif command -v "${PKG_NAME}" >/dev/null 2>&1; then
+  launch_cmd="${PKG_NAME}"
+fi
+
+if [ -n "${launch_cmd}" ]; then
+  setsid "${launch_cmd}" >/dev/null 2>&1 < /dev/null &
+  disown 2>/dev/null || true
+elif command -v gtk-launch >/dev/null 2>&1; then
+  gtk-launch "${PKG_NAME}-${PKG_NAME}" >/dev/null 2>&1 < /dev/null &
+  disown 2>/dev/null || true
+else
+  echo "Could not locate the ${PKG_NAME} launcher; please start it from your applications menu."
+fi

@@ -31,6 +31,19 @@ trap cleanup EXIT
 echo "Downloading $app_name ..."
 curl -L --output "$tmpfile" --progress-bar "$mac_zip_url"
 
+# Quit the running app (if any) before replacing it.
+echo "Quitting any running instance of $app_name ..."
+osascript -e "quit app \"${app_name}\"" 2>/dev/null || true
+pkill -x "${app_name}" 2>/dev/null || true
+
+# Remove any previous installation from both standard locations.
+for prev in "/Applications/${app_name}.app" "$HOME/Applications/${app_name}.app"; do
+  if [ -d "$prev" ]; then
+    echo "Removing previous version: $prev"
+    rm -rf "$prev"
+  fi
+done
+
 if [ -w /Applications ]; then
   cd /Applications
 else
@@ -38,11 +51,6 @@ else
     mkdir "$HOME/Applications"
   fi
   cd "$HOME/Applications"
-fi
-
-if [ -d "${app_name}.app" ]; then
-  echo "App folder ${app_name}.app already exists, removing."
-  rm -rf "${app_name}.app"
 fi
 
 echo "Extracting to $PWD ..."

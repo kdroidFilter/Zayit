@@ -51,6 +51,7 @@ import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.features.update.UpdateDialog
 import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
+import io.github.kdroidfilter.seforimapp.framework.database.PendingDbCleanup
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -149,6 +150,11 @@ fun main(args: Array<String>) {
         aotTraining(duration = AOT_TRAINING_DURATION)
 
         FileKit.init(appId)
+
+        // Retry any database cleanup a previous run could not finish (e.g. a file locked
+        // by antivirus/Windows Search). Runs once, before the SQLDelight repository opens
+        // the DB, so a fresh install no longer needs the user to delete the old DB by hand.
+        remember { PendingDbCleanup.runOnce() }
 
         val windowState =
             rememberWindowState(

@@ -6,8 +6,8 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
+import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
-import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadUseCase
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 class DownloadViewModel(
     private val useCase: DownloadUseCase,
     private val processRepository: OnboardingProcessRepository,
+    private val preparationUseCase: DatabasePreparationUseCase,
 ) : ViewModel() {
     private val _inProgress = MutableStateFlow(false)
     private val _progress = MutableStateFlow(0f)
@@ -30,7 +31,12 @@ class DownloadViewModel(
     private val _total = MutableStateFlow<Long?>(null)
     private val _speed = MutableStateFlow(0L)
     private val _error = MutableStateFlow<String?>(null)
+    private val _errorKind = MutableStateFlow<DownloadErrorKind?>(null)
     private val _completed = MutableStateFlow(false)
+
+    // Set while the pre-download gate runs, so a stray Start event can't run it twice.
+    @Volatile
+    private var preparing = false
 
     private data class DownloadProgressSnapshot(
         val inProgress: Boolean,
@@ -55,8 +61,9 @@ class DownloadViewModel(
         combine(
             progressSnapshot,
             _error,
+            _errorKind,
             _completed,
-        ) { snapshot, error, completed ->
+        ) { snapshot, error, errorKind, completed ->
             DownloadState(
                 inProgress = snapshot.inProgress,
                 progress = snapshot.progress,
@@ -64,6 +71,7 @@ class DownloadViewModel(
                 totalBytes = snapshot.totalBytes,
                 speedBytesPerSec = snapshot.speedBytesPerSec,
                 errorMessage = error,
+                errorKind = errorKind,
                 completed = completed,
             )
         }.stateIn(
@@ -88,16 +96,34 @@ class DownloadViewModel(
     }
 
     private fun startIfNeeded() {
-        if (_inProgress.value || _completed.value) return
+        if (_inProgress.value || _completed.value || preparing) return
+        preparing = true
         viewModelScope.launch(Dispatchers.Default) {
             runSuspendCatching {
                 _error.value = null
+                _errorKind.value = null
                 _completed.value = false
-                _inProgress.value = true
                 _progress.value = 0f
                 _downloaded.value = 0L
                 _total.value = null
                 _speed.value = 0L
+
+                // Gate: remove the old database and verify free space BEFORE transferring
+                // anything. Refusing here is what prevents a multi-GB download from filling
+                // the disk and freezing when an old database was left in place.
+                when (preparationUseCase.prepareForInstall()) {
+                    DatabasePreparationUseCase.Result.Ready -> Unit
+                    is DatabasePreparationUseCase.Result.CleanupFailed -> {
+                        _errorKind.value = DownloadErrorKind.CLEANUP_FAILED
+                        return@runSuspendCatching
+                    }
+                    is DatabasePreparationUseCase.Result.InsufficientSpace -> {
+                        _errorKind.value = DownloadErrorKind.INSUFFICIENT_SPACE
+                        return@runSuspendCatching
+                    }
+                }
+
+                _inProgress.value = true
 
                 val path =
                     useCase.downloadLatestBundle { read, total, progress, speed ->
@@ -119,6 +145,7 @@ class DownloadViewModel(
                 _speed.value = 0L
                 _error.value = it.message ?: it.toString()
             }
+            preparing = false
         }
     }
 }

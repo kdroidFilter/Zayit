@@ -170,6 +170,9 @@ fun TabsContent() {
                         ),
                     )
                 }
+                is SearchHomeNavigationEvent.NavigateToDeepLink -> {
+                    tabsViewModel.replaceCurrentTabDestination(event.destination)
+                }
             }
         }
     }

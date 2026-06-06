@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
+import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
+import io.github.kdroidfilter.seforimapp.core.deeplink.parseZayitDeepLink
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
@@ -59,6 +61,14 @@ sealed class SearchHomeNavigationEvent {
         val bookId: Long,
         val tabId: String,
         val lineId: Long?,
+    ) : SearchHomeNavigationEvent()
+
+    /**
+     * Navigate to a destination resolved from a zayit:// deep link pasted into the search bar.
+     * @param destination The parsed destination (book/line or search)
+     */
+    data class NavigateToDeepLink(
+        val destination: TabsDestination,
     ) : SearchHomeNavigationEvent()
 }
 
@@ -495,6 +505,20 @@ class SearchHomeViewModel(
         query: String,
         currentTabId: String,
     ) {
+        // A zayit:// link pasted into the search bar opens the target instead of running a search.
+        parseZayitDeepLink(query.trim())?.let { destination ->
+            val resolvable =
+                when (destination) {
+                    is TabsDestination.BookContent ->
+                        runSuspendCatching { repository.getBookCore(destination.bookId) }.getOrNull() != null
+                    else -> true
+                }
+            if (resolvable) {
+                _navigationEvents.send(SearchHomeNavigationEvent.NavigateToDeepLink(destination))
+                return
+            }
+        }
+
         // Apply selected scope only (view filters) and persist dataset scope for fetch
         val selected = _uiState.value
         val datasetScope: String

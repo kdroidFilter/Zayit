@@ -330,6 +330,7 @@ nucleus.application {
             iconFile.set(project.file("desktopAppIcons/MacosIcon.icns"))
             bundleID = "io.github.kdroidfilter.seforimapp.desktopApp"
             packageVersion = version
+            packageName = "זיתet "
         }
         buildTypes.release.proguard {
             version.set("7.9.0")

@@ -29,6 +29,8 @@ import org.jetbrains.jewel.ui.component.DefaultErrorBanner
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.theme.defaultBannerStyle
 import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.db_install_cleanup_failed
+import seforimapp.seforimapp.generated.resources.db_install_insufficient_space
 import seforimapp.seforimapp.generated.resources.onboarding_downloading_message
 import seforimapp.seforimapp.generated.resources.onboarding_error_occurred
 import seforimapp.seforimapp.generated.resources.onboarding_error_with_detail
@@ -98,11 +100,18 @@ fun DownloadView(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Error banner with retry
-            if (state.errorMessage != null) {
-                val generic = stringResource(Res.string.onboarding_error_occurred)
-                val detail = state.errorMessage.takeIf { it.isNotBlank() }
-                val message = detail?.let { stringResource(Res.string.onboarding_error_with_detail, it) } ?: generic
+            // Error banner with retry (pre-download gate failure or download error)
+            if (state.errorKind != null || state.errorMessage != null) {
+                val message =
+                    when (state.errorKind) {
+                        DownloadErrorKind.CLEANUP_FAILED -> stringResource(Res.string.db_install_cleanup_failed)
+                        DownloadErrorKind.INSUFFICIENT_SPACE -> stringResource(Res.string.db_install_insufficient_space)
+                        null -> {
+                            val detail = state.errorMessage?.takeIf { it.isNotBlank() }
+                            detail?.let { stringResource(Res.string.onboarding_error_with_detail, it) }
+                                ?: stringResource(Res.string.onboarding_error_occurred)
+                        }
+                    }
                 val retryLabel = stringResource(Res.string.retry_button)
                 DefaultErrorBanner(
                     text = message,

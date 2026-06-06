@@ -9,7 +9,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
+import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadErrorKind
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
@@ -35,11 +37,11 @@ fun OfflineFileSelectionScreen(
 
     val extractViewModel: ExtractViewModel = metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val processRepository: OnboardingProcessRepository = LocalAppGraph.current.onboardingProcessRepository
-    val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
+    val prepUseCase = LocalAppGraph.current.databasePreparationUseCase
 
     var part01Path by remember { mutableStateOf<String?>(null) }
     var hasStartedExtraction by remember { mutableStateOf(false) }
-    var cleanupCompleted by remember { mutableStateOf(false) }
+    var prepErrorKind by remember { mutableStateOf<DownloadErrorKind?>(null) }
     val scope = rememberCoroutineScope()
 
     // Function to start extraction with part01 path
@@ -48,21 +50,25 @@ fun OfflineFileSelectionScreen(
         p1: String,
     ) {
         scope.launch {
-            // Nettoyer les anciens fichiers avant de commencer l'extraction
-            if (!cleanupCompleted) {
-                cleanupUseCase.cleanupDatabaseFiles()
-                cleanupCompleted = true
-            }
+            prepErrorKind = null
+            // Remove the old database and verify free space before extracting ~7.5 GB.
+            when (prepUseCase.prepareForInstall()) {
+                DatabasePreparationUseCase.Result.Ready -> {
+                    // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
+                    progressBarState.setProgress(0.7f)
+                    processRepository.setPendingZstPath(p1)
+                    extractViewModel.onEvent(ExtractEvents.StartIfPending)
+                    hasStartedExtraction = true
 
-            // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
-            progressBarState.setProgress(0.7f)
-            processRepository.setPendingZstPath(p1)
-            extractViewModel.onEvent(ExtractEvents.StartIfPending)
-            hasStartedExtraction = true
-
-            // Move forward and clear all previous onboarding steps so back is disabled
-            navController.navigate(OnBoardingDestination.ExtractScreen) {
-                popUpTo(0) { inclusive = true }
+                    // Move forward and clear all previous onboarding steps so back is disabled
+                    navController.navigate(OnBoardingDestination.ExtractScreen) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+                is DatabasePreparationUseCase.Result.CleanupFailed ->
+                    prepErrorKind = DownloadErrorKind.CLEANUP_FAILED
+                is DatabasePreparationUseCase.Result.InsufficientSpace ->
+                    prepErrorKind = DownloadErrorKind.INSUFFICIENT_SPACE
             }
         }
     }
@@ -105,6 +111,20 @@ fun OfflineFileSelectionScreen(
                     text = stringResource(Res.string.onboarding_part01_selected),
                     textAlign = TextAlign.Center,
                     color = JewelTheme.globalColors.text.normal,
+                )
+            }
+
+            if (prepErrorKind != null) {
+                val kind = prepErrorKind
+                Text(
+                    text =
+                        when (kind) {
+                            DownloadErrorKind.CLEANUP_FAILED -> stringResource(Res.string.db_install_cleanup_failed)
+                            DownloadErrorKind.INSUFFICIENT_SPACE -> stringResource(Res.string.db_install_insufficient_space)
+                            null -> ""
+                        },
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(0.8f),
                 )
             }
 

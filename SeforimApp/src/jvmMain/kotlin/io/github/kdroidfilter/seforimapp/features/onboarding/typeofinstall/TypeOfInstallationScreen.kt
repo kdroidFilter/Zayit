@@ -3,7 +3,6 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.typeofinstall
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -14,13 +13,9 @@ import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
 import io.github.kdroidfilter.seforimapp.icons.Unarchive
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
-import io.github.santimattius.structured.annotations.StructuredScope
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
@@ -39,38 +34,26 @@ fun TypeOfInstallationScreen(
     LaunchedEffect(Unit) {
         progressBarState.setProgress(0.3f)
     }
-    val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
-    val scope = rememberCoroutineScope()
 
-    fun goOnline(
-        @StructuredScope scope: CoroutineScope,
-    ) {
-        scope.launch {
-            // Clean existing database and related files before online installation
-            cleanupUseCase.cleanupDatabaseFiles()
-            // Move forward and clear all previous onboarding steps so back is disabled
-            navController.navigate(OnBoardingDestination.DatabaseOnlineInstallerScreen) {
-                popUpTo(0) { inclusive = true }
-            }
+    fun goOnline() {
+        // Old-database cleanup + disk-space gate run inside the download step
+        // (DownloadViewModel / DatabasePreparationUseCase).
+        // Move forward and clear all previous onboarding steps so back is disabled.
+        navController.navigate(OnBoardingDestination.DatabaseOnlineInstallerScreen) {
+            popUpTo(0) { inclusive = true }
         }
     }
 
-    fun goOffline(
-        @StructuredScope scope: CoroutineScope,
-    ) {
-        scope.launch {
-            // Clean existing database and related files before offline installation
-            cleanupUseCase.cleanupDatabaseFiles()
-            // Move forward and clear all previous onboarding steps so back is disabled
-            navController.navigate(OnBoardingDestination.OfflineFileSelectionScreen) {
-                popUpTo(0) { inclusive = true }
-            }
+    fun goOffline() {
+        // Cleanup + disk-space gate run in OfflineFileSelectionScreen before extraction.
+        navController.navigate(OnBoardingDestination.OfflineFileSelectionScreen) {
+            popUpTo(0) { inclusive = true }
         }
     }
 
     TypeOfInstallationView(
-        onOnlineInstallation = { goOnline(scope) },
-        onOfflineInstallation = { goOffline(scope) },
+        onOnlineInstallation = { goOnline() },
+        onOfflineInstallation = { goOffline() },
     )
 }
 

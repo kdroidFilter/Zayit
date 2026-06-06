@@ -11,13 +11,13 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
+import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadErrorKind
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadProgressDetails
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -32,18 +32,15 @@ fun OnlineUpdateScreen(
     val downloadViewModel: DownloadViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val downloadState by downloadViewModel.state.collectAsState()
-    val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
     val extractViewModel: ExtractViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val extractState by extractViewModel.state.collectAsState()
 
-    var cleanupCompleted by remember { mutableStateOf(false) }
     var hasStartedExtraction by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        // Nettoyer les anciens fichiers de base de données avant de commencer
-        cleanupUseCase.cleanupDatabaseFiles()
-        cleanupCompleted = true
+        // Cleanup of the old database + disk-space gate run inside DownloadViewModel
+        // before the transfer starts (see DatabasePreparationUseCase).
         DatabaseUpdateProgressBarState.setDownloadStarted()
         downloadViewModel.onEvent(DownloadEvents.Start)
     }
@@ -79,7 +76,10 @@ fun OnlineUpdateScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             when {
-                !downloadState.inProgress && !downloadState.completed && downloadState.errorMessage == null -> {
+                !downloadState.inProgress &&
+                    !downloadState.completed &&
+                    downloadState.errorMessage == null &&
+                    downloadState.errorKind == null -> {
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -134,6 +134,37 @@ fun OnlineUpdateScreen(
                     } else {
                         // Waiting for extraction to start
                         CircularProgressIndicator()
+                    }
+                }
+
+                // Pre-download gate failed (old DB locked, or not enough disk space)
+                downloadState.errorKind != null -> {
+                    val kind = downloadState.errorKind
+                    Text(
+                        text =
+                            when (kind) {
+                                DownloadErrorKind.CLEANUP_FAILED -> stringResource(Res.string.db_install_cleanup_failed)
+                                DownloadErrorKind.INSUFFICIENT_SPACE -> stringResource(Res.string.db_install_insufficient_space)
+                                null -> ""
+                            },
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(0.8f),
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        OutlinedButton(
+                            onClick = { navController.popBackStack() },
+                        ) {
+                            Text(stringResource(Res.string.db_update_back))
+                        }
+
+                        DefaultButton(
+                            onClick = { downloadViewModel.onEvent(DownloadEvents.Start) },
+                        ) {
+                            Text(stringResource(Res.string.db_update_retry))
+                        }
                     }
                 }
 

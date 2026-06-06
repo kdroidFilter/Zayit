@@ -12,6 +12,7 @@ import io.github.kdroidfilter.seforimapp.core.catalog.CatalogAccess
 import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
 import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase
+import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
@@ -44,6 +45,7 @@ abstract class AppGraph : ViewModelGraph {
 
     abstract val onboardingProcessRepository: OnboardingProcessRepository
     abstract val databaseCleanupUseCase: DatabaseCleanupUseCase
+    abstract val databasePreparationUseCase: DatabasePreparationUseCase
 
     /** Seforim.db delta-update facade (recoverIfNeeded + checkAndApply). */
     abstract val dbDeltaUpdateService: io.github.kdroidfilter.seforimapp.framework.update.DbDeltaUpdateService

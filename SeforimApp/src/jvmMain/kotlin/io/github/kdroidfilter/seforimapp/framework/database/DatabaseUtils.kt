@@ -20,9 +20,38 @@ import java.io.File
 private const val DEFAULT_DB_NAME = "seforim.db"
 
 /**
- * Lazily computed database path. Thread-safe and computed only once.
+ * Cached database path. Resolved on first access and kept for the runtime, but can
+ * be invalidated with [resetDatabasePathCache] after a reinstall changes the database
+ * location (e.g. following [io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase]).
  */
-private val cachedDatabasePath: String by lazy {
+@Volatile
+private var cachedDatabasePath: String? = null
+private val databasePathLock = Any()
+
+/**
+ * Gets the database path, preferring an environment variable if present,
+ * falling back to AppSettings, and finally checking the default location.
+ *
+ * The path is resolved once and cached (thread-safe); call [resetDatabasePathCache]
+ * to force re-resolution after the database is reinstalled or relocated.
+ */
+fun getDatabasePath(): String {
+    cachedDatabasePath?.let { return it }
+    return synchronized(databasePathLock) {
+        cachedDatabasePath ?: resolveDatabasePath().also { cachedDatabasePath = it }
+    }
+}
+
+/**
+ * Clears the cached database path so the next [getDatabasePath] re-resolves it.
+ * Called after a reinstall so the app opens the freshly installed database rather
+ * than a stale path captured at startup.
+ */
+fun resetDatabasePathCache() {
+    synchronized(databasePathLock) { cachedDatabasePath = null }
+}
+
+private fun resolveDatabasePath(): String {
     // 1) Prefer an explicit environment variable override if provided
     val envDbPath = System.getenv("SEFORIMAPP_DATABASE_PATH")?.takeIf { it.isNotBlank() }
 
@@ -50,16 +79,8 @@ private val cachedDatabasePath: String by lazy {
         throw IllegalStateException("Database file not found at $dbPath")
     }
 
-    dbPath
+    return dbPath
 }
-
-/**
- * Gets the database path, preferring an environment variable if present,
- * falling back to AppSettings, and finally checking the default location.
- *
- * The path is computed once and cached for the entire runtime (thread-safe).
- */
-fun getDatabasePath(): String = cachedDatabasePath
 
 /**
  * Singleton holder for the precomputed catalog and its extracted data.

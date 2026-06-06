@@ -9,9 +9,11 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
+import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadErrorKind
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.offline.pickDatabaseParts
@@ -34,12 +36,11 @@ fun OfflineUpdateScreen(
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val extractState by extractViewModel.state.collectAsState()
     val processRepository: OnboardingProcessRepository = LocalAppGraph.current.onboardingProcessRepository
-    val cleanupUseCase = LocalAppGraph.current.databaseCleanupUseCase
+    val prepUseCase = LocalAppGraph.current.databasePreparationUseCase
 
     var part01Path by remember { mutableStateOf<String?>(null) }
     var hasStartedExtraction by remember { mutableStateOf(false) }
-    var cleanupCompleted by remember { mutableStateOf(false) }
-    var isCleaningUp by remember { mutableStateOf(false) }
+    var prepErrorKind by remember { mutableStateOf<DownloadErrorKind?>(null) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(extractState) {
@@ -59,16 +60,21 @@ fun OfflineUpdateScreen(
         p1: String,
     ) {
         scope.launch {
-            // Nettoyer les anciens fichiers avant de commencer l'extraction
-            if (!cleanupCompleted) {
-                cleanupUseCase.cleanupDatabaseFiles()
-                cleanupCompleted = true
+            prepErrorKind = null
+            // Remove the old database and verify free space before extracting ~7.5 GB.
+            when (prepUseCase.prepareForInstall()) {
+                DatabasePreparationUseCase.Result.Ready -> {
+                    // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
+                    DatabaseUpdateProgressBarState.setDownloadStarted()
+                    processRepository.setPendingZstPath(p1)
+                    extractViewModel.onEvent(ExtractEvents.StartIfPending)
+                    hasStartedExtraction = true
+                }
+                is DatabasePreparationUseCase.Result.CleanupFailed ->
+                    prepErrorKind = DownloadErrorKind.CLEANUP_FAILED
+                is DatabasePreparationUseCase.Result.InsufficientSpace ->
+                    prepErrorKind = DownloadErrorKind.INSUFFICIENT_SPACE
             }
-            // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
-            DatabaseUpdateProgressBarState.setDownloadStarted()
-            processRepository.setPendingZstPath(p1)
-            extractViewModel.onEvent(ExtractEvents.StartIfPending)
-            hasStartedExtraction = true
         }
     }
 
@@ -88,6 +94,40 @@ fun OfflineUpdateScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             when {
+                // Pre-extraction gate failed (old DB locked, or not enough disk space)
+                prepErrorKind != null -> {
+                    val kind = prepErrorKind
+                    Text(
+                        text =
+                            when (kind) {
+                                DownloadErrorKind.CLEANUP_FAILED -> stringResource(Res.string.db_install_cleanup_failed)
+                                DownloadErrorKind.INSUFFICIENT_SPACE -> stringResource(Res.string.db_install_insufficient_space)
+                                null -> ""
+                            },
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(0.8f),
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        OutlinedButton(
+                            onClick = { navController.popBackStack() },
+                        ) {
+                            Text(stringResource(Res.string.db_update_back))
+                        }
+
+                        DefaultButton(
+                            onClick = {
+                                prepErrorKind = null
+                                part01Path = null
+                            },
+                        ) {
+                            Text(stringResource(Res.string.db_update_retry))
+                        }
+                    }
+                }
+
                 !hasStartedExtraction -> {
                     // File selection phase
                     Icon(

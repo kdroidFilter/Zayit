@@ -560,6 +560,8 @@
     <string name="db_update_download_error_unknown">שגיאה לא ידועה</string>
     <string name="db_update_back">חזור</string>
     <string name="db_update_retry">נסה שוב</string>
+    <string name="db_install_cleanup_failed">לא ניתן למחוק את מסד הנתונים הקודם — ייתכן שהוא נעול על ידי תוכנה אחרת (אנטי-וירוס או חיפוש Windows) או על ידי מופע קודם של היישום. סגרו תוכנות אלו, הפעילו מחדש את היישום ונסו שוב.</string>
+    <string name="db_install_insufficient_space">אין מספיק שטח פנוי בכונן להתקנת מסד הנתונים. פנו מקום בכונן ונסו שוב.</string>
 
     <!-- Offline Update Screen -->
     <string name="db_update_offline_title">עדכון מקובץ מקומי</string>

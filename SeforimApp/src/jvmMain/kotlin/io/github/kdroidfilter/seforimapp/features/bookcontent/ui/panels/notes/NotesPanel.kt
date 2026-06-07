@@ -120,7 +120,8 @@ fun NotesPanel(
             notesByBook[bookId]
                 .orEmpty()
                 .filter { it.lineId in selectedLineIds }
-                .sortedWith(compareBy({ it.lineId }, { it.startOffset }))
+                // Oldest first: [id] is AUTOINCREMENT, so it grows in insertion order.
+                .sortedBy { it.id }
         }
 
     val primaryLineId = primarySelectedLine?.id
@@ -186,6 +187,24 @@ fun NotesPanel(
                     state = listState,
                     modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
+                    items(notes, key = { it.id }) { note ->
+                        NoteCard(quote = note.quote.takeIf { it.isNotBlank() }) {
+                            NoteEditor(
+                                initialText = note.note,
+                                autoFocus = false,
+                                clearOnDelete = false,
+                                onPersist = { text ->
+                                    scope.launch {
+                                        // A blank body deletes the note (NoteStore.updateNote contract).
+                                        noteStore.updateNote(bookId, note.id, text, System.currentTimeMillis())
+                                    }
+                                },
+                                onDelete = { scope.launch { noteStore.removeNote(bookId, note.id) } },
+                            )
+                        }
+                    }
+                    // Draft editor last: the new (most recent) note belongs after the existing ones,
+                    // which are listed oldest-first.
                     if (effectiveDraft != null) {
                         item(
                             key =
@@ -232,22 +251,6 @@ fun NotesPanel(
                                     },
                                 )
                             }
-                        }
-                    }
-                    items(notes, key = { it.id }) { note ->
-                        NoteCard(quote = note.quote.takeIf { it.isNotBlank() }) {
-                            NoteEditor(
-                                initialText = note.note,
-                                autoFocus = false,
-                                clearOnDelete = false,
-                                onPersist = { text ->
-                                    scope.launch {
-                                        // A blank body deletes the note (NoteStore.updateNote contract).
-                                        noteStore.updateNote(bookId, note.id, text, System.currentTimeMillis())
-                                    }
-                                },
-                                onDelete = { scope.launch { noteStore.removeNote(bookId, note.id) } },
-                            )
                         }
                     }
                 }

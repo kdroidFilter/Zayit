@@ -19,6 +19,8 @@ import kotlinx.coroutines.withContext
  * @property endOffset Exclusive end offset in the line's plain text.
  * @property note Free-text note body.
  * @property quote The anchored passage (selected text) shown in the notes pane.
+ * @property createdAt Epoch millis when the note was first persisted (0 for transient notes).
+ * @property updatedAt Epoch millis of the last edit (0 for transient notes).
  */
 @Stable
 data class UserNote(
@@ -28,6 +30,8 @@ data class UserNote(
     val endOffset: Int,
     val note: String,
     val quote: String = "",
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
 )
 
 /**
@@ -129,6 +133,8 @@ class NoteStore(
                     endOffset = row.endOffset.toInt(),
                     note = row.note,
                     quote = row.quote,
+                    createdAt = row.createdAt,
+                    updatedAt = row.updatedAt,
                 )
             }
         _notesByBook.update { it + (bookId to list) }

@@ -3,18 +3,23 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalContextMenuRepresentation
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -35,16 +40,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.NoteStore
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -59,6 +69,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.InlineInformationBanner
 import org.jetbrains.jewel.ui.component.Text
@@ -71,6 +82,9 @@ import seforimapp.seforimapp.generated.resources.no_notes_saved
 import seforimapp.seforimapp.generated.resources.note_body_placeholder
 import seforimapp.seforimapp.generated.resources.notes_info_word_level
 import seforimapp.seforimapp.generated.resources.notes_pane
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import org.jetbrains.jewel.ui.component.ContextMenuRepresentation as JewelContextMenuRepresentation
 import org.jetbrains.jewel.ui.component.TextContextMenu as JewelTextContextMenu
 
@@ -88,11 +102,20 @@ data class NoteDraftAnchor(
     val quote: String,
 )
 
+/** Compact "dd.MM.yy · HH:mm" stamp shown in each note's footer. Locale-neutral on purpose. */
+private val NOTE_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yy · HH:mm")
+
+private fun formatNoteTime(millis: Long): String = NOTE_TIME_FORMATTER.format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
+
 /**
  * Side pane showing the notes of the currently selected line(s) — same scoping as the commentaries
  * pane (a TOC selection or a multi-selection surfaces all their notes). Notes live in [noteStore].
  * Editing auto-saves (debounced); a trash button deletes. The draft editor keeps editing the note
  * it creates in place (no focus jump), and its trash removes that note and clears the field.
+ *
+ * Visuals follow the IntelliJ tool-window idiom: each note is a bordered card with a leading accent
+ * stripe (VCS-annotate style), a quoted-passage header, and a footer carrying the last-edit stamp
+ * plus a hover-revealed delete action. The list is ordered oldest-first; the draft sits at the end.
  */
 @Composable
 fun NotesPanel(
@@ -164,12 +187,7 @@ fun NotesPanel(
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (notes.isEmpty() && effectiveDraft == null) {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(text = stringResource(Res.string.no_notes_for_selection), textAlign = TextAlign.Center)
-                }
+                NotesEmptyState()
             } else {
                 val listState =
                     rememberLazyListState(
@@ -185,14 +203,19 @@ fun NotesPanel(
 
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 4.dp),
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 6.dp),
                 ) {
                     items(notes, key = { it.id }) { note ->
-                        NoteCard(quote = note.quote.takeIf { it.isNotBlank() }) {
+                        NoteCard(
+                            quote = note.quote.takeIf { it.isNotBlank() },
+                            accentStrong = false,
+                        ) { hovered ->
                             NoteEditor(
                                 initialText = note.note,
+                                timestampMillis = note.updatedAt,
                                 autoFocus = false,
                                 clearOnDelete = false,
+                                cardHovered = hovered,
                                 onPersist = { text ->
                                     scope.launch {
                                         // A blank body deletes the note (NoteStore.updateNote contract).
@@ -204,17 +227,22 @@ fun NotesPanel(
                         }
                     }
                     // Draft editor last: the new (most recent) note belongs after the existing ones,
-                    // which are listed oldest-first.
+                    // which are listed oldest-first. A brighter stripe marks it as the live draft.
                     if (effectiveDraft != null) {
                         item(
                             key =
                                 "draft-${effectiveDraft.lineId}-${effectiveDraft.startOffset}-${effectiveDraft.endOffset}",
                         ) {
-                            NoteCard(quote = effectiveDraft.quote.takeIf { it.isNotBlank() }) {
+                            NoteCard(
+                                quote = effectiveDraft.quote.takeIf { it.isNotBlank() },
+                                accentStrong = true,
+                            ) { hovered ->
                                 NoteEditor(
                                     initialText = "",
+                                    timestampMillis = null,
                                     autoFocus = isExplicitDraft,
                                     clearOnDelete = true,
+                                    cardHovered = hovered,
                                     onPersist = { text ->
                                         scope.launch {
                                             val id = draftCreatedId
@@ -274,44 +302,130 @@ fun NotesPanel(
     }
 }
 
+/** Centered empty state: muted annotate glyph above the "no notes for selection" hint. */
+@Composable
+private fun NotesEmptyState() {
+    Box(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                key = AllIconsKeys.Actions.Annotate,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint =
+                    JewelTheme.globalColors.text.info
+                        .copy(alpha = 0.55f),
+            )
+            Text(
+                text = stringResource(Res.string.no_notes_for_selection),
+                textAlign = TextAlign.Center,
+                color = JewelTheme.globalColors.text.info,
+            )
+        }
+    }
+}
+
+/**
+ * Bordered note card with a leading accent stripe (drawn on the start edge — the right side under
+ * RTL). The whole card reacts to hover: brighter background, accent-tinted border, stronger stripe.
+ * [accentStrong] paints the stripe at full accent (used to flag the live draft). [content] receives
+ * the current hover state so the editor can reveal its delete action only while hovered.
+ */
 @Composable
 private fun NoteCard(
-    quote: String? = null,
-    content: @Composable () -> Unit,
+    quote: String?,
+    accentStrong: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable (hovered: Boolean) -> Unit,
 ) {
+    val hoverSource = remember { MutableInteractionSource() }
+    val hovered by hoverSource.collectIsHoveredAsState()
+    val accent = JewelTheme.globalColors.outlines.focused
+
+    val stripeColor =
+        when {
+            accentStrong -> accent
+            hovered -> accent.copy(alpha = 0.7f)
+            else -> accent.copy(alpha = 0.4f)
+        }
+    val cardBackground =
+        if (hovered) {
+            JewelTheme.globalColors.panelBackground
+        } else {
+            JewelTheme.globalColors.panelBackground.copy(alpha = 0.55f)
+        }
+    val borderColor =
+        if (hovered || accentStrong) {
+            accent.copy(alpha = 0.5f)
+        } else {
+            JewelTheme.globalColors.borders.normal
+        }
+
+    val shape = RoundedCornerShape(10.dp)
     Column(
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(JewelTheme.globalColors.panelBackground)
-                .padding(8.dp),
+                .clip(shape)
+                .background(cardBackground)
+                .border(1.dp, borderColor, shape)
+                .hoverable(hoverSource)
+                .drawBehind {
+                    val stripeWidth = 3.dp.toPx()
+                    val verticalInset = 8.dp.toPx()
+                    val edgeInset = 5.dp.toPx()
+                    // Stripe hugs the start edge: right under RTL, left under LTR.
+                    val x =
+                        if (layoutDirection == LayoutDirection.Rtl) {
+                            size.width - edgeInset - stripeWidth
+                        } else {
+                            edgeInset
+                        }
+                    drawRoundRect(
+                        color = stripeColor,
+                        topLeft = Offset(x, verticalInset),
+                        size = Size(stripeWidth, (size.height - 2 * verticalInset).coerceAtLeast(0f)),
+                        cornerRadius = CornerRadius(stripeWidth / 2, stripeWidth / 2),
+                    )
+                }
+                // Reserve the stripe gutter on the start side (right under RTL).
+                .padding(start = 16.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
     ) {
         if (quote != null) {
             Text(
-                text = "\"$quote\"",
+                text = quote,
                 fontStyle = FontStyle.Italic,
+                fontSize = 12.sp,
                 color = JewelTheme.globalColors.text.info,
                 textAlign = TextAlign.Justify,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
             )
         }
-        content()
+        content(hovered)
     }
 }
 
 /**
- * Auto-saving note editor: a multi-line field plus a trash button. Text changes are debounced and
- * pushed to [onPersist] (no explicit save). [onDelete] removes the note (or the draft's created
- * note); when [clearOnDelete] is true the field is also emptied so the draft editor stays in place.
+ * Auto-saving note editor: a multi-line field plus a footer carrying the last-edit stamp and a
+ * hover-revealed trash button. Text changes are debounced and pushed to [onPersist] (no explicit
+ * save). [onDelete] removes the note (or the draft's created note); when [clearOnDelete] is true the
+ * field is also emptied so the draft editor stays in place. [timestampMillis] (when > 0) renders the
+ * footer stamp; [cardHovered] gates the trash button's visibility.
  */
 @OptIn(FlowPreview::class, ExperimentalFoundationApi::class)
 @Composable
 private fun NoteEditor(
     initialText: String,
+    timestampMillis: Long?,
     autoFocus: Boolean,
     clearOnDelete: Boolean,
+    cardHovered: Boolean,
     onPersist: (String) -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -330,11 +444,7 @@ private fun NoteEditor(
             .catch { }
             .collect { currentOnPersist(it) }
     }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         // Restore Jewel's default text context menu (copy/cut/paste, with icons and shortcuts):
         // inside the editor the book-content menu (highlight, add-note…) is irrelevant. Both the
         // items and the representation are reset, since the screen overrides both.
@@ -348,7 +458,7 @@ private fun NoteEditor(
                 // A bounded max height is required inside the LazyColumn (infinite incoming height).
                 modifier =
                     Modifier
-                        .weight(1f)
+                        .fillMaxWidth()
                         .heightIn(min = 64.dp, max = 220.dp)
                         .focusRequester(focusRequester)
                         // Persist immediately when the field loses focus (clicking outside it),
@@ -361,18 +471,37 @@ private fun NoteEditor(
                         },
             )
         }
-        // Hide the trash while the body is empty, but keep it laid out so the field never resizes.
-        val canDelete = state.text.isNotBlank()
-        IconActionButton(
-            key = AllIconsKeys.General.Delete,
-            onClick = {
-                if (clearOnDelete) state.clearText()
-                onDelete()
-            },
-            contentDescription = stringResource(Res.string.delete_note),
-            enabled = canDelete,
-            focusable = canDelete,
-            modifier = Modifier.alpha(if (canDelete) 1f else 0f),
-        )
+
+        // Fixed-height footer so revealing the trash on hover never reflows the card.
+        Row(
+            modifier = Modifier.fillMaxWidth().height(26.dp).padding(top = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val stamp = timestampMillis?.takeIf { it > 0L }
+            if (stamp != null) {
+                Text(
+                    text = formatNoteTime(stamp),
+                    fontSize = 11.sp,
+                    color =
+                        JewelTheme.globalColors.text.info
+                            .copy(alpha = 0.7f),
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+
+            val canDelete = state.text.isNotBlank()
+            if (cardHovered && canDelete) {
+                IconActionButton(
+                    key = AllIconsKeys.General.Delete,
+                    onClick = {
+                        if (clearOnDelete) state.clearText()
+                        onDelete()
+                    },
+                    contentDescription = stringResource(Res.string.delete_note),
+                )
+            }
+        }
     }
 }

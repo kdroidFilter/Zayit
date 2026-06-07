@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,16 +27,15 @@ import androidx.compose.ui.unit.sp
 import dev.nucleusframework.updater.UpdateLevel
 import dev.nucleusframework.updater.UpdaterConfig
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import io.github.kdroidfilter.seforimapp.core.presentation.components.AnimatedHorizontalProgressBar
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.UrlOpener
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
 import io.github.kdroidfilter.seforimapp.framework.update.UpdateMode
 import io.github.kdroidfilter.seforimapp.framework.update.UpdateUiState
-import io.github.kdroidfilter.seforimapp.framework.update.availableVersion
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -65,6 +65,8 @@ import seforimapp.seforimapp.generated.resources.update_available_banner
 import seforimapp.seforimapp.generated.resources.update_check_failed
 import seforimapp.seforimapp.generated.resources.update_checking
 import seforimapp.seforimapp.generated.resources.update_download_action
+import seforimapp.seforimapp.generated.resources.update_downloading
+import seforimapp.seforimapp.generated.resources.update_install_restart
 import seforimapp.seforimapp.generated.resources.update_up_to_date
 
 @Composable
@@ -73,13 +75,15 @@ fun GeneralSettingsScreen() {
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
     val version = UpdaterConfig().currentVersion
-    val updateState by LocalAppGraph.current.appUpdateService.state
-        .collectAsState()
+    val updateService = LocalAppGraph.current.appUpdateService
+    val updateState by updateService.state.collectAsState()
     GeneralSettingsView(
         state = state,
         version = version,
         updateState = updateState,
         onEvent = viewModel::onEvent,
+        onDownloadUpdate = updateService::startDownload,
+        onInstallUpdate = updateService::installAndRestart,
     )
 }
 
@@ -89,6 +93,8 @@ private fun GeneralSettingsView(
     version: String,
     updateState: UpdateUiState,
     onEvent: (GeneralSettingsEvents) -> Unit,
+    onDownloadUpdate: () -> Unit = {},
+    onInstallUpdate: () -> Unit = {},
 ) {
     VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -98,7 +104,12 @@ private fun GeneralSettingsView(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            AppHeader(version = version, updateState = updateState)
+            AppHeader(
+                version = version,
+                updateState = updateState,
+                onDownloadUpdate = onDownloadUpdate,
+                onInstallUpdate = onInstallUpdate,
+            )
 
             SettingCard(
                 title = Res.string.close_book_tree_on_new_book,
@@ -128,6 +139,8 @@ private fun GeneralSettingsView(
 private fun AppHeader(
     version: String,
     updateState: UpdateUiState,
+    onDownloadUpdate: () -> Unit,
+    onInstallUpdate: () -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
 
@@ -142,7 +155,11 @@ private fun AppHeader(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Update status banner, reflecting the full check/download state.
-        UpdateStatusBanner(updateState)
+        UpdateStatusBanner(
+            updateState = updateState,
+            onDownloadUpdate = onDownloadUpdate,
+            onInstallUpdate = onInstallUpdate,
+        )
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -214,14 +231,40 @@ private fun AppHeader(
 }
 
 @Composable
-private fun UpdateStatusBanner(updateState: UpdateUiState) {
+private fun UpdateStatusBanner(
+    updateState: UpdateUiState,
+    onDownloadUpdate: () -> Unit,
+    onInstallUpdate: () -> Unit,
+) {
     when (updateState) {
-        is UpdateUiState.Available, is UpdateUiState.Downloading, is UpdateUiState.ReadyToInstall -> {
+        is UpdateUiState.Available -> {
             val downloadLabel = stringResource(Res.string.update_download_action)
             InlineInformationBanner(
-                text = stringResource(Res.string.update_available_banner, updateState.availableVersion.orEmpty()),
+                text = stringResource(Res.string.update_available_banner, updateState.version),
                 linkActions = {
-                    action(downloadLabel, onClick = { UrlOpener.open(AppUpdateService.DOWNLOAD_URL) })
+                    action(downloadLabel, onClick = onDownloadUpdate)
+                },
+            )
+        }
+
+        is UpdateUiState.Downloading -> {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                InlineInformationBanner(
+                    text = "${stringResource(Res.string.update_downloading)} ${updateState.percent}%",
+                )
+                AnimatedHorizontalProgressBar(
+                    value = updateState.percent / 100f,
+                    modifier = Modifier.fillMaxWidth().height(6.dp),
+                )
+            }
+        }
+
+        is UpdateUiState.ReadyToInstall -> {
+            val installLabel = stringResource(Res.string.update_install_restart)
+            InlineInformationBanner(
+                text = stringResource(Res.string.update_available_banner, updateState.version),
+                linkActions = {
+                    action(installLabel, onClick = onInstallUpdate)
                 },
             )
         }

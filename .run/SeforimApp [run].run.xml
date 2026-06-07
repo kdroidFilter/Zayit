@@ -3,6 +3,8 @@
     <ExternalSystemSettings>
       <option name="env">
         <map>
+          <entry key="NUCLEUS_TAO_TRACE" value="1" />
+          <entry key="NUCLEUS_TAO_WATCHDOG" value="3000" />
           <entry key="SEFORIMAPP_LOGGING" value="true" />
           <entry key="SEFORIMAPP_RELEASE_META_URL" value="http://127.0.0.1:8765/release_meta.json" />
           <entry key="SEFORIMAPP_REPOSITORY_LOGGIN" value="false" />

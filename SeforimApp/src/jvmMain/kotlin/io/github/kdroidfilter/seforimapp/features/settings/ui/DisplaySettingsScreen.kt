@@ -35,7 +35,6 @@ import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettin
 import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -58,8 +57,6 @@ import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets_de
 import seforimapp.seforimapp.generated.resources.settings_theme_style_classic
 import seforimapp.seforimapp.generated.resources.settings_theme_style_islands
 import seforimapp.seforimapp.generated.resources.settings_theme_style_label
-import seforimapp.seforimapp.generated.resources.settings_use_opengl
-import seforimapp.seforimapp.generated.resources.settings_use_opengl_description
 
 @Composable
 fun DisplaySettingsScreen() {
@@ -123,16 +120,6 @@ private fun DisplaySettingsView(
                 checked = state.compactMode,
                 onCheckedChange = { onEvent(DisplaySettingsEvents.SetCompactMode(it)) },
             )
-
-            // OpenGL setting - Windows only
-            if (PlatformInfo.isWindows) {
-                SettingCard(
-                    title = Res.string.settings_use_opengl,
-                    description = Res.string.settings_use_opengl_description,
-                    checked = state.useOpenGl,
-                    onCheckedChange = { onEvent(DisplaySettingsEvents.SetUseOpenGl(it)) },
-                )
-            }
         }
     }
 }

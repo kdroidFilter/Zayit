@@ -94,15 +94,6 @@ class SettingsAndDownloadStateIntegrationTest {
         assertFalse(eventFalse.value)
     }
 
-    @Test
-    fun `SetUseOpenGl event contains correct value`() {
-        val eventTrue = DisplaySettingsEvents.SetUseOpenGl(true)
-        val eventFalse = DisplaySettingsEvents.SetUseOpenGl(false)
-
-        assertTrue(eventTrue.value)
-        assertFalse(eventFalse.value)
-    }
-
     // ==================== DownloadState Tests ====================
 
     @Test

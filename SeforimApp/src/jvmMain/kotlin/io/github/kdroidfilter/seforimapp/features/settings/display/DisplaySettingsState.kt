@@ -7,7 +7,6 @@ data class DisplaySettingsState(
     val showZmanimWidgets: Boolean = true,
     val showHomeWallpaper: Boolean = true,
     val compactMode: Boolean = false,
-    val useOpenGl: Boolean = false,
 ) {
     companion object {
         val preview =
@@ -15,7 +14,6 @@ data class DisplaySettingsState(
                 showZmanimWidgets = true,
                 showHomeWallpaper = true,
                 compactMode = false,
-                useOpenGl = false,
             )
     }
 }

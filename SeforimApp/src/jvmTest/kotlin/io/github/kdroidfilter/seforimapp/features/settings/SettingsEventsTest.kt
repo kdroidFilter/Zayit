@@ -82,13 +82,6 @@ class SettingsEventsTest {
     }
 
     @Test
-    fun `DisplaySettingsEvents SetUseOpenGl stores value`() {
-        val event = DisplaySettingsEvents.SetUseOpenGl(value = true)
-        assertTrue(event.value)
-        assertIs<DisplaySettingsEvents>(event)
-    }
-
-    @Test
     fun `GeneralSettingsEvents SetCloseTreeOnNewBook equals works`() {
         val event1 = GeneralSettingsEvents.SetCloseTreeOnNewBook(true)
         val event2 = GeneralSettingsEvents.SetCloseTreeOnNewBook(true)

@@ -19,15 +19,13 @@ class DisplaySettingsViewModel : ViewModel() {
     private val showZmanim = MutableStateFlow(AppSettings.isShowZmanimWidgetsEnabled())
     private val showHomeWallpaper = MutableStateFlow(AppSettings.isShowHomeWallpaperEnabled())
     private val compactMode = MutableStateFlow(AppSettings.isCompactModeEnabled())
-    private val useOpenGl = MutableStateFlow(AppSettings.isUseOpenGlEnabled())
 
     val state =
-        combine(showZmanim, showHomeWallpaper, compactMode, useOpenGl) { z, wallpaper, compact, gl ->
+        combine(showZmanim, showHomeWallpaper, compactMode) { z, wallpaper, compact ->
             DisplaySettingsState(
                 showZmanimWidgets = z,
                 showHomeWallpaper = wallpaper,
                 compactMode = compact,
-                useOpenGl = gl,
             )
         }.stateIn(
             viewModelScope,
@@ -36,7 +34,6 @@ class DisplaySettingsViewModel : ViewModel() {
                 showZmanimWidgets = showZmanim.value,
                 showHomeWallpaper = showHomeWallpaper.value,
                 compactMode = compactMode.value,
-                useOpenGl = useOpenGl.value,
             ),
         )
 
@@ -53,10 +50,6 @@ class DisplaySettingsViewModel : ViewModel() {
             is DisplaySettingsEvents.SetCompactMode -> {
                 AppSettings.setCompactModeEnabled(event.value)
                 compactMode.value = event.value
-            }
-            is DisplaySettingsEvents.SetUseOpenGl -> {
-                AppSettings.setUseOpenGlEnabled(event.value)
-                useOpenGl.value = event.value
             }
         }
     }

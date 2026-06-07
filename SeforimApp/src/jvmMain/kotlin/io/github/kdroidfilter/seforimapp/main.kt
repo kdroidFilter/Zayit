@@ -139,11 +139,6 @@ fun main(args: Array<String>) {
     // when nothing is in flight; never throws (failures are logged).
 //    DbDeltaRecoveryBootstrap.runOnce()
 
-    // Force OpenGL rendering backend on Windows if enabled (must be set before Skia initialization)
-    if (PlatformInfo.isWindows && AppSettings.isUseOpenGlEnabled()) {
-        System.setProperty("skiko.renderApi", "OPENGL")
-    }
-
     val appId = "io.github.kdroidfilter.seforimapp"
 
     nucleusApplication(args) {

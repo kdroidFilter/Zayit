@@ -79,9 +79,6 @@ object AppSettings {
     // Homepage wallpaper visibility
     private const val KEY_SHOW_HOME_WALLPAPER = "show_home_wallpaper"
 
-    // Rendering backend (Windows only)
-    private const val KEY_USE_OPENGL = "use_opengl"
-
     // Compact mode for vertical bars
     private const val KEY_COMPACT_MODE = "compact_mode"
 
@@ -337,13 +334,6 @@ object AppSettings {
     fun setShowHomeWallpaperEnabled(enabled: Boolean) {
         settings[KEY_SHOW_HOME_WALLPAPER] = enabled
         _showHomeWallpaperFlow.value = enabled
-    }
-
-    // OpenGL rendering backend (Windows only)
-    fun isUseOpenGlEnabled(): Boolean = settings[KEY_USE_OPENGL, false]
-
-    fun setUseOpenGlEnabled(enabled: Boolean) {
-        settings[KEY_USE_OPENGL] = enabled
     }
 
     // Compact mode for vertical bars

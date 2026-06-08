@@ -59,6 +59,7 @@ import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.logger.infoln
 import io.github.kdroidfilter.seforimapp.logger.isDevEnv
+import io.github.kdroidfilter.seforimlibrary.cli.runCli
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.Sentry
@@ -71,6 +72,7 @@ import java.awt.*
 import java.awt.datatransfer.StringSelection
 import java.awt.event.KeyEvent
 import java.util.*
+import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -127,6 +129,14 @@ private fun initializeSentry() {
 }
 
 fun main(args: Array<String>) {
+    // Headless CLI mode: when the binary is launched as `zayit cli <args...>` (e.g. from the
+    // in-app "open CLI in terminal" action), delegate to the SeforimLibrary search CLI and exit
+    // BEFORE any Sentry/Nucleus/GUI initialization. This keeps the normal GUI launch path
+    // completely untouched — the branch is only taken when "cli" is the first argument.
+    if (args.firstOrNull() == "cli") {
+        exitProcess(runCli(args.copyOfRange(1, args.size)))
+    }
+
     val loggingEnv = System.getenv("SEFORIMAPP_LOGGING")?.lowercase()
     isDevEnv = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"
 

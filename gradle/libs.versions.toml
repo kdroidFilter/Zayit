@@ -148,6 +148,7 @@ compose-ui-test = { module = "org.jetbrains.compose.ui:ui-test-junit4", version.
 seforimlibrary-core = { module = "io.github.kdroidfilter.seforimlibrary:core" }
 seforimlibrary-dao = { module = "io.github.kdroidfilter.seforimlibrary:dao" }
 seforimlibrary-search = { module = "io.github.kdroidfilter.seforimlibrary:search" }
+seforimlibrary-cli = { module = "io.github.kdroidfilter.seforimlibrary:cli" }
 seforimlibrary-delta-updater = { module = "io.github.kdroidfilter.seforimlibrary:delta-updater" }
 
 # Structured coroutines annotations

@@ -169,6 +169,10 @@ kotlin {
             // SeforimLibrary search module
             implementation(libs.seforimlibrary.search)
 
+            // SeforimLibrary CLI: lets the desktop binary run headless search commands
+            // (`zayit cli search ...`) by delegating to its runCli() entry point.
+            implementation(libs.seforimlibrary.cli)
+
             // Delta-update client (download + apply patch.db onto local seforim.db)
             implementation(libs.seforimlibrary.delta.updater)
 
@@ -219,6 +223,11 @@ nucleus.application {
         jvmVendor = JvmVendorSpec.BELLSOFT
         imageName = "zayit"
         buildArgs.addAll(
+            // Enable native access for classpath (unnamed-module) code at IMAGE BUILD TIME so the
+            // generated binary never emits the JDK "restricted method ... System::load" warnings
+            // (triggered by sqlite-jdbc loading its JNI lib). The runtime `--enable-native-access`
+            // jvmArg below does NOT reach the GraalVM native binary, so it must be baked in here.
+            "--enable-native-access=ALL-UNNAMED",
             "-H:+AddAllCharsets",
             "-Djava.awt.headless=false",
             "-Os",

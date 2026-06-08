@@ -7,6 +7,9 @@ data class Place(
     val elevation: Double,
 )
 
+/** Country key used to identify Israel (vs. Diaspora / Chutz LaAretz). */
+const val ISRAEL_COUNTRY_NAME = "ישראל"
+
 /** Countries → Cities → Place */
 val worldPlaces: Map<String, Map<String, Place>> =
     mapOf(

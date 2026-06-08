@@ -64,6 +64,7 @@ import io.github.kdroidfilter.seforimapp.earthwidget.ZmanimOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
 import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
+import io.github.kdroidfilter.seforimapp.features.zmanim.data.ISRAEL_COUNTRY_NAME
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
@@ -293,6 +294,7 @@ fun HomeCelestialWidgets(
     // Temporary location selection (does not affect user settings)
     var temporaryLocation by remember { mutableStateOf<EarthWidgetLocation?>(null) }
     var temporaryCityLabel by remember { mutableStateOf<String?>(null) }
+    var temporaryInIsrael by remember { mutableStateOf<Boolean?>(null) }
 
     // Use temporary location if selected, otherwise fall back to user's saved location
     val effectiveLocation =
@@ -306,6 +308,7 @@ fun HomeCelestialWidgets(
             )
         }
     val effectiveCityLabel = temporaryCityLabel ?: userCityLabel
+    val effectiveInIsrael = temporaryInIsrael ?: locationState.inIsrael
     val timeZone = effectiveLocation.timeZone
 
     // Shared date state - controls both the Earth widget and zmanim cards
@@ -318,8 +321,8 @@ fun HomeCelestialWidgets(
             computeZmanimTimes(selectedDate, effectiveLocation, zmanimOpinion)
         }
     val shabbatTimes =
-        remember(selectedDate, effectiveLocation, zmanimOpinion, effectiveCityLabel) {
-            computeShabbatTimes(selectedDate, effectiveLocation, zmanimOpinion, effectiveCityLabel)
+        remember(selectedDate, effectiveLocation, zmanimOpinion, effectiveCityLabel, effectiveInIsrael) {
+            computeShabbatTimes(selectedDate, effectiveLocation, zmanimOpinion, effectiveCityLabel, effectiveInIsrael)
         }
     val timeFormatter =
         remember(timeZone) {
@@ -358,9 +361,10 @@ fun HomeCelestialWidgets(
     }
 
     // When selecting a location in the Earth widget, update temporary location (without changing user settings)
-    val onLocationSelectedHandler: (String, String, EarthWidgetLocation) -> Unit = { _, city, location ->
+    val onLocationSelectedHandler: (String, String, EarthWidgetLocation) -> Unit = { country, city, location ->
         temporaryLocation = location
         temporaryCityLabel = city
+        temporaryInIsrael = country == ISRAEL_COUNTRY_NAME
         // Reset target time when location changes
         earthWidgetTargetTime = null
     }
@@ -2018,6 +2022,7 @@ private fun computeShabbatTimes(
     location: EarthWidgetLocation,
     opinion: ZmanimOpinion = ZmanimOpinion.DEFAULT,
     cityLabel: String? = null,
+    inIsrael: Boolean = false,
 ): ShabbatTimes {
     val shabbatDate = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY))
     val fridayDate = shabbatDate.minusDays(1)
@@ -2046,6 +2051,7 @@ private fun computeShabbatTimes(
         run {
             val jewishCalendar =
                 JewishCalendar().apply {
+                    setInIsrael(inIsrael)
                     setDate(calendarForDate(shabbatDate))
                 }
             val formatter =

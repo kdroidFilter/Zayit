@@ -127,8 +127,6 @@ private fun initializeSentry() {
 }
 
 fun main(args: Array<String>) {
-    Locale.setDefault(Locale.Builder().setLanguage("he").build())
-
     val loggingEnv = System.getenv("SEFORIMAPP_LOGGING")?.lowercase()
     isDevEnv = loggingEnv == "true" || loggingEnv == "1" || loggingEnv == "yes"
 
@@ -141,7 +139,10 @@ fun main(args: Array<String>) {
 
     val appId = "io.github.kdroidfilter.seforimapp"
 
-    nucleusApplication(args) {
+    nucleusApplication(
+        args,
+        defaultLocale = Locale.Builder().setLanguage("he").build(),
+    ) {
         aotTraining(duration = AOT_TRAINING_DURATION)
 
         FileKit.init(appId)

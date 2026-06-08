@@ -1032,7 +1032,7 @@ class CommentariesUseCase(
             val baseIds = resolveBaseLineIds(lineId)
             val links =
                 repository
-                    .getCommentarySummariesForLines(baseIds)
+                    .getCommentarySummariesForLines(baseIds, includeSources = true)
                     .filter { it.link.connectionType == ConnectionType.SOURCE }
 
             val currentBookTitle = selectedBook.title.trim()
@@ -1073,7 +1073,7 @@ class CommentariesUseCase(
         val currentState = stateManager.state.first()
         val selectedBook = currentState.navigation.selectedBook
 
-        val allConnections = repository.getCommentarySummariesForLines(allBaseIds)
+        val allConnections = repository.getCommentarySummariesForLines(allBaseIds, includeSources = true)
         if (allConnections.isEmpty()) return storeAndMerge(missing.associateWith { LineConnectionsSnapshot() })
 
         val connectionsBySource = allConnections.groupBy { it.link.sourceLineId }

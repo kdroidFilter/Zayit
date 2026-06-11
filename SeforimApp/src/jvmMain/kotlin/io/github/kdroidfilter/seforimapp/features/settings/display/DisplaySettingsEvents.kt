@@ -12,4 +12,8 @@ sealed interface DisplaySettingsEvents {
     data class SetCompactMode(
         val value: Boolean,
     ) : DisplaySettingsEvents
+
+    data class SetMaxCommentatorsPerPage(
+        val value: Int,
+    ) : DisplaySettingsEvents
 }

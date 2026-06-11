@@ -28,6 +28,14 @@ object AppSettings {
     const val MAX_LINE_HEIGHT = 2.5f
     const val LINE_HEIGHT_INCREMENT = 0.1f
 
+    // Max commentators displayed per commentaries page.
+    // 0 = automatic (fit as many as the available space allows). A positive value acts as a
+    // ceiling: the grid never shows more than this per page, but still shows fewer when the
+    // pane only has room for fewer.
+    const val MAX_COMMENTATORS_PER_PAGE_AUTO = 0
+    const val MAX_COMMENTATORS_PER_PAGE_LIMIT = 6
+    const val DEFAULT_MAX_COMMENTATORS_PER_PAGE = MAX_COMMENTATORS_PER_PAGE_AUTO
+
     // Default font codes
     const val DEFAULT_BOOK_FONT = "notoserifhebrew"
     const val DEFAULT_COMMENTARY_FONT = "frankruhllibre"
@@ -43,6 +51,7 @@ object AppSettings {
     // Settings keys
     private const val KEY_TEXT_SIZE = "text_size"
     private const val KEY_LINE_HEIGHT = "line_height"
+    private const val KEY_MAX_COMMENTATORS_PER_PAGE = "max_commentators_per_page"
     private const val KEY_CLOSE_TREE_ON_NEW_BOOK = "close_tree_on_new_book"
     private const val KEY_DATABASE_PATH = "database_path"
     private const val KEY_PERSIST_SESSION = "persist_session"
@@ -92,6 +101,7 @@ object AppSettings {
         // Refresh flows with current values from provided settings
         _textSizeFlow.value = getTextSize()
         _lineHeightFlow.value = getLineHeight()
+        _maxCommentatorsPerPageFlow.value = getMaxCommentatorsPerPage()
         _closeTreeOnNewBookFlow.value = getCloseBookTreeOnNewBookSelected()
         _databasePathFlow.value = getDatabasePath()
         _persistSessionFlow.value = isPersistSessionEnabled()
@@ -113,6 +123,10 @@ object AppSettings {
     // StateFlow to observe line height changes
     private val _lineHeightFlow = MutableStateFlow(getLineHeight())
     val lineHeightFlow: StateFlow<Float> = _lineHeightFlow.asStateFlow()
+
+    // StateFlow to observe the max-commentators-per-page setting
+    private val _maxCommentatorsPerPageFlow = MutableStateFlow(getMaxCommentatorsPerPage())
+    val maxCommentatorsPerPageFlow: StateFlow<Int> = _maxCommentatorsPerPageFlow.asStateFlow()
 
     // StateFlow for auto-close book tree setting
     private val _closeTreeOnNewBookFlow = MutableStateFlow(getCloseBookTreeOnNewBookSelected())
@@ -225,6 +239,18 @@ object AppSettings {
         val currentSize = getTextSize()
         val newSize = (currentSize - decrement).coerceAtLeast(MIN_TEXT_SIZE)
         setTextSize(newSize)
+    }
+
+    // Max commentators per commentaries page (0 = automatic). Stored value is clamped to the
+    // supported range so a stale or out-of-range persisted value can never break the grid.
+    fun getMaxCommentatorsPerPage(): Int =
+        settings[KEY_MAX_COMMENTATORS_PER_PAGE, DEFAULT_MAX_COMMENTATORS_PER_PAGE]
+            .coerceIn(MAX_COMMENTATORS_PER_PAGE_AUTO, MAX_COMMENTATORS_PER_PAGE_LIMIT)
+
+    fun setMaxCommentatorsPerPage(value: Int) {
+        val clamped = value.coerceIn(MAX_COMMENTATORS_PER_PAGE_AUTO, MAX_COMMENTATORS_PER_PAGE_LIMIT)
+        settings[KEY_MAX_COMMENTATORS_PER_PAGE] = clamped
+        _maxCommentatorsPerPageFlow.value = clamped
     }
 
     fun getLineHeight(): Float = settings[KEY_LINE_HEIGHT, DEFAULT_LINE_HEIGHT]
@@ -506,6 +532,7 @@ object AppSettings {
         settings.clear()
         _textSizeFlow.value = DEFAULT_TEXT_SIZE
         _lineHeightFlow.value = DEFAULT_LINE_HEIGHT
+        _maxCommentatorsPerPageFlow.value = DEFAULT_MAX_COMMENTATORS_PER_PAGE
         _closeTreeOnNewBookFlow.value = false
         _databasePathFlow.value = null
         _persistSessionFlow.value = true

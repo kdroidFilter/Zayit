@@ -19,13 +19,15 @@ class DisplaySettingsViewModel : ViewModel() {
     private val showZmanim = MutableStateFlow(AppSettings.isShowZmanimWidgetsEnabled())
     private val showHomeWallpaper = MutableStateFlow(AppSettings.isShowHomeWallpaperEnabled())
     private val compactMode = MutableStateFlow(AppSettings.isCompactModeEnabled())
+    private val maxCommentatorsPerPage = MutableStateFlow(AppSettings.getMaxCommentatorsPerPage())
 
     val state =
-        combine(showZmanim, showHomeWallpaper, compactMode) { z, wallpaper, compact ->
+        combine(showZmanim, showHomeWallpaper, compactMode, maxCommentatorsPerPage) { z, wallpaper, compact, maxCommentators ->
             DisplaySettingsState(
                 showZmanimWidgets = z,
                 showHomeWallpaper = wallpaper,
                 compactMode = compact,
+                maxCommentatorsPerPage = maxCommentators,
             )
         }.stateIn(
             viewModelScope,
@@ -34,6 +36,7 @@ class DisplaySettingsViewModel : ViewModel() {
                 showZmanimWidgets = showZmanim.value,
                 showHomeWallpaper = showHomeWallpaper.value,
                 compactMode = compactMode.value,
+                maxCommentatorsPerPage = maxCommentatorsPerPage.value,
             ),
         )
 
@@ -50,6 +53,10 @@ class DisplaySettingsViewModel : ViewModel() {
             is DisplaySettingsEvents.SetCompactMode -> {
                 AppSettings.setCompactModeEnabled(event.value)
                 compactMode.value = event.value
+            }
+            is DisplaySettingsEvents.SetMaxCommentatorsPerPage -> {
+                AppSettings.setMaxCommentatorsPerPage(event.value)
+                maxCommentatorsPerPage.value = AppSettings.getMaxCommentatorsPerPage()
             }
         }
     }

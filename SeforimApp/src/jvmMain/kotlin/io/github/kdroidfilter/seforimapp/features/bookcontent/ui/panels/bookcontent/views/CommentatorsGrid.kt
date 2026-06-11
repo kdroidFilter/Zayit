@@ -88,11 +88,16 @@ internal data class CommentariesPageLayout(
 /**
  * Derive the commentaries grid capacity from the pane size and the user's commentary
  * font size. Pure helper — extracted so it can be unit-tested without Compose.
+ *
+ * [maxPerPage] is the user-configured ceiling on commentators per page: 0 means automatic
+ * (no cap). A positive value only ever lowers the computed capacity — when the pane has room
+ * for fewer than the cap, the smaller fit-based count wins.
  */
 internal fun computeCommentariesGridCapacity(
     paneWidthDp: Float,
     paneHeightDp: Float,
     commentTextSize: Float,
+    maxPerPage: Int = 0,
 ): CommentariesGridCapacity {
     val rawScale = commentTextSize / REFERENCE_TEXT_SIZE
     val textScale =
@@ -108,7 +113,16 @@ internal fun computeCommentariesGridCapacity(
     if (cols * rows < 2 && paneWidthDp >= NARROW_PANE_WIDTH.value) {
         if (paneWidthDp >= paneHeightDp) cols = 2 else rows = 2
     }
-    return CommentariesGridCapacity(cols = cols, rows = rows, perPage = cols * rows)
+    var perPage = cols * rows
+    // Apply the user ceiling, shrinking cols/rows so the layout stays consistent with the
+    // capped count. Capping never raises capacity, so a narrow pane that only fits 1 still
+    // shows 1 even when the cap is higher.
+    if (maxPerPage in 1 until perPage) {
+        perPage = maxPerPage
+        cols = cols.coerceAtMost(perPage)
+        rows = ((perPage + cols - 1) / cols).coerceAtLeast(1)
+    }
+    return CommentariesGridCapacity(cols = cols, rows = rows, perPage = perPage)
 }
 
 /**
@@ -160,6 +174,7 @@ internal fun CommentatorsGridScaffold(
                 paneWidthDp = maxWidth.value,
                 paneHeightDp = maxHeight.value,
                 commentTextSize = config.textSizes.commentTextSize,
+                maxPerPage = config.maxCommentatorsPerPage,
             )
         val cols = capacity.cols
         val perPage = capacity.perPage

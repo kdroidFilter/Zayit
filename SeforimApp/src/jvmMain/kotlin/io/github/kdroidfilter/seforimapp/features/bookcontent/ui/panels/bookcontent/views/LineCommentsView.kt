@@ -1175,6 +1175,7 @@ internal data class CommentariesLayoutConfig(
     val boldScale: Float,
     val highlightQuery: String,
     val showDiacritics: Boolean,
+    val maxCommentatorsPerPage: Int,
 )
 
 @Composable
@@ -1189,6 +1190,7 @@ private fun rememberCommentariesLayoutConfig(
     val windowInfo = LocalWindowInfo.current
     val commentaryFontCode by AppSettings.commentaryFontCodeFlow.collectAsState()
     val commentaryFontFamily = FontCatalog.familyFor(commentaryFontCode)
+    val maxCommentatorsPerPage by AppSettings.maxCommentatorsPerPageFlow.collectAsState()
     val boldScaleForPlatform =
         remember(commentaryFontCode) {
             val lacksBold = commentaryFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
@@ -1203,6 +1205,7 @@ private fun rememberCommentariesLayoutConfig(
         boldScaleForPlatform,
         findQueryText,
         showDiacritics,
+        maxCommentatorsPerPage,
     ) {
         CommentariesLayoutConfig(
             selectedCommentators = selectedCommentators,
@@ -1226,6 +1229,7 @@ private fun rememberCommentariesLayoutConfig(
             boldScale = boldScaleForPlatform,
             highlightQuery = findQueryText,
             showDiacritics = showDiacritics,
+            maxCommentatorsPerPage = maxCommentatorsPerPage,
         )
     }
 }

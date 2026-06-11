@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +32,7 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsViewModel
@@ -38,6 +40,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.component.RadioButtonRow
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
@@ -50,6 +53,9 @@ import seforimapp.seforimapp.generated.resources.accent_color_teal
 import seforimapp.seforimapp.generated.resources.settings_accent_color_label
 import seforimapp.seforimapp.generated.resources.settings_compact_mode
 import seforimapp.seforimapp.generated.resources.settings_compact_mode_description
+import seforimapp.seforimapp.generated.resources.settings_max_commentators_per_page
+import seforimapp.seforimapp.generated.resources.settings_max_commentators_per_page_auto
+import seforimapp.seforimapp.generated.resources.settings_max_commentators_per_page_description
 import seforimapp.seforimapp.generated.resources.settings_show_home_wallpaper
 import seforimapp.seforimapp.generated.resources.settings_show_home_wallpaper_description
 import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets
@@ -120,7 +126,63 @@ private fun DisplaySettingsView(
                 checked = state.compactMode,
                 onCheckedChange = { onEvent(DisplaySettingsEvents.SetCompactMode(it)) },
             )
+
+            MaxCommentatorsPerPageCard(
+                value = state.maxCommentatorsPerPage,
+                onValueChange = { onEvent(DisplaySettingsEvents.SetMaxCommentatorsPerPage(it)) },
+            )
         }
+    }
+}
+
+@Composable
+private fun MaxCommentatorsPerPageCard(
+    value: Int,
+    onValueChange: (Int) -> Unit,
+) {
+    val shape = RoundedCornerShape(8.dp)
+    val autoLabel = stringResource(Res.string.settings_max_commentators_per_page_auto)
+    // Index 0 = automatic (value 0); index n = value n.
+    val options =
+        remember(autoLabel) {
+            buildList {
+                add(autoLabel)
+                for (n in 1..AppSettings.MAX_COMMENTATORS_PER_PAGE_LIMIT) add(n.toString())
+            }
+        }
+    val selectedIndex = value.coerceIn(0, AppSettings.MAX_COMMENTATORS_PER_PAGE_LIMIT)
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                .background(JewelTheme.globalColors.panelBackground)
+                .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(Res.string.settings_max_commentators_per_page),
+                modifier = Modifier.weight(1f),
+            )
+            ListComboBox(
+                items = options,
+                selectedIndex = selectedIndex,
+                onSelectedItemChange = { idx -> onValueChange(idx) },
+                modifier = Modifier.width(140.dp),
+            )
+        }
+        Text(
+            text = stringResource(Res.string.settings_max_commentators_per_page_description),
+            fontSize = 12.sp,
+            color = JewelTheme.globalColors.text.info,
+        )
     }
 }
 

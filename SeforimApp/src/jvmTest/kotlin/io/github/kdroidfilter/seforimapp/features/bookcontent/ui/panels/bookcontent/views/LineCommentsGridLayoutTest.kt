@@ -85,6 +85,47 @@ class LineCommentsGridLayoutTest {
         assertEquals(2, c.rows)
     }
 
+    // ==================== Grid capacity: user max-per-page ceiling ====================
+
+    @Test
+    fun `user cap lowers capacity below the fit-based count`() {
+        // Pane fits 2x2 = 4, but the user caps at 2 → one row of 2, rest spills to extra pages.
+        val c = computeCommentariesGridCapacity(paneWidthDp = 800f, paneHeightDp = 600f, commentTextSize = 14f, maxPerPage = 2)
+        assertEquals(2, c.perPage)
+        assertEquals(2, c.cols)
+        assertEquals(1, c.rows)
+    }
+
+    @Test
+    fun `user cap never raises capacity when the pane only fits fewer`() {
+        // Narrow pane fits a single cell; a higher cap must not force a second one.
+        val c = computeCommentariesGridCapacity(paneWidthDp = 300f, paneHeightDp = 200f, commentTextSize = 14f, maxPerPage = 3)
+        assertEquals(1, c.perPage)
+        assertEquals(1, c.cols)
+    }
+
+    @Test
+    fun `cap of one shows a single commentator per page`() {
+        val c = computeCommentariesGridCapacity(paneWidthDp = 1200f, paneHeightDp = 600f, commentTextSize = 14f, maxPerPage = 1)
+        assertEquals(1, c.perPage)
+        assertEquals(1, c.cols)
+    }
+
+    @Test
+    fun `zero cap means automatic (no ceiling)`() {
+        val auto = computeCommentariesGridCapacity(paneWidthDp = 800f, paneHeightDp = 600f, commentTextSize = 14f, maxPerPage = 0)
+        val none = computeCommentariesGridCapacity(paneWidthDp = 800f, paneHeightDp = 600f, commentTextSize = 14f)
+        assertEquals(none, auto)
+        assertEquals(4, auto.perPage)
+    }
+
+    @Test
+    fun `cap at or above the fit-based count is a no-op`() {
+        val ref = computeCommentariesGridCapacity(paneWidthDp = 800f, paneHeightDp = 600f, commentTextSize = 14f)
+        val capped = computeCommentariesGridCapacity(paneWidthDp = 800f, paneHeightDp = 600f, commentTextSize = 14f, maxPerPage = 4)
+        assertEquals(ref, capped)
+    }
+
     // ==================== Page layout: partial-page rebalancing ====================
 
     @Test

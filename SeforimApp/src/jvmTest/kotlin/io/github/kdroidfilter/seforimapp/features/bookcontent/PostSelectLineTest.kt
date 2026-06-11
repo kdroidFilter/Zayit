@@ -13,6 +13,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.CategoryD
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.CommentariesUseCase
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.ContentUseCase
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.NavigationUseCase
+import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.NotesUseCase
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.TocUseCase
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
@@ -58,6 +59,7 @@ class PostSelectLineTest {
     private lateinit var altTocUseCase: AltTocUseCase
     private lateinit var tocUseCase: TocUseCase
     private lateinit var navigationUseCase: NavigationUseCase
+    private lateinit var notesUseCase: NotesUseCase
     private lateinit var categoryDisplaySettingsUseCase: CategoryDisplaySettingsUseCase
 
     // Captured from factory calls so we can manipulate VM-internal state
@@ -82,6 +84,7 @@ class PostSelectLineTest {
         altTocUseCase = mockk(relaxed = true)
         tocUseCase = mockk(relaxed = true)
         navigationUseCase = mockk(relaxed = true)
+        notesUseCase = mockk(relaxed = true)
         categoryDisplaySettingsUseCase = mockk(relaxed = true)
 
         // CategoryDisplaySettingsUseCase.categoryChanges must return a flow
@@ -99,6 +102,7 @@ class PostSelectLineTest {
                 every { createCommentariesUseCase(any(), any()) } returns commentariesUseCase
                 every { createAltTocUseCase(any()) } returns altTocUseCase
                 every { createTocUseCase(any()) } returns tocUseCase
+                every { createNotesUseCase(any()) } returns notesUseCase
                 every { createCategoryDisplaySettingsUseCase() } returns categoryDisplaySettingsUseCase
             }
 

@@ -16,6 +16,7 @@ class HomeCelestialWidgetsStateTest {
             HomeCelestialWidgetsState(
                 userPlace = testPlace,
                 userCityLabel = null,
+                inIsrael = false,
             )
         assertEquals(testPlace, state.userPlace)
     }
@@ -26,6 +27,7 @@ class HomeCelestialWidgetsStateTest {
             HomeCelestialWidgetsState(
                 userPlace = testPlace,
                 userCityLabel = "Paris",
+                inIsrael = false,
             )
         assertEquals("Paris", state.userCityLabel)
     }
@@ -36,6 +38,7 @@ class HomeCelestialWidgetsStateTest {
             HomeCelestialWidgetsState(
                 userPlace = testPlace,
                 userCityLabel = null,
+                inIsrael = false,
             )
         assertNull(state.userCityLabel)
     }
@@ -59,6 +62,7 @@ class HomeCelestialWidgetsStateTest {
             HomeCelestialWidgetsState(
                 userPlace = testPlace,
                 userCityLabel = "Original",
+                inIsrael = false,
             )
         val modified = original.copy(userCityLabel = "Modified")
 
@@ -68,9 +72,9 @@ class HomeCelestialWidgetsStateTest {
 
     @Test
     fun `equals works correctly`() {
-        val state1 = HomeCelestialWidgetsState(userPlace = testPlace, userCityLabel = "A")
-        val state2 = HomeCelestialWidgetsState(userPlace = testPlace, userCityLabel = "A")
-        val state3 = HomeCelestialWidgetsState(userPlace = testPlace, userCityLabel = "B")
+        val state1 = HomeCelestialWidgetsState(userPlace = testPlace, userCityLabel = "A", inIsrael = false)
+        val state2 = HomeCelestialWidgetsState(userPlace = testPlace, userCityLabel = "A", inIsrael = false)
+        val state3 = HomeCelestialWidgetsState(userPlace = testPlace, userCityLabel = "B", inIsrael = false)
 
         assertEquals(state1, state2)
         assertTrue(state1 != state3)

@@ -299,6 +299,7 @@ nucleus.application {
             TargetFormat.Dmg,
             TargetFormat.Zip,
             TargetFormat.Nsis,
+            TargetFormat.Pacman
         )
         vendor = "KDroidFilter"
         cleanupNativeLibs = true

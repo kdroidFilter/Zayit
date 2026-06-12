@@ -256,6 +256,7 @@ nucleus.application {
     nativeDistributions {
         appName = "זית"
         packageName = "zayit"
+        description = "ספריית הלימוד שמובילה ישר לטקסט"
 
         publish {
             github {

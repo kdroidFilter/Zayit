@@ -17,7 +17,7 @@ jobs:
           submodules: recursive
 
       - name: Setup Nucleus
-        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
+        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@789704a9b63c5b2a0ff4d6e1cd85711ab2e4286b
 
       - name: Run ktlint
         run: ./gradlew ktlintCheck --no-daemon
@@ -53,7 +53,7 @@ jobs:
           submodules: recursive
 
       - name: Setup Nucleus
-        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
+        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@789704a9b63c5b2a0ff4d6e1cd85711ab2e4286b
 
       - name: Run tests with coverage
         run: ./gradlew :SeforimApp:jvmTest :SeforimApp:koverXmlReport :SeforimApp:koverHtmlReport --no-daemon
@@ -115,7 +115,7 @@ jobs:
           submodules: recursive
 
       - name: Setup Nucleus
-        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
+        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@789704a9b63c5b2a0ff4d6e1cd85711ab2e4286b
 
       - name: Setup GraalVM (Liberica NIK)
         if: matrix.graalvm

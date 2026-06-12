@@ -101,7 +101,7 @@ fun AppNativeMenuBar(
             }
             Separator()
             Item(
-                text = "$menuQuit $appName",
+                text = "$menuQuit$appName",
                 shortcut = NativeKeyShortcut("q"),
             ) {
                 onQuit()

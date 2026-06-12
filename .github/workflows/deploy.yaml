@@ -145,22 +145,22 @@ jobs:
           # Name kept in sync with website/public/download/launch.linux rpm pattern.
           cp "$src" "staging/zayit-${VERSION}-1.${rpm_arch}.rpm"
 
-      - name: Build & stage Linux .pkg.tar.zst (pacman)
+      - name: Build & stage Linux .pacman
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'pacman'
         shell: bash
         run: |
           set -euo pipefail
           ./gradlew :SeforimApp:packageGraalvmPacman
           mkdir -p staging
-          src="$(find SeforimApp/build/compose/binaries/main/graalvm-pacman -name '*.pkg.tar.zst' | head -n1)"
+          # Nucleus emits the Arch package with a .pacman extension.
+          src="$(find SeforimApp/build/compose/binaries/main/graalvm-pacman -name '*.pacman' | head -n1)"
           [ -n "$src" ] || { echo "::error::No pacman package produced"; exit 1; }
           case "${{ matrix.arch }}" in
             amd64) pac_arch=x86_64 ;;
             arm64) pac_arch=aarch64 ;;
             *)     pac_arch="${{ matrix.arch }}" ;;
           esac
-          # Name follows makepkg convention: <name>-<ver>-<rel>-<arch>.pkg.tar.zst
-          cp "$src" "staging/zayit-${VERSION}-1-${pac_arch}.pkg.tar.zst"
+          cp "$src" "staging/zayit-${VERSION}-1-${pac_arch}.pacman"
 
       # Windows GraalVM build (x64)
       - name: Build Windows NSIS installer (GraalVM)

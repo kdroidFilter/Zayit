@@ -101,8 +101,9 @@ fun AppNativeMenuBar(
             }
             Separator()
             Item(
-                text = "$menuQuit $appName",
+                text = "$menuQuit$appName",
                 shortcut = NativeKeyShortcut("q"),
+                icon = NsMenuItemImage.SystemSymbol("rectangle.portrait.and.arrow.right"),
             ) {
                 onQuit()
             }

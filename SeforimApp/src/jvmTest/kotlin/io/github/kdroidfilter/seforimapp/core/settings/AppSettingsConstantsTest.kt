@@ -16,8 +16,8 @@ class AppSettingsConstantsTest {
     }
 
     @Test
-    fun `MAX_TEXT_SIZE is 32`() {
-        assertEquals(32f, AppSettings.MAX_TEXT_SIZE)
+    fun `MAX_TEXT_SIZE is 50`() {
+        assertEquals(50f, AppSettings.MAX_TEXT_SIZE)
     }
 
     @Test

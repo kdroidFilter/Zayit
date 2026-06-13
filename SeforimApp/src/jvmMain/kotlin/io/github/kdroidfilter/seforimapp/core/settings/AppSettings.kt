@@ -19,7 +19,7 @@ object AppSettings {
     // Text size constants
     const val DEFAULT_TEXT_SIZE = 16f
     const val MIN_TEXT_SIZE = 14f
-    const val MAX_TEXT_SIZE = 32f
+    const val MAX_TEXT_SIZE = 50f
     const val TEXT_SIZE_INCREMENT = 2f
 
     // Line height constants

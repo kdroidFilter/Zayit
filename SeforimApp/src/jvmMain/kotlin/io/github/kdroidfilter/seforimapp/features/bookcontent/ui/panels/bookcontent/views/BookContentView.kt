@@ -974,6 +974,7 @@ fun BookContentView(
                                         level = entry.level,
                                         text = entry.text,
                                         onClick = { onLineSelect(line, false) },
+                                        baseTextSize = textSize,
                                     )
                                 }
                             }
@@ -1004,6 +1005,7 @@ fun BookContentView(
                                                 level = entry.level,
                                                 text = entry.text,
                                                 onClick = { onLineSelect(line, false) },
+                                                baseTextSize = textSize,
                                             )
                                         }
                                     }
@@ -1266,12 +1268,13 @@ private fun AltHeadingItem(
     level: Int,
     text: String,
     onClick: () -> Unit,
+    baseTextSize: Float = 16f,
 ) {
     val fontSize =
         when (level) {
-            0 -> 20.sp
-            1 -> 18.sp
-            else -> 16.sp
+            0 -> (baseTextSize * 1.25f).sp
+            1 -> (baseTextSize * 1.125f).sp
+            else -> baseTextSize.sp
         }
     val paddingTop = if (level == 0) 4.dp else 0.dp
     val paddingBottom = 4.dp

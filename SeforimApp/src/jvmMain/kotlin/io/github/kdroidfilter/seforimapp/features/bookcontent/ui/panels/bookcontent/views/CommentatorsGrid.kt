@@ -348,7 +348,9 @@ private fun VerticalPagerIndicator(
     val activeColor = JewelTheme.globalColors.text.normal
     // A muted-but-readable dot: the border color is nearly invisible in light mode, so use a
     // semi-transparent text color that keeps enough contrast against the panel in both themes.
-    val inactiveColor = JewelTheme.globalColors.text.normal.copy(alpha = 0.4f)
+    val inactiveColor =
+        JewelTheme.globalColors.text.normal
+            .copy(alpha = 0.4f)
     val scope = rememberCoroutineScope()
     Column(
         modifier = Modifier.fillMaxHeight().width(20.dp),

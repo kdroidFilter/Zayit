@@ -245,6 +245,24 @@ class AppUpdateService(
     }
 
     /**
+     * Re-runs the update check on user request (from the settings screen). Resets to [UpdateUiState.Idle]
+     * first so [checkOnStartup] runs again; no-op while a check/download/install is already in progress.
+     */
+    suspend fun recheck() {
+        if (config.fakeState != null) return
+        when (_state.value) {
+            is UpdateUiState.Checking,
+            is UpdateUiState.Downloading,
+            is UpdateUiState.ReadyToInstall,
+            -> return
+            else -> {
+                _state.value = UpdateUiState.Idle
+                checkOnStartup()
+            }
+        }
+    }
+
+    /**
      * Triggers the download for a prompt update (MINOR/MAJOR) when the user confirms in the dialog.
      * Runs on the service scope (not the dialog's), so the download continues in the background even
      * if the user closes the dialog; progress keeps flowing into [state].

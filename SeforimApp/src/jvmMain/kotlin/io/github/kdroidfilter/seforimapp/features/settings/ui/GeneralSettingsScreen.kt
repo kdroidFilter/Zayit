@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +38,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.update.UpdateMode
 import io.github.kdroidfilter.seforimapp.framework.update.UpdateUiState
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -62,6 +64,7 @@ import seforimapp.seforimapp.generated.resources.settings_keep_screen_awake_desc
 import seforimapp.seforimapp.generated.resources.settings_persist_session
 import seforimapp.seforimapp.generated.resources.settings_persist_session_description
 import seforimapp.seforimapp.generated.resources.update_available_banner
+import seforimapp.seforimapp.generated.resources.update_check_action
 import seforimapp.seforimapp.generated.resources.update_check_failed
 import seforimapp.seforimapp.generated.resources.update_checking
 import seforimapp.seforimapp.generated.resources.update_download_action
@@ -77,6 +80,7 @@ fun GeneralSettingsScreen() {
     val version = UpdaterConfig().currentVersion
     val updateService = LocalAppGraph.current.appUpdateService
     val updateState by updateService.state.collectAsState()
+    val scope = rememberCoroutineScope()
     GeneralSettingsView(
         state = state,
         version = version,
@@ -84,6 +88,7 @@ fun GeneralSettingsScreen() {
         onEvent = viewModel::onEvent,
         onDownloadUpdate = updateService::startDownload,
         onInstallUpdate = updateService::installAndRestart,
+        onCheckForUpdate = { scope.launch { updateService.recheck() } },
     )
 }
 
@@ -95,6 +100,7 @@ private fun GeneralSettingsView(
     onEvent: (GeneralSettingsEvents) -> Unit,
     onDownloadUpdate: () -> Unit = {},
     onInstallUpdate: () -> Unit = {},
+    onCheckForUpdate: () -> Unit = {},
 ) {
     VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -109,6 +115,7 @@ private fun GeneralSettingsView(
                 updateState = updateState,
                 onDownloadUpdate = onDownloadUpdate,
                 onInstallUpdate = onInstallUpdate,
+                onCheckForUpdate = onCheckForUpdate,
             )
 
             SettingCard(
@@ -141,6 +148,7 @@ private fun AppHeader(
     updateState: UpdateUiState,
     onDownloadUpdate: () -> Unit,
     onInstallUpdate: () -> Unit,
+    onCheckForUpdate: () -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
 
@@ -159,6 +167,7 @@ private fun AppHeader(
             updateState = updateState,
             onDownloadUpdate = onDownloadUpdate,
             onInstallUpdate = onInstallUpdate,
+            onCheckForUpdate = onCheckForUpdate,
         )
 
         Row(
@@ -235,6 +244,7 @@ private fun UpdateStatusBanner(
     updateState: UpdateUiState,
     onDownloadUpdate: () -> Unit,
     onInstallUpdate: () -> Unit,
+    onCheckForUpdate: () -> Unit,
 ) {
     when (updateState) {
         is UpdateUiState.Available -> {
@@ -269,11 +279,25 @@ private fun UpdateStatusBanner(
             )
         }
 
-        UpdateUiState.UpToDate ->
-            InlineSuccessBanner(text = stringResource(Res.string.update_up_to_date))
+        UpdateUiState.UpToDate -> {
+            val checkLabel = stringResource(Res.string.update_check_action)
+            InlineSuccessBanner(
+                text = stringResource(Res.string.update_up_to_date),
+                linkActions = {
+                    action(checkLabel, onClick = onCheckForUpdate)
+                },
+            )
+        }
 
-        is UpdateUiState.Error ->
-            InlineWarningBanner(text = stringResource(Res.string.update_check_failed))
+        is UpdateUiState.Error -> {
+            val checkLabel = stringResource(Res.string.update_check_action)
+            InlineWarningBanner(
+                text = stringResource(Res.string.update_check_failed),
+                linkActions = {
+                    action(checkLabel, onClick = onCheckForUpdate)
+                },
+            )
+        }
 
         UpdateUiState.Idle, UpdateUiState.Checking ->
             InlineInformationBanner(text = stringResource(Res.string.update_checking))

@@ -520,6 +520,7 @@
     <string name="update_install_restart">התקן והפעל מחדש</string>
     <string name="update_later">מאוחר יותר</string>
     <string name="update_up_to_date">האפליקציה מעודכנת לגרסה האחרונה</string>
+    <string name="update_check_action">בדוק שוב</string>
     <string name="update_checking">בודק עדכונים…</string>
     <string name="update_check_failed">לא ניתן לבדוק עדכונים — ודא שקיים חיבור לאינטרנט</string>
 

@@ -512,6 +512,7 @@ private fun CommentariesDisplay(
         rememberCommentariesLayoutConfig(
             selectedCommentators = selectedCommentators,
             titleToIdMap = titleToIdMap,
+            selection = selection,
             textSizes = textSizes,
             findQueryText = findQueryText,
             showDiacritics = showDiacritics,
@@ -1182,6 +1183,7 @@ internal data class CommentariesLayoutConfig(
 private fun rememberCommentariesLayoutConfig(
     selectedCommentators: ImmutableList<String>,
     titleToIdMap: Map<String, Long>,
+    selection: LineSelection,
     textSizes: AnimatedTextSizes,
     findQueryText: String,
     showDiacritics: Boolean,
@@ -1200,6 +1202,7 @@ private fun rememberCommentariesLayoutConfig(
     return remember(
         selectedCommentators,
         titleToIdMap,
+        selection,
         textSizes,
         commentaryFontFamily,
         boldScaleForPlatform,
@@ -1222,7 +1225,12 @@ private fun rememberCommentariesLayoutConfig(
                 }
             },
             onOpenCommentatorBook = { bookId ->
-                onEvent(BookContentEvent.OpenBookByIdInNewTab(bookId))
+                val baseLineIds =
+                    when (selection) {
+                        is LineSelection.Single -> listOf(selection.lineId)
+                        is LineSelection.Multi -> selection.lineIds
+                    }
+                onEvent(BookContentEvent.OpenBookByIdInNewTab(bookId, baseLineIds))
             },
             textSizes = textSizes,
             fontFamily = commentaryFontFamily,

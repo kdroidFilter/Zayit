@@ -445,9 +445,21 @@ class BookContentViewModel(
                 }
 
                 is BookContentEvent.OpenBookByIdInNewTab -> {
-                    val book = repository.getBookCore(event.bookId)
-                    if (book != null) {
-                        openBookInNewTab(book)
+                    // Opened from the commentaries pane: jump to the line this commentator links
+                    // to for the displayed base lines, falling back to the book's start.
+                    val targetLineId =
+                        if (event.baseLineIds.isNotEmpty()) {
+                            commentariesUseCase.resolveCommentaryTargetLine(event.baseLineIds, event.bookId)
+                        } else {
+                            null
+                        }
+                    if (targetLineId != null) {
+                        openCommentaryTarget(event.bookId, targetLineId)
+                    } else {
+                        val book = repository.getBookCore(event.bookId)
+                        if (book != null) {
+                            openBookInNewTab(book)
+                        }
                     }
                 }
 

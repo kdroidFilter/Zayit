@@ -141,6 +141,41 @@ class CommentariesUseCase(
     }
 
     /**
+     * Resolves the line in the commentator's book to open when the user clicks its header in
+     * the commentaries pane. Returns the [Link.targetLineId] of the first commentary entry
+     * shown for [commentatorId] across the currently displayed base [lineIds] — i.e. the exact
+     * position currently on screen — so the book opens there rather than at its very beginning.
+     * Reuses the same paging sources the grid renders so the ordering matches the UI. Returns
+     * null when the commentator has no commentary on those lines.
+     */
+    suspend fun resolveCommentaryTargetLine(
+        lineIds: List<Long>,
+        commentatorId: Long,
+    ): Long? =
+        runSuspendCatching {
+            if (lineIds.isEmpty()) return@runSuspendCatching null
+            val source =
+                if (lineIds.size == 1) {
+                    CommentsForLineOrTocPagingSource(repository, lineIds.first(), setOf(commentatorId))
+                } else {
+                    MultiLineCommentsPagingSource(repository, lineIds, setOf(commentatorId))
+                }
+            val result =
+                source.load(
+                    PagingSource.LoadParams.Refresh(
+                        key = 0,
+                        loadSize = PagingDefaults.COMMENTS.INITIAL_LOAD_SIZE,
+                        placeholdersEnabled = false,
+                    ),
+                )
+            (result as? PagingSource.LoadResult.Page)
+                ?.data
+                ?.firstOrNull()
+                ?.link
+                ?.targetLineId
+        }.getOrNull()
+
+    /**
      * Construit un Pager pour les liens/targum d'une ligne
      */
     fun buildLinksPager(

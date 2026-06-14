@@ -3,6 +3,8 @@ package io.github.kdroidfilter.seforimapp.core.presentation.components
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.TooltipPlacement
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -167,13 +169,35 @@ fun SelectableIconButtonWithToolip(
                 )
                 if (!compactMode) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        label,
-                        color = if (enabled) JewelTheme.globalColors.text.normal else JewelTheme.globalColors.text.disabled,
-                        fontSize = 10.sp,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 10.sp,
-                    )
+                    val labelColor =
+                        if (enabled) JewelTheme.globalColors.text.normal else JewelTheme.globalColors.text.disabled
+                    if (label.trim().contains(' ')) {
+                        // Multi-word labels (e.g. "תוכן עניינים") wrap naturally at the space onto two lines.
+                        Text(
+                            label,
+                            color = labelColor,
+                            fontSize = 10.sp,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 12.sp,
+                            maxLines = 2,
+                        )
+                    } else {
+                        // Single-word labels (e.g. "מפרשים") stay on one line: they would otherwise break an
+                        // orphan letter onto a second line at fractional display scaling (e.g. 175%). Auto-size
+                        // shrinks only when the word does not fit the fixed bar width.
+                        BasicText(
+                            text = label,
+                            modifier = Modifier.fillMaxWidth(),
+                            style =
+                                JewelTheme.defaultTextStyle.copy(
+                                    color = labelColor,
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 12.sp,
+                                ),
+                            maxLines = 1,
+                            autoSize = TextAutoSize.StepBased(minFontSize = 7.sp, maxFontSize = 10.sp, stepSize = 0.5.sp),
+                        )
+                    }
                 }
             }
         }

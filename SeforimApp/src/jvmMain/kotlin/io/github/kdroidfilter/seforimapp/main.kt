@@ -172,8 +172,13 @@ fun main(args: Array<String>) {
         val pendingDeepLink = remember { MutableStateFlow<String?>(null) }
 
         // Pick up the deep link CLI arg (cold-start) and any URI relayed by a second instance
-        // through the automatic single-instance bridge.
-        onDeepLink { uri -> pendingDeepLink.value = uri.toString() }
+        // through the automatic single-instance bridge. Register once: onDeepLink re-parses the
+        // CLI args on every call, so invoking it on each recomposition would re-deliver the URI
+        // and open duplicate tabs (Windows cold-start, where the link arrives via args; macOS is
+        // unaffected because it delivers via Apple Events with empty args).
+        LaunchedEffect(Unit) {
+            onDeepLink { uri -> pendingDeepLink.value = uri.toString() }
+        }
 
         // Create the application graph via Metro and expose via CompositionLocal
         val appGraph = remember { createGraph<AppGraph>() }

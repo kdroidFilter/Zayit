@@ -168,11 +168,6 @@ private fun DefaultTabShowcase(
                                     val label =
                                         when {
                                             tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
-                                            tabItem.tabType == TabType.SEARCH ->
-                                                stringResource(
-                                                    Res.string.search_results_tab_title,
-                                                    tabItem.title,
-                                                )
                                             else -> tabItem.title
                                         }
 
@@ -190,7 +185,6 @@ private fun DefaultTabShowcase(
                             val appTitle = stringResource(Res.string.app_name)
                             when {
                                 tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
-                                tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
                                 else -> tabItem.title
                             }
                         }
@@ -238,11 +232,6 @@ private fun DefaultTabShowcase(
                                     val label =
                                         when {
                                             tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
-                                            tabItem.tabType == TabType.SEARCH ->
-                                                stringResource(
-                                                    Res.string.search_results_tab_title,
-                                                    tabItem.title,
-                                                )
                                             else -> tabItem.title
                                         }
 
@@ -260,7 +249,6 @@ private fun DefaultTabShowcase(
                             val appTitle = stringResource(Res.string.app_name)
                             when {
                                 tabItem.title.isEmpty() -> stringResource(Res.string.home_tab_with_app, appTitle)
-                                tabItem.tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, tabItem.title)
                                 else -> tabItem.title
                             }
                         }

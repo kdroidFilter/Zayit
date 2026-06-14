@@ -96,9 +96,14 @@ sealed interface BookContentEvent {
         val bookId: Long,
     ) : BookContentEvent
 
-    // Open a book by its id in a new tab (VM resolves Book)
+    // Open a book by its id in a new tab (VM resolves Book).
+    // When [baseLineIds] is non-empty, the book is a commentator opened from the
+    // commentaries pane: the VM positions the new tab at the line this commentator links to
+    // for those base lines (e.g. clicking "רשב״א" on Eruvin 33 opens the Rashba at daf 33),
+    // falling back to the beginning of the book when no link is found.
     data class OpenBookByIdInNewTab(
         val bookId: Long,
+        val baseLineIds: List<Long> = emptyList(),
     ) : BookContentEvent
 
     data object ToggleCommentaries : BookContentEvent

@@ -46,6 +46,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -1236,6 +1237,11 @@ private fun SearchBar(
     isTocLoading: Boolean = false,
 ) {
     val isReference = selectedFilter == SearchFilter.REFERENCE
+    // Suggestion state is shared across all tabs via the single SearchHomeViewModel, but every
+    // open tab stays composed. A Popup renders in its own window and escapes the layout(0,0) trick
+    // used to hide non-selected tabs, so without this guard each composed tab would draw a
+    // duplicate suggestions popup. Only the selected tab is allowed to show the overlay.
+    val isTabSelected = LocalTabSelected.current
     val scope = rememberCoroutineScope()
     // Hints from string resources
     val referenceHints =
@@ -1635,6 +1641,7 @@ private fun SearchBar(
         val a = anchor
         val showOverlay =
             isReference &&
+                isTabSelected &&
                 popupVisible &&
                 a != null &&
                 (

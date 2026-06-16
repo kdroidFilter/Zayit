@@ -919,33 +919,24 @@ private fun SuggestionsPanel(
  * Uses native Jewel menu styling for consistent look and feel.
  */
 private fun TocSuggestionsPanel(
-    tocSuggestions: List<TocSuggestion>,
+    suggestions: List<Pair<TocSuggestion, List<String>>>,
     onPickToc: (TocSuggestion) -> Unit,
     focusedIndex: Int = -1,
-    selectedBook: BookModel? = null,
     emptyMessage: String? = null,
     isLoading: Boolean = false,
     loadingMessage: String? = null,
 ) {
-    val filteredSuggestions =
-        remember(tocSuggestions, selectedBook) {
-            tocSuggestions.mapNotNull { ts ->
-                val dedupPath = dedupAdjacent(ts.path)
-                val parts = stripBookPrefixFromTocPath(selectedBook, dedupPath)
-                if (parts.isNotEmpty()) ts to parts else null
-            }
-        }
-    val isEmpty = filteredSuggestions.isEmpty()
+    val isEmpty = suggestions.isEmpty()
     val listState = rememberLazyListState()
     val menuStyle = JewelTheme.menuStyle
 
-    LaunchedEffect(focusedIndex, filteredSuggestions.size) {
-        if (focusedIndex >= 0 && filteredSuggestions.isNotEmpty()) {
+    LaunchedEffect(focusedIndex, suggestions.size) {
+        if (focusedIndex >= 0 && suggestions.isNotEmpty()) {
             val visible = listState.layoutInfo.visibleItemsInfo
             val firstVisible = visible.firstOrNull()?.index
             val lastVisible = visible.lastOrNull()?.index
             if (lastVisible != null && focusedIndex == lastVisible) {
-                val nextIndex = (focusedIndex + 1).coerceAtMost(filteredSuggestions.lastIndex)
+                val nextIndex = (focusedIndex + 1).coerceAtMost(suggestions.lastIndex)
                 if (nextIndex != focusedIndex) listState.scrollToItem(nextIndex)
             } else if (firstVisible != null && focusedIndex == firstVisible) {
                 val prevIndex = (focusedIndex - 1).coerceAtLeast(0)
@@ -1004,8 +995,8 @@ private fun TocSuggestionsPanel(
                     }
                 }
             } else {
-                items(filteredSuggestions.size) { index ->
-                    val (ts, parts) = filteredSuggestions[index]
+                items(suggestions.size) { index ->
+                    val (ts, parts) = suggestions[index]
                     SuggestionRow(
                         parts = parts,
                         onClick = { onPickToc(ts) },
@@ -1060,6 +1051,23 @@ private fun dedupAdjacent(parts: List<String>): List<String> {
     }
     return out
 }
+
+/**
+ * Computes the TOC suggestions to actually show (and let the keyboard select), each
+ * paired with its display breadcrumb. Entries whose breadcrumb collapses to nothing
+ * once the book prefix is stripped are dropped — e.g. the book's own root entry, which
+ * can still match a substring query (typing "יט" matches it inside "גיטין"). Sharing
+ * this between the keyboard handlers and [TocSuggestionsPanel] keeps the rendered list,
+ * the highlighted row and the picked entry in sync, so navigation opens the right place.
+ */
+private fun tocSuggestionsForDisplay(
+    selectedBook: BookModel?,
+    tocSuggestions: List<TocSuggestion>,
+): List<Pair<TocSuggestion, List<String>>> =
+    tocSuggestions.mapNotNull { ts ->
+        val parts = stripBookPrefixFromTocPath(selectedBook, dedupAdjacent(ts.path))
+        if (parts.isNotEmpty()) ts to parts else null
+    }
 
 /**
  * Strips the selected book's title if it redundantly appears as the first
@@ -1296,7 +1304,14 @@ private fun SearchBar(
     var popupVisible by remember { mutableStateOf(false) }
     val categoriesCount = categorySuggestions.size
     val totalCatBook = categoriesCount + bookSuggestions.size
-    val totalToc = tocSuggestions.size
+    // Keyboard navigation must operate on the exact list that TocSuggestionsPanel
+    // renders, otherwise the highlighted row and the picked entry desync and the
+    // wrong reference opens (see [tocSuggestionsForDisplay]).
+    val visibleTocSuggestions =
+        remember(tocSuggestions, selectedBook) {
+            tocSuggestionsForDisplay(selectedBook, tocSuggestions)
+        }
+    val totalToc = visibleTocSuggestions.size
     val isTocMode = isReference && selectedBook != null
     val showCategorySuggestions = suggestionsVisible && totalCatBook > 0 && !isTocMode
     val showTocSuggestions = tocSuggestionsVisible && totalToc > 0 && isTocMode
@@ -1438,7 +1453,7 @@ private fun SearchBar(
                                     // Commit current suggestion, don't open
                                     when {
                                         isTocMode && focusedIndex in 0 until totalToc -> {
-                                            handlePickToc(tocSuggestions[focusedIndex])
+                                            handlePickToc(visibleTocSuggestions[focusedIndex].first)
                                             if (submitOnEnterInReference) {
                                                 submitAfterFrame(scope)
                                             }
@@ -1507,7 +1522,7 @@ private fun SearchBar(
                                     val handled =
                                         when {
                                             isTocMode && focusedIndex in 0 until totalToc -> {
-                                                handlePickToc(tocSuggestions[focusedIndex])
+                                                handlePickToc(visibleTocSuggestions[focusedIndex].first)
                                                 true
                                             }
 
@@ -1680,10 +1695,9 @@ private fun SearchBar(
                 Box(Modifier.width(widthDp)) {
                     if (isTocMode && (showTocSuggestions || showTocEmptyState || showTocLoading)) {
                         TocSuggestionsPanel(
-                            tocSuggestions = tocSuggestions,
+                            suggestions = visibleTocSuggestions,
                             onPickToc = ::handlePickToc,
                             focusedIndex = focusedIndex,
-                            selectedBook = selectedBook,
                             emptyMessage = if (showTocEmptyState) stringResource(Res.string.autocomplete_no_results) else null,
                             isLoading = showTocLoading,
                             loadingMessage = stringResource(Res.string.autocomplete_loading),

@@ -1,0 +1,42 @@
+name: DCO
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  dco-check:
+    name: Check DCO sign-off
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Signed-off-by on all PR commits
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.pull_request.number;
+
+            const commits = await github.paginate(
+              github.rest.pulls.listCommits,
+              { owner, repo, pull_number: prNumber, per_page: 100 }
+            );
+
+            const signOffRegex = /^Signed-off-by: .+ <.+@.+>$/m;
+            const failures = [];
+
+            for (const c of commits) {
+              const message = c.commit.message || "";
+              if (!signOffRegex.test(message)) {
+                failures.push(`${c.sha.substring(0, 7)} — ${message.split("\n")[0]}`);
+              }
+            }
+
+            if (failures.length > 0) {
+              core.setFailed(
+                "The following commits are missing a 'Signed-off-by' line " +
+                "(see CONTRIBUTING.md, use `git commit -s`):\n\n" +
+                failures.map((f) => `  - ${f}`).join("\n")
+              );
+            } else {
+              core.info(`All ${commits.length} commit(s) are signed off.`);
+            }

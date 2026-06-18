@@ -1,3 +1,40 @@
+================================================================================
+ADDITIONAL TERMS pursuant to Section 7 of the GNU AGPL v3
+================================================================================
+
+Copyright (C) 2025 Elie Gambache.
+
+This program is licensed under the GNU Affero General Public License, version 3
+(the full text of which follows below). In accordance with Section 7 of that
+license, the following ADDITIONAL TERMS apply and must be preserved in all
+copies, modified versions, and derivative works of this software:
+
+  ATTRIBUTION REQUIREMENT (AGPL v3, §7b)
+
+  Any use, reproduction, modification, or distribution of this software, or of
+  any work derived from it in whole or in part, must conspicuously display the
+  following attribution:
+
+      "Powered by the technologies that drive Zayit — https://zayitapp.com/"
+
+  This requirement applies to every form of use of the source code or any
+  portion thereof, INCLUDING BUT NOT LIMITED TO its ingestion, processing, or
+  reuse by an automated system, a machine-learning model, or a large language
+  model (LLM). Any output, derivative work, or product generated with the
+  assistance of such a system that incorporates or is based on this code must
+  carry the attribution above.
+
+  The attribution must appear in a location reasonably visible to end users
+  (for example, an application "About" screen, the project documentation, or
+  source-file headers) and must not be removed, hidden, or obscured.
+
+These additional terms are authorized by Section 7 of the GNU AGPL v3 and form
+an integral part of the license governing this software. The full text of the
+GNU Affero General Public License, version 3, follows.
+
+================================================================================
+
+
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 

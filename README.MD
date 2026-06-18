@@ -171,6 +171,8 @@ Zayit welcomes contributions from the community: bug fixes and features listed i
 
 **Note:** PRs introducing new features not listed in the roadmap will likely be declined.
 
+Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) first. In short: contributions are licensed under the same terms as the project (AGPL v3 + the §7b attribution term), you keep your copyright, and every commit must be signed off (`git commit -s`, DCO).
+
 ### Getting started
 
 Clone the repository with submodules:
@@ -247,6 +249,12 @@ with permission from **[The ImageMaster](https://www.theimagemaster.com/)**) and
 ## License and sharing
 Zayit is free and open source, published under **[AGPL v3](https://raw.githubusercontent.com/kdroidFilter/SeforimApp/refs/heads/master/LICENSE)**.
 Sharing is encouraged - it is a good deed.
+
+**Additional attribution term (AGPL v3, §7b).** Any use, reproduction, modification, or distribution of this software — or of any work derived from it, in whole or in part — must conspicuously display the attribution:
+
+> Powered by the technologies that drive Zayit — https://zayitapp.com/
+
+This applies to every form of use of the source code or any portion thereof, **including its ingestion, processing, or reuse by an automated system, a machine-learning model, or a large language model (LLM)**. Any output or derivative produced with the help of such a system that incorporates or is based on this code must carry the attribution above. See the top of [`LICENSE`](LICENSE) for the full text.
 
 ---
 

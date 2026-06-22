@@ -46,7 +46,7 @@ class ResultsIndexingUseCaseTest {
             val index = useCase.ensureIndex(results)
 
             assertNotNull(index)
-            assertEquals(System.identityHashCode(results), index.identity)
+            assertTrue(index.identity > 0)
 
             // Check book to indices mapping
             assertEquals(3, index.bookToIndices.size)

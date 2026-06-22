@@ -1,4 +1,5 @@
 // tabs/TabsViewModel.kt
+@file:OptIn(kotlin.uuid.ExperimentalUuidApi::class)
 package io.github.kdroidfilter.seforim.tabs
 
 import androidx.compose.runtime.Immutable
@@ -14,14 +15,14 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.*
+import kotlin.uuid.Uuid
 import kotlin.math.max
 
 @Immutable
 data class TabItem(
     val id: Int,
     val title: String = "Default Tab",
-    val destination: TabsDestination = TabsDestination.Home(UUID.randomUUID().toString()),
+    val destination: TabsDestination = TabsDestination.Home(Uuid.random().toString()),
     val tabType: TabType = TabType.SEARCH,
 )
 
@@ -98,7 +99,7 @@ class TabsViewModel(
 
         if (currentTabs.size == 1) {
             replaceCurrentTabWithNewTabId(
-                TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString()),
+                TabsDestination.BookContent(bookId = -1, tabId = Uuid.random().toString()),
             )
             _state.update { it.copy(selectedTabIndex = 0) }
             return
@@ -160,7 +161,7 @@ class TabsViewModel(
     }
 
     private fun addTab() {
-        val destination = TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())
+        val destination = TabsDestination.BookContent(bookId = -1, tabId = Uuid.random().toString())
         val newTab =
             TabItem(
                 id = _nextTabId++,
@@ -194,7 +195,7 @@ class TabsViewModel(
     }
 
     private fun closeAllTabs() {
-        val destination = TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())
+        val destination = TabsDestination.BookContent(bookId = -1, tabId = Uuid.random().toString())
         val newTab =
             TabItem(
                 id = _nextTabId++,
@@ -250,7 +251,7 @@ class TabsViewModel(
                     is TabsDestination.Home ->
                         TabsDestination.Home(
                             tabId = tab.destination.tabId,
-                            version = System.currentTimeMillis(),
+                            version = nowEpochMillis(),
                         )
                     is TabsDestination.Search ->
                         TabsDestination.Search(
@@ -285,13 +286,13 @@ class TabsViewModel(
             val index = current.selectedTabIndex
             if (index !in 0..current.tabs.lastIndex) return@update current
 
-            val newTabId = UUID.randomUUID().toString()
+            val newTabId = Uuid.random().toString()
             val newDestination =
                 when (destination) {
                     is TabsDestination.Home ->
                         TabsDestination.Home(
                             tabId = newTabId,
-                            version = System.currentTimeMillis(),
+                            version = nowEpochMillis(),
                         )
                     is TabsDestination.Search ->
                         TabsDestination.Search(

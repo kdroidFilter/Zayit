@@ -35,7 +35,7 @@ class DownloadViewModel(
     private val _completed = MutableStateFlow(false)
 
     // Set while the pre-download gate runs, so a stray Start event can't run it twice.
-    @Volatile
+    @kotlin.concurrent.Volatile
     private var preparing = false
 
     private data class DownloadProgressSnapshot(

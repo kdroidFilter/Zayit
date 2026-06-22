@@ -1,9 +1,9 @@
 package io.github.kdroidfilter.seforim.htmlparser
 
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import org.jsoup.nodes.Node
-import org.jsoup.nodes.TextNode
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Element
+import com.fleeksoft.ksoup.nodes.Node
+import com.fleeksoft.ksoup.nodes.TextNode
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -34,7 +34,7 @@ private val WHITESPACE_REGEX = Regex("\\s+")
 
 class HtmlParser {
     fun parse(html: String): List<ParsedHtmlElement> {
-        val doc = Jsoup.parse(html)
+        val doc = Ksoup.parse(html)
         val out = mutableListOf<ParsedHtmlElement>()
         for (child in doc.body().childNodes()) {
             processNode(

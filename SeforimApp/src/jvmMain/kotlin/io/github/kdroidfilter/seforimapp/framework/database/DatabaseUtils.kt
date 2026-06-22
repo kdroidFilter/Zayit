@@ -1,5 +1,7 @@
 package io.github.kdroidfilter.seforimapp.framework.database
 
+import kotlinx.coroutines.runBlocking
+
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.logger.errorln
 import io.github.kdroidfilter.seforimapp.logger.infoln
@@ -205,7 +207,7 @@ object CatalogCache {
     private fun loadCatalog(): PrecomputedCatalog? =
         try {
             val dbPath = getDatabasePath()
-            val catalog = CatalogLoader.loadCatalog(dbPath)
+            val catalog = runBlocking { CatalogLoader.loadCatalog(dbPath) }
 
             if (catalog != null) {
                 infoln { "[CatalogCache] Precomputed catalog loaded: ${catalog.totalCategories} categories, ${catalog.totalBooks} books" }

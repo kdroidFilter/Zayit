@@ -1,5 +1,7 @@
 package io.github.kdroidfilter.seforimapp.core.catalog
 
+import kotlinx.coroutines.runBlocking
+
 import io.github.kdroidfilter.seforimapp.catalog.CatalogPresets
 import io.github.kdroidfilter.seforimlibrary.core.models.PrecomputedCatalog
 import io.github.kdroidfilter.seforimlibrary.dao.CatalogLoader
@@ -28,7 +30,7 @@ class CatalogAccessTest {
             val catalogCandidate = Path.of("$basePath/catalog.pb")
             val dbCandidate = Path.of("$basePath/seforim.db")
             if (Files.exists(catalogCandidate) && Files.exists(dbCandidate)) {
-                catalog = CatalogLoader.loadCatalog(dbCandidate.toString())
+                catalog = runBlocking { CatalogLoader.loadCatalog(dbCandidate.toString()) }
                 break
             }
         }

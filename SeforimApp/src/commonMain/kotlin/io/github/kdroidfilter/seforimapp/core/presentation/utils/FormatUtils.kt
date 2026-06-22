@@ -15,6 +15,15 @@ import seforimapp.seforimapp.generated.resources.eta_minutes_unit_plural
 import seforimapp.seforimapp.generated.resources.eta_minutes_unit_singular
 import seforimapp.seforimapp.generated.resources.eta_seconds_unit_plural
 import seforimapp.seforimapp.generated.resources.eta_seconds_unit_singular
+import kotlin.math.roundToLong
+
+// Multiplatform replacement for String.format("%.2f"): two decimals, dot separator.
+private fun Double.format2(): String {
+    val scaled = (this * 100).roundToLong()
+    val whole = scaled / 100
+    val frac = (scaled % 100).let { if (it < 0) -it else it }
+    return "$whole.${frac.toString().padStart(2, '0')}"
+}
 
 @Composable
 fun formatBytes(bytes: Long): String {
@@ -32,7 +41,7 @@ fun formatBytes(bytes: Long): String {
         value /= 1024
         unitIndex++
     }
-    return String.format(java.util.Locale.US, "%.2f %s", value, units[unitIndex])
+    return "${value.format2()} ${units[unitIndex]}"
 }
 
 @Composable
@@ -57,7 +66,7 @@ fun formatEta(totalSeconds: Long): String {
             } else {
                 stringResource(Res.string.eta_hours_unit_plural)
             }
-        parts += String.format(java.util.Locale.US, "%d %s", hours, unit)
+        parts += "$hours $unit"
     }
 
     if (minutes > 0) {
@@ -67,7 +76,7 @@ fun formatEta(totalSeconds: Long): String {
             } else {
                 stringResource(Res.string.eta_minutes_unit_plural)
             }
-        parts += String.format(java.util.Locale.US, "%d %s", minutes, unit)
+        parts += "$minutes $unit"
     }
 
     if (seconds > 0 || parts.isEmpty()) {
@@ -77,7 +86,7 @@ fun formatEta(totalSeconds: Long): String {
             } else {
                 stringResource(Res.string.eta_seconds_unit_plural)
             }
-        parts += String.format(java.util.Locale.US, "%d %s", seconds, unit)
+        parts += "$seconds $unit"
     }
 
     return parts.joinToString(separator = " ")

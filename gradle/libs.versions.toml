@@ -6,6 +6,7 @@ confettikit = "0.8.0"
 filekitCore = "0.14.1"
 hebrewNumerals = "0.2.6"
 jsoup = "1.22.2"
+ksoup = "0.2.6"
 jvmToolchain = "25"
 nucleus = "2.0.0-alpha-202606161353"
 koalaplotCore = "0.11.2"
@@ -64,6 +65,7 @@ filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose
 hebrew-numerals = { module = "io.github.kdroidfilter:hebrewnumerals", version.ref = "hebrewNumerals" }
 jdbc-driver = { module = "app.cash.sqldelight:jdbc-driver", version.ref = "sqlDelight" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
 nucleus-core-runtime = { module = "dev.nucleusframework:nucleus.core-runtime", version.ref = "nucleus" }
 nucleus-aot-runtime = { module = "dev.nucleusframework:nucleus.aot-runtime", version.ref = "nucleus" }
 nucleus-darkmode-detector = { module = "dev.nucleusframework:nucleus.darkmode-detector", version.ref = "nucleus" }

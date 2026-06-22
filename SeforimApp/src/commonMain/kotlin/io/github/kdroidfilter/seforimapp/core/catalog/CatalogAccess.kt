@@ -24,7 +24,7 @@ class CatalogAccess(
         val booksByCategory: Map<Long, List<BookRef>>,
     )
 
-    @Volatile
+    @kotlin.concurrent.Volatile
     private var indices: Indices? = null
 
     private fun resolve(): Indices? {

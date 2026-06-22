@@ -1,9 +1,6 @@
 package io.github.kdroidfilter.seforimapp.logger
 
-import io.sentry.Sentry
-import io.sentry.SentryLevel
-import java.text.SimpleDateFormat
-import java.util.Date
+import kotlin.concurrent.Volatile
 
 var isDevEnv: Boolean = true
 var loggingLevel: LoggingLevel = LoggingLevel.VERBOSE
@@ -18,15 +15,15 @@ class LoggingLevel(
     val priority: Int,
 ) {
     companion object {
-        @JvmField val VERBOSE = LoggingLevel(0)
+        val VERBOSE = LoggingLevel(0)
 
-        @JvmField val DEBUG = LoggingLevel(1)
+        val DEBUG = LoggingLevel(1)
 
-        @JvmField val INFO = LoggingLevel(2)
+        val INFO = LoggingLevel(2)
 
-        @JvmField val WARN = LoggingLevel(3)
+        val WARN = LoggingLevel(3)
 
-        @JvmField val ERROR = LoggingLevel(4)
+        val ERROR = LoggingLevel(4)
     }
 }
 
@@ -40,24 +37,24 @@ class LoggingLevel(
 
 @PublishedApi internal const val COLOR_RESET = "\u001b[0m"
 
-@PublishedApi internal val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+// Platform timestamp + crash reporting. JVM wires Sentry + SimpleDateFormat;
+// Android/iOS are stubs until a per-platform crash reporter is wired in.
+@PublishedApi internal expect fun loggerTimestamp(): String
 
-@PublishedApi internal fun getCurrentTimestamp(): String = dateFormat.format(Date())
+@PublishedApi internal expect fun crashReportingEnabled(): Boolean
+
+@PublishedApi internal expect fun reportCrash(
+    level: LoggingLevel,
+    throwable: Throwable?,
+    message: String,
+)
 
 @PublishedApi internal fun shouldLogToConsole(minLevel: LoggingLevel): Boolean = isDevEnv && loggingLevel.priority <= minLevel.priority
 
 @PublishedApi internal fun shouldLogToSentry(minLevel: LoggingLevel): Boolean =
     SentryConfig.sentryEnabled &&
-        Sentry.isEnabled() &&
+        crashReportingEnabled() &&
         minLevel.priority >= SentryConfig.sentryLevel.priority
-
-@PublishedApi internal fun toSentryLevel(level: LoggingLevel): SentryLevel =
-    when {
-        level.priority <= LoggingLevel.DEBUG.priority -> SentryLevel.DEBUG
-        level.priority == LoggingLevel.INFO.priority -> SentryLevel.INFO
-        level.priority == LoggingLevel.WARN.priority -> SentryLevel.WARNING
-        else -> SentryLevel.ERROR
-    }
 
 @PublishedApi internal inline fun logAt(
     minLevel: LoggingLevel,
@@ -72,23 +69,12 @@ class LoggingLevel(
     val renderedMessage = message()
 
     if (sendToConsole) {
-        println(color + getCurrentTimestamp() + " " + renderedMessage + COLOR_RESET)
+        println(color + loggerTimestamp() + " " + renderedMessage + COLOR_RESET)
         throwable?.printStackTrace()
     }
 
     if (sendToSentry) {
-        runCatching {
-            val sentryLevel = toSentryLevel(minLevel)
-            Sentry.withScope { scope ->
-                scope.level = sentryLevel
-                if (throwable != null) {
-                    scope.setExtra("logger.message", renderedMessage)
-                    Sentry.captureException(throwable)
-                } else {
-                    Sentry.captureMessage(renderedMessage, sentryLevel)
-                }
-            }
-        }
+        reportCrash(minLevel, throwable, renderedMessage)
     }
 }
 

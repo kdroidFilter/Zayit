@@ -484,6 +484,8 @@
     <string name="search_load_more">טען תוצאות נוספות</string>
     <string name="search_result_count">נמצאו %1$d/%2$d תוצאות</string>
     <string name="search_result_count_complete">נמצאו %1$d תוצאות</string>
+    <string name="search_more_in_book">עוד %1$d תוצאות בספר זה</string>
+    <string name="search_collapse">הסתר</string>
     <string name="search_stop">בטל חיפוש</string>
     <string name="search_near_selector_label">קרבה</string>
     <string name="search_extended_label">חיפוש מורחב (כל הספרים)</string>

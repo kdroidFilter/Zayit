@@ -449,6 +449,13 @@ class SearchResultViewModel(
     private val _searchTree = MutableStateFlow<ImmutableList<SearchTreeCategory>>(persistentListOf())
     val searchTreeFlow: StateFlow<ImmutableList<SearchTreeCategory>> = _searchTree.asStateFlow()
 
+    // Exact per-book hit counts from Lucene facets, used by the grouped result cards
+    // to show "(N results)" without loading every page.
+    val bookFacetCountsFlow: StateFlow<Map<Long, Int>> =
+        _categoryAgg
+            .map { it.bookCounts }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
     init {
         // Compute search tree when visible and results change; emits into _searchTree
         // Skip if facets have been computed (tree is built from facets directly)
@@ -1080,6 +1087,38 @@ class SearchResultViewModel(
                     )
             } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(isLoadingMore = false)
+            }
+        }
+    }
+
+    /**
+     * Load ALL hits for [bookId] under the current query/scope. Used to expand a grouped
+     * result card inline. Opens a dedicated, short-lived session restricted to the book.
+     * ponytail: restricts by bookId + baseBookOnly only; active sidebar TOC/category client
+     * filters aren't re-applied here — consistent with the facet counts shown on the card.
+     */
+    suspend fun loadAllHitsForBook(bookId: Long): List<SearchResult> {
+        val q = currentSearchQuery.takeIf { it.isNotBlank() } ?: _uiState.value.query.trim()
+        if (q.isBlank()) return emptyList()
+        val baseBookOnly = !_uiState.value.globalExtended
+        return withContext(Dispatchers.Default) {
+            val session =
+                lucene.openSession(
+                    query = q,
+                    near = DEFAULT_NEAR,
+                    bookIds = listOf(bookId),
+                    baseBookOnly = baseBookOnly,
+                ) ?: return@withContext emptyList()
+            try {
+                val all = ArrayList<LineHit>()
+                while (true) {
+                    val page = session.nextPage(LAZY_PAGE_SIZE) ?: break
+                    all += page.hits
+                    if (page.isLastPage) break
+                }
+                hitsToResults(all, q)
+            } finally {
+                runCatching { session.close() }
             }
         }
     }

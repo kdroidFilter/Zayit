@@ -2,6 +2,8 @@
 
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
 
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.forMode
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween

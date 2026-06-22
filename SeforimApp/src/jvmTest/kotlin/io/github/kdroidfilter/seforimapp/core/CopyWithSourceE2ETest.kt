@@ -52,7 +52,7 @@ class CopyWithSourceE2ETest {
         driver = JdbcSqliteDriver("jdbc:sqlite:$resolvedDbPath")
         repository = SeforimRepository(resolvedDbPath, driver!!)
 
-        val catalog = CatalogLoader.loadCatalog(resolvedDbPath) ?: return
+        val catalog = runBlocking { CatalogLoader.loadCatalog(resolvedDbPath) } ?: return
         roots = catalog.extractRootCategories()
         val children = catalog.extractCategoryChildren()
         val map = HashMap<Long, Category>(roots.size + children.values.sumOf { it.size })

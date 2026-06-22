@@ -92,7 +92,7 @@ object AppSettings {
     private const val KEY_COMPACT_MODE = "compact_mode"
 
     // Backing Settings storage (can be replaced at startup if needed)
-    @Volatile
+    @kotlin.concurrent.Volatile
     private var settings: Settings = Settings()
 
     // Allow optional initialization with an externally provided Settings instance

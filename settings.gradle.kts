@@ -41,6 +41,7 @@ plugins {
 }
 
 include(":SeforimApp")
+include(":androidApp")
 include(":cataloggen")
 
 include(":jewel")

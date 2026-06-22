@@ -26,7 +26,7 @@ class LinesPagingSource(
         return try {
             val pageNumber = params.key ?: 0
 
-            debugln { "[LinesPagingSource] Loading page $pageNumber, type: ${params.javaClass.simpleName}" }
+            debugln { "[LinesPagingSource] Loading page $pageNumber, type: ${params::class.simpleName}" }
 
             // Determine the range to load based on the load type
             val (startIndex, loadSize) =

@@ -10,6 +10,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 private const val PARALLEL_FILTER_THRESHOLD = 2_000
+private const val DEFAULT_FILTER_PARALLELISM = 4
 
 /**
  * Index structure for fast filtering of search results.
@@ -40,8 +41,13 @@ data class ResultsIndex(
 class ResultsIndexingUseCase {
     private val indexMutex = Mutex()
 
-    @Volatile
+    @kotlin.concurrent.Volatile
     private var cachedIndex: ResultsIndex? = null
+
+    // Reference to the results list the cached index was built from (identity via ===).
+    @kotlin.concurrent.Volatile
+    private var cachedResults: List<SearchResult>? = null
+    private var identityCounter: Int = 0
 
     // TOC indices cache - invalidated when results change
     private var tocIndicesIdentity: Int = -1
@@ -55,14 +61,17 @@ class ResultsIndexingUseCase {
      * @return The built index
      */
     suspend fun ensureIndex(results: List<SearchResult>): ResultsIndex {
-        val identity = System.identityHashCode(results)
         val current = cachedIndex
-        if (current != null && current.identity == identity) return current
+        if (current != null && cachedResults === results) return current
 
         indexMutex.withLock {
             // Double-check after acquiring lock
             val cur2 = cachedIndex
-            if (cur2 != null && cur2.identity == identity) return cur2
+            if (cur2 != null && cachedResults === results) return cur2
+
+            // Monotonic identity for this results list (used to invalidate the TOC cache).
+            val identity = ++identityCounter
+            cachedResults = results
 
             val lineMap = HashMap<Long, Int>(results.size * 2)
 
@@ -194,7 +203,9 @@ class ResultsIndexingUseCase {
         allowedBookIds: Set<Long>,
     ): List<SearchResult> {
         val total = results.size
-        val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
+        // ponytail: fixed parallelism (was Runtime cores) — exact core count isn't worth an
+        // expect/actual for a chunked filter; Dispatchers.Default caps real concurrency anyway.
+        val cores = DEFAULT_FILTER_PARALLELISM
 
         if (total < PARALLEL_FILTER_THRESHOLD || cores == 1) {
             return fastFilterByBookSequential(results, allowedBookIds)

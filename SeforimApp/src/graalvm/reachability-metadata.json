@@ -353,10 +353,68 @@
             "type": "org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat"
         },
         {
+            "type": "org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "org.apache.lucene.codecs.lucene102.Lucene102HnswBinaryQuantizedVectorsFormat",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+
+                    ]
+                }
+            ]
+        },
+        {
             "type": "org.apache.lucene.internal.hppc.FloatArrayList"
         },
         {
             "type": "org.apache.lucene.util.SparseFixedBitSet"
+        },
+        {
+            "type": "dev.nucleusframework.window.tao.render.TaoSyntheticMouseWheelEvent$source$1"
         }
     ],
     "foreign": {
@@ -397,10 +455,13 @@
             "glob": "linux-x86-64/libcudart.so"
         },
         {
-            "glob": "native/lib/tokenizers.properties"
+            "glob": "tokenizers-engine.properties"
         },
         {
-            "glob": "tokenizers-engine.properties"
+            "glob": "META-INF/services/org.apache.lucene.codecs.KnnVectorsFormat"
+        },
+        {
+            "glob": "META-INF/services/org.apache.lucene.codecs.hnsw.FlatVectorsFormat"
         }
     ]
 }

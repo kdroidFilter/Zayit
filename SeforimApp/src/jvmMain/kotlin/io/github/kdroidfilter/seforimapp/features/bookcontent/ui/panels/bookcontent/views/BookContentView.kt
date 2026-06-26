@@ -644,19 +644,29 @@ fun BookContentView(
         }
     }
 
-    // Smart mode: get highlight terms from search engine with dictionary expansion
+    // Smart find = embedding-based (vs simple mode which matches literal words): for the typed
+    // query we fetch the lines of THIS book closest in meaning (dense KNN over the index) and the
+    // passage to highlight in each. Per-line highlight reads from this map; navigation jumps
+    // between its lines. Computed off-main; empty when dense search is unavailable.
     val appGraph = LocalAppGraph.current
-    val smartHighlightTerms by remember(smartModeEnabled, findState) {
-        derivedStateOf {
-            if (smartModeEnabled) {
-                val query = findState.text.toString()
-                if (query.length >= 2) {
-                    appGraph.searchEngine.buildHighlightTerms(query)
-                } else {
-                    emptyList()
+    val semanticFindIds by androidx.compose.runtime.produceState<Set<Long>>(
+        emptySet(),
+        smartModeEnabled,
+        persistedFindQuery,
+        bookId,
+    ) {
+        val query = persistedFindQuery
+        value = if (!smartModeEnabled || query.length < 2) {
+            emptySet()
+        } else {
+            withContext(kotlinx.coroutines.Dispatchers.Default) {
+                try {
+                    appGraph.searchEngine.semanticFind(query, bookId, SMART_FIND_LIMIT).toSet()
+                } catch (c: kotlinx.coroutines.CancellationException) {
+                    throw c // composition left / keys changed — not a real failure
+                } catch (_: Throwable) {
+                    emptySet()
                 }
-            } else {
-                emptyList()
             }
         }
     }
@@ -767,11 +777,18 @@ fun BookContentView(
             while (guard++ < size) {
                 i = (i + step + size) % size
                 val line = snapshot[i] ?: continue
-                val text =
-                    plainTextCache.getOrPut(line.id) {
-                        buildAnnotatedFromHtml(line.content, textSize).text
+                // Smart mode jumps between semantically-matched lines; simple mode finds the
+                // literal query. In smart mode the highlight span is the line's whole passage.
+                val start =
+                    if (smartModeEnabled) {
+                        if (line.id in semanticFindIds) 0 else -1
+                    } else {
+                        val text =
+                            plainTextCache.getOrPut(line.id) {
+                                buildAnnotatedFromHtml(line.content, textSize).text
+                            }
+                        findAllMatchesOriginal(text, query).firstOrNull()?.first ?: -1
                     }
-                val start = findAllMatchesOriginal(text, query).firstOrNull()?.first ?: -1
                 if (start >= 0) {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         currentHitLineIndex = i
@@ -934,6 +951,26 @@ fun BookContentView(
                     val line = lazyPagingItems[index]
 
                     if (line != null) {
+                        // Smart find: this line's passage closest in meaning to the query, computed
+                        // on the DISPLAYED text (same HTML pipeline as rendering) so the span is
+                        // always found back — short passages included. Falls back to the whole line.
+                        val isSmartMatch = showFind && smartModeEnabled && line.id in semanticFindIds
+                        val smartPassage by androidx.compose.runtime.produceState<String?>(
+                            null,
+                            line.id,
+                            persistedFindQuery,
+                            isSmartMatch,
+                        ) {
+                            value = if (!isSmartMatch || persistedFindQuery.length < 2) {
+                                null
+                            } else {
+                                withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                    val plain = buildAnnotatedFromHtml(line.content, textSize).text
+                                    runCatching { appGraph.searchEngine.semanticSpan(persistedFindQuery, plain) }
+                                        .getOrNull() ?: plain.trim().ifBlank { null }
+                                }
+                            }
+                        }
                         val altHeadings = altHeadingsByLineId[line.id]
                         val isCurrentSelected = line.id in selectedLineIds
                         val useThickBar = shouldUseThickBar(line.id, primarySelectedLineId, isTocEntrySelection)
@@ -1028,8 +1065,15 @@ fun BookContentView(
                                         lineHeight = lineHeight,
                                         boldScale = boldScaleForPlatform,
                                         highlightQuery =
-                                            findState.text.toString().takeIf { showFind && !smartModeEnabled },
-                                        highlightTerms = smartHighlightTerms.takeIf { showFind && smartModeEnabled },
+                                            when {
+                                                !showFind -> null
+                                                // Smart mode: highlight this line's own semantic
+                                                // passage (one contiguous span) if it's a match;
+                                                // simple mode: the literal query.
+                                                smartModeEnabled -> smartPassage
+                                                else -> findState.text.toString()
+                                            },
+                                        highlightTerms = null,
                                         currentMatchStart =
                                             if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
                                         annotatedCache = stableAnnotatedCache,
@@ -1143,24 +1187,27 @@ fun BookContentView(
             // Compute total matches across currently loaded snapshot (approximate)
             val queryText = findState.text.toString()
             val snapshotItems = lazyPagingItems.itemSnapshotList.items
-            val matchCount by produceState(0, queryText, snapshotItems) {
+            // Smart mode counts semantically-matched lines; simple mode counts literal matches
+            // across the loaded snapshot (approximate).
+            val matchCount by produceState(0, queryText, snapshotItems, smartModeEnabled, semanticFindIds) {
                 value =
-                    if (queryText.length < 2) {
-                        0
-                    } else {
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                            var total = 0
-                            for (ln in snapshotItems) {
-                                val text =
-                                    try {
-                                        buildAnnotatedFromHtml(ln.content, textSize).text
-                                    } catch (_: Throwable) {
-                                        ln.content
-                                    }
-                                total += findAllMatchesOriginal(text, queryText).size
+                    when {
+                        queryText.length < 2 -> 0
+                        smartModeEnabled -> semanticFindIds.size
+                        else ->
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                var total = 0
+                                for (ln in snapshotItems) {
+                                    val text =
+                                        try {
+                                            buildAnnotatedFromHtml(ln.content, textSize).text
+                                        } catch (_: Throwable) {
+                                            ln.content
+                                        }
+                                    total += findAllMatchesOriginal(text, queryText).size
+                                }
+                                total
                             }
-                            total
-                        }
                     }
             }
             Row(
@@ -1214,6 +1261,9 @@ internal val LineItemVerticalPaddingPerSide = 8.dp
 // since scrolling down is the dominant direction in a reading app.
 private const val HTML_PREFETCH_AHEAD = 16
 private const val HTML_PREFETCH_BEHIND = 8
+
+// Smart (embedding) find: max semantically-closest lines fetched per query for the current book.
+private const val SMART_FIND_LIMIT = 60
 
 // Data class for anchor information
 private data class AnchorData(

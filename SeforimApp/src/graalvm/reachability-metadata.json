@@ -281,6 +281,82 @@
                     ]
                 }
             ]
+        },
+        {
+            "type": "ai.djl.huggingface.tokenizers.jni.CharSpan",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "int",
+                        "int"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "ai.djl.huggingface.tokenizers.jni.CharSpan[]"
+        },
+        {
+            "type": "ai.onnxruntime.OnnxTensor",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "long",
+                        "long",
+                        "ai.onnxruntime.TensorInfo"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "ai.onnxruntime.TensorInfo",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "long[]",
+                        "java.lang.String[]",
+                        "int"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "dev.nucleusframework.window.tao.render.TaoSyntheticKeyKt$SyntheticAwtKeyEventSource$1"
+        },
+        {
+            "type": "float[][]"
+        },
+        {
+            "type": "java.io.FileNotFoundException",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "java.lang.String"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "org.apache.lucene.codecs.KnnVectorsFormat"
+        },
+        {
+            "type": "org.apache.lucene.codecs.hnsw.FlatVectorsFormat"
+        },
+        {
+            "type": "org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat"
+        },
+        {
+            "type": "org.apache.lucene.internal.hppc.FloatArrayList"
+        },
+        {
+            "type": "org.apache.lucene.util.SparseFixedBitSet"
         }
     ],
     "foreign": {
@@ -305,6 +381,26 @@
         ]
     },
     "resources": [
-        
+        {
+            "glob": "ai/onnxruntime/native/linux-x64/libonnxruntime.so"
+        },
+        {
+            "glob": "ai/onnxruntime/native/linux-x64/libonnxruntime4j_jni.so"
+        },
+        {
+            "glob": "ai/onnxruntime/native/linux-x64/libonnxruntime_providers_shared.so"
+        },
+        {
+            "glob": "libcudart.so"
+        },
+        {
+            "glob": "linux-x86-64/libcudart.so"
+        },
+        {
+            "glob": "native/lib/tokenizers.properties"
+        },
+        {
+            "glob": "tokenizers-engine.properties"
+        }
     ]
 }

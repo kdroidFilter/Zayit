@@ -30,6 +30,8 @@ import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourc
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.kdroidfilter.seforimlibrary.search.HybridSearchEngine
+import io.github.kdroidfilter.seforimlibrary.search.LineHit
 import io.github.kdroidfilter.seforimlibrary.search.LuceneSearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import java.nio.file.Paths
@@ -98,6 +100,16 @@ object AppCoreBindings {
         return SeforimRepository(dbPath, driver)
     }
 
+    /**
+     * The app's search engine. Returns a HYBRID engine (lexical BM25 + MagicDictionary
+     * FUSED with dense semantic search via the v5 embedding model, RRF) over a SINGLE
+     * Lucene index that holds both the text fields and the dense vectors.
+     * It implements [SearchEngine], so the rest of the app uses it transparently.
+     *
+     * Degrades gracefully to pure lexical if the embedding model is absent (the app
+     * works with or without the model from the SeforimEmbedding project). The dense
+     * path uses the model bundled next to the DB (or `-DseforimEmbedModelDir`).
+     */
     @Provides
     @SingleIn(AppScope::class)
     fun provideSearchEngine(repository: SeforimRepository): SearchEngine {
@@ -105,7 +117,29 @@ object AppCoreBindings {
         val indexPath = Paths.get(if (dbPath.endsWith(".db")) "$dbPath.lucene" else "$dbPath.luceneindex")
         val dictionaryPath = indexPath.resolveSibling("lexical.db")
         val snippetProvider = RepositorySnippetSourceProvider(repository)
-        return LuceneSearchEngine(indexPath, snippetProvider, dictionaryPath = dictionaryPath)
+        val lexical = LuceneSearchEngine(indexPath, snippetProvider, dictionaryPath = dictionaryPath)
+        // Single fused index: dense vectors live in the SAME Lucene index as the text
+        // (seforim.db.lucene), so the dense searcher opens that same directory.
+        // The embedding model is bundled next to the DB (extracted from the .tar.zst),
+        // so the embedder looks in the database directory.
+        val modelDir = Paths.get(dbPath).parent
+        return HybridSearchEngine.create(lexical, indexDir = indexPath, modelDir = modelDir) { lineId, _, query ->
+            val line = repository.getLine(lineId)
+            if (line == null) {
+                null
+            } else {
+                val title = repository.getBook(line.bookId)?.title ?: ""
+                LineHit(
+                    bookId = line.bookId,
+                    bookTitle = title,
+                    lineId = lineId,
+                    lineIndex = line.lineIndex,
+                    snippet = lexical.buildSnippet(line.content, query, 5),
+                    score = 0f,
+                    rawText = line.content,
+                )
+            }
+        }
     }
 
     @Provides

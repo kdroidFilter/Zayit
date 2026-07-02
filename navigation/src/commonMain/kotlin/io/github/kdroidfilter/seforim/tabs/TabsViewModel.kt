@@ -33,6 +33,13 @@ class TabsViewModel(
 ) : ViewModel() {
     private var _nextTabId = 2
 
+    /**
+     * Chrome-like last-tab behavior: when set, closing the window's last tab removes it and
+     * delegates here (typically: close the window, or quit when it's the last one) instead of
+     * the legacy fallback of replacing the tab with a fresh Home.
+     */
+    var onLastTabClosed: ((TabItem) -> Unit)? = null
+
     /** When true, the next tab state change should not animate new tabs. Reset by the view after consuming. */
     private val _skipNextAnimation = MutableStateFlow(false)
     val skipNextAnimation: StateFlow<Boolean> = _skipNextAnimation.asStateFlow()
@@ -98,10 +105,17 @@ class TabsViewModel(
         if (index < 0 || index >= currentTabs.size) return
 
         if (currentTabs.size == 1) {
-            replaceCurrentTabWithNewTabId(
-                TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString()),
-            )
-            _state.update { it.copy(selectedTabIndex = 0) }
+            val handler = onLastTabClosed
+            if (handler != null) {
+                val removed = currentTabs[0]
+                _state.value = TabsState(tabs = emptyList(), selectedTabIndex = 0)
+                handler(removed)
+            } else {
+                replaceCurrentTabWithNewTabId(
+                    TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString()),
+                )
+                _state.update { it.copy(selectedTabIndex = 0) }
+            }
             return
         }
 

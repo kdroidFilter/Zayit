@@ -79,6 +79,8 @@
     <string name="desktop_new">מרחב חדש</string>
     <string name="desktop_rename">שנה שם</string>
     <string name="desktop_delete">מחק</string>
+    <string name="desktop_open_in_new_window">פתח בחלון חדש</string>
+    <string name="menu_new_window">חלון חדש</string>
 
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>

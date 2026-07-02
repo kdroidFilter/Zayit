@@ -97,6 +97,14 @@ The `SeforimLibrary` composite build provides the core functionality for Jewish 
 - **Dependencies**: Core + DAO + Lucene + JSoup + compression libraries
 - **Platform**: JVM only (heavy processing)
 
+### Multi-Window & Virtual Desktops
+The app is multi-window (Chrome-style tabs + drag & drop between windows). A virtual
+desktop = a user-curated set of tabs in 1..n windows; several desktops can be open at
+once, each in its own window(s). `DesktopManager` owns desktops/windows; each
+`OpenWindow` carries a window-scoped `TabsViewModel` + `SearchHomeViewModel` and its
+`WindowState` (geometry persisted & restored). `TabDockManager` handles cross-window
+tab drag & drop. See `TAB_SYSTEM_README.md`.
+
 ### Memory-Efficient Tab System
 See `TAB_SYSTEM_README.md` for complete details. Key points:
 - Each tab owns its own `SimpleTabViewModelOwner` (ViewModel lifecycle), which stays alive while the tab exists
@@ -180,14 +188,17 @@ See `TAB_SYSTEM_README.md` for complete details. Key points:
 
 ### Tab System Usage
 ```kotlin
-// Open new tab
-val tabsVm = LocalAppGraph.current.tabsViewModel
+// Open new tab in the current window (TabsViewModel is window-scoped, via LocalOpenWindow)
+val tabsVm = LocalOpenWindow.current.tabsViewModel
 scope.launch {
     tabsVm.openTab(TabsDestination.BookContent(bookId = "123", tabId = UUID.randomUUID().toString()))
 }
 
 // Replace current tab destination
 tabsVm.replaceCurrentTabDestination(TabsDestination.Home(currentTabId))
+
+// From a per-tab ViewModel (no composition): resolve the hosting window at call time
+desktopManager.tabsViewModelFor(tabId)?.openTab(destination)
 ```
 
 ### ViewModel Creation

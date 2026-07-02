@@ -36,6 +36,15 @@ class TabPersistedStateStore {
         states.remove(tabId)
     }
 
+    fun removeAll(tabIds: Collection<String>) {
+        tabIds.forEach { states.remove(it) }
+    }
+
+    /** Loads a desktop's saved states without touching entries of other open desktops. */
+    fun putAll(snapshot: Map<String, TabPersistedState>) {
+        states.putAll(snapshot)
+    }
+
     fun clearAll() {
         states.clear()
     }

@@ -3,9 +3,16 @@ package io.github.kdroidfilter.seforimapp.framework.desktop
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import io.github.kdroidfilter.seforimapp.logger.debugln
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
@@ -35,6 +42,10 @@ class TabDockManager(
         val boundsOnScreen: () -> Rect?,
         /** Model insertion index for a drop at the given logical screen X (handles RTL). */
         val dropIndexFor: (screenX: Float) -> Int,
+        /** Drop hit-test in the window's OWN px space (Wayland pending-drop path). */
+        val dropAreaContainsWindowPx: (Offset) -> Boolean,
+        /** Insertion index for a drop at the given window-px X (Wayland pending-drop path). */
+        val dropIndexForWindowPx: (xPx: Float) -> Int,
     )
 
     /**
@@ -46,6 +57,12 @@ class TabDockManager(
         val x: Float,
         val y: Float,
         val visible: Boolean,
+        /**
+         * Drag-source window. On Linux the ghost is created as a popup overlay of it
+         * (wl_subsurface on native Wayland — the only client-positionable window kind
+         * under xdg-shell, so the ghost can actually follow the pointer there).
+         */
+        val sourceWindow: dev.nucleusframework.application.NucleusWindow? = null,
     )
 
     private val targets = LinkedHashMap<String, StripTarget>()
@@ -54,6 +71,29 @@ class TabDockManager(
     val ghost: StateFlow<GhostState?> = _ghost.asStateFlow()
 
     private var session: Session? = null
+
+    /**
+     * Wayland-only deferred drop. Screen-coordinate hit-testing is meaningless on
+     * native Wayland (every window reports a compositor-fake origin), so the drop
+     * target is identified the only way the protocol allows: when the button-held
+     * grab ends, the compositor re-evaluates pointer focus and the window under
+     * the cursor receives a pointer-enter — with coordinates in its own space.
+     * [onWindowPointerSample] resolves the pending drop from that sample; if no
+     * window reports one within [PENDING_DROP_TIMEOUT_MS] the tab detaches into a
+     * new window, as a void release always did.
+     */
+    private class PendingDrop(
+        val tabId: String,
+        val sourceWindowId: String,
+        val lastScreen: Offset,
+    )
+
+    private var pendingDrop: PendingDrop? = null
+    private var pendingDropJob: Job? = null
+
+    /** App-lifetime scope for the pending-drop timeout (main thread: mutates window state). */
+    @StructuredScope
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private class Session(
         val tabId: String,
@@ -134,6 +174,7 @@ class TabDockManager(
                     x = screen.x + GHOST_POINTER_OFFSET,
                     y = screen.y + GHOST_POINTER_OFFSET,
                     visible = true,
+                    sourceWindow = desktopManager.window(s.sourceWindowId)?.nucleusWindow,
                 )
             } else {
                 // Keep the ghost window alive (hidden) while the session lasts so re-crossing the
@@ -168,16 +209,71 @@ class TabDockManager(
         debugln { "[TabDockManager] hit=${hit?.windowId ?: "none → detach"}" }
         if (hit != null) {
             desktopManager.moveTabToWindow(s.tabId, s.sourceWindowId, hit.windowId, hit.dropIndexFor(p.x))
+        } else if (isNativeWayland && targets.size > 1) {
+            // Defer: the pointer-enter the compositor is about to send to the
+            // window under the cursor is the only reliable cross-window drop
+            // signal on Wayland. See [PendingDrop].
+            pendingDropJob?.cancel()
+            pendingDrop = PendingDrop(s.tabId, s.sourceWindowId, p)
+            pendingDropJob =
+                scope.launch {
+                    delay(PENDING_DROP_TIMEOUT_MS)
+                    resolvePendingDropAsDetach()
+                }
         } else {
-            // ponytail: dragging a single-tab window's only tab is a no-op (detach returns null);
-            // Chrome would move the whole window — add if users ask.
-            desktopManager.detachTabToNewWindow(
-                tabId = s.tabId,
-                fromWindowId = s.sourceWindowId,
-                screenX = (p.x - NEW_WINDOW_POINTER_OFFSET_X).roundToInt(),
-                screenY = (p.y - NEW_WINDOW_POINTER_OFFSET_Y).roundToInt(),
-            )
+            detach(s.tabId, s.sourceWindowId, p)
         }
+    }
+
+    /**
+     * Pointer sample from any window (root-level Initial-pass observer in
+     * MainAppWindow). Only consulted while a Wayland [PendingDrop] is armed.
+     */
+    fun onWindowPointerSample(
+        windowId: String,
+        positionInWindowPx: Offset,
+    ) {
+        val pd = pendingDrop ?: return
+        if (windowId == pd.sourceWindowId) return
+        val target = targets[windowId] ?: return
+        pendingDropJob?.cancel()
+        pendingDrop = null
+        if (target.dropAreaContainsWindowPx(positionInWindowPx)) {
+            debugln { "[TabDockManager] pending drop resolved onto $windowId" }
+            desktopManager.moveTabToWindow(
+                pd.tabId,
+                pd.sourceWindowId,
+                windowId,
+                target.dropIndexForWindowPx(positionInWindowPx.x),
+            )
+        } else {
+            // Released over another window's body — same outcome as the void.
+            detach(pd.tabId, pd.sourceWindowId, pd.lastScreen)
+        }
+    }
+
+    fun hasPendingDrop(): Boolean = pendingDrop != null
+
+    private fun resolvePendingDropAsDetach() {
+        val pd = pendingDrop ?: return
+        pendingDrop = null
+        debugln { "[TabDockManager] pending drop timed out → detach" }
+        detach(pd.tabId, pd.sourceWindowId, pd.lastScreen)
+    }
+
+    private fun detach(
+        tabId: String,
+        sourceWindowId: String,
+        p: Offset,
+    ) {
+        // ponytail: dragging a single-tab window's only tab is a no-op (detach returns null);
+        // Chrome would move the whole window — add if users ask.
+        desktopManager.detachTabToNewWindow(
+            tabId = tabId,
+            fromWindowId = sourceWindowId,
+            screenX = (p.x - NEW_WINDOW_POINTER_OFFSET_X).roundToInt(),
+            screenY = (p.y - NEW_WINDOW_POINTER_OFFSET_Y).roundToInt(),
+        )
     }
 
     /** Leaving this area around the source strip switches from reorder to detach mode. */
@@ -201,6 +297,14 @@ class TabDockManager(
         )
 
     private companion object {
+        /** True on a native Wayland session (Tao backend not forced onto XWayland). */
+        val isNativeWayland: Boolean =
+            System.getProperty("os.name").lowercase().contains("linux") &&
+                !System.getenv("WAYLAND_DISPLAY").isNullOrEmpty() &&
+                !"x11".equals(System.getenv("NUCLEUS_TAO_LINUX_RENDERER"), ignoreCase = true) &&
+                !"x11".equals(System.getenv("GDK_BACKEND"), ignoreCase = true)
+
+        const val PENDING_DROP_TIMEOUT_MS = 300L
         const val GHOST_POINTER_OFFSET = 14f
         const val NEW_WINDOW_POINTER_OFFSET_X = 120f
         const val NEW_WINDOW_POINTER_OFFSET_Y = 24f

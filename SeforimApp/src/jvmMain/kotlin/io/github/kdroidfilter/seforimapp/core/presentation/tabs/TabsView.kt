@@ -429,6 +429,8 @@ private fun RtlAwareTabStripContent(
                     windowPxToScreen = stripGeometry::windowPxToScreen,
                     boundsOnScreen = stripGeometry::dropAreaBoundsOnScreen,
                     dropIndexFor = stripGeometry::dropIndexFor,
+                    dropAreaContainsWindowPx = stripGeometry::dropAreaContainsWindowPx,
+                    dropIndexForWindowPx = stripGeometry::dropIndexForWindowPx,
                 ),
             )
             onDispose {
@@ -1154,6 +1156,34 @@ private class StripGeometry(
         if (tabWidth <= 0f) return tabCount
         val visualIndex = ((screenX - bounds.left) / tabWidth).roundToInt().coerceIn(0, tabCount)
         return if (isRtl) tabCount - visualIndex else visualIndex
+    }
+
+    /**
+     * Window-px variants of the drop hit-test/index, for the Wayland pending-drop
+     * path where cross-window screen coordinates don't exist (the drop target is
+     * identified by the pointer-enter it receives right after the drag ends, with
+     * coordinates in ITS OWN window space).
+     */
+    fun dropAreaContainsWindowPx(p: Offset): Boolean {
+        val area = dropAreaBoundsInWindow() ?: return false
+        val d = safeDensity()
+        return p.x >= area.left &&
+            p.x <= area.right &&
+            p.y >= area.top - DROP_SLACK_TOP_DP * d &&
+            p.y <= area.bottom + DROP_SLACK_Y_DP * d
+    }
+
+    fun dropIndexForWindowPx(xPx: Float): Int {
+        val bounds = tabsBoundsInWindow ?: return tabCount
+        if (tabWidthPx <= 0f) return tabCount
+        val visualIndex = ((xPx - bounds.left) / tabWidthPx).roundToInt().coerceIn(0, tabCount)
+        return if (isRtl) tabCount - visualIndex else visualIndex
+    }
+
+    private companion object {
+        // Mirrors TabDockManager's screen-space drop slack (logical dp).
+        const val DROP_SLACK_TOP_DP = 40f
+        const val DROP_SLACK_Y_DP = 16f
     }
 }
 

@@ -58,6 +58,10 @@ fun NucleusApplicationScope.TabDragGhostWindow(dockManager: TabDockManager) {
         focusable = false,
         alwaysOnTop = true,
         undecorated = true,
+        // Linux: popup overlay of the drag-source window — on native Wayland this maps
+        // the ghost as a wl_subsurface, the only window kind a client can position, so
+        // it can follow the pointer (a plain toplevel is compositor-placed and frozen).
+        popupFor = g.sourceWindow,
     ) {
         Box(
             modifier =

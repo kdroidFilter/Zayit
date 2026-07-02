@@ -21,6 +21,8 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPlacement
@@ -269,7 +271,24 @@ fun NucleusApplicationScope.MainAppWindow(
                     Modifier
                         .fillMaxSize()
                         .detectTouchMode { isTouchMode = it }
-                        .onPreviewKeyEvent { keyEvent ->
+                        // Wayland pending-drop resolution: while a cross-window tab drop is
+                        // awaiting its target, the first pointer sample this window receives
+                        // (the compositor's post-release pointer-enter) identifies it as the
+                        // window under the cursor. Non-consuming, no-op otherwise.
+                        .pointerInput(openWindow.id) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val e = awaitPointerEvent(PointerEventPass.Initial)
+                                    val dock = appGraph.tabDockManager
+                                    if (dock.hasPendingDrop()) {
+                                        dock.onWindowPointerSample(
+                                            openWindow.id,
+                                            e.changes.first().position,
+                                        )
+                                    }
+                                }
+                            }
+                        }.onPreviewKeyEvent { keyEvent ->
                             if (keyEvent.type == KeyEventType.KeyDown) {
                                 val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
                                 when {

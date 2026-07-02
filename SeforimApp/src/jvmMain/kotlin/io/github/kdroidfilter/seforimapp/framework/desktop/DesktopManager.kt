@@ -271,16 +271,22 @@ class DesktopManager(
         val item = from.tabsViewModel.takeTab(tabId) ?: return null
         val desktopId = from.desktopId.value
         // Chrome-like: the detached window floats noticeably smaller than the (often maximized)
-        // source window, under the cursor — it must never inherit a maximized footprint.
+        // source window — it must never inherit a maximized footprint. With pointer coordinates
+        // (drag & drop) it lands under the cursor; without (context-menu action) it cascades
+        // from the source window.
         val sourceGeometry = from.windowState.toSavedGeometry()
         val geometry =
-            SavedGeometry(
-                x = screenX ?: SavedGeometry.UNSPECIFIED,
-                y = screenY ?: SavedGeometry.UNSPECIFIED,
-                width = (sourceGeometry.width * 3 / 4).coerceIn(640, 1200),
-                height = (sourceGeometry.height * 3 / 4).coerceIn(480, 840),
-                placement = "Floating",
-            )
+            if (screenX != null && screenY != null) {
+                SavedGeometry(
+                    x = screenX,
+                    y = screenY,
+                    width = (sourceGeometry.width * 3 / 4).coerceIn(640, 1200),
+                    height = (sourceGeometry.height * 3 / 4).coerceIn(480, 840),
+                    placement = "Floating",
+                )
+            } else {
+                cascadedFloatingGeometry(null)
+            }
         val snapshot =
             WindowSnapshot(
                 destinations = listOf(item.destination),

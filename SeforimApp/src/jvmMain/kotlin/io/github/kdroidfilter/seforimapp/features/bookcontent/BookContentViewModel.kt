@@ -15,6 +15,7 @@ import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactoryKey
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
+import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
@@ -24,6 +25,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.BookContentUseCaseFactory
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -45,6 +47,7 @@ class BookContentViewModel(
     private val useCaseFactory: BookContentUseCaseFactory,
     private val titleUpdateManager: TabTitleUpdateManager,
     private val desktopManager: DesktopManager,
+    private val historyStore: HistoryStore,
 ) : ViewModel() {
     @AssistedFactory
     @ViewModelAssistedFactoryKey(BookContentViewModel::class)
@@ -58,6 +61,10 @@ class BookContentViewModel(
     }
 
     internal val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
+
+    // True when this ViewModel was created by the boot session restore: its book was already
+    // recorded when originally opened, so the first load must not re-enter the history.
+    private val createdDuringSessionRestore = SessionManager.isRestoringSession.value
 
     // Pre-set loading before uiState is initialized to avoid a single-frame Home flash.
     private val hasBookToLoad: Boolean =
@@ -272,6 +279,44 @@ class BookContentViewModel(
                     // This provides a stable starting window for Paging3 so scroll restoration can be exact.
                     loadBookById(bookIdToOpen, lineId = null, triggerScroll = false)
                 }
+            }
+
+            // Record ONE history entry per book OPENED in this tab, with the TOC position it
+            // opened at (Chrome records the navigation, not every position read afterwards).
+            // The position is read 2s after the open so the breadcrumb has settled. Tabs
+            // restored at boot and background compositions (hover preload, LRU rebuilds)
+            // don't record.
+            launch {
+                @OptIn(kotlinx.coroutines.FlowPreview::class)
+                stateManager.state
+                    .map { it.navigation.selectedBook?.id }
+                    .filterNotNull()
+                    .distinctUntilChanged()
+                    .drop(if (createdDuringSessionRestore) 1 else 0)
+                    .debounce(HISTORY_RECORD_DEBOUNCE_MS)
+                    .collect { openedBookId ->
+                        // Only the tab actually in front records a visit
+                        val hostTabs = desktopManager.tabsViewModelFor(tabId)?.state?.value ?: return@collect
+                        val selectedTabId =
+                            hostTabs.tabs
+                                .getOrNull(hostTabs.selectedTabIndex)
+                                ?.destination
+                                ?.tabId
+                        if (selectedTabId != tabId) return@collect
+
+                        val state = stateManager.state.value
+                        val book = state.navigation.selectedBook?.takeIf { it.id == openedBookId } ?: return@collect
+                        val toc = state.toc.breadcrumbPath.lastOrNull()
+                        // Some books' root TOC entry repeats the book title — avoid "X - X"
+                        val tocLabel = toc?.text?.takeIf { it.isNotBlank() && it != book.title }
+                        historyStore.recordBookVisit(
+                            bookId = book.id,
+                            title = if (tocLabel != null) "${book.title} - $tocLabel" else book.title,
+                            timestamp = System.currentTimeMillis(),
+                            tocEntryId = toc?.id,
+                            lineId = toc?.lineId,
+                        )
+                    }
             }
 
             // Observe the selected book and current TOC to update the title
@@ -1031,3 +1076,5 @@ class BookContentViewModel(
         )
     }
 }
+
+private const val HISTORY_RECORD_DEBOUNCE_MS = 2_000L

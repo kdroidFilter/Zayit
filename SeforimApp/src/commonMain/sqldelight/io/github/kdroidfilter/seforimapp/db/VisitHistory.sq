@@ -1,0 +1,39 @@
+-- Chrome-like visit history: one row per visited target (opened book / executed search),
+-- deduplicated by key ("book:<id>" / "search:<query>"); revisits bump visitedAt + visitCount.
+CREATE TABLE IF NOT EXISTS visit_history (
+    key TEXT NOT NULL PRIMARY KEY,
+    kind TEXT NOT NULL,
+    bookId INTEGER,
+    searchQuery TEXT,
+    title TEXT NOT NULL,
+    visitedAt INTEGER NOT NULL,
+    visitCount INTEGER NOT NULL DEFAULT 1,
+    tocEntryId INTEGER,
+    lineId INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_visit_history_time ON visit_history(visitedAt);
+
+upsertVisit:
+INSERT INTO visit_history(key, kind, bookId, searchQuery, title, visitedAt, visitCount, tocEntryId, lineId)
+VALUES (:key, :kind, :bookId, :searchQuery, :title, :visitedAt, 1, :tocEntryId, :lineId)
+ON CONFLICT(key) DO UPDATE SET
+    visitedAt = excluded.visitedAt,
+    title = excluded.title,
+    lineId = excluded.lineId,
+    visitCount = visitCount + 1;
+
+selectRecent:
+SELECT * FROM visit_history ORDER BY visitedAt DESC LIMIT :limitCount;
+
+searchByTitle:
+SELECT * FROM visit_history
+WHERE title LIKE '%' || :query || '%'
+ORDER BY visitedAt DESC
+LIMIT :limitCount;
+
+deleteByKey:
+DELETE FROM visit_history WHERE key = :key;
+
+deleteAll:
+DELETE FROM visit_history;

@@ -33,6 +33,9 @@ class OpenWindow internal constructor(
     private val _isSwitching = MutableStateFlow(false)
     val isSwitching: StateFlow<Boolean> = _isSwitching.asStateFlow()
 
+    /** Visibility of this window's tab-search popup (title-bar button / Cmd+Shift+A). */
+    val tabSearchVisible = MutableStateFlow(false)
+
     /** Attached by the window composable once the native window exists; used for toFront/focus. */
     @Volatile
     var nucleusWindow: NucleusWindow? = null

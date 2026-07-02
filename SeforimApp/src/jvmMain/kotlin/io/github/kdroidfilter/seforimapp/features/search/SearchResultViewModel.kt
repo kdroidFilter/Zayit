@@ -16,6 +16,7 @@ import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactoryKey
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
+import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.search.domain.BuildSearchTreeUseCase
@@ -85,6 +86,7 @@ class SearchResultViewModel(
     private val lucene: SearchEngine,
     private val titleUpdateManager: TabTitleUpdateManager,
     private val desktopManager: DesktopManager,
+    private val historyStore: HistoryStore,
 ) : ViewModel() {
     @AssistedFactory
     @ViewModelAssistedFactoryKey(SearchResultViewModel::class)
@@ -817,6 +819,8 @@ class SearchResultViewModel(
     fun executeSearch() {
         val q = _uiState.value.query.trim()
         if (q.isBlank()) return
+        // Record the executed search into the visit history (deduplicated by query)
+        viewModelScope.launch { historyStore.recordSearchVisit(q, System.currentTimeMillis()) }
         // New search: clear any previous streaming job and reset scroll/anchor state
         currentJob?.cancel()
         _breadcrumbs.value = persistentMapOf()

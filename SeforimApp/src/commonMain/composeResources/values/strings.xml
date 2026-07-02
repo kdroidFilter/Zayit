@@ -81,6 +81,16 @@
     <string name="desktop_delete">מחק</string>
     <string name="desktop_open_in_new_window">פתח בחלון חדש</string>
     <string name="tab_open_in_new_window">פתח בחלון חדש</string>
+    <string name="tab_search_tooltip">חיפוש בלשוניות ובהיסטוריה</string>
+    <string name="tab_search_placeholder">חיפוש…</string>
+    <string name="tab_search_no_results">אין תוצאות</string>
+    <string name="tab_search_show_all_history">הצג את כל ההיסטוריה</string>
+    <string name="history_title">היסטוריה</string>
+    <string name="history_clear_all">נקה היסטוריה</string>
+    <string name="history_today">היום</string>
+    <string name="history_yesterday">אתמול</string>
+    <string name="history_empty">ההיסטוריה ריקה</string>
+    <string name="menu_recently_visited">ביקורים אחרונים</string>
     <string name="menu_new_window">חלון חדש</string>
 
     <!-- Tabs View -->

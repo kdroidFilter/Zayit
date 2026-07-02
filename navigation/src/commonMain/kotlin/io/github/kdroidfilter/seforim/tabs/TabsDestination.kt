@@ -29,4 +29,11 @@ sealed interface TabsDestination {
         override val tabId: String,
         val lineId: Long? = null,
     ) : TabsDestination
+
+    /** Full visit-history page (the chrome://history equivalent). */
+    @Serializable
+    @Immutable
+    data class History(
+        override val tabId: String,
+    ) : TabsDestination
 }

@@ -1,8 +1,12 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import dev.nucleusframework.menu.macos.NativeKeyShortcut
 import dev.nucleusframework.menu.macos.NativeMenuBar
 import dev.nucleusframework.menu.macos.NsMenuItemImage
@@ -13,6 +17,8 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
+import io.github.kdroidfilter.seforimapp.core.history.VisitEntry
+import io.github.kdroidfilter.seforimapp.core.history.VisitKind
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
@@ -20,8 +26,10 @@ import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.compose.resources.stringResource
 import seforimapp.seforimapp.generated.resources.*
+import java.util.UUID
 
 @Composable
 fun AppNativeMenuBar(
@@ -38,6 +46,42 @@ fun AppNativeMenuBar(
     val persistSession by AppSettings.persistSessionFlow.collectAsState()
     val closeTreeOnNewBook by AppSettings.closeBookTreeOnNewBookSelectedFlow.collectAsState()
     val tabsState by tabsViewModel.state.collectAsState()
+
+    // Chrome-like History menu data: recent visits, refreshed on every history write
+    val historyStore = LocalAppGraph.current.historyStore
+    val historyRevision by historyStore.revision.collectAsState()
+    var recentVisits by remember { mutableStateOf<List<VisitEntry>>(emptyList()) }
+    LaunchedEffect(historyRevision) {
+        recentVisits = historyStore.query("", RECENT_VISITS_IN_MENU)
+    }
+
+    fun openFullHistory() {
+        val tabs = tabsViewModel.state.value.tabs
+        val existing = tabs.indexOfFirst { it.destination is TabsDestination.History }
+        if (existing >= 0) {
+            tabsViewModel.onEvent(TabsEvents.OnSelect(existing))
+        } else {
+            tabsViewModel.openTab(TabsDestination.History(tabId = UUID.randomUUID().toString()))
+        }
+    }
+
+    fun openVisit(entry: VisitEntry) {
+        val destination =
+            when (entry.kind) {
+                VisitKind.BOOK ->
+                    entry.bookId?.let {
+                        TabsDestination.BookContent(bookId = it, tabId = UUID.randomUUID().toString(), lineId = entry.lineId)
+                    }
+                VisitKind.SEARCH ->
+                    entry.searchQuery?.let {
+                        TabsDestination.Search(
+                            searchQuery = it,
+                            tabId = UUID.randomUUID().toString(),
+                        )
+                    }
+            } ?: return
+        tabsViewModel.openTab(destination)
+    }
 
     // Resolve string resources in composable context
     val appName = stringResource(Res.string.app_name)
@@ -73,6 +117,10 @@ fun AppNativeMenuBar(
     val accentGold = stringResource(Res.string.accent_color_gold)
     val persistSessionLabel = stringResource(Res.string.settings_persist_session)
     val closeTreeLabel = stringResource(Res.string.close_book_tree_on_new_book)
+    val menuHistory = stringResource(Res.string.history_title)
+    val menuSearchPlaceholder = stringResource(Res.string.tab_search_placeholder)
+    val menuShowFullHistory = stringResource(Res.string.tab_search_show_all_history)
+    val menuRecentlyVisited = stringResource(Res.string.menu_recently_visited)
     val menuWindow = stringResource(Res.string.menu_window)
     val menuHelp = stringResource(Res.string.menu_help)
 
@@ -242,6 +290,34 @@ fun AppNativeMenuBar(
             }
         }
 
+        // History menu (Chrome-like): native search field filtering the entries, full
+        // history page, and recent visits
+        Menu(menuHistory) {
+            SearchField(placeholder = menuSearchPlaceholder)
+            Item(
+                text = menuShowFullHistory,
+                shortcut = NativeKeyShortcut("y"),
+                icon = NsMenuItemImage.SystemSymbol("clock.arrow.circlepath"),
+            ) {
+                openFullHistory()
+            }
+            if (recentVisits.isNotEmpty()) {
+                Separator()
+                SectionHeader(menuRecentlyVisited)
+                recentVisits.forEach { entry ->
+                    Item(
+                        text = entry.title.take(MENU_TITLE_MAX_LENGTH),
+                        icon =
+                            NsMenuItemImage.SystemSymbol(
+                                if (entry.kind == VisitKind.BOOK) "book.closed" else "magnifyingglass",
+                            ),
+                    ) {
+                        openVisit(entry)
+                    }
+                }
+            }
+        }
+
         // Window menu (macOS auto-adds window list)
         MenuWindow(menuWindow) {}
 
@@ -249,3 +325,6 @@ fun AppNativeMenuBar(
         MenuHelp(menuHelp) {}
     }
 }
+
+private const val RECENT_VISITS_IN_MENU = 40
+private const val MENU_TITLE_MAX_LENGTH = 50

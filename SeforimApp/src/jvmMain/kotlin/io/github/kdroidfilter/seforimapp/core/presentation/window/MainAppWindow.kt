@@ -55,6 +55,7 @@ import seforimapp.seforimapp.generated.resources.app_name
 import seforimapp.seforimapp.generated.resources.desktop_default_name
 import seforimapp.seforimapp.generated.resources.home
 import seforimapp.seforimapp.generated.resources.search_results_tab_title
+import java.util.UUID
 
 /**
  * One main application window. The window displays one virtual desktop's tabs; several windows can
@@ -72,6 +73,18 @@ fun NucleusApplicationScope.MainAppWindow(
     val desktopMgr = appGraph.desktopManager
     val tabsVm = openWindow.tabsViewModel
     val windowState = openWindow.windowState
+
+    // Chrome-like history shortcut (Cmd+Y on macOS, Ctrl+H elsewhere): select the window's
+    // History tab when one is open, otherwise open it.
+    val openHistoryTab = {
+        val currentTabs = tabsVm.state.value.tabs
+        val existing = currentTabs.indexOfFirst { it.destination is TabsDestination.History }
+        if (existing >= 0) {
+            tabsVm.onEvent(TabsEvents.OnSelect(existing))
+        } else {
+            tabsVm.openTab(TabsDestination.History(tabId = UUID.randomUUID().toString()))
+        }
+    }
 
     val tabsState by tabsVm.state.collectAsState()
     val tabs = tabsState.tabs
@@ -128,7 +141,16 @@ fun NucleusApplicationScope.MainAppWindow(
                 val currentTabs = currentState.tabs
                 val currentIndex = currentState.selectedTabIndex
                 val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                if (isCtrlOrCmd && keyEvent.key == Key.T) {
+                if (isCtrlOrCmd && keyEvent.isShiftPressed && keyEvent.key == Key.A) {
+                    openWindow.tabSearchVisible.value = !openWindow.tabSearchVisible.value
+                    true
+                } else if (
+                    (PlatformInfo.isMacOS && keyEvent.isMetaPressed && !keyEvent.isShiftPressed && keyEvent.key == Key.Y) ||
+                    (!PlatformInfo.isMacOS && keyEvent.isCtrlPressed && !keyEvent.isShiftPressed && keyEvent.key == Key.H)
+                ) {
+                    openHistoryTab()
+                    true
+                } else if (isCtrlOrCmd && keyEvent.key == Key.T) {
                     tabsVm.onEvent(TabsEvents.OnAdd)
                     true
                 } else if (isCtrlOrCmd && keyEvent.key == Key.W) {
@@ -254,6 +276,23 @@ fun NucleusApplicationScope.MainAppWindow(
                                             val newIndex = (selectedIndex + 1) % count
                                             tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
                                         }
+                                        true
+                                    }
+                                    // Ctrl/Cmd + Shift + A => tab search popup (Chrome-like)
+                                    isCtrlOrCmd && keyEvent.isShiftPressed && keyEvent.key == Key.A -> {
+                                        openWindow.tabSearchVisible.value = !openWindow.tabSearchVisible.value
+                                        true
+                                    }
+                                    // Cmd+Y (macOS) / Ctrl+H (others) => history page (Chrome-like)
+                                    (PlatformInfo.isMacOS && keyEvent.isMetaPressed && !keyEvent.isShiftPressed && keyEvent.key == Key.Y) ||
+                                        (
+                                            !PlatformInfo.isMacOS &&
+                                                keyEvent.isCtrlPressed &&
+                                                !keyEvent.isShiftPressed &&
+                                                keyEvent.key == Key.H
+                                        )
+                                    -> {
+                                        openHistoryTab()
                                         true
                                     }
                                     // Ctrl/Cmd + T => new tab

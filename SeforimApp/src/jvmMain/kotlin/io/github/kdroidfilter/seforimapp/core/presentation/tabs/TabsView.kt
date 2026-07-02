@@ -165,6 +165,9 @@ private fun DefaultTabShowcase(
                                         } else if (tabItem.tabType == TabType.HISTORY) {
                                             val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Vcs.History)
                                             iconProvider.getPainter(Stateful(tabState)).value
+                                        } else if (tabItem.tabType == TabType.FAVORITES) {
+                                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Nodes.Favorite)
+                                            iconProvider.getPainter(Stateful(tabState)).value
                                         } else {
                                             if (tabItem.title.isEmpty()) {
                                                 rememberVectorPainter(
@@ -237,6 +240,9 @@ private fun DefaultTabShowcase(
                                             rememberVectorPainter(bookOpenTabs(JewelTheme.globalColors.text.normal))
                                         } else if (tabItem.tabType == TabType.HISTORY) {
                                             val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Vcs.History)
+                                            iconProvider.getPainter(Stateful(tabState)).value
+                                        } else if (tabItem.tabType == TabType.FAVORITES) {
+                                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Nodes.Favorite)
                                             iconProvider.getPainter(Stateful(tabState)).value
                                         } else {
                                             if (tabItem.title.isEmpty()) {

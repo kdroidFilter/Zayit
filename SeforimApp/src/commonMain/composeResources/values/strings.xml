@@ -91,6 +91,20 @@
     <string name="history_yesterday">אתמול</string>
     <string name="history_empty">ההיסטוריה ריקה</string>
     <string name="menu_recently_visited">ביקורים אחרונים</string>
+    <string name="favorites_title">מועדפים</string>
+    <string name="favorites_empty">אין מועדפים</string>
+    <string name="favorites_show_all">הצג את כל המועדפים</string>
+    <string name="favorites_add">הוסף למועדפים</string>
+    <string name="favorites_edit">עריכת מועדף</string>
+    <string name="favorites_new_folder">תיקייה חדשה</string>
+    <string name="favorites_folder_name_placeholder">שם התיקייה</string>
+    <string name="favorites_no_folder">ללא תיקייה</string>
+    <string name="favorites_search_placeholder">חפש במועדפים...</string>
+    <string name="favorites_create_folder">צור</string>
+    <string name="history_clear_confirm_title">ניקוי היסטוריה</string>
+    <string name="history_clear_confirm_message">האם אתה בטוח שברצונך למחוק את כל ההיסטוריה? פעולה זו אינה ניתנת לביטול.</string>
+    <string name="history_clear_confirm_yes">כן, נקה</string>
+    <string name="breadcrumb_copy_link">העתק קישור</string>
     <string name="menu_new_window">חלון חדש</string>
 
     <!-- Tabs View -->

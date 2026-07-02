@@ -36,4 +36,11 @@ sealed interface TabsDestination {
     data class History(
         override val tabId: String,
     ) : TabsDestination
+
+    /** Favorites page (the chrome://bookmarks equivalent). */
+    @Serializable
+    @Immutable
+    data class Favorites(
+        override val tabId: String,
+    ) : TabsDestination
 }

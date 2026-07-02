@@ -22,6 +22,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationSt
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.Providers
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.BookContentUseCaseFactory
+import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.logger.debugln
@@ -43,7 +44,7 @@ class BookContentViewModel(
     private val repository: SeforimRepository,
     private val useCaseFactory: BookContentUseCaseFactory,
     private val titleUpdateManager: TabTitleUpdateManager,
-    private val tabsViewModel: TabsViewModel,
+    private val desktopManager: DesktopManager,
 ) : ViewModel() {
     @AssistedFactory
     @ViewModelAssistedFactoryKey(BookContentViewModel::class)
@@ -365,7 +366,7 @@ class BookContentViewModel(
                         java.util.UUID
                             .randomUUID()
                             .toString()
-                    tabsViewModel.openTab(
+                    desktopManager.tabsViewModelFor(tabId)?.openTab(
                         TabsDestination.Search(
                             searchQuery = event.query,
                             tabId = newTabId,
@@ -983,7 +984,7 @@ class BookContentViewModel(
         }
 
         // Navigate directly to book content in the new tab
-        tabsViewModel.openTab(
+        desktopManager.tabsViewModelFor(tabId)?.openTab(
             TabsDestination.BookContent(
                 bookId = book.id,
                 tabId = newTabId,
@@ -1021,7 +1022,7 @@ class BookContentViewModel(
             )
         }
 
-        tabsViewModel.openTab(
+        desktopManager.tabsViewModelFor(tabId)?.openTab(
             TabsDestination.BookContent(
                 bookId = bookId,
                 tabId = newTabId,

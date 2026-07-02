@@ -162,6 +162,9 @@ private fun DefaultTabShowcase(
                                     val icon: Painter =
                                         if (tabItem.tabType == TabType.BOOK) {
                                             rememberVectorPainter(bookOpenTabs(JewelTheme.contentColor))
+                                        } else if (tabItem.tabType == TabType.HISTORY) {
+                                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Vcs.History)
+                                            iconProvider.getPainter(Stateful(tabState)).value
                                         } else {
                                             if (tabItem.title.isEmpty()) {
                                                 rememberVectorPainter(
@@ -232,6 +235,9 @@ private fun DefaultTabShowcase(
                                     val icon: Painter =
                                         if (tabItem.tabType == TabType.BOOK) {
                                             rememberVectorPainter(bookOpenTabs(JewelTheme.globalColors.text.normal))
+                                        } else if (tabItem.tabType == TabType.HISTORY) {
+                                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Vcs.History)
+                                            iconProvider.getPainter(Stateful(tabState)).value
                                         } else {
                                             if (tabItem.title.isEmpty()) {
                                                 rememberVectorPainter(

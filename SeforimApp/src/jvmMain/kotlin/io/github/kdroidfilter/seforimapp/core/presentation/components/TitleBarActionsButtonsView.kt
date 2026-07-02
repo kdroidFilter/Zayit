@@ -143,6 +143,12 @@ fun TitleBarActionsButtonsView() {
         shortcutHint = findShortcutHint,
         enabled = findEnabled,
     )
+
+    // Chrome-like Tab Search: open tabs across all windows + visit history.
+    // On macOS the native History menu (searchable) covers it; Cmd+Shift+A still works.
+    if (!PlatformInfo.isMacOS) {
+        TabSearchButton()
+    }
     // On macOS, theme toggle and settings are handled by the native menu bar
     if (!PlatformInfo.isMacOS) {
         TitleBarActionButton(

@@ -656,19 +656,20 @@ fun BookContentView(
         bookId,
     ) {
         val query = persistedFindQuery
-        value = if (!smartModeEnabled || query.length < 2) {
-            emptySet()
-        } else {
-            withContext(kotlinx.coroutines.Dispatchers.Default) {
-                try {
-                    appGraph.searchEngine.semanticFind(query, bookId, SMART_FIND_LIMIT).toSet()
-                } catch (c: kotlinx.coroutines.CancellationException) {
-                    throw c // composition left / keys changed — not a real failure
-                } catch (_: Throwable) {
-                    emptySet()
+        value =
+            if (!smartModeEnabled || query.length < 2) {
+                emptySet()
+            } else {
+                withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    try {
+                        appGraph.searchEngine.semanticFind(query, bookId, SMART_FIND_LIMIT).toSet()
+                    } catch (c: kotlinx.coroutines.CancellationException) {
+                        throw c // composition left / keys changed — not a real failure
+                    } catch (_: Throwable) {
+                        emptySet()
+                    }
                 }
             }
-        }
     }
 
     var currentHitLineIndex by remember { mutableIntStateOf(-1) }
@@ -961,15 +962,16 @@ fun BookContentView(
                             persistedFindQuery,
                             isSmartMatch,
                         ) {
-                            value = if (!isSmartMatch || persistedFindQuery.length < 2) {
-                                null
-                            } else {
-                                withContext(kotlinx.coroutines.Dispatchers.Default) {
-                                    val plain = buildAnnotatedFromHtml(line.content, textSize).text
-                                    runCatching { appGraph.searchEngine.semanticSpan(persistedFindQuery, plain) }
-                                        .getOrNull() ?: plain.trim().ifBlank { null }
+                            value =
+                                if (!isSmartMatch || persistedFindQuery.length < 2) {
+                                    null
+                                } else {
+                                    withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                        val plain = buildAnnotatedFromHtml(line.content, textSize).text
+                                        runCatching { appGraph.searchEngine.semanticSpan(persistedFindQuery, plain) }
+                                            .getOrNull() ?: plain.trim().ifBlank { null }
+                                    }
                                 }
-                            }
                         }
                         val altHeadings = altHeadingsByLineId[line.id]
                         val isCurrentSelected = line.id in selectedLineIds

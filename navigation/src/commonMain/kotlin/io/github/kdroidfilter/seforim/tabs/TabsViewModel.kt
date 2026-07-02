@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -319,6 +320,63 @@ class TabsViewModel(
                         .also { it[index] = updated },
             )
         }
+    }
+
+    /**
+     * Removes the tab with [tabId] without the user-close fallback: unlike [TabsEvents.OnClose],
+     * this may leave the tab list empty (the caller decides what to do with an empty window).
+     * Used to move a tab to another window. Returns the removed item, or null if not found.
+     */
+    fun takeTab(tabId: String): TabItem? {
+        var removed: TabItem? = null
+        _state.update { current ->
+            val index = current.tabs.indexOfFirst { it.destination.tabId == tabId }
+            if (index < 0) return@update current
+            removed = current.tabs[index]
+            val newTabs = current.tabs.filterIndexed { i, _ -> i != index }
+            val newSelected =
+                when {
+                    newTabs.isEmpty() -> 0
+                    index < current.selectedTabIndex -> current.selectedTabIndex - 1
+                    else -> current.selectedTabIndex.coerceIn(0, newTabs.lastIndex)
+                }
+            TabsState(tabs = newTabs, selectedTabIndex = newSelected)
+        }
+        return removed
+    }
+
+    /** Inserts a tab coming from another window at [index] (clamped) and optionally selects it. */
+    fun insertTab(
+        destination: TabsDestination,
+        title: String,
+        tabType: TabType,
+        index: Int = Int.MAX_VALUE,
+        select: Boolean = true,
+    ) {
+        _state.update { current ->
+            if (current.tabs.any { it.destination.tabId == destination.tabId }) return@update current
+            val newTab =
+                TabItem(
+                    id = _nextTabId++,
+                    title = title,
+                    destination = destination,
+                    tabType = tabType,
+                )
+            val at = index.coerceIn(0, current.tabs.size)
+            val newTabs = current.tabs.toMutableList().also { it.add(at, newTab) }
+            TabsState(
+                tabs = newTabs,
+                selectedTabIndex = if (select) at else current.selectedTabIndex.let { if (at <= it) it + 1 else it },
+            )
+        }
+    }
+
+    /**
+     * Cancels the ViewModel scope. Window-scoped instances are created outside a ViewModelStore,
+     * so the owning window manager must call this when the window closes.
+     */
+    fun dispose() {
+        viewModelScope.cancel()
     }
 
     fun restoreTabs(

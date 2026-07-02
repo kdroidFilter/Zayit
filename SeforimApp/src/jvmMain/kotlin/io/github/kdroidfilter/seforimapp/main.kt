@@ -3,46 +3,26 @@
 package io.github.kdroidfilter.seforimapp
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.WindowPlacement
-import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.rememberWindowState
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import com.kdroid.gematria.converter.toHebrewNumeral
 import dev.nucleusframework.application.aotTraining
 import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.core.runtime.NucleusApp
 import dev.nucleusframework.energymanager.EnergyManager
-import dev.nucleusframework.window.jewel.JewelDecoratedWindow
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.metroViewModel
-import io.github.kdroidfilter.seforim.tabs.TabType
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.deeplink.ContentDeepLinkHandler
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppDockMenu
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppJumpList
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppLinuxQuicklist
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppNativeMenuBar
-import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalIsTouchMode
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.detectTouchMode
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.core.presentation.window.MainAppWindow
+import io.github.kdroidfilter.seforimapp.core.presentation.window.TabDragGhostWindow
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseUpdateWindow
 import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
@@ -63,9 +43,14 @@ import io.github.kdroidfilter.seforimlibrary.cli.runCli
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.Sentry
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
-import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.resources.stringResource
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.*
@@ -128,6 +113,7 @@ private fun initializeSentry() {
     infoln { "Sentry initialized for environment '$sentryEnvironment'." }
 }
 
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 fun main(args: Array<String>) {
     // Headless CLI mode: when the binary is launched as `zayit cli <args...>` (e.g. from the
     // in-app "open CLI in terminal" action), delegate to the SeforimLibrary search CLI and exit
@@ -162,13 +148,6 @@ fun main(args: Array<String>) {
         // the DB, so a fresh install no longer needs the user to delete the old DB by hand.
         remember { PendingDbCleanup.runOnce() }
 
-        val windowState =
-            rememberWindowState(
-                position = WindowPosition.Aligned(Alignment.Center),
-                placement = WindowPlacement.Maximized,
-            )
-
-        val isWindowVisible by remember { mutableStateOf(true) }
         val pendingDeepLink = remember { MutableStateFlow<String?>(null) }
 
         // Pick up the deep link CLI arg (cold-start) and any URI relayed by a second instance
@@ -296,329 +275,147 @@ fun main(args: Array<String>) {
                         isDatabaseMissing = isDatabaseMissing,
                     )
                 } else {
+                    val desktopManager = appGraph.desktopManager
+                    val windows by desktopManager.windows.collectAsState()
+                    val focusedWindowId by desktopManager.focusedWindowId.collectAsState()
+                    val focusedWindow = windows.find { it.id == focusedWindowId } ?: windows.firstOrNull()
+
+                    // One ViewModelStore shared by every main window, so window-agnostic
+                    // ViewModels (settings dialog state) resolve to a single instance app-wide.
                     val windowViewModelOwner = rememberWindowViewModelStoreOwner()
                     val settingsWindowViewModel: SettingsWindowViewModel =
                         metroViewModel(viewModelStoreOwner = windowViewModelOwner)
 
-                    if (PlatformInfo.isMacOS) {
-                        // Native macOS menu bar (no-op on other platforms)
-                        AppNativeMenuBar(
-                            mainAppState = mainAppState,
-                            tabsViewModel = appGraph.tabsViewModel,
-                            settingsWindowViewModel = settingsWindowViewModel,
-                            onQuit = {
-                                SessionManager.saveIfEnabled(appGraph)
-                                appGraph.appUpdateService.installPendingOnClose()
-                                exitApplication()
-                            },
-                        )
-
-                        // Native macOS dock menu with desktops and tabs
-
-                        AppDockMenu(
-                            desktopManager = appGraph.desktopManager,
-                            tabsViewModel = appGraph.tabsViewModel,
-                        )
+                    val onQuit = {
+                        // Persist session if enabled, apply any pending silent update, then exit.
+                        // installPendingOnClose() launches the installer and exits the process
+                        // itself when a silent (Win/Mac PATCH) update is ready.
+                        SessionManager.saveIfEnabled(appGraph)
+                        appGraph.appUpdateService.installPendingOnClose()
+                        exitApplication()
                     }
 
-                    // Windows taskbar jump list with tabs and desktops
-                    AppJumpList(
-                        desktopManager = appGraph.desktopManager,
-                        tabsViewModel = appGraph.tabsViewModel,
-                        pendingDeepLink = pendingDeepLink,
-                        onClearDeepLink = { pendingDeepLink.value = null },
-                    )
+                    // App-level launcher integrations follow the focused window's tabs. key() forces
+                    // their internal effects (dock/jumplist listeners) to re-register on the new
+                    // window's TabsViewModel when focus moves — they capture it in closures.
+                    if (focusedWindow != null) {
+                        key(focusedWindow.id) {
+                            if (PlatformInfo.isMacOS) {
+                                // Native macOS menu bar (no-op on other platforms)
+                                AppNativeMenuBar(
+                                    mainAppState = mainAppState,
+                                    tabsViewModel = focusedWindow.tabsViewModel,
+                                    settingsWindowViewModel = settingsWindowViewModel,
+                                    onQuit = onQuit,
+                                )
 
-                    // Resolve shareable zayit:// content deep links (cross-platform)
+                                // Native macOS dock menu with desktops and tabs
+                                AppDockMenu(
+                                    desktopManager = desktopManager,
+                                    tabsViewModel = focusedWindow.tabsViewModel,
+                                )
+                            }
+
+                            // Windows taskbar jump list with tabs and desktops
+                            AppJumpList(
+                                desktopManager = desktopManager,
+                                tabsViewModel = focusedWindow.tabsViewModel,
+                                pendingDeepLink = pendingDeepLink,
+                                onClearDeepLink = { pendingDeepLink.value = null },
+                            )
+
+                            // Linux taskbar quicklist with tabs and desktops
+                            AppLinuxQuicklist(
+                                desktopManager = desktopManager,
+                                tabsViewModel = focusedWindow.tabsViewModel,
+                            )
+                        }
+                    }
+
+                    // Resolve shareable zayit:// content deep links (cross-platform); opens in
+                    // the window focused at the time the link arrives.
                     ContentDeepLinkHandler(
-                        tabsViewModel = appGraph.tabsViewModel,
+                        desktopManager = desktopManager,
                         repository = appGraph.repository,
                         pendingDeepLink = pendingDeepLink,
                         onClearDeepLink = { pendingDeepLink.value = null },
                     )
 
-                    // Linux taskbar quicklist with tabs and desktops
-                    AppLinuxQuicklist(
-                        desktopManager = appGraph.desktopManager,
-                        tabsViewModel = appGraph.tabsViewModel,
-                    )
-
-                    // Build dynamic window title: "AppName - [DesktopName] - CurrentTab"
-                    val tabsVm = appGraph.tabsViewModel
-                    val desktopMgr = appGraph.desktopManager
-                    val tabsState by tabsVm.state.collectAsState()
-                    val tabs = tabsState.tabs
-                    val selectedIndex = tabsState.selectedTabIndex
-                    val allDesktops by desktopMgr.desktops.collectAsState()
-                    val currentDesktopId by desktopMgr.activeDesktopId.collectAsState()
-                    val currentDesktopName = allDesktops.find { it.id == currentDesktopId }?.name
-                    val nextDesktopName =
-                        stringResource(
-                            Res.string.desktop_default_name,
-                            remember(allDesktops.size) {
-                                (allDesktops.size + 1).toHebrewNumeral(includeGeresh = false) + "׳"
-                            },
-                        )
-                    val appTitle = stringResource(Res.string.app_name)
-                    val selectedTab = tabs.getOrNull(selectedIndex)
-                    val rawTitle = selectedTab?.title.orEmpty()
-                    val tabType = selectedTab?.tabType
-                    val formattedTabTitle =
-                        when {
-                            rawTitle.isEmpty() -> stringResource(Res.string.home)
-                            tabType == TabType.SEARCH -> stringResource(Res.string.search_results_tab_title, rawTitle)
-                            else -> rawTitle
-                        }
-                    val windowTitle =
-                        buildString {
-                            append(appTitle)
-                            if (allDesktops.size > 1 && currentDesktopName != null) {
-                                append(" - [$currentDesktopName]")
-                            }
-                            if (formattedTabTitle.isNotBlank()) {
-                                append(" - $formattedTabTitle")
-                            }
-                        }
-
-                    JewelDecoratedWindow(
-                        onCloseRequest = {
-                            // Persist session if enabled, apply any pending silent update, then exit.
-                            // installPendingOnClose() launches the installer and exits the process
-                            // itself when a silent (Win/Mac PATCH) update is ready.
-                            SessionManager.saveIfEnabled(appGraph)
-                            appGraph.appUpdateService.installPendingOnClose()
-                            exitApplication()
-                        },
-                        title = windowTitle,
-                        icon = if (PlatformInfo.isMacOS) null else painterResource(Res.drawable.AppIcon),
-                        state = windowState,
-                        visible = isWindowVisible,
-                        minimumSize = DpSize(600.dp, 300.dp),
-                        onKeyEvent = { keyEvent ->
-                            if (keyEvent.type == KeyEventType.KeyDown) {
-                                // Read fresh state to avoid stale captures in cached lambda
-                                val currentState = tabsVm.state.value
-                                val currentTabs = currentState.tabs
-                                val currentIndex = currentState.selectedTabIndex
-                                val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                                if (isCtrlOrCmd && keyEvent.key == Key.T) {
-                                    tabsVm.onEvent(TabsEvents.OnAdd)
-                                    true
-                                } else if (isCtrlOrCmd && keyEvent.key == Key.W) {
-                                    tabsVm.onEvent(TabsEvents.OnClose(currentIndex))
-                                    true
-                                } else if (isCtrlOrCmd && keyEvent.key == Key.Tab) {
-                                    val count = currentTabs.size
-                                    if (count > 0) {
-                                        val direction = if (keyEvent.isShiftPressed) -1 else 1
-                                        val newIndex = (currentIndex + direction + count) % count
-                                        tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
-                                    }
-                                    true
-                                } else if ((keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
-                                    (keyEvent.isMetaPressed && keyEvent.isShiftPressed && keyEvent.key == Key.H)
-                                ) {
-                                    val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId
-                                    if (currentTabId != null) {
-                                        tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                } else if (isCtrlOrCmd && keyEvent.key == Key.Comma) {
-                                    settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
-                                    true
-                                } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
-                                    windowState.isMinimized = true
-                                    true
-                                } else if (!PlatformInfo.isMacOS && keyEvent.key == Key.F11) {
-                                    windowState.placement =
-                                        if (windowState.placement == WindowPlacement.Fullscreen) {
-                                            WindowPlacement.Maximized
-                                        } else {
-                                            WindowPlacement.Fullscreen
-                                        }
-                                    true
-                                } else {
-                                    processKeyShortcuts(
-                                        keyEvent = keyEvent,
-                                        onNavigateTo = { /* no-op: legacy shortcuts not used here */ },
-                                        tabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: "",
-                                    )
-                                }
-                            } else {
-                                false
-                            }
-                        },
-                    ) {
-                        CompositionLocalProvider(
-                            LocalWindowViewModelStoreOwner provides windowViewModelOwner,
-                            LocalViewModelStoreOwner provides windowViewModelOwner,
-                        ) {
-                            // Settings dialog rendered here so it inherits LocalLayoutDirection Rtl
-                            // and the full CompositionLocalContext — including theme and user locals —
-                            // is bridged into the dialog's Tao ComposeScene.
-                            val settingsWindowState by settingsWindowViewModel.state.collectAsState()
-                            if (settingsWindowState.isVisible) {
-                                SettingsWindow(
-                                    onClose = { settingsWindowViewModel.onEvent(SettingsWindowEvents.OnClose) },
-                                    initialDestination = settingsWindowState.initialDestination,
-                                )
-                            }
-                            // App update dialog, hoisted here so it inherits the full
-                            // CompositionLocalContext (theme, Rtl) like SettingsWindow.
-                            val updateDialogVisible by appGraph.appUpdateService.dialogVisible.collectAsState()
-                            if (updateDialogVisible) {
-                                UpdateDialog(
-                                    service = appGraph.appUpdateService,
-                                    onClose = { appGraph.appUpdateService.closeDialog() },
-                                )
-                            }
-                            MainTitleBar()
-                            LaunchedEffect(state.isMinimized) {
-                                if (state.isMinimized) {
-                                    EnergyManager.enableEfficiencyMode()
-                                } else {
-                                    EnergyManager.disableEfficiencyMode()
-                                }
-                            }
-
-                            // Keep the screen awake while a book is open in the current tab and the
-                            // window is focused — opt-out via the General settings (enabled by default).
-                            val keepAwakeEnabled by AppSettings.keepScreenAwakeOnBookFlow.collectAsState()
-                            val shouldKeepScreenAwake =
-                                keepAwakeEnabled &&
-                                    state.isActive &&
-                                    selectedTab?.destination is TabsDestination.BookContent
-                            LaunchedEffect(shouldKeepScreenAwake) {
-                                if (shouldKeepScreenAwake) {
-                                    EnergyManager.keepScreenAwake()
-                                } else {
-                                    EnergyManager.releaseScreenAwake()
-                                }
-                            }
-
-                            // Restore previously saved session once when main window becomes active
-                            var sessionRestored by remember { mutableStateOf(false) }
-                            LaunchedEffect(Unit) {
-                                if (!sessionRestored) {
-                                    SessionManager.restoreIfEnabled(appGraph)
-                                    sessionRestored = true
-                                }
-                            }
-                            // Check for updates once at startup. PATCH updates are pre-downloaded
-                            // here; MINOR/MAJOR surface the title-bar icon + UpdateDialog.
-                            LaunchedEffect(Unit) {
-                                appGraph.appUpdateService.checkOnStartup()
-                            }
-
-                            // Track whether the user is interacting by touch so hover-gated
-                            // controls (e.g. pane close buttons) stay reachable; published
-                            // app-wide via LocalIsTouchMode.
-                            var isTouchMode by remember { mutableStateOf(false) }
-
-                            // Intercept key combos early to avoid focus traversal consuming Tab
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .detectTouchMode { isTouchMode = it }
-                                        .onPreviewKeyEvent { keyEvent ->
-                                            if (keyEvent.type == KeyEventType.KeyDown) {
-                                                val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                                                when {
-                                                    // Ctrl/Cmd + W => close current tab
-                                                    isCtrlOrCmd && keyEvent.key == Key.W -> {
-                                                        tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))
-                                                        true
-                                                    }
-                                                    // Ctrl/Cmd + Shift + Tab => previous tab
-                                                    isCtrlOrCmd && keyEvent.key == Key.Tab && keyEvent.isShiftPressed -> {
-                                                        val count = tabs.size
-                                                        if (count > 0) {
-                                                            val newIndex = (selectedIndex - 1 + count) % count
-                                                            tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
-                                                        }
-                                                        true
-                                                    }
-                                                    // Ctrl/Cmd + Tab => next tab
-                                                    isCtrlOrCmd && keyEvent.key == Key.Tab -> {
-                                                        val count = tabs.size
-                                                        if (count > 0) {
-                                                            val newIndex = (selectedIndex + 1) % count
-                                                            tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
-                                                        }
-                                                        true
-                                                    }
-                                                    // Ctrl/Cmd + T => new tab
-                                                    isCtrlOrCmd && keyEvent.key == Key.T -> {
-                                                        tabsVm.onEvent(TabsEvents.OnAdd)
-                                                        true
-                                                    }
-                                                    // Alt + Home (Windows) or Cmd + Shift + H (macOS) => go Home on current tab
-                                                    (keyEvent.isAltPressed && keyEvent.key == Key.Home) ||
-                                                        (
-                                                            keyEvent.isMetaPressed &&
-                                                                keyEvent.isShiftPressed &&
-                                                                keyEvent.key == Key.H
-                                                        ) -> {
-                                                        val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
-                                                        if (currentTabId != null) {
-                                                            tabsVm.replaceCurrentTabWithNewTabId(TabsDestination.Home(currentTabId))
-                                                            true
-                                                        } else {
-                                                            false
-                                                        }
-                                                    }
-                                                    // Ctrl/Cmd + Comma => open settings
-                                                    isCtrlOrCmd && keyEvent.key == Key.Comma -> {
-                                                        settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
-                                                        true
-                                                    }
-                                                    // Ctrl/Cmd + Alt + Right => next desktop
-                                                    isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionRight -> {
-                                                        desktopMgr.switchToNext()
-                                                        true
-                                                    }
-                                                    // Ctrl/Cmd + Alt + Left => previous desktop
-                                                    isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionLeft -> {
-                                                        desktopMgr.switchToPrevious()
-                                                        true
-                                                    }
-                                                    // Ctrl/Cmd + Alt + N => new desktop
-                                                    isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.N -> {
-                                                        desktopMgr.createDesktop(nextDesktopName)
-                                                        true
-                                                    }
-                                                    // Cmd + M => minimize window (macOS only)
-                                                    PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M -> {
-                                                        windowState.isMinimized = true
-                                                        true
-                                                    }
-                                                    // F11 => toggle fullscreen (Windows/Linux only)
-                                                    !PlatformInfo.isMacOS && keyEvent.key == Key.F11 -> {
-                                                        windowState.placement =
-                                                            if (windowState.placement == WindowPlacement.Fullscreen) {
-                                                                WindowPlacement.Maximized
-                                                            } else {
-                                                                WindowPlacement.Fullscreen
-                                                            }
-                                                        true
-                                                    }
-
-                                                    else -> false
-                                                }
-                                            } else {
-                                                false
-                                            }
-                                        },
-                            ) {
-                                CompositionLocalProvider(LocalIsTouchMode provides isTouchMode) {
-                                    TabsContent()
-                                }
-                            }
+                    // Restore previously saved session (open desktops, windows, geometry) once.
+                    var sessionRestored by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        if (!sessionRestored) {
+                            SessionManager.restoreIfEnabled(appGraph)
+                            sessionRestored = true
                         }
                     }
+
+                    // Check for updates once at startup. PATCH updates are pre-downloaded
+                    // here; MINOR/MAJOR surface the title-bar icon + UpdateDialog.
+                    LaunchedEffect(Unit) {
+                        appGraph.appUpdateService.checkOnStartup()
+                    }
+
+                    // Debounced session autosave: any tab/window change persists ~2s later, so a
+                    // crash no longer loses the whole session (previously saved only on quit).
+                    LaunchedEffect(Unit) {
+                        desktopManager.windows
+                            .flatMapLatest { ws ->
+                                if (ws.isEmpty()) {
+                                    emptyFlow()
+                                } else {
+                                    combine(ws.map { w -> w.tabsViewModel.state }) { }
+                                }
+                            }.drop(1)
+                            .debounce(2.seconds)
+                            .collect {
+                                if (!SessionManager.isRestoringSession.value) {
+                                    SessionManager.saveIfEnabled(appGraph)
+                                }
+                            }
+                    }
+
+                    // Efficiency mode only when EVERY window is minimized
+                    val allMinimized = windows.isNotEmpty() && windows.all { it.windowState.isMinimized }
+                    LaunchedEffect(allMinimized) {
+                        if (allMinimized) {
+                            EnergyManager.enableEfficiencyMode()
+                        } else {
+                            EnergyManager.disableEfficiencyMode()
+                        }
+                    }
+
+                    // App-level dialogs: single instance shared by all windows. They inherit the
+                    // Rtl layout direction and theme from the providers above.
+                    val settingsWindowState by settingsWindowViewModel.state.collectAsState()
+                    if (settingsWindowState.isVisible) {
+                        SettingsWindow(
+                            onClose = { settingsWindowViewModel.onEvent(SettingsWindowEvents.OnClose) },
+                            initialDestination = settingsWindowState.initialDestination,
+                        )
+                    }
+                    val updateDialogVisible by appGraph.appUpdateService.dialogVisible.collectAsState()
+                    if (updateDialogVisible) {
+                        UpdateDialog(
+                            service = appGraph.appUpdateService,
+                            onClose = { appGraph.appUpdateService.closeDialog() },
+                        )
+                    }
+
+                    // The windows themselves — one per open desktop window.
+                    windows.forEach { w ->
+                        key(w.id) {
+                            MainAppWindow(
+                                openWindow = w,
+                                settingsWindowViewModel = settingsWindowViewModel,
+                                windowViewModelOwner = windowViewModelOwner,
+                                onQuit = onQuit,
+                            )
+                        }
+                    }
+
+                    // Floating preview while a tab is dragged outside its strip
+                    TabDragGhostWindow(appGraph.tabDockManager)
                 }
             }
         }

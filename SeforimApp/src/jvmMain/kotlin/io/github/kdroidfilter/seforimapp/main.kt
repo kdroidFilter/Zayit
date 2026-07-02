@@ -294,6 +294,8 @@ fun main(args: Array<String>) {
                         appGraph.appUpdateService.installPendingOnClose()
                         exitApplication()
                     }
+                    // Chrome-like: closing the last tab of the last window quits the app
+                    SideEffect { desktopManager.onQuitRequest = onQuit }
 
                     // App-level launcher integrations follow the focused window's tabs. key() forces
                     // their internal effects (dock/jumplist listeners) to re-register on the new

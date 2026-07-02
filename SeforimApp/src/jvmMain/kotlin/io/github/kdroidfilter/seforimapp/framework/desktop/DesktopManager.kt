@@ -75,6 +75,12 @@ class DesktopManager(
     /** Snapshots of desktops that are not currently open in any window. */
     private val dormantSnapshots = mutableMapOf<String, DesktopTabsSnapshot>()
 
+    /**
+     * App-level quit path (persist session, apply pending updates, exit). Wired by main.kt;
+     * invoked when the last tab of the last window is closed (Chrome-like).
+     */
+    var onQuitRequest: (() -> Unit)? = null
+
     // ---- Lookups ----
 
     fun window(windowId: String): OpenWindow? = _windows.value.find { it.id == windowId }
@@ -485,13 +491,26 @@ class DesktopManager(
                 skipAnimation = true,
             )
         }
-        return OpenWindow(
-            id = UUID.randomUUID().toString(),
-            desktopId = desktopId,
-            tabsViewModel = tabsViewModel,
-            searchHomeViewModel = searchHomeViewModelFactory(),
-            windowState = snapshot?.geometry.toWindowState(),
-        )
+        val w =
+            OpenWindow(
+                id = UUID.randomUUID().toString(),
+                desktopId = desktopId,
+                tabsViewModel = tabsViewModel,
+                searchHomeViewModel = searchHomeViewModelFactory(),
+                windowState = snapshot?.geometry.toWindowState(),
+            )
+        // Chrome-like: closing a window's last tab closes the window; closing the last window
+        // quits the app. The tab is already removed, so the desktop snapshot / persisted
+        // session no longer contains it.
+        tabsViewModel.onLastTabClosed = { removed ->
+            tabPersistedStateStore.remove(removed.destination.tabId)
+            if (_windows.value.size > 1) {
+                closeWindow(w.id)
+            } else {
+                onQuitRequest?.invoke() ?: freshHomeInto(w)
+            }
+        }
+        return w
     }
 
     private fun spawnWindow(

@@ -68,6 +68,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.history_title
@@ -171,48 +172,16 @@ private fun TabSearchPopupContent(onDismiss: () -> Unit) {
                 .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // Search field
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .background(JewelTheme.globalColors.panelBackground, RoundedCornerShape(6.dp))
-                    .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(6.dp))
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(
-                key = AllIconsKeys.Actions.Find,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = JewelTheme.globalColors.text.info,
-            )
-            BasicTextField(
-                value = query,
-                onValueChange = { query = it },
-                singleLine = true,
-                textStyle = TextStyle(fontSize = 13.sp, color = JewelTheme.globalColors.text.normal),
-                cursorBrush = SolidColor(JewelTheme.globalColors.outlines.focused),
-                modifier = Modifier.weight(1f).focusRequester(focusRequester),
-                decorationBox = { innerTextField ->
-                    Box {
-                        if (query.isEmpty()) {
-                            Text(
-                                text = stringResource(Res.string.tab_search_placeholder),
-                                fontSize = 13.sp,
-                                color = JewelTheme.globalColors.text.info,
-                            )
-                        }
-                        innerTextField()
-                    }
-                },
-            )
-        }
+        PopupSearchField(
+            query = query,
+            onQueryChange = { query = it },
+            placeholder = stringResource(Res.string.tab_search_placeholder),
+            focusRequester = focusRequester,
+        )
 
         LazyColumn(modifier = Modifier.heightIn(max = 380.dp)) {
             if (filteredTabs.isNotEmpty()) {
-                item(key = "header-tabs") { SectionHeader(stringResource(Res.string.open_tabs)) }
+                item(key = "header-tabs") { PopupSectionHeader(stringResource(Res.string.open_tabs)) }
                 items(filteredTabs, key = { "tab-" + it.tab.destination.tabId }) { row ->
                     val label = row.tab.title.ifBlank { homeLabel }
                     PopupRow(
@@ -239,7 +208,7 @@ private fun TabSearchPopupContent(onDismiss: () -> Unit) {
                 }
             }
             if (historyEntries.isNotEmpty()) {
-                item(key = "header-history") { SectionHeader(stringResource(Res.string.history_title)) }
+                item(key = "header-history") { PopupSectionHeader(stringResource(Res.string.history_title)) }
                 items(historyEntries, key = { "hist-" + it.key }) { entry ->
                     PopupRow(
                         label = entry.title,
@@ -283,7 +252,7 @@ private fun TabSearchPopupContent(onDismiss: () -> Unit) {
         }
 
         // Footer: full history page (chrome://history equivalent)
-        FooterRow(
+        PopupFooterRow(
             label = stringResource(Res.string.tab_search_show_all_history),
             shortcutHint = if (PlatformInfo.isMacOS) "⌘Y" else "Ctrl+H",
             onClick = {
@@ -295,7 +264,53 @@ private fun TabSearchPopupContent(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun SectionHeader(label: String) {
+internal fun PopupSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    placeholder: String,
+    focusRequester: FocusRequester,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(JewelTheme.globalColors.panelBackground, RoundedCornerShape(6.dp))
+                .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(6.dp))
+                .padding(horizontal = 10.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            key = AllIconsKeys.Actions.Find,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = JewelTheme.globalColors.text.info,
+        )
+        BasicTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            singleLine = true,
+            textStyle = TextStyle(fontSize = 13.sp, color = JewelTheme.globalColors.text.normal),
+            cursorBrush = SolidColor(JewelTheme.globalColors.outlines.focused),
+            modifier = Modifier.weight(1f).focusRequester(focusRequester),
+            decorationBox = { innerTextField ->
+                Box {
+                    if (query.isEmpty()) {
+                        Text(
+                            text = placeholder,
+                            fontSize = 13.sp,
+                            color = JewelTheme.globalColors.text.info,
+                        )
+                    }
+                    innerTextField()
+                }
+            },
+        )
+    }
+}
+
+@Composable
+internal fun PopupSectionHeader(label: String) {
     Text(
         text = label,
         fontSize = 11.sp,
@@ -306,7 +321,7 @@ private fun SectionHeader(label: String) {
 }
 
 @Composable
-private fun PopupRow(
+internal fun PopupRow(
     label: String,
     tabType: TabType?,
     onClick: () -> Unit,
@@ -393,9 +408,10 @@ private fun PopupRow(
 }
 
 @Composable
-private fun FooterRow(
+internal fun PopupFooterRow(
     label: String,
     shortcutHint: String,
+    icon: IconKey = AllIconsKeys.Vcs.History,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -414,7 +430,7 @@ private fun FooterRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(
-            key = AllIconsKeys.Vcs.History,
+            key = icon,
             contentDescription = null,
             modifier = Modifier.size(15.dp),
             tint = JewelTheme.globalColors.text.info,
@@ -434,11 +450,11 @@ private fun FooterRow(
     }
 }
 
-private val PopupShape = RoundedCornerShape(8.dp)
+internal val PopupShape = RoundedCornerShape(8.dp)
 private val RowShape = RoundedCornerShape(5.dp)
 
 /** Positions the popup below the anchor, aligned to its end edge. */
-private object BelowAnchorEndPositionProvider : PopupPositionProvider {
+internal object BelowAnchorEndPositionProvider : PopupPositionProvider {
     override fun calculatePosition(
         anchorBounds: IntRect,
         windowSize: IntSize,

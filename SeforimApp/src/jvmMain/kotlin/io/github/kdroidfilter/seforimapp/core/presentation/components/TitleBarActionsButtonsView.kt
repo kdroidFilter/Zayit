@@ -144,9 +144,10 @@ fun TitleBarActionsButtonsView() {
         enabled = findEnabled,
     )
 
-    // Chrome-like Tab Search: open tabs across all windows + visit history.
-    // On macOS the native History menu (searchable) covers it; Cmd+Shift+A still works.
+    // Chrome-like Tab Search (open tabs + visit history) and Favorites menu.
+    // On macOS the native History/Favorites menus (searchable) cover them; shortcuts still work.
     if (!PlatformInfo.isMacOS) {
+        FavoritesMenuButton()
         TabSearchButton()
     }
     // On macOS, theme toggle and settings are handled by the native menu bar

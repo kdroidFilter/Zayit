@@ -82,7 +82,7 @@ fun BreadcrumbView(
     Row(
         modifier = modifier.horizontalScroll(scrollState),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.End,
+        horizontalArrangement = Arrangement.Start,
     ) {
         // Display each item in the breadcrumb path
         breadcrumbPath.forEachIndexed { index, item ->

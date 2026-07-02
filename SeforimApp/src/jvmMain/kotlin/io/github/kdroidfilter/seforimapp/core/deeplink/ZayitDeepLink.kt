@@ -46,6 +46,7 @@ fun TabsDestination.toShareLink(): String? =
         is TabsDestination.Search -> searchShareLink(searchQuery)
         is TabsDestination.Home -> null
         is TabsDestination.History -> null
+        is TabsDestination.Favorites -> null
     }
 
 /**

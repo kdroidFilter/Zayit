@@ -342,6 +342,13 @@ private fun PopupRow(
                     modifier = Modifier.size(15.dp),
                     tint = JewelTheme.globalColors.text.normal,
                 )
+            TabType.FAVORITES ->
+                Icon(
+                    key = AllIconsKeys.Nodes.Favorite,
+                    contentDescription = null,
+                    modifier = Modifier.size(15.dp),
+                    tint = JewelTheme.globalColors.text.normal,
+                )
             TabType.SEARCH ->
                 Icon(
                     key = AllIconsKeys.Actions.Find,

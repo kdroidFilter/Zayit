@@ -405,11 +405,17 @@ private fun BreadcrumbSection(
         }
     Column(modifier = sectionModifier) {
         if (!isIslands) HorizontalDivider()
-        BreadcrumbView(
-            uiState = uiState,
-            onEvent = onEvent,
+        Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = verticalPadding, horizontal = 16.dp),
-        )
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BreadcrumbView(
+                uiState = uiState,
+                onEvent = onEvent,
+                modifier = Modifier.weight(1f),
+            )
+            BreadcrumbActionsView(uiState = uiState)
+        }
     }
 }
 

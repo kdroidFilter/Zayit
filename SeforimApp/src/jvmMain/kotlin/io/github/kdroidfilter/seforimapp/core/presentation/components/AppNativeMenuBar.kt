@@ -17,6 +17,8 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
+import io.github.kdroidfilter.seforimapp.core.favorites.FavoriteEntry
+import io.github.kdroidfilter.seforimapp.core.favorites.FavoriteFolder
 import io.github.kdroidfilter.seforimapp.core.history.VisitEntry
 import io.github.kdroidfilter.seforimapp.core.history.VisitKind
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
@@ -55,6 +57,16 @@ fun AppNativeMenuBar(
         recentVisits = historyStore.query("", RECENT_VISITS_IN_MENU)
     }
 
+    // Chrome-like Favorites menu data: all favorites + folders, refreshed on every write
+    val favoritesStore = LocalAppGraph.current.favoritesStore
+    val favoritesRevision by favoritesStore.revision.collectAsState()
+    var favoriteEntries by remember { mutableStateOf<List<FavoriteEntry>>(emptyList()) }
+    var favoriteFolders by remember { mutableStateOf<List<FavoriteFolder>>(emptyList()) }
+    LaunchedEffect(favoritesRevision) {
+        favoriteEntries = favoritesStore.query()
+        favoriteFolders = favoritesStore.folders()
+    }
+
     fun openFullHistory() {
         val tabs = tabsViewModel.state.value.tabs
         val existing = tabs.indexOfFirst { it.destination is TabsDestination.History }
@@ -63,6 +75,22 @@ fun AppNativeMenuBar(
         } else {
             tabsViewModel.openTab(TabsDestination.History(tabId = UUID.randomUUID().toString()))
         }
+    }
+
+    fun openFavoritesTab() {
+        val tabs = tabsViewModel.state.value.tabs
+        val existing = tabs.indexOfFirst { it.destination is TabsDestination.Favorites }
+        if (existing >= 0) {
+            tabsViewModel.onEvent(TabsEvents.OnSelect(existing))
+        } else {
+            tabsViewModel.openTab(TabsDestination.Favorites(tabId = UUID.randomUUID().toString()))
+        }
+    }
+
+    fun openFavorite(entry: FavoriteEntry) {
+        tabsViewModel.openTab(
+            TabsDestination.BookContent(bookId = entry.bookId, tabId = UUID.randomUUID().toString(), lineId = entry.lineId),
+        )
     }
 
     fun openVisit(entry: VisitEntry) {
@@ -121,6 +149,8 @@ fun AppNativeMenuBar(
     val menuSearchPlaceholder = stringResource(Res.string.tab_search_placeholder)
     val menuShowFullHistory = stringResource(Res.string.tab_search_show_all_history)
     val menuRecentlyVisited = stringResource(Res.string.menu_recently_visited)
+    val menuFavorites = stringResource(Res.string.favorites_title)
+    val menuShowAllFavorites = stringResource(Res.string.favorites_show_all)
     val menuWindow = stringResource(Res.string.menu_window)
     val menuHelp = stringResource(Res.string.menu_help)
 
@@ -313,6 +343,46 @@ fun AppNativeMenuBar(
                             ),
                     ) {
                         openVisit(entry)
+                    }
+                }
+            }
+        }
+
+        // Favorites menu (Chrome bookmarks-like): native search field, full favorites page,
+        // then root favorites and folders as submenus
+        Menu(menuFavorites) {
+            SearchField(placeholder = menuSearchPlaceholder)
+            Item(
+                text = menuShowAllFavorites,
+                shortcut = NativeKeyShortcut("b", option = true),
+                icon = NsMenuItemImage.SystemSymbol("star"),
+            ) {
+                openFavoritesTab()
+            }
+            if (favoriteEntries.isNotEmpty()) {
+                Separator()
+                favoriteEntries.filter { it.folderId == null }.forEach { entry ->
+                    Item(
+                        text = entry.title.take(MENU_TITLE_MAX_LENGTH),
+                        icon = NsMenuItemImage.SystemSymbol("book.closed"),
+                    ) {
+                        openFavorite(entry)
+                    }
+                }
+                favoriteFolders.forEach { folder ->
+                    val folderEntries = favoriteEntries.filter { it.folderId == folder.id }
+                    Menu(
+                        text = folder.name.take(MENU_TITLE_MAX_LENGTH),
+                        icon = NsMenuItemImage.SystemSymbol("folder"),
+                    ) {
+                        folderEntries.forEach { entry ->
+                            Item(
+                                text = entry.title.take(MENU_TITLE_MAX_LENGTH),
+                                icon = NsMenuItemImage.SystemSymbol("book.closed"),
+                            ) {
+                                openFavorite(entry)
+                            }
+                        }
                     }
                 }
             }

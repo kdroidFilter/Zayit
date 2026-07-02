@@ -195,6 +195,7 @@ class TabsViewModel(
                 is TabsDestination.Search -> TabsDestination.Search(destination.searchQuery, destination.tabId)
                 is TabsDestination.BookContent -> TabsDestination.BookContent(destination.bookId, destination.tabId, destination.lineId)
                 is TabsDestination.History -> TabsDestination.History(destination.tabId)
+                is TabsDestination.Favorites -> TabsDestination.Favorites(destination.tabId)
             }
 
         val newTab =
@@ -280,6 +281,7 @@ class TabsViewModel(
                             lineId = destination.lineId,
                         )
                     is TabsDestination.History -> TabsDestination.History(tabId = tab.destination.tabId)
+                    is TabsDestination.Favorites -> TabsDestination.Favorites(tabId = tab.destination.tabId)
                 }
 
             val updated =
@@ -322,6 +324,7 @@ class TabsViewModel(
                             lineId = destination.lineId,
                         )
                     is TabsDestination.History -> TabsDestination.History(tabId = newTabId)
+                    is TabsDestination.Favorites -> TabsDestination.Favorites(tabId = newTabId)
                 }
 
             val updated =
@@ -432,6 +435,7 @@ class TabsViewModel(
             is TabsDestination.Search -> TabType.SEARCH
             is TabsDestination.BookContent -> if (destination.bookId > 0) TabType.BOOK else TabType.SEARCH
             is TabsDestination.History -> TabType.HISTORY
+            is TabsDestination.Favorites -> TabType.FAVORITES
         }
 
     private fun getTabTitle(destination: TabsDestination): String =
@@ -439,8 +443,9 @@ class TabsViewModel(
             is TabsDestination.Home -> ""
             is TabsDestination.Search -> destination.searchQuery
             is TabsDestination.BookContent -> if (destination.bookId > 0) "${destination.bookId}" else ""
-            // Localized by the History screen itself via TabTitleUpdateManager
+            // Localized by the History/Favorites screens themselves via TabTitleUpdateManager
             is TabsDestination.History -> ""
+            is TabsDestination.Favorites -> ""
         }
 
     private fun updateTabTitle(

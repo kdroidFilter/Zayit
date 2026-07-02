@@ -86,6 +86,18 @@ fun NucleusApplicationScope.MainAppWindow(
         }
     }
 
+    // Chrome-like favorites shortcut (Cmd+Alt+B on macOS, Ctrl+Shift+O elsewhere): select the
+    // window's Favorites tab when one is open, otherwise open it.
+    val openFavoritesTab = {
+        val currentTabs = tabsVm.state.value.tabs
+        val existing = currentTabs.indexOfFirst { it.destination is TabsDestination.Favorites }
+        if (existing >= 0) {
+            tabsVm.onEvent(TabsEvents.OnSelect(existing))
+        } else {
+            tabsVm.openTab(TabsDestination.Favorites(tabId = UUID.randomUUID().toString()))
+        }
+    }
+
     val tabsState by tabsVm.state.collectAsState()
     val tabs = tabsState.tabs
     val selectedIndex = tabsState.selectedTabIndex
@@ -149,6 +161,12 @@ fun NucleusApplicationScope.MainAppWindow(
                     (!PlatformInfo.isMacOS && keyEvent.isCtrlPressed && !keyEvent.isShiftPressed && keyEvent.key == Key.H)
                 ) {
                     openHistoryTab()
+                    true
+                } else if (
+                    (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.isAltPressed && keyEvent.key == Key.B) ||
+                    (!PlatformInfo.isMacOS && keyEvent.isCtrlPressed && keyEvent.isShiftPressed && keyEvent.key == Key.O)
+                ) {
+                    openFavoritesTab()
                     true
                 } else if (isCtrlOrCmd && keyEvent.key == Key.T) {
                     tabsVm.onEvent(TabsEvents.OnAdd)
@@ -293,6 +311,18 @@ fun NucleusApplicationScope.MainAppWindow(
                                         )
                                     -> {
                                         openHistoryTab()
+                                        true
+                                    }
+                                    // Cmd+Alt+B (macOS) / Ctrl+Shift+O (others) => favorites page (Chrome-like)
+                                    (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.isAltPressed && keyEvent.key == Key.B) ||
+                                        (
+                                            !PlatformInfo.isMacOS &&
+                                                keyEvent.isCtrlPressed &&
+                                                keyEvent.isShiftPressed &&
+                                                keyEvent.key == Key.O
+                                        )
+                                    -> {
+                                        openFavoritesTab()
                                         true
                                     }
                                     // Ctrl/Cmd + T => new tab

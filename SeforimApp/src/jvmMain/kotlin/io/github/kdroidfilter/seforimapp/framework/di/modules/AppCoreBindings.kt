@@ -7,8 +7,6 @@ import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.annotations.HighlightStore
 import io.github.kdroidfilter.seforimapp.core.annotations.NoteStore
@@ -23,10 +21,12 @@ import io.github.kdroidfilter.seforimapp.framework.database.PersistentSqliteDriv
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.database.getUserSettingsDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
+import io.github.kdroidfilter.seforimapp.framework.desktop.TabDockManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
+import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
@@ -35,7 +35,6 @@ import io.github.kdroidfilter.seforimlibrary.search.LineHit
 import io.github.kdroidfilter.seforimlibrary.search.LuceneSearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import java.nio.file.Paths
-import java.util.UUID
 
 @ContributesTo(AppScope::class)
 @BindingContainer
@@ -189,40 +188,31 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideTabsViewModel(titleUpdateManager: TabTitleUpdateManager): TabsViewModel =
-        TabsViewModel(
-            titleUpdateManager = titleUpdateManager,
-            startDestination =
-                TabsDestination.BookContent(
-                    bookId = -1,
-                    tabId = UUID.randomUUID().toString(),
-                ),
-        )
-
-    @Provides
-    @SingleIn(AppScope::class)
     fun provideDesktopManager(
-        tabsViewModel: TabsViewModel,
         tabPersistedStateStore: TabPersistedStateStore,
+        titleUpdateManager: TabTitleUpdateManager,
+        repository: SeforimRepository,
+        lookup: LuceneLookupSearchService,
+        settings: Settings,
     ): DesktopManager =
         DesktopManager(
-            tabsViewModel = tabsViewModel,
             tabPersistedStateStore = tabPersistedStateStore,
+            titleUpdateManager = titleUpdateManager,
+            // TabsViewModel + SearchHomeViewModel are window-scoped: one pair per open window,
+            // created and disposed by DesktopManager.
+            searchHomeViewModelFactory = {
+                SearchHomeViewModel(
+                    persistedStore = tabPersistedStateStore,
+                    repository = repository,
+                    lookup = lookup,
+                    settings = settings,
+                )
+            },
+            initialWindowGeometry = SessionManager.peekInitialWindowGeometry(),
             defaultDesktopName = "\u05DE\u05E8\u05D7\u05D1 \u05D0׳",
         )
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideSearchHomeViewModel(
-        persistedStore: TabPersistedStateStore,
-        repository: SeforimRepository,
-        lookup: LuceneLookupSearchService,
-        settings: Settings,
-    ): SearchHomeViewModel =
-        SearchHomeViewModel(
-            persistedStore = persistedStore,
-            repository = repository,
-            lookup = lookup,
-            settings = settings,
-        )
+    fun provideTabDockManager(desktopManager: DesktopManager): TabDockManager = TabDockManager(desktopManager)
 }

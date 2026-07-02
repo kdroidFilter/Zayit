@@ -10,6 +10,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowView
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
+import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.update.showTitleBarIcon
@@ -42,8 +43,8 @@ fun TitleBarActionsButtonsView() {
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val settingsState = settingsViewModel.state.collectAsState().value
 
-    // Access app graph outside of callbacks to avoid reading CompositionLocals in non-composable contexts
-    val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
+    // Access the window's tabs outside of callbacks to avoid reading CompositionLocals in non-composable contexts
+    val tabsViewModel: TabsViewModel = LocalOpenWindow.current.tabsViewModel
     val tabsState = tabsViewModel.state.collectAsState().value
     val currentTab = tabsState.tabs.getOrNull(tabsState.selectedTabIndex)
     val findEnabled =
@@ -108,8 +109,6 @@ fun TitleBarActionsButtonsView() {
         contentDescription = stringResource(Res.string.home),
         onClick = {
             // Replace current tab destination with Home, preserving tabId
-            val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
-
             val tabs = tabsViewModel.tabs.value
             val selectedIndex = tabsViewModel.selectedTabIndex.value
             val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
@@ -126,7 +125,6 @@ fun TitleBarActionsButtonsView() {
         key = AllIconsKeys.Actions.Find,
         contentDescription = stringResource(Res.string.find),
         onClick = {
-            val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
             val tabs = tabsViewModel.tabs.value
             val selectedIndex = tabsViewModel.selectedTabIndex.value
             val tabId = tabs.getOrNull(selectedIndex)?.destination?.tabId ?: return@TitleBarActionButton

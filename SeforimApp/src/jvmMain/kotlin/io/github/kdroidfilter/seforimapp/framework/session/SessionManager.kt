@@ -49,6 +49,31 @@ object SessionManager {
     private fun hasSavedSessionToRestore(): Boolean =
         AppSettings.isPersistSessionEnabled() && (desktopsFile().exists() || legacySessionFile().exists())
 
+    @Volatile
+    private var cachedStateForRestore: DesktopsState? = null
+
+    /**
+     * Boot-time peek at the focused window's saved geometry, so the very first window is created
+     * directly with the right placement instead of flashing maximized before the async session
+     * restore applies the real geometry. Decodes the session file once and caches the result for
+     * [restoreIfEnabled].
+     */
+    fun peekInitialWindowGeometry(): SavedGeometry? {
+        if (!AppSettings.isPersistSessionEnabled()) return null
+        val file = desktopsFile()
+        if (!file.exists()) return null
+        val state =
+            runCatching { proto.decodeFromByteArray(DesktopsState.serializer(), file.readBytes()) }
+                .getOrNull() ?: return null
+        cachedStateForRestore = state
+        val openIds = state.effectiveOpenDesktopIds()
+        val focusedId = state.focusedDesktopId.takeIf { it in openIds } ?: openIds.firstOrNull() ?: return null
+        return state.snapshots[focusedId]
+            ?.effectiveWindows()
+            ?.firstOrNull()
+            ?.geometry
+    }
+
     /** Saves the current session snapshot if the user enabled persistence in settings. */
     fun saveIfEnabled(appGraph: AppGraph) {
         if (!AppSettings.isPersistSessionEnabled()) return
@@ -59,10 +84,12 @@ object SessionManager {
         debugln {
             buildString {
                 append("[SessionManager] Saving desktops session: ${desktopsState.desktops.size} desktops, ")
-                append("active=${desktopsState.activeDesktopId}\n")
+                append("open=${desktopsState.openDesktopIds}, focused=${desktopsState.focusedDesktopId}\n")
                 desktopsState.snapshots.forEach { (id, snap) ->
                     val desktopName = desktopsState.desktops.find { it.id == id }?.name ?: "?"
-                    append("  Desktop '$desktopName': ${snap.destinations.size} tabs, selectedIndex=${snap.selectedIndex}\n")
+                    val windows = snap.effectiveWindows()
+                    append("  Desktop '$desktopName': ${windows.size} windows, ")
+                    append("${windows.sumOf { it.destinations.size }} tabs\n")
                 }
             }
         }
@@ -107,6 +134,12 @@ object SessionManager {
      * Loads [DesktopsState], migrating from legacy [SavedSessionV2] if needed.
      */
     private suspend fun loadDesktopsState(): DesktopsState? {
+        // Already decoded at boot by peekInitialWindowGeometry — don't re-read the file.
+        cachedStateForRestore?.let {
+            cachedStateForRestore = null
+            return it
+        }
+
         val desktopsF = desktopsFile()
         val legacyF = legacySessionFile()
 
@@ -219,25 +252,30 @@ object SessionManager {
     ): DesktopsState {
         val enrichedSnapshots =
             state.snapshots.mapValues { (_, snapshot) ->
-                val destinationsMissingTitles =
-                    snapshot.destinations.filter { destination ->
-                        destination !is TabsDestination.Home &&
-                            snapshot.titles[destination.tabId]?.title.isNullOrBlank()
-                    }
-                if (destinationsMissingTitles.isEmpty()) {
-                    snapshot
-                } else {
-                    val computedTitles = computeTabTitles(destinationsMissingTitles, snapshot.tabStates, appGraph)
-                    if (computedTitles.isEmpty()) {
-                        snapshot
-                    } else {
-                        val mergedTitles = snapshot.titles.toMutableMap()
-                        computedTitles.forEach { (tabId, pair) ->
-                            mergedTitles[tabId] = SerializableTabTitle(title = pair.first, tabType = pair.second)
+                // Normalize to the multi-window layout, then enrich each window's titles.
+                val enrichedWindows =
+                    snapshot.effectiveWindows().map { windowSnapshot ->
+                        val destinationsMissingTitles =
+                            windowSnapshot.destinations.filter { destination ->
+                                destination !is TabsDestination.Home &&
+                                    windowSnapshot.titles[destination.tabId]?.title.isNullOrBlank()
+                            }
+                        if (destinationsMissingTitles.isEmpty()) {
+                            windowSnapshot
+                        } else {
+                            val computedTitles = computeTabTitles(destinationsMissingTitles, snapshot.tabStates, appGraph)
+                            if (computedTitles.isEmpty()) {
+                                windowSnapshot
+                            } else {
+                                val mergedTitles = windowSnapshot.titles.toMutableMap()
+                                computedTitles.forEach { (tabId, pair) ->
+                                    mergedTitles[tabId] = SerializableTabTitle(title = pair.first, tabType = pair.second)
+                                }
+                                windowSnapshot.copy(titles = mergedTitles)
+                            }
                         }
-                        snapshot.copy(titles = mergedTitles)
                     }
-                }
+                snapshot.copy(windows = enrichedWindows)
             }
 
         return state.copy(snapshots = enrichedSnapshots)

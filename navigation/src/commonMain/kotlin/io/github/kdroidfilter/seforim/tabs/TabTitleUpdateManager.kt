@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 enum class TabType {
     BOOK,
     SEARCH,
+    HISTORY,
 }
 
 /**

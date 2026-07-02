@@ -43,6 +43,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
+import io.github.kdroidfilter.seforimapp.features.history.HistoryTabContent
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeNavigationEvent
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultInBookShellMvi
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
@@ -70,6 +71,7 @@ private fun TabsDestination.typeKey(): String =
         is TabsDestination.Home -> "home"
         is TabsDestination.Search -> "search"
         is TabsDestination.BookContent -> "book"
+        is TabsDestination.History -> "history"
     }
 
 private fun saveableKeyFor(destination: TabsDestination): String = "${destination.tabId}:${destination.typeKey()}"
@@ -294,6 +296,10 @@ fun TabsContent() {
                                         searchUi = searchUi,
                                         searchCallbacks = homeSearchCallbacks,
                                     )
+                                }
+
+                                is TabsDestination.History -> {
+                                    HistoryTabContent(tabId = tabId)
                                 }
                             }
                         }

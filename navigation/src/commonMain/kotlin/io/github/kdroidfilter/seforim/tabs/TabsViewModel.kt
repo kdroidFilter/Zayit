@@ -194,6 +194,7 @@ class TabsViewModel(
                 is TabsDestination.Home -> TabsDestination.Home(destination.tabId, destination.version)
                 is TabsDestination.Search -> TabsDestination.Search(destination.searchQuery, destination.tabId)
                 is TabsDestination.BookContent -> TabsDestination.BookContent(destination.bookId, destination.tabId, destination.lineId)
+                is TabsDestination.History -> TabsDestination.History(destination.tabId)
             }
 
         val newTab =
@@ -278,6 +279,7 @@ class TabsViewModel(
                             tabId = tab.destination.tabId,
                             lineId = destination.lineId,
                         )
+                    is TabsDestination.History -> TabsDestination.History(tabId = tab.destination.tabId)
                 }
 
             val updated =
@@ -319,6 +321,7 @@ class TabsViewModel(
                             tabId = newTabId,
                             lineId = destination.lineId,
                         )
+                    is TabsDestination.History -> TabsDestination.History(tabId = newTabId)
                 }
 
             val updated =
@@ -428,6 +431,7 @@ class TabsViewModel(
             is TabsDestination.Home -> TabType.SEARCH
             is TabsDestination.Search -> TabType.SEARCH
             is TabsDestination.BookContent -> if (destination.bookId > 0) TabType.BOOK else TabType.SEARCH
+            is TabsDestination.History -> TabType.HISTORY
         }
 
     private fun getTabTitle(destination: TabsDestination): String =
@@ -435,6 +439,8 @@ class TabsViewModel(
             is TabsDestination.Home -> ""
             is TabsDestination.Search -> destination.searchQuery
             is TabsDestination.BookContent -> if (destination.bookId > 0) "${destination.bookId}" else ""
+            // Localized by the History screen itself via TabTitleUpdateManager
+            is TabsDestination.History -> ""
         }
 
     private fun updateTabTitle(

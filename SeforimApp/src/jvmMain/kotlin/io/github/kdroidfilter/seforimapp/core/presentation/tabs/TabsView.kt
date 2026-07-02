@@ -109,6 +109,8 @@ private data class TabEntry(
     val onCloseRight: () -> Unit,
     // null when the destination has nothing shareable (e.g. Home, or a book still loading)
     val onCopyLink: (() -> Unit)?,
+    // null when the tab is the window's only one (the window itself already is that tab)
+    val onDetach: (() -> Unit)?,
 )
 
 private val TabTooltipWidthThreshold = 140.dp
@@ -133,6 +135,8 @@ private fun DefaultTabShowcase(
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
+    val desktopManager = LocalAppGraph.current.desktopManager
+    val windowId = LocalOpenWindow.current.id
 
     // Track for auto-scrolling (no-op in shrink-to-fit mode)
     var previousTabCount by remember { mutableStateOf(state.tabs.size) }
@@ -207,6 +211,12 @@ private fun DefaultTabShowcase(
                             onCloseLeft = { onEvents(TabsEvents.CloseRight(actualIndex)) },
                             onCloseRight = { onEvents(TabsEvents.CloseLeft(actualIndex)) },
                             onCopyLink = tabItem.destination.toShareLink()?.let { link -> { copyToClipboard(link) } },
+                            onDetach =
+                                if (state.tabs.size > 1) {
+                                    { desktopManager.detachTabToNewWindow(tabItem.destination.tabId, windowId) }
+                                } else {
+                                    null
+                                },
                         )
                     }.toImmutableList()
             } else {
@@ -270,6 +280,12 @@ private fun DefaultTabShowcase(
                             onCloseLeft = { onEvents(TabsEvents.CloseLeft(index)) },
                             onCloseRight = { onEvents(TabsEvents.CloseRight(index)) },
                             onCopyLink = tabItem.destination.toShareLink()?.let { link -> { copyToClipboard(link) } },
+                            onDetach =
+                                if (state.tabs.size > 1) {
+                                    { desktopManager.detachTabToNewWindow(tabItem.destination.tabId, windowId) }
+                                } else {
+                                    null
+                                },
                         )
                     }.toImmutableList()
             }
@@ -521,6 +537,7 @@ private fun RtlAwareTabStripContent(
                                             onCloseLeft = tabEntry.onCloseLeft,
                                             onCloseRight = tabEntry.onCloseRight,
                                             onCopyLink = tabEntry.onCopyLink,
+                                            onDetach = tabEntry.onDetach,
                                             animateWidth = !isNew,
                                             enterFromSmall = isNew,
                                             enterDurationMs = enterDurationMs,
@@ -627,6 +644,7 @@ private fun RtlAwareTab(
     onCloseRight: () -> Unit,
     modifier: Modifier = Modifier,
     onCopyLink: (() -> Unit)? = null,
+    onDetach: (() -> Unit)? = null,
     animateWidth: Boolean = true,
     enterFromSmall: Boolean = false,
     enterDurationMs: Int = 200,
@@ -890,12 +908,23 @@ private fun RtlAwareTab(
             val closeLeftLabel = stringResource(Res.string.close_tabs_left)
             val closeRightLabel = stringResource(Res.string.close_tabs_right)
             val copyLinkLabel = stringResource(Res.string.copy_tab_link)
+            val detachLabel = stringResource(Res.string.tab_open_in_new_window)
 
             TabContextMenu(
                 anchorOffset = anchorOffset,
                 contextClickOffset = contextClickOffset,
                 onDismissRequest = { contextMenuOpen = false },
             ) {
+                if (onDetach != null) {
+                    tabContextMenuItem(
+                        label = detachLabel,
+                        icon = AllIconsKeys.Actions.OpenNewTab,
+                        onClick = {
+                            contextMenuOpen = false
+                            onDetach()
+                        },
+                    )
+                }
                 if (onCopyLink != null) {
                     tabContextMenuItem(
                         label = copyLinkLabel,
@@ -1113,6 +1142,30 @@ private class StripGeometry(
         if (tabWidth <= 0f) return tabCount
         val visualIndex = ((screenX - bounds.left) / tabWidth).roundToInt().coerceIn(0, tabCount)
         return if (isRtl) tabCount - visualIndex else visualIndex
+    }
+}
+
+private fun MenuScope.tabContextMenuItem(
+    label: String,
+    icon: org.jetbrains.jewel.ui.icon.IconKey,
+    onClick: () -> Unit,
+) {
+    selectableItem(
+        selected = false,
+        onClick = onClick,
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                key = icon,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = JewelTheme.globalColors.text.normal,
+            )
+            Text(label)
+        }
     }
 }
 

@@ -42,6 +42,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowView
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.detectTouchMode
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
@@ -236,6 +237,17 @@ fun NucleusApplicationScope.MainAppWindow(
             nucleusWin.focusFlow.collect { focused ->
                 if (focused) desktopMgr.onWindowFocused(openWindow.id)
             }
+        }
+
+        // Settings dialog, composed inside the window it was opened from so it
+        // picks up this window's modal counter and native transient-for
+        // relationship — modal to this window only, the others stay usable.
+        val settingsDialogState by settingsWindowViewModel.state.collectAsState()
+        if (settingsDialogState.isVisible && settingsDialogState.ownerWindowId == openWindow.id) {
+            SettingsWindow(
+                onClose = { settingsWindowViewModel.onEvent(SettingsWindowEvents.OnClose) },
+                initialDestination = settingsDialogState.initialDestination,
+            )
         }
 
         CompositionLocalProvider(

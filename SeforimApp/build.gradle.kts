@@ -1,3 +1,5 @@
+import dev.nucleusframework.desktop.application.dsl.CompressionLevel
+import dev.nucleusframework.desktop.application.dsl.NativeImageOptimization
 import dev.nucleusframework.desktop.application.dsl.ReleaseChannel
 import dev.nucleusframework.desktop.application.dsl.ReleaseType
 import dev.nucleusframework.desktop.application.dsl.TargetFormat
@@ -219,44 +221,15 @@ nucleus.application {
 
     graalvm {
         isEnabled = true
-        javaLanguageVersion = 25
-        jvmVendor = JvmVendorSpec.BELLSOFT
         imageName = "zayit"
-        buildArgs.addAll(
-            // Enable native access for classpath (unnamed-module) code at IMAGE BUILD TIME so the
-            // generated binary never emits the JDK "restricted method ... System::load" warnings
-            // (triggered by sqlite-jdbc loading its JNI lib). The runtime `--enable-native-access`
-            // jvmArg below does NOT reach the GraalVM native binary, so it must be baked in here.
-            "--enable-native-access=ALL-UNNAMED",
-            "-H:+AddAllCharsets",
-            "-Djava.awt.headless=false",
-            "-Os",
-            "-H:+UnlockExperimentalVMOptions",
-            "-H:-IncludeMethodData",
-            // Enable shared arenas for Lucene's memory-mapped I/O (MemorySegmentIndexInput)
-            "-H:+SharedArenaSupport",
-            // Parallel GC for better throughput with large heaps
-            "--gc=parallel",
-            // Default max heap 2 GB
-            "-R:MaxHeapSize=2147483648",
-            // Exclude sqlite-jdbc's native-image.properties which references
-            // SqliteJdbcFeature (lives in META-INF/versions/9/ of the multi-release
-            // JAR, stripped by ProGuard shrinking). Equivalent metadata is already
-            // in the project's reachability-metadata.json.
-            "--exclude-config",
-            ".*\\.jar",
-            "META-INF/native-image/org\\.xerial/.*",
-            // Lucene classes initialize at runtime (GraalVM default).
-            // MethodHandle-based code paths are handled by substitution classes
-            // in io.github.kdroidfilter.seforimapp.graalvm.
-        )
-        march = providers.gradleProperty("nativeMarch").getOrElse("compatibility")
+        optimization = NativeImageOptimization.LEVEL_3
         nativeImageConfigBaseDir.set(layout.projectDirectory.dir("src/graalvm"))
     }
     nativeDistributions {
         appName = "זית"
         packageName = "zayit"
         description = "ספריית הלימוד שמובילה ישר לטקסט"
+        compressionLevel = CompressionLevel.Ultra
 
         publish {
             github {

@@ -114,7 +114,6 @@ private val TextSearchContextMenuIconKey = PathIconKey("icons/lucide_text_search
 private class ContextMenuItemOptionWithKeybinding(
     val icon: org.jetbrains.jewel.ui.icon.IconKey? = null,
     val keybinding: Set<String>? = null,
-    val enabled: Boolean = true,
     label: String,
     action: () -> Unit,
 ) : ContextMenuItem(label, action)

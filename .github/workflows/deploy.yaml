@@ -106,7 +106,7 @@ jobs:
           echo "ASSET_NAME=release-assets-${plat}-${{ matrix.arch || matrix.jdk_arch }}${pkg_suffix}" >> "$GITHUB_ENV"
 
       - name: Setup Nucleus
-        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@789704a9b63c5b2a0ff4d6e1cd85711ab2e4286b
+        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@f02ef003fbe8a3dfcb98576d3b6ad6892658e723
 
       - name: Setup GraalVM (Liberica NIK)
         if: matrix.graalvm

@@ -7,6 +7,7 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.data.DatabaseInstallLocation
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import kotlinx.coroutines.Dispatchers
@@ -111,7 +112,9 @@ class DownloadViewModel(
                 // Gate: remove the old database and verify free space BEFORE transferring
                 // anything. Refusing here is what prevents a multi-GB download from filling
                 // the disk and freezing when an old database was left in place.
-                when (preparationUseCase.prepareForInstall()) {
+                val destination = processRepository.installDirectory ?: DatabaseInstallLocation.currentDirectoryOrDefault()
+                processRepository.setInstallDirectory(destination)
+                when (preparationUseCase.prepareForInstall(destination)) {
                     DatabasePreparationUseCase.Result.Ready -> Unit
                     is DatabasePreparationUseCase.Result.CleanupFailed -> {
                         _errorKind.value = DownloadErrorKind.CLEANUP_FAILED
@@ -121,12 +124,16 @@ class DownloadViewModel(
                         _errorKind.value = DownloadErrorKind.INSUFFICIENT_SPACE
                         return@runSuspendCatching
                     }
+                    is DatabasePreparationUseCase.Result.DestinationUnavailable -> {
+                        _errorKind.value = DownloadErrorKind.DESTINATION_UNAVAILABLE
+                        return@runSuspendCatching
+                    }
                 }
 
                 _inProgress.value = true
 
                 val path =
-                    useCase.downloadLatestBundle { read, total, progress, speed ->
+                    useCase.downloadLatestBundle(destination) { read, total, progress, speed ->
                         _downloaded.value = read
                         _total.value = total
                         _progress.value = progress

@@ -6,6 +6,7 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
+import io.github.kdroidfilter.seforimapp.features.onboarding.data.DatabaseInstallLocation
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractUseCase
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
@@ -75,7 +76,8 @@ class ExtractViewModel(
                     _error.value = null
                     _inProgress.value = true
                     _progress.value = 0f
-                    useCase.extractToDatabase(path) { p -> _progress.value = p }
+                    val destination = processRepository.installDirectory ?: DatabaseInstallLocation.currentDirectoryOrDefault()
+                    useCase.extractToDatabase(path, destination) { p -> _progress.value = p }
                     _inProgress.value = false
                     _progress.value = 1f
                     _completed.value = true

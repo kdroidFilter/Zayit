@@ -88,8 +88,11 @@ private data class StartupState(
  * Determines the initial routing state synchronously. All operations are fast local I/O (read settings, check file existence, read version
  * file).
  */
-private fun computeStartupState(): StartupState =
-    try {
+private fun computeStartupState(): StartupState {
+    return try {
+        if ((PendingDbCleanup.hasPending() || AppSettings.isDatabaseInstallInProgress()) && AppSettings.isOnboardingFinished()) {
+            return StartupState(showOnboarding = false, showDatabaseUpdate = true, isDatabaseMissing = true)
+        }
         getDatabasePath()
         val onboardingFinished = AppSettings.isOnboardingFinished()
         if (!onboardingFinished) {
@@ -110,6 +113,7 @@ private fun computeStartupState(): StartupState =
             StartupState(showOnboarding = false, showDatabaseUpdate = true, isDatabaseMissing = true)
         }
     }
+}
 
 private fun initializeSentry() {
     val sentryEnvironment =

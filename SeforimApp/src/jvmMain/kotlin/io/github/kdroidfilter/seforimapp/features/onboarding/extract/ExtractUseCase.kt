@@ -2,9 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.extract
 
 import com.github.luben.zstd.ZstdInputStream
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.vinceglb.filekit.FileKit
-import io.github.vinceglb.filekit.databasesDir
-import io.github.vinceglb.filekit.path
+import io.github.kdroidfilter.seforimapp.framework.database.resetDatabasePathCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
@@ -19,11 +17,12 @@ import java.io.SequenceInputStream
 class ExtractUseCase {
     suspend fun extractToDatabase(
         sourcePath: String,
+        destination: File,
         onProgress: (Float) -> Unit,
     ): String =
         withContext(Dispatchers.Default) {
-            val dbDirV = FileKit.databasesDir
-            val dbDir = File(dbDirV.path).apply { mkdirs() }
+            val dbDir = destination
+            require(dbDir.isDirectory) { "Database location is unavailable: $dbDir" }
             val source = File(sourcePath)
             require(source.exists()) { "Selected file not found" }
 
@@ -42,7 +41,10 @@ class ExtractUseCase {
                             val canDelete =
                                 runCatching {
                                     val base = dbDir.canonicalFile
-                                    (p1.parentFile?.canonicalFile == base) && (p2.parentFile?.canonicalFile == base)
+                                    p1.name == "zayit-download.tar.zst.part01" &&
+                                        p2.name == "zayit-download.tar.zst.part02" &&
+                                        (p1.parentFile?.canonicalFile == base) &&
+                                        (p2.parentFile?.canonicalFile == base)
                                 }.getOrDefault(false)
                             if (canDelete) {
                                 runCatching { p1.delete() }
@@ -66,8 +68,13 @@ class ExtractUseCase {
                         else -> error("Unsupported file type: ${source.name}")
                     }
                 }
+            require(dbFile.name != "lexical.db" && dbFile.isFile && dbFile.length() > 0L) {
+                "Database bundle did not contain a valid database"
+            }
             onProgress(1f)
             AppSettings.setDatabasePath(dbFile.absolutePath)
+            resetDatabasePathCache()
+            AppSettings.setDatabaseInstallInProgress(false)
             runCatching { maybeCleanupSources(source, dbDir) }
             return@withContext dbFile.absolutePath
         }
@@ -157,7 +164,7 @@ class ExtractUseCase {
                         while (true) {
                             val entry = tar.nextEntry ?: break
                             val name = entry.name
-                            val outFile = File(destDir, name)
+                            val outFile = safeArchiveTarget(destDir, name)
                             if (entry.isDirectory) {
                                 outFile.mkdirs()
                             } else {
@@ -175,7 +182,7 @@ class ExtractUseCase {
                                     }
                                     out.fd.sync()
                                 }
-                                if (name.endsWith(".db", ignoreCase = true)) {
+                                if (name == "seforim.db") {
                                     extractedDb = outFile
                                 }
                             }
@@ -243,7 +250,7 @@ class ExtractUseCase {
                     while (true) {
                         val entry = tar.nextEntry ?: break
                         val name = entry.name
-                        val outFile = File(destDir, name)
+                        val outFile = safeArchiveTarget(destDir, name)
                         if (entry.isDirectory) {
                             outFile.mkdirs()
                         } else {
@@ -261,7 +268,7 @@ class ExtractUseCase {
                                 }
                                 out.fd.sync()
                             }
-                            if (name.endsWith(".db", ignoreCase = true)) {
+                            if (name == "seforim.db") {
                                 extractedDb = outFile
                             }
                         }
@@ -283,6 +290,14 @@ class ExtractUseCase {
             override fun nextElement(): T = this@toEnumeration[index++]
         }
 
+    private fun safeArchiveTarget(directory: File, name: String): File {
+        val target = File(directory, name).canonicalFile
+        require(target.toPath().startsWith(directory.canonicalFile.toPath()) && target != directory.canonicalFile) {
+            "Unsafe database bundle entry: $name"
+        }
+        return target
+    }
+
     private fun findSplitParts(anyPart: File): Pair<File, File> {
         val dir = anyPart.parentFile ?: error("Invalid parts path")
         val base = anyPart.name.substringBeforeLast(".part")
@@ -298,9 +313,9 @@ class ExtractUseCase {
         dbDir: File,
     ) {
         if (source.parentFile?.canonicalFile == dbDir.canonicalFile) {
-            if (source.name.endsWith(".tar.zst", true)) {
+            if (source.name == "zayit-download.tar.zst") {
                 runCatching { source.delete() }
-            } else if (source.name.contains(".tar.zst.part")) {
+            } else if (source.name in setOf("zayit-download.tar.zst.part01", "zayit-download.tar.zst.part02")) {
                 val (p1, p2) = findSplitParts(source)
                 runCatching { p1.delete() }
                 runCatching { p2.delete() }

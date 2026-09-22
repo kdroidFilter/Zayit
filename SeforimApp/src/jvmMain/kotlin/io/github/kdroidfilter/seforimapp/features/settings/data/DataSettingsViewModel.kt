@@ -125,13 +125,25 @@ class DataSettingsViewModel : ViewModel() {
                     listOf(
                         customDbFile.name + ".lucene",
                         customDbFile.name + ".lookup.lucene",
+                        customDbFile.name + "-wal",
+                        customDbFile.name + "-shm",
+                        customDbFile.name + ".backup",
+                        customDbFile.name + ".applying",
                         "lexical.db",
+                        "lexical.db-wal",
+                        "lexical.db-shm",
                         "catalog.pb",
                         "release_info.txt",
+                        "delta-cache",
+                        "zayit-download.tar.zst",
+                        "zayit-download.tar.zst.part01",
+                        "zayit-download.tar.zst.part02",
                     ).forEach { name ->
                         val f = File(customBaseDir, name)
                         if (f.exists()) {
-                            runCatching { if (f.isDirectory) f.deleteRecursively() else f.delete() }
+                            runCatching {
+                                if (f.isDirectory && !Files.isSymbolicLink(f.toPath())) f.deleteRecursively() else f.delete()
+                            }
                         }
                     }
                 }

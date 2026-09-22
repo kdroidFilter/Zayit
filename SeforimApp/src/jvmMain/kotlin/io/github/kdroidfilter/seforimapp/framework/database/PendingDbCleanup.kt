@@ -23,6 +23,8 @@ object PendingDbCleanup {
 
     private fun markerFile(): File? = runCatching { File(File(FileKit.databasesDir.path), MARKER_NAME) }.getOrNull()
 
+    fun hasPending(): Boolean = markerFile()?.exists() == true
+
     /** Records [files] (merged with any existing entries, de-duplicated) for a retry next launch. */
     fun record(files: List<File>) {
         if (files.isEmpty()) return
@@ -71,7 +73,7 @@ object PendingDbCleanup {
     /** Deletes a file or directory tree via NIO. Returns true if nothing remains afterwards. */
     private fun deleteRecursively(target: File): Boolean {
         if (!target.exists()) return true
-        if (target.isDirectory) target.listFiles()?.forEach { deleteRecursively(it) }
+        if (target.isDirectory && !Files.isSymbolicLink(target.toPath())) target.listFiles()?.forEach { deleteRecursively(it) }
         return runCatching {
             Files.deleteIfExists(target.toPath())
             !target.exists()

@@ -10,6 +10,7 @@ import androidx.navigation.NavController
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.data.DatabaseInstallLocation
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadErrorKind
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
@@ -52,7 +53,9 @@ fun OfflineFileSelectionScreen(
         scope.launch {
             prepErrorKind = null
             // Remove the old database and verify free space before extracting ~7.5 GB.
-            when (prepUseCase.prepareForInstall()) {
+            val destination = processRepository.installDirectory ?: DatabaseInstallLocation.currentDirectoryOrDefault()
+            processRepository.setInstallDirectory(destination)
+            when (prepUseCase.prepareForInstall(destination)) {
                 DatabasePreparationUseCase.Result.Ready -> {
                     // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
                     progressBarState.setProgress(0.7f)
@@ -69,6 +72,8 @@ fun OfflineFileSelectionScreen(
                     prepErrorKind = DownloadErrorKind.CLEANUP_FAILED
                 is DatabasePreparationUseCase.Result.InsufficientSpace ->
                     prepErrorKind = DownloadErrorKind.INSUFFICIENT_SPACE
+                is DatabasePreparationUseCase.Result.DestinationUnavailable ->
+                    prepErrorKind = DownloadErrorKind.DESTINATION_UNAVAILABLE
             }
         }
     }
@@ -121,6 +126,7 @@ fun OfflineFileSelectionScreen(
                         when (kind) {
                             DownloadErrorKind.CLEANUP_FAILED -> stringResource(Res.string.db_install_cleanup_failed)
                             DownloadErrorKind.INSUFFICIENT_SPACE -> stringResource(Res.string.db_install_insufficient_space)
+                            DownloadErrorKind.DESTINATION_UNAVAILABLE -> stringResource(Res.string.db_install_destination_unavailable)
                             null -> ""
                         },
                     textAlign = TextAlign.Center,

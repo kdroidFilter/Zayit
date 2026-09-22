@@ -106,6 +106,7 @@ fun DownloadView(
                     when (state.errorKind) {
                         DownloadErrorKind.CLEANUP_FAILED -> stringResource(Res.string.db_install_cleanup_failed)
                         DownloadErrorKind.INSUFFICIENT_SPACE -> stringResource(Res.string.db_install_insufficient_space)
+                        DownloadErrorKind.DESTINATION_UNAVAILABLE -> stringResource(Res.string.db_install_destination_unavailable)
                         null -> {
                             val detail = state.errorMessage?.takeIf { it.isNotBlank() }
                             detail?.let { stringResource(Res.string.onboarding_error_with_detail, it) }

@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
@@ -23,6 +24,7 @@ fun VersionCheckScreen(
 ) {
     val currentVersion = remember { DatabaseVersionManager.getCurrentDatabaseVersion() }
     val minRequiredVersion = remember { DatabaseVersionManager.getMinimumRequiredVersion() }
+    val savedDatabasePath = remember { AppSettings.getDatabasePath() }
 
     LaunchedEffect(Unit) {
         DatabaseUpdateProgressBarState.resetProgress()
@@ -89,6 +91,14 @@ fun VersionCheckScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(0.8f),
             )
+
+            if (isDatabaseMissing && savedDatabasePath != null) {
+                Text(
+                    text = stringResource(Res.string.db_update_database_missing_location, savedDatabasePath),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(0.8f),
+                )
+            }
 
             // Continue button
             DefaultButton(

@@ -66,10 +66,8 @@ private fun resolveDatabasePath(): String {
             rawSettingsPath
         }
 
-    // 3) Fallback to default location
-    val defaultDbPath = File(FileKit.databasesDir.path, DEFAULT_DB_NAME).absolutePath
-
-    val dbPath = envDbPath ?: settingsPath ?: defaultDbPath
+    // 3) Fallback to default location only when no explicit path was configured.
+    val dbPath = envDbPath ?: settingsPath ?: File(FileKit.databasesDir.path, DEFAULT_DB_NAME).absolutePath
 
     infoln { "[DatabaseUtils] Database path resolved: $dbPath (exists: ${File(dbPath).exists()})" }
 

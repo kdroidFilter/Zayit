@@ -29,7 +29,9 @@ import kotlin.coroutines.cancellation.CancellationException
  * and recorded for a retry at the next launch via [PendingDbCleanup], so the caller
  * can refuse to start a multi-GB download that would otherwise fill the disk.
  */
-class DatabaseCleanupUseCase {
+class DatabaseCleanupUseCase(
+    private val defaultDirectory: File = File(FileKit.databasesDir.path),
+) {
     sealed interface CleanupResult {
         /** Every known artifact was removed (or was already absent). */
         data class Success(
@@ -42,29 +44,38 @@ class DatabaseCleanupUseCase {
         ) : CleanupResult
     }
 
-    suspend fun cleanupDatabaseFiles(): CleanupResult =
+    suspend fun cleanupDatabaseFiles(installDirectory: File? = null): CleanupResult =
         withContext(Dispatchers.IO) {
             val currentDbPath = AppSettings.getDatabasePath()
 
-            // The old database is going away: forget the recorded path and the cached
-            // resolution so the app re-resolves the freshly installed location later.
-            AppSettings.setDatabasePath(null)
+            // Keep the configured path until extraction succeeds. If installation is
+            // interrupted, startup must report the missing database at its real location.
             resetDatabasePathCache()
 
-            // Candidate directories: the real DB directory (may be non-default for
-            // legacy installs) plus the current default databases directory.
+            // Also remove leftovers from an interrupted first installation, when its
+            // destination was never promoted to the active database setting.
             val dirs = LinkedHashSet<File>()
             currentDbPath?.let { File(it).parentFile?.let(dirs::add) }
-            runCatching { File(FileKit.databasesDir.path) }.getOrNull()?.let(dirs::add)
+            dirs.add(defaultDirectory)
+            installDirectory?.let(dirs::add)
 
             var freed = 0L
             val undeletable = mutableListOf<File>()
 
             try {
                 for (dir in dirs) {
-                    val files = dir.takeIf { it.exists() }?.listFiles() ?: continue
+                    if (!dir.exists()) continue
+                    if (Files.isSymbolicLink(dir.toPath())) {
+                        undeletable += dir
+                        continue
+                    }
+                    val files = dir.listFiles()
+                    if (files == null) {
+                        undeletable += dir
+                        continue
+                    }
                     for (file in files) {
-                        if (!isDatabaseArtifact(file)) continue
+                        if (!isDatabaseArtifact(file, currentDbPath)) continue
                         val size = sizeOf(file)
                         if (deleteRecursively(file)) {
                             freed += size
@@ -77,6 +88,7 @@ class DatabaseCleanupUseCase {
                 throw e
             } catch (e: Exception) {
                 warnln { "[DatabaseCleanup] Unexpected error during cleanup: ${e.message}" }
+                undeletable += defaultDirectory
             }
 
             if (undeletable.isEmpty()) {
@@ -87,22 +99,28 @@ class DatabaseCleanupUseCase {
                     "[DatabaseCleanup] ${undeletable.size} file(s) could not be deleted (locked?): " +
                         undeletable.joinToString { it.name }
                 }
-                PendingDbCleanup.record(undeletable)
+                // Never persist a directory as a pending deletion: retrying it would
+                // recursively remove files that do not belong to the application.
+                PendingDbCleanup.record(undeletable.filterNot { it in dirs })
                 CleanupResult.Incomplete(undeletable)
             }
         }
 
     /** True for files this app installs alongside the database and must remove on reinstall. */
-    private fun isDatabaseArtifact(file: File): Boolean {
+    private fun isDatabaseArtifact(file: File, currentDbPath: String?): Boolean {
         val name = file.name.lowercase()
-        return name.endsWith(".db") ||
-            // seforim.db, lexical.db
-            name.endsWith(".db-wal") ||
-            name.endsWith(".db-shm") ||
-            // SQLite WAL/SHM sidecars
-            name.endsWith(".lucene") ||
-            name.contains(".lookup.lucene") ||
-            // Lucene index dirs
+        val currentDb = currentDbPath?.let(::File)?.absoluteFile
+        val activeName = currentDb?.takeIf { it.parentFile == file.absoluteFile.parentFile }?.name?.lowercase()
+        return name in setOf(
+            "seforim.db", "lexical.db", "seforim.db-wal", "seforim.db-shm", "lexical.db-wal", "lexical.db-shm",
+            "seforim.db.backup", "seforim.db.applying",
+        ) ||
+            (activeName != null && name in setOf(
+                activeName, "$activeName-wal", "$activeName-shm", "$activeName.backup", "$activeName.applying",
+            )) ||
+            name == "seforim.db.lucene" ||
+            name == "seforim.db.lookup.lucene" ||
+            (activeName != null && name in setOf("$activeName.lucene", "$activeName.lookup.lucene")) ||
             name == "catalog.pb" ||
             // precomputed catalog (previously mis-targeted as ".proto")
             name == "release_info.txt" ||
@@ -111,17 +129,16 @@ class DatabaseCleanupUseCase {
             // delta updater work dir
             name == PendingDbCleanup.MARKER_NAME ||
             // stale pending-cleanup marker
-            // download / extraction leftovers
-            name.endsWith(".tar.zst") ||
-            name.endsWith(".part01") ||
-            name.endsWith(".part02") ||
-            name.endsWith(".zst") ||
-            name.endsWith(".tmp")
+            // app-owned download leftovers (including older releases)
+            name == "zayit-download.tar.zst" ||
+            name == "zayit-download.tar.zst.part01" ||
+            name == "zayit-download.tar.zst.part02" ||
+            name in setOf("seforim_bundle.tar.zst", "seforim_bundle.tar.zst.part01", "seforim_bundle.tar.zst.part02")
     }
 
     private fun sizeOf(file: File): Long =
         runCatching {
-            if (file.isDirectory) {
+            if (file.isDirectory && !Files.isSymbolicLink(file.toPath())) {
                 file.walkBottomUp().filter { it.isFile }.sumOf { it.length() }
             } else {
                 file.length()
@@ -133,7 +150,7 @@ class DatabaseCleanupUseCase {
      * instead of silently returning false. Returns true if nothing remains afterwards.
      */
     private fun deleteRecursively(target: File): Boolean {
-        if (target.isDirectory) {
+        if (target.isDirectory && !Files.isSymbolicLink(target.toPath())) {
             target.listFiles()?.forEach { deleteRecursively(it) }
         }
         return try {

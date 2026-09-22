@@ -2,9 +2,6 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.download
 
 import io.github.kdroidfilter.seforimapp.network.HttpsConnectionFactory
 import io.github.kdroidfilter.seforimapp.releasefetcher.github.GitHubReleaseFetcher
-import io.github.vinceglb.filekit.FileKit
-import io.github.vinceglb.filekit.databasesDir
-import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -24,6 +21,7 @@ class DownloadUseCase(
      * from the last value to 100% with speed set to 0.
      */
     suspend fun downloadLatestBundle(
+        destination: File,
         onProgress: (readSoFar: Long, totalBytes: Long?, progress: Float, speedBytesPerSec: Long) -> Unit,
     ): String =
         withContext(Dispatchers.Default) {
@@ -39,7 +37,7 @@ class DownloadUseCase(
                     .sortedBy { it.name }
             val singleAsset = allAssets.firstOrNull { it.name.endsWith(".tar.zst", true) && !it.name.contains(".part") }
 
-            val dbDir = File(FileKit.databasesDir.path).apply { mkdirs() }
+            val dbDir = destination
 
             // Keep running stats for a smoother, more stable UX
             var lastBytes = 0L
@@ -86,8 +84,8 @@ class DownloadUseCase(
                 val size2 = (runCatching { (part02.size as? Number)?.toLong() }.getOrNull() ?: 0L)
                 val knownTotal = (size1 + size2).takeIf { it > 0L }
 
-                val file01 = File(dbDir, part01.name)
-                val file02 = File(dbDir, part02.name)
+                val file01 = File(dbDir, "zayit-download.tar.zst.part01")
+                val file02 = File(dbDir, "zayit-download.tar.zst.part02")
 
                 var readSoFar = 0L
                 var total1: Long? = null
@@ -111,7 +109,7 @@ class DownloadUseCase(
                 return@withContext file01.absolutePath
             } else if (singleAsset != null) {
                 // Backward-compatible: single .tar.zst
-                val tmp = File(dbDir, singleAsset.name)
+                val tmp = File(dbDir, "zayit-download.tar.zst")
                 val knownTotal = runCatching { (singleAsset.size as? Number)?.toLong() }.getOrNull()?.takeIf { it > 0L }
                 var totalLength: Long? = null
                 downloadFile(singleAsset.browser_download_url, tmp) { r, t ->

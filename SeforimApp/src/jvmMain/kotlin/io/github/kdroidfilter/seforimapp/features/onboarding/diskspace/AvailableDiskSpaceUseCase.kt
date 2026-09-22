@@ -1,30 +1,32 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.diskspace
 
-import dev.nucleusframework.systeminfo.SystemInfo
+import io.github.kdroidfilter.seforimapp.features.onboarding.data.DatabaseInstallLocation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.nio.file.Files
 
 class AvailableDiskSpaceUseCase {
     /**
-     * Reads available and total disk space via Nucleus SystemInfo.
+     * Reads available and total disk space from the filesystem that holds the install destination.
      * Must be called from a coroutine — dispatched to IO internally.
      */
-    suspend fun getDiskSpaceInfo(): DiskSpaceInfo =
+    suspend fun getDiskSpaceInfo(directory: File): DiskSpaceInfo =
         withContext(Dispatchers.IO) {
-            val disks = SystemInfo.disks()
-
-            val systemDir =
-                disks.firstOrNull {
-                    it.mountPoint.contains(System.getProperty("user.home")) ||
-                        it.mountPoint == "/" ||
-                        it.mountPoint.startsWith("C:")
-                } ?: disks.first()
-
+            require(directory.isDirectory) { "Database location is unavailable: $directory" }
+            val store = Files.getFileStore(directory.toPath())
             DiskSpaceInfo(
-                availableBytes = systemDir.availableSpace,
-                totalBytes = systemDir.totalSpace,
+                availableBytes = store.usableSpace,
+                totalBytes = store.totalSpace,
             )
         }
+
+    suspend fun getDiskSpaceInfo(): DiskSpaceInfo =
+        getDiskSpaceInfo(
+            generateSequence(DatabaseInstallLocation.defaultDirectory()) {
+                it.parentFile
+            }.first { it.isDirectory },
+        )
 
     data class DiskSpaceInfo(
         val availableBytes: Long,

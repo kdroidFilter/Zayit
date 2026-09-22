@@ -7,6 +7,8 @@ enum class DownloadErrorKind {
 
     /** Not enough free disk space remains for a fresh install. */
     INSUFFICIENT_SPACE,
+
+    DESTINATION_UNAVAILABLE,
 }
 
 data class DownloadState(

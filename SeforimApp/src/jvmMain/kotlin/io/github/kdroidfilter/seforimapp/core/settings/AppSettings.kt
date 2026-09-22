@@ -54,6 +54,7 @@ object AppSettings {
     private const val KEY_MAX_COMMENTATORS_PER_PAGE = "max_commentators_per_page"
     private const val KEY_CLOSE_TREE_ON_NEW_BOOK = "close_tree_on_new_book"
     private const val KEY_DATABASE_PATH = "database_path"
+    private const val KEY_DATABASE_INSTALL_IN_PROGRESS = "database_install_in_progress"
     private const val KEY_PERSIST_SESSION = "persist_session"
     private const val KEY_KEEP_SCREEN_AWAKE_ON_BOOK = "keep_screen_awake_on_book"
     private const val KEY_FONT_BOOK = "font_book"
@@ -324,6 +325,12 @@ object AppSettings {
             settings[KEY_DATABASE_PATH] = path
             _databasePathFlow.value = path
         }
+    }
+
+    fun isDatabaseInstallInProgress(): Boolean = settings[KEY_DATABASE_INSTALL_IN_PROGRESS, false]
+
+    fun setDatabaseInstallInProgress(inProgress: Boolean) {
+        settings[KEY_DATABASE_INSTALL_IN_PROGRESS] = inProgress
     }
 
     // Session persistence preference

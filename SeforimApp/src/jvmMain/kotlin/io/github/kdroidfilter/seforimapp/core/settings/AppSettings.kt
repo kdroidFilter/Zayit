@@ -90,7 +90,6 @@ object AppSettings {
 
     // Compact mode for vertical bars
     private const val KEY_COMPACT_MODE = "compact_mode"
-    private const val KEY_TAB_HOVER_PREVIEW = "tab_hover_preview"
 
     // Backing Settings storage (can be replaced at startup if needed)
     @Volatile
@@ -111,7 +110,6 @@ object AppSettings {
         _commentaryFontCodeFlow.value = getCommentaryFontCode()
         _targumFontCodeFlow.value = getTargumFontCode()
         _sourceFontCodeFlow.value = getSourceFontCode()
-        _tabHoverPreviewFlow.value = isTabHoverPreviewEnabled()
         // User profile reactive values
         _userFirstNameFlow.value = getUserFirstName() ?: ""
         _userLastNameFlow.value = getUserLastName() ?: ""
@@ -157,9 +155,6 @@ object AppSettings {
     // StateFlow for compact mode
     private val _compactModeFlow = MutableStateFlow(isCompactModeEnabled())
     val compactModeFlow: StateFlow<Boolean> = _compactModeFlow.asStateFlow()
-
-    private val _tabHoverPreviewFlow = MutableStateFlow(isTabHoverPreviewEnabled())
-    val tabHoverPreviewFlow: StateFlow<Boolean> = _tabHoverPreviewFlow.asStateFlow()
 
     // Font preference flows
     private val _bookFontCodeFlow = MutableStateFlow(getBookFontCode())
@@ -373,14 +368,6 @@ object AppSettings {
     fun setCompactModeEnabled(enabled: Boolean) {
         settings[KEY_COMPACT_MODE] = enabled
         _compactModeFlow.value = enabled
-    }
-
-    // A picture of the window on hovering a tab that is not the selected one
-    fun isTabHoverPreviewEnabled(): Boolean = settings[KEY_TAB_HOVER_PREVIEW, true]
-
-    fun setTabHoverPreviewEnabled(enabled: Boolean) {
-        settings[KEY_TAB_HOVER_PREVIEW] = enabled
-        _tabHoverPreviewFlow.value = enabled
     }
 
     // Saved session blob (JSON)

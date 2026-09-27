@@ -2,8 +2,6 @@ package io.github.kdroidfilter.seforimapp.core.presentation.window
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -18,7 +16,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.desktop.OpenWindow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -34,15 +31,14 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun rememberTabThumbnails(openWindow: OpenWindow): Modifier {
-    val enabled by AppSettings.tabHoverPreviewFlow.collectAsState()
     val layer = rememberGraphicsLayer()
     val reduced = rememberGraphicsLayer()
     val density = LocalDensity.current
     val direction = LocalLayoutDirection.current
     val group = openWindow.group()
     val workspace = openWindow.session.workspace
-    LaunchedEffect(enabled, group, density, direction) {
-        if (!enabled || group == null) return@LaunchedEffect
+    LaunchedEffect(group, density, direction) {
+        if (group == null) return@LaunchedEffect
         var last: String? = null
         snapshotFlow { group.selectedId to openWindow.pointerOnStrip }.collectLatest { (id, onStrip) ->
             val arrived = id != last
@@ -54,7 +50,6 @@ fun rememberTabThumbnails(openWindow: OpenWindow): Modifier {
             reducedPicture(layer, reduced, density, direction)?.let { workspace.tab(id)?.thumbnail = it }
         }
     }
-    if (!enabled) return Modifier
     return Modifier.drawWithContent {
         layer.record { this@drawWithContent.drawContent() }
         drawLayer(layer)

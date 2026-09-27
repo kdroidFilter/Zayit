@@ -60,8 +60,6 @@ import seforimapp.seforimapp.generated.resources.settings_show_home_wallpaper
 import seforimapp.seforimapp.generated.resources.settings_show_home_wallpaper_description
 import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets
 import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets_description
-import seforimapp.seforimapp.generated.resources.settings_tab_hover_preview
-import seforimapp.seforimapp.generated.resources.settings_tab_hover_preview_description
 import seforimapp.seforimapp.generated.resources.settings_theme_style_classic
 import seforimapp.seforimapp.generated.resources.settings_theme_style_islands
 import seforimapp.seforimapp.generated.resources.settings_theme_style_label
@@ -127,13 +125,6 @@ private fun DisplaySettingsView(
                 description = Res.string.settings_compact_mode_description,
                 checked = state.compactMode,
                 onCheckedChange = { onEvent(DisplaySettingsEvents.SetCompactMode(it)) },
-            )
-
-            SettingCard(
-                title = Res.string.settings_tab_hover_preview,
-                description = Res.string.settings_tab_hover_preview_description,
-                checked = state.tabHoverPreview,
-                onCheckedChange = { onEvent(DisplaySettingsEvents.SetTabHoverPreview(it)) },
             )
 
             MaxCommentatorsPerPageCard(

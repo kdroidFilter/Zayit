@@ -409,8 +409,7 @@ private fun TabStripScope.RtlAwareTabStripContent(
     // The workspace's gestures for this strip: carry along it, slide home, hand-over to another
     // window or a new one once a tab leaves it (the platform drag session on native Wayland).
     val tabDrag = rememberTabStripDrag()
-    val hoverPreview by AppSettings.tabHoverPreviewFlow.collectAsState()
-    if (hoverPreview) TabHoverPreviewPopup(remember { TabHoverPreview(content = { TabPreviewCard() }) })
+    TabHoverPreviewPopup(remember { TabHoverPreview(content = { TabPreviewCard() }) })
     // The last look at the selected tab before a click may leave it (see rememberTabThumbnails).
     val stripHovered by interactionSource.collectIsHoveredAsState()
     LaunchedEffect(stripHovered) { openWindow.pointerOnStrip = stripHovered }
@@ -863,12 +862,11 @@ private fun RtlAwareTab(
         }
 
         val label = labelProvider()
-        val hoverPreview by AppSettings.tabHoverPreviewFlow.collectAsState()
         // The hover card replaces the tooltip on every tab it is shown for (all but the selected one).
         val showTooltip =
             label.isNotBlank() &&
                 (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold) &&
-                (!hoverPreview || tabData.selected)
+                tabData.selected
 
         // Read theme colors outside remember so they act as a cache key.
         val tooltipColors = JewelTheme.tooltipStyle.colors

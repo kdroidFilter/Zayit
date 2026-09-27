@@ -376,8 +376,6 @@
     <string name="settings_show_home_wallpaper_description">כאשר אפשרות זו מופעלת, יוצג נוף של כרם זיתים כרקע דקורטיבי בדף הבית.</string>
     <string name="settings_compact_mode">מצב קומפקטי לסרגל הצדדי</string>
     <string name="settings_compact_mode_description">כאשר אפשרות זו מופעלת, הסרגלים הצדדיים יוצגו בצורה צפופה יותר: האייקונים יהיו קטנים יותר והטקסט שמתחת לאייקונים לא יוצג.</string>
-    <string name="settings_tab_hover_preview">תצוגה מקדימה של לשוניות</string>
-    <string name="settings_tab_hover_preview_description">כאשר העכבר מרחף מעל לשונית שאינה פעילה, מוצגת תמונה מוקטנת של החלון כפי שהיה כשעזבתם אותה.</string>
     <string name="settings_max_commentators_per_page">מספר מרבי של מפרשים בעמוד</string>
     <string name="settings_max_commentators_per_page_description">קובע כמה מפרשים יוצגו לכל היותר בעמוד אחד. כאשר נבחר "אוטומטי", המספר מותאם לגודל המסך. הגבלה למספר מסוים תיצור עמודים נוספים כשיש יותר מפרשים, אך כאשר יש מקום לפחות מכך יוצגו רק מה שנכנס.</string>
     <string name="settings_max_commentators_per_page_auto">אוטומטי</string>

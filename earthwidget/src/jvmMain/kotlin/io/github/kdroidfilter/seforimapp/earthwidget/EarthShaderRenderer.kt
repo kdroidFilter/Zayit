@@ -11,7 +11,7 @@ import org.jetbrains.skia.FilterTileMode
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.ImageInfo
 import org.jetbrains.skia.Paint
-import org.jetbrains.skia.Path
+import org.jetbrains.skia.PathBuilder
 import org.jetbrains.skia.Rect
 import org.jetbrains.skia.SamplingMode
 import org.jetbrains.skia.Shader
@@ -65,8 +65,8 @@ internal class EarthShaderRenderer private constructor(
             color = MARKER_OUTLINE_COLOR
         }
     private val starfieldPaint = Paint()
-    private val orbitPath = Path()
-    private val klPath = Path()
+    private val orbitPath = PathBuilder()
+    private val klPath = PathBuilder()
     private val frameBuffer = FloatArray(9)
     private val halfBuffer = FloatArray(3)
 
@@ -563,16 +563,17 @@ internal class EarthShaderRenderer private constructor(
             mode = org.jetbrains.skia.PaintMode.STROKE
             strokeWidth = 1.5f
         }
-        canvas.drawPath(orbitPath, shaderPaint)
+        canvas.drawPath(orbitPath.snapshot(), shaderPaint)
 
         // Draw KL arc
-        if (hasKL && !klPath.isEmpty) {
+        val kl = klPath.snapshot()
+        if (hasKL && !kl.isEmpty) {
             val klAlpha = if (behind) KIDDUSH_LEVANA_ALPHA_BACK else KIDDUSH_LEVANA_ALPHA_FRONT
             shaderPaint.apply {
                 color = (klAlpha shl 24) or kiddushLevanaColorRgb
                 strokeWidth = 2.5f
             }
-            canvas.drawPath(klPath, shaderPaint)
+            canvas.drawPath(kl, shaderPaint)
         }
         shaderPaint.mode = org.jetbrains.skia.PaintMode.FILL
     }
